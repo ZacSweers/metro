@@ -4,31 +4,15 @@
 
 package dev.zacsweers.metro.gradle.incremental
 
-import com.autonomousapps.kit.GradleBuilder.build
-import com.autonomousapps.kit.GradleProject
-import com.autonomousapps.kit.GradleProject.DslKind
-import com.autonomousapps.kit.gradle.Dependency
-import com.autonomousapps.kit.gradle.Dependency.Companion.implementation
-import com.autonomousapps.kit.gradle.Plugin
 import com.google.common.truth.Truth.assertThat
-import dev.zacsweers.metro.gradle.GradlePlugins
 import dev.zacsweers.metro.gradle.KmpTarget
 import dev.zacsweers.metro.gradle.KotlinToolingVersion
 import dev.zacsweers.metro.gradle.MetroOptionOverrides
 import dev.zacsweers.metro.gradle.MetroProject
-import dev.zacsweers.metro.gradle.buildAndAssertThat
-import dev.zacsweers.metro.gradle.classLoader
-import dev.zacsweers.metro.gradle.cleanOutputLine
 import dev.zacsweers.metro.gradle.getTestCompilerToolingVersion
-import dev.zacsweers.metro.gradle.getTestCompilerVersion
-import dev.zacsweers.metro.gradle.getTestOmitRedundantMirrorsOverride
-import dev.zacsweers.metro.gradle.invokeMain
 import dev.zacsweers.metro.gradle.source
-import java.io.File
-import java.net.URLClassLoader
 import org.gradle.testkit.runner.TaskOutcome
 import org.junit.Assume.assumeTrue
-import org.junit.Ignore
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
