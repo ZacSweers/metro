@@ -437,7 +437,6 @@ tasks.withType<Test> {
   dependsOn(circuitRuntimeClasspath)
   dependsOn(circuitRuntimeKlibClasspath)
   dependsOn(jsKlibClasspath)
-  dependsOn(wasmKlibClasspath)
   inputs
     .dir(layout.projectDirectory.dir("src/test/data"))
     .withPropertyName("testData")
@@ -502,16 +501,22 @@ tasks.withType<Test> {
   )
   setLibraryProperty("kotlin-stdlib-js", jsKlibClasspath)
   setLibraryProperty("kotlin-test-js", jsKlibClasspath)
-  setLibraryProperty("kotlin-stdlib-wasm-js", wasmKlibClasspath)
-  setLibraryProperty("kotlin-stdlib-wasm-wasi", wasmKlibClasspath)
-  setLibraryProperty("kotlin-test-wasm-js", wasmKlibClasspath)
-  setLibraryProperty("kotlin-test-wasm-wasi", wasmKlibClasspath)
   setLibraryProperty("kotlin-common-stdlib", testRuntimeClasspath)
   setLibraryProperty("kotlin-stdlib-web", testRuntimeClasspath)
 
-  val d8EnvSpec = project.the<D8EnvSpec>()
-  dependsOn(d8EnvSpec.run { project.d8SetupTaskProvider })
-  systemProperty("javascript.engine.path.V8", d8EnvSpec.executable.get())
+  // JS diagnostics compile against the JS KLIBs configured above.
+  // Keep Wasm library paths and D8 setup with JS box execution.
+  if (!excludeJsBoxTests) {
+    dependsOn(wasmKlibClasspath)
+    setLibraryProperty("kotlin-stdlib-wasm-js", wasmKlibClasspath)
+    setLibraryProperty("kotlin-stdlib-wasm-wasi", wasmKlibClasspath)
+    setLibraryProperty("kotlin-test-wasm-js", wasmKlibClasspath)
+    setLibraryProperty("kotlin-test-wasm-wasi", wasmKlibClasspath)
+
+    val d8EnvSpec = project.the<D8EnvSpec>()
+    dependsOn(d8EnvSpec.run { project.d8SetupTaskProvider })
+    systemProperty("javascript.engine.path.V8", d8EnvSpec.executable.get())
+  }
   systemProperty("javascript.engine.path.repl", layout.projectDirectory.file("repl.js").asFile)
   systemProperty(
     "kotlin.js.test.root.out.dir",
