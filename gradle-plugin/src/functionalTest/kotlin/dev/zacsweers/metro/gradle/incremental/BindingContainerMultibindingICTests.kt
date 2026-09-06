@@ -10,7 +10,6 @@ import dev.zacsweers.metro.gradle.KmpTarget
 import dev.zacsweers.metro.gradle.KotlinToolingVersion
 import dev.zacsweers.metro.gradle.MetroOptionOverrides
 import dev.zacsweers.metro.gradle.MetroProject
-import dev.zacsweers.metro.gradle.assertOutputContains
 import dev.zacsweers.metro.gradle.cleanOutputLine
 import dev.zacsweers.metro.gradle.getTestCompilerToolingVersion
 import dev.zacsweers.metro.gradle.getTestCompilerVersion
@@ -25,7 +24,8 @@ import org.junit.runners.Parameterized
 
 /** Verifies incremental multibindings and contributions from external modules. */
 @RunWith(Parameterized::class)
-class BindingContainerMultibindingICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
+class BindingContainerMultibindingICTests(target: KmpTarget) :
+  BaseIncrementalCompilationTest(target) {
 
   companion object {
     @JvmStatic

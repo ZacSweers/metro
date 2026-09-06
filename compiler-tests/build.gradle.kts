@@ -536,7 +536,10 @@ tasks.withType<Test> {
     val d8Setup = d8EnvSpec.run { project.d8SetupTaskProvider }
     dependsOn(d8Setup)
     // D8 can load support files from its installation directory.
-    inputs.files(d8Setup).withPropertyName("d8Distribution").withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs
+      .files(d8Setup)
+      .withPropertyName("d8Distribution")
+      .withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.property("d8ExecutableName", d8EnvSpec.executable.map { File(it).name })
     setLocationProperty("javascript.engine.path.V8", d8EnvSpec.executable.get())
   }
@@ -602,8 +605,7 @@ abstract class CompilerTestFilesArgumentProvider : CommandLineArgumentProvider {
   val fileNames: List<String>
     get() = files.map { it.name }
 
-  override fun asArguments(): Iterable<String> =
-    propertyNames.get().map { "-D$it=${files.asPath}" }
+  override fun asArguments(): Iterable<String> = propertyNames.get().map { "-D$it=${files.asPath}" }
 }
 
 /** Passes output locations and paths whose contents are already tracked separately. */
@@ -611,8 +613,7 @@ abstract class CompilerTestLocationArgumentProvider : CommandLineArgumentProvide
   @get:Input abstract val propertyName: Property<String>
   @get:Internal abstract val location: Property<String>
 
-  override fun asArguments(): Iterable<String> =
-    listOf("-D${propertyName.get()}=${location.get()}")
+  override fun asArguments(): Iterable<String> = listOf("-D${propertyName.get()}=${location.get()}")
 }
 
 /** Adds content-tracked JVM libraries without putting checkout paths in the cache key. */
