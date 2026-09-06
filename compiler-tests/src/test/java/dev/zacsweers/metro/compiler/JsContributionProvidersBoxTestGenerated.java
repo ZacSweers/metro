@@ -243,6 +243,18 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     }
 
     @Test
+    @TestMetadata("ExcludedInterfaceReplacements.kt")
+    public void testExcludedInterfaceReplacements() {
+      run("ExcludedInterfaceReplacements.kt");
+    }
+
+    @Test
+    @TestMetadata("ExcludedInterfaceReplacementsAcrossModules.kt")
+    public void testExcludedInterfaceReplacementsAcrossModules() {
+      run("ExcludedInterfaceReplacementsAcrossModules.kt");
+    }
+
+    @Test
     @TestMetadata("ExcludesWithOrigin.kt")
     public void testExcludesWithOrigin() {
       run("ExcludesWithOrigin.kt");

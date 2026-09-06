@@ -473,7 +473,12 @@ internal class ContributedInterfaceSupertypeGenerator(
       return emptyList()
     }
 
+    // Containers and origin targets can lack their own supertype entry. Track their removal too
+    // so they don't supply replacements after an exclusion.
+    val removedContributionClassIds = mutableSetOf<ClassId>()
+
     fun removeContribution(classId: ClassId, unmatched: MutableSet<ClassId>) {
+      removedContributionClassIds += classId
       val removed = contributions.remove(classId)
       if (removed == null) {
         unmatched += classId
@@ -575,67 +580,80 @@ internal class ContributedInterfaceSupertypeGenerator(
     val unmatchedReplacements = mutableSetOf<ClassId>()
 
     session.trace({ "Process replacements" }, category = TraceCategories.FIR_SUPERTYPE) {
-      contributionClassLikes
-        .mapNotNull {
-          val symbol = it.toClassSymbol(session)
-          // TODO remove expectAs in 2.3.20
-          val contributionClassId = it.expectAs<ConeKotlinType>().classId
-          if (contributionMappingsByClassId[contributionClassId] == true) {
-            // It's a binding container, use as-is
-            symbol
-          } else if (generateClassesInIr) {
-            // IR-only mode tracks direct source interfaces, not nested MetroContribution markers.
-            symbol
-          } else {
-            // It's a contribution, get its original parent
-            symbol?.getContainingClassSymbol()
-          }
-        }
-        .plus(
-          // When generateContributionProviders is enabled, binding contributions are represented
-          // by provider-holder binding containers that only carry @Origin. Scan the origin class
-          // too so its original @ContributesBinding(replaces = ...) annotations still participate
-          // in FIR merging, matching the IR fallback logic.
-          contributionMappingsByClassId.toList().mapNotNull { (containerClassId, isBindingContainer)
-            ->
-            if (!isBindingContainer) return@mapNotNull null
-
-            val containerSymbol =
-              containerClassId.toSymbol(session)?.expectAsOrNull<FirRegularClassSymbol>()
-                ?: return@mapNotNull null
-            val localTypeResolver =
-              typeResolverFactory.create(containerSymbol) ?: return@mapNotNull null
-            val originClassId =
-              containerSymbol.originClassId(session, localTypeResolver) ?: return@mapNotNull null
-            val originClass =
-              originClassId.toSymbol(session)?.expectAsOrNull<FirClassSymbol<*>>()
-                ?: return@mapNotNull null
-            originClass
-          }
-        )
-        .flatMap { contributingType ->
-          val localTypeResolver =
-            typeResolverFactory.create(contributingType) ?: return@flatMap emptySequence()
-
-          contributingType
-            .annotationsIn(session, session.classIds.allContributesAnnotationsWithContainers)
-            .filter { it.resolvedScopeClassId(session, localTypeResolver) in scopes }
-            .flatMap { annotation ->
-              annotation.resolvedReplacedClassIds(session, localTypeResolver)
+      // Collect every replacement before removing anything. Replacements from contributions
+      // that survived exclusions still apply when another contribution replaces them.
+      val survivingExternalOrigins = contributions.keys.toSet()
+      val replacedClassIds =
+        contributionClassLikes
+          .mapNotNull {
+            // TODO remove expectAs in 2.3.20
+            val contributionClassId = it.expectAs<ConeKotlinType>().classId
+            if (contributionClassId in removedContributionClassIds) {
+              return@mapNotNull null
             }
-        }
-        .distinct()
-        .forEach { replacedClassId ->
-          removeContribution(replacedClassId, unmatchedReplacements)
-
-          // Remove contributions that have @Origin annotation pointing to the replaced class
-          originToContributions[replacedClassId]?.forEach { contributionId ->
-            removeContribution(contributionId, unmatchedReplacements)
+            val symbol = it.toClassSymbol(session)
+            if (contributionMappingsByClassId[contributionClassId] == true) {
+              // It's a binding container, use as-is
+              symbol
+            } else if (generateClassesInIr) {
+              // IR-only mode tracks direct source interfaces, not nested MetroContribution markers.
+              symbol
+            } else {
+              // It's a contribution, get its original parent
+              symbol?.getContainingClassSymbol()
+            }
           }
-        }
+          .filterNot { it.classId in removedContributionClassIds }
+          .plus(
+            // When generateContributionProviders is enabled, binding contributions are represented
+            // by provider-holder binding containers that only carry @Origin. Scan the origin class
+            // too so its original @ContributesBinding(replaces = ...) annotations still participate
+            // in FIR merging, matching the IR fallback logic.
+            contributionMappingsByClassId.toList().mapNotNull {
+              (containerClassId, isBindingContainer) ->
+              val isSurvivingContainer =
+                isBindingContainer && containerClassId !in removedContributionClassIds
+              if (!isSurvivingContainer) {
+                return@mapNotNull null
+              }
 
-      // Process replacements from external contributions
-      for ((replacedClassId, _) in externalReplacements) {
+              val containerSymbol =
+                containerClassId.toSymbol(session)?.expectAsOrNull<FirRegularClassSymbol>()
+                  ?: return@mapNotNull null
+              val localTypeResolver =
+                typeResolverFactory.create(containerSymbol) ?: return@mapNotNull null
+              val originClassId =
+                containerSymbol.originClassId(session, localTypeResolver) ?: return@mapNotNull null
+              if (originClassId in removedContributionClassIds) {
+                return@mapNotNull null
+              }
+              val originClass =
+                originClassId.toSymbol(session)?.expectAsOrNull<FirClassSymbol<*>>()
+                  ?: return@mapNotNull null
+              originClass
+            }
+          )
+          .flatMap { contributingType ->
+            val localTypeResolver =
+              typeResolverFactory.create(contributingType) ?: return@flatMap emptySequence()
+
+            contributingType
+              .annotationsIn(session, session.classIds.allContributesAnnotationsWithContainers)
+              .filter { it.resolvedScopeClassId(session, localTypeResolver) in scopes }
+              .flatMap { annotation ->
+                annotation.resolvedReplacedClassIds(session, localTypeResolver)
+              }
+          }
+          .toMutableSet()
+
+      // External contribution metadata uses its origin to identify the contribution.
+      for ((replacedClassId, replacingOrigins) in externalReplacements) {
+        if (replacingOrigins.any { it in survivingExternalOrigins }) {
+          replacedClassIds += replacedClassId
+        }
+      }
+
+      for (replacedClassId in replacedClassIds) {
         removeContribution(replacedClassId, unmatchedReplacements)
 
         // Remove contributions that have @Origin annotation pointing to the replaced class
