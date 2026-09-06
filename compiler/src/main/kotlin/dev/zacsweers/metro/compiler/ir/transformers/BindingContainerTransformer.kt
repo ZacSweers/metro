@@ -347,6 +347,12 @@ internal class BindingContainerTransformer(
   }
 
   fun getOrLookupProviderFactory(binding: IrBinding.Provided): ProviderFactory? {
+    // Remapped views retain the generated class and the concrete creator arguments for this graph.
+    val specializedFactory = binding.providerFactory
+    if (specializedFactory.creatorTypeArguments != null) {
+      return specializedFactory
+    }
+
     // Eager cache check using the factory's callable ID
     generatedFactories[binding.providerFactory.callableId]?.let {
       return it
