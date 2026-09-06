@@ -289,18 +289,8 @@ internal class BindingGraphGenerator(
           }
         }
 
-        val contextKey = IrContextualTypeKey(targetTypeKey)
-
-        // Use cached binding if available, otherwise create and cache
-        val binding =
-          providerFactory.factoryClass.cachedProvidedBinding
-            ?: IrBinding.Provided(
-                providerFactory = providerFactory,
-                contextualTypeKey = contextKey,
-                parameters = providerFactory.parameters,
-                annotations = providerFactory.annotations,
-              )
-              .also { providerFactory.factoryClass.cachedProvidedBinding = it }
+        // Generic factory views share an IR class and own bindings with different parameter types.
+        val binding = providerFactory.providedBinding
 
         // Add the binding to the lookup (duplicates tracked as lists)
         putBinding(binding.typeKey, isLocallyDeclared = isLocallyDeclared, binding)
@@ -1209,8 +1199,4 @@ private data class InheritedGraphData(
 
 /** Cached [IrBinding.Alias] binding for this binds callable's mirror function. */
 internal var IrSimpleFunction.cachedAliasBinding: IrBinding.Alias? by
-  irAttribute(copyByDefault = false)
-
-/** Cached [IrBinding.Provided] binding for this provider factory class. */
-internal var IrClass.cachedProvidedBinding: IrBinding.Provided? by
   irAttribute(copyByDefault = false)

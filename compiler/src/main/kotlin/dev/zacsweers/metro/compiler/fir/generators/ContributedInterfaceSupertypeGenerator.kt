@@ -201,8 +201,8 @@ internal class ContributedInterfaceSupertypeGenerator(
 
   /**
    * @param contributingClasses The classes annotated with some number of @ContributesX annotations.
-   * @return A mapping of contributions to the given [scopeClassId] and boolean indicating if
-   *   they're a binding container or not.
+   * @return Contributions matching [scopeClassId], with `true` for binding containers.
+   *   Contributions from other scopes are omitted.
    */
   private fun getScopedContributions(
     contributingClasses: List<FirRegularClassSymbol>,
@@ -212,7 +212,10 @@ internal class ContributedInterfaceSupertypeGenerator(
     return buildMap {
       for (originClass in contributingClasses) {
         if (originClass.isBindingContainer(session)) {
-          put(originClass.classId, containerMatchesScope(originClass, scopeClassId, typeResolver))
+          // Another graph scope mustn't change a matching container's classification.
+          if (containerMatchesScope(originClass, scopeClassId, typeResolver)) {
+            put(originClass.classId, true)
+          }
           continue
         }
 

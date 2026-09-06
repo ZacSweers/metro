@@ -1539,6 +1539,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("DuplicateEffectiveMapKeys.kt")
+    public void testDuplicateEffectiveMapKeys() {
+      run("DuplicateEffectiveMapKeys.kt");
+    }
+
+    @Test
     @TestMetadata("DuplicateMapKeys.kt")
     public void testDuplicateMapKeys() {
       run("DuplicateMapKeys.kt");
@@ -1914,6 +1920,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     @TestMetadata("AssistedFactorySuspendMemberDep.kt")
     public void testAssistedFactorySuspendMemberDep() {
       run("AssistedFactorySuspendMemberDep.kt");
+    }
+
+    @Test
+    @TestMetadata("AssistedFactorySuspendMultibindings.kt")
+    public void testAssistedFactorySuspendMultibindings() {
+      run("AssistedFactorySuspendMultibindings.kt");
     }
 
     @Test

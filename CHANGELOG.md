@@ -9,20 +9,29 @@ Changelog
 - **[FIR]** Warn when a `@ContributesTo` interface only exposes bindings and recommend making it a binding container with `@BindingContainer`.
 - **[FIR/IR]** Support `priority` on `@ContributesBinding` and `@ContributesIntoMap`, allowing higher-priority contributions to replace conflicting bindings or map entries without directly referencing the lower-priority implementation.
 - **[IR]** Support suspend providers with switching providers.
+- **[IR]** Avoid revisiting shared supertypes when resolving generic bindings through diamond inheritance.
 - **[IR]** Reduce repeated work when validating suspend multibindings and reporting suspend-binding errors. Error traces now use cached, deterministic shortest paths to a suspend binding.
+- **[IR]** Reduce repeated dependency scans when checking cycles in graphs with large multibindings.
 - **[IR]** Avoid initializing the rich terminal renderer for plain compiler diagnostics.
 - **[Reports]** Explain binding choices in graph reports. Includes things like selection precedence, contribution filtering, and parent-graph ownership.
 
 ### Fixes
 
 - **[FIR]** Fix a compiler crash on zero-parameter member-injection functions.
+- **[FIR]** Fix graphs accidentally implementing binding-container interfaces when contributions use different scopes. Basically, checking another scope won't turn a container that supplies bindings into an interface the graph implements.
 - **[FIR]** Keep contributed graph accessors when their replacement or its origin is excluded.
 - **[FIR]** Avoid annotation-cache races during concurrent IDE analysis.
 - **[FIR]** Fix assisted factories whose return types nest or reorder factory type parameters.
 - **[FIR/IR/interop]** Fix recognition of `@get:BindsOptionalOf` properties when Dagger interop is enabled.
+- **[IR]** Keep dynamic graph arguments aligned when container order changes.
+- **[IR]** Prevent dynamic graph class name collisions when a generic binding container is used with different type arguments. Basically, graphs using `Bindings<Int>` and `Bindings<Long>` can coexist in the same file.
+- **[IR]** Avoid generated dynamic graph name collisions across sibling files.
 - **[IR]** Keep all transitively included binding containers when multiple graphs enter the same include cycle from different containers. Basically, improve compiler caching when containers are used in multiple graphs.
 - **[IR]** Fix a runtime crash when an assisted-injected class with no assisted parameters is used across modules with IR class generation.
+- **[IR]** Restore primitive and string inline provider values from dependency metadata.
+- **[IR]** Report an error when an assisted-injected constructor requests a set or eager map backed by suspend providers. Basically, assisted factories now get the same suspend-multibinding checks as ordinary injection.
 - **[IR]** Fix missing bindings for internal contributed objects across modules when `generateContributionProviders`, `generateClassesInIr`, and `contributesAsInject` are enabled together.
+- **[IR]** Report duplicate map keys when different key annotations unwrap to the same value, including implicit class keys.
 - **[IR]** Report missing required graph bindings even when an `@OptionalBinding` accessor requests the same type, regardless of declaration order.
 - **[IR]** Compare annotation values structurally so hash collisions don't merge distinct bindings.
 - **[IR]** Preserve JVM array component types and dimensions in source class-literal qualifiers.

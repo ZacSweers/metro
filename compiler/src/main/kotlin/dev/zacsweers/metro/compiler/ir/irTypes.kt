@@ -46,14 +46,25 @@ internal fun IrClass.deepRemapperFor(subtype: IrType): TypeRemapper {
   return context.typeRemapperCache.getValue(subtype, this)
 }
 
-private fun buildDeepSubstitutionMap(
+/**
+ * Builds substitutions in depth-first declaration order, visiting each class instantiation once.
+ */
+internal fun buildDeepSubstitutionMap(
   targetClass: IrClass,
   concreteType: IrType,
 ): Map<IrTypeParameterSymbol, IrType> {
   val result = mutableMapOf<IrTypeParameterSymbol, IrType>()
+  val visited = HashSet<Pair<IrClass, IrType>>()
+  val pendingSupertypes = ArrayDeque<Iterator<IrType>>()
 
+  /** Records type arguments before scheduling a class's supertypes. */
   fun collectSubstitutions(currentClass: IrClass, currentType: IrType) {
-    if (currentType !is IrSimpleType) return
+    if (currentType !is IrSimpleType) {
+      return
+    }
+    if (!visited.add(currentClass to currentType)) {
+      return
+    }
 
     // Add substitutions for current class's type parameters
     currentClass.typeParameters.zip(currentType.arguments).forEach { (param, arg) ->
@@ -62,19 +73,25 @@ private fun buildDeepSubstitutionMap(
       }
     }
 
-    // Walk up the hierarchy
-    for (superType in currentClass.superTypes) {
-      val superClass = superType.classOrNull?.owner ?: continue
-
-      // Apply current substitutions to the supertype
-      val substitutedSuperType = superType.substitute(result)
-
-      // Recursively collect from supertypes
-      collectSubstitutions(superClass, substitutedSuperType)
-    }
+    pendingSupertypes.addLast(currentClass.superTypes.iterator())
   }
 
   collectSubstitutions(targetClass, concreteType)
+  // Resume a class's remaining supertypes after finishing the current supertype's ancestors.
+  while (pendingSupertypes.isNotEmpty()) {
+    val supertypes = pendingSupertypes.last()
+    if (!supertypes.hasNext()) {
+      pendingSupertypes.removeLast()
+      continue
+    }
+    val superType = supertypes.next()
+    val superClass = superType.classOrNull?.owner ?: continue
+
+    // Apply current substitutions to the supertype
+    val substitutedSuperType = superType.substitute(result)
+    collectSubstitutions(superClass, substitutedSuperType)
+  }
+
   return result
 }
 

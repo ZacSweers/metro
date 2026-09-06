@@ -138,11 +138,27 @@ public class SuspendBindingValidator<
     )
   }
 
+  /**
+   * Indexes requests to multibindings. Assisted targets contribute their original constructor
+   * requests because factory graph edges are Provider-wrapped for cycle detection.
+   */
   private fun indexConsumers(): Map<TypeKey, List<BindingDependency<Binding, ContextualTypeKey>>> {
     val consumers =
       mutableMapOf<TypeKey, MutableList<BindingDependency<Binding, ContextualTypeKey>>>()
     bindings.forEachValue { binding ->
-      for (dependency in binding.dependencies) {
+      checkCanceled()
+      val dependencies =
+        if (bindingKind(binding) == SuspendBindingKind.ASSISTED_FACTORY) {
+          val assisted =
+            checkNotNull(bindingMetadata(binding).assistedFactory) {
+              "Only assisted factories can provide target constructor dependencies"
+            }
+          assisted.constructorDependencies
+        } else {
+          binding.dependencies
+        }
+      for (dependency in dependencies) {
+        checkCanceled()
         consumers.getOrPut(dependency.typeKey, ::mutableListOf) +=
           BindingDependency(binding, dependency)
       }
@@ -187,8 +203,9 @@ public class SuspendBindingValidator<
       }
       // Check dependency edges consuming this multibinding.
       for ((consumer, dependency) in consumers[binding.typeKey].orEmpty()) {
-        if (bindingKind(consumer) == SuspendBindingKind.ASSISTED_FACTORY) continue
-        if (rules.supportsSuspendMultibindingConsumption(isSet, dependency)) continue
+        if (rules.supportsSuspendMultibindingConsumption(isSet, dependency)) {
+          continue
+        }
         issues +=
           multibindingIssue(
             binding,

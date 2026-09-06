@@ -755,6 +755,18 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("NestedBindingContainersRespectScopes.kt")
+    public void testNestedBindingContainersRespectScopes() {
+      run("NestedBindingContainersRespectScopes.kt");
+    }
+
+    @Test
+    @TestMetadata("NestedBindingContainersRespectScopesAcrossModules.kt")
+    public void testNestedBindingContainersRespectScopesAcrossModules() {
+      run("NestedBindingContainersRespectScopesAcrossModules.kt");
+    }
+
+    @Test
     @TestMetadata("PrivateBindsProperty.kt")
     public void testPrivateBindsProperty() {
       run("PrivateBindsProperty.kt");
@@ -2412,6 +2424,12 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
       }
 
       @Test
+      @TestMetadata("LayeredGenericDiamond.kt")
+      public void testLayeredGenericDiamond() {
+        run("LayeredGenericDiamond.kt");
+      }
+
+      @Test
       @TestMetadata("MemberInjectorRequest.kt")
       public void testMemberInjectorRequest() {
         run("MemberInjectorRequest.kt");
@@ -2661,6 +2679,12 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
     public void testUnusedMultibindingsDoNotGetValidated() {
       run("UnusedMultibindingsDoNotGetValidated.kt");
     }
+
+    @Test
+    @TestMetadata("WrappedMapKeyValuesStayDistinct.kt")
+    public void testWrappedMapKeyValuesStayDistinct() {
+      run("WrappedMapKeyValuesStayDistinct.kt");
+    }
   }
 
   @Nested
@@ -2776,6 +2800,12 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
     @TestMetadata("InlinedProvidersWithNonPublicValues.kt")
     public void testInlinedProvidersWithNonPublicValues() {
       run("InlinedProvidersWithNonPublicValues.kt");
+    }
+
+    @Test
+    @TestMetadata("InlinedProvidesAcrossModulesBytecodeCheck.kt")
+    public void testInlinedProvidesAcrossModulesBytecodeCheck() {
+      run("InlinedProvidesAcrossModulesBytecodeCheck.kt");
     }
 
     @Test
