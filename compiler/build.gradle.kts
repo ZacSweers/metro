@@ -85,6 +85,10 @@ buildConfig {
 
 tasks.test {
   maxParallelForks = Runtime.getRuntime().availableProcessors() * 2
+  if (providers.gradleProperty("metro.ciCompilerTestsPreparedFile").isPresent) {
+    // CI waits for generated suites before starting either compiler test task.
+    dependsOn(":compiler-tests:prepareCiCompilerTests")
+  }
   systemProperty("metro.buildDir", project.layout.buildDirectory.asFile.get().absolutePath)
   systemProperty("metro.diagnosticsRenderMode", "PLAIN")
   providers.gradleProperty("metro.testOmitRedundantMirrors").orNull?.let {

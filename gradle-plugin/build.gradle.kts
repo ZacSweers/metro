@@ -184,6 +184,27 @@ fun androidHomeOrNull(): File? {
 val functionalTestKmpTarget = providers.gradleProperty("metro.functionalTestKmpTarget").orNull
 val testOmitRedundantMirrors = providers.gradleProperty("metro.testOmitRedundantMirrors").orNull
 
+// These controls let CI experiments tune concurrency and fixture caching independently.
+val functionalTestMaxParallelForks =
+  providers
+    .gradleProperty("metro.functionalTestMaxParallelForks")
+    .map { value ->
+      val forks = value.toIntOrNull()
+      require(forks != null && forks > 0) {
+        "metro.functionalTestMaxParallelForks must be a positive integer: $value"
+      }
+      forks
+    }
+    .orElse(Runtime.getRuntime().availableProcessors() * 2)
+// An unset value preserves the generated fixture's existing configuration-cache mode.
+val testkitConfigurationCache =
+  providers.gradleProperty("metro.testkitConfigurationCache").map(String::toBooleanStrict)
+val testkitConfigurationCacheReadOnly =
+  providers
+    .gradleProperty("metro.testkitConfigurationCacheReadOnly")
+    .map(String::toBooleanStrict)
+    .orElse(true)
+
 tasks.withType<Test>().configureEach {
   maxParallelForks = Runtime.getRuntime().availableProcessors() * 2
   systemProperty(
@@ -200,6 +221,12 @@ tasks.withType<Test>().configureEach {
   androidHomeOrNull()?.let { systemProperty("metro.androidHome", it.absolutePath) }
   functionalTestKmpTarget?.let { systemProperty("metro.functionalTestKmpTarget", it) }
   testOmitRedundantMirrors?.let { systemProperty("metro.testOmitRedundantMirrors", it) }
+}
+
+tasks.named<Test>("functionalTest") {
+  maxParallelForks = functionalTestMaxParallelForks.get()
+  testkitConfigurationCache.orNull?.let { systemProperty("metro.testkitConfigurationCache", it) }
+  systemProperty("metro.testkitConfigurationCacheReadOnly", testkitConfigurationCacheReadOnly.get())
 }
 
 tasks
