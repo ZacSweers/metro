@@ -9,6 +9,7 @@ Changelog
 - **[FIR]** Warn when a `@ContributesTo` interface only exposes bindings and recommend making it a binding container with `@BindingContainer`.
 - **[FIR/IR]** Support `priority` on `@ContributesBinding` and `@ContributesIntoMap`, allowing higher-priority contributions to replace conflicting bindings or map entries without directly referencing the lower-priority implementation.
 - **[IR]** Support suspend providers with switching providers.
+- **[IR]** Avoid revisiting shared supertypes when resolving generic bindings through diamond inheritance.
 - **[IR]** Reduce repeated work when validating suspend multibindings and reporting suspend-binding errors. Error traces now use cached, deterministic shortest paths to a suspend binding.
 - **[IR]** Avoid initializing the rich terminal renderer for plain compiler diagnostics.
 - **[Reports]** Explain binding choices in graph reports. Includes things like selection precedence, contribution filtering, and parent-graph ownership.
