@@ -18,6 +18,7 @@ Changelog
 - **[FIR]** Fix a compiler crash on zero-parameter member-injection functions.
 - **[FIR]** Avoid annotation-cache races during concurrent IDE analysis.
 - **[FIR/IR/interop]** Fix recognition of `@get:BindsOptionalOf` properties when Dagger interop is enabled.
+- **[IR]** Keep all transitively included binding containers when multiple graphs enter the same include cycle from different containers. Basically, improve compiler caching when containers are used in multiple graphs.
 - **[IR]** Fix a runtime crash when an assisted-injected class with no assisted parameters is used across modules with IR class generation.
 - **[IR]** Fix missing bindings for internal contributed objects across modules when `generateContributionProviders`, `generateClassesInIr`, and `contributesAsInject` are enabled together.
 - **[IR]** Report missing required graph bindings even when an `@OptionalBinding` accessor requests the same type, regardless of declaration order.
