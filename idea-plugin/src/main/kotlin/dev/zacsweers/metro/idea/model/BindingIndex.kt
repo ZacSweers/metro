@@ -527,19 +527,29 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
       checkCanceledEvery(index)
       classId?.let(presentIds::add)
     }
-    val nestedFactories = mutableMapOf<ClassId, MutableSet<ClassId>>()
+    val originToIds = mutableMapOf<ClassId, MutableSet<ClassId>>()
+    val nestedContributions = mutableMapOf<ClassId, MutableSet<ClassId>>()
     for ((index, contribution) in candidates.withIndex()) {
       checkCanceledEvery(index)
-      val child = contribution.graphExtension ?: continue
-      val factoryId = contribution.classId ?: continue
-      nestedFactories.getOrPut(child.classId, ::mutableSetOf) += factoryId
+      val contributionId = contribution.classId ?: continue
+      for (origin in contribution.originClassIds) {
+        originToIds.getOrPut(origin, ::mutableSetOf) += contributionId
+      }
+      contributionId.outerClassId?.let { parent ->
+        nestedContributions.getOrPut(parent, ::mutableSetOf) += contributionId
+      }
+      contribution.graphExtension?.let { child ->
+        nestedContributions.getOrPut(child.classId, ::mutableSetOf) += contributionId
+      }
     }
     val plan =
       computeMergePlan(
         presentIds = presentIds,
         excluded = excludes,
-        // Compiler exclusions expand ChildGraph to its contributed Factory; replacements do not.
-        nestedChildrenOf = { nestedFactories[it].orEmpty() },
+        originToIds = originToIds,
+        // Exclusions also remove immediately nested contributions, including extension factories.
+        // Replacement matching stays limited to direct IDs and origin aliases.
+        nestedChildrenOf = { nestedContributions[it].orEmpty() },
         ensureActive = ProgressManager::checkCanceled,
         replacesOf = { id ->
           buildSet {
@@ -1416,9 +1426,9 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
           return BindingRejection.OVERRIDDEN
       }
     }
-    val excludedContribution =
-      entry.contributionScopes.isNotEmpty() && entry.originClassId in context.excludes
-    if (excludedContribution) return BindingRejection.EXCLUDED
+    if (isContributionExcluded(entry, queryContext)) {
+      return BindingRejection.EXCLUDED
+    }
     // Scoped bindings only live in graphs declaring a matching scope (explicitly or implicitly
     // via the aggregation scope's conveyed @SingleIn)
     if (
@@ -1494,6 +1504,23 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
       if (isDynamicInput) return false
     }
     return true
+  }
+
+  /** Keeps excluded bindings from supplying replacements while preserving replacement chains. */
+  private fun isContributionExcluded(binding: KaBinding, queryContext: GraphQueryContext): Boolean {
+    val excludes = queryContext.graphContext.excludes
+    if (binding.contributionScopes.isEmpty() || excludes.isEmpty()) {
+      return false
+    }
+    val originClassId = binding.originClassId ?: return false
+    if (originClassId in excludes) {
+      return true
+    }
+    return lookups.contributionsByOrigin[originClassId].orEmpty().any { contribution ->
+      contribution.scopeKeys.any(queryContext.graphContext.scopes::contains) &&
+        contribution.isExcludedFrom(excludes) &&
+        isVisibleFrom(contribution, queryContext)
+    }
   }
 
   private fun isContributedBindingActive(

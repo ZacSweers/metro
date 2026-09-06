@@ -14,7 +14,6 @@ import dev.zacsweers.metro.compiler.MetroHints
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.idea.annotationScopeKeys
-import dev.zacsweers.metro.idea.classLiteralClassId
 import dev.zacsweers.metro.idea.hasAnyAnnotation
 import dev.zacsweers.metro.idea.index.graph.GraphMemberExtractor
 import dev.zacsweers.metro.idea.index.graph.graphExtensionFactoryTarget
@@ -219,12 +218,8 @@ internal class LibraryContributionScanner(
 
       // Contribution-provider containers carry @Origin pointing back at the real contributing
       // class; prefer it for presentation and as the contribution anchor.
-      val originClassId =
-        classSymbol.annotations
-          .firstOrNull { it.classId in options.originAnnotations }
-          ?.arguments
-          ?.firstOrNull { it.name.asString() == "value" }
-          ?.let { classLiteralClassId(it.expression) }
+      val originClassIds = contributionOriginClassIds(classSymbol, options, recordFile)
+      val originClassId = originClassIds.firstOrNull()
       val originPsi = originClassId?.let { findClass(it)?.psi as? KtClassOrObject }
       originPsi?.containingFile?.let(recordFile)
       val contributionAnchor = originPsi ?: ktClass
@@ -262,6 +257,7 @@ internal class LibraryContributionScanner(
           kind = (originSymbol ?: classSymbol).contributionKind(options),
           replaces = contributionReplaces,
           graphExtension = childReference,
+          originClassIds = originClassIds,
         )
       contributions += contribution
       if (childReference != null) {

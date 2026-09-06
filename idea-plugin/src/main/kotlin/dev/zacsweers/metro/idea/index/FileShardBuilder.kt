@@ -558,6 +558,7 @@ internal class FileShardBuilder(
           kind = kind,
           replaces = replaces,
           graphExtension = childType?.graphReference(),
+          originClassIds = contributionOriginClassIds(classSymbol, options, cacheDependencies::add),
         )
       contributions += contribution
       if (kind == ContributionEntry.Kind.GRAPH_INTERFACE && factoryType != null) {
