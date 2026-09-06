@@ -181,7 +181,7 @@ jobs:
           prepared_file="$RUNNER_TEMP/compiler-tests-prepared"
           rm -f "$prepared_file"
           set +e
-          ./scripts/run-ci-gradle.sh :compiler-tests:generateTests :compiler:test :compiler-tests:test --continue --quiet \
+          ./scripts/run-ci-gradle.sh :compiler-tests:generateTests :compiler:test :compiler-tests:test --continue --quiet --profile \
             "-Pmetro.ciCompilerTestsPreparedFile=$prepared_file" \
             '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' \
             "-Pmetro.testOmitRedundantMirrors=$METRO_TEST_OMIT_REDUNDANT_MIRRORS" \
@@ -197,11 +197,25 @@ jobs:
       - name: Test Gradle plugin
         if: ${{ !cancelled() && steps.compiler_tests.outputs.generated == 'true' }}
         run: |
-          ./scripts/run-ci-gradle.sh :gradle-plugin:functionalTest --continue --quiet \
+          ./scripts/run-ci-gradle.sh :gradle-plugin:functionalTest --continue --quiet --profile \
             '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' \
             "-Pmetro.testOmitRedundantMirrors=$METRO_TEST_OMIT_REDUNDANT_MIRRORS" \
             -Pmetro.functionalTestKmpTarget=jvm \
             ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+
+      # Successful runs provide the task timings and test counts needed for performance comparisons.
+      - name: Upload compatibility timings and test results
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: compatibility-performance-${{ matrix.kotlin-compiler }}
+          retention-days: 7
+          path: |
+            build/reports/profile/**
+            compiler/build/test-results/test/*.xml
+            compiler-tests/build/test-results/test/*.xml
+            gradle-plugin/build/test-results/functionalTest/*.xml
 
       - name: (Fail-only) Upload reports
         if: failure()
