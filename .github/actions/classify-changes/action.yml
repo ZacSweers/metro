@@ -1,0 +1,39 @@
+name: 'Classify CI changes'
+description: 'Selects PR checks from the complete Git diff, keeping full coverage for unknown paths'
+
+inputs:
+  base-sha:
+    description: 'Pull request base commit SHA'
+    required: false
+    default: ''
+  head-sha:
+    description: 'Pull request head commit SHA'
+    required: false
+    default: ''
+
+outputs:
+  full:
+    description: 'Whether compiler and integration coverage is required'
+    value: ${{ steps.classify.outputs.full }}
+  docs:
+    description: 'Whether documentation validation is required'
+    value: ${{ steps.classify.outputs.docs }}
+  idea:
+    description: 'Whether IDEA plugin tests are required'
+    value: ${{ steps.classify.outputs.idea }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Classify changed paths
+      id: classify
+      shell: bash
+      env:
+        CI_EVENT_NAME: ${{ github.event_name }}
+        CI_BASE_SHA: ${{ inputs.base-sha }}
+        CI_HEAD_SHA: ${{ inputs.head-sha }}
+      run: |
+        python3 scripts/classify-ci-changes.py \
+          --event-name "$CI_EVENT_NAME" \
+          --base-sha "$CI_BASE_SHA" \
+          --head-sha "$CI_HEAD_SHA" >> "$GITHUB_OUTPUT"

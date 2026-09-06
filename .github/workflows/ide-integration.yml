@@ -19,8 +19,25 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Classify changes
+    runs-on: ubuntu-slim
+    outputs:
+      full: ${{ steps.changes.outputs.full }}
+      docs: ${{ steps.changes.outputs.docs }}
+      idea: ${{ steps.changes.outputs.idea }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: ./.github/actions/classify-changes
+        id: changes
+        with:
+          base-sha: ${{ github.event.pull_request.base.sha }}
+          head-sha: ${{ github.event.pull_request.head.sha }}
+
   generate-matrix:
     name: Generate IDE matrix
+    needs: changes
+    if: needs.changes.outputs.full == 'true'
     runs-on: ubuntu-slim
     outputs:
       ide-matrix: ${{ steps.matrix.outputs.ide-matrix }}
@@ -45,6 +62,8 @@ jobs:
 
   build-metro:
     name: Build Metro artifacts
+    needs: changes
+    if: needs.changes.outputs.full == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -70,8 +89,10 @@ jobs:
 
   ide-tests:
     needs:
+      - changes
       - generate-matrix
       - build-metro
+    if: needs.changes.outputs.full == 'true'
     name: "IDE / ${{ matrix.ide }}"
     runs-on: ubuntu-latest
     strategy:
@@ -86,13 +107,13 @@ jobs:
         uses: jlumbroso/free-disk-space@main
         with:
           tool-cache: false
-          # Keep the Android SDK for AS matrix entries — AS's Gradle processor blocks on SdkSync if missing
-          android: ${{ !startsWith(matrix.ide, 'AS:') }}
+          # AS's Gradle processor needs the Android SDK to complete SdkSync.
+          android: false
           dotnet: true
           haskell: true
-          large-packages: true
-          docker-images: true
-          swap-storage: true
+          large-packages: false
+          docker-images: false
+          swap-storage: false
 
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -129,12 +150,25 @@ jobs:
 
       # We don't cache IDE downloads with a separate cache step because they download in a few seconds
       - name: Download IDE
-        run: ide-integration-tests/download-ides.sh
+        run: |
+          df -Pk .
+          ide-integration-tests/download-ides.sh
+          df -Pk .
 
       - name: Run IDE tests
         # IntelliJ Platform plugin and dependency resolution occasionally fails on remote I/O.
         # Retry once with a fresh dependency lookup and a stacktrace.
         run: |
+          # Track free disk space through extraction and IDE startup during cleanup validation.
+          python3 -u - <<'PY' &
+          import subprocess
+          import time
+          while True:
+              subprocess.run(["df", "-Pk", "."], check=False)
+              time.sleep(30)
+          PY
+          disk_monitor=$!
+          trap 'kill "$disk_monitor" 2>/dev/null || true' EXIT
           set +e
           ./gradlew -p ide-integration-tests test --quiet
           status=$?
@@ -160,12 +194,13 @@ jobs:
     if: always()
     runs-on: ubuntu-slim
     needs:
+      - changes
+      - generate-matrix
+      - build-metro
       - ide-tests
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Check
-        run: |
-          results=$(tr -d '\n' <<< '${{ toJSON(needs.*.result) }}')
-          if ! grep -q -v -E '(failure|cancelled)' <<< "$results"; then
-            echo "One or more IDE integration tests failed"
-            exit 1
-          fi
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: python3 scripts/check-ci-status.py ide

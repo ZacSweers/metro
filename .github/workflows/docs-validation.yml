@@ -1,0 +1,62 @@
+# PR documentation validation is selected by the shared change classifier in CI.
+name: Validate documentation
+
+on:
+  workflow_call:
+    secrets:
+      GRADLE_ENCRYPTION_KEY:
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  docs-dry-run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0 # Full history needed for git-revision-date-localized plugin
+
+      - name: Setup Gradle
+        uses: ./.github/actions/setup-gradle
+        with:
+          encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+          cache-read-only: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+
+      - parallel:
+          - name: Generate API docs
+            run: ./scripts/generate_docs_dokka.sh
+            env:
+              GRADLE_OPTS: -Xmx4g # Dokka can be memory intensive, so we increase the heap size
+
+          - name: Install docs dependencies
+            run: |
+              pip install --requirement .github/workflows/mkdocs-requirements.txt
+
+      - name: Copy documentation files
+        run: ./scripts/copy_docs_files.sh
+
+      - name: Build docs (dry run with Zensical)
+        run: |
+          echo "Building docs as a dry run to verify requirements and other configs are working..."
+          zensical build
+
+          echo "Validating directory URL structure..."
+          # Directory URLs place each page's HTML in its own directory.
+          if [ -f "site/installation/index.html" ]; then
+            echo "✔ Directory URLs are working correctly (installation/index.html exists)"
+          else
+            echo "✖ Directory URLs validation failed - installation/index.html not found"
+            exit 1
+          fi
+
+          echo "Cleaning up build directory..."
+          rm -rf site
+          echo "✔ Docs build and validation completed successfully!"

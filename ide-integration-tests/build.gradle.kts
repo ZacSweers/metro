@@ -16,8 +16,11 @@ repositories {
   intellijPlatform { defaultRepositories() }
 }
 
+val ideVersionsFile = layout.projectDirectory.file("ide-versions.txt")
+val testProjectDirectory = layout.projectDirectory.dir("test-project")
+
 val intellijVersion =
-  providers.fileContents(layout.projectDirectory.file("ide-versions.txt")).asText.map { text ->
+  providers.fileContents(ideVersionsFile).asText.map { text ->
     text
       .lineSequence()
       .firstOrNull { it.startsWith("IU") }
@@ -69,19 +72,40 @@ tasks.test {
   gradle.includedBuilds
     .find { it.name == "metro" }
     ?.let { dependsOn(it.task(":installForFunctionalTest")) }
+
+  // IDE Starter reads these inputs after Gradle has computed the test task's cache key.
+  inputs
+    .file(ideVersionsFile)
+    .withPropertyName("ideVersions")
+    .withPathSensitivity(PathSensitivity.NONE)
+  inputs
+    .files(
+      testProjectDirectory.asFileTree.matching {
+        // Opening the fixture creates IDE and Gradle state inside the project directory.
+        exclude("**/build/**", "**/.gradle/**", "**/.kotlin/**", "**/.idea/**")
+      }
+    )
+    .withPropertyName("testProjectFiles")
+    .withPathSensitivity(PathSensitivity.RELATIVE)
+  inputs
+    .dir(layout.projectDirectory.dir("../build/functionalTestRepo"))
+    .withPropertyName("metroArtifacts")
+    .withPathSensitivity(PathSensitivity.RELATIVE)
+  inputs
+    .files(
+      layout.projectDirectory.file("../gradle.properties"),
+      layout.projectDirectory.file("../gradle/libs.versions.toml"),
+    )
+    .withPropertyName("testProjectSharedConfiguration")
+    .withPathSensitivity(PathSensitivity.RELATIVE)
+
   useJUnitPlatform()
   // IDE Starter tests need significant memory and time
   jvmArgs("-Xmx4g", "-Xlog:cds=off")
   // Timeout per test — IDE download + Gradle import + analysis can be slow
   systemProperty("junit.jupiter.execution.timeout.default", "15m")
-  systemProperty(
-    "metro.testProject",
-    layout.projectDirectory.dir("test-project").asFile.absolutePath,
-  )
-  systemProperty(
-    "metro.ideVersions",
-    layout.projectDirectory.file("ide-versions.txt").asFile.absolutePath,
-  )
+  systemProperty("metro.testProject", testProjectDirectory.asFile.absolutePath)
+  systemProperty("metro.ideVersions", ideVersionsFile.asFile.absolutePath)
   // Suppress "Could not find installation home path" warning from Driver SDK logging
   systemProperty("idea.home.path", layout.projectDirectory.asFile.absolutePath)
 
