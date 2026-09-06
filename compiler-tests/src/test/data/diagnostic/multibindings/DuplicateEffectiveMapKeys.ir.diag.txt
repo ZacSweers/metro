@@ -16,6 +16,7 @@
   trace (in ExplicitKeysGraph):
       Map<String, Int> is requested at ExplicitKeysGraph.strings
 
+  note: Map key annotations unwrap to their values. Different annotations can share a key.
   docs: https://zacsweers.github.io/metro/latest/diagnostics/#duplicatemapkeys
 
 
@@ -37,6 +38,7 @@
   trace (in ExplicitKeysGraph):
       Map<Entry, Int> is requested at ExplicitKeysGraph.enums
 
+  note: Map key annotations unwrap to their values. Different annotations can share a key.
   docs: https://zacsweers.github.io/metro/latest/diagnostics/#duplicatemapkeys
 
 
@@ -59,6 +61,7 @@
   trace (in ExplicitKeysGraph):
       Map<KClass<*>, Int> is requested at ExplicitKeysGraph.classes
 
+  note: Map key annotations unwrap to their values. Different annotations can share a key.
   docs: https://zacsweers.github.io/metro/latest/diagnostics/#duplicatemapkeys
 
 
@@ -82,4 +85,5 @@
   trace (in ImplicitKeysGraph):
       Map<KClass<*>, Item> is requested at ImplicitKeysGraph.items
 
+  note: Map key annotations unwrap to their values. Different annotations can share a key.
   docs: https://zacsweers.github.io/metro/latest/diagnostics/#duplicatemapkeys

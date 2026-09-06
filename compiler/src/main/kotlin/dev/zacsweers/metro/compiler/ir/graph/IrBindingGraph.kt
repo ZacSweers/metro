@@ -1503,6 +1503,16 @@ internal class IrBindingGraph(
         ?: reportCompilerBug("Map key should not be null for map multibindings")
     val locationDiagnostics = locatedContributions.map { it.second }
     val locationItems = locationDiagnostics.map { it.toLocatedItem() }
+    val extraNotes = buildList {
+      addAll(locationDiagnostics.flatMap { it.notes }.distinct())
+      if (shouldUnwrapMapKeyValues(mapKey.ir)) {
+        add(
+          Note.note(
+            "Map key annotations unwrap to their values. Different annotations can share a key."
+          )
+        )
+      }
+    }
 
     val diagnostic =
       duplicateMapKeysDiagnostic(
@@ -1510,7 +1520,7 @@ internal class IrBindingGraph(
         mapKeyRender = mapKey.render(short = false),
         locations = locationItems,
         trace = stack.toTraceSection(),
-        extraNotes = locationDiagnostics.flatMap { it.notes }.distinct(),
+        extraNotes = extraNotes,
       )
     report(diagnostic, stack)
   }

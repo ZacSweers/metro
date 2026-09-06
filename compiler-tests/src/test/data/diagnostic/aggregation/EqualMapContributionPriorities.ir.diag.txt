@@ -12,4 +12,5 @@
   trace (in AppGraph):
       Map<String, Service> is requested at AppGraph.services
 
+  note: Map key annotations unwrap to their values. Different annotations can share a key.
   docs: https://zacsweers.github.io/metro/latest/diagnostics/#duplicatemapkeys

@@ -16,5 +16,6 @@
   trace (in parity.failures.mapkey.AppGraph):
       Map<String, Handler> is requested at parity.failures.mapkey.AppGraph.handlers
 
+  note: Map key annotations unwrap to their values. Different annotations can share a key.
   docs: https://zacsweers.github.io/metro/latest/diagnostics/#duplicatemapkeys
 
