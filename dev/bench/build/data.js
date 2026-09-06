@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788732463783,
+  "lastUpdate": 1788735651442,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -23016,6 +23016,62 @@ window.BENCHMARK_DATA = {
             "value": 20318.269,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +2.49%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "1023dfa6~1",
+          "message": "[before] Keep dynamic graph types and arguments aligned (#2",
+          "timestamp": "2026-09-06T17:57:16-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/1023dfa67bbfd0b884ae198cffe590f2f32e052c"
+        },
+        "date": 1788735651442,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19410.75,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "1023dfa67bbfd0b884ae198cffe590f2f32e052c",
+          "message": "[after] Keep dynamic graph types and arguments aligned (#2",
+          "timestamp": "2026-09-06T17:57:16-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/1023dfa67bbfd0b884ae198cffe590f2f32e052c"
+        },
+        "date": 1788735651443,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19138.071,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -1.40%"
           }
         ]
       }
