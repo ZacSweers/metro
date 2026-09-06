@@ -192,7 +192,8 @@ public class CompatContextImpl private constructor(private val delegate: Delegat
 
 // Android Studio Quail exposes the older annotation-container overload. It shares its reported
 // Kotlin version with newer Studio builds. Cache the API check and use the existing older adapter
-// when that overload is present. Generation then makes ordinary calls with that compiler's semantics.
+// when that overload is present. Generation then makes ordinary calls with that compiler's
+// semantics.
 private val usesLegacyDeprecationsProvider: Boolean by lazy {
   try {
     Class.forName(
