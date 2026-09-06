@@ -3256,6 +3256,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       }
 
       @Test
+      @TestMetadata("ArrayClassMapKeysStayDistinct.kt")
+      public void testArrayClassMapKeysStayDistinct() {
+        run("ArrayClassMapKeysStayDistinct.kt");
+      }
+
+      @Test
       @TestMetadata("ClassMapKeyInjectConstructorInterop.kt")
       public void testClassMapKeyInjectConstructorInterop() {
         run("ClassMapKeyInjectConstructorInterop.kt");
@@ -3524,6 +3530,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     @TestMetadata("UnusedMultibindingsDoNotGetValidated.kt")
     public void testUnusedMultibindingsDoNotGetValidated() {
       run("UnusedMultibindingsDoNotGetValidated.kt");
+    }
+
+    @Test
+    @TestMetadata("WrappedMapKeyValuesStayDistinct.kt")
+    public void testWrappedMapKeyValuesStayDistinct() {
+      run("WrappedMapKeyValuesStayDistinct.kt");
     }
   }
 

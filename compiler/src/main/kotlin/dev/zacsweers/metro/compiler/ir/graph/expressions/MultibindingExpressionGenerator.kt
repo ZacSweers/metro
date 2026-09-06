@@ -18,6 +18,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireSimpleType
+import dev.zacsweers.metro.compiler.ir.resolveImplicitClassKeyType
 import dev.zacsweers.metro.compiler.ir.shouldUnwrapMapKeyValues
 import dev.zacsweers.metro.compiler.ir.stripIfLazy
 import dev.zacsweers.metro.compiler.ir.stripSuspendProvider
@@ -49,7 +50,6 @@ import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.types.typeWithArguments
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
-import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.nonDispatchParameters
 import org.jetbrains.kotlin.platform.isJs
 
@@ -315,34 +315,6 @@ internal class MultibindingExpressionGenerator(
       }
 
     return expression
-  }
-
-  /**
-   * Resolves the implicit class type for a binding with an implicit class key. For injected class
-   * bindings, this is the class itself. For provided/binds bindings, this is the input parameter
-   * type (which should already be populated during contribution code gen for contributions).
-   */
-  private fun resolveImplicitClassKeyType(binding: IrBinding): IrType {
-    return when (binding) {
-      is IrBinding.ConstructorInjected -> binding.type.defaultType
-      is IrBinding.ObjectClass -> binding.type.defaultType
-      is IrBinding.Alias -> binding.aliasedType.type.rawType().defaultType
-      is IrBinding.Provided -> {
-        // For @Binds, the implicit type is the single value parameter type
-        val function = binding.providerFactory.function
-        val paramType =
-          function.extensionReceiverParameterCompat?.type
-            ?: function.regularParameters.firstOrNull()?.type
-        paramType?.rawType()?.defaultType
-          ?: reportCompilerBug(
-            "Cannot resolve implicit class key type for Provided binding $binding"
-          )
-      }
-      else ->
-        reportCompilerBug(
-          "Implicit class keys are only supported on class, binds, or provided bindings, not ${binding::class}"
-        )
-    }
   }
 
   private fun createKClassReference(type: IrType): IrExpression {

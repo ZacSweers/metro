@@ -1539,6 +1539,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("DuplicateEffectiveMapKeys.kt")
+    public void testDuplicateEffectiveMapKeys() {
+      run("DuplicateEffectiveMapKeys.kt");
+    }
+
+    @Test
     @TestMetadata("DuplicateMapKeys.kt")
     public void testDuplicateMapKeys() {
       run("DuplicateMapKeys.kt");
