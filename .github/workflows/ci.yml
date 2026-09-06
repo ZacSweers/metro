@@ -333,7 +333,7 @@ jobs:
           ./gradlew :gradle-plugin:functionalTest --quiet \
             '-Pmetro.testCompilerVersion=${{ needs.generate-matrix.outputs.latest_kotlin_version }}' \
             -Pmetro.functionalTestKmpTarget=wasmJs \
-            --tests 'dev.zacsweers.metro.gradle.incremental.BindingContainerICTests.contributionScopeChangeInMultiModuleProject*' \
+            --tests 'dev.zacsweers.metro.gradle.incremental.BindingContainerMultibindingICTests.contributionScopeChangeInMultiModuleProject*' \
             --tests 'dev.zacsweers.metro.gradle.incremental.GenerateContributionProvidersICTests.scopeChangeInContributionProviderTriggersDownstreamRecompilation*' \
             -Dorg.gradle.configuration-cache.read-only=true
 
@@ -370,10 +370,9 @@ jobs:
           report_paths: '**/build/test-results/**/TEST-*.xml'
           check_name: 'Test Report - js box'
 
-  # Main-only: run each non-JVM target of :gradle-plugin:functionalTest in its own runner so
-  # the slow IC test classes (BindingContainerICTests, ICTests, GenerateContributionProvidersICTests)
-  # parallelize across targets instead of serializing inside one job. The `compatibility` job keeps
-  # these parameterized tests JVM-only on PR/branch runs.
+  # Main-only: run each non-JVM target of :gradle-plugin:functionalTest in its own runner.
+  # The incremental tests parallelize across targets and test classes.
+  # The `compatibility` job keeps these parameterized tests JVM-only on PR/branch runs.
   kmp-functional:
     if: github.ref == 'refs/heads/main'
     name: kmp functional / ${{ matrix.target }}
