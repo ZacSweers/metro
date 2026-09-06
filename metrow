@@ -124,7 +124,7 @@ case "$1" in
            esac
        done
 
-       publish_args=()
+       publish_args=("--quiet")
        if [[ -n "$version" ]]; then
            publish_args+=("-PVERSION_NAME=${version}")
            echo "Publishing idea-plugin version $version..."
@@ -151,9 +151,9 @@ case "$1" in
                    exit 1
                fi
            fi
-           ./gradlew -p idea-plugin signPlugin verifyPluginSignature --quiet "${publish_args[@]}"
+           ./gradlew -p idea-plugin signPlugin verifyPluginSignature "${publish_args[@]}"
        else
-           ./gradlew -p idea-plugin publishPlugin --quiet "${publish_args[@]}"
+           ./gradlew -p idea-plugin publishPlugin "${publish_args[@]}"
        fi
        ;;
 
