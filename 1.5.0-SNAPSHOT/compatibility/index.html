@@ -1519,6 +1519,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#annotation-defaults-in-klib-dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Annotation Defaults in KLIB Dependencies
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#ide-support" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1942,6 +1953,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#annotation-defaults-in-klib-dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Annotation Defaults in KLIB Dependencies
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#ide-support" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2281,6 +2303,10 @@
 </table>
 <p>[1]: Metro versions 0.6.9–0.9.0 had a <a href="https://github.com/ZacSweers/metro/issues/1544">version comparison bug</a> that caused them to incorrectly select a compat module for Kotlin 2.2.20 when running on the Kotlin 2.3.0 final release. This was fixed in 0.9.1.</p>
 <p>Some releases may introduce prohibitively difficult breaking changes that require companion release, so check Metro&rsquo;s open PRs for one targeting that Kotlin version for details. There is a tested versions table at the bottom of this page that is updated with each Metro release.</p>
+<h2 id="annotation-defaults-in-klib-dependencies">Annotation Defaults in KLIB Dependencies<a class="headerlink" href="#annotation-defaults-in-klib-dependencies" title="Permanent link">&para;</a></h2>
+<p>Kotlin <code>2.3.0</code> and <code>2.3.10</code> can leave annotation defaults unavailable to compiler plugins when the annotation class comes from a KLIB dependency. Metro keeps these values omitted during annotation comparison. An explicit value might fail to match an equivalent omitted default, including defaults inside nested annotations. This can affect binding lookup and duplicate detection. Source annotation defaults, explicit argument values, and JVM binary defaults remain supported.</p>
+<p>We recommend upgrading to Kotlin <code>2.3.20</code> or newer. If you&rsquo;re staying on an affected version, supply the values explicitly at every affected annotation use, including nested annotations. Update affected annotation uses in dependencies too and rebuild those binaries.</p>
+<p>Kotlin <code>2.3.0</code> and <code>2.3.10</code> also serialize omitted array arguments as empty arrays, even when their defaults are nonempty. That metadata is indistinguishable from an explicit empty array. Metro can&rsquo;t recover the original default from it. Rebuild affected dependencies with Kotlin <code>2.3.20</code> or newer, or supply the array values explicitly before rebuilding.</p>
 <h2 id="ide-support">IDE Support<a class="headerlink" href="#ide-support" title="Permanent link">&para;</a></h2>
 <p>IDEs have their own compatibility story with Kotlin versions. The Kotlin IDE plugin embeds Kotlin versions built from source, so Metro&rsquo;s IDE support selects the nearest compatible version and tries to support the latest stable IntelliJ and Android Studio releases + the next IntelliJ EAP release.</p>
 <div class="admonition note">

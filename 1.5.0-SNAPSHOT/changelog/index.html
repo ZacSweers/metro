@@ -7894,6 +7894,9 @@
 <li><strong>[IR]</strong> Fix a runtime crash when an assisted-injected class with no assisted parameters is used across modules with IR class generation.</li>
 <li><strong>[IR]</strong> Fix missing bindings for internal contributed objects across modules when <code>generateContributionProviders</code>, <code>generateClassesInIr</code>, and <code>contributesAsInject</code> are enabled together.</li>
 <li><strong>[IR]</strong> Report missing required graph bindings even when an <code>@OptionalBinding</code> accessor requests the same type, regardless of declaration order.</li>
+<li><strong>[IR]</strong> Compare annotation values structurally so hash collisions don&rsquo;t merge distinct bindings.</li>
+<li><strong>[IR]</strong> Preserve JVM array component types and dimensions in source class-literal qualifiers.</li>
+<li><strong>[IR]</strong> Resolve JVM binary annotation defaults on Kotlin <code>2.3.0</code> and <code>2.3.10</code>.</li>
 <li><strong>[IR/interop]</strong> Fix <code>Class</code>-keyed maps wrapped in providers or lazy values when <code>KClass</code>/<code>Class</code> interop is enabled.</li>
 <li><strong>[IR/interop]</strong> Fix a runtime <code>ClassCastException</code> when a <code>Class</code>-keyed map is injected into a provider-created class across modules with <code>KClass</code>/<code>Class</code> interop enabled.</li>
 <li><strong>[IR/interop]</strong> Respect <code>@GraphPrivate</code> on Dagger <code>@BindsOptionalOf</code> declarations inherited by graph extensions, while preserving public declarations for the same key.</li>
@@ -7901,6 +7904,7 @@
 </ul>
 <h3 id="changes">Changes<a class="headerlink" href="#changes" title="Permanent link">&para;</a></h3>
 <ul>
+<li><strong>[IR]</strong> Annotation default matching is limited for KLIB dependencies on Kotlin <code>2.3.0</code> and <code>2.3.10</code>. We recommend upgrading to Kotlin <code>2.3.20</code> or newer.</li>
 <li>Update embedded Okio dependency to <code>3.18.2</code>.</li>
 <li>Test Kotlin <code>2.4.20-RC2</code>.</li>
 <li>Test Kotlin <code>2.4.20-RC3</code>.</li>
