@@ -5,9 +5,12 @@
 
 """Exercise CI routing and complete diff discovery in temporary Git repositories."""
 
+import html
 import importlib.util
+import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -172,6 +175,105 @@ class ChangedPathsTest(unittest.TestCase):
         base = self.commit()
         with self.assertRaises(subprocess.CalledProcessError):
             classifier.changed_paths(self.repository, base, "a" * 40)
+
+
+class SummaryTest(unittest.TestCase):
+    """Keep routing explanations readable without altering machine-readable outputs."""
+
+    def test_mixed_paths_explain_each_selected_route(self):
+        paths = ["README.md", "idea-plugin/src/Graph.kt", "compiler/src/Graph.kt"]
+        summary = classifier.render_summary(
+            paths, "pull_request", classifier.classify_paths(paths, "pull_request")
+        )
+        self.assertIn("Event: <code>pull_request</code>", html.unescape(summary))
+        self.assertIn("Changed paths examined: 3", summary)
+        for route in ("full", "docs", "idea"):
+            self.assertIn(f"| {route} | Selected |", summary)
+        self.assertIn("Other changed paths retain full CI", summary)
+        self.assertIn("Documentation paths select docs validation", summary)
+        self.assertIn("IDEA plugin paths select IDEA plugin tests", summary)
+        for path in paths:
+            self.assertIn(path, summary)
+
+    def test_docs_summary_shows_skipped_routes(self):
+        paths = ["docs/guide.md"]
+        summary = classifier.render_summary(
+            paths, "pull_request", classifier.classify_paths(paths, "pull_request")
+        )
+        self.assertIn("| full | Skipped |", summary)
+        self.assertIn("| docs | Selected |", summary)
+        self.assertIn("| idea | Skipped |", summary)
+
+    def test_docs_workflow_summary_explains_full_coverage(self):
+        paths = [".github/workflows/docs-validation.yml"]
+        summary = classifier.render_summary(
+            paths, "pull_request", classifier.classify_paths(paths, "pull_request")
+        )
+        self.assertIn("Documentation workflows select docs validation and retain full CI", summary)
+        self.assertIn("(1 changed path)", summary)
+        for route in ("full", "docs", "idea"):
+            self.assertIn(f"| {route} | Selected |", summary)
+
+    def test_non_pr_and_empty_diff_have_distinct_explanations(self):
+        for event, explanation in (
+            ("push", "No PR diff was inspected"),
+            ("pull_request", "The PR diff contains no changed paths"),
+        ):
+            with self.subTest(event=event):
+                summary = classifier.render_summary([], event, classifier.classify_paths([], event))
+                self.assertIn("Changed paths examined: 0", summary)
+                self.assertIn(explanation, summary)
+                self.assertIn("| full | Selected |", summary)
+
+    def test_path_examples_escape_markup_and_control_characters(self):
+        path = "docs/<img src=x>`[link](https://example.invalid)\n\t\udcff.md"
+        summary = classifier.render_summary(
+            [path], "pull_request", classifier.classify_paths([path], "pull_request")
+        )
+        self.assertNotIn("<img", summary)
+        self.assertNotIn("`[link]", summary)
+        self.assertIn("&lt;img src=x&gt;&#96;&#91;link&#93;", summary)
+        self.assertIn("&#92;n&#92;t&#92;udcff.md", summary)
+        self.assertEqual(1, summary.count("- <code>"))
+        summary.encode("utf-8")
+
+    def test_path_examples_are_bounded(self):
+        paths = [f"docs/{index}-" + "x" * 300 + ".md" for index in range(12)]
+        summary = classifier.render_summary(
+            paths, "pull_request", classifier.classify_paths(paths, "pull_request")
+        )
+        self.assertIn("Changed paths examined: 12", summary)
+        self.assertEqual(5, summary.count("- <code>"))
+        self.assertIn("7 additional paths omitted", summary)
+        self.assertNotIn("x" * 201, summary)
+
+    def test_cli_keeps_summary_separate_from_outputs(self):
+        with tempfile.TemporaryDirectory() as directory:
+            summary_path = Path(directory) / "summary.md"
+            result = self.run_cli(summary_path)
+            self.assertEqual(0, result.returncode)
+            self.assertEqual("full=true\ndocs=false\nidea=true\n", result.stdout)
+            self.assertEqual("", result.stderr)
+            self.assertIn("## CI change classification", summary_path.read_text())
+
+    def test_summary_write_failure_preserves_outputs(self):
+        with tempfile.TemporaryDirectory() as directory:
+            result = self.run_cli(Path(directory))
+            self.assertEqual(0, result.returncode)
+            self.assertEqual("full=true\ndocs=false\nidea=true\n", result.stdout)
+            self.assertIn("Could not write CI classification summary", result.stderr)
+
+    def run_cli(self, summary_path):
+        """Exercise the script with an isolated summary destination and real stdout."""
+        environment = os.environ.copy()
+        environment["GITHUB_STEP_SUMMARY"] = str(summary_path)
+        return subprocess.run(
+            [sys.executable, str(Path(__file__).with_name("classify-ci-changes.py")),
+             "--event-name", "push"],
+            env=environment,
+            text=True,
+            capture_output=True,
+        )
 
 
 if __name__ == "__main__":
