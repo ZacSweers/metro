@@ -7878,6 +7878,7 @@
 <h3 id="enhancements">Enhancements<a class="headerlink" href="#enhancements" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>[FIR]</strong> Warn when a <code>@ContributesTo</code> interface only exposes bindings and recommend making it a binding container with <code>@BindingContainer</code>.</li>
+<li><strong>[FIR]</strong> Warn about array class literals in qualifiers, map keys, and scopes that kotlinc can confuse across modules. For example, <code>Array&lt;IntArray&gt;::class</code> can be read as <code>IntArray::class</code>.</li>
 <li><strong>[FIR/IR]</strong> Support <code>priority</code> on <code>@ContributesBinding</code> and <code>@ContributesIntoMap</code>, allowing higher-priority contributions to replace conflicting bindings or map entries without directly referencing the lower-priority implementation.</li>
 <li><strong>[IR]</strong> Reuse completed member-injector lookups for classes without injectable members.</li>
 <li><strong>[IR]</strong> Support suspend providers with switching providers.</li>
