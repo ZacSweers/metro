@@ -66,8 +66,8 @@ public class CompatContextImpl private constructor(private val delegate: Delegat
 }
 
 /**
- * Quail shares its reported Kotlin version with newer IDEs and uses the original source kind.
- * Check the source-kind API once per compiler classloader.
+ * Quail shares its reported Kotlin version with newer IDEs and uses the original source kind. Check
+ * the source-kind API once per compiler classloader.
  */
 private val hasDefaultPluginGeneratedSourceKind: Boolean by lazy {
   try {
