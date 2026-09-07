@@ -10,7 +10,7 @@ com.squareup.okio:okio-jvm:3.17.0
 com.squareup.okio:okio:3.17.0
 com.squareup.wire:wire-runtime-jvm:6.4.0
 com.squareup.wire:wire-runtime:6.4.0
-org.jetbrains.kotlin:kotlin-stdlib:2.4.0
+org.jetbrains.kotlin:kotlin-stdlib:2.4.20
 org.jetbrains.kotlinx:kotlinx-coroutines-bom:1.9.0
 org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.9.0
 org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0
