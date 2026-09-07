@@ -7879,6 +7879,7 @@
 <ul>
 <li><strong>[FIR]</strong> Warn when a <code>@ContributesTo</code> interface only exposes bindings and recommend making it a binding container with <code>@BindingContainer</code>.</li>
 <li><strong>[FIR/IR]</strong> Support <code>priority</code> on <code>@ContributesBinding</code> and <code>@ContributesIntoMap</code>, allowing higher-priority contributions to replace conflicting bindings or map entries without directly referencing the lower-priority implementation.</li>
+<li><strong>[IR]</strong> Reuse completed member-injector lookups for classes without injectable members.</li>
 <li><strong>[IR]</strong> Support suspend providers with switching providers.</li>
 <li><strong>[IR]</strong> Avoid revisiting shared supertypes when resolving generic bindings through diamond inheritance.</li>
 <li><strong>[IR]</strong> Reduce repeated work when validating suspend multibindings and reporting suspend-binding errors. Error traces now use cached, deterministic shortest paths to a suspend binding.</li>
@@ -7890,6 +7891,7 @@
 </ul>
 <h3 id="fixes">Fixes<a class="headerlink" href="#fixes" title="Permanent link">&para;</a></h3>
 <ul>
+<li><strong>[FIR]</strong> Fix a compiler crash when using typealiases as contribution scopes.</li>
 <li><strong>[FIR]</strong> Fix a compiler crash on zero-parameter member-injection functions.</li>
 <li><strong>[FIR]</strong> Fix graphs accidentally implementing binding-container interfaces when contributions use different scopes. Basically, checking another scope won&rsquo;t turn a container that supplies bindings into an interface the graph implements.</li>
 <li><strong>[FIR]</strong> Keep contributed graph accessors when their replacement or its origin is excluded.</li>
@@ -7908,6 +7910,7 @@
 <li><strong>[IR]</strong> Fix <code>@Binds</code> resolution when multiple graphs use the same generic binding container with different type arguments. Each graph now resolves bindings using its own container&rsquo;s type arguments.</li>
 <li><strong>[IR]</strong> Fix missing bindings for internal contributed objects across modules when <code>generateContributionProviders</code>, <code>generateClassesInIr</code>, and <code>contributesAsInject</code> are enabled together.</li>
 <li><strong>[IR]</strong> Report duplicate map keys when different key annotations unwrap to the same value, including implicit class keys.</li>
+<li><strong>[IR]</strong> Apply contribution replacements only in the scopes that declare them.</li>
 <li><strong>[IR]</strong> Report missing required graph bindings even when an <code>@OptionalBinding</code> accessor requests the same type, regardless of declaration order.</li>
 <li><strong>[IR]</strong> Compare annotation values structurally so hash collisions don&rsquo;t merge distinct bindings.</li>
 <li><strong>[IR]</strong> Preserve JVM array component types and dimensions in source class-literal qualifiers.</li>
