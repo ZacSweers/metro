@@ -7883,6 +7883,7 @@
 <li><strong>[IR]</strong> Reuse completed member-injector lookups for classes without injectable members.</li>
 <li><strong>[IR]</strong> Support suspend providers with switching providers.</li>
 <li><strong>[IR]</strong> Avoid revisiting shared supertypes when resolving generic bindings through diamond inheritance.</li>
+<li><strong>[IR]</strong> Reduce per-entry memory overhead in more long-lived graph and contribution caches by using scatter maps.</li>
 <li><strong>[IR]</strong> Reduce repeated work when validating suspend multibindings and reporting suspend-binding errors. Error traces now use cached, deterministic shortest paths to a suspend binding.</li>
 <li><strong>[IR]</strong> Reduce repeated dependency scans when checking cycles in graphs with large multibindings.</li>
 <li><strong>[IR]</strong> Avoid initializing the rich terminal renderer for plain compiler diagnostics.</li>
@@ -7903,6 +7904,7 @@
 <li><strong>[IR]</strong> Prevent dynamic graph class name collisions when a generic binding container is used with different type arguments. Basically, graphs using <code>Bindings&lt;Int&gt;</code> and <code>Bindings&lt;Long&gt;</code> can coexist in the same file.</li>
 <li><strong>[IR]</strong> Avoid generated dynamic graph name collisions across sibling files.</li>
 <li><strong>[IR]</strong> Keep all transitively included binding containers when multiple graphs enter the same include cycle from different containers. Basically, improve compiler caching when containers are used in multiple graphs.</li>
+<li><strong>[IR]</strong> Resolve graph-extension bindings before running parallel graph analysis. This keeps compiler lookups and cache writes on one thread, including for nested extensions and bindings loaded from dependencies.</li>
 <li><strong>[IR]</strong> Report required dependencies when an earlier parameter has a default value for the same missing type.</li>
 <li><strong>[IR]</strong> Fix a runtime crash when an assisted-injected class with no assisted parameters is used across modules with IR class generation.</li>
 <li><strong>[IR]</strong> Restore primitive and string inline provider values from dependency metadata.</li>
