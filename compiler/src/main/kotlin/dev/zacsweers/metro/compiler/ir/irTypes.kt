@@ -24,26 +24,13 @@ import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.name.ClassId
 
-private const val CACHE_TYPE_REMAPPERS = "type-remappers"
-/** Gets or computes a cached [TypeRemapper] for the given class and subtype. */
-internal val IrMetroContext.typeRemapperCache: IrCache<IrType, TypeRemapper, IrClass>
-  get() {
-    return getOrCreateIrCache(CACHE_TYPE_REMAPPERS) { factory ->
-      factory.createCache { type, targetClass ->
-        // Build deep substitution map
-        val substitutionMap = buildDeepSubstitutionMap(targetClass, type)
-        if (substitutionMap.isEmpty()) {
-          NOOP_TYPE_REMAPPER
-        } else {
-          DeepTypeSubstitutor(substitutionMap)
-        }
-      }
-    }
-  }
-
-context(context: IrMetroContext)
+/** Creates a remapper for this class and subtype. The caller owns its mutable result cache. */
 internal fun IrClass.deepRemapperFor(subtype: IrType): TypeRemapper {
-  return context.typeRemapperCache.getValue(subtype, this)
+  val substitutionMap = buildDeepSubstitutionMap(this, subtype)
+  if (substitutionMap.isEmpty()) {
+    return NOOP_TYPE_REMAPPER
+  }
+  return DeepTypeSubstitutor(substitutionMap)
 }
 
 /**

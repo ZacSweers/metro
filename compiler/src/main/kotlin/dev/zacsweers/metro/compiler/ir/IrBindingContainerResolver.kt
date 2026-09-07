@@ -2,13 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
+import androidx.collection.MutableScatterMap
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainer
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainerTransformer
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.trace
-import java.util.concurrent.ConcurrentHashMap
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.name.ClassId
@@ -23,9 +23,9 @@ internal class IrBindingContainerResolver(private val transformer: BindingContai
    * [Set<BindingContainer>][BindingContainer] where the values represent all transitively included
    * binding containers starting from the given [ClassId].
    *
-   * Thread-safe for concurrent access during parallel graph validation.
+   * Reads and writes stay on the main compiler thread.
    */
-  private val transitiveBindingContainerCache = ConcurrentHashMap<ClassId, Set<BindingContainer>>()
+  private val transitiveBindingContainerCache = MutableScatterMap<ClassId, Set<BindingContainer>>()
 
   /** Resolves complete include closures for each root, preserving their iteration order. */
   context(traceScope: TraceScope)
@@ -97,6 +97,6 @@ internal class IrBindingContainerResolver(private val transformer: BindingContai
 
     // Only completed root traversals are safe to cache because cycles can leave subtree results
     // incomplete.
-    return transitiveBindingContainerCache.putIfAbsent(classId, closure) ?: closure
+    return transitiveBindingContainerCache.getOrPut(classId) { closure }
   }
 }

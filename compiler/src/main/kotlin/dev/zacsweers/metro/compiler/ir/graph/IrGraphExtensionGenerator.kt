@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph
 
+import androidx.collection.MutableScatterMap
 import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.asName
@@ -25,7 +26,6 @@ import dev.zacsweers.metro.compiler.safeNestedSimpleName
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.trace
-import java.util.concurrent.ConcurrentHashMap
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.irAttribute
@@ -45,8 +45,8 @@ internal class IrGraphExtensionGenerator(
 ) : IrMetroContext by context {
 
   private val classNameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
-  // Thread-safe for concurrent access during parallel graph validation.
-  private val generatedClassesCache = ConcurrentHashMap<CacheKey, IrClass>()
+  // The main compiler thread builds extension classes under their generated parent.
+  private val generatedClassesCache = MutableScatterMap<CacheKey, IrClass>()
 
   private data class CacheKey(val typeKey: IrTypeKey, val parentGraph: ClassId)
 
@@ -56,7 +56,7 @@ internal class IrGraphExtensionGenerator(
     parentGraph: IrClass,
     contributedAccessor: MetroSimpleFunction,
   ): IrClass {
-    return generatedClassesCache.computeIfAbsent(CacheKey(typeKey, parentGraph.classIdOrFail)) {
+    return generatedClassesCache.getOrPut(CacheKey(typeKey, parentGraph.classIdOrFail)) {
       val sourceGraph = typeKey.type.rawType()
       linkDeclarationsInCompilation(parentGraph, sourceGraph)
 

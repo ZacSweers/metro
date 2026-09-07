@@ -12,6 +12,7 @@ Changelog
 - **[IR]** Reuse completed member-injector lookups for classes without injectable members.
 - **[IR]** Support suspend providers with switching providers.
 - **[IR]** Avoid revisiting shared supertypes when resolving generic bindings through diamond inheritance.
+- **[IR]** Reduce per-entry memory overhead in more long-lived graph and contribution caches by using scatter maps.
 - **[IR]** Reduce repeated work when validating suspend multibindings and reporting suspend-binding errors. Error traces now use cached, deterministic shortest paths to a suspend binding.
 - **[IR]** Reduce repeated dependency scans when checking cycles in graphs with large multibindings.
 - **[IR]** Avoid initializing the rich terminal renderer for plain compiler diagnostics.

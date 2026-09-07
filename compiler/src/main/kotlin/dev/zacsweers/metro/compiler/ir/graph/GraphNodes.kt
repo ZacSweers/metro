@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph
 
+import androidx.collection.MutableScatterMap
 import dev.zacsweers.metro.compiler.BitFieldBuilder
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Origins
@@ -22,6 +23,7 @@ import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.getOrInit
+import dev.zacsweers.metro.compiler.getValue
 import dev.zacsweers.metro.compiler.graph.toTraceSection
 import dev.zacsweers.metro.compiler.graph.withEntry
 import dev.zacsweers.metro.compiler.ir.BindsCallable
@@ -87,7 +89,6 @@ import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.trace
 import java.util.EnumSet
-import java.util.concurrent.ConcurrentHashMap
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.builders.irCall
@@ -127,9 +128,8 @@ internal class GraphNodes(
   private val contributionMerger: IrContributionMerger,
 ) : IrMetroContext by metroContext {
 
-  // Keyed by the source declaration. Thread-safe for concurrent access during parallel graph
-  // validation.
-  private val graphNodesByClass = ConcurrentHashMap<ClassId, GraphNode>()
+  // Source declarations are indexed on the main compiler thread.
+  private val graphNodesByClass = MutableScatterMap<ClassId, GraphNode>()
 
   operator fun get(classId: ClassId) = graphNodesByClass[classId]
 
@@ -189,7 +189,7 @@ internal class GraphNodes(
         (dependencyGraphAnno?.annotationClass?.classId in
           metroContext.metroSymbols.classIds.dependencyGraphAnnotations)
     if (isRegularDependencyGraph) {
-      graphNodesByClass.putIfAbsent(graphClassId, node)
+      graphNodesByClass[graphClassId] = node
     }
 
     return node

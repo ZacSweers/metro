@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
+import androidx.collection.MutableScatterMap
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.compiler.Origins
@@ -22,7 +23,6 @@ import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.trace
 import java.util.SortedMap
 import java.util.SortedSet
-import java.util.concurrent.ConcurrentHashMap
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
@@ -50,18 +50,17 @@ internal class IrContributionMerger(
   private val contributionData: IrContributionData,
 ) : IrMetroContext by metroContext {
 
+  // All cache access stays on the main compiler thread.
+
   // Cache for scope-based contributions (before exclusions/replacements).
-  // Thread-safe for concurrent access during parallel graph validation.
   private val scopeContributionsCache =
-    ConcurrentHashMap<ScopedContributionsCacheKey, ScopedContributions>()
+    MutableScatterMap<ScopedContributionsCacheKey, ScopedContributions>()
 
   // Cache for fully processed contributions (after exclusions/replacements).
-  // Thread-safe for concurrent access during parallel graph validation.
-  private val mergedContributionsCache = ConcurrentHashMap<ContributionsCacheKey, IrContributions>()
+  private val mergedContributionsCache = MutableScatterMap<ContributionsCacheKey, IrContributions>()
 
   // Cache for parent exclusions by starting class - avoids recomputing hierarchy walks.
-  // Thread-safe for concurrent access during parallel graph validation.
-  private val parentExcludedCache = ConcurrentHashMap<ClassId, Set<ClassId>>()
+  private val parentExcludedCache = MutableScatterMap<ClassId, Set<ClassId>>()
 
   private data class ScopedContributions(
     val allContributions: Map<ClassId, List<IrType>>,

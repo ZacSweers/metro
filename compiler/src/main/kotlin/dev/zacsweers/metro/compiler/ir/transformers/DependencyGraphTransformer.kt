@@ -195,6 +195,8 @@ internal class DependencyGraphTransformer(
       )
     } catch (_: ExitProcessingException) {
       // End processing, don't fail up because this would've been warned before
+    } finally {
+      bindingLookupCache.clearGraphTree()
     }
   }
 
