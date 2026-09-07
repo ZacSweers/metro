@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788753127956,
+  "lastUpdate": 1788753290639,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -23408,6 +23408,62 @@ window.BENCHMARK_DATA = {
             "value": 19068.018,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +0.42%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "c584252c~1",
+          "message": "[before] Fix early scope resolution for generic typealiases",
+          "timestamp": "2026-09-06T22:55:44-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/c584252ce8713cdfaf5377c09c4aa4d8a3d60134"
+        },
+        "date": 1788753290639,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19925.994,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "c584252ce8713cdfaf5377c09c4aa4d8a3d60134",
+          "message": "[after] Fix early scope resolution for generic typealiases",
+          "timestamp": "2026-09-06T22:55:44-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/c584252ce8713cdfaf5377c09c4aa4d8a3d60134"
+        },
+        "date": 1788753290640,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19467.226000000002,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -2.30%"
           }
         ]
       }
