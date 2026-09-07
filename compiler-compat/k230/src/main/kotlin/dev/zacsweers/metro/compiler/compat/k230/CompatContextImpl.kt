@@ -294,6 +294,9 @@ public class CompatContextImpl : CompatContext {
     return ReferenceApiDeclarationFinderCompat(this)
   }
 
+  override val pluginGeneratedSourceElementKind: KtFakeSourceElementKind
+    get() = KtFakeSourceElementKind.PluginGenerated
+
   override fun IrPluginContext.finderForSourceCompat(
     fromFile: IrFile
   ): CompatContext.DeclarationFinderCompat {

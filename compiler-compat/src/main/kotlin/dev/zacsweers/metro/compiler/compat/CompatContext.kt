@@ -665,7 +665,6 @@ public interface CompatContext {
     message = "2.4.20-dev-3583 split PluginGenerated into nested source element kinds",
   )
   public val pluginGeneratedSourceElementKind: KtFakeSourceElementKind
-    get() = KtFakeSourceElementKind.PluginGenerated
 
   @CompatApi(
     since = "2.4.20-dev-3583",
