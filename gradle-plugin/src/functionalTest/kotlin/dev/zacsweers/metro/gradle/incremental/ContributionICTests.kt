@@ -34,8 +34,7 @@ class ContributionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(ta
   }
 
   private val generateClassesInIrEnabled =
-    target == KmpTarget.JVM &&
-      getTestCompilerToolingVersion() >= KotlinToolingVersion("2.4.20-dev-6138")
+    getTestCompilerToolingVersion() >= KotlinToolingVersion("2.4.20-dev-6138")
 
   private fun someRepositoryProviderRequestPath(): String {
     return if (generateClassesInIrEnabled) {
