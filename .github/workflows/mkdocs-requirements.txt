@@ -34,5 +34,5 @@ tornado==6.5.8
 
 # Imaging dependencies for mkdocs-material social plugin
 # https://squidfunk.github.io/mkdocs-material/plugins/requirements/image-processing/
-cairosvg==2.9.0
+cairosvg==2.9.1
 pillow==12.3.0
