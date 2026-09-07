@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788736514962,
+  "lastUpdate": 1788750979618,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -23128,6 +23128,62 @@ window.BENCHMARK_DATA = {
             "value": 19153.555,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -1.31%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "8e5d1fd1~1",
+          "message": "[before] Fix generic binding container aliases (#2786)",
+          "timestamp": "2026-09-06T22:18:18-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/8e5d1fd1c5f7e7cc45e411fa247d18391933b5a8"
+        },
+        "date": 1788750979618,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18368.006,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "8e5d1fd1c5f7e7cc45e411fa247d18391933b5a8",
+          "message": "[after] Fix generic binding container aliases (#2786)",
+          "timestamp": "2026-09-06T22:18:18-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/8e5d1fd1c5f7e7cc45e411fa247d18391933b5a8"
+        },
+        "date": 1788750979619,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19019.557,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +3.55%"
           }
         ]
       }
