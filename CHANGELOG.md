@@ -56,6 +56,7 @@ Changelog
 
 - **[IR]** Annotation default matching is limited for KLIB dependencies on Kotlin `2.3.0` and `2.3.10`. We recommend upgrading to Kotlin `2.3.20` or newer.
 - Update embedded Okio dependency to `3.18.2`.
+- Test Kotlin `2.4.20`.
 - Test Kotlin `2.4.20-RC2`.
 - Test Kotlin `2.4.20-RC3`.
 - Test IntelliJ `IU:2026.2.2`.
