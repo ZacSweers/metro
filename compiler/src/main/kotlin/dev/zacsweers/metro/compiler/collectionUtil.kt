@@ -57,12 +57,15 @@ internal fun <T, R> Iterable<T>.mapToSetWithDupes(transform: (T) -> R): Pair<Set
  * keeping the thread count bounded to the pool's parallelism.
  *
  * Results are returned in the same order as the input.
+ * Failed calls join every task before rethrowing the first failure in input order.
  */
 internal fun <T, R> List<T>.parallelMap(
   forkJoinPool: ForkJoinPool,
   transform: (T) -> R,
 ): List<R> {
-  if (size <= 1) return map(transform)
+  if (size <= 1) {
+    return map(transform)
+  }
 
   // Submit all items as ForkJoinTasks to our pool.
   // If we're already on a ForkJoinPool worker thread (nested call), fork() submits to the
@@ -71,9 +74,28 @@ internal fun <T, R> List<T>.parallelMap(
   val tasks =
     map { item ->
       val task = ForkJoinTask.adapt<R> { transform(item) }
-      if (onPoolThread) task.fork() else forkJoinPool.submit(task)
+      if (onPoolThread) {
+        task.fork()
+      } else {
+        forkJoinPool.submit(task)
+      }
     }
 
   // Join all tasks. Work-stealing keeps the thread active while waiting.
-  return tasks.map { it.join() }
+  val results = ArrayList<R>(size)
+  var firstFailure: Throwable? = null
+  for (task in tasks) {
+    try {
+      results += task.join()
+    } catch (failure: Throwable) {
+      val previousFailure = firstFailure
+      if (previousFailure == null) {
+        firstFailure = failure
+      } else if (failure !== previousFailure) {
+        previousFailure.addSuppressed(failure)
+      }
+    }
+  }
+  firstFailure?.let { throw it }
+  return results
 }
