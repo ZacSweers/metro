@@ -1324,7 +1324,7 @@ internal fun FirGetClassCall.coneTypeIfResolved(): ConeKotlinType? {
   return when (val arg = argument) {
     // I'm not really sure why these sometimes come down as different types but shrug
     is FirClassReferenceExpression if (isResolved) -> arg.classTypeRef.coneTypeOrNull
-    is FirResolvedQualifier if (isResolved) -> arg.resolvedType
+    is FirResolvedQualifier if (isResolved) -> getTargetType()
     else -> null
   }
 }
