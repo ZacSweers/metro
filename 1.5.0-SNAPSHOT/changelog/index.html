@@ -7885,6 +7885,8 @@
 <li><strong>[IR]</strong> Reduce repeated dependency scans when checking cycles in graphs with large multibindings.</li>
 <li><strong>[IR]</strong> Avoid initializing the rich terminal renderer for plain compiler diagnostics.</li>
 <li><strong>[Reports]</strong> Explain binding choices in graph reports. Includes things like selection precedence, contribution filtering, and parent-graph ownership.</li>
+<li><strong>[Reports]</strong> Count emitted provider inlines in graph reports.</li>
+<li><strong>[Reports]</strong> Report when deferred access or unavailable values prevent provider inlining.</li>
 </ul>
 <h3 id="fixes">Fixes<a class="headerlink" href="#fixes" title="Permanent link">&para;</a></h3>
 <ul>
@@ -7898,6 +7900,7 @@
 <li><strong>[IR]</strong> Prevent dynamic graph class name collisions when a generic binding container is used with different type arguments. Basically, graphs using <code>Bindings&lt;Int&gt;</code> and <code>Bindings&lt;Long&gt;</code> can coexist in the same file.</li>
 <li><strong>[IR]</strong> Avoid generated dynamic graph name collisions across sibling files.</li>
 <li><strong>[IR]</strong> Keep all transitively included binding containers when multiple graphs enter the same include cycle from different containers. Basically, improve compiler caching when containers are used in multiple graphs.</li>
+<li><strong>[IR]</strong> Report required dependencies when an earlier parameter has a default value for the same missing type.</li>
 <li><strong>[IR]</strong> Fix a runtime crash when an assisted-injected class with no assisted parameters is used across modules with IR class generation.</li>
 <li><strong>[IR]</strong> Restore primitive and string inline provider values from dependency metadata.</li>
 <li><strong>[IR]</strong> Report an error when an assisted-injected constructor requests a set or eager map backed by suspend providers. Basically, assisted factories now get the same suspend-multibinding checks as ordinary injection.</li>

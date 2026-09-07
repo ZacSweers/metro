@@ -1405,6 +1405,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#provider-inlining-counts" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Provider inlining counts
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#available-tasks" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2330,6 +2341,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#provider-inlining-counts" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Provider inlining counts
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#available-tasks" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2805,6 +2827,32 @@ from its project index.</p>
 <p>Explanation collection is enabled with <code>reportsDestination</code>. It does not change binding selection.<br />
 JSON reports are written during code generation, so a compilation that stops earlier may have no<br />
 report for the failing graph.</p>
+<h2 id="provider-inlining-counts">Provider inlining counts<a class="headerlink" href="#provider-inlining-counts" title="Permanent link">&para;</a></h2>
+<p>Each graph&rsquo;s JSON report includes <code>stats.optimizations.providerInlines</code>, the number of inline<br />
+value expressions emitted for that graph. A provider used at two generated access sites can count<br />
+twice. These counts don&rsquo;t measure runtime calls.</p>
+<p><code>providerInlineFallbacks</code> records known inline candidates that use another code path:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>deferredAccess</code></td>
+<td>Provider or lazy access needs to keep value evaluation deferred.</td>
+</tr>
+<tr>
+<td><code>unavailableValue</code></td>
+<td>The compiler couldn&rsquo;t materialize the value in the consuming compilation.</td>
+</tr>
+</tbody>
+</table>
+<p>Providers without inline metadata aren&rsquo;t included in the fallback counts. Their bodies may be<br />
+ineligible for inlining, or inlining may be disabled.</p>
+<p>The counters are available in per-graph and aggregated metadata.</p>
 <h2 id="available-tasks">Available Tasks<a class="headerlink" href="#available-tasks" title="Permanent link">&para;</a></h2>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
