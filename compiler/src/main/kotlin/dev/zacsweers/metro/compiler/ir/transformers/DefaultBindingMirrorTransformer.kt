@@ -124,7 +124,9 @@ internal class DefaultBindingMirrorTransformer(context: IrMetroContext) :
         bindingType.qualifierAnnotation() ?: mirrorClass.parentAsClass.qualifierAnnotation()
       }
     // Remove the qualifier if present here
-    val finalType = bindingType.removeAnnotations { anno -> anno == qualifier?.ir }
+    val finalType = bindingType.removeAnnotations { anno: IrConstructorCall ->
+      anno == qualifier?.ir
+    }
 
     // Generate the defaultBinding() function in the mirror class
     val function =
