@@ -16,6 +16,7 @@ import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.getAndAdd
+import dev.zacsweers.metro.compiler.hilt.HiltSymbols
 import dev.zacsweers.metro.compiler.ir.transformers.Lockable
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.mapToSet
@@ -159,7 +160,15 @@ internal class IrContributionData(
     if (kind != ClassKind.INTERFACE) return false
     val irClass = this
     if (with(metroContext) { irClass.isBindingContainer() }) return false
-    return isDirectContributionTo(scope)
+    if (isDirectContributionTo(scope)) {
+      return true
+    }
+    if (!metroContext.options.enableHiltInterop) {
+      return false
+    }
+    // The contribution hint already associates this entry point with the requested scope.
+    return findAnnotations(HiltSymbols.EntryPoint).any() &&
+      findAnnotations(HiltSymbols.InstallIn).any()
   }
 
   private fun IrClass.isDirectContributionTo(scope: Scope): Boolean {

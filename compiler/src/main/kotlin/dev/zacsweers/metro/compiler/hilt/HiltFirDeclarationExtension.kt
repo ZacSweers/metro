@@ -15,9 +15,11 @@ import dev.zacsweers.metro.compiler.memoize
 import org.jetbrains.kotlin.builtins.StandardNames
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
+import org.jetbrains.kotlin.fir.expressions.FirCall
 import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
 import org.jetbrains.kotlin.fir.expressions.FirVarargArgumentsExpression
+import org.jetbrains.kotlin.fir.expressions.arguments
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension.TypeResolveService
 import org.jetbrains.kotlin.name.ClassId
@@ -124,8 +126,9 @@ internal data class InRoundInstallIn(
 /**
  * Reads the `value: Class<?>[]` argument of `@InstallIn`.
  *
- * FIR may represent the argument as a single class call or as vararg class calls. The resolver
- * fallback covers phases where annotation arguments have not yet been fully resolved.
+ * FIR may represent the argument as a single class call, vararg class calls, or a collection
+ * literal. The resolver fallback covers phases where annotation arguments have not yet been fully
+ * resolved.
  */
 internal fun FirAnnotation.installInComponents(
   session: FirSession,
@@ -162,6 +165,7 @@ private inline fun FirAnnotation.installInComponentsImpl(
     when (arg) {
       is FirGetClassCall -> listOf(arg)
       is FirVarargArgumentsExpression -> arg.arguments.filterIsInstance<FirGetClassCall>()
+      is FirCall -> arg.arguments.filterIsInstance<FirGetClassCall>()
       else -> emptyList()
     }
   return classCalls.mapNotNull(resolveComponentClassId)

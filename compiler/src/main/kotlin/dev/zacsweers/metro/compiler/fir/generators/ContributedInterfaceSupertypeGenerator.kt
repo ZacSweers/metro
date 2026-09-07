@@ -25,6 +25,7 @@ import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.fir.scopeArgument
 import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.hilt.HiltComponentScopeMapping
+import dev.zacsweers.metro.compiler.hilt.HiltSymbols
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.safePathString
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -265,10 +266,17 @@ internal class ContributedInterfaceSupertypeGenerator(
     scopeClassId: ClassId,
     typeResolver: TypeResolveService,
   ): Boolean {
-    return classKind.isInterface &&
-      annotationsIn(session, session.classIds.contributesToAnnotations).any {
-        it.resolvedScopeClassId(session, typeResolver) == scopeClassId
-      }
+    if (!classKind.isInterface) {
+      return false
+    }
+    val isHiltEntryPoint =
+      hiltComponentScopes != null && annotationsIn(session, setOf(HiltSymbols.EntryPoint)).any()
+    if (isHiltEntryPoint) {
+      return containerMatchesScope(this, scopeClassId, typeResolver)
+    }
+    return annotationsIn(session, session.classIds.contributesToAnnotations).any {
+      it.resolvedScopeClassId(session, typeResolver) == scopeClassId
+    }
   }
 
   private fun FirRegularClassSymbol.bindingLikeContributionMatchesScope(

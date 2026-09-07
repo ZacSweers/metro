@@ -73,8 +73,6 @@ class MetroTestConfigurator(testServices: TestServices) : MetaTestConfigurator(t
     ) {
       return true
     }
-    val generateClassesInIr =
-      generateClassesInIrDirectives.lastOrNull()?.toString()?.toBoolean() == true
     val irOnlyClassesSuite =
       testClassName == "IrOnlyClassesBoxTestGenerated" ||
         testClassName == "OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated"
@@ -85,12 +83,6 @@ class MetroTestConfigurator(testServices: TestServices) : MetaTestConfigurator(t
           compilerToolingVersion = KotlinToolingVersion(COMPILER_TOOLING_VERSION),
           minVersion = MIN_IR_ONLY_CLASSES_COMPILER_VERSION,
         )
-    ) {
-      return true
-    }
-    if (
-      (MetroDirectives.ENABLE_HILT_INTEROP in directives ||
-        MetroDirectives.ENABLE_HILT_KSP in directives) && generateClassesInIr
     ) {
       return true
     }

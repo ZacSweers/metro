@@ -16,6 +16,7 @@ Changelog
 - **[IR]** Reduce repeated work when validating suspend multibindings and reporting suspend-binding errors. Error traces now use cached, deterministic shortest paths to a suspend binding.
 - **[IR]** Reduce repeated dependency scans when checking cycles in graphs with large multibindings.
 - **[IR]** Avoid initializing the rich terminal renderer for plain compiler diagnostics.
+- **[IR/interop]** Support Hilt interop when IR class generation is enabled.
 - **[Reports]** Explain binding choices in graph reports. Includes things like selection precedence, contribution filtering, and parent-graph ownership.
 - **[Reports]** Count emitted provider inlines in graph reports.
 - **[Reports]** Report when deferred access or unavailable values prevent provider inlining.

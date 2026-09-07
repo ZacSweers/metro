@@ -34,9 +34,15 @@ import test.UpstreamEntryPoint
 @DependencyGraph(Singleton::class)
 interface AppGraph
 
+@MergeContributionsInIr
+@DependencyGraph(Singleton::class)
+interface IrMergedGraph
+
 fun box(): String {
   val graph = createGraph<AppGraph>()
-  val entryPoint = graph as UpstreamEntryPoint
+  val entryPoint: UpstreamEntryPoint = graph
   assertEquals("Hello upstream", entryPoint.message)
+  val irEntryPoint = createGraph<IrMergedGraph>() as UpstreamEntryPoint
+  assertEquals("Hello upstream", irEntryPoint.message)
   return "OK"
 }
