@@ -87,18 +87,7 @@ jobs:
 
       - name: Generate matrix
         id: generate
-        run: |
-          ./scripts/generate-ci-matrix.sh
-          default_kotlin_version=$(sed -n 's/^kotlin = "\(.*\)"/\1/p' gradle/libs.versions.toml)
-          if [[ -z "$default_kotlin_version" ]]; then
-            echo "::error::Could not read the default Kotlin version"
-            exit 1
-          fi
-          if ! grep -Fxq "$default_kotlin_version" compiler-compat/version-aliases.txt; then
-            echo "::error::Default Kotlin version $default_kotlin_version is not in the compiler matrix"
-            exit 1
-          fi
-          echo "default_kotlin_version=$default_kotlin_version" >> "$GITHUB_OUTPUT"
+        run: ./scripts/generate-ci-matrix.sh ${{ github.event_name == 'pull_request' && '--pull-request' || '' }}
 
   core:
     name: core artifacts

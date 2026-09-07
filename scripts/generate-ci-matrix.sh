@@ -11,9 +11,14 @@ set -euo pipefail
 
 # --versions-only flag is for ./metrow check use to only print the versions and exit
 versions_only=false
-if [[ "${1:-}" == "--versions-only" ]]; then
-    versions_only=true
-fi
+pull_request=false
+for arg in "$@"; do
+    case "$arg" in
+        --versions-only) versions_only=true ;;
+        --pull-request) pull_request=true ;;
+        *) echo "Unknown argument: $arg" >&2; exit 1 ;;
+    esac
+done
 
 ALIASES_FILE="compiler-compat/version-aliases.txt"
 
@@ -45,6 +50,27 @@ if [[ "$versions_only" == true ]]; then
     # Just output the versions, one per line
     echo "$versions"
     exit 0
+fi
+
+default_kotlin_version=$(sed -n 's/^kotlin = "\(.*\)"/\1/p' gradle/libs.versions.toml)
+if [[ -z "$default_kotlin_version" ]]; then
+    echo "::error::Could not read the default Kotlin version"
+    exit 1
+fi
+if ! grep -Fxq "$default_kotlin_version" <<< "$declared_versions"; then
+    echo "::error::Default Kotlin version $default_kotlin_version is not in the compiler matrix"
+    exit 1
+fi
+
+if [[ "$pull_request" == true ]]; then
+    # Main covers stable .10 and .x1 releases. PRs always keep the default and latest versions.
+    versions=$(for version in $versions; do
+        if [[ "$version" == "$default_kotlin_version" || "$version" == "$latest_kotlin_version" ]]; then
+            echo "$version"
+        elif [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.(10|[0-9]*1)$ ]]; then
+            echo "$version"
+        fi
+    done)
 fi
 
 echo "📦 Found versions:"
@@ -83,6 +109,7 @@ fi
 # Output for GitHub Actions (if running in CI)
 if [ "${GITHUB_OUTPUT:-}" ]; then
     echo "matrix=$matrix_json" >> "$GITHUB_OUTPUT"
+    echo "default_kotlin_version=$default_kotlin_version" >> "$GITHUB_OUTPUT"
     echo "latest_kotlin_version=$latest_kotlin_version" >> "$GITHUB_OUTPUT"
     echo "🚀 Matrix written to GITHUB_OUTPUT"
 fi

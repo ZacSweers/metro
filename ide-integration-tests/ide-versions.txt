@@ -1,5 +1,6 @@
 # Format: <product>:<version>[:<extra>] [# Display Name]
 # Products: IU (IntelliJ Ultimate), AS (Android Studio)
+# Add "# main-only" before a version to skip it on pull requests.
 #
 # IU:
 #   Stable: marketing version (e.g., IU:2025.3.2)
@@ -17,18 +18,22 @@
 #
 # IntelliJ Stable
 IU:2025.3.2
+# main-only
 IU:2026.1.1
 IU:2026.1.2
 IU:2026.1.3
 IU:2026.2
+# main-only
 IU:2026.2.1
 IU:2026.2.2
 # IntelliJ EAP
 IU:263.3889.65:eap # 2026.3 EAP
 # AS stable
+# main-only
 AS:2025.3.1.8:android-studio-panda1-patch1 # Panda 1 Patch 1
 AS:2025.3.2.6:android-studio-panda2 # Panda 2
 AS:2025.3.3.6:android-studio-panda3 # Panda 3
+# main-only
 AS:2025.3.4.7:android-studio-panda4-patch1 # Panda 4 Patch 1
 AS:2026.1.1.8:android-studio-quail1 # Quail 1
 AS:2026.1.2.10:android-studio-quail2 # Quail 2

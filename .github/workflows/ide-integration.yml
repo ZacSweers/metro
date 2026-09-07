@@ -46,16 +46,25 @@ jobs:
 
       - name: Generate IDE matrix
         id: matrix
+        env:
+          INPUT_IDE: ${{ github.event.inputs.ide }}
         # language=bash
         run: |
-          input_ide="${{ github.event.inputs.ide }}"
+          input_ide="$INPUT_IDE"
           if [[ -n "$input_ide" ]] && [[ "$input_ide" != "all" ]]; then
             json=$(echo "[\"$input_ide\"]" | jq -c .)
           else
-            # Read non-comment, non-empty lines; strip trailing comments
-            json=$(grep -v '^#' ide-integration-tests/ide-versions.txt \
-              | grep -v '^[[:space:]]*$' \
-              | sed 's/ #.*//' \
+            json=$(awk -v event="$GITHUB_EVENT_NAME" '
+              /^# main-only$/ { main_only = 1; next }
+              /^#/ || /^[[:space:]]*$/ { next }
+              {
+                if (event != "pull_request" || !main_only) {
+                  sub(/ #.*/, "")
+                  print
+                }
+                main_only = 0
+              }
+              ' ide-integration-tests/ide-versions.txt \
               | jq -R -s -c 'split("\n") | map(select(length > 0))')
           fi
           echo "ide-matrix=$json" >> "$GITHUB_OUTPUT"
