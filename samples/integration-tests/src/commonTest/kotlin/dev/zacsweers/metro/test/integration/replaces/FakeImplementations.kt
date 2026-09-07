@@ -1,11 +1,9 @@
 // Copyright (C) 2025 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
-// These fixtures exercise replacement of contributed interfaces across files.
-@file:Suppress("CONTRIBUTES_TO_COULD_BE_BINDING_CONTAINER")
-
 package dev.zacsweers.metro.test.integration.replaces
 
 import dev.zacsweers.metro.AppScope
+import dev.zacsweers.metro.BindingContainer
 import dev.zacsweers.metro.ContributesBinding
 import dev.zacsweers.metro.ContributesTo
 import dev.zacsweers.metro.Inject
@@ -27,12 +25,14 @@ class FakeDatabaseService : DatabaseService {
 }
 
 @ContributesTo(AppScope::class, replaces = [RealProviders::class])
-interface FakeProviders {
+@BindingContainer
+object FakeProviders {
   @Provides fun provideConfig(): String = "fake config"
 }
 
 @ContributesTo(AppScope::class, replaces = [RealSetProviders::class])
-interface FakeSetProviders {
+@BindingContainer
+object FakeSetProviders {
   @Provides @IntoSet fun provideFakeFeature1(): String = "fake-feature-1"
 
   @Provides @IntoSet fun provideFakeFeature2(): String = "fake-feature-2"
@@ -41,7 +41,8 @@ interface FakeSetProviders {
 }
 
 @ContributesTo(AppScope::class, replaces = [RealMapProviders::class])
-interface FakeMapProviders {
+@BindingContainer
+object FakeMapProviders {
   @Provides
   @IntoMap
   @StringKey("fake-handler-1")
