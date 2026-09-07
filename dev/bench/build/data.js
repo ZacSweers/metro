@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788752670512,
+  "lastUpdate": 1788753127956,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -23352,6 +23352,62 @@ window.BENCHMARK_DATA = {
             "value": 14517.166000000001,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -1.49%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "676553bf~1",
+          "message": "[before] Reuse missing member injector results (#2791)",
+          "timestamp": "2026-09-07T02:54:54Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/676553bff77f896f5b2c1260e4dff0b36720c067"
+        },
+        "date": 1788753127956,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18989.1,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "676553bff77f896f5b2c1260e4dff0b36720c067",
+          "message": "[after] Reuse missing member injector results (#2791)",
+          "timestamp": "2026-09-07T02:54:54Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/676553bff77f896f5b2c1260e4dff0b36720c067"
+        },
+        "date": 1788753127957,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19068.018,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +0.42%"
           }
         ]
       }
