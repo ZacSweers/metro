@@ -1,5 +1,8 @@
 // Copyright (C) 2025 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
+// These fixtures exercise replacement of contributed interfaces across files.
+@file:Suppress("CONTRIBUTES_TO_COULD_BE_BINDING_CONTAINER")
+
 package dev.zacsweers.metro.test.integration.replaces
 
 import dev.zacsweers.metro.AppScope
