@@ -55,6 +55,7 @@ Changelog
 ### Changes
 
 - **[IR]** Annotation default matching is limited for KLIB dependencies on Kotlin `2.3.0` and `2.3.10`. We recommend upgrading to Kotlin `2.3.20` or newer.
+- Build against Kotlin `2.4.20`. Note the runtime artifacts still target Kotlin `2.3.0` and Metro supports a wide range of compiler versions. See the [compatibility docs](https://zacsweers.github.io/metro/latest/compatibility/) for a full table of compatible versions.
 - Update embedded Okio dependency to `3.18.2`.
 - Test Kotlin `2.4.20`.
 - Test Kotlin `2.4.20-RC2`.
@@ -71,6 +72,8 @@ Special thanks to the following contributors for contributing to this release!
 - [@AlexVanyo](https://github.com/AlexVanyo)
 - [@grandstaish](https://github.com/grandstaish)
 - [@kevinguitar](https://github.com/kevinguitar)
+
+### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
 
 1.4.2
 -----
@@ -101,6 +104,8 @@ Special thanks to the following contributors for contributing to this release!
 - [@erawhctim](https://github.com/erawhctim)
 - [@eygraber](https://github.com/eygraber)
 - [@grandstaish](https://github.com/grandstaish)
+
+### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
 
 1.4.1
 -----
