@@ -2953,3 +2953,9 @@ internal fun IrFunction.canBeInlined(): Boolean {
     else -> false
   }
 }
+
+// Copied from kotlinc because the original is deprecated
+fun DescriptorVisibility.isVisibleOutside() =
+  this != DescriptorVisibilities.PRIVATE &&
+    this != DescriptorVisibilities.PRIVATE_TO_THIS &&
+    this != DescriptorVisibilities.INVISIBLE_FAKE
