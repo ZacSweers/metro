@@ -39,7 +39,6 @@ public class CompatContextImpl private constructor(private val delegate: Delegat
   override fun IrElement.dumpKotlinLikeCompat(
     options: KotlinLikeDumpOptions,
     classNameTransformer: (context: IrDeclaration?, declaration: IrDeclarationWithName) -> String,
-    fallback: () -> String,
   ): String {
     val customDumpStrategy = options.customDumpStrategy
     return dumpKotlinLike(

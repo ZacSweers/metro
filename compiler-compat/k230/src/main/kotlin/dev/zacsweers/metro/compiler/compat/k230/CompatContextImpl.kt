@@ -75,6 +75,7 @@ import org.jetbrains.kotlin.ir.builders.declarations.addBackingField
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
@@ -90,6 +91,7 @@ import org.jetbrains.kotlin.ir.symbols.IrPropertySymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.util.KotlinLikeDumpOptions
 import org.jetbrains.kotlin.ir.util.getValueArgument as getValueArgumentNative
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
@@ -292,6 +294,13 @@ public class CompatContextImpl : CompatContext {
 
   override fun IrPluginContext.finderForBuiltinsCompat(): CompatContext.DeclarationFinderCompat {
     return ReferenceApiDeclarationFinderCompat(this)
+  }
+
+  override fun IrElement.dumpKotlinLikeCompat(
+    options: KotlinLikeDumpOptions,
+    classNameTransformer: (context: IrDeclaration?, declaration: IrDeclarationWithName) -> String,
+  ): String {
+    return dumpKotlinLikeFallback(options, classNameTransformer)
   }
 
   override val pluginGeneratedSourceElementKind: KtFakeSourceElementKind

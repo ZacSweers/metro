@@ -14,9 +14,5 @@ public fun IrElement.metroDumpKotlinLike(
   classNameTransformer: (context: IrDeclaration?, declaration: IrDeclarationWithName) -> String =
     ::nestedClassNameRenderer,
 ): String {
-  return with(compatContext) {
-    this@metroDumpKotlinLike.dumpKotlinLikeCompat(options, classNameTransformer) {
-      betterDumpKotlinLike(options, classNameTransformer)
-    }
-  }
+  return betterDumpKotlinLike(options, classNameTransformer)
 }

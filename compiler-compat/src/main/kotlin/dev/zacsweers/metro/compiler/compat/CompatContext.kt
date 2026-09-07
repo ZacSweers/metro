@@ -674,10 +674,7 @@ public interface CompatContext {
   public fun IrElement.dumpKotlinLikeCompat(
     options: KotlinLikeDumpOptions,
     classNameTransformer: (context: IrDeclaration?, declaration: IrDeclarationWithName) -> String,
-    fallback: () -> String,
-  ): String {
-    return fallback()
-  }
+  ): String
 
   /**
    * Returns the compiler's configured [MessageCollector], or a non-silent fallback if no collector
