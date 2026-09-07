@@ -104,7 +104,7 @@ public open class MutableBindingGraph<
    */
   private val onExistingBinding: ((ContextualTypeKey, Binding, BindingStackEntry) -> Unit)? = null,
 ) : BindingGraph<Type, TypeKey, ContextualTypeKey, Binding, BindingStackEntry, BindingStack> {
-  // Populated by initial graph setup and later seal()
+  // Populated by initial graph setup and prepareSeal().
   override val bindings: MutableScatterMap<TypeKey, Binding> = MutableScatterMap(256)
   private val bindingIndices = MutableObjectIntMap<TypeKey>()
   private val reportedMissingKeys = mutableSetOf<TypeKey>()
@@ -113,31 +113,28 @@ public open class MutableBindingGraph<
     private set
 
   /**
-   * Finalizes the binding graph by performing validation and cache initialization.
+   * Resolves bindings and captures the graph data needed by worker analysis.
    *
-   * This function operates in a two-step process:
-   * 1. Validates the binding graph by performing a [metroSort]. Cycles that involve deferrable
-   *    types, such as `Lazy` or `Provider`, are allowed and deferred for special handling at
-   *    code-generation-time and store any deferred types in [GraphTopology.deferredTypes]. Any
-   *    strictly invalid cycles or missing bindings result in an error being thrown.
-   * 2. The returned topologically sorted list is then processed to compute [bindingIndices] and
-   *    [GraphTopology.deferredTypes]. Any dependency whose index is later than the current index is
-   *    presumed a valid cycle indicator and thus that type must be deferred.
+   * This phase reports missing bindings and seals the graph against further additions. Binding
+   * getters and population callbacks run here on the calling thread. Key comparison and hashing
+   * must be ready for concurrent reads before [PreparedGraphSeal.analyze] starts.
    *
-   * This operation runs in O(V+E). After calling this function, the binding graph becomes
-   * immutable.
+   * Analysis runs [metroSort] to find a valid order and cycles that require deferred
+   * initialization. Types such as `Lazy` and `Provider` can break cycles through deferred
+   * construction. The result records those types in [GraphTopology.deferredTypes] for code
+   * generation.
    *
-   * Reports errors to [errorReporter] if a strict dependency cycle or missing binding is
-   * encountered during validation.
+   * [PreparedGraphSeal.finish] reports strict cycles to [errorReporter] and validates the reachable
+   * bindings. It also computes [bindingIndices] from the sorted order. A dependency whose index is
+   * later than its consumer requires deferred initialization.
    *
    * @param onPopulated a callback for when the graph is fully populated but not yet validated.
-   * @param validateBindings a callback to perform optional extra validation on bindings
-   *   post-adjacency build.
+   * @param validateBindings a callback to perform optional extra validation during finalization.
    * @param keep optional set of keys to keep, even if they are unused.
    * @param ensureActive cancellation callback invoked throughout graph validation.
    */
   context(traceScope: TraceScope)
-  public fun seal(
+  public fun prepareSeal(
     roots: Map<ContextualTypeKey, BindingStackEntry> = emptyMap(),
     keep: Map<ContextualTypeKey, BindingStackEntry> = emptyMap(),
     shrinkUnusedBindings: Boolean = true,
@@ -154,16 +151,19 @@ public open class MutableBindingGraph<
       { _, _, _, _ ->
         /* noop */
       },
-  ): GraphTopology<TypeKey> {
+  ): PreparedGraphSeal<TypeKey> {
     val stack = newBindingStack()
 
-    // Order matters, prefer roots over matching kees as they have more information in their entries
+    // Roots take precedence over matching keeps because their entries have more information.
     val rootsWithKeeps = keep + roots
     val missingBindings = populateGraph(rootsWithKeeps, stack, ensureActive)
 
     onPopulated()
 
     sealed = true
+
+    val deferrableDependencies = HashMap<TypeKey, Set<TypeKey>>()
+    val implicitlyDeferrableKeys = HashSet<TypeKey>()
 
     /**
      * Build the full adjacency mapping of keys to all their dependencies.
@@ -176,7 +176,41 @@ public open class MutableBindingGraph<
         buildFullAdjacency(
           map = bindings,
           sourceToTarget = { key ->
-            bindings.getValue(key).dependencies.asSequence().map { it.typeKey }.asIterable()
+            val binding = bindings.getValue(key)
+            if (binding.isImplicitlyDeferrable) {
+              implicitlyDeferrableKeys += key
+            }
+            val dependencies = binding.dependencies
+            // The snapshot is complete when adjacency exhausts each source.
+            sequence {
+              var deferrableTargets: MutableSet<TypeKey>? = null
+              for (dependency in dependencies) {
+                ensureActive()
+                val targetKey = dependency.typeKey
+                if (dependency.isDeferrable) {
+                  if (deferrableTargets == null) {
+                    deferrableTargets = HashSet()
+                  }
+                  deferrableTargets.add(targetKey)
+                }
+                yield(targetKey)
+              }
+
+              val targets = deferrableTargets
+              if (targets != null) {
+                // Any eager parallel request takes precedence regardless of request order.
+                for (dependency in dependencies) {
+                  ensureActive()
+                  if (!dependency.isDeferrable) {
+                    targets.remove(dependency.typeKey)
+                  }
+                }
+                if (targets.isNotEmpty()) {
+                  deferrableDependencies[key] = targets
+                }
+              }
+            }
+              .asIterable()
           },
           ensureActive = ensureActive,
         ) { source, missing ->
@@ -206,54 +240,65 @@ public open class MutableBindingGraph<
       reportMissingBinding(key, stack)
     }
 
-    val topo =
-      trace("Sort and validate") {
-        val allKeeps =
-          if (shrinkUnusedBindings) {
-            buildSet {
-              for (key in keep.keys) {
-                ensureActive()
-                add(key.typeKey)
-              }
-            }
-          } else {
-            buildSet {
-              for (key in fullAdjacency.keys) {
-                ensureActive()
-                add(key)
-              }
-              for (key in keep.keys) {
-                ensureActive()
-                add(key.typeKey)
-              }
-            }
-          }
-        sortAndValidate(
-          roots,
-          allKeeps,
-          fullAdjacency,
-          stack,
-          onSortedCycle,
-          ensureActive,
-        )
-      }
-
-    // Validate bindings using the reachable adjacency computed during topo sort.
-    // This is more efficient as it only includes reachable bindings/edges.
-    validateBindings(bindings, stack, roots, topo.adjacency)
-
-    trace("Compute binding indices") {
-      // If it depends itself or something that comes later in the topo sort, it
-      // must be deferred. This is how we handle cycles that are broken by deferrable
-      // types like Provider/Lazy/...
-      // O(1) ("does A depend on B?")
-      topo.sortedKeys.forEachIndexed { i, key ->
+    val sortedRootKeys = TreeSet<TypeKey>()
+    for (key in roots.keys) {
+      ensureActive()
+      sortedRootKeys += key.typeKey
+    }
+    if (!shrinkUnusedBindings) {
+      for (key in fullAdjacency.keys) {
         ensureActive()
-        bindingIndices.put(key, i)
+        sortedRootKeys += key
       }
     }
+    for (key in keep.keys) {
+      ensureActive()
+      sortedRootKeys += key.typeKey
+    }
 
-    return topo
+    return object : PreparedGraphSeal<TypeKey>() {
+      context(traceScope: TraceScope)
+      override fun analyze(): GraphAnalysis<TypeKey> =
+        trace("Sort and validate") {
+          analyzeGraph(
+            sortedRootKeys,
+            fullAdjacency,
+            deferrableDependencies,
+            implicitlyDeferrableKeys,
+            ensureActive,
+          )
+        }
+
+      context(traceScope: TraceScope)
+      override fun finish(analysis: GraphAnalysis<TypeKey>): GraphTopology<TypeKey> {
+        for (cycle in analysis.sortedCycles) {
+          ensureActive()
+          onSortedCycle(cycle)
+        }
+        val hardCycle = analysis.hardCycle
+        if (hardCycle != null) {
+          reportHardCycle(hardCycle, stack, roots, ensureActive)
+        }
+        val topo = checkNotNull(analysis.topology)
+
+        // Validate bindings using the reachable adjacency computed during topo sort.
+        // This is more efficient as it only includes reachable bindings/edges.
+        validateBindings(bindings, stack, roots, topo.adjacency)
+
+        trace("Compute binding indices") {
+          // If it depends itself or something that comes later in the topo sort, it
+          // must be deferred. This is how we handle cycles that are broken by deferrable
+          // types like Provider/Lazy/...
+          // O(1) ("does A depend on B?")
+          topo.sortedKeys.forEachIndexed { i, key ->
+            ensureActive()
+            bindingIndices.put(key, i)
+          }
+        }
+
+        return topo
+      }
+    }
   }
 
   context(traceScope: TraceScope)
@@ -344,105 +389,103 @@ public open class MutableBindingGraph<
     return missingBindings
   }
 
+  /** Computes graph order from captured edge kinds and records diagnostic work for finalization. */
   context(traceScope: TraceScope)
-  private fun sortAndValidate(
-    roots: Map<ContextualTypeKey, BindingStackEntry>,
-    keep: Set<TypeKey>,
+  private fun analyzeGraph(
+    sortedRootKeys: SortedSet<TypeKey>,
     fullAdjacency: SortedMap<TypeKey, SortedSet<TypeKey>>,
-    stack: BindingStack,
-    onSortedCycle: (List<TypeKey>) -> Unit,
+    deferrableDependencies: Map<TypeKey, Set<TypeKey>>,
+    implicitlyDeferrableKeys: Set<TypeKey>,
     ensureActive: () -> Unit,
-  ): GraphTopology<TypeKey> {
-    val sortedRootKeys =
-      TreeSet<TypeKey>().apply {
-        roots.keys.forEach {
-          ensureActive()
-          add(it.typeKey)
-        }
-        for (key in keep) {
-          ensureActive()
-          add(key)
-        }
-      }
-
-    // Index each source when a cycle first needs its edge kinds. Adjacency collapses parallel
-    // requests, so any eager request makes the target hard.
-    val hardDependenciesBySource = HashMap<TypeKey, Set<TypeKey>>()
+  ): GraphAnalysis<TypeKey> {
+    // Adjacency supplies existing edges, and the snapshot stores only their explicit deferrals.
     val isHardEdge: (TypeKey, TypeKey) -> Boolean = { from, to ->
       ensureActive()
-      if (bindings.getValue(to).isImplicitlyDeferrable) {
+      if (to in implicitlyDeferrableKeys) {
         false
       } else {
-        val hardDependencies =
-          hardDependenciesBySource.getOrPut(from) {
-            buildSet {
-              for (dependency in bindings.getValue(from).dependencies) {
-                ensureActive()
-                if (!dependency.isDeferrable) {
-                  add(dependency.typeKey)
-                }
-              }
-            }
-          }
-        to in hardDependencies
+        to !in deferrableDependencies[from].orEmpty()
       }
     }
 
-    // Run topo sort. It gives back either a valid order or calls onCycle for errors
+    val sortedCycles = ArrayList<List<TypeKey>>()
+    var hardCycle: List<TypeKey>? = null
+    // Run topo sort. It gives back either a valid order or calls onCycle for errors.
     val result =
-      trace("Topo sort") {
-        metroSort(
-          fullAdjacency = fullAdjacency,
-          roots = sortedRootKeys,
-          isDeferrable = { from, to -> !isHardEdge(from, to) },
-          ensureActive = ensureActive,
-          onSortedCycle = onSortedCycle,
-          onCycle = { sccVertices ->
-            val sccSet = HashSet<TypeKey>(sccVertices.size)
-            for (vertex in sccVertices) {
-              ensureActive()
-              sccSet += vertex
-            }
-
-            val cyclePath: List<TypeKey> =
-              sccVertices.firstNotNullOfOrNull { candidate ->
-                findSimpleCycle(
-                  startNode = candidate,
-                  sccNodes = sccSet,
-                  fullAdjacency = fullAdjacency,
-                  isEdgeAllowed = isHardEdge,
-                  ensureActive = ensureActive,
-                )
-              } ?: sccVertices
-
-            val entriesInCycle = buildList {
-              val size = cyclePath.size
-              for (i in 0..size) {
+      try {
+        trace("Topo sort") {
+          metroSort(
+            fullAdjacency = fullAdjacency,
+            roots = sortedRootKeys,
+            isDeferrable = { from, to -> !isHardEdge(from, to) },
+            ensureActive = ensureActive,
+            onSortedCycle = { sortedCycles += it },
+            onCycle = { sccVertices ->
+              val sccSet = HashSet<TypeKey>(sccVertices.size)
+              for (vertex in sccVertices) {
                 ensureActive()
-                val currentDep = cyclePath[i % size]
-                val prevReq = if (i == 0) cyclePath.last() else cyclePath[i - 1]
-                val callingBinding = bindings.getValue(prevReq)
-                val contextKey =
-                  callingBinding.dependencies.firstOrNull {
-                    it.typeKey == currentDep && !it.isDeferrable
-                  }
-                    ?: reportCompilerBug(
-                      "Found a hard cycle, but no scalar dependency exists from " +
-                        "${prevReq.render(short = true)} to ${currentDep.render(short = true)}."
-                    )
-                add(stack.newBindingStackEntry(contextKey, callingBinding, roots))
+                sccSet += vertex
               }
-            }
 
-            val suspendCycleKey = findSuspendCycleKey(cyclePath, bindings)
-            reportCycle(entriesInCycle, stack, suspendCycleKey)
-          },
-          isImplicitlyDeferrable = { key -> bindings.getValue(key).isImplicitlyDeferrable },
-        )
+              hardCycle =
+                sccVertices.firstNotNullOfOrNull { candidate ->
+                  findSimpleCycle(
+                    startNode = candidate,
+                    sccNodes = sccSet,
+                    fullAdjacency = fullAdjacency,
+                    isEdgeAllowed = isHardEdge,
+                    ensureActive = ensureActive,
+                  )
+                } ?: sccVertices
+              throw HardCycleFound()
+            },
+            isImplicitlyDeferrable = implicitlyDeferrableKeys::contains,
+          )
+        }
+      } catch (_: HardCycleFound) {
+        null
       }
 
-    return result
+    return GraphAnalysis(result, hardCycle, sortedCycles)
   }
+
+  /** Rebuilds diagnostic entries after worker analysis has found a strict cycle. */
+  private fun reportHardCycle(
+    cyclePath: List<TypeKey>,
+    stack: BindingStack,
+    roots: Map<ContextualTypeKey, BindingStackEntry>,
+    ensureActive: () -> Unit,
+  ): Nothing {
+    val entriesInCycle = buildList {
+      val size = cyclePath.size
+      for (i in 0..size) {
+        ensureActive()
+        val currentDep = cyclePath[i % size]
+        val prevReq =
+          if (i == 0) {
+            cyclePath.last()
+          } else {
+            cyclePath[i - 1]
+          }
+        val callingBinding = bindings.getValue(prevReq)
+        val contextKey =
+          callingBinding.dependencies.firstOrNull {
+            it.typeKey == currentDep && !it.isDeferrable
+          }
+            ?: reportCompilerBug(
+              "Found a hard cycle, but no scalar dependency exists from " +
+                "${prevReq.render(short = true)} to ${currentDep.render(short = true)}."
+            )
+        add(stack.newBindingStackEntry(contextKey, callingBinding, roots))
+      }
+    }
+
+    val suspendCycleKey = findSuspendCycleKey(cyclePath, bindings)
+    reportCycle(entriesInCycle, stack, suspendCycleKey)
+  }
+
+  /** Stops sorting so the preparing thread can report the captured cycle. */
+  private class HardCycleFound : RuntimeException(null, null, false, false)
 
   private fun <V : Comparable<V>> findSimpleCycle(
     startNode: V,
@@ -648,7 +691,7 @@ public open class MutableBindingGraph<
 
   override operator fun contains(key: TypeKey): Boolean = bindings.containsKey(key)
 
-  // O(1) after seal()
+  // Binding indices support constant-time checks after finalization.
   override fun TypeKey.dependsOn(other: TypeKey): Boolean {
     return bindingIndices[this] >= bindingIndices[other]
   }

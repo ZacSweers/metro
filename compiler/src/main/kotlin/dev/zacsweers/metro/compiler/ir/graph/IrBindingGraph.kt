@@ -28,10 +28,13 @@ import dev.zacsweers.metro.compiler.graph.BindingGraphValidator
 import dev.zacsweers.metro.compiler.graph.DiagnosticRoutes
 import dev.zacsweers.metro.compiler.graph.ErrorReporter
 import dev.zacsweers.metro.compiler.graph.GraphAdjacency
+import dev.zacsweers.metro.compiler.graph.GraphAnalysis
+import dev.zacsweers.metro.compiler.graph.GraphTopology
 import dev.zacsweers.metro.compiler.graph.GraphValidationIssue
 import dev.zacsweers.metro.compiler.graph.MissingBindingHints
 import dev.zacsweers.metro.compiler.graph.MultibindingKind
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
+import dev.zacsweers.metro.compiler.graph.PreparedGraphSeal
 import dev.zacsweers.metro.compiler.graph.SuspendDiagnosticMessages
 import dev.zacsweers.metro.compiler.graph.disambiguateIncompatibleScopes
 import dev.zacsweers.metro.compiler.graph.duplicateMapKeysDiagnostic
@@ -169,14 +172,8 @@ internal class IrBindingGraph(
   /** Incremented whenever [realGraph] gains a binding before it is sealed. */
   private var graphGeneration = 0
 
-  /** Resolves parent suspend bindings before this graph is sealed, when a child first needs it. */
+  /** Caches this graph's suspend bindings for child lookups on the main compiler thread. */
   private var parentSuspendBindingAnalysis: SuspendBindingAnalysis? = null
-
-  /**
-   * Guards [parentSuspendBindingAnalysis] and the binding lookups it performs. Sibling extensions
-   * may be validated concurrently, while the underlying binding lookup is not thread-safe.
-   */
-  private val parentSuspendResolutionLock = Any()
 
   /** Returns true if the binding for [typeKey] transitively requires a suspend context. */
   internal fun isTransitivelySuspend(typeKey: IrTypeKey): Boolean =
@@ -201,20 +198,20 @@ internal class IrBindingGraph(
    * extensions are validated first, so they cannot use [transitivelySuspendKeys] yet.
    */
   internal fun isTransitivelySuspendForChild(typeKey: IrTypeKey): Boolean {
-    if (!metroContext.options.enableSuspendProviders) return false
-    return synchronized(parentSuspendResolutionLock) {
-      if (_bindingLookup == null) {
-        return@synchronized isTransitivelySuspend(typeKey)
-      }
-      val analysis =
-        parentSuspendBindingAnalysis
-          ?: SuspendBindingAnalysis(
-              findBinding = { findBinding(it, allowLookup = true) },
-              currentGraphGeneration = { graphGeneration },
-            )
-            .also { parentSuspendBindingAnalysis = it }
-      analysis.isSuspend(typeKey)
+    if (!metroContext.options.enableSuspendProviders) {
+      return false
     }
+    if (_bindingLookup == null) {
+      return isTransitivelySuspend(typeKey)
+    }
+    val analysis =
+      parentSuspendBindingAnalysis
+        ?: SuspendBindingAnalysis(
+            findBinding = { findBinding(it, allowLookup = true) },
+            currentGraphGeneration = { graphGeneration },
+          )
+          .also { parentSuspendBindingAnalysis = it }
+    return analysis.isSuspend(typeKey)
   }
 
   private sealed interface PendingDiagnostic {
@@ -316,11 +313,9 @@ internal class IrBindingGraph(
         field = value
         return
       }
-      synchronized(parentSuspendResolutionLock) {
-        field?.clear()
-        parentSuspendBindingAnalysis = null
-        field = null
-      }
+      field?.clear()
+      parentSuspendBindingAnalysis = null
+      field = null
     }
 
   private val bindingLookup
@@ -383,13 +378,11 @@ internal class IrBindingGraph(
   }
 
   fun addBinding(key: IrTypeKey, binding: IrBinding, bindingStack: IrBindingStack) {
-    synchronized(parentSuspendResolutionLock) {
-      val previousSize = realGraph.bindings.size
-      realGraph.tryPut(binding, bindingStack, key)
-      if (realGraph.bindings.size != previousSize) {
-        graphGeneration++
-        decisionCapture?.registered(binding)
-      }
+    val previousSize = realGraph.bindings.size
+    realGraph.tryPut(binding, bindingStack, key)
+    if (realGraph.bindings.size != previousSize) {
+      graphGeneration++
+      decisionCapture?.registered(binding)
     }
   }
 
@@ -489,19 +482,33 @@ internal class IrBindingGraph(
     val factory: KtDiagnosticFactory1<String> = MetroDiagnostics.METRO_ERROR,
   )
 
+  /** Runs graph analysis on prepared inputs. Finish runs on the main compiler thread. */
+  class PreparedSeal(
+    private val graph: PreparedGraphSeal<IrTypeKey>,
+    private val finishGraph: (GraphTopology<IrTypeKey>) -> BindingGraphResult,
+  ) {
+    context(traceScope: TraceScope)
+    fun analyze(): GraphAnalysis<IrTypeKey> = graph.analyze()
+
+    context(traceScope: TraceScope)
+    fun finish(analysis: GraphAnalysis<IrTypeKey>): BindingGraphResult =
+      finishGraph(graph.finish(analysis))
+  }
+
+  /** Resolves bindings and captures the callbacks that must run on the main compiler thread. */
   context(traceScope: TraceScope)
-  fun seal(
+  fun prepareSeal(
     childGraphScopes: List<ChildGraphScopeInfo> = emptyList(),
     onError: (List<GraphError>) -> Unit,
-  ): BindingGraphResult {
-    val topologyResult =
-      trace("seal graph") {
+  ): PreparedSeal {
+    val prepared =
+      trace("prepare graph seal") {
         val roots = buildMap {
           putAll(accessors)
           putAll(injectors)
         }
 
-        realGraph.seal(
+        realGraph.prepareSeal(
           roots = roots,
           keep = extraKeeps,
           shrinkUnusedBindings = metroContext.options.shrinkUnusedBindings,
@@ -527,6 +534,18 @@ internal class IrBindingGraph(
         )
       }
 
+    return PreparedSeal(prepared) { topologyResult ->
+      finishSeal(topologyResult, childGraphScopes, onError)
+    }
+  }
+
+  /** Finishes IR validation and releases lookup state after graph analysis has joined. */
+  context(traceScope: TraceScope)
+  private fun finishSeal(
+    topologyResult: GraphTopology<IrTypeKey>,
+    childGraphScopes: List<ChildGraphScopeInfo>,
+    onError: (List<GraphError>) -> Unit,
+  ): BindingGraphResult {
     val sortedKeys = topologyResult.sortedKeys
     val deferredTypes = topologyResult.deferredTypes
     val reachableKeys = topologyResult.reachableKeys
@@ -569,16 +588,24 @@ internal class IrBindingGraph(
         if (unusedMultibindingElements.isNotEmpty()) {
           val allMultibindings by memoize {
             buildList {
-              realGraph.bindings.forEachValue { b -> if (b is IrBinding.Multibinding) add(b) }
+              realGraph.bindings.forEachValue { b ->
+                if (b is IrBinding.Multibinding) {
+                  add(b)
+                }
+              }
               addAll(bindingLookup.getAvailableMultibindings().values)
             }
               .distinctBy { it.typeKey }
           }
           val suspiciousDiagnostics = mutableListOf<MetroDiagnostic>()
           for ((key, binding) in bindingLookup.getAvailableMultibindings()) {
-            if (binding.declaration != null) continue // Skip explicitly declared
+            if (binding.declaration != null) {
+              continue // Skip explicitly declared
+            }
             val unusedSources = binding.sourceBindings.intersect(unusedMultibindingElements)
-            if (unusedSources.isEmpty()) continue
+            if (unusedSources.isEmpty()) {
+              continue
+            }
 
             // Report the first few bindings
             val examples =

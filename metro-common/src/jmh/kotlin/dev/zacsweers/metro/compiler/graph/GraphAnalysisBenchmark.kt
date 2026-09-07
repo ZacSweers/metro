@@ -94,7 +94,11 @@ open class GraphAnalysisBenchmark {
     for (binding in bindings) {
       graph.tryPut(binding, stack)
     }
-    val result = with(TraceScope.noop()) { graph.seal(roots = roots, shrinkUnusedBindings = false) }
+    val result =
+      with(TraceScope.noop()) {
+        val prepared = graph.prepareSeal(roots = roots, shrinkUnusedBindings = false)
+        prepared.finish(prepared.analyze())
+      }
     blackhole.consume(result)
   }
 
@@ -232,7 +236,8 @@ open class RepresentativeGraphBenchmark {
     val graph = fullyPopulatedGraph()
     val result =
       with(TraceScope.noop()) {
-        graph.seal(roots = workload.roots, shrinkUnusedBindings = false)
+        val prepared = graph.prepareSeal(roots = workload.roots, shrinkUnusedBindings = false)
+        prepared.finish(prepared.analyze())
       }
     blackhole.consume(result)
   }
@@ -242,7 +247,8 @@ open class RepresentativeGraphBenchmark {
     val graph = fullyPopulatedGraph()
     val result =
       with(TraceScope.noop()) {
-        graph.seal(roots = workload.roots, shrinkUnusedBindings = true)
+        val prepared = graph.prepareSeal(roots = workload.roots, shrinkUnusedBindings = true)
+        prepared.finish(prepared.analyze())
       }
     blackhole.consume(result)
   }
@@ -252,7 +258,8 @@ open class RepresentativeGraphBenchmark {
     val graph = workload.newGraph()
     val result =
       with(TraceScope.noop()) {
-        graph.seal(roots = workload.roots, shrinkUnusedBindings = true)
+        val prepared = graph.prepareSeal(roots = workload.roots, shrinkUnusedBindings = true)
+        prepared.finish(prepared.analyze())
       }
     blackhole.consume(result)
   }

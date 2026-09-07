@@ -19,7 +19,10 @@ import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.name.FqName
 
-/** Read-only lookup interface for declarations produced during pass-1 transformations. */
+/**
+ * Looks up declarations produced during core transformations. External declarations are loaded
+ * lazily, so callers must stay on the main compiler thread.
+ */
 internal interface MetroDeclarations {
   fun findBindingContainer(
     declaration: IrClass,

@@ -7,20 +7,15 @@ import dev.zacsweers.metro.compiler.ir.graph.BindingPropertyCollector
 import dev.zacsweers.metro.compiler.ir.graph.GraphNode
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
-import java.util.concurrent.ConcurrentHashMap
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrExpression
-import org.jetbrains.kotlin.ir.types.typeWith
 
-/**
- * Collects context keys used from a parent context during parallel validation. Each child graph
- * validation gets its own collector to track which parent keys it uses.
- */
+/** Tracks one child graph's parent requests. Reads and writes stay on the main compiler thread. */
 internal class UsedKeyCollector {
-  private val usedKeys: MutableSet<IrContextualTypeKey> = ConcurrentHashMap.newKeySet()
+  private val usedKeys = mutableSetOf<IrContextualTypeKey>()
 
   fun record(contextKey: IrContextualTypeKey) {
     usedKeys.add(contextKey)
@@ -75,8 +70,8 @@ internal interface ParentContextReader {
 }
 
 /**
- * Immutable snapshot of a [ParentContext] for parallel read access. Supports the same [mark]
- * operation but writes to a [UsedKeyCollector] instead of mutating internal state.
+ * Captures the parent's available keys for child graph preparation. Each child records requests in
+ * its own [UsedKeyCollector]. Lookups stay on the main compiler thread.
  */
 internal class ParentContextSnapshot(
   private val metroContext: IrMetroContext,
@@ -87,9 +82,8 @@ internal class ParentContextSnapshot(
   /** The current (topmost) parent graph. */
   val currentParentGraph: IrClass,
   /**
-   * Optional ancestor reader for delegating lookups when a key or scope is not found locally. In
-   * parallel mode, when a [ParentContext] created from a snapshot has its own sub-children, the
-   * snapshots it produces need to delegate back to ancestor levels not represented locally.
+   * Delegates missing keys and scopes to earlier ancestors. A child graph's snapshot includes its
+   * local parent level and uses this reader to reach the rest of the hierarchy.
    */
   private val ancestorReader: ParentContextReader? = null,
   /** Graph-private keys from parent graphs (for hinting in missing binding messages). */
@@ -138,11 +132,7 @@ internal class ParentContextSnapshot(
       mode = ParentContextLookupMode.TOKEN_ONLY,
     )
 
-  /**
-   * Marks a key as used and returns a token for later property resolution. Unlike
-   * [ParentContext.mark], this writes to the provided [collector] instead of mutating internal
-   * state, making it safe for parallel access.
-   */
+  /** Records a key in the child's [collector] and returns a token for later property resolution. */
   fun mark(
     key: IrTypeKey,
     scope: IrAnnotation? = null,
@@ -164,7 +154,11 @@ internal class ParentContextSnapshot(
     collector: UsedKeyCollector?,
     mode: ParentContextLookupMode,
   ): ParentContext.Token? {
-    val contextKey = createContextKey(key, isProvider = requiresProviderProperty || scope != null)
+    val contextKey =
+      metroContext.createParentContextKey(
+        key,
+        isProvider = requiresProviderProperty || scope != null,
+      )
 
     // Check if key is already available
     keyOwnership[key]?.let { ownership ->
@@ -208,15 +202,6 @@ internal class ParentContextSnapshot(
     return null
   }
 
-  private fun createContextKey(key: IrTypeKey, isProvider: Boolean): IrContextualTypeKey {
-    return if (isProvider) {
-      val providerType = metroContext.metroSymbols.metroProvider.typeWith(key.type)
-      IrContextualTypeKey.create(key, isWrappedInProvider = true, rawType = providerType)
-    } else {
-      IrContextualTypeKey.create(key)
-    }
-  }
-
   fun graphPrivateKeys(): Set<IrTypeKey> = graphPrivateKeys
 
   /** Creates a [ParentContextReader] backed by this snapshot and the given collector. */
@@ -254,9 +239,8 @@ internal class ParentContextSnapshot(
 internal class ParentContext(
   private val metroContext: IrMetroContext,
   /**
-   * Optional parent reader for delegating lookups when a key or scope is not found in the local
-   * level stack. In parallel mode, when a new [ParentContext] is created from a snapshot, this
-   * preserves access to ancestor levels not represented locally.
+   * Delegates missing keys and scopes to the parent reader. This preserves access to ancestors
+   * outside the local level stack.
    */
   private val parent: ParentContextReader? = null,
 ) : ParentContextReader {
@@ -430,7 +414,11 @@ internal class ParentContext(
   ): Token? {
     // Create the contextual key based on what kind of access is needed
     // Always must be a provider if scope is not null
-    val contextKey = createContextKey(key, isProvider = requiresProviderProperty || scope != null)
+    val contextKey =
+      metroContext.createParentContextKey(
+        key,
+        isProvider = requiresProviderProperty || scope != null,
+      )
 
     // Prefer the nearest provider (deepest level that introduced this key)
     keyIntroStack[key]?.lastOrNull()?.let { providerIdx ->
@@ -495,28 +483,6 @@ internal class ParentContext(
     }
 
     return null
-  }
-
-  private fun createContextKey(key: IrTypeKey, isProvider: Boolean): IrContextualTypeKey {
-    // Build the base contextual key from the type itself.
-    // This correctly handles Map types (which use WrappedType.Map) rather than always using
-    // WrappedType.Canonical, ensuring the token's contextKey matches the property stored in
-    // BindingPropertyContext by addBoundInstanceProperty.
-    val baseKey =
-      with(metroContext) {
-        key.type.asContextualTypeKey(
-          qualifierAnnotation = key.qualifier,
-          hasDefault = false,
-          patchMutableCollections = false,
-          declaration = null,
-        )
-      }
-
-    return if (isProvider) {
-      with(metroContext) { baseKey.wrapInProvider() }
-    } else {
-      baseKey
-    }
   }
 
   fun pushParentGraph(node: GraphNode, isSuspend: (IrTypeKey) -> Boolean) {
@@ -592,10 +558,8 @@ internal class ParentContext(
   }
 
   /**
-   * Creates an immutable snapshot of the current state for parallel read access. The snapshot
-   * captures all available keys and their ownership information at this moment.
-   *
-   * @return A [ParentContextSnapshot] that can be safely used from multiple threads.
+   * Captures available keys and their ownership for child graph preparation. The snapshot retains
+   * ancestor readers and suspend lookups owned by the main compiler thread.
    */
   fun snapshot(): ParentContextSnapshot {
     val keyOwnership = mutableMapOf<IrTypeKey, ParentContextSnapshot.KeyOwnership>()
@@ -657,5 +621,26 @@ internal class ParentContext(
       available.add(key)
       keyIntroStack.getOrPut(key, ::ArrayDeque).addLast(levelIdx)
     }
+  }
+}
+
+/** Keeps map and provider wrappers consistent with the keys stored by addBoundInstanceProperty. */
+private fun IrMetroContext.createParentContextKey(
+  key: IrTypeKey,
+  isProvider: Boolean,
+): IrContextualTypeKey {
+  // Map types use WrappedType.Map so the token's contextKey matches the property stored in
+  // BindingPropertyContext by addBoundInstanceProperty.
+  val baseKey =
+    key.type.asContextualTypeKey(
+      qualifierAnnotation = key.qualifier,
+      hasDefault = false,
+      patchMutableCollections = false,
+      declaration = null,
+    )
+  return if (isProvider) {
+    baseKey.wrapInProvider()
+  } else {
+    baseKey
   }
 }

@@ -13,7 +13,6 @@ import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.trace
 import java.util.concurrent.ForkJoinPool
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
-import org.jetbrains.kotlin.name.ClassId
 
 @Inject
 internal class MetroIrPipeline(
@@ -23,7 +22,6 @@ internal class MetroIrPipeline(
   private val coreTransformers: CoreTransformers,
   private val dependencyGraphTransformer: DependencyGraphTransformer,
   private val graphData: MutableMetroGraphData,
-  private val contributionData: IrContributionData,
   private val lockableTransformers: Set<Lockable>,
   private val traceContext: TraceContext,
   traceScope: TraceScope,
@@ -70,26 +68,29 @@ internal class MetroIrPipeline(
 
         val data = graphData
 
-        // Eagerly populate contribution caches for all known graph scopes
-        // so that lookups are O(1) during (possibly parallel) graph validation.
-        // Extension scopes not known here are lazily populated via ConcurrentHashMap.
-        @Suppress("RETURN_VALUE_NOT_USED")
-        trace("Populate contribution caches") {
-          val seenScopes = mutableSetOf<ClassId>()
-          for (graph in data.allGraphs) {
-            for (scope in graph.scopes) {
-              if (seenScopes.add(scope)) {
-                contributionData.getContributions(scope, graph.declaration)
-                contributionData.getBindingContainerContributions(scope, graph.declaration)
+        // An early graph can include a later graph, so finish every root's supertypes before
+        // graph preparation caches their hierarchies.
+        val graphs =
+          trace("Prepare graph headers") {
+            data.allGraphs.filter { (declaration, annotation, impl) ->
+              try {
+                dependencyGraphTransformer.applyIrContributionMergeIfNeeded(
+                  declaration,
+                  annotation,
+                  impl,
+                )
+                true
+              } catch (_: ExitProcessingException) {
+                // This graph already reported its error. Other roots can still be processed.
+                false
               }
             }
           }
-        }
         lockableTransformers.forEach { it.lock() }
 
         // Second - transform the dependency graphs
         trace("Graph transformers") {
-          for ((declaration, anno, impl) in data.allGraphs) {
+          for ((declaration, anno, impl) in graphs) {
             dependencyGraphTransformer.processGraph(declaration, anno, impl)
           }
         }

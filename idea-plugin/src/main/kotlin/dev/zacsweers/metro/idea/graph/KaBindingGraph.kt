@@ -76,7 +76,7 @@ internal class KaBindingGraph(
   private val reservations: List<ReservedParentKey> = emptyList(),
   private val resolveParentGraph: (GraphContext) -> ParentGraphLookup? = { null },
 ) :
-  // The TraceScope delegation satisfies seal()'s tracing context parameter with a no-op tracer
+  // The TraceScope delegation supplies a no-op tracer for the shared graph phases.
   TraceScope by TraceScope.noop(),
   ErrorReporter<KaBindingStack> {
 
@@ -234,14 +234,15 @@ internal class KaBindingGraph(
     var sealCompleted = false
     val topology =
       try {
-        val topo =
-          realGraph.seal(
+        val prepared =
+          realGraph.prepareSeal(
             roots = roots,
             keep = keeps,
             shrinkUnusedBindings = options.shrinkUnusedBindings,
             ensureActive = ProgressManager::checkCanceled,
             validateBindings = ::validateBindings,
           )
+        val topo = prepared.finish(prepared.analyze())
         // The compiler stops before empty-multibinding reporting when the seal produced errors.
         if (diagnostics.none { it.severity == MetroSeverity.ERROR }) {
           reportEmptyMultibindings()
