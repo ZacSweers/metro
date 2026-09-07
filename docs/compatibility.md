@@ -8,8 +8,9 @@ Pre-release versions are normally only tested during their development cycle. Af
 
 | Kotlin version  | Metro versions (inclusive) | Notes                                                 |
 |-----------------|----------------------------|-------------------------------------------------------|
-| 2.5.0-dev-3513  | 1.5.0 -                    |                                                       |
-| 2.5.0-dev-498   | 1.3.2 -                    |                                                       |
+| 2.5.0-dev-4967  | 1.5.0 -                    |                                                       |
+| 2.5.0-dev-3513  | 1.4.2 - [1.4.2]            |                                                       |
+| 2.5.0-dev-498   | 1.3.2 - [1.4.2]            |                                                       |
 | 2.4.20          | 1.2.0 -                    |                                                       |
 | 2.4.20-RC3      | 1.2.0 - [1.4.2]            |                                                       |
 | 2.4.20-RC2      | 1.2.0 - [1.4.2]            |                                                       |
@@ -92,8 +93,7 @@ The following Kotlin versions are tested via CI:
 
 | Kotlin Version  |
 |-----------------|
-| 2.5.0-dev-3513  |
-| 2.5.0-dev-498   |
+| 2.5.0-dev-4967  |
 | 2.4.20          |
 | 2.4.20-dev-6138 |
 | 2.4.10          |
@@ -115,14 +115,15 @@ The following IDE versions are tested via IDE integration tests:
 
 | IntelliJ IDEA | Android Studio                |
 |---------------|-------------------------------|
-| 2025.3.2      | 2025.3.1.8 (Panda 1 Patch 1)  |
-| 2026.1.1      | 2025.3.2.6 (Panda 2)          |
-| 2026.1.2      | 2025.3.3.6 (Panda 3)          |
-| 2026.1.3      | 2025.3.4.7 (Panda 4 Patch 1)  |
-| 2026.2        | 2026.1.1.8 (Quail 1)          |
-| 2026.2.1      | 2026.1.2.10 (Quail 2)         |
-|               | 2026.1.3.7 (Quail 3)          |
-|               | 2026.1.4.4 (Quail 4 Canary 4) |
+| 2025.3.2      | 2025.3.1.8 (Panda 1 Patch 1)   |
+| 2026.1.1      | 2025.3.2.6 (Panda 2)           |
+| 2026.1.2      | 2025.3.3.6 (Panda 3)           |
+| 2026.1.3      | 2025.3.4.7 (Panda 4 Patch 1)   |
+| 2026.2        | 2026.1.1.8 (Quail 1)           |
+| 2026.2.1      | 2026.1.2.10 (Quail 2)          |
+| 2026.2.2      | 2026.1.3.7 (Quail 3)           |
+| 263.3889.65   | 2026.1.4.7 (Quail 4)           |
+|               | 2026.2.1.4 (Rabbit 1 Canary 4) |
 
 ## Runtime Compatibility
 

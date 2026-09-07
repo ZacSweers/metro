@@ -122,12 +122,18 @@ def gh_api(endpoint, jq_filter=None):
 
 def fetch_kotlin_version(tag):
     """Fetch the Kotlin version from a given intellij-community tag."""
-    url = f"{RAW_GH_BASE}/{tag}/{FILE_PATH}"
-    body, status = fetch_url(url)
-    if status == 200:
-        m = re.search(r'kotlin-compiler-common-for-ide:([^"]+)', body)
-        if m:
-            return m.group(1)
+    paths = (
+        FILE_PATH,
+        # Newer IDE sources declare the compiler dependency in a module.
+        "libraries/kotlinc/kotlin-compiler-common/intellij.libraries.kotlinc.kotlin.compiler.common.iml",
+    )
+    for path in paths:
+        url = f"{RAW_GH_BASE}/{tag}/{path}"
+        body, status = fetch_url(url)
+        if status == 200:
+            m = re.search(r'kotlin-compiler-common-for-ide:([^"]+)', body)
+            if m:
+                return m.group(1)
     return None
 
 

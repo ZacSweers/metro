@@ -392,8 +392,7 @@ class CompatContextTest {
         "2.4.0",
         "2.4.20-dev-6138",
         "2.4.20",
-        "2.5.0-dev-498",
-        "2.5.0-dev-3513",
+        "2.5.0-dev-4967",
       )
 
     // Current compiler version -> expected factory minVersion.
@@ -413,8 +412,9 @@ class CompatContextTest {
         // Unmapped future IDE build picks the lowest same-base factory
         "2.4.20-ij262-1" to "2.4.20-dev-6138",
         "2.4.20" to "2.4.20",
-        "2.5.0-dev-498" to "2.5.0-dev-498",
-        "2.5.0-dev-3513" to "2.5.0-dev-3513",
+        "2.5.0-dev-4967" to "2.5.0-dev-4967",
+        // IJ 2026.3 EAP uses a regular dev version.
+        "2.5.0-dev-5423" to "2.5.0-dev-4967",
       )
 
     for ((currentVersion, expectedMinVersion) in expectations) {
