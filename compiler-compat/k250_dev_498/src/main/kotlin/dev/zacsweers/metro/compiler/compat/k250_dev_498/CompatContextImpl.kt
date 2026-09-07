@@ -3,7 +3,7 @@
 package dev.zacsweers.metro.compiler.compat.k250_dev_498
 
 import dev.zacsweers.metro.compiler.compat.CompatContext
-import dev.zacsweers.metro.compiler.compat.k2420_beta2.CompatContextImpl as DelegateType
+import dev.zacsweers.metro.compiler.compat.k2420.CompatContextImpl as DelegateType
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.declarations.IrPackageFragment
 import org.jetbrains.kotlin.ir.declarations.createEmptyExternalPackageFragment as createEmptyExternalPackageFragmentNative

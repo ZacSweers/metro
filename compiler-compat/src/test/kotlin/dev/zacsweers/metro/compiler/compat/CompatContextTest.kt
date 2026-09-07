@@ -382,32 +382,47 @@ class CompatContextTest {
   }
 
   @Test
-  fun `real factory matrix resolves reasonably for IDE-bundled compiler versions`() {
+  fun `real factory matrix resolves released and IDE-bundled compiler versions`() {
     // Mirrors the actual shipped compat modules. Keep in sync when adding/removing modules.
-    val realMinVersions = listOf("2.3.0", "2.3.20", "2.4.0-dev-2124", "2.4.0", "2.4.20-dev-6138")
+    val realMinVersions =
+      listOf(
+        "2.3.0",
+        "2.3.20",
+        "2.4.0-dev-2124",
+        "2.4.0",
+        "2.4.20-dev-6138",
+        "2.4.20",
+        "2.5.0-dev-498",
+        "2.5.0-dev-3513",
+      )
 
-    // currentVersion -> expected factory minVersion. Current versions are the (aliased) kotlinc
-    // versions bundled by IDEs we test in ide-integration-tests, plus the dev track itself.
+    // Current compiler version -> expected factory minVersion.
     val expectations =
       mapOf(
         // IJ 2025.3.x / AS Panda (2.3.20-ij253-*, 2.3.255-dev-255 -> 2.3.0-dev-9992)
         "2.3.0-dev-9992" to "2.3.0",
         // IJ 2026.1.1 (2.4.0-ij261-32 -> 2.4.0-dev-2124)
         "2.4.0-dev-2124" to "2.4.0-dev-2124",
-        // IJ 2026.1.2/.3 / AS Quail (2.4.0-ij261-50/-64, 2.4.255-dev-255 -> 2.4.0-dev-2633)
+        // IJ 2026.1.2/.3 (2.4.0-ij261-50/-64 -> 2.4.0-dev-2633)
         "2.4.0-dev-2633" to "2.4.0-dev-2124",
-        // IJ 2026.2 RC (2.4.20-dev-6724)
-        "2.4.20-dev-6724" to "2.4.20-dev-6138",
+        "2.4.20-dev-6725" to "2.4.20-dev-6138",
+        // IJ 2026.2.1/.2 and AS Quail/Rabbit use the retained dev factory.
+        "2.4.20-ij262-34" to "2.4.20-dev-6138",
+        "2.4.20-ij262-52" to "2.4.20-dev-6138",
+        "2.4.255-dev-255" to "2.4.20-dev-6138",
         // Unmapped future IDE build picks the lowest same-base factory
         "2.4.20-ij262-1" to "2.4.20-dev-6138",
+        "2.4.20" to "2.4.20",
+        "2.5.0-dev-498" to "2.5.0-dev-498",
+        "2.5.0-dev-3513" to "2.5.0-dev-3513",
       )
 
     for ((currentVersion, expectedMinVersion) in expectations) {
       val factories = realMinVersions.map {
         FakeFactory(minVersion = it, reportedCurrentVersion = currentVersion)
       }
-      val resolved =
-        CompatContext.resolveFactory(factories.asSequence(), testVersionString = currentVersion)
+      val aliasedVersion = CompilerVersionAliases.map(KotlinToolingVersion(currentVersion))!!
+      val resolved = CompatContext.resolveFactory(aliasedVersion, factories.asSequence())
       assertThat(resolved.minVersion).isEqualTo(expectedMinVersion)
     }
   }

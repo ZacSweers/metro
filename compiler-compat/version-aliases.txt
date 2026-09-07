@@ -12,15 +12,12 @@
 2.3.10
 2.3.20
 2.3.21
+# Retained for IDEs mapped to 2.4.0-dev-2124 or 2.4.0-dev-2633.
 2.4.0-dev-2124
 2.4.0
 2.4.10
+# Retained for IDEs mapped to 2.4.20-dev-6725.
 2.4.20-dev-6138
-2.4.20-Beta1
-2.4.20-Beta2
-2.4.20-RC
-2.4.20-RC2
-2.4.20-RC3
 2.4.20
 2.5.0-dev-498
 2.5.0-dev-3513

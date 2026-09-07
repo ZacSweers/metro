@@ -1,9 +1,11 @@
 // Copyright (C) 2026 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
-package dev.zacsweers.metro.compiler.compat.k2420_beta2
+package dev.zacsweers.metro.compiler.compat.k2420
 
 import dev.zacsweers.metro.compiler.compat.CompatContext
-import dev.zacsweers.metro.compiler.compat.k2420_beta1.CompatContextImpl as DelegateType
+import dev.zacsweers.metro.compiler.compat.IrGeneratedDeclarationsRegistrarCompat
+import dev.zacsweers.metro.compiler.compat.k2420_dev_6138.CompatContextImpl as DelegateType
+import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.fir.expressions.FirResolvedQualifier
 import org.jetbrains.kotlin.fir.expressions.builder.buildResolvedQualifier
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
@@ -15,6 +17,14 @@ import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 
 public class CompatContextImpl : CompatContext by DelegateType() {
+  override fun createIrGeneratedDeclarationsRegistrar(
+    pluginContext: IrPluginContext
+  ): IrGeneratedDeclarationsRegistrarCompat {
+    return RegisterPropertyIrGeneratedDeclarationsRegistrarCompat(
+      pluginContext.metadataDeclarationRegistrar
+    )
+  }
+
   override fun buildResolvedQualifierCompat(
     classId: ClassId,
     classSymbol: FirClassLikeSymbol<*>,
@@ -38,7 +48,7 @@ public class CompatContextImpl : CompatContext by DelegateType() {
   }
 
   public class Factory : CompatContext.Factory {
-    override val minVersion: String = "2.4.20-Beta2"
+    override val minVersion: String = "2.4.20"
 
     override fun create(): CompatContext = CompatContextImpl()
   }
