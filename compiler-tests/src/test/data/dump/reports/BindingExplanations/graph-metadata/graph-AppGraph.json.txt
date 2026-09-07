@@ -1141,36 +1141,6 @@
       "outcome": "selected",
       "candidates": [
         {
-          "id": "11:ParentValue|11:ParentValue",
-          "key": "ParentValue",
-          "status": "selected",
-          "reason": "selected_implicit",
-          "declaration": {
-            "id": "ParentValue",
-            "label": "ParentValue"
-          },
-          "relatedDeclarations": [],
-          "details": []
-        }
-      ],
-      "request": {
-        "key": "ParentValue",
-        "hasDefault": false,
-        "isOptional": false
-      },
-      "details": [
-        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
-      ]
-    },
-    {
-      "context": {
-        "id": "8:AppGraph",
-        "label": "AppGraph"
-      },
-      "phase": "lookup",
-      "outcome": "selected",
-      "candidates": [
-        {
           "id": "18:PrioritizedService|19:HighPriorityService",
           "key": "PrioritizedService",
           "status": "selected",
