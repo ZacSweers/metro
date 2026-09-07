@@ -393,6 +393,7 @@ class CompatContextTest {
         "2.4.20-dev-6138",
         "2.4.20",
         "2.5.0-dev-4967",
+        "2.5.0-dev-6460",
       )
 
     // Current compiler version -> expected factory minVersion.
@@ -415,6 +416,7 @@ class CompatContextTest {
         "2.5.0-dev-4967" to "2.5.0-dev-4967",
         // IJ 2026.3 EAP uses a regular dev version.
         "2.5.0-dev-5423" to "2.5.0-dev-4967",
+        "2.5.0-dev-6460" to "2.5.0-dev-6460",
       )
 
     for ((currentVersion, expectedMinVersion) in expectations) {

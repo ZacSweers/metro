@@ -30,6 +30,7 @@ import dev.zacsweers.metro.compiler.ir.NOOP_TYPE_REMAPPER
 import dev.zacsweers.metro.compiler.ir.ProviderFactory
 import dev.zacsweers.metro.compiler.ir.ProviderFactory.Companion.lookupRealDeclaration
 import dev.zacsweers.metro.compiler.ir.addBackingFieldTo
+import dev.zacsweers.metro.compiler.ir.addDefaultConstructor
 import dev.zacsweers.metro.compiler.ir.addHiddenFromObjCAnnotation
 import dev.zacsweers.metro.compiler.ir.allocateName
 import dev.zacsweers.metro.compiler.ir.annotationClass
@@ -127,7 +128,6 @@ import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.types.typeWithParameters
 import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.addChild
-import org.jetbrains.kotlin.ir.util.addSimpleDelegatingConstructor
 import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
@@ -1372,12 +1372,7 @@ internal class BindingContainerTransformer(
         createThisReceiverParameter()
 
         if (isObject) {
-          addSimpleDelegatingConstructor(
-              irBuiltIns.anyClass.owner.primaryConstructor!!,
-              irBuiltIns,
-              isPrimary = true,
-            )
-            .apply { visibility = DescriptorVisibilities.PRIVATE }
+          addDefaultConstructor().apply { visibility = DescriptorVisibilities.PRIVATE }
         } else {
           // Non-objects need a companion for create()/newInstance() static methods
           val factoryCls = this
@@ -1392,11 +1387,7 @@ internal class BindingContainerTransformer(
               factoryCls.addChild(this)
               superTypes = listOf(irBuiltIns.anyType)
               createThisReceiverParameter()
-              addSimpleDelegatingConstructor(
-                irBuiltIns.anyClass.owner.primaryConstructor!!,
-                irBuiltIns,
-                isPrimary = true,
-              )
+              addDefaultConstructor()
             }
         }
       }

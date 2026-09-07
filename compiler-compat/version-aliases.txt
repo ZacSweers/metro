@@ -21,3 +21,4 @@
 2.4.20
 # Retained for IntelliJ 2026.3 EAP (2.5.0-dev-5423).
 2.5.0-dev-4967
+2.5.0-dev-6460

@@ -58,6 +58,7 @@ Changelog
 - Build against Kotlin `2.4.20`. Note the runtime artifacts still target Kotlin `2.3.0` and Metro supports a wide range of compiler versions. See the [compatibility docs](https://zacsweers.github.io/metro/latest/compatibility/) for a full table of compatible versions.
 - Update embedded Okio dependency to `3.18.2`.
 - Raise Kotlin `2.5.0` support to `2.5.0-dev-4967` for IntelliJ 2026.3 EAPs. This replaces the `2.5.0-dev-498` and `2.5.0-dev-3513` compat modules.
+- Test Kotlin `2.5.0-dev-6460`.
 - Test Kotlin `2.4.20`.
 - Test Kotlin `2.4.20-RC2`.
 - Test Kotlin `2.4.20-RC3`.
