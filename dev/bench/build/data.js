@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788751964877,
+  "lastUpdate": 1788752670512,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -23296,6 +23296,62 @@ window.BENCHMARK_DATA = {
             "value": 19466.042999999998,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -2.43%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "b74d5223~1",
+          "message": "[before] Limit contribution replacements to graph scopes (#",
+          "timestamp": "2026-09-06T22:55:36-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/b74d522302ae4fc02671ecccfdd5f7bdb6ed2e10"
+        },
+        "date": 1788752670512,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 14736.164,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "b74d522302ae4fc02671ecccfdd5f7bdb6ed2e10",
+          "message": "[after] Limit contribution replacements to graph scopes (#",
+          "timestamp": "2026-09-06T22:55:36-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/b74d522302ae4fc02671ecccfdd5f7bdb6ed2e10"
+        },
+        "date": 1788752670513,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 14517.166000000001,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -1.49%"
           }
         ]
       }
