@@ -45,7 +45,7 @@ class DeepTypeSubstitutionTest {
     val target = interfaceClass("Target", left, right)
 
     // This call bypasses the remapper cache.
-    buildDeepSubstitutionMap(target, target.typeWith())
+    val _ = buildDeepSubstitutionMap(target, target.typeWith())
 
     assertEquals(supertypeLists.sumOf { it.size }, supertypeLists.sumOf { it.reads })
   }

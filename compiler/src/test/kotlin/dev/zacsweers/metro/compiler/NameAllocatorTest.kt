@@ -125,7 +125,7 @@ class NameAllocatorTest {
     val nameAllocator = NameAllocator()
     nameAllocator.reserveName("foo", 1)
     assertThrows<IllegalArgumentException> {
-        @Suppress("RETURN_VALUE_NOT_USED") nameAllocator.newName("bar", 1)
+        val _ = nameAllocator.newName("bar", 1)
       }
       .hasMessageThat()
       .isEqualTo("tag 1 cannot be used for both 'foo' and 'bar'")
@@ -134,7 +134,7 @@ class NameAllocatorTest {
   @Test
   fun useBeforeAllocateForbidden() {
     val nameAllocator = NameAllocator()
-    assertThrows<IllegalArgumentException> { @Suppress("RETURN_VALUE_NOT_USED") nameAllocator[1] }
+    assertThrows<IllegalArgumentException> { val _ = nameAllocator[1] }
       .hasMessageThat()
       .isEqualTo("unknown tag: 1")
   }

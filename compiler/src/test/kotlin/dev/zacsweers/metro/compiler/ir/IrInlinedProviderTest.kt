@@ -31,7 +31,6 @@ class IrInlinedProviderTest {
       val original = InlinedProviderProto(value_ = value)
       val decoded =
         InlinedProviderProto.ADAPTER.decode(InlinedProviderProto.ADAPTER.encode(original))
-          as InlinedProviderProto
       val provider =
         assertNotNull(IrInlinedProvider.fromProto(decoded), "Lost inline value: $value")
 

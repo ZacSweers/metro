@@ -65,11 +65,12 @@ class ParallelMapTest {
     val threadsUsed = ConcurrentHashMap.newKeySet<Thread>()
     val input = (1..20).toList()
 
-    input.parallelMap(pool) {
-      threadsUsed.add(Thread.currentThread())
-      Thread.sleep(50)
-      it
-    }
+    val _ =
+      input.parallelMap(pool) {
+        threadsUsed.add(Thread.currentThread())
+        Thread.sleep(50)
+        it
+      }
 
     assertTrue(threadsUsed.size > 1, "Expected multiple threads, got ${threadsUsed.size}")
   }
@@ -90,10 +91,13 @@ class ParallelMapTest {
   fun `transform exceptions propagate`() {
     val input = listOf(1, 2, 3, 4, 5)
     try {
-      input.parallelMap(pool) {
-        if (it == 3) throw IllegalStateException("boom")
-        it
-      }
+      val _ =
+        input.parallelMap(pool) {
+          if (it == 3) {
+            throw IllegalStateException("boom")
+          }
+          it
+        }
       throw AssertionError("Expected exception")
     } catch (e: Exception) {
       val cause = if (e.cause is IllegalStateException) e.cause!! else e
@@ -165,11 +169,12 @@ class ParallelMapTest {
     val processedBy = ConcurrentHashMap<Int, String>()
     val input = (1..40).toList()
 
-    input.parallelMap(pool) {
-      processedBy[it] = Thread.currentThread().name
-      Thread.sleep(5)
-      it
-    }
+    val _ =
+      input.parallelMap(pool) {
+        processedBy[it] = Thread.currentThread().name
+        Thread.sleep(5)
+        it
+      }
 
     // Every item should have been processed
     assertEquals(input.toSet(), processedBy.keys)
