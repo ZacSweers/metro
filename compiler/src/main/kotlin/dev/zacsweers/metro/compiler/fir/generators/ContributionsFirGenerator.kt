@@ -180,6 +180,16 @@ internal class ContributionsFirGenerator(
   private val topLevelContributionHolders = mutableMapOf<ClassId, ContributionsHolder>()
   private val contributionContainerScopes = mutableMapOf<ClassId, Map<ClassId, ClassId>>()
 
+  /**
+   * Tracks the `BindsMirror` class ids that *this* generator is responsible for generating.
+   *
+   * Both this generator and [BindingMirrorClassFirGenerator] can generate a `BindsMirror` nested
+   * class, but for different owners (this one handles `@MetroContribution` class declarations; the
+   * other handles classes with direct `@Binds`/`@Multibinds` members), they claim `INIT` for the
+   * same class and the composite emits two identical private constructors into the FIR.
+   */
+  private val mirrorClassesToGenerate = mutableSetOf<ClassId>()
+
   /** Cache for [resolveDefaultBindingTypeKey] results to avoid redundant resolution. */
   private val defaultBindingTypeKeyCache = mutableMapOf<ClassId, FirRefTypeKey?>()
 
@@ -398,13 +408,14 @@ internal class ContributionsFirGenerator(
     }
   }
 
-  // TODO dedupe with BindingMirrorClassFirGenerator
   override fun getCallableNamesForClass(
     classSymbol: FirClassSymbol<*>,
     context: MemberGenerationContext,
   ): Set<Name> {
-    // Only generate constructor for the mirror class
-    if (classSymbol.name == Symbols.Names.BindsMirrorClass) {
+    if (
+      classSymbol.name == Symbols.Names.BindsMirrorClass &&
+        classSymbol.classId in mirrorClassesToGenerate
+    ) {
       return setOf(SpecialNames.INIT)
     }
 
@@ -448,9 +459,11 @@ internal class ContributionsFirGenerator(
     return emptySet()
   }
 
-  // TODO dedupe with BindingMirrorClassFirGenerator
   override fun generateConstructors(context: MemberGenerationContext): List<FirConstructorSymbol> {
-    if (context.owner.name == Symbols.Names.BindsMirrorClass) {
+    if (
+      context.owner.name == Symbols.Names.BindsMirrorClass &&
+        context.owner.classId in mirrorClassesToGenerate
+    ) {
       return listOf(createDefaultPrivateConstructor(context.owner, Keys.Default).symbol)
     }
 
@@ -884,6 +897,9 @@ internal class ContributionsFirGenerator(
       val canReadContributionDirectly =
         useDirectBindingDeclarations && classSymbol.isEffectivelyPublicInRawFir()
       return if (!isSupertypeContribution && !canReadContributionDirectly) {
+        mirrorClassesToGenerate.add(
+          classSymbol.classId.createNestedClassId(Symbols.Names.BindsMirrorClass)
+        )
         setOf(Symbols.Names.BindsMirrorClass)
       } else {
         emptySet()
