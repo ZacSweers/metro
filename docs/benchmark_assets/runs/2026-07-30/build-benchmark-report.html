@@ -71,6 +71,18 @@
         .notes-section li + li { margin-top: 0.5rem; }
         .gc-time { color: #888; font-size: 0.85em; }
         .stability { display: block; color: #888; font-size: 0.78em; margin-top: 0.2rem; }
+        .sample-panel { border-top: 1px solid #e5e7eb; margin-top: 1.5rem; padding-top: 1.25rem; }
+        .sample-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; }
+        .sample-heading h3 { margin: 0; font-size: 1rem; font-weight: 600; }
+        .sample-description, .sample-note { color: #666; font-size: 0.8rem; line-height: 1.5; }
+        .sample-description { margin: 0.35rem 0 0; }
+        .sample-controls { display: inline-flex; flex-shrink: 0; border: 1px solid #ccd2da; border-radius: 6px; overflow: hidden; }
+        .sample-controls button { border: 0; padding: 0.5rem 0.75rem; background: #fff; color: #536171; font: inherit; font-size: 0.8rem; cursor: pointer; }
+        .sample-controls button + button { border-left: 1px solid #ccd2da; }
+        .sample-controls button[aria-pressed="true"] { background: #263c54; color: #fff; }
+        .sample-controls button:focus-visible { outline: 2px solid #0078C6; outline-offset: -3px; }
+        .sample-chart { height: 240px; margin: 1rem 0 0.5rem; }
+        .sample-note { margin: 0.5rem 0 0; }
     </style>
 </head>
 <body>
@@ -576,6 +588,125 @@ function frameworkVersion(key) {
     }
 }
 
+// Each series owns its median and preserves the recorded measurement order.
+function getSampleSeries(benchmark) {
+    const series = [];
+    for (const result of benchmark.results) {
+        for (const ref of [1, 2]) {
+            const reference = benchmarkData.refs[`ref${ref}`];
+            const samples = result[`stability${ref}`]?.samplesMs;
+            const validSamples = Array.isArray(samples) && samples.length > 0
+                && samples.every(value => Number.isFinite(value) && value > 0);
+            if (!reference || !validSamples) {
+                continue;
+            }
+            // Sorting a copy keeps chronological samples intact for plotting and tooltips.
+            const sorted = [...samples].sort((a, b) => a - b);
+            const middle = Math.floor(sorted.length / 2);
+            const median = sorted.length % 2 === 0
+                ? (sorted[middle - 1] + sorted[middle]) / 2 : sorted[middle];
+            series.push({
+                label: benchmarkData.refs.ref2 ? `${result.framework} · ${reference.label}` : result.framework,
+                samples, median, color: colors[result.key] || '#607D8B', ref,
+            });
+        }
+    }
+    return series;
+}
+
+// Older reports with no measured samples keep their existing summary charts.
+function renderSamplePanel(benchmark, idx) {
+    if (!getSampleSeries(benchmark).length) {
+        return '';
+    }
+    return `<section class="sample-panel" id="samples-${idx}" aria-labelledby="sample-title-${idx}">
+        <div class="sample-heading">
+            <div><h3 id="sample-title-${idx}">Iteration times</h3>
+                <p class="sample-description">Each line follows one framework’s measured builds after warm-up.</p></div>
+            <div class="sample-controls" role="group" aria-label="${benchmark.name} chart view">
+                <button type="button" data-view="seconds" aria-pressed="true" onclick="setSampleView(${idx}, 'seconds')">Iteration times</button>
+                <button type="button" data-view="relative" aria-pressed="false" onclick="setSampleView(${idx}, 'relative')">Stability</button>
+            </div>
+        </div>
+        <p class="sample-note" id="sample-scale-note-${idx}" aria-live="polite"></p>
+        <div class="chart-container sample-chart"><canvas id="sample-chart-${idx}" role="img"></canvas></div>
+        <p class="sample-note">Build numbers show order within each run. Frameworks were measured separately. Click a legend label to hide a line.</p>
+    </section>`;
+}
+
+function formatSamplePercent(value) {
+    const rounded = Number(value.toFixed(1));
+    return `${rounded > 0 ? '+' : ''}${rounded.toFixed(1)}%`;
+}
+
+const sampleCharts = [];
+
+// Switching views updates the title and chart in place so hidden framework lines stay hidden.
+function setSampleView(idx, view) {
+    const chart = sampleCharts[idx];
+    const relative = view === 'relative';
+    chart.data.datasets.forEach(dataset => {
+        dataset.data = dataset.samples.map(value => relative
+            ? (value / dataset.sampleMedian - 1) * 100 : value / 1000);
+    });
+    chart.options.scales.y.title.text = relative ? 'Deviation from own median (%)' : 'Time (seconds)';
+    chart.options.scales.y.ticks.callback = value => relative ? formatSamplePercent(value) : `${value}s`;
+    const note = relative
+        ? '0% is each line’s own median. A downward slope means later builds took less time.'
+        : 'Elapsed time for every measured build. Lower is faster.';
+    document.getElementById(`sample-title-${idx}`).textContent = relative ? 'Run stability' : 'Iteration times';
+    document.getElementById(`sample-scale-note-${idx}`).textContent = note;
+    document.getElementById(`sample-chart-${idx}`).setAttribute('aria-label', `${benchmarkData.benchmarks[idx].name}: measured build sequence. ${note}`);
+    document.querySelectorAll(`#samples-${idx} [data-view]`).forEach(button => {
+        button.setAttribute('aria-pressed', String(button.dataset.view === view));
+    });
+    chart.update('none');
+}
+
+// Every valid raw sample remains visible, including outliers and unequal series lengths.
+function renderSampleChart(benchmark, idx) {
+    const series = getSampleSeries(benchmark);
+    if (!series.length) {
+        return;
+    }
+    const count = Math.max(...series.map(item => item.samples.length));
+    sampleCharts[idx] = new Chart(document.getElementById(`sample-chart-${idx}`), {
+        type: 'line',
+        data: {
+            labels: Array.from({ length: count }, (_, index) => index + 1),
+            datasets: series.map(item => ({
+                label: item.label, samples: item.samples, sampleMedian: item.median, data: [],
+                borderColor: item.color, backgroundColor: item.color, borderWidth: 2,
+                borderDash: item.ref === 2 ? [5, 4] : [], pointStyle: item.ref === 2 ? 'rect' : 'circle',
+                pointRadius: 3, pointHoverRadius: 5, tension: 0, fill: false, spanGaps: false,
+            })),
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false, animation: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { position: 'bottom', labels: { boxWidth: 16, boxHeight: 3, padding: 16 } },
+                tooltip: { callbacks: {
+                    title: items => `Measured build ${items[0].label}`,
+                    label: context => {
+                        const sample = context.dataset.samples[context.dataIndex];
+                        const deviation = (sample / context.dataset.sampleMedian - 1) * 100;
+                        return `${context.dataset.label}: ${(sample / 1000).toFixed(3)}s (${formatSamplePercent(deviation)} from its median)`;
+                    },
+                } },
+            },
+            scales: {
+                x: { title: { display: true, text: 'Measured build' }, grid: { display: false }, ticks: { precision: 0 } },
+                y: {
+                    beginAtZero: true, title: { display: true, text: '' }, ticks: {},
+                    grid: { color: context => context.tick.value === 0 ? '#8492a3' : '#edf0f3' },
+                },
+            },
+        },
+    });
+    setSampleView(idx, 'seconds');
+}
+
 function renderBenchmarks() {
     const container = document.getElementById('benchmarks');
     const isComparison = Boolean(benchmarkData.refs.ref2);
@@ -588,10 +719,15 @@ function renderBenchmarks() {
             <table><thead><tr><th></th><th>Framework</th>${isComparison
                 ? `<th class="numeric">${benchmarkData.refs.ref1.label}</th><th class="numeric">vs <span class="baseline-header">${getBaselineLabel()}</span></th><th class="numeric">${benchmarkData.refs.ref2.label}</th><th class="numeric">vs <span class="baseline-header">${getBaselineLabel()}</span></th><th class="numeric">Difference</th>`
                 : `<th class="numeric">Time</th><th class="numeric">vs <span class="baseline-header">${getBaselineLabel()}</span></th>`}
-            </tr></thead><tbody id="table-${idx}"></tbody></table></div>`;
+            </tr></thead><tbody id="table-${idx}"></tbody></table>
+            ${renderSamplePanel(benchmark, idx)}</div>`;
     });
     container.innerHTML = html;
-    benchmarkData.benchmarks.forEach((benchmark, idx) => { renderChart(benchmark, idx); renderTable(benchmark, idx); });
+    benchmarkData.benchmarks.forEach((benchmark, idx) => {
+        renderChart(benchmark, idx);
+        renderTable(benchmark, idx);
+        renderSampleChart(benchmark, idx);
+    });
 }
 
 const charts = [];
