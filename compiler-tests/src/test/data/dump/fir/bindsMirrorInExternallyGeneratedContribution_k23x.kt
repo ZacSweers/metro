@@ -1,3 +1,4 @@
+// COMPILER_VERSION: 2.3
 // GENERATE_CLASSES_IN_IR: false
 // Regression test for duplicate BindsMirror constructors.
 //

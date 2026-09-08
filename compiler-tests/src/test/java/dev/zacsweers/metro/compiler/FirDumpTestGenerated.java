@@ -26,9 +26,15 @@ public class FirDumpTestGenerated extends AbstractFirDumpTest {
   }
 
   @Test
-  @TestMetadata("bindsMirrorInExternallyGeneratedContribution.kt")
-  public void testBindsMirrorInExternallyGeneratedContribution() {
-    run("bindsMirrorInExternallyGeneratedContribution.kt");
+  @TestMetadata("bindsMirrorInExternallyGeneratedContribution_k23x.kt")
+  public void testBindsMirrorInExternallyGeneratedContribution_k23x() {
+    run("bindsMirrorInExternallyGeneratedContribution_k23x.kt");
+  }
+
+  @Test
+  @TestMetadata("bindsMirrorInExternallyGeneratedContribution_k24x.kt")
+  public void testBindsMirrorInExternallyGeneratedContribution_k24x() {
+    run("bindsMirrorInExternallyGeneratedContribution_k24x.kt");
   }
 
   @Test

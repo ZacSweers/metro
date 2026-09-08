@@ -354,6 +354,34 @@ public class ReportsTestGenerated extends AbstractReportsTest {
   }
 
   @Nested
+  @TestMetadata("compiler-tests/src/test/data/dump/reports/ProviderInlineFallbacks")
+  @TestDataPath("$PROJECT_ROOT")
+  public class ProviderInlineFallbacks {
+    private void run(String fileName) {
+      runTest("compiler-tests/src/test/data/dump/reports/ProviderInlineFallbacks/" + fileName);
+    }
+
+    @Test
+    public void testAllFilesPresentInProviderInlineFallbacks() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/ProviderInlineFallbacks"), Pattern.compile("^(.+)\\.kt$"), null, true);
+    }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/dump/reports/ProviderInlineFallbacks/graph-metadata")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Graph_metadata {
+      private void run(String fileName) {
+        runTest("compiler-tests/src/test/data/dump/reports/ProviderInlineFallbacks/graph-metadata/" + fileName);
+      }
+
+      @Test
+      public void testAllFilesPresentInGraph_metadata() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/ProviderInlineFallbacks/graph-metadata"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      }
+    }
+  }
+
+  @Nested
   @TestMetadata("compiler-tests/src/test/data/dump/reports/UnmatchedReplacement")
   @TestDataPath("$PROJECT_ROOT")
   public class UnmatchedReplacement {

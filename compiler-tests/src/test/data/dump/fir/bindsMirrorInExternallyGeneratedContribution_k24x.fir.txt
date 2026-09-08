@@ -1,4 +1,4 @@
-FILE: bindsMirrorInExternallyGeneratedContribution.kt
+FILE: bindsMirrorInExternallyGeneratedContribution_k24x.kt
     package test
 
     @R|kotlin/annotation/Target|(allowedTargets = vararg(Q|kotlin/annotation/AnnotationTarget|.R|kotlin/annotation/AnnotationTarget.CLASS|) [evaluated = vararg(Q|kotlin/annotation/AnnotationTarget|.R|kotlin/annotation/AnnotationTarget.CLASS|)]) public final annotation class GenerateBindsContribution : R|kotlin/Annotation| {
