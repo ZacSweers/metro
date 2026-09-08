@@ -1775,7 +1775,18 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Unreleased">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#143" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        1.4.3
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1.4.3">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -4886,7 +4897,18 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Unreleased">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#143" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        1.4.3
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1.4.3">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -7919,9 +7941,11 @@
 
 <h1 id="changelog">Changelog<a class="headerlink" href="#changelog" title="Permanent link">&para;</a></h1>
 <h2 id="unreleased"><strong>Unreleased</strong><a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
+<h2 id="143">1.4.3<a class="headerlink" href="#143" title="Permanent link">&para;</a></h2>
+<p><em>2026-09-08</em></p>
 <h3 id="enhancements">Enhancements<a class="headerlink" href="#enhancements" title="Permanent link">&para;</a></h3>
 <ul>
-<li><strong>[FIR]</strong> Warn when a <code>@ContributesTo</code> interface only exposes bindings and recommend making it a binding container with <code>@BindingContainer</code>.</li>
+<li><strong>[FIR]</strong> Warn when a <code>@ContributesTo</code> interface only exposes bindings and recommend making it a binding container with <code>@BindingContainer</code>. The latter is preferable as it reduces generated code.</li>
 <li><strong>[FIR]</strong> Warn about array class literals in qualifiers, map keys, and scopes that kotlinc can confuse across modules. For example, <code>Array&lt;IntArray&gt;::class</code> can be read as <code>IntArray::class</code>.</li>
 <li><strong>[FIR/IR]</strong> Support <code>priority</code> on <code>@ContributesBinding</code> and <code>@ContributesIntoMap</code>, allowing higher-priority contributions to replace conflicting bindings or map entries without directly referencing the lower-priority implementation.</li>
 <li><strong>[IR]</strong> Reuse completed member-injector lookups for classes without injectable members.</li>
@@ -7978,7 +8002,7 @@
 <li>Test Kotlin <code>2.4.20</code>.</li>
 <li>Test Kotlin <code>2.4.20-RC2</code>.</li>
 <li>Test Kotlin <code>2.4.20-RC3</code>.</li>
-<li>Test IntelliJ <code>IU:2026.2.2</code>.</li>
+<li>Test IntelliJ 2026.2.2.</li>
 <li>Test IntelliJ 2026.3 EAPs (<code>263.3889.65</code>).</li>
 <li>Test Android Studio Quail 4.</li>
 <li>Test Android Studio Rabbit canaries (<code>canary 4</code>).</li>
