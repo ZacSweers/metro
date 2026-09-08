@@ -574,6 +574,14 @@ jobs:
           path: main-checkout
           fetch-depth: 1
 
+      - name: Refresh benchmark dashboard
+        run: |
+          # Both routes share the dashboard and retain their existing data.js history.
+          for destination in gh-pages/dev/bench gh-pages/dev/bench/build; do
+            mkdir -p "$destination"
+            cp main-checkout/docs/site-assets/benchmarks/{index.html,dashboard.css,dashboard.js} "$destination/"
+          done
+
       - name: Download startup benchmark results
         uses: actions/download-artifact@v8
         with:
