@@ -26,6 +26,12 @@ public class FirDumpTestGenerated extends AbstractFirDumpTest {
   }
 
   @Test
+  @TestMetadata("bindsMirrorInExternallyGeneratedContribution.kt")
+  public void testBindsMirrorInExternallyGeneratedContribution() {
+    run("bindsMirrorInExternallyGeneratedContribution.kt");
+  }
+
+  @Test
   @TestMetadata("contributionProvidersShouldNotGenerateForContributesTo.kt")
   public void testContributionProvidersShouldNotGenerateForContributesTo() {
     run("contributionProvidersShouldNotGenerateForContributesTo.kt");
