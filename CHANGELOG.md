@@ -7,6 +7,10 @@ Changelog
 1.4.3
 -----
 
+### Fixes
+
+- **[FIR]** Avoid duplicate BindsMirror constructor generation across FIR generators.
+
 _2026-09-08_
 
 ### Enhancements
