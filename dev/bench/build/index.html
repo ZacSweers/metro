@@ -1,293 +1,82 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<!-- Both routes default to build time; the Startup tab selects the existing startup history. -->
+<html lang="en">
   <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1, user-scalable=yes" />
-    <style>
-      html {
-        font-family: BlinkMacSystemFont,-apple-system,"Segoe UI",Roboto,Oxygen,Ubuntu,Cantarell,"Fira Sans","Droid Sans","Helvetica Neue",Helvetica,Arial,sans-serif;
-        -webkit-font-smoothing: antialiased;
-        background-color: #fff;
-        font-size: 16px;
-      }
-      body {
-        color: #4a4a4a;
-        margin: 8px;
-        font-size: 1em;
-        font-weight: 400;
-      }
-      header {
-        margin-bottom: 8px;
-        display: flex;
-        flex-direction: column;
-      }
-      main {
-        width: 100%;
-        display: flex;
-        flex-direction: column;
-      }
-      a {
-        color: #3273dc;
-        cursor: pointer;
-        text-decoration: none;
-      }
-      a:hover {
-        color: #000;
-      }
-      button {
-        color: #fff;
-        background-color: #3298dc;
-        border-color: transparent;
-        cursor: pointer;
-        text-align: center;
-      }
-      button:hover {
-        background-color: #2793da;
-        flex: none;
-      }
-      .spacer {
-        flex: auto;
-      }
-      .small {
-        font-size: 0.75rem;
-      }
-      footer {
-        margin-top: 16px;
-        display: flex;
-        align-items: center;
-      }
-      .header-label {
-        margin-right: 4px;
-      }
-      .benchmark-set {
-        margin: 8px 0;
-        width: 100%;
-        display: flex;
-        flex-direction: column;
-      }
-      .benchmark-title {
-        font-size: 3rem;
-        font-weight: 600;
-        word-break: break-word;
-        text-align: center;
-      }
-      .benchmark-graphs {
-        display: flex;
-        flex-direction: row;
-        justify-content: space-around;
-        align-items: center;
-        flex-wrap: wrap;
-        width: 100%;
-      }
-      .benchmark-chart {
-        max-width: 1000px;
-      }
-    </style>
-    <title>Benchmarks</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Metro benchmark history, with per-commit changes and context for GitHub Actions runner variation.">
+    <title>Metro benchmarks</title>
+    <link rel="stylesheet" href="dashboard.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/chart.js@2.9.2/dist/Chart.min.js"></script>
+    <script defer src="dashboard.js"></script>
   </head>
-
   <body>
-    <header id="header">
-      <div class="header-item">
-        <strong class="header-label">Last Update:</strong>
-        <span id="last-update"></span>
-      </div>
-      <div class="header-item">
-        <strong class="header-label">Repository:</strong>
-        <a id="repository-link" rel="noopener"></a>
-      </div>
+    <a class="skip-link" href="#main">Skip to benchmarks</a>
+    <header class="site-header">
+      <a class="brand" href="https://zacsweers.github.io/metro/latest/">Metro<span>/ Benchmarks</span></a>
+      <nav aria-label="Benchmark pages">
+        <a id="build-link" href="/metro/dev/bench/build/">Build time</a>
+        <a id="startup-link" href="/metro/dev/bench/?benchmark=startup">Startup</a>
+      </nav>
+      <a class="repository" href="https://github.com/ZacSweers/metro">GitHub ↗</a>
     </header>
-    <main id="main"></main>
-    <footer>
-      <button id="dl-button">Download data as JSON</button>
-      <div class="spacer"></div>
-      <div class="small">Powered by <a rel="noopener" href="https://github.com/marketplace/actions/continuous-benchmark">github-action-benchmark</a></div>
-    </footer>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.2/dist/Chart.min.js"></script>
-    <script src="data.js"></script>
-    <script id="main-script">
-      'use strict';
-      (function() {
-        // Colors from https://github.com/github/linguist/blob/master/lib/linguist/languages.yml
-        const toolColors = {
-          cargo: '#dea584',
-          go: '#00add8',
-          benchmarkjs: '#f1e05a',
-          benchmarkluau: '#000080',
-          pytest: '#3572a5',
-          googlecpp: '#f34b7d',
-          catch2: '#f34b7d',
-          julia: '#a270ba',
-          jmh: '#6366f1',  // Nice indigo
-          benchmarkdotnet: '#178600',
-          customBiggerIsBetter: '#38ff38',
-          customSmallerIsBetter: '#6366f1',  // Match jmh
-          _: '#333333'
-        };
+    <main id="main">
+      <div class="page-heading">
+        <div>
+          <p class="eyebrow">Continuous benchmarks</p>
+          <h1 id="page-title">Metro performance</h1>
+          <p id="page-description">Follow the trend over time. Each before/after pair is measured on the same GitHub Actions runner.</p>
+        </div>
+        <p class="updated">Updated <time id="last-update">—</time></p>
+      </div>
 
-        function init() {
-          function collectBenchesPerTestCase(entries) {
-            const map = new Map();
-            for (const entry of entries) {
-              const {commit, date, tool, benches} = entry;
-              for (const bench of benches) {
-                const result = { commit, date, tool, bench };
-                const arr = map.get(bench.name);
-                if (arr === undefined) {
-                  map.set(bench.name, [result]);
-                } else {
-                  arr.push(result);
-                }
-              }
-            }
-            return map;
-          }
+      <p id="error" class="notice" role="status" hidden></p>
+      <noscript><p class="notice">Enable JavaScript to explore the paired benchmark history.</p></noscript>
 
-          const data = window.BENCHMARK_DATA;
+      <div id="dashboard" hidden>
+        <section class="charts" aria-labelledby="trend-title">
+          <div class="chart-heading">
+            <div><h2 id="trend-title">Timing history</h2><p>The 10-pair median makes the broader trend easier to see.</p></div>
+            <label class="range-label">History
+              <select id="range">
+                <option value="30">Last 30 pairs</option>
+                <option value="90">Last 90 pairs</option>
+                <option value="all" selected>All history</option>
+              </select>
+            </label>
+          </div>
+          <div class="period-summary" aria-label="Summary of selected history" aria-live="polite">
+            <p id="summary-period" class="summary-period"></p>
+            <dl class="summary-stats">
+              <div><dt id="recent-time-label">Recent build time</dt><dd id="recent-time"></dd><dd id="recent-time-detail" class="summary-detail"></dd></div>
+              <div><dt>Measured time change</dt><dd id="period-change"></dd><dd id="period-change-detail" class="summary-detail"></dd></div>
+              <div><dt>Median same-run change</dt><dd id="median-change"></dd><dd id="median-change-detail" class="summary-detail"></dd></div>
+            </dl>
+            <p class="summary-note">Runner speed and benchmark changes can affect the time trend. Same-run deltas compare revisions on one machine.</p>
+          </div>
+          <div class="legend"><span><i class="key baseline"></i>Before · parent</span><span><i class="key current"></i>After · current</span><span><i class="key trend"></i>10-pair median</span><span><i class="key variation"></i>Possible slower or faster CI runner</span></div>
+          <div class="chart-container timing-chart"><canvas id="timing-chart" role="img" aria-label="Connected before and after timing history with a trailing 10-pair median. Hover or tap to see both measurements and their same-run change."></canvas></div>
+          <p class="chart-footnote">Diamonds flag pairs that may have run on a slower or faster GitHub Actions machine. Both timings moved together, while the change between revisions stayed within typical variation.</p>
 
-          // Render header
-          document.getElementById('last-update').textContent = new Date(data.lastUpdate).toString();
-          const repoLink = document.getElementById('repository-link');
-          repoLink.href = data.repoUrl;
-          repoLink.textContent = data.repoUrl;
+          <div class="change-heading"><h2>Same-run change</h2><p>Each point is the change from parent to current commit on one runner.</p></div>
+          <div class="legend"><span class="noise-label"><i class="key noise"></i><span id="variation-label"></span></span><span><i class="key faster"></i><span id="faster-label"></span></span><span><i class="key slower"></i><span id="slower-label"></span></span><span id="visible-count"></span></div>
+          <div class="chart-container"><canvas id="change-chart" role="img" aria-label="Connected history of same-run percentage changes. The shaded band shows estimated typical variation."></canvas></div>
+          <p class="chart-footnote">Hover or tap a point for its measurements. <span id="run-count"></span> recorded pairs · <span id="history-span"></span>.</p>
+        </section>
 
-          // Render footer
-          document.getElementById('dl-button').onclick = () => {
-            const dataUrl = 'data:,' + JSON.stringify(data, null, 2);
-            const a = document.createElement('a');
-            a.href = dataUrl;
-            a.download = 'benchmark_data.json';
-            a.click();
-          };
-
-          // Prepare data points for charts
-          return Object.keys(data.entries).map(name => ({
-            name,
-            dataSet: collectBenchesPerTestCase(data.entries[name]),
-          }));
-        }
-
-        function renderAllChars(dataSets) {
-
-          function renderGraph(parent, name, dataset) {
-            const canvas = document.createElement('canvas');
-            canvas.className = 'benchmark-chart';
-            parent.appendChild(canvas);
-
-            const color = toolColors[dataset.length > 0 ? dataset[0].tool : '_'];
-            // Alternate point styles: hollow for "before", filled for "after"
-            const pointStyles = dataset.map((d, i) => i % 2 === 0 ? 'circle' : 'rectRot');
-            const pointRadius = dataset.map((d, i) => i % 2 === 0 ? 4 : 5);
-            const pointBgColors = dataset.map((d, i) => i % 2 === 0 ? '#fff' : color);
-            const data = {
-              labels: dataset.map(d => d.commit.id.slice(0, 7)),
-              datasets: [
-                {
-                  label: name,
-                  data: dataset.map(d => d.bench.value),
-                  borderColor: color,
-                  backgroundColor: color + '20', // Lighter fill
-                  pointStyle: pointStyles,
-                  pointRadius: pointRadius,
-                  pointBackgroundColor: pointBgColors,
-                  pointBorderColor: color,
-                  pointBorderWidth: 2,
-                }
-              ],
-            };
-            const options = {
-              legend: {
-                display: false,
-              },
-              scales: {
-                xAxes: [
-                  {
-                    scaleLabel: {
-                      display: true,
-                      labelString: 'commit',
-                    },
-                  }
-                ],
-                yAxes: [
-                  {
-                    scaleLabel: {
-                      display: true,
-                      labelString: dataset.length > 0 ? dataset[0].bench.unit : '',
-                    },
-                    ticks: {
-                      beginAtZero: true,
-                    }
-                  }
-                ],
-              },
-              tooltips: {
-                callbacks: {
-                  afterTitle: items => {
-                    const {index} = items[0];
-                    const data = dataset[index];
-                    return '\n' + data.commit.message + '\n\n' + data.commit.timestamp + ' committed by @' + data.commit.committer.username + '\n';
-                  },
-                  label: item => {
-                    let label = item.value;
-                    const { range, unit } = dataset[item.index].bench;
-                    label += ' ' + unit;
-                    if (range) {
-                      label += ' (' + range + ')';
-                    }
-                    return label;
-                  },
-                  afterLabel: item => {
-                    const { extra } = dataset[item.index].bench;
-                    return extra ? '\n' + extra : '';
-                  }
-                }
-              },
-              onClick: (_mouseEvent, activeElems) => {
-                if (activeElems.length === 0) {
-                  return;
-                }
-                // XXX: Undocumented. How can we know the index?
-                const index = activeElems[0]._index;
-                const url = dataset[index].commit.url;
-                window.open(url, '_blank');
-              },
-            };
-
-            new Chart(canvas, {
-              type: 'line',
-              data,
-              options,
-            });
-          }
-
-          function renderBenchSet(name, benchSet, main) {
-            const setElem = document.createElement('div');
-            setElem.className = 'benchmark-set';
-            main.appendChild(setElem);
-
-            const nameElem = document.createElement('h1');
-            nameElem.className = 'benchmark-title';
-            nameElem.textContent = name;
-            setElem.appendChild(nameElem);
-
-            const graphsElem = document.createElement('div');
-            graphsElem.className = 'benchmark-graphs';
-            setElem.appendChild(graphsElem);
-
-            for (const [benchName, benches] of benchSet.entries()) {
-              renderGraph(graphsElem, benchName, benches)
-            }
-          }
-
-          const main = document.getElementById('main');
-          for (const {name, dataSet} of dataSets) {
-            renderBenchSet(name, dataSet, main);
-          }
-        }
-
-        renderAllChars(init()); // Start
-      })();
-    </script>
+        <details class="reading-guide">
+          <summary>Reading the charts</summary>
+          <p>Change is (after − before) ÷ before × 100. Each pair measures a commit and its parent in the same benchmark job. This controls for hardware differences between runners. The shaded band indicates estimated typical variation. Small real changes can fall inside it, and measurement variation can exceed it. These are separate before/after comparisons and are never added together.</p>
+          <p>The estimated bands are ±7% for build time and ±5% for startup. They were chosen from 423 pairs per metric recorded through September 8, 2026. The robust spread of paired changes is about 3.5% for build and 2.0% for startup. The build band is about twice that spread; the startup band allows a little more margin and contains 94% of its historical changes. These histories include real code changes, so the bands are guides for inspection. They do not establish statistical significance. The estimates stay fixed when you change the history range.</p>
+          <p>The trend line is the median of the current and previous 9 after measurements. It starts once 10 pairs are available. It uses the full history before the selected range is applied. Changes in runner conditions can affect this trend too.</p>
+          <p>The summary uses only the selected history. Measured time change compares the median of the first 10 current-commit timings with the median of the last 10. Histories with fewer than 20 pairs use smaller, separate windows. At least two pairs are needed to compare endpoints. Median same-run change is the median of the individual paired percentage changes across the selected history.</p>
+          <p>A diamond flags a possible change in CI runner speed. Both values must be at least 20% above or below their respective medians from the previous 10 pairs. The same-run change must also fall within the estimated variation band for that benchmark. At least 5 earlier pairs are required. This context always uses the full history, including pairs outside the selected range.</p>
+          <p>The published history contains no runner hardware or capacity details. Shared movement can come from a slower or faster runner, workload changes, tool updates, or measurement noise. A diamond is a clue to inspect; it does not confirm a hardware change.</p>
+          <p id="omitted-note" hidden></p>
+        </details>
+      </div>
+    </main>
+    <footer><button id="download" type="button" disabled>Download JSON ↓</button></footer>
   </body>
 </html>
