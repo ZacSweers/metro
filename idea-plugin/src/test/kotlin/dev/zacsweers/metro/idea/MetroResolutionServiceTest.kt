@@ -8394,8 +8394,9 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     val child = index.graphEntryAt(declarations.klass("ChildGraph"))!!
     val queryContext = index.queryContext(index.contextsFor(child).single())!!
 
+    // The child owns this request even though the parent binding has a higher rank.
     assertEquals(
-      setOf("ParentService", "ChildService"),
+      setOf("ChildService"),
       index.bindingsFor(accessor, queryContext).mapTo(mutableSetOf()) { it.implementationName },
     )
     assertEquals(
