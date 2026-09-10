@@ -60,7 +60,7 @@ android-library = { id = "com.android.library", version.ref = "agp" }
 android-lint = { id = "com.android.lint", version.ref = "agp" }
 android-test = { id = "com.android.test", version.ref = "agp" }
 anvil = { id = "dev.zacsweers.anvil", version.ref = "anvil" }
-benchmark = { id = "androidx.benchmark", version = "1.4.1" }
+benchmark = { id = "androidx.benchmark", version = "1.5.0" }
 binaryCompatibilityValidator = { id = "org.jetbrains.kotlinx.binary-compatibility-validator", version = "0.18.1" }
 buildConfig = { id = "com.github.gmazzo.buildconfig", version = "6.0.10" }
 compose = { id = "org.jetbrains.compose", version.ref = "compose-jb" }
