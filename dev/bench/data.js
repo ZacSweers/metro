@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789064371666,
+  "lastUpdate": 1789082851123,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -23856,6 +23856,62 @@ window.BENCHMARK_DATA = {
             "value": 0.2137393582278352,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: -3.62%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "19f61010~1",
+          "message": "[before] Support warning-level overrides in fallback diagno",
+          "timestamp": "2026-09-10T22:27:33Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/19f61010933e7054242bc82fb50456d151145f38"
+        },
+        "date": 1789082851123,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.17346207084548831,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "19f61010933e7054242bc82fb50456d151145f38",
+          "message": "[after] Support warning-level overrides in fallback diagno",
+          "timestamp": "2026-09-10T22:27:33Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/19f61010933e7054242bc82fb50456d151145f38"
+        },
+        "date": 1789082851124,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.17253004805839964,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: -0.54%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }
