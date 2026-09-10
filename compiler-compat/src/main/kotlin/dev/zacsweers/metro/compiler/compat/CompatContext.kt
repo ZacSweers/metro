@@ -15,9 +15,11 @@ import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.config.LanguageVersionSettings
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibility
+import org.jetbrains.kotlin.diagnostics.AbstractKtDiagnosticFactory
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactory1
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticWithoutSource
 import org.jetbrains.kotlin.diagnostics.KtSourcelessDiagnosticFactory
+import org.jetbrains.kotlin.diagnostics.Severity
 import org.jetbrains.kotlin.fir.FirAnnotationContainer
 import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.FirSession
@@ -451,6 +453,16 @@ public interface CompatContext {
   )
   public val supportsIrGeneratedClasses: Boolean
     get() = false
+
+  /** Returns the configured severity, or `null` when the diagnostic is disabled. */
+  @CompatApi(
+    since = "2.3.20",
+    reason = CompatApi.Reason.COMPAT,
+    message = "Effective diagnostic severity is protected in Kotlin 2.3.0 and 2.3.10",
+  )
+  public fun AbstractKtDiagnosticFactory.getEffectiveSeverityCompat(
+    languageVersionSettings: LanguageVersionSettings
+  ): Severity?
 
   @CompatApi(
     since = "2.3.20-dev-7621",

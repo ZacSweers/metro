@@ -1560,6 +1560,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       }
 
       @Test
+      @TestMetadata("SuppressedWarningInExternalModule.kt")
+      public void testSuppressedWarningInExternalModule() {
+        run("SuppressedWarningInExternalModule.kt");
+      }
+
+      @Test
       @TestMetadata("UnprocessedUpstreamMemberInjection.kt")
       public void testUnprocessedUpstreamMemberInjection() {
         run("UnprocessedUpstreamMemberInjection.kt");

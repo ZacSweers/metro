@@ -99,6 +99,7 @@ private fun <A : Any> IrMetroContext.reportCompatImpl(
       ?.let { effectiveDeclaration = it }
   }
 
+  var reportedSeverity = factory.severity
   val sourceElement = effectiveDeclaration?.sourceElement()
   if (effectiveDeclaration?.fileOrNull == null || sourceElement == null) {
     // Report through message collector for now
@@ -126,7 +127,13 @@ private fun <A : Any> IrMetroContext.reportCompatImpl(
       }
       return
     }
-    val severity = factory.severity.convertSeverity()
+    // Apply configured warning levels before sending diagnostics to the collector.
+    val effectiveSeverity = factory.getEffectiveSeverityCompat(languageVersionSettings)
+    if (effectiveSeverity == null) {
+      return
+    }
+    reportedSeverity = effectiveSeverity
+    val severity = effectiveSeverity.convertSeverity()
     val location = effectiveDeclaration?.locationOrNull()
     val message =
       if (
@@ -160,7 +167,7 @@ private fun <A : Any> IrMetroContext.reportCompatImpl(
     diagnosticReporter.reportAt(effectiveDeclaration, factory, a)
   }
 
-  if (factory.severity == Severity.ERROR) {
+  if (reportedSeverity == Severity.ERROR) {
     // Log an error to MetroContext
     onErrorReported()
   }

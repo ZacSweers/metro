@@ -4,6 +4,10 @@ Changelog
 **Unreleased**
 --------------
 
+### Fixes
+
+- **[IR]** Support `-Xwarning-level` overrides in fallback diagnostic reporting across all supported Kotlin versions.
+
 1.4.3
 -----
 

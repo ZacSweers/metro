@@ -12,10 +12,12 @@ import org.jetbrains.kotlin.config.LanguageVersionSettings
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.descriptors.Visibility
+import org.jetbrains.kotlin.diagnostics.AbstractKtDiagnosticFactory
 import org.jetbrains.kotlin.diagnostics.DiagnosticContext
 import org.jetbrains.kotlin.diagnostics.KtDiagnostic
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticWithoutSource
 import org.jetbrains.kotlin.diagnostics.KtSourcelessDiagnosticFactory
+import org.jetbrains.kotlin.diagnostics.Severity
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.FirNamedFunction
@@ -58,6 +60,12 @@ import org.jetbrains.kotlin.name.Name
 public class CompatContextImpl : CompatContext by DelegateType() {
 
   override val supportsAutomaticDeclarationFinderTracking: Boolean = true
+
+  override fun AbstractKtDiagnosticFactory.getEffectiveSeverityCompat(
+    languageVersionSettings: LanguageVersionSettings
+  ): Severity? {
+    return getEffectiveSeverity(languageVersionSettings)
+  }
 
   override fun FirFunction.isNamedFunction(): Boolean {
     return this is FirNamedFunction

@@ -50,6 +50,7 @@ import org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrarAdapter
 import org.jetbrains.kotlin.incremental.components.ExpectActualTracker
 import org.jetbrains.kotlin.test.TargetBackend
 import org.jetbrains.kotlin.test.builders.TestConfigurationBuilder
+import org.jetbrains.kotlin.test.cli.CliDirectives
 import org.jetbrains.kotlin.test.directives.model.singleOrZeroValue
 import org.jetbrains.kotlin.test.model.TestModule
 import org.jetbrains.kotlin.test.services.EnvironmentConfigurator
@@ -67,7 +68,7 @@ fun TestConfigurationBuilder.configurePlugin(
     ::MetroRuntimeEnvironmentConfigurator,
   )
 
-  useDirectives(MetroDirectives)
+  useDirectives(MetroDirectives, CliDirectives)
 
   useCustomRuntimeClasspathProviders(::MetroRuntimeClassPathProvider)
 

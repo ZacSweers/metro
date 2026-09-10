@@ -15,15 +15,19 @@ import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
+import org.jetbrains.kotlin.config.AnalysisFlags
 import org.jetbrains.kotlin.config.CommonConfigurationKeys
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.config.LanguageVersionSettings
+import org.jetbrains.kotlin.config.WarningLevel
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.descriptors.Visibility
+import org.jetbrains.kotlin.diagnostics.AbstractKtDiagnosticFactory
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactory1
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticWithoutSource
 import org.jetbrains.kotlin.diagnostics.KtSourcelessDiagnosticFactory
+import org.jetbrains.kotlin.diagnostics.Severity
 import org.jetbrains.kotlin.fakeElement as fakeElementNative
 import org.jetbrains.kotlin.fir.FirAnnotationContainer
 import org.jetbrains.kotlin.fir.FirElement
@@ -103,6 +107,18 @@ public class CompatContextImpl : CompatContext {
 
   override fun createCompilerConfigurationCompat(): CompilerConfiguration {
     return CompilerConfiguration()
+  }
+
+  override fun AbstractKtDiagnosticFactory.getEffectiveSeverityCompat(
+    languageVersionSettings: LanguageVersionSettings
+  ): Severity? {
+    // Kotlin keeps this method protected on these compiler versions.
+    return when (languageVersionSettings.getFlag(AnalysisFlags.warningLevels)[name]) {
+      WarningLevel.Error -> Severity.ERROR
+      WarningLevel.Warning -> Severity.FIXED_WARNING
+      WarningLevel.Disabled -> null
+      null -> severity
+    }
   }
 
   override fun KtSourcelessDiagnosticFactory.createCompat(
