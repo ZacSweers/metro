@@ -14,8 +14,8 @@ import dev.zacsweers.metro.idea.model.DynamicGraphId
 import dev.zacsweers.metro.idea.model.GraphCallableReference
 import dev.zacsweers.metro.idea.model.GraphCallableSignature
 import dev.zacsweers.metro.idea.model.GraphDeclarationId
-import dev.zacsweers.metro.idea.model.GraphDefaultImplementation
 import dev.zacsweers.metro.idea.model.GraphExtensionFactoryAccessor
+import dev.zacsweers.metro.idea.model.GraphMemberOverride
 import dev.zacsweers.metro.idea.model.GraphReference
 import dev.zacsweers.metro.idea.model.KaAnnotationSnapshot
 import dev.zacsweers.metro.idea.model.KaBinding
@@ -50,7 +50,7 @@ private fun FileShard.librarySignature(): SourceLibraryShardSignature {
         graph.supertypeDeclarations,
         graph.extensionCreations,
         graph.extensionFactories.map(::extensionFactoryLibrarySignature),
-        graph.defaultImplementations.map(::defaultImplementationLibrarySignature),
+        graph.memberOverrides.map(::memberOverrideLibrarySignature),
         graph.injectedMemberOwnerIds,
         graph.daggerAnvilInteropEnabled,
         graph.pointer.element != null,
@@ -138,13 +138,15 @@ private fun callableLibrarySignature(
   )
 }
 
-private fun defaultImplementationLibrarySignature(
-  implementation: GraphDefaultImplementation
-): GraphDefaultImplementationLibrarySignature {
-  return GraphDefaultImplementationLibrarySignature(
-    callableLibrarySignature(implementation.declaration),
-    implementation.overriddenDeclarations.map(::callableLibrarySignature),
-    implementation.isOptional,
+/** Tracks override shape and modality when source declarations replace library declarations. */
+private fun memberOverrideLibrarySignature(
+  memberOverride: GraphMemberOverride
+): GraphMemberOverrideLibrarySignature {
+  return GraphMemberOverrideLibrarySignature(
+    callableLibrarySignature(memberOverride.declaration),
+    memberOverride.overriddenDeclarations.map(::callableLibrarySignature),
+    memberOverride.isOptional,
+    memberOverride.isAbstract,
   )
 }
 
@@ -186,7 +188,7 @@ private fun graphInterfaceLibrarySignature(
     surface.consumers.map(::consumerLibrarySignature),
     surface.extensionCreations,
     surface.extensionFactories.map(::extensionFactoryLibrarySignature),
-    surface.defaultImplementations.map(::defaultImplementationLibrarySignature),
+    surface.memberOverrides.map(::memberOverrideLibrarySignature),
     surface.injectedMemberOwnerIds,
   )
 }
@@ -276,7 +278,7 @@ private data class GraphLibrarySignature(
   val supertypeDeclarations: Set<GraphReference>,
   val extensionCreations: Set<GraphReference>,
   val extensionFactories: List<ExtensionFactoryLibrarySignature>,
-  val defaultImplementations: List<GraphDefaultImplementationLibrarySignature>,
+  val memberOverrides: List<GraphMemberOverrideLibrarySignature>,
   val injectedMemberOwnerIds: Set<ClassId>,
   val daggerAnvilInteropEnabled: Boolean,
   val pointerIsValid: Boolean,
@@ -325,10 +327,11 @@ private data class GraphCallableLibrarySignature(
   val pointerIsValid: Boolean,
 )
 
-private data class GraphDefaultImplementationLibrarySignature(
+private data class GraphMemberOverrideLibrarySignature(
   val declaration: GraphCallableLibrarySignature,
   val overriddenDeclarations: List<GraphCallableLibrarySignature>,
   val isOptional: Boolean,
+  val isAbstract: Boolean,
 )
 
 private data class GraphInterfaceLibrarySignature(
@@ -339,7 +342,7 @@ private data class GraphInterfaceLibrarySignature(
   val consumers: List<ConsumerLibrarySignature>,
   val extensionCreations: Set<GraphReference>,
   val extensionFactories: List<ExtensionFactoryLibrarySignature>,
-  val defaultImplementations: List<GraphDefaultImplementationLibrarySignature>,
+  val memberOverrides: List<GraphMemberOverrideLibrarySignature>,
   val injectedMemberOwnerIds: Set<ClassId>,
 )
 

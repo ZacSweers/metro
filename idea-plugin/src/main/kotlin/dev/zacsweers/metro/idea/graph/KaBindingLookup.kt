@@ -171,6 +171,12 @@ internal class KaBindingLookup(
     if (chain.none { scope in it.scopingAnnotations }) {
       return binding
     }
+    if (binding is KaBinding.Alias && binding.isClassContribution) {
+      // The implementation lookup owns a local class alias's lifetime.
+      if (index.isBindingOwnedByCurrentGraph(binding, queryPlan)) {
+        return binding.copy(scope = null)
+      }
+    }
     // Everything the child itself declares or wires stays local even when its scope names an
     // ancestor, like the compiler's locally declared keys. Class-derived bindings have no local
     // owner and always delegate by scope.
@@ -363,27 +369,34 @@ private fun KaBinding.withElementKey(elementKey: KaTypeKey): KaBinding {
         hintAvailability = hintAvailability,
         isGraphPrivate = isGraphPrivate,
       )
-    is KaBinding.Alias ->
-      KaBinding.Alias(
-        pointer = pointer,
-        typeKey = elementKey,
-        consumedKey = consumedKey,
-        scope = scope,
-        implementationName = implementationName,
-        multibindingId = multibindingId,
-        mapKeyValue = mapKeyValue,
-        originClassId = originClassId,
-        containerId = containerId,
-        ownerGraphId = ownerGraphId,
-        includedContainerKey = includedContainerKey,
-        replaces = replaces,
-        contributionScopes = contributionScopes,
-        priority = priority,
-        priorityFromAnvilRank = priorityFromAnvilRank,
-        isClassContribution = isClassContribution,
-        hintAvailability = hintAvailability,
-        isGraphPrivate = isGraphPrivate,
-      )
+    is KaBinding.Alias -> copy(typeKey = elementKey)
     else -> error("Unexpected multibinding contribution: ${javaClass.simpleName} for $typeKey")
   }
+}
+
+/** Copies an alias view while retaining its declaration and implementation dependency. */
+private fun KaBinding.Alias.copy(
+  typeKey: KaTypeKey = this.typeKey,
+  scope: KaAnnotationSnapshot? = this.scope,
+): KaBinding.Alias {
+  return KaBinding.Alias(
+    pointer = pointer,
+    typeKey = typeKey,
+    consumedKey = consumedKey,
+    scope = scope,
+    implementationName = implementationName,
+    multibindingId = multibindingId,
+    mapKeyValue = mapKeyValue,
+    originClassId = originClassId,
+    containerId = containerId,
+    ownerGraphId = ownerGraphId,
+    includedContainerKey = includedContainerKey,
+    replaces = replaces,
+    contributionScopes = contributionScopes,
+    priority = priority,
+    priorityFromAnvilRank = priorityFromAnvilRank,
+    isClassContribution = isClassContribution,
+    hintAvailability = hintAvailability,
+    isGraphPrivate = isGraphPrivate,
+  )
 }

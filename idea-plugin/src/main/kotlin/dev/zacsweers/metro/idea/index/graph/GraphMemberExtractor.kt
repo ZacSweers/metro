@@ -29,8 +29,8 @@ import dev.zacsweers.metro.idea.model.ContributionEntry
 import dev.zacsweers.metro.idea.model.GraphCallableReference
 import dev.zacsweers.metro.idea.model.GraphCallableSignature
 import dev.zacsweers.metro.idea.model.GraphDeclarationId
-import dev.zacsweers.metro.idea.model.GraphDefaultImplementation
 import dev.zacsweers.metro.idea.model.GraphExtensionFactoryAccessor
+import dev.zacsweers.metro.idea.model.GraphMemberOverride
 import dev.zacsweers.metro.idea.model.GraphReference
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaContextualTypeKey
@@ -81,7 +81,7 @@ internal class GraphMemberExtractor(
     return pointerManager.createSmartPsiElementPointer(element)
   }
 
-  /** Records a written member and the declarations its implementation overrides. */
+  /** Records a written member and the declarations it overrides. */
   fun indexDeclaredMember(
     session: KaSession,
     view: CallableBindingView,
@@ -89,7 +89,7 @@ internal class GraphMemberExtractor(
     target: GraphMemberTarget,
   ) =
     with(session) {
-      recordGraphDefaultImplementation(view, psi, target)
+      recordGraphMemberOverride(view, psi, target)
       // Binary graph declarations have no project-source annotation sweep for their providers.
       if (view.symbol.origin == KaSymbolOrigin.LIBRARY && psi is KtDeclaration) {
         val ownerDependency = target.factoryContext?.let { typeKey(it, null).canonicalContextKey() }
@@ -191,7 +191,7 @@ internal class GraphMemberExtractor(
         extensionCreations,
         extensionFactories,
         injectedMemberOwnerIds,
-        defaultImplementations = target.defaultImplementations,
+        memberOverrides = target.memberOverrides,
       )
     }
 
@@ -220,7 +220,7 @@ internal class GraphMemberExtractor(
         callable.psi?.containingFile?.let(onDeclarationFile)
         recordAnnotations(this, callable, callable.psi)
         val psi = callable.psi as? KtElement ?: continue
-        recordGraphDefaultImplementation(view, psi, target)
+        recordGraphMemberOverride(view, psi, target)
         if (callable.hasAnyAnnotation(bindingCallableIds)) {
           if (target.bindingTemplates != null || isLibrary || hasSpecializedTypes(view)) {
             (callable.psi as? KtDeclaration)?.let { declaration ->
@@ -236,18 +236,22 @@ internal class GraphMemberExtractor(
     }
 
   /**
-   * Keep the real override relation even though a concrete member is not itself a graph request.
-   * The contributing interface may be excluded later, so its implementation cannot suppress the
-   * abstract declaration until the graph's path-specific contribution selection is known.
+   * Records exact overrides before graph contribution selection. An abstract override keeps its own
+   * request. A concrete override supplies the member implementation. Excluding a contributed
+   * interface also removes its overrides.
    */
-  private fun KaSession.recordGraphDefaultImplementation(
+  private fun KaSession.recordGraphMemberOverride(
     view: CallableBindingView,
     psi: KtElement,
     target: GraphMemberTarget,
   ) {
     val callable = view.symbol
-    if (callable !is KaNamedFunctionSymbol && callable !is KaPropertySymbol) return
-    if (view.receiver != null || callable.modality == KaSymbolModality.ABSTRACT) return
+    if (callable !is KaNamedFunctionSymbol && callable !is KaPropertySymbol) {
+      return
+    }
+    if (view.receiver != null) {
+      return
+    }
 
     val overriddenDeclarations = mutableListOf<GraphCallableReference>()
     val seenDeclarations = HashSet<KtElement>()
@@ -255,20 +259,24 @@ internal class GraphMemberExtractor(
       checkCanceled()
       val original = overridden.fakeOverrideOriginal
       val declaration = original.psi as? KtElement ?: continue
-      if (!seenDeclarations.add(declaration)) continue
+      if (!seenDeclarations.add(declaration)) {
+        continue
+      }
       declaration.containingFile?.let(onDeclarationFile)
       recordAnnotations(this, original, declaration)
       overriddenDeclarations += graphCallableReference(callableBindingView(original), declaration)
     }
-    // Most concrete providers override nothing. They cannot satisfy another abstract declaration
-    // and need no extra surface metadata or composition work.
-    if (overriddenDeclarations.isEmpty()) return
+    // Members that override nothing need no extra surface metadata or composition work.
+    if (overriddenDeclarations.isEmpty()) {
+      return
+    }
 
-    target.defaultImplementations +=
-      GraphDefaultImplementation(
+    target.memberOverrides +=
+      GraphMemberOverride(
         declaration = graphCallableReference(view, psi),
         overriddenDeclarations = overriddenDeclarations,
         isOptional = callable.isOptionalConsumer(options),
+        isAbstract = callable.modality == KaSymbolModality.ABSTRACT,
       )
   }
 

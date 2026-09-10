@@ -98,9 +98,9 @@ internal class ResolutionInputCapture(
       for (graph in graphs) {
         capture(graph.pointer, captureAnchorSignature = true)
         for (factory in graph.extensionFactories) capture(factory.pointer)
-        for (implementation in graph.defaultImplementations) {
-          capture(implementation.declaration.pointer)
-          for (overridden in implementation.overriddenDeclarations) capture(overridden.pointer)
+        for (memberOverride in graph.memberOverrides) {
+          capture(memberOverride.declaration.pointer)
+          for (overridden in memberOverride.overriddenDeclarations) capture(overridden.pointer)
         }
         for (contribution in graph.contributedInterfaces) {
           capture(contribution.contribution.pointer)
@@ -109,9 +109,9 @@ internal class ResolutionInputCapture(
             capture(consumer.pointer, captureAnchorSignature = true)
           }
           for (factory in contribution.extensionFactories) capture(factory.pointer)
-          for (implementation in contribution.defaultImplementations) {
-            capture(implementation.declaration.pointer)
-            for (overridden in implementation.overriddenDeclarations) capture(overridden.pointer)
+          for (memberOverride in contribution.memberOverrides) {
+            capture(memberOverride.declaration.pointer)
+            for (overridden in memberOverride.overriddenDeclarations) capture(overridden.pointer)
           }
         }
       }

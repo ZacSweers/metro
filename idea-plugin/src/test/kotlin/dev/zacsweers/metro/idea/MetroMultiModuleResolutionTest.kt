@@ -966,6 +966,164 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     assertTrue(unrelated.diagnostics.single().render().contains("unrelated"))
   }
 
+  /** Abstract contributed overrides keep their narrowed request in each selected graph. */
+  fun testSelectedContributedAbstractOverridesKeepOnlyEffectiveAccessors() {
+    val apiFile =
+      fixture.addFileToProject(
+        "library/abstractoverrides/api/Accessors.kt",
+        """
+        package abstractoverrides.api
+
+        import dev.zacsweers.metro.*
+
+        interface Value
+        class ConcreteValue : Value
+        @Qualifier annotation class Device
+
+        @ContributesTo(AppScope::class)
+        interface PublicAccessors {
+          fun value(): Value
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val implementationFile =
+      fixture.addFileToProject(
+        "bridge/abstractoverrides/impl/Accessors.kt",
+        """
+        package abstractoverrides.impl
+
+        import dev.zacsweers.metro.*
+        import abstractoverrides.api.*
+
+        @ContributesTo(AppScope::class)
+        interface QualifiedAccessors : PublicAccessors {
+          @Device override fun value(): ConcreteValue
+        }
+
+        @ContributesTo(AppScope::class, replaces = [QualifiedAccessors::class])
+        interface RemoveOverride
+
+        @ContributesTo(AppScope::class)
+        interface ValueBindings {
+          @Provides @Device fun concreteValue(): ConcreteValue = ConcreteValue()
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val appFile =
+      fixture.addFileToProject(
+        "app/abstractoverrides/app/Graphs.kt",
+        """
+        package abstractoverrides.app
+
+        import dev.zacsweers.metro.*
+        import abstractoverrides.api.*
+        import abstractoverrides.impl.*
+
+        @DependencyGraph(AppScope::class, excludes = [RemoveOverride::class])
+        interface AppGraph
+
+        @DependencyGraph(
+          AppScope::class,
+          excludes = [QualifiedAccessors::class, RemoveOverride::class],
+        )
+        interface ExcludedGraph
+
+        @DependencyGraph(AppScope::class)
+        interface ReplacedGraph
+
+        @DependencyGraph(AppScope::class, excludes = [RemoveOverride::class])
+        interface UnrelatedGraph {
+          val unrelated: Value
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val appModule = checkNotNull(ModuleUtilCore.findModuleForPsiElement(appFile))
+    ModuleRootModificationUtil.addDependency(
+      appModule,
+      checkNotNull(ModuleUtilCore.findModuleForPsiElement(implementationFile)),
+    )
+    PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
+    IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
+
+    val index = fixture.project.service<MetroResolutionService>().awaitIndex(appFile)
+    val validation = fixture.project.service<MetroGraphValidationService>()
+    fun context(name: String) = index.contextsFor(index.graphs.single { it.name == name }).single()
+    fun accessors(name: String) =
+      index.accessorsFor(checkNotNull(index.queryContext(context(name))))
+
+    val effectiveAccessor = accessors("AppGraph").single()
+    assertEquals("abstractoverrides.api.ConcreteValue", effectiveAccessor.key.renderedType)
+    assertSame(implementationFile, effectiveAccessor.pointer.element?.containingFile)
+    val completed = validation.validate(appFile, context("AppGraph")).requireCompleted()
+    assertTrue(completed.diagnostics.joinToString { it.render() }, completed.diagnostics.isEmpty())
+
+    for (graphName in listOf("ExcludedGraph", "ReplacedGraph")) {
+      val accessor = accessors(graphName).single()
+      assertSame(apiFile, accessor.pointer.element?.containingFile)
+      val result = validation.validate(appFile, context(graphName)).requireCompleted()
+      assertEquals(listOf(MetroDiagnosticId.MISSING_BINDING), result.diagnostics.map { it.id })
+    }
+
+    assertEquals(2, accessors("UnrelatedGraph").size)
+    val unrelated = validation.validate(appFile, context("UnrelatedGraph")).requireCompleted()
+    assertEquals(listOf(MetroDiagnosticId.MISSING_BINDING), unrelated.diagnostics.map { it.id })
+    assertTrue(unrelated.diagnostics.single().render().contains("unrelated"))
+  }
+
+  /** Written overrides narrow generic inherited accessors before graph validation. */
+  fun testWrittenAbstractCovariantOverrideKeepsEffectiveAccessor() {
+    fixture.addFileToProject(
+      "library/writtenoverrides/api/Accessors.kt",
+      """
+      package writtenoverrides.api
+
+      interface Value
+      class ConcreteValue : Value
+      interface PublicAccessors<T> {
+        val value: T
+      }
+      """
+        .trimIndent(),
+    )
+    val appFile =
+      fixture.addFileToProject(
+        "app/writtenoverrides/app/Graph.kt",
+        """
+        package writtenoverrides.app
+
+        import dev.zacsweers.metro.*
+        import writtenoverrides.api.*
+
+        interface NarrowAccessors : PublicAccessors<Value> {
+          override val value: ConcreteValue
+        }
+
+        @DependencyGraph
+        interface AppGraph : NarrowAccessors {
+          @Provides fun concreteValue(): ConcreteValue = ConcreteValue()
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
+    IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
+
+    val index = fixture.project.service<MetroResolutionService>().awaitIndex(appFile)
+    val context = index.contextsFor(index.graphs.single { it.name == "AppGraph" }).single()
+    val accessor = index.accessorsFor(checkNotNull(index.queryContext(context))).single()
+    assertEquals("writtenoverrides.api.ConcreteValue", accessor.key.renderedType)
+    assertSame(appFile, accessor.pointer.element?.containingFile)
+    val result =
+      fixture.project
+        .service<MetroGraphValidationService>()
+        .validate(appFile, context)
+        .requireCompleted()
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+  }
+
   fun testWrittenDefaultOverridesAndOptionalRootsRemainDistinct() {
     fixture.addFileToProject(
       "library/defaultroots/api/Accessors.kt",

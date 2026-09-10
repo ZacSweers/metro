@@ -50,6 +50,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import org.jetbrains.kotlin.psi.KtDeclaration
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtParameter
 import org.jetbrains.kotlin.psi.KtProperty
@@ -659,6 +660,294 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         it is KaBinding.Alias && it.typeKey.renderedType == "test.Service"
       }
     assertEquals(result.graph.declarationId, childBinding.ownerGraphId)
+  }
+
+  /** The account graph owns the loader requested through its descendant's ViewModel map. */
+  fun testGrandchildUsesNearestAncestorContributedProvides() {
+    module.addKotlinStdlibLibrary()
+    val file =
+      myFixture.configureMetroFile(
+        """
+        import kotlin.reflect.KClass
+
+        abstract class AccountScope
+        abstract class ViewModelScope
+        interface ImageLoader
+        class RealImageLoader : ImageLoader
+        interface ViewModel
+
+        @ContributesTo(AppScope::class)
+        interface AppImageLoaderModule {
+          @Provides @SingleIn(AppScope::class)
+          fun appImageLoader(): ImageLoader = RealImageLoader()
+        }
+
+        @ContributesTo(AccountScope::class)
+        interface AccountImageLoaderModule {
+          @Provides @SingleIn(AccountScope::class)
+          fun accountImageLoader(): ImageLoader = RealImageLoader()
+        }
+
+        @ContributesIntoMap(ViewModelScope::class)
+        @ClassKey
+        @Inject class AvatarCropperViewModel(val imageLoader: ImageLoader) : ViewModel
+
+        @GraphExtension(ViewModelScope::class)
+        interface ViewModelGraph {
+          val viewModels: Map<KClass<*>, ViewModel>
+        }
+
+        @GraphExtension(AccountScope::class)
+        interface AccountGraph {
+          val viewModels: ViewModelGraph
+        }
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val account: AccountGraph
+        }
+        """
+      )
+
+    val binding =
+      assertNearestAncestorSelection(
+        file,
+        "imageLoader",
+        file.declarationsIncludingNested().function("accountImageLoader"),
+      )
+    assertTrue(binding is KaBinding.Provided)
+  }
+
+  /** A contributed alias keeps its account scope when a descendant requests the shared API. */
+  fun testGrandchildUsesNearestAncestorContributedBinding() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        abstract class AccountScope
+        abstract class ViewModelScope
+        interface FileServiceApi
+
+        @ContributesBinding(AppScope::class)
+        @SingleIn(AppScope::class)
+        @Inject class AppFileServiceApi : FileServiceApi
+
+        @ContributesBinding(AccountScope::class)
+        @SingleIn(AccountScope::class)
+        @Inject class AccountFileServiceApi : FileServiceApi
+
+        @Inject class FileViewModel(val files: FileServiceApi)
+
+        @GraphExtension(ViewModelScope::class)
+        interface ViewModelGraph {
+          val viewModel: FileViewModel
+        }
+
+        @GraphExtension(AccountScope::class)
+        interface AccountGraph {
+          val viewModels: ViewModelGraph
+        }
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val account: AccountGraph
+        }
+        """
+      )
+
+    val binding =
+      assertNearestAncestorSelection(
+        file,
+        "files",
+        file.declarationsIncludingNested().klass("AccountFileServiceApi"),
+      )
+    assertTrue(binding is KaBinding.Alias)
+    assertEquals(
+      "test.AccountFileServiceApi",
+      (binding as KaBinding.Alias).consumedKey?.typeKey?.renderedType,
+    )
+  }
+
+  /** The closest graph's bindings take precedence even without a scoped lifetime. */
+  fun testGrandchildUsesNearestAncestorUnscopedAlias() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface ImageLoader
+        class AppImageLoader : ImageLoader
+        @Inject class AccountImageLoader : ImageLoader
+        @Inject class ViewModel(val imageLoader: ImageLoader)
+
+        @GraphExtension
+        interface ViewModelGraph {
+          val viewModel: ViewModel
+        }
+
+        @GraphExtension
+        interface AccountGraph {
+          val viewModels: ViewModelGraph
+
+          @Binds fun accountImageLoader(loader: AccountImageLoader): ImageLoader
+        }
+
+        @DependencyGraph
+        interface AppGraph {
+          val account: AccountGraph
+
+          @Provides fun appImageLoader(): ImageLoader = AppImageLoader()
+        }
+        """
+      )
+
+    val binding =
+      assertNearestAncestorSelection(
+        file,
+        "imageLoader",
+        file.declarationsIncludingNested().function("accountImageLoader"),
+        isScoped = false,
+      )
+    assertTrue(binding is KaBinding.Alias)
+    assertEquals(
+      "test.AccountImageLoader",
+      (binding as KaBinding.Alias).consumedKey?.typeKey?.renderedType,
+    )
+  }
+
+  /** Refresh and validation must select the same binding and retain its account graph owner. */
+  private fun assertNearestAncestorSelection(
+    file: KtFile,
+    parameterName: String,
+    expectedDeclaration: KtDeclaration,
+    isScoped: Boolean = true,
+  ): KaBinding {
+    val index = refreshedIndex(file)
+    val leaf = index.graphs.single { it.name == "ViewModelGraph" }
+    val context = index.contextsFor(leaf).single()
+    val queryContext = checkNotNull(index.queryContext(context))
+    val consumer =
+      checkNotNull(
+        index.consumerEntryAt(file.declarationsIncludingNested().parameter(parameterName))
+      )
+    val selected = index.bindingsFor(consumer, queryContext)
+    assertEquals(1, selected.size)
+    assertSame(expectedDeclaration, selected.single().pointer.element)
+
+    val app = index.graphs.single { it.name == "AppGraph" }
+    val results =
+      project.service<MetroGraphValidationService>().validateWithExtensions(file, app).map {
+        it.requireCompleted()
+      }
+    assertEquals(
+      listOf("ViewModelGraph", "AccountGraph", "AppGraph"),
+      results.map { it.graph.name },
+    )
+    for (result in results) {
+      assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    }
+    val leafBinding = checkNotNull(results.first().bindings[consumer.key])
+    if (isScoped) {
+      assertTrue(leafBinding is KaBinding.GraphDependency)
+      leafBinding as KaBinding.GraphDependency
+      assertTrue(leafBinding.isParentScoped)
+      assertEquals("test.AccountGraph", leafBinding.ownerKey.renderedType)
+      val accountBinding = checkNotNull(results[1].bindings[consumer.key])
+      assertSame(expectedDeclaration, accountBinding.pointer.element)
+      return accountBinding
+    }
+    assertSame(expectedDeclaration, leafBinding.pointer.element)
+    assertEquals(results[1].graph.classId, leafBinding.containerId)
+    return leafBinding
+  }
+
+  /** Ancestor precedence preserves conflicts between providers owned by the same graph. */
+  fun testNearestAncestorDuplicateProvidesAreReported() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        abstract class AccountScope
+        abstract class ViewModelScope
+        class ImageLoader
+
+        @GraphExtension(ViewModelScope::class)
+        interface ViewModelGraph {
+          val imageLoader: ImageLoader
+        }
+
+        @GraphExtension(AccountScope::class)
+        interface AccountGraph {
+          val viewModels: ViewModelGraph
+
+          @Provides @SingleIn(AccountScope::class)
+          fun firstAccountLoader(): ImageLoader = ImageLoader()
+
+          @Provides @SingleIn(AccountScope::class)
+          fun secondAccountLoader(): ImageLoader = ImageLoader()
+        }
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val account: AccountGraph
+
+          @Provides @SingleIn(AppScope::class)
+          fun appLoader(): ImageLoader = ImageLoader()
+        }
+        """
+      )
+    val index = refreshedIndex(file)
+    val declarations = file.declarationsIncludingNested()
+    val consumer = checkNotNull(index.consumerEntryAt(declarations.property("imageLoader")))
+    val leaf = index.graphs.single { it.name == "ViewModelGraph" }
+    val context = index.contextsFor(leaf).single()
+    val selected = index.bindingsFor(consumer, checkNotNull(index.queryContext(context)))
+    val expectedDeclarations =
+      setOf(
+        declarations.function("firstAccountLoader"),
+        declarations.function("secondAccountLoader"),
+      )
+    assertEquals(expectedDeclarations, selected.map { it.pointer.element }.toSet())
+
+    val result =
+      project.service<MetroGraphValidationService>().validate(file, context).requireCompleted()
+    val diagnostic = result.diagnostics.single()
+    assertEquals(MetroDiagnosticId.DUPLICATE_BINDING, diagnostic.id)
+    assertEquals(expectedDeclarations, diagnostic.related.map { it.pointer.element }.toSet())
+  }
+
+  /** Included dependency accessors participate in duplicate checks with ancestor providers. */
+  fun testChildIncludedAccessorStillConflictsWithParentProvides() {
+    val result =
+      validate(
+        """
+        class ImageLoader
+
+        interface ExternalDependency {
+          val imageLoader: ImageLoader
+        }
+
+        @GraphExtension
+        interface ChildGraph {
+          val imageLoader: ImageLoader
+
+          @GraphExtension.Factory
+          interface Factory {
+            fun create(@Includes dependency: ExternalDependency): ChildGraph
+          }
+        }
+
+        @DependencyGraph
+        interface AppGraph {
+          val child: ChildGraph.Factory
+
+          @Provides fun appImageLoader(): ImageLoader = ImageLoader()
+        }
+        """,
+        graphName = "ChildGraph",
+      )
+
+    val diagnostic = result.diagnostics.single()
+    assertEquals(MetroDiagnosticId.DUPLICATE_BINDING, diagnostic.id)
+    assertEquals(2, diagnostic.related.size)
+    assertEquals(1, diagnostic.related.filterIsInstance<KaBinding.GraphDependency>().size)
+    assertEquals(1, diagnostic.related.filterIsInstance<KaBinding.Provided>().size)
   }
 
   fun testDifferentInheritedGenericProvidersInOneGraphRemainDuplicates() {
@@ -2003,6 +2292,180 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
       assertTrue(childElement.isParentScoped)
       assertEquals("test.AppGraph", childElement.ownerKey.renderedType)
     }
+  }
+
+  /** A child can collect a class whose instance belongs to its parent scope. */
+  fun testChildContributedSetElementUsesAncestorScope() {
+    assertChildContributionScope()
+  }
+
+  /** The map entry stays in the child while its exposed implementation belongs to the parent. */
+  fun testChildContributedMapElementUsesAncestorScope() {
+    assertChildContributionScope(isMap = true)
+  }
+
+  /** A child provider can supply an implementation whose constructor belongs to a parent scope. */
+  fun testChildContributedAliasUsesExplicitImplementationProvider() {
+    assertChildContributionScope(provideImplementationLocally = true)
+  }
+
+  /** A generated set provider must use a scope supported by the graph that aggregates it. */
+  fun testChildGeneratedSetElementWithAncestorScopeStaysLocal() {
+    assertChildContributionScope(exposeImplementation = false)
+  }
+
+  /** A generated map provider must use a scope supported by the graph that aggregates it. */
+  fun testChildGeneratedMapElementWithAncestorScopeStaysLocal() {
+    assertChildContributionScope(isMap = true, exposeImplementation = false)
+  }
+
+  /** Checks the lifetime of class contributions aggregated by a child graph. */
+  private fun assertChildContributionScope(
+    isMap: Boolean = false,
+    exposeImplementation: Boolean = true,
+    provideImplementationLocally: Boolean = false,
+  ) {
+    module.addKotlinStdlibLibrary()
+    project.setMetroOptions("generate-contribution-providers" to "true")
+    val implementationExposure =
+      if (exposeImplementation) {
+        "@ExposeImplBinding"
+      } else {
+        ""
+      }
+    val contribution =
+      if (isMap) {
+        "@ContributesIntoMap(ConversationViewModelScope::class) @StringKey(\"decoration\")"
+      } else {
+        "@ContributesIntoSet(ConversationViewModelScope::class)"
+      }
+    val collectionType =
+      if (isMap) {
+        "Map<String, Decoration>"
+      } else {
+        "Set<Decoration>"
+      }
+    val localProvider =
+      if (provideImplementationLocally) {
+        "@Provides fun decoration(): DecorationImpl = DecorationImpl()"
+      } else {
+        ""
+      }
+    val file =
+      myFixture.configureMetroFile(
+        """
+        abstract class ConversationScope
+        abstract class ConversationViewModelScope
+        interface Decoration
+
+        $contribution
+        $implementationExposure
+        @SingleIn(ConversationScope::class)
+        @Inject class DecorationImpl : Decoration
+
+        @GraphExtension(ConversationViewModelScope::class)
+        interface ConversationViewModelGraph {
+          val decorations: $collectionType
+
+          $localProvider
+        }
+
+        @DependencyGraph(ConversationScope::class)
+        interface ConversationGraph {
+          val viewModel: ConversationViewModelGraph
+        }
+        """
+      )
+    val index = refreshedIndex(file)
+    val parent = index.graphs.single { it.name == "ConversationGraph" }
+    val results =
+      project.service<MetroGraphValidationService>().validateWithExtensions(file, parent).map {
+        it.requireCompleted()
+      }
+    assertEquals(2, results.size)
+    val childResult = results.first()
+    val parentResult = results.last()
+    if (!exposeImplementation) {
+      assertEquals(
+        listOf(MetroDiagnosticId.INCOMPATIBLY_SCOPED_BINDINGS),
+        childResult.diagnostics.map { it.id },
+      )
+      assertTrue(parentResult.diagnostics.toString(), parentResult.diagnostics.isEmpty())
+      return
+    }
+    for (result in results) {
+      assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    }
+    val collection =
+      childResult.bindings.asMap().values.filterIsInstance<KaBinding.Multibinding>().single()
+    val elementKey = collection.sourceBindings.single()
+    val childElement = childResult.bindings[elementKey] as KaBinding.Alias
+    assertTrue(childElement.isClassContribution)
+    assertNull(childElement.scope)
+    val implementationKey = checkNotNull(childElement.consumedKey).typeKey
+    if (provideImplementationLocally) {
+      val childImplementation = childResult.bindings[implementationKey] as KaBinding.Provided
+      assertNull(childImplementation.scope)
+      assertSame(
+        file.declarationsIncludingNested().function("decoration"),
+        childImplementation.pointer.element,
+      )
+      assertTrue(childResult.parentReservations.isEmpty())
+      assertNull(parentResult.bindings[implementationKey])
+      assertNull(parentResult.bindings[elementKey])
+      return
+    }
+    val childImplementation = childResult.bindings[implementationKey] as KaBinding.GraphDependency
+    assertTrue(childImplementation.isParentScoped)
+    assertEquals("test.ConversationGraph", childImplementation.ownerKey.renderedType)
+    assertEquals(setOf(implementationKey), childResult.parentReservations.keys)
+    assertNull(parentResult.bindings[elementKey])
+    val parentImplementation = checkNotNull(parentResult.bindings[implementationKey])
+    val implementation = file.declarationsIncludingNested().klass("DecorationImpl")
+    assertSame(implementation, parentImplementation.pointer.element)
+    assertTrue(parentImplementation is KaBinding.ConstructorInjected)
+    assertTrue(parentImplementation.scope in parentResult.graph.scopingAnnotations)
+    if (isMap) {
+      val sourceAlias =
+        index.bindingEntriesAt(implementation).filterIsInstance<KaBinding.Alias>().single()
+      assertNotNull(childElement.mapKeyValue)
+      assertEquals(sourceAlias.mapKeyValue, childElement.mapKeyValue)
+    }
+  }
+
+  /** A provider authored in a child contribution must use a scope supported by the child. */
+  fun testChildContributedModuleProviderWithAncestorScopeStaysLocal() {
+    project.setMetroOptions("generate-contribution-providers" to "true")
+    val result =
+      validate(
+        """
+        abstract class ConversationScope
+        abstract class ConversationViewModelScope
+        interface Decoration
+
+        @ContributesTo(ConversationViewModelScope::class)
+        interface DecorationModule {
+          @Provides @IntoSet @SingleIn(ConversationScope::class)
+          fun decoration(): Decoration = object : Decoration {}
+        }
+
+        @GraphExtension(ConversationViewModelScope::class)
+        interface ConversationViewModelGraph {
+          val decorations: Set<Decoration>
+        }
+
+        @DependencyGraph(ConversationScope::class)
+        interface ConversationGraph {
+          val viewModel: ConversationViewModelGraph
+        }
+        """,
+        graphName = "ConversationViewModelGraph",
+      )
+
+    assertEquals(
+      listOf(MetroDiagnosticId.INCOMPATIBLY_SCOPED_BINDINGS),
+      result.diagnostics.map { it.id },
+    )
   }
 
   fun testSharedMapCollectionViewsReuseSyntheticElements() {

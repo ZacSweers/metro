@@ -353,18 +353,20 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
       val bindingIdentities = hashSetOf<Any>()
       val accessors = mutableListOf<ConsumerEntry>()
       val accessorIdentities = hashSetOf<Any>()
-      var implementedDeclarations: MutableSet<SourcePointerIdentity>? = null
+      var supersededDeclarations: MutableSet<SourcePointerIdentity>? = null
 
-      fun addDefaultImplementations(implementations: List<GraphDefaultImplementation>) {
-        if (implementations.isEmpty()) return
+      fun addMemberOverrides(overrides: List<GraphMemberOverride>) {
+        if (overrides.isEmpty()) {
+          return
+        }
         val identities =
-          implementedDeclarations
+          supersededDeclarations
             ?: HashSet<SourcePointerIdentity>().also {
-              implementedDeclarations = it
+              supersededDeclarations = it
             }
-        for (implementation in implementations) {
+        for (memberOverride in overrides) {
           ProgressManager.checkCanceled()
-          val declaration = implementation.declaration
+          val declaration = memberOverride.declaration
           if (
             !isVisibleFrom(
               declaration.pointer,
@@ -373,12 +375,15 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
               module,
               resolutionScope,
             )
-          )
+          ) {
             continue
-          // A fake override can still point at the concrete declaration itself. Its optional
-          // request, if any, is retained by isImplementedGraphRequest below.
-          declaration.sourceIdentity?.let(identities::add)
-          for (overridden in implementation.overriddenDeclarations) {
+          }
+          // A fake override can still point at the concrete declaration itself.
+          if (!memberOverride.isAbstract) {
+            declaration.sourceIdentity?.let(identities::add)
+          }
+          // Abstract overrides retain their own request with its narrowed type and qualifiers.
+          for (overridden in memberOverride.overriddenDeclarations) {
             overridden.sourceIdentity?.let(identities::add)
           }
         }
@@ -406,7 +411,7 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
         checkCanceledEvery(index)
         if (consumer.graphContribution == null) addAccessor(consumer)
       }
-      addDefaultImplementations(graph.defaultImplementations)
+      addMemberOverrides(graph.memberOverrides)
       for (candidate in graph.contributedInterfaces) {
         ProgressManager.checkCanceled()
         val reference = candidate.contribution.declarationId ?: continue
@@ -421,7 +426,7 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
         creations += candidate.extensionCreations
         factories += candidate.extensionFactories
         memberOwners += candidate.injectedMemberOwnerIds
-        addDefaultImplementations(candidate.defaultImplementations)
+        addMemberOverrides(candidate.memberOverrides)
         for ((bindingIndex, binding) in candidate.bindings.withIndex()) {
           checkCanceledEvery(bindingIndex)
           if (hasWrittenBinding(binding, graph)) continue
@@ -442,9 +447,9 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
           addAccessor(consumer)
         }
       }
-      val implementedRequests = implementedDeclarations.orEmpty()
-      if (implementedRequests.isNotEmpty()) {
-        accessors.removeAll { isImplementedGraphRequest(it, implementedRequests) }
+      val supersededRequests = supersededDeclarations.orEmpty()
+      if (supersededRequests.isNotEmpty()) {
+        accessors.removeAll { isSupersededGraphRequest(it, supersededRequests) }
       }
       SelectedGraphComposition(
         GraphComposition(
@@ -459,7 +464,7 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
         selection,
         contributionIds.toSet(),
         selectedBindings.toSet(),
-        implementedRequests.toSet(),
+        supersededRequests.toSet(),
       )
     }
   }
@@ -1114,10 +1119,22 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
   private fun isBindingOwnedByCurrentGraph(
     binding: KaBinding,
     structure: GraphQueryStructure,
+  ): Boolean = isBindingOwnedByGraph(binding, structure.queryContext.graphContext.graph, structure)
+
+  /** Checks declaration and aggregation ownership at one graph in the selected parent path. */
+  internal fun isBindingOwnedByGraph(
+    binding: KaBinding,
+    graph: KaGraphDeclaration,
+    plan: GraphQueryPlan,
+  ): Boolean = isBindingOwnedByGraph(binding, graph, plan.structure)
+
+  private fun isBindingOwnedByGraph(
+    binding: KaBinding,
+    graph: KaGraphDeclaration,
+    structure: GraphQueryStructure,
   ): Boolean {
     val queryContext = structure.queryContext
     val context = queryContext.graphContext
-    val graph = context.graph
     val ownerGraphId = binding.ownerGraphId
     if (ownerGraphId != null) {
       if (binding is KaBinding.BoundInstance) {
@@ -1127,7 +1144,9 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
     }
     val includedContainerKey = binding.includedContainerKey
     if (includedContainerKey != null) {
-      if (includedContainerKey in graph.includedBindingContainers) return true
+      if (includedContainerKey in graph.includedBindingContainers) {
+        return true
+      }
       val isDynamicRoot = graph.declarationId == context.rootGraph.declarationId
       return isDynamicRoot && includedContainerKey in context.dynamicGraph?.containerKeys.orEmpty()
     }
@@ -1138,7 +1157,7 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
         checkNotNull(selectedGraphComposition(structure, graph.declarationId)).composition
       return containerId in graph.selfIds ||
         composition.supertypeDeclarations.any { it.classId == containerId } ||
-        containerId in structure.currentOwnerOwnContainers
+        containerId in graphOwnContainers(graph, structure)
     }
 
     if (binding.contributionScopes.isNotEmpty()) {
@@ -1317,7 +1336,7 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
       if (graphId !in context.graphIds) return false
       if (consumer.graphRequestKind == null || consumer.isOptional) return true
       val selected = selectedGraphComposition(structure, graphId) ?: return false
-      return !isImplementedGraphRequest(consumer, selected.implementedRequests)
+      return !isSupersededGraphRequest(consumer, selected.supersededRequests)
     }
 
     val memberOwnerClassId = consumer.memberOwnerClassId
@@ -1544,14 +1563,19 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
   }
 
   /** Uses the same precomputed selection for graph roots and source/library dependency seeding. */
-  private fun isImplementedGraphRequest(
+  private fun isSupersededGraphRequest(
     consumer: ConsumerEntry,
-    implementedRequests: Set<SourcePointerIdentity>,
+    supersededRequests: Set<SourcePointerIdentity>,
   ): Boolean {
-    if (consumer.graphRequestKind == null || consumer.isOptional) return false
-    if (implementedRequests.isEmpty()) return false
+    // Optional concrete accessors remain eligible for a binding that replaces their default.
+    if (consumer.graphRequestKind == null || consumer.isOptional) {
+      return false
+    }
+    if (supersededRequests.isEmpty()) {
+      return false
+    }
     val source = consumer.sourceIdentity ?: return false
-    return source in implementedRequests
+    return source in supersededRequests
   }
 
   private fun isGraphMemberContainer(
@@ -1787,7 +1811,7 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
     val selection: ContributionSelection,
     val contributionIds: Set<GraphReference>,
     val bindings: Set<KaBinding>,
-    val implementedRequests: Set<SourcePointerIdentity>,
+    val supersededRequests: Set<SourcePointerIdentity>,
   )
 
   internal class GraphQueryStructure(
