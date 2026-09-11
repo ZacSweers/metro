@@ -7,7 +7,7 @@ Metro provides Gradle tasks for analyzing and visualizing dependency graphs. The
 Graph analysis requires setting the `reportsDestination` property in your Metro configuration:
 
 !!! warning
-    You should _not_ leave this enabled by default as it can be quite verbose and potentially expensive. This property also does not participate in task inputs, so you may need to recompile with `--rerun` to force recompilation after adding this flag.
+    You should _not_ leave this enabled by default as it can be quite verbose and potentially expensive. The Kotlin Gradle Plugin does _not_ include file inputs like `reportsDestination` as build inputs, so you may need to recompile with `--rerun` to force recompilation after adding this flag.
 
 ```kotlin
 metro {
