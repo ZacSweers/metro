@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>__METRO_TITLE__ · Metro</title>
+  <style>__METRO_STYLE__</style>
+</head>
+<body>
+  <div id="app" class="app">
+    <header class="topbar">
+      <a class="brand" href="__METRO_INDEX_URL__" aria-label="Metro graph reports">
+        <img class="brand-mark" src="__METRO_ICON_URL__" alt="" aria-hidden="true">
+        <span>metro</span>
+      </a>
+      <div class="topbar-divider" aria-hidden="true"></div>
+      <div class="graph-identity">
+        <h1 id="graph-name">__METRO_TITLE__</h1>
+        <p id="graph-summary">Dependency graph explorer</p>
+      </div>
+      <a class="index-link" href="__METRO_INDEX_URL__">
+        <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10 3 5 8l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>All graphs</span>
+      </a>
+      <details class="help">
+        <summary aria-label="Show navigation help">?</summary>
+        <div class="help-popover">
+          <h2>Navigation help</h2>
+          <p>Use Graph or Roots to start from an accessor or injector on the graph boundary. Select a binding, then use Connections or Route from root beside its name. Click blank space to clear the selection without changing the view. Use Back to return from Connections or a route.</p>
+          <dl>
+            <div><dt>Zoom</dt><dd>Scroll</dd></div>
+            <div><dt>Pan</dt><dd>Drag the map</dd></div>
+            <div><dt>Expand map</dt><dd><kbd>F</kbd></dd></div>
+            <div><dt>Exit expanded map</dt><dd><kbd>F</kbd> or <kbd>Esc</kbd> after clearing selection</dd></div>
+            <div><dt>Inspect</dt><dd>Click a binding</dd></div>
+            <div><dt>Search</dt><dd><kbd>/</kbd></dd></div>
+            <div><dt>Navigate results</dt><dd><kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd></dd></div>
+            <div><dt>Clear selection</dt><dd><kbd>Esc</kbd></dd></div>
+          </dl>
+          <p class="help-note">Follow arrows from graph inputs through bindings to roots. The overview groups bindings by package. Colors indicate binding kinds. Animated dots show connection direction.</p>
+        </div>
+      </details>
+    </header>
+
+    <main class="workspace">
+      <aside class="browser-panel" aria-label="Browse graph bindings">
+        <div class="browser-heading">
+          <h2>Browse</h2>
+        </div>
+        <div class="search-box">
+          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="1.5"/><path d="m13 13 4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <input id="search" type="search" placeholder="Find a binding…" aria-label="Search bindings by name or package" autocomplete="off" spellcheck="false">
+          <button id="search-clear" class="icon-button search-clear" type="button" aria-label="Clear search" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+          <kbd class="search-shortcut" aria-hidden="true">/</kbd>
+        </div>
+
+        <section class="packages-section" aria-labelledby="packages-heading">
+          <div class="section-heading">
+            <h3 id="packages-heading">Packages</h3>
+            <span id="package-count" class="count-badge">0</span>
+          </div>
+          <div id="package-list" class="package-list"></div>
+        </section>
+
+        <section class="bindings-section" aria-labelledby="bindings-heading">
+          <div class="section-heading">
+            <h3 id="bindings-heading">Bindings</h3>
+            <span id="result-count" class="count-badge">0</span>
+          </div>
+          <div class="sort-row">
+            <label for="sort-mode">Sort by</label>
+            <select id="sort-mode">
+              <option value="name">Name</option>
+              <option value="fanIn">Most depended on</option>
+              <option value="fanOut">Most dependencies</option>
+              <option value="centrality">Highest centrality</option>
+              <option value="dominatorCount">Most dominated</option>
+            </select>
+          </div>
+          <div id="binding-list" class="binding-list" aria-label="Binding search results"></div>
+        </section>
+
+        <details class="display-options">
+          <summary>Display options <span class="summary-chevron" aria-hidden="true">⌃</span></summary>
+          <div class="display-options-content">
+            <label class="checkbox-label"><input id="show-synthetic" type="checkbox"><span>Show synthetic bindings</span></label>
+            <label class="checkbox-label"><input id="show-defaults" type="checkbox"><span>Show default values</span></label>
+            <label class="filter-label" for="edge-types">Connections</label>
+            <select id="edge-types">
+              <option value="all">All connections</option>
+              <option value="normal">Direct dependencies</option>
+              <option value="deferrable">Deferred dependencies</option>
+              <option value="accessor">Graph accessors</option>
+            </select>
+          </div>
+        </details>
+      </aside>
+
+      <section class="map-panel" aria-label="Dependency map">
+        <div class="map-topbar">
+          <nav class="view-switcher" aria-label="Graph view">
+            <button class="mode-button active" data-mode="overview" type="button" aria-pressed="true">Overview</button>
+            <button class="mode-button" data-mode="full" type="button" aria-pressed="false">Full graph</button>
+            <button class="mode-button" data-mode="radial" type="button" aria-pressed="false">Radial</button>
+            <button class="mode-button" data-mode="circular" type="button" aria-pressed="false">Circular</button>
+          </nav>
+          <label class="flow-control" for="flow-direction">Direction
+            <select id="flow-direction" aria-label="Graph flow direction" title="Automatic uses left to right for graphs and top to bottom for routes">
+              <option value="auto">Automatic</option>
+              <option value="lr">Left → right</option>
+              <option value="rl">Right → left</option>
+              <option value="tb">Top → bottom</option>
+              <option value="bt">Bottom → top</option>
+            </select>
+          </label>
+          <button id="longest-path" class="text-button chain-button" type="button" title="Highlight the longest dependency chain without deferred edges" aria-label="Highlight longest dependency chain" aria-pressed="false">
+            <svg viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M3 14V9a3 3 0 0 1 6 0v1a3 3 0 0 0 6 0V4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="3" cy="14" r="2" fill="currentColor"/><circle cx="15" cy="4" r="2" fill="currentColor"/></svg>
+            <span>Longest chain</span>
+          </button>
+        </div>
+
+        <div id="selection-toolbar" class="selection-toolbar" aria-label="Selected binding" hidden>
+          <span class="selection-label">Selected</span>
+          <button id="selected-binding-name" class="selected-binding-name" type="button"></button>
+          <button class="mode-button" data-mode="explore" type="button" aria-pressed="false">Connections</button>
+          <button class="mode-button" data-mode="route" type="button" aria-pressed="false">Route from root</button>
+          <button id="clear-map-selection" class="icon-button" type="button" aria-label="Clear selected binding" title="Clear selection (Esc)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+        </div>
+
+        <div class="map-context">
+          <div class="map-context-main">
+            <div class="map-heading">
+              <h2 id="view-title">Package overview</h2>
+              <p id="view-subtitle">Select a package or find a binding to begin.</p>
+            </div>
+            <nav class="graph-navigation" aria-label="Graph navigation">
+              <button id="back-to-graph" class="graph-nav-button" type="button" hidden>← Back to graph</button>
+              <button id="show-root" class="graph-nav-button" type="button"><span class="root-nav-dot" aria-hidden="true"></span>Graph</button>
+              <button id="show-entry-points" class="graph-nav-button" type="button"><span class="entry-nav-dot" aria-hidden="true"></span>Roots</button>
+              <label id="extensions-control" class="graph-nav-button checkbox-label" title="Show graph extensions">
+                <input id="show-extensions" type="checkbox" checked aria-label="Show graph extensions">
+                <span>Extensions</span>
+              </label>
+            </nav>
+          </div>
+          <div id="explorer-controls" class="explorer-controls" hidden>
+            <label for="direction">Follow</label>
+            <select id="direction" aria-label="Connections to follow">
+              <option value="dependencies">Dependencies</option>
+              <option value="consumers">Consumers</option>
+              <option value="both">Both directions</option>
+            </select>
+            <label for="depth">Initial depth</label>
+            <select id="depth" aria-label="Initial connection depth">
+              <option value="1">1 level</option>
+              <option value="2" selected>2 levels</option>
+              <option value="3">3 levels</option>
+            </select>
+            <button id="load-more" class="text-button" type="button" hidden>Show more</button>
+          </div>
+          <p id="reading-direction" class="reading-direction" hidden>Graph inputs → Bindings → Roots</p>
+          <div id="chain-controls" class="chain-controls" hidden>
+            <p id="chain-context" class="chain-context"></p>
+            <p id="chain-description"></p>
+            <div class="chain-actions">
+              <button id="focus-chain" class="text-button" type="button">Chain start</button>
+              <button id="isolate-chain" class="text-button" type="button">Isolate chain</button>
+              <button id="clear-chain" class="text-button" type="button">Clear highlight</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="canvas-wrap" class="canvas-wrap">
+          <canvas id="canvas" tabindex="0" role="img" aria-label="Interactive dependency map. Bindings live inside the graph boundary. Use Graph, Roots, or the binding browser to navigate."></canvas>
+          <div id="canvas-tooltip" class="canvas-tooltip" role="tooltip" hidden></div>
+          <div class="map-controls" aria-label="Map controls">
+            <button id="pause-motion" class="icon-button" type="button" aria-label="Pause route animation" aria-pressed="false" title="Pause route animation">
+              <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M7 5v10M13 5v10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </button>
+            <span class="control-divider" aria-hidden="true"></span>
+            <button id="zoom-out" class="icon-button" type="button" aria-label="Zoom out" title="Zoom out">
+              <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M5 10h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            </button>
+            <button id="zoom-in" class="icon-button" type="button" aria-label="Zoom in" title="Zoom in">
+              <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M5 10h10M10 5v10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            </button>
+            <button id="fit-view" class="map-fit-button" type="button" aria-label="Fit map to view" title="Fit the entire current view">
+              <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M7 4H4v3m9-3h3v3M4 13v3h3m9-3v3h-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span>Fit</span>
+            </button>
+            <span class="control-divider" aria-hidden="true"></span>
+            <button id="expand-map" class="map-expand-button" type="button" aria-label="Expand map" aria-pressed="false" title="Expand map (F)">
+              <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <path class="expand-glyph" d="M7 3H3v4m0-4 5 5m5 9h4v-4m0 4-5-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <path class="collapse-glyph" d="M3 8h5V3m0 5L3 3m14 9h-5v5m0-5 5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span id="expand-map-label">Expand map</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="map-legend" aria-label="Connection legend">
+          <span><i class="legend-line" aria-hidden="true"></i>Dependency</span>
+          <span><i class="legend-line deferred" aria-hidden="true"></i>Deferred</span>
+          <span><i class="legend-line alias" aria-hidden="true"></i>Alias</span>
+          <span><i class="legend-station" aria-hidden="true"></i>Binding</span>
+          <span id="input-legend" hidden><i class="legend-input" aria-hidden="true"></i>Graph input</span>
+        </div>
+        <footer class="map-statusbar">
+          <span id="shown-count">Loading graph…</span>
+          <span id="canvas-status">Scroll to zoom · Drag to pan</span>
+        </footer>
+      </section>
+
+      <aside class="inspector-panel" aria-label="Binding inspector">
+        <div class="inspector-heading">
+          <h2>Inspector</h2>
+          <button id="selection-clear" class="icon-button" type="button" aria-label="Clear selected binding" title="Clear selection (Esc)" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+        </div>
+        <div id="details" class="details">
+          <div class="empty-state inspector-empty">
+            <svg class="empty-station" viewBox="0 0 100 84" fill="none" aria-hidden="true"><path d="M8 60h27a16 16 0 0 0 16-16V8" stroke="#0039a6" stroke-width="5" stroke-linecap="round"/><path d="M10 24h29a16 16 0 0 1 16 16v22a14 14 0 0 0 14 14h22" stroke="#ff6319" stroke-width="5" stroke-linecap="round"/><circle cx="53" cy="40" r="8" fill="#0b1016" stroke="#e6e9ed" stroke-width="3"/></svg>
+            <h3>Select a binding</h3>
+            <p>Select a binding to inspect its dependencies, consumers, and compiler decisions.</p>
+            <span class="empty-hint">Start on the map or search by name.</span>
+          </div>
+        </div>
+      </aside>
+    </main>
+    <div id="toast" class="toast" role="status" hidden></div>
+    <div id="live-region" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+  </div>
+  <script>const metroData = __METRO_DATA__;</script>
+  <script>__METRO_SCRIPT__</script>
+</body>
+</html>

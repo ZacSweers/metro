@@ -123,7 +123,7 @@ public class GraphAnalyzer(private val bindingGraph: BindingGraph) {
    */
   public fun computePathsToRoot(): PathsToRootResult {
     val graphRoot = bindingGraph.graphRoot
-    if (graphRoot == null || eagerGraph.nodes().isEmpty()) {
+    if (graphRoot == null || graphRoot !in eagerGraph.nodes()) {
       return PathsToRootResult("", emptyMap())
     }
 

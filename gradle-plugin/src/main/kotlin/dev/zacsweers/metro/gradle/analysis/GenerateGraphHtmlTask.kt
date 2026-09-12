@@ -2,18 +2,29 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.gradle.analysis
 
+import dev.zacsweers.metro.compiler.graph.explanation.BindingCandidateStatus
+import dev.zacsweers.metro.compiler.graph.explanation.BindingExplanationOutcome
 import dev.zacsweers.metro.compiler.graph.reporting.graphReportFileName
 import dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi
 import java.io.File
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
+import java.util.Base64
 import kotlin.io.path.createParentDirectories
 import kotlin.io.path.writeText
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonObjectBuilder
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.RegularFileProperty
@@ -24,22 +35,7 @@ import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
 
-/**
- * Generates interactive HTML visualizations of Metro dependency graphs using ECharts.
- *
- * The generated HTML files are self-contained and can be opened directly in a browser. They use
- * [Apache ECharts](https://echarts.apache.org/) for beautiful, interactive graph visualization with
- * the following features:
- * - **Force-directed layout**: Automatic node positioning with physics simulation
- * - **Interactive**: Drag nodes, zoom, pan, hover tooltips
- * - **Search & filter**: Find bindings by name, filter by type
- * - **Focus mode**: Click a node to highlight its connections
- * - **Legend**: Color-coded by binding kind with toggle visibility
- * - **Responsive**: Adapts to window size
- * - **Beautiful defaults**: Gradient backgrounds, smooth animations, professional styling
- *
- * One HTML file is generated per dependency graph, plus an index page.
- */
+/** Generates self-contained HTML explorers for Metro dependency graphs. */
 @ExperimentalMetroGradleApi
 @CacheableTask
 public abstract class GenerateGraphHtmlTask : DefaultTask() {
@@ -87,13 +83,12 @@ public abstract class GenerateGraphHtmlTask : DefaultTask() {
     val analysisReport = json.decodeFromString<FullAnalysisReport>(analysisInput.readText())
 
     // Build per-graph analysis lookup
-    val analysisLookup = buildAnalysisLookup(analysisReport)
+    val renderer = GraphHtmlRenderer(analysisReport, metadata.graphs)
 
     outputDir.mkdirs()
 
     for (graphMetadata in metadata.graphs) {
-      val graphAnalysis = analysisLookup[graphMetadata.graph] ?: GraphAnalysisData(emptyMap())
-      val htmlContent = generateHtml(graphMetadata, graphAnalysis)
+      val htmlContent = renderer.generateHtml(graphMetadata)
 
       val fileName = graphReportFileName(graphMetadata.graph, "html")
       val outputFile = File(outputDir, fileName)
@@ -104,11 +99,24 @@ public abstract class GenerateGraphHtmlTask : DefaultTask() {
     }
 
     // Generate index page
-    val indexContent = generateIndex(metadata)
+    val indexContent = renderer.generateIndex(metadata)
     val indexFile = File(outputDir, "index.html")
     indexFile.toPath().writeText(indexContent)
     logger.lifecycle("Generated file://${indexFile.absolutePath}")
   }
+
+  internal companion object {
+    const val NAME = "generateMetroGraphHtml"
+  }
+}
+
+@OptIn(ExperimentalMetroGradleApi::class)
+internal class GraphHtmlRenderer(
+  report: FullAnalysisReport = FullAnalysisReport("", emptyList()),
+  private val graphs: List<GraphMetadata> = emptyList(),
+) {
+  private val json = Json { encodeDefaults = true }
+  private val analysisLookup = buildAnalysisLookup(report)
 
   /** Builds a lookup map from graph name to per-binding analysis metrics. */
   private fun buildAnalysisLookup(report: FullAnalysisReport): Map<String, GraphAnalysisData> {
@@ -146,7 +154,7 @@ public abstract class GenerateGraphHtmlTask : DefaultTask() {
         GraphAnalysisData(
           bindingMetrics = bindingMetrics,
           pathsToRoot = graph.pathsToRoot.paths,
-          graphRoot = graph.pathsToRoot.rootKey,
+          longestPath = graph.longestPath.longestPaths.firstOrNull().orEmpty(),
         )
     }
 
@@ -157,7 +165,7 @@ public abstract class GenerateGraphHtmlTask : DefaultTask() {
   private data class GraphAnalysisData(
     val bindingMetrics: Map<String, BindingAnalysisMetrics>,
     val pathsToRoot: Map<String, List<String>> = emptyMap(),
-    val graphRoot: String = "",
+    val longestPath: List<String> = emptyList(),
   )
 
   /** Analysis metrics for a single binding. */
@@ -168,1220 +176,697 @@ public abstract class GenerateGraphHtmlTask : DefaultTask() {
     var dominatorCount: Int = 0,
   )
 
-  private fun generateIndex(metadata: AggregatedGraphMetadata): String {
-    // language=html
+  fun generateIndex(metadata: AggregatedGraphMetadata): String {
+    val graphs =
+      metadata.graphs.sortedWith(
+        compareByDescending<GraphMetadata> { it.bindings.size }.thenBy { it.graph }
+      )
+    val typeNames = typeDisplayNames(graphs.map { it.graph })
+    val rows =
+      graphs.joinToString("\n") { graph ->
+        val fileName = graphReportFileName(graph.graph, "html")
+        val displayName = extractDisplayName(graph.graph, typeNames)
+        """<a class="graph-card" href="${escapeHtml(reportUrl(fileName))}"><span class="line-badge">M</span><span class="graph-title" title="${escapeHtml(graph.graph)}">${escapeHtml(displayName)}<small>${graph.bindings.count { it.isScoped }} scoped · ${graph.roots?.accessors?.size ?: 0} roots</small></span><span class="graph-size">${graph.bindings.size}<small>bindings</small></span><span aria-hidden="true">↗</span></a>"""
+      }
     return """
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Metro Dependency Graphs - ${metadata.projectPath}</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-      min-height: 100vh;
-      color: #e0e0e0;
-    }
-    .container { max-width: 900px; margin: 0 auto; padding: 60px 20px; }
-    h1 {
-      font-size: 3rem;
-      margin-bottom: 10px;
-      background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-    .subtitle { color: #888; font-family: monospace; font-size: 0.9rem; margin-bottom: 8px; }
-    .count { color: #667eea; font-size: 1.1rem; margin-bottom: 40px; }
-    .graph-list { list-style: none; }
-    .graph-list li {
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 12px;
-      padding: 20px 25px;
-      margin-bottom: 12px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      transition: all 0.3s ease;
-    }
-    .graph-list li:hover {
-      background: rgba(102,126,234,0.1);
-      border-color: rgba(102,126,234,0.3);
-      transform: translateX(8px);
-      box-shadow: 0 4px 20px rgba(102,126,234,0.2);
-    }
-    .graph-list a {
-      color: #667eea;
-      text-decoration: none;
-      font-weight: 600;
-      font-size: 1.1rem;
-    }
-    .graph-list a:hover { color: #8b9ff5; }
-    .meta { display: flex; gap: 20px; align-items: center; }
-    .binding-count {
-      color: #888;
-      font-size: 0.9rem;
-      background: rgba(255,255,255,0.05);
-      padding: 4px 12px;
-      border-radius: 20px;
-    }
-    .arrow { color: #667eea; font-size: 1.2rem; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Metro Graphs · ${escapeHtml(metadata.projectPath)}</title>
+<style>
+* { box-sizing: border-box; }
+body { margin: 0; background: #080c11; color: #edf3f8; font: 15px system-ui, sans-serif; }
+main { max-width: 1040px; margin: 0 auto; padding: 80px 32px; }
+.brand { display: flex; align-items: center; gap: 12px; font-weight: 700; letter-spacing: .16em; font-size: 13px; }
+.routes { display: flex; height: 5px; margin: 32px 0 56px; gap: 5px; }
+.routes i { flex: 1; background: #0078c6; border-radius: 3px; }
+.routes i:nth-child(2) { background: #d82233; }.routes i:nth-child(3) { background: #f6bc26; }.routes i:nth-child(4) { background: #009952; }
+h1 { font-size: clamp(30px, 5vw, 52px); letter-spacing: -.05em; margin: 0 0 14px; font-weight: 650; }
+p { color: #8d9baa; line-height: 1.6; overflow-wrap: anywhere; }
+.count { margin: 36px 0 12px; font-size: 12px; text-transform: uppercase; letter-spacing: .12em; }
+.graph-card { display: flex; align-items: center; gap: 20px; padding: 24px 0; color: inherit; text-decoration: none; border-bottom: 1px solid #26313d; }
+.graph-card:hover, .graph-card:focus-visible { background: #101b27; outline: 2px solid #0078c6; outline-offset: 6px; }
+.line-badge { display: inline-grid; place-items: center; width: 32px; height: 32px; flex-shrink: 0; border-radius: 50%; background: #0078c6; color: white; font-weight: 800; }
+.graph-title { flex: 1; overflow-wrap: anywhere; font-weight: 600; }.graph-size { text-align: right; font: 22px ui-monospace, monospace; }
+small { display: block; color: #8d9baa; margin-top: 8px; font: 12px system-ui, sans-serif; }
+</style>
 </head>
-<body>
-  <div class="container">
-    <h1>Metro Graphs</h1>
-    <p class="subtitle">${metadata.projectPath}</p>
-    <p class="count">${metadata.graphCount} dependency graph${if (metadata.graphCount != 1) "s" else ""}</p>
-    <ul class="graph-list">
-${metadata.graphs.joinToString("\n") { graph ->
-  val fileName = graphReportFileName(graph.graph, "html")
-  """      <li>
-        <a href="$fileName">${graph.graph}</a>
-        <div class="meta">
-          <span class="binding-count">${graph.bindings.size} bindings</span>
-          <span class="arrow">→</span>
-        </div>
-      </li>"""
-}}
-    </ul>
-  </div>
-</body>
-</html>
+<body><main>
+<div class="brand"><span class="line-badge">M</span> METRO / GRAPH EXPLORER</div>
+<div class="routes" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+<h1>Dependency graphs</h1>
+<p>${escapeHtml(metadata.projectPath)}<br>Explore bindings, follow dependencies, and trace the route from a root.</p>
+<p class="count">${metadata.graphs.size} dependency graphs</p>
+$rows
+</main></body></html>
 """
       .trimIndent()
   }
 
-  private fun generateHtml(graphMetadata: GraphMetadata, analysis: GraphAnalysisData): String {
-    val graphData = buildEChartsData(graphMetadata, analysis)
-    val categories = getBindingCategories()
-    val longestPath = computeLongestPath(graphMetadata)
-    val packages = graphMetadata.bindings.map { extractPackage(it.key) }.distinct().sorted()
-
-    // language=html
-    return """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${graphMetadata.graph} - Metro Graph</title>
-  <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #0d1117;
-      color: #e6edf3;
-      overflow: hidden;
-    }
-    #app { display: flex; height: 100vh; }
-    #sidebar {
-      width: 340px;
-      background: #161b22;
-      border-right: 1px solid #30363d;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-    .sidebar-header {
-      padding: 20px;
-      border-bottom: 1px solid #30363d;
-    }
-    .sidebar-header h1 {
-      font-size: 1.3rem;
-      color: #0078C6;
-      margin-bottom: 4px;
-      word-break: break-all;
-    }
-    .sidebar-header .full-name {
-      font-size: 0.7rem;
-      color: #8b949e;
-      font-family: monospace;
-      word-break: break-all;
-    }
-    .sidebar-content {
-      flex: 1;
-      overflow-y: auto;
-      padding: 16px 20px;
-    }
-    .search-box {
-      position: relative;
-      margin-bottom: 16px;
-    }
-    .search-box input {
-      width: 100%;
-      padding: 10px 14px;
-      padding-left: 36px;
-      border: 1px solid #30363d;
-      border-radius: 8px;
-      background: #0d1117;
-      color: #e6edf3;
-      font-size: 14px;
-      transition: border-color 0.2s;
-    }
-    .search-box input:focus {
-      outline: none;
-      border-color: #0078C6;
-      box-shadow: 0 0 0 3px rgba(88,166,255,0.15);
-    }
-    .search-box::before {
-      content: "⌕";
-      position: absolute;
-      left: 12px;
-      top: 50%;
-      transform: translateY(-50%);
-      color: #8b949e;
-      font-size: 16px;
-    }
-    .section { margin-bottom: 20px; }
-    .section-title {
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: #8b949e;
-      margin-bottom: 10px;
-      font-weight: 600;
-    }
-    .stats-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-    }
-    .stat-card {
-      background: #0d1117;
-      border: 1px solid #30363d;
-      border-radius: 8px;
-      padding: 12px;
-    }
-    .stat-value { font-size: 1.5rem; font-weight: 700; color: #0078C6; }
-    .stat-label { font-size: 0.75rem; color: #8b949e; margin-top: 2px; }
-    .toggle-group {
-      display: flex;
-      gap: 4px;
-      background: #0d1117;
-      border: 1px solid #30363d;
-      border-radius: 8px;
-      padding: 4px;
-    }
-    .toggle-btn {
-      flex: 1;
-      padding: 6px 10px;
-      border: none;
-      border-radius: 6px;
-      background: transparent;
-      color: #8b949e;
-      font-size: 0.75rem;
-      cursor: pointer;
-      transition: all 0.15s;
-    }
-    .toggle-btn.active {
-      background: #21262d;
-      color: #e6edf3;
-    }
-    .toggle-btn:hover:not(.active) {
-      color: #e6edf3;
-    }
-    .action-btn {
-      width: 100%;
-      padding: 10px 14px;
-      border: 1px solid #30363d;
-      border-radius: 8px;
-      background: #0d1117;
-      color: #e6edf3;
-      font-size: 0.85rem;
-      cursor: pointer;
-      transition: all 0.15s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-    }
-    .action-btn:hover {
-      background: #21262d;
-      border-color: #8b949e;
-    }
-    .action-btn.active {
-      background: #238636;
-      border-color: #238636;
-    }
-    .action-btn .icon { font-size: 1rem; }
-    .collapsible-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      cursor: pointer;
-      user-select: none;
-    }
-    .collapsible-header .collapse-icon {
-      transition: transform 0.2s;
-      font-size: 0.7rem;
-      color: #8b949e;
-    }
-    .collapsible-header.collapsed .collapse-icon {
-      transform: rotate(-90deg);
-    }
-    .collapsible-content {
-      overflow: hidden;
-      transition: max-height 0.2s ease-out;
-    }
-    .collapsible-content.collapsed {
-      max-height: 0 !important;
-    }
-    .package-filter {
-      max-height: 120px;
-      overflow-y: auto;
-      background: #0d1117;
-      border: 1px solid #30363d;
-      border-radius: 8px;
-      padding: 8px;
-    }
-    .edge-legend {
-      background: #0d1117;
-      border: 1px solid #30363d;
-      border-radius: 8px;
-      padding: 8px;
-      margin-top: 8px;
-    }
-    .edge-legend-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 3px 6px;
-      font-size: 0.75rem;
-      color: #8b949e;
-    }
-    .edge-legend-item .edge-line {
-      width: 20px;
-      height: 2px;
-    }
-    .edge-legend-item .edge-line.deferrable {
-      background: #17becf;
-      border-style: dashed;
-    }
-    .edge-legend-item .edge-line.assisted {
-      background: #ff7f0e;
-      height: 3px;
-    }
-    .edge-legend-item .edge-line.multibinding {
-      background: #9467bd;
-    }
-    .edge-legend-item .edge-line.optional {
-      background: #8b949e;
-      border-style: dashed;
-      opacity: 0.5;
-    }
-    .edge-legend-item .edge-line.default {
-      background: #F6BC26;
-      border-style: dashed;
-    }
-    .edge-legend-item .edge-line.alias {
-      background: #9e9e9e;
-      border-style: dotted;
-    }
-    .edge-legend-item .edge-line.accessor {
-      background: #009952;
-      height: 3px;
-    }
-    .edge-legend-item .edge-line.boundinstance {
-      background: #008EB7;
-      height: 3px;
-    }
-    .edge-legend-item .edge-line.injects {
-      background: #799534;
-      height: 3px;
-    }
-    .edge-legend-item .edge-line.inherited {
-      background: #EB6800;
-      border-style: dashed;
-      height: 3px;
-    }
-    .edge-legend-item .edge-line.normal {
-      background: #30363d;
-    }
-    .filter-toggle {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 8px 12px;
-      background: #0d1117;
-      border: 1px solid #30363d;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 0.85rem;
-      color: #8b949e;
-      transition: all 0.15s;
-    }
-    .filter-toggle:hover {
-      background: #21262d;
-      color: #e6edf3;
-    }
-    .filter-toggle input {
-      accent-color: #0078C6;
-      width: 16px;
-      height: 16px;
-    }
-    .package-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 4px 6px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 0.8rem;
-      color: #8b949e;
-      transition: all 0.15s;
-    }
-    .package-item:hover {
-      background: #21262d;
-      color: #e6edf3;
-    }
-    .package-item input {
-      accent-color: #0078C6;
-    }
-    .package-item .pkg-color {
-      width: 10px;
-      height: 10px;
-      border-radius: 2px;
-    }
-    #details {
-      background: #0d1117;
-      border: 1px solid #30363d;
-      border-radius: 8px;
-      padding: 16px;
-    }
-    #details.empty { color: #8b949e; font-style: italic; text-align: center; padding: 30px; }
-    .detail-header {
-      font-family: monospace;
-      font-size: 0.85rem;
-      color: #0078C6;
-      word-break: break-all;
-      margin-bottom: 12px;
-      padding-bottom: 12px;
-      border-bottom: 1px solid #30363d;
-    }
-    .detail-row {
-      display: flex;
-      justify-content: space-between;
-      padding: 6px 0;
-      font-size: 0.85rem;
-    }
-    .detail-label { color: #8b949e; }
-    .detail-value { color: #e6edf3; font-family: monospace; }
-    .detail-value.scoped { color: #FFFFFF; font-weight: 600; }
-    .deps-section { margin-top: 16px; }
-    .deps-title {
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      color: #8b949e;
-      margin-bottom: 8px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .deps-title .count {
-      background: #30363d;
-      padding: 2px 8px;
-      border-radius: 10px;
-      font-size: 0.7rem;
-    }
-    .deps-list {
-      max-height: 120px;
-      overflow-y: auto;
-    }
-    .dep-item {
-      font-family: monospace;
-      font-size: 0.8rem;
-      padding: 4px 8px;
-      margin: 2px 0;
-      border-radius: 4px;
-      cursor: pointer;
-      color: #8b949e;
-      transition: all 0.15s;
-    }
-    .dep-item:hover { background: #30363d; color: #0078C6; }
-    .controls {
-      padding: 12px 20px;
-      border-top: 1px solid #30363d;
-      display: flex;
-      gap: 8px;
-    }
-    .controls button {
-      flex: 1;
-      padding: 8px 12px;
-      border: 1px solid #30363d;
-      border-radius: 6px;
-      background: #21262d;
-      color: #e6edf3;
-      font-size: 0.8rem;
-      cursor: pointer;
-      transition: all 0.15s;
-    }
-    .controls button:hover { background: #30363d; border-color: #8b949e; }
-    #chart { flex: 1; background: #0d1117; }
-    .longest-path-info {
-      background: #0d1117;
-      border: 1px solid #30363d;
-      border-radius: 8px;
-      padding: 12px;
-      margin-top: 8px;
-      font-size: 0.8rem;
-    }
-    .longest-path-info .path-length {
-      color: #0078C6;
-      font-weight: 600;
-    }
-    .longest-path-info .path-nodes {
-      color: #8b949e;
-      font-family: monospace;
-      font-size: 0.75rem;
-      margin-top: 8px;
-      word-break: break-all;
-    }
-  </style>
-</head>
-<body>
-  <div id="app">
-    <div id="sidebar">
-      <div class="sidebar-header">
-        <h1>${graphMetadata.graph.substringAfterLast('.')}</h1>
-        <div class="full-name">${graphMetadata.graph}</div>
-      </div>
-      <div class="sidebar-content">
-        <div class="search-box">
-          <input type="text" id="search" placeholder="Search bindings...">
-        </div>
-
-        <div class="section">
-          <div class="section-title">Layout</div>
-          <div class="toggle-group">
-            <button class="toggle-btn active" data-layout="force">Force</button>
-            <button class="toggle-btn" data-layout="circular">Circular</button>
-          </div>
-        </div>
-
-        <div class="section">
-          <div class="section-title">Filters</div>
-          <label class="filter-toggle">
-            <input type="checkbox" id="hide-synthetic" checked>
-            <span>Focus synthetic bindings</span>
-          </label>
-          <label class="filter-toggle" style="margin-top:8px">
-            <input type="checkbox" id="scoped-only">
-            <span>Focus only scoped bindings</span>
-          </label>
-          <label class="filter-toggle" style="margin-top:8px">
-            <input type="checkbox" id="show-defaults">
-            <span>Show default value bindings</span>
-          </label>
-          <label class="filter-toggle" style="margin-top:8px">
-            <input type="checkbox" id="show-glow" checked>
-            <span>Show metrics glow</span>
-          </label>
-          <label class="filter-toggle" style="margin-top:8px">
-            <input type="checkbox" id="show-contributions">
-            <span>Show synthetic contribution types</span>
-          </label>
-          <label class="filter-toggle" style="margin-top:8px">
-            <input type="checkbox" id="hide-labels">
-            <span>Hide labels (art mode)</span>
-          </label>
-          <label class="filter-toggle" style="margin-top:8px">
-            <input type="checkbox" id="color-edges" checked>
-            <span>Color edges by binding type</span>
-          </label>
-        </div>
-
-        <div class="section">
-          <div class="section-title">Analysis</div>
-          <button class="action-btn" id="longest-path-btn">
-            <span class="icon">📏</span> Show Longest Path
-          </button>
-          <div id="longest-path-info" class="longest-path-info" style="display:none;">
-            <div>Longest path: <span class="path-length">${longestPath.size} nodes</span></div>
-            <div class="path-nodes">${longestPath.joinToString(" → ") { it.substringAfterLast('.') }}</div>
-          </div>
-        </div>
-
-        <div class="section">
-          <div class="section-title collapsible-header collapsed" id="packages-header">
-            <span>Packages (${packages.size})</span>
-            <span class="collapse-icon">▼</span>
-          </div>
-          <div class="collapsible-content collapsed" id="packages-content" style="max-height:0">
-            <div class="package-filter" id="package-filter">
-${packages.mapIndexed { i, pkg ->
-  val color = Colors.packageColors[i % Colors.packageColors.size]
-  """              <label class="package-item">
-                <input type="checkbox" checked data-package="$pkg">
-                <span class="pkg-color" style="background:$color"></span>
-                <span>${pkg.ifEmpty { "(root)" }}</span>
-              </label>"""
-}.joinToString("\n")}
-            </div>
-          </div>
-        </div>
-
-        <div class="section">
-          <div class="section-title collapsible-header collapsed" id="edges-header">
-            <span>Edge Types</span>
-            <span class="collapse-icon">▼</span>
-          </div>
-          <div class="collapsible-content collapsed" id="edges-content" style="max-height:0">
-            <div class="edge-legend">
-              <div class="edge-legend-item"><span class="edge-line normal"></span> Normal dependency</div>
-              <div class="edge-legend-item"><span class="edge-line accessor"></span> Accessor (graph entry point)</div>
-              <div class="edge-legend-item"><span class="edge-line boundinstance"></span> Bound instance (graph input)</div>
-              <div class="edge-legend-item"><span class="edge-line injects"></span> Injects (member injection)</div>
-              <div class="edge-legend-item"><span class="edge-line inherited"></span> Inherited binding (from parent)</div>
-              <div class="edge-legend-item"><span class="edge-line deferrable"></span> Deferrable (Provider/Lazy)</div>
-              <div class="edge-legend-item"><span class="edge-line assisted"></span> Assisted factory → inject</div>
-              <div class="edge-legend-item"><span class="edge-line multibinding"></span> Multibinding source</div>
-              <div class="edge-legend-item"><span class="edge-line alias"></span> Alias (type binding)</div>
-              <div class="edge-legend-item"><span class="edge-line default"></span> Default value (fallback)</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="section">
-          <div class="section-title">Overview</div>
-          <div class="stats-grid">
-            <div class="stat-card">
-              <div class="stat-value">${graphMetadata.bindings.size}</div>
-              <div class="stat-label">Bindings</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-value">${graphMetadata.bindings.count { it.isScoped }}</div>
-              <div class="stat-label">Scoped</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-value">${graphMetadata.bindings.sumOf { it.dependencies.size }}</div>
-              <div class="stat-label">Edges</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-value">${graphMetadata.bindings.groupBy { it.bindingKind }.size}</div>
-              <div class="stat-label">Types</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="section">
-          <div class="section-title">Selected Binding</div>
-          <div id="details" class="empty">Click a node to view details</div>
-        </div>
-      </div>
-      <div class="controls">
-        <button id="reset-btn">Reset</button>
-        <button id="center-btn">Center</button>
-      </div>
-    </div>
-    <div id="chart"></div>
-  </div>
-  <script>
-    const graphData = ${json.encodeToString(JsonObject.serializer(), graphData)};
-    const categories = ${json.encodeToString(JsonArray.serializer(), categories)};
-    const longestPath = ${json.encodeToString(JsonArray.serializer(), buildJsonArray { longestPath.forEach { add(JsonPrimitive(it)) } })};
-    // Precomputed shortest paths from each node to graph root (using Dijkstra/BFS)
-    const pathsToRoot = ${json.encodeToString(JsonObject.serializer(), buildJsonObject {
-      analysis.pathsToRoot.forEach { (key, path) ->
-        put(key, buildJsonArray { path.forEach { add(JsonPrimitive(it)) } })
+  fun buildData(metadata: GraphMetadata): JsonObject {
+    val analysis = analysisLookup[metadata.graph] ?: GraphAnalysisData(emptyMap())
+    val graph = buildRegions(metadata)
+    val canonicalIds = graph.getValue("canonicalIds").jsonObject
+    fun canonicalId(id: String) = canonicalIds[id]?.jsonPrimitive?.content ?: id
+    val pathsToRoot =
+      analysis.pathsToRoot.entries.associate { (key, path) ->
+        canonicalId(key) to path.map { canonicalId(it) }
       }
-    },)};
-    const graphRootKey = ${if (analysis.graphRoot.isNotEmpty()) "\"${analysis.graphRoot}\"" else "null"};
+    return buildJsonObject {
+      put("graphName", JsonPrimitive(metadata.graph))
+      put("typeNames", graph.getValue("typeNames"))
+      put("nodes", graph.getValue("nodes"))
+      put("links", graph.getValue("links"))
+      put("regions", graph.getValue("regions"))
+      graph["initialRegionId"]?.let { put("initialRegionId", it) }
+      put("categories", getBindingCategories())
+      put("pathsToRoot", json.encodeToJsonElement(pathsToRoot))
+      put("longestPath", json.encodeToJsonElement(analysis.longestPath.map { canonicalId(it) }))
+      put("bindingExplanations", json.encodeToJsonElement(metadata.bindingExplanations))
+      put("scopes", json.encodeToJsonElement(metadata.scopes))
+      put("stats", json.encodeToJsonElement(metadata.stats))
+      put("config", json.encodeToJsonElement(metadata.config))
+    }
+  }
 
-    const chart = echarts.init(document.getElementById('chart'), 'dark');
+  private fun buildRegions(metadata: GraphMetadata): JsonObject = RegionBuilder(metadata).build()
 
-    let currentLayout = 'force';
-    let showingLongestPath = false;
+  private data class IncludedGraph(
+    val consumer: GraphMetadata,
+    val input: BindingMetadata,
+    val producer: GraphMetadata,
+    val getters: List<BindingMetadata>,
+  )
 
-    function getBaseOption() {
-      return {
-        backgroundColor: '#0d1117',
-        tooltip: {
-          trigger: 'item',
-          backgroundColor: 'rgba(22,27,34,0.95)',
-          borderColor: '#30363d',
-          borderWidth: 1,
-          padding: [12, 16],
-          textStyle: { color: '#e6edf3', fontSize: 12 },
-          formatter: function(params) {
-            // HTML escape to prevent angle brackets from being interpreted as tags
-            function esc(s) { return s ? s.replace(/</g, '&lt;').replace(/>/g, '&gt;') : s; }
-            if (params.dataType === 'node') {
-              const d = params.data;
-              let html = '<div style="font-weight:600;color:#0078C6;margin-bottom:8px">' + esc(d.name);
-              if (d.isGraph) html += ' <span style="color:#009952;font-size:10px">◆ GRAPH</span>';
-              else if (d.isExtension) html += ' <span style="color:#EB6800;font-size:10px">▢ EXTENSION</span>';
-              else if (d.isDefaultValue) html += ' <span style="color:#F6BC26;font-size:10px">📌 DEFAULT</span>';
-              else if (d.isAssistedTarget) html += ' <span style="color:#D82233;font-size:10px">⚡ ASSISTED-INJECT</span>';
-              else if (d.synthetic) html += ' <span style="color:#8b949e;font-size:10px">(synthetic)</span>';
-              html += '</div>';
-              html += '<div style="color:#8b949e;font-size:11px">' + esc(d.fullKey) + '</div>';
-              html += '<div style="margin-top:8px;padding-top:8px;border-top:1px solid #30363d">';
-              html += '<div>Type: <span style="color:#e6edf3">' + d.kind + '</span></div>';
-              html += '<div>Package: <span style="color:#e6edf3">' + (d.pkg || '(root)') + '</span></div>';
-              if (d.scoped) html += '<div>Scoped: <span style="color:#FFFFFF;font-weight:600">Yes</span></div>';
-              if (d.scope) html += '<div>Scope: <span style="color:#e6edf3">' + d.scope + '</span></div>';
-              // Assisted parameters (for assisted-inject targets)
-              if (d.assistedParams && d.assistedParams.length > 0) {
-                html += '</div><div style="margin-top:8px;padding-top:8px;border-top:1px solid #30363d">';
-                html += '<div style="font-size:10px;color:#8b949e;margin-bottom:4px">ASSISTED PARAMS (call-time)</div>';
-                for (const param of d.assistedParams) {
-                  html += '<div><span style="color:#D82233">' + esc(param.name) + '</span>: <span style="color:#e6edf3">' + esc(param.type) + '</span></div>';
-                }
-              }
-              // Analysis metrics (if available) with heatmap coloring
-              if (d.fanIn !== undefined || d.fanOut !== undefined) {
-                html += '</div><div style="margin-top:8px;padding-top:8px;border-top:1px solid #30363d">';
-                html += '<div style="font-size:10px;color:#8b949e;margin-bottom:4px">ANALYSIS</div>';
-                // Fan-in with heatmap: green (low) -> yellow -> red (high)
-                if (d.fanIn !== undefined) {
-                  const fanInColor = d.fanIn > 10 ? '#D82233' : d.fanIn > 5 ? '#F6BC26' : '#0078C6';
-                  html += '<div>Fan-in: <span style="color:' + fanInColor + '">' + d.fanIn + '</span></div>';
-                }
-                // Fan-out with heatmap
-                if (d.fanOut !== undefined) {
-                  const fanOutColor = d.fanOut > 8 ? '#D82233' : d.fanOut > 4 ? '#F6BC26' : '#0078C6';
-                  html += '<div>Fan-out: <span style="color:' + fanOutColor + '">' + d.fanOut + '</span></div>';
-                }
-                // Centrality with heatmap
-                if (d.centrality !== undefined && d.centrality > 0) {
-                  const centralityColor = d.centrality > 0.3 ? '#ff6b6b' : d.centrality > 0.1 ? '#F6BC26' : '#74c476';
-                  html += '<div>Centrality: <span style="color:' + centralityColor + '">' + (d.centrality * 100).toFixed(1) + '%</span></div>';
-                }
-                // Dominator count with heatmap
-                if (d.dominatorCount !== undefined && d.dominatorCount > 0) {
-                  const domColor = d.dominatorCount > 10 ? '#D82233' : d.dominatorCount > 5 ? '#F6BC26' : '#0078C6';
-                  html += '<div>Dominates: <span style="color:' + domColor + '">' + d.dominatorCount + ' bindings</span></div>';
-                }
-              }
-              html += '</div>';
-              return html;
+  private data class RegionSelection(
+    val root: GraphMetadata,
+    val included: List<GraphMetadata>,
+    val dependencyRegions: Set<String>,
+    val includedGraphs: List<IncludedGraph>,
+  )
+
+  private data class BindingReference(
+    val ownerId: String,
+    val graph: GraphMetadata,
+    val binding: BindingMetadata,
+    val included: Boolean = false,
+  )
+
+  private data class RegionContents(
+    val graph: GraphMetadata,
+    val id: String,
+    val data: JsonObject,
+    val ownedNodes: List<JsonObject>,
+    val parent: GraphMetadata?,
+    val creators: List<BindingMetadata>,
+  )
+
+  private inner class RegionBuilder(private val metadata: GraphMetadata) {
+    private val reports = (graphs + metadata).distinct()
+    private val reportsByName = reports.groupBy { it.graph }
+    private val selection = selectRegions()
+    private val regionRoot = selection.root
+    private val included = selection.included
+    private val dependencyRegions = selection.dependencyRegions
+    private val includedGraphs = selection.includedGraphs
+    private val seen = included.mapTo(mutableSetOf()) { it.graph }
+    private val metadataByName = included.associateBy { it.graph }
+    private val data = included.associate { graph ->
+      val analysis = analysisLookup[graph.graph] ?: GraphAnalysisData(emptyMap())
+      graph.graph to buildGraphData(graph, analysis)
+    }
+    private val bindingReferences = mutableMapOf<String, BindingReference>()
+    private val includedAccessors = mutableMapOf<String, MutableSet<String>>()
+    private val dependencyRegionByInput = mutableMapOf<String, String>()
+    private val referencePaths: Map<String, List<BindingReference>>
+    private val referencesByOwner: Map<String, List<BindingReference>>
+
+    init {
+      recordInheritedReferences()
+      recordIncludedReferences()
+      referencePaths = buildReferencePaths()
+      referencesByOwner = bindingReferences.entries.groupBy({ canonicalId(it.key) }, { it.value })
+    }
+
+    fun build(): JsonObject {
+      val nodes = mutableListOf<JsonObject>()
+      val links = mutableListOf<JsonObject>()
+      val regions = mutableListOf<JsonObject>()
+      val typeNames = mutableMapOf<String, kotlinx.serialization.json.JsonElement>()
+      for (graph in included) {
+        val region = regionContents(graph)
+        nodes += buildRegionNodes(region)
+        links += buildRegionLinks(region)
+        links += buildIncludedLinks(region.id)
+        links += buildExtensionLinks(region)
+        regions += buildRegionMetadata(region)
+        typeNames.putAll(region.data.getValue("typeNames").jsonObject)
+      }
+      return buildJsonObject {
+        put("nodes", JsonArray(nodes))
+        put("links", JsonArray(links))
+        put("regions", JsonArray(regions))
+        put("typeNames", JsonObject(typeNames))
+        put(
+          "canonicalIds",
+          buildJsonObject {
+            for (node in data.getValue(metadata.graph).getValue("nodes").jsonArray) {
+              val id = node.jsonObject.getValue("id").jsonPrimitive.content
+              put(id, JsonPrimitive(canonicalId(id)))
             }
-            if (params.dataType === 'edge') {
-              const d = params.data;
-              // For deferrable edges, show the specific type (Provider or Lazy)
-              if (d.edgeType === 'deferrable' && d.wrapperType) {
-                return 'depends on (' + d.wrapperType + ')';
-              }
-              // For injects edges, distinguish between graph->target and target->dependency
-              if (d.edgeType === 'injects') {
-                if (d.wrapperType === 'MembersInjected') {
-                  return 'is member-injected into';
-                }
-                return 'member injects';
-              }
-              const edgeLabels = {
-                'accessor': 'accessor (graph entry point)',
-                'boundinstance': 'bound instance (graph @Provides input)',
-                'inherited': 'inherited binding (from parent graph)',
-                'deferrable': 'depends on (Provider/Lazy)',
-                'assisted': 'assisted factory creates',
-                'multibinding': 'multibinding source',
-                'alias': 'is an alias to',
-                'default': 'default value (fallback available)',
-                'default-resolves': 'default resolves to binding',
-                'normal': 'depends on'
-              };
-              return edgeLabels[d.edgeType] || 'dependency';
+          },
+        )
+        if (regionRoot !== metadata) {
+          put("initialRegionId", JsonPrimitive("graph:${metadata.graph}"))
+        }
+      }
+    }
+
+    private fun selectRegions(): RegionSelection {
+      val ancestors = mutableListOf(metadata)
+      val ancestorNames = mutableSetOf(metadata.graph)
+      var parentName = metadata.parentGraph
+      var cyclicAncestors = false
+      while (parentName != null) {
+        if (!ancestorNames.add(parentName)) {
+          cyclicAncestors = true
+          break
+        }
+        val parent = reportsByName[parentName]?.singleOrNull() ?: break
+        ancestors.add(parent)
+        parentName = parent.parentGraph
+      }
+      val regionRoot =
+        if (cyclicAncestors) {
+          metadata
+        } else {
+          ancestors.last()
+        }
+      val includedGraphs = findIncludedGraphs()
+      val included = mutableListOf(regionRoot)
+      val seen = mutableSetOf(regionRoot.graph)
+      val dependencyRegions = mutableSetOf<String>()
+      for (index in 0 until (reports.size + 1)) {
+        if (cyclicAncestors) {
+          break
+        }
+        val parent = included.getOrNull(index) ?: break
+        for (candidate in reports.filter { it.parentGraph == parent.graph }) {
+          val child =
+            if (candidate.graph == metadata.graph) {
+              metadata
+            } else {
+              reportsByName[candidate.graph]?.singleOrNull() ?: continue
             }
-            return '';
+          if (seen.add(child.graph)) {
+            included.add(child)
           }
-        },
-        legend: {
-          type: 'scroll',
-          orient: 'horizontal',
-          bottom: 20,
-          data: categories.map(c => c.name),
-          textStyle: { color: '#8b949e', fontSize: 11 },
-          pageTextStyle: { color: '#8b949e' },
-          inactiveColor: '#30363d'
-        },
-        animationDuration: 800,
-        animationEasingUpdate: 'quinticInOut'
-      };
-    }
-
-    function getSeriesOption(layout) {
-      // Calculate appropriate zoom based on number of nodes
-      const nodeCount = graphData.nodes.length;
-      const initialZoom = nodeCount > 200 ? 0.3 : nodeCount > 100 ? 0.5 : nodeCount > 50 ? 0.7 : 1;
-
-      const base = {
-        type: 'graph',
-        data: graphData.nodes,
-        links: graphData.links,
-        categories: categories,
-        roam: true,
-        draggable: true,
-        zoom: initialZoom,
-        label: {
-          show: true,
-          position: 'right',
-          formatter: '{b}',
-          fontSize: 10,
-          color: '#8b949e'
-        },
-        labelLayout: { hideOverlap: true },
-        emphasis: {
-          focus: 'adjacency',
-          lineStyle: { width: 3 },
-          label: { show: true, color: '#e6edf3' }
-        },
-        edgeSymbol: ['none', 'arrow'],
-        edgeSymbolSize: [0, 8],
-        lineStyle: {
-          color: '#30363d',
-          width: 1.5,
-          curveness: 0.2,
-          opacity: 0.7
-        },
-        scaleLimit: { min: 0.1, max: 5 }
-      };
-
-      if (layout === 'force') {
-        return {
-          ...base,
-          layout: 'force',
-          force: {
-            repulsion: 400,
-            gravity: 0.1,
-            edgeLength: [50, 200],
-            layoutAnimation: true
+        }
+        for (dependency in includedGraphs.filter { it.consumer.graph == parent.graph }) {
+          if (seen.add(dependency.producer.graph)) {
+            included.add(dependency.producer)
+            dependencyRegions.add(dependency.producer.graph)
           }
-        };
-      } else {
-        return {
-          ...base,
-          layout: 'circular',
-          circular: {
-            rotateLabel: true
+        }
+      }
+      return RegionSelection(regionRoot, included, dependencyRegions, includedGraphs)
+    }
+
+    private fun findIncludedGraphs(): List<IncludedGraph> {
+      val suppliedInputs = reports.flatMap { graph ->
+        graph.bindings
+          .filter {
+            val suppliedInstance = it.bindingKind == "BoundInstance" && it.isGraphInput == true
+            suppliedInstance && it.key in graph.includedGraphKeys
           }
-        };
+          .map { graph to it }
       }
-    }
-
-    function updateChart() {
-      const option = getBaseOption();
-      option.series = [getSeriesOption(currentLayout)];
-      chart.setOption(option, true);
-    }
-
-    // Initial render - will be replaced by applyFilters() call at end of script
-
-    // Build reverse dependency map
-    const dependents = {};
-    graphData.nodes.forEach(n => dependents[n.fullKey] = []);
-    graphData.links.forEach(l => {
-      if (dependents[l.target]) dependents[l.target].push(l.source);
-    });
-
-    // Get precomputed path from node to graph root (computed via Dijkstra/BFS during analysis)
-    function getPathToRoot(nodeKey) {
-      return pathsToRoot[nodeKey] || [nodeKey];
-    }
-
-    // Store currently highlighted path
-    let highlightedPath = null;
-
-    // Highlight path to root
-    function highlightPathToRoot(nodeKey) {
-      const path = getPathToRoot(nodeKey);
-      highlightedPath = new Set(path);
-
-      // Build set of edges in the path
-      const pathEdges = new Set();
-      for (let i = 0; i < path.length - 1; i++) {
-        // Edge direction is from higher to lower in path (root -> node)
-        pathEdges.add(path[i + 1] + '→' + path[i]);
-      }
-
-      const hideLabels = document.getElementById('hide-labels').checked;
-
-      const newNodes = graphData.nodes.map(n => ({
-        ...n,
-        itemStyle: highlightedPath.has(n.fullKey)
-          ? { ...n.itemStyle, borderColor: '#0078C6', borderWidth: 4, opacity: 1 }
-          : { ...n.itemStyle, opacity: 0.15 },
-        label: hideLabels ? { show: false } : (highlightedPath.has(n.fullKey) ? { show: true, color: '#e6edf3' } : { show: false })
-      }));
-
-      const newLinks = graphData.links.map(l => ({
-        ...l,
-        lineStyle: pathEdges.has(l.source + '→' + l.target)
-          ? { color: '#0078C6', width: 3, opacity: 1 }
-          : { ...l.lineStyle, opacity: 0.05 }
-      }));
-
-      chart.setOption({ series: [{ data: newNodes, links: newLinks }] });
-    }
-
-    // Clear path highlighting
-    function clearPathHighlight() {
-      if (highlightedPath) {
-        highlightedPath = null;
-        applyFilters();
-      }
-    }
-
-    // Node click handler - highlight path to root
-    chart.on('click', function(params) {
-      if (params.dataType === 'node') {
-        showDetails(params.data);
-        highlightPathToRoot(params.data.fullKey);
-      } else {
-        // Click on empty space clears highlighting
-        clearPathHighlight();
-      }
-    });
-
-    // Double-click to clear highlighting
-    chart.on('dblclick', function() {
-      clearPathHighlight();
-    });
-
-    // ESC key to reset/clear highlighting
-    document.addEventListener('keydown', function(e) {
-      if (e.key === 'Escape') {
-        clearPathHighlight();
-      }
-    });
-
-    // Click on chart background (not on node/edge) to clear highlighting
-    chart.getZr().on('click', function(e) {
-      // If the click target is null, it means we clicked on empty space
-      if (!e.target) {
-        clearPathHighlight();
-      }
-    });
-
-    // HTML escape helper to prevent XSS and fix display of < > characters
-    function escapeHtml(str) {
-      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    }
-
-    // Shorten a fully-qualified type key to just class names (handles generics)
-    function shortenTypeKey(key) {
-      // Replace qualified names with short names, but handle generics properly
-      // Match: word characters and dots followed by a dot and then a capitalized class name
-      // This handles: com.example.Foo -> Foo, kotlin.collections.Map<kotlin.String, com.example.Bar> -> Map<String, Bar>
-      return key.replace(/(?:[\w]+\.)+([A-Z][\w]*)/g, '$1');
-    }
-
-    function showDetails(node) {
-      const deps = graphData.links.filter(l => l.source === node.fullKey).map(l => l.target);
-      const depts = dependents[node.fullKey] || [];
-
-      let html = '<div class="detail-header">' + escapeHtml(node.fullKey) + '</div>';
-      html += '<div class="detail-row"><span class="detail-label">Kind</span><span class="detail-value">' + node.kind + '</span></div>';
-      html += '<div class="detail-row"><span class="detail-label">Package</span><span class="detail-value">' + (node.pkg || '(root)') + '</span></div>';
-      html += '<div class="detail-row"><span class="detail-label">Scoped</span><span class="detail-value' + (node.scoped ? ' scoped' : '') + '">' + (node.scoped ? 'Yes' : 'No') + '</span></div>';
-      if (node.scope) {
-        html += '<div class="detail-row"><span class="detail-label">Scope</span><span class="detail-value">' + node.scope + '</span></div>';
-      }
-      if (node.origin) {
-        html += '<div class="detail-row"><span class="detail-label">Origin</span><span class="detail-value">' + node.origin + '</span></div>';
-      }
-
-      // Analysis metrics section with heatmap colors
-      if (node.fanIn !== undefined || node.fanOut !== undefined) {
-        html += '<div class="deps-section"><div class="deps-title">Analysis</div>';
-        const fanInColor = node.fanIn > 10 ? '#D82233' : node.fanIn > 5 ? '#F6BC26' : '#0078C6';
-        const fanOutColor = node.fanOut > 8 ? '#D82233' : node.fanOut > 4 ? '#F6BC26' : '#0078C6';
-        html += '<div class="detail-row"><span class="detail-label">Fan-in</span><span class="detail-value" style="color:' + fanInColor + '">' + (node.fanIn || 0) + '</span></div>';
-        html += '<div class="detail-row"><span class="detail-label">Fan-out</span><span class="detail-value" style="color:' + fanOutColor + '">' + (node.fanOut || 0) + '</span></div>';
-        if (node.centrality !== undefined && node.centrality > 0) {
-          const centralityColor = node.centrality > 0.3 ? '#ff6b6b' : node.centrality > 0.1 ? '#F6BC26' : '#74c476';
-          html += '<div class="detail-row"><span class="detail-label">Centrality</span><span class="detail-value" style="color:' + centralityColor + '">' + (node.centrality * 100).toFixed(1) + '%</span></div>';
+      val includedGraphs = mutableListOf<IncludedGraph>()
+      for ((consumer, input) in suppliedInputs) {
+        val inputType = bindingType(input.key)
+        val suppliedInstances = suppliedInputs.filter { bindingType(it.second.key) == inputType }
+        if (suppliedInstances.size != 1) {
+          continue
         }
-        if (node.dominatorCount !== undefined && node.dominatorCount > 0) {
-          const domColor = node.dominatorCount > 10 ? '#D82233' : node.dominatorCount > 5 ? '#F6BC26' : '#0078C6';
-          html += '<div class="detail-row"><span class="detail-label">Dominates</span><span class="detail-value" style="color:' + domColor + '">' + node.dominatorCount + ' bindings</span></div>';
+        val producer =
+          reports.singleOrNull {
+            it.parentGraph == null && (it.graph == inputType || it.graphType == inputType)
+          } ?: continue
+        if (producer.graph == consumer.graph) {
+          continue
         }
-        html += '</div>';
+        val getters =
+          consumer.bindings.filter { binding ->
+            val dependency = binding.graphDependency ?: return@filter false
+            if (binding.bindingKind != "GraphDependency" || dependency.fromParent) {
+              return@filter false
+            }
+            val matchesOwner =
+              dependency.ownerKey == input.key && dependency.ownerGraph == inputType
+            val recordedOwner = binding.dependencies.any { it.key == input.key }
+            if (!matchesOwner || !recordedOwner) {
+              return@filter false
+            }
+            val accessor =
+              producer.roots?.accessors.orEmpty().singleOrNull {
+                val matchesDeclaration = it.name != null && it.name == binding.declaration
+                matchesDeclaration && unwrapTypeKey(it.key) == binding.key
+              } ?: return@filter false
+            producer.bindings.any { it.key == unwrapTypeKey(accessor.key) }
+          }
+        if (getters.isNotEmpty()) {
+          includedGraphs += IncludedGraph(consumer, input, producer, getters)
+        }
       }
-
-      if (deps.length > 0) {
-        html += '<div class="deps-section"><div class="deps-title">Dependencies <span class="count">' + deps.length + '</span></div>';
-        html += '<div class="deps-list">' + deps.map(d => '<div class="dep-item" onclick="focusNode(\'' + d.replace(/'/g, "\\'") + '\')">' + escapeHtml(shortenTypeKey(d)) + '</div>').join('') + '</div></div>';
-      }
-      if (depts.length > 0) {
-        html += '<div class="deps-section"><div class="deps-title">Dependents <span class="count">' + depts.length + '</span></div>';
-        html += '<div class="deps-list">' + depts.map(d => '<div class="dep-item" onclick="focusNode(\'' + d.replace(/'/g, "\\'") + '\')">' + escapeHtml(shortenTypeKey(d)) + '</div>').join('') + '</div></div>';
-      }
-
-      document.getElementById('details').innerHTML = html;
-      document.getElementById('details').classList.remove('empty');
+      return includedGraphs
     }
 
-    window.focusNode = function(key) {
-      const node = graphData.nodes.find(n => n.fullKey === key);
-      if (node) {
-        chart.dispatchAction({ type: 'focusNodeAdjacency', dataIndex: graphData.nodes.indexOf(node) });
-        showDetails(node);
+    private fun nodeId(graph: GraphMetadata, id: String): String {
+      if (graph === metadata || id == "graph:${graph.graph}") {
+        return id
       }
-    };
-
-    // Layout toggle
-    document.querySelectorAll('.toggle-btn[data-layout]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.toggle-btn[data-layout]').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        currentLayout = btn.dataset.layout;
-        // Use applyFilters() instead of updateChart() to respect filter state
-        applyFilters();
-      });
-    });
-
-    // Render longest path highlighting (respects art mode)
-    function renderLongestPath() {
-      const pathSet = new Set(longestPath);
-      const pathEdges = new Set();
-      for (let i = 0; i < longestPath.length - 1; i++) {
-        pathEdges.add(longestPath[i] + '→' + longestPath[i + 1]);
-      }
-
-      // Respect art mode (hide labels)
-      const hideLabels = document.getElementById('hide-labels').checked;
-      const labelStyle = hideLabels ? { show: false } : undefined;
-
-      const newNodes = graphData.nodes.map(n => ({
-        ...n,
-        itemStyle: pathSet.has(n.fullKey)
-          ? { borderColor: '#D82233', borderWidth: 4 }
-          : { opacity: 0.2 },
-        label: labelStyle
-      }));
-
-      const newLinks = graphData.links.map(l => ({
-        ...l,
-        lineStyle: pathEdges.has(l.source + '→' + l.target)
-          ? { color: '#D82233', width: 3, opacity: 1 }
-          : { opacity: 0.1 }
-      }));
-
-      chart.setOption({ series: [{ data: newNodes, links: newLinks }] });
+      return "region:${graph.graph}:$id"
     }
 
-    // Longest path highlight
-    document.getElementById('longest-path-btn').addEventListener('click', () => {
-      showingLongestPath = !showingLongestPath;
-      const btn = document.getElementById('longest-path-btn');
-      const info = document.getElementById('longest-path-info');
-
-      if (showingLongestPath) {
-        btn.classList.add('active');
-        btn.innerHTML = '<span class="icon">✓</span> Showing Longest Path';
-        info.style.display = 'block';
-        renderLongestPath();
-      } else {
-        btn.classList.remove('active');
-        btn.innerHTML = '<span class="icon">📏</span> Show Longest Path';
-        info.style.display = 'none';
-        applyFilters();
+    private fun ancestor(graph: GraphMetadata, name: String?): GraphMetadata? {
+      if (name == null) {
+        return null
       }
-    });
-
-    // Store original data for filtering (deep copy to avoid mutation)
-    const originalNodes = JSON.parse(JSON.stringify(graphData.nodes));
-    const originalLinks = JSON.parse(JSON.stringify(graphData.links));
-
-    // Apply all filters (package, synthetic, scoped, defaults, search, glow, edge colors)
-    // Default value nodes are actually removed from the graph, others just get faded
-    function applyFilters() {
-      const showSynthetic = document.getElementById('hide-synthetic').checked;
-      const scopedOnly = document.getElementById('scoped-only').checked;
-      const showDefaults = document.getElementById('show-defaults').checked;
-      const showGlow = document.getElementById('show-glow').checked;
-      const showContributions = document.getElementById('show-contributions').checked;
-      const hideLabels = document.getElementById('hide-labels').checked;
-      const colorEdges = document.getElementById('color-edges').checked;
-      const enabledPackages = new Set();
-      document.querySelectorAll('#package-filter input:checked').forEach(c => {
-        enabledPackages.add(c.dataset.package);
-      });
-      const query = document.getElementById('search').value.toLowerCase();
-
-      // Track which nodes pass the "removal" filters (default value toggle, contribution types)
-      const includedNodeKeys = new Set();
-      // Track which nodes pass all filters (for opacity)
-      const visibleNodeKeys = new Set();
-
-      // First pass: determine which nodes to include (not filtered out entirely)
-      // Use n.id for filtering since links use id for source/target
-      originalNodes.forEach(n => {
-        // Default value nodes are completely removed when filter is off
-        const passesDefaults = showDefaults || !n.isDefaultValue;
-        // MetroContribution types are removed when filter is off
-        const isContribution = n.fullKey.includes('MetroContribution');
-        const passesContributions = showContributions || !isContribution;
-        if (passesDefaults && passesContributions) {
-          includedNodeKeys.add(n.id);
+      var parent = graph.parentGraph
+      val visited = mutableSetOf<String>()
+      while (parent != null && visited.add(parent)) {
+        val candidate = metadataByName[parent] ?: return null
+        if (candidate.graph == name || candidate.graphType == name) {
+          return candidate
         }
-      });
+        parent = candidate.parentGraph
+      }
+      return null
+    }
 
-      // Filter nodes - remove default value/contribution nodes if filter is off, fade others
-      const newNodes = originalNodes.filter(n => includedNodeKeys.has(n.id)).map(n => {
-        // Check visibility filters (fade but don't remove)
-        const passesPackage = enabledPackages.has(n.pkg);
-        const passesSynthetic = showSynthetic || !n.synthetic;
-        const passesScoped = !scopedOnly || n.scoped;
-        const passesSearch = !query || n.fullKey.toLowerCase().includes(query) || n.name.toLowerCase().includes(query);
-
-        const visible = passesPackage && passesSynthetic && passesScoped && passesSearch;
-        if (visible) {
-          visibleNodeKeys.add(n.id);
+    private fun capturedOwner(
+      graph: GraphMetadata,
+      key: String,
+    ): Pair<GraphMetadata, List<BindingMetadata>>? {
+      val path = mutableListOf<BindingMetadata>()
+      val visited = mutableSetOf<String>()
+      var current = key
+      while (visited.add(current)) {
+        val binding = graph.bindings.singleOrNull { it.key == current } ?: return null
+        path += binding
+        val aliasTarget = binding.aliasTarget
+        if (binding.bindingKind == "Alias" && aliasTarget != null) {
+          if (binding.dependencies.none { it.key == aliasTarget }) {
+            return null
+          }
+          current = aliasTarget
+          continue
         }
-
-        // Apply visibility styling and glow toggle
-        const baseStyle = n.itemStyle ? {...n.itemStyle} : {};
-        if (!visible) {
-          baseStyle.opacity = 0.1;
+        if (binding.bindingKind != "BoundInstance" || binding.isGraphInput != false) {
+          return null
         }
-        // Remove glow effects if toggle is off
-        if (!showGlow) {
-          delete baseStyle.shadowBlur;
-          delete baseStyle.shadowColor;
+        val owner = ancestor(graph, binding.key) ?: return null
+        val ownsInstance =
+          owner.bindings.any {
+            it.key == binding.key && it.bindingKind == "BoundInstance" && it.isGraphInput == false
+          }
+        if (ownsInstance) {
+          return owner to path
         }
-        // Hide labels in art mode
-        const labelStyle = hideLabels ? { show: false } : undefined;
-        return {...n, itemStyle: Object.keys(baseStyle).length > 0 ? baseStyle : undefined, label: labelStyle};
-      });
+        return null
+      }
+      return null
+    }
 
-      // Filter links - remove links to/from removed nodes, fade links to faded nodes
-      // When colorEdges is off, use neutral grey for all edges
-      const newLinks = originalLinks
-        .filter(l => includedNodeKeys.has(l.source) && includedNodeKeys.has(l.target))
-        .map(l => {
-          const isVisible = visibleNodeKeys.has(l.source) && visibleNodeKeys.has(l.target);
-          const style = l.lineStyle ? {...l.lineStyle} : {};
-          style.opacity = isVisible ? (style.opacity || 0.7) : 0.05;
-          // Override edge color to grey when toggle is off (except for special edge types)
-          if (!colorEdges) {
-            const specialEdges = ['accessor', 'inherited', 'assisted', 'multibinding', 'alias', 'default'];
-            if (!specialEdges.includes(l.edgeType)) {
-              style.color = '#30363d';
+    private fun recordInheritedReferences(): Unit {
+      for (graph in included) {
+        for (binding in graph.bindings) {
+          val dependency = binding.graphDependency ?: continue
+          if (!dependency.fromParent) {
+            continue
+          }
+          val owner = ancestor(graph, dependency.ownerGraph) ?: continue
+          val recordedOwner = binding.dependencies.any { it.key == dependency.ownerKey }
+          val ownerHasBinding = owner.bindings.any { it.key == binding.key }
+          if (recordedOwner && ownerHasBinding) {
+            bindingReferences[nodeId(graph, binding.key)] =
+              BindingReference(nodeId(owner, binding.key), graph, binding)
+            capturedOwner(graph, dependency.ownerKey)?.let { (instanceOwner, path) ->
+              val instanceId = nodeId(instanceOwner, path.last().key)
+              for (capture in path) {
+                bindingReferences[nodeId(graph, capture.key)] =
+                  BindingReference(instanceId, graph, capture)
+              }
             }
           }
-          return {...l, lineStyle: style};
-        });
-
-      // Rebuild full option to properly handle node addition/removal
-      const option = getBaseOption();
-      const seriesOpt = getSeriesOption(currentLayout);
-      seriesOpt.data = newNodes;
-      seriesOpt.links = newLinks;
-      option.series = [seriesOpt];
-      chart.setOption(option, true);
+        }
+      }
     }
 
-    // Package filter
-    document.querySelectorAll('#package-filter input').forEach(cb => {
-      cb.addEventListener('change', applyFilters);
-    });
-
-    // Synthetic filter
-    document.getElementById('hide-synthetic').addEventListener('change', applyFilters);
-
-    // Scoped-only filter
-    document.getElementById('scoped-only').addEventListener('change', applyFilters);
-
-    // Default value filter
-    document.getElementById('show-defaults').addEventListener('change', applyFilters);
-
-    // Glow effects filter
-    document.getElementById('show-glow').addEventListener('change', applyFilters);
-
-    // Contribution types filter
-    document.getElementById('show-contributions').addEventListener('change', applyFilters);
-
-    // Art mode (hide labels) - also re-renders longest path if showing
-    document.getElementById('hide-labels').addEventListener('change', () => {
-      if (showingLongestPath) {
-        renderLongestPath();
-      } else {
-        applyFilters();
+    private fun recordIncludedReferences(): Unit {
+      for (dependency in includedGraphs) {
+        if (dependency.consumer.graph !in seen || dependency.producer.graph !in dependencyRegions) {
+          continue
+        }
+        val inputId = nodeId(dependency.consumer, dependency.input.key)
+        val producerNodes =
+          data.getValue(dependency.producer.graph).getValue("nodes").jsonArray.map { it.jsonObject }
+        for (getter in dependency.getters) {
+          val accessor =
+            producerNodes.singleOrNull {
+              val namedAccessor =
+                it["rootKind"] == JsonPrimitive("accessor") &&
+                  it["declaration"] == JsonPrimitive(getter.declaration)
+              namedAccessor &&
+                unwrapTypeKey(it.getValue("fullKey").jsonPrimitive.content) == getter.key
+            } ?: continue
+          val accessorId =
+            nodeId(dependency.producer, accessor.getValue("id").jsonPrimitive.content)
+          bindingReferences[nodeId(dependency.consumer, getter.key)] =
+            BindingReference(accessorId, dependency.consumer, getter, included = true)
+          includedAccessors.getOrPut(inputId) { mutableSetOf() }.add(accessorId)
+          dependencyRegionByInput[inputId] = "graph:${dependency.producer.graph}"
+        }
       }
-    });
+    }
 
-    // Color edges toggle
-    document.getElementById('color-edges').addEventListener('change', applyFilters);
+    private fun buildReferencePaths(): Map<String, List<BindingReference>> {
+      return bindingReferences.keys.associateWith { id ->
+        val path = mutableListOf<BindingReference>()
+        val visited = mutableSetOf<String>()
+        var current = id
+        while (visited.add(current)) {
+          val reference = bindingReferences[current] ?: break
+          path += reference
+          current = reference.ownerId
+        }
+        path
+      }
+    }
 
-    // Search
-    document.getElementById('search').addEventListener('input', applyFilters);
+    private fun canonicalId(id: String): String = referencePaths[id]?.lastOrNull()?.ownerId ?: id
 
-    // Controls
-    document.getElementById('reset-btn').addEventListener('click', () => {
-      showingLongestPath = false;
-      document.getElementById('longest-path-btn').classList.remove('active');
-      document.getElementById('longest-path-btn').innerHTML = '<span class="icon">📏</span> Show Longest Path';
-      document.getElementById('longest-path-info').style.display = 'none';
-      document.querySelectorAll('#package-filter input').forEach(cb => cb.checked = true);
-      document.getElementById('hide-synthetic').checked = true;
-      document.getElementById('scoped-only').checked = false;
-      document.getElementById('show-defaults').checked = false;
-      document.getElementById('show-glow').checked = true;
-      document.getElementById('show-contributions').checked = false;
-      document.getElementById('hide-labels').checked = false;
-      document.getElementById('color-edges').checked = true;
-      document.getElementById('search').value = '';
-      applyFilters();
-    });
+    private fun referenceData(reference: BindingReference, includeBinding: Boolean): JsonObject =
+      buildJsonObject {
+        put("regionId", JsonPrimitive("graph:${reference.graph.graph}"))
+        put("graphName", JsonPrimitive(reference.graph.graph))
+        if (includeBinding) {
+          put("binding", json.encodeToJsonElement(reference.binding))
+        } else {
+          put("key", JsonPrimitive(reference.binding.key))
+        }
+      }
 
-    document.getElementById('center-btn').addEventListener('click', () => {
-      // Fit the graph to view by calculating bounds and setting appropriate zoom
-      const nodes = chart.getOption().series[0].data;
-      if (!nodes || nodes.length === 0) return;
+    private fun regionContents(graph: GraphMetadata): RegionContents {
+      val regionId = "graph:${graph.graph}"
+      val graphData = data.getValue(graph.graph)
+      val originalNodes = graphData.getValue("nodes").jsonArray.map { it.jsonObject }
+      val ownedNodes = originalNodes.filter {
+        nodeId(graph, it.getValue("id").jsonPrimitive.content) !in bindingReferences
+      }
+      val parent =
+        if (graph === regionRoot) {
+          null
+        } else {
+          metadataByName[graph.parentGraph]
+        }
+      val creators =
+        parent?.bindings.orEmpty().filter { binding ->
+          val isExtension =
+            binding.bindingKind == "GraphExtension" ||
+              binding.bindingKind == "GraphExtensionFactory"
+          isExtension && (binding.extensionType ?: binding.key) == graph.graphType
+        }
+      return RegionContents(graph, regionId, graphData, ownedNodes, parent, creators)
+    }
 
-      // For force layout, nodes may not have fixed positions yet
-      // Trigger a re-layout by updating the option
-      const option = getBaseOption();
-      option.series = [getSeriesOption(currentLayout)];
-      chart.setOption(option, true);
-      applyFilters();
-    });
+    private fun buildRegionNodes(region: RegionContents): List<JsonObject> {
+      val nodes = mutableListOf<JsonObject>()
+      val graph = region.graph
+      val regionId = region.id
+      val ownedNodes = region.ownedNodes
+      for (node in ownedNodes) {
+        val id = nodeId(graph, node.getValue("id").jsonPrimitive.content)
+        nodes +=
+          JsonObject(
+            node.toMutableMap().apply {
+              put("id", JsonPrimitive(id))
+              put("regionId", JsonPrimitive(regionId))
+              put("graphName", JsonPrimitive(graph.graph))
+              if (node["rootOwner"] != null) {
+                put("rootOwner", JsonPrimitive(regionId))
+              }
+              dependencyRegionByInput[id]?.let { put("dependencyRegionId", JsonPrimitive(it)) }
+              referencesByOwner[id]?.let { references ->
+                for ((field, matching) in
+                  listOf(
+                    "inheritedBindings" to references.filterNot { it.included },
+                    "includedBindings" to references.filter { it.included },
+                  )) {
+                  if (matching.isNotEmpty()) {
+                    put(field, JsonArray(matching.map { referenceData(it, includeBinding = true) }))
+                  }
+                }
+              }
+            }
+          )
+      }
+      return nodes
+    }
 
-    // Resize handler
-    window.addEventListener('resize', () => chart.resize());
+    private fun buildRegionLinks(region: RegionContents): List<JsonObject> {
+      val links = mutableListOf<JsonObject>()
+      val graph = region.graph
+      val regionId = region.id
+      val graphData = region.data
+      for (link in graphData.getValue("links").jsonArray.map { it.jsonObject }) {
+        val source = nodeId(graph, link.getValue("source").jsonPrimitive.content)
+        val target = nodeId(graph, link.getValue("target").jsonPrimitive.content)
+        if (source in bindingReferences) {
+          continue
+        }
+        links +=
+          JsonObject(
+            link.toMutableMap().apply {
+              put("source", JsonPrimitive(source))
+              put("target", JsonPrimitive(canonicalId(target)))
+              put("regionId", JsonPrimitive(regionId))
+              referencePaths[target]?.let { path ->
+                val inherited = path.filterNot { it.included }
+                if (inherited.isNotEmpty()) {
+                  put("parentDependency", JsonPrimitive(true))
+                  put(
+                    "inheritedVia",
+                    JsonArray(inherited.map { referenceData(it, includeBinding = false) }),
+                  )
+                }
+                val supplied = path.filter { it.included }
+                if (supplied.isNotEmpty()) {
+                  put(
+                    "includedVia",
+                    JsonArray(supplied.map { referenceData(it, includeBinding = false) }),
+                  )
+                }
+              }
+            }
+          )
+      }
+      return links
+    }
 
-    // Collapsible sections
-    document.querySelectorAll('.collapsible-header').forEach(header => {
-      header.addEventListener('click', () => {
-        const contentId = header.id.replace('-header', '-content');
-        const content = document.getElementById(contentId);
-        if (content) {
-          header.classList.toggle('collapsed');
-          content.classList.toggle('collapsed');
-          if (!content.classList.contains('collapsed')) {
-            content.style.maxHeight = content.scrollHeight + 'px';
+    private fun buildIncludedLinks(regionId: String): List<JsonObject> {
+      val links = mutableListOf<JsonObject>()
+
+      for ((input, accessors) in includedAccessors) {
+        if (dependencyRegionByInput[input] == regionId) {
+          for (accessor in accessors) {
+            links += buildJsonObject {
+              put("source", JsonPrimitive(input))
+              put("target", JsonPrimitive(accessor))
+              put("edgeType", JsonPrimitive("includes"))
+              put("includedInstance", JsonPrimitive(true))
+              put(
+                "lineStyle",
+                buildJsonObject { put("color", JsonPrimitive(Colors.GRAPH_DEPENDENCY)) },
+              )
+              val references = referencesByOwner[accessor].orEmpty().filter { it.included }
+              put(
+                "includedVia",
+                JsonArray(references.map { referenceData(it, includeBinding = false) }),
+              )
+            }
+          }
+        }
+      }
+      return links
+    }
+
+    private fun buildExtensionLinks(region: RegionContents): List<JsonObject> {
+      val links = mutableListOf<JsonObject>()
+      val parent = region.parent
+      val creators = region.creators
+      val regionId = region.id
+      if (parent != null) {
+        for (creator in creators) {
+          links += buildJsonObject {
+            put("source", JsonPrimitive(nodeId(parent, creator.key)))
+            put("target", JsonPrimitive(regionId))
+            put("edgeType", JsonPrimitive("extension"))
+            put("rootMembership", JsonPrimitive(true))
+            put("containment", JsonPrimitive(true))
+          }
+        }
+      }
+      return links
+    }
+
+    private fun buildRegionMetadata(region: RegionContents): JsonObject {
+      val graph = region.graph
+      val regionId = region.id
+      val parent = region.parent
+      val creators = region.creators
+      val ownedNodes = region.ownedNodes
+      return buildJsonObject {
+        put("id", JsonPrimitive(regionId))
+        put("ownerId", JsonPrimitive(regionId))
+        put("graphName", JsonPrimitive(graph.graph))
+        put("name", JsonPrimitive(extractDisplayName(graph.graphType ?: graph.graph)))
+        val kind =
+          if (graph.graph in dependencyRegions) {
+            "dependency"
+          } else if (parent == null) {
+            "graph"
           } else {
-            content.style.maxHeight = '0';
+            "extension"
           }
-        }
-      });
-    });
-
-    // Initialize packages content max-height
-    const packagesContent = document.getElementById('packages-content');
-    if (packagesContent) {
-      packagesContent.style.maxHeight = packagesContent.scrollHeight + 'px';
+        put("kind", JsonPrimitive(kind))
+        put("parentId", json.encodeToJsonElement(parent?.let { "graph:${it.graph}" }))
+        put(
+          "viaNodeId",
+          json.encodeToJsonElement(creators.firstOrNull()?.let { nodeId(parent!!, it.key) }),
+        )
+        put(
+          "nodeIds",
+          json.encodeToJsonElement(
+            ownedNodes.map { nodeId(graph, it.getValue("id").jsonPrimitive.content) }
+          ),
+        )
+        put(
+          "rootIds",
+          json.encodeToJsonElement(
+            ownedNodes
+              .filter { it["isRootMember"]?.jsonPrimitive?.booleanOrNull == true }
+              .map { nodeId(graph, it.getValue("id").jsonPrimitive.content) }
+          ),
+        )
+        put(
+          "inputIds",
+          json.encodeToJsonElement(
+            ownedNodes
+              .filter { it["isGraphInput"]?.jsonPrimitive?.booleanOrNull == true }
+              .map { nodeId(graph, it.getValue("id").jsonPrimitive.content) }
+          ),
+        )
+        put("scopes", json.encodeToJsonElement(graph.scopes))
+        put("bindingExplanations", json.encodeToJsonElement(graph.bindingExplanations))
+      }
     }
-
-    // Apply filters on initial load to respect default filter states
-    applyFilters();
-  </script>
-</body>
-</html>
-"""
-      .trimIndent()
   }
 
-  private fun buildEChartsData(metadata: GraphMetadata, analysis: GraphAnalysisData): JsonObject {
-    val categoryMap =
+  fun generateHtml(metadata: GraphMetadata): String {
+    val data = buildData(metadata)
+    val replacements =
+      mapOf(
+        "__METRO_TITLE__" to escapeHtml(metadata.graph),
+        "__METRO_INDEX_URL__" to
+          "../".repeat(graphReportFileName(metadata.graph, "html").count { it == '/' }) +
+            "index.html",
+        "__METRO_ICON_URL__" to
+          "data:image/svg+xml;base64," +
+            Base64.getEncoder()
+              .encodeToString(resource("pluginIcon_dark.svg").toByteArray(StandardCharsets.UTF_8)),
+        "__METRO_STYLE__" to resource("graph-viewer.css"),
+        "__METRO_SCRIPT__" to resource("graph-viewer.js"),
+        "__METRO_DATA__" to
+          data.toString().replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026"),
+      )
+    return Regex("__METRO_[A-Z_]+__").replace(resource("graph-viewer.html")) { match ->
+      replacements.getValue(match.value)
+    }
+  }
+
+  private fun resource(name: String): String =
+    checkNotNull(javaClass.getResourceAsStream("/dev/zacsweers/metro/gradle/analysis/$name")) {
+        "Missing graph viewer resource: $name"
+      }
+      .bufferedReader()
+      .use { it.readText() }
+
+  private fun reportUrl(fileName: String): String =
+    fileName.split('/').joinToString("/") { part ->
+      URLEncoder.encode(part, StandardCharsets.UTF_8).replace("+", "%20")
+    }
+
+  private fun escapeHtml(value: String): String =
+    value
+      .replace("&", "&amp;")
+      .replace("<", "&lt;")
+      .replace(">", "&gt;")
+      .replace("\"", "&quot;")
+      .replace("'", "&#39;")
+
+  private fun JsonObjectBuilder.bindingDetails(binding: BindingMetadata) {
+    put("declaration", JsonPrimitive(binding.declaration.orEmpty()))
+    put("nameHint", JsonPrimitive(binding.nameHint))
+    put("rawDependencies", json.encodeToJsonElement(binding.dependencies))
+    put("aliasTarget", json.encodeToJsonElement(binding.aliasTarget))
+    put("multibinding", json.encodeToJsonElement(binding.multibinding))
+    put("optionalWrapper", json.encodeToJsonElement(binding.optionalWrapper))
+    put("graphDependency", json.encodeToJsonElement(binding.graphDependency))
+    put("extensionType", json.encodeToJsonElement(binding.extensionType))
+  }
+
+  private fun buildGraphData(metadata: GraphMetadata, analysis: GraphAnalysisData): JsonObject =
+    GraphDataBuilder(metadata, analysis).build()
+
+  private data class DefaultValueInfo(
+    val syntheticKey: String,
+    val targetType: String,
+    val consumerKey: String,
+    val targetPackage: String,
+  )
+
+  private data class RootMemberInfo(
+    val id: String,
+    val key: String,
+    val kind: String,
+    val name: String? = null,
+    val isProperty: Boolean = false,
+    val resolvedKey: String? = null,
+    val binding: BindingMetadata? = null,
+    val isDeferrable: Boolean = false,
+    val wrapperType: String? = null,
+    val isInherited: Boolean = false,
+    val declaringGraph: String? = null,
+    val declaringType: String? = null,
+    val origin: String? = null,
+  )
+
+  private data class GlowThresholds(
+    val highCentrality: Double,
+    val mediumCentrality: Double,
+    val dominatorCount: Double,
+    val fanIn: Double,
+  )
+
+  private inner class GraphDataBuilder(
+    private val metadata: GraphMetadata,
+    private val analysis: GraphAnalysisData,
+  ) {
+
+    private val categoryMap =
       mapOf(
         "ConstructorInjected" to 0,
         "Provided" to 1,
@@ -1400,40 +885,7 @@ ${packages.mapIndexed { i, pkg ->
         "Absent" to 13,
       )
 
-    // Calculate dynamic glow thresholds based on graph size and metrics distribution
-    // This ensures glow effects work well for both small and large graphs
-    val metrics = analysis.bindingMetrics.values
-    val graphSize = metadata.bindings.size.coerceAtLeast(1)
-
-    // For centrality: use top 10% and top 25% as high/medium thresholds
-    val centralityValues = metrics.map { it.betweennessCentrality }.filter { it > 0 }.sorted()
-    val highCentralityThreshold =
-      if (centralityValues.size >= 10) {
-        centralityValues[centralityValues.size * 9 / 10] // 90th percentile
-      } else {
-        0.3 // fallback for small graphs
-      }
-    val mediumCentralityThreshold =
-      if (centralityValues.size >= 4) {
-        centralityValues[centralityValues.size * 3 / 4] // 75th percentile
-      } else {
-        0.1 // fallback for small graphs
-      }
-
-    // For dominator count: scale threshold with graph size (top ~10% of graph)
-    val dominatorThreshold = (graphSize * 0.1).coerceAtLeast(3.0)
-
-    // For fan-in: use 90th percentile or scale with graph size
-    val fanInValues = metrics.map { it.fanIn }.filter { it > 0 }.sorted()
-    val fanInThreshold =
-      if (fanInValues.size >= 10) {
-        fanInValues[fanInValues.size * 9 / 10].toDouble() // 90th percentile
-      } else {
-        (graphSize * 0.15).coerceAtLeast(3.0) // fallback
-      }
-
-    // Map binding kinds to their colors for edge inheritance
-    val kindColorMap =
+    private val kindColorMap =
       mapOf(
         "ConstructorInjected" to Colors.CONSTRUCTOR_INJECTED,
         "Provided" to Colors.PROVIDED,
@@ -1452,580 +904,842 @@ ${packages.mapIndexed { i, pkg ->
         "Absent" to Colors.OTHER,
       )
 
-    // Build map from binding key to its color
-    val bindingColorMap =
-      metadata.bindings.associate { it.key to (kindColorMap[it.bindingKind] ?: Colors.OTHER) }
+    private val graphNodeId = "graph:${metadata.graph}"
+    private val graphPackage = extractPackage(metadata.graph)
+    private val membersInjectedRoots = findMembersInjectedRoots()
+    private val keyToProviderNodeId = buildProviderNodeIds()
+    private val defaultValueNodes = findDefaultValues()
+    private val defaultValueNodeMap = defaultValueNodes.associate {
+      (it.consumerKey to it.targetType) to it.syntheticKey
+    }
+    private val rootMembers = buildRootMembers()
+    private val typeNames = buildTypeNames()
+    private val glowThresholds = calculateGlowThresholds()
+    private val scopedKeys = metadata.bindings.filter { it.isScoped }.map { it.key }.toSet()
+    private val bindingColorMap =
+      metadata.bindings.associate {
+        it.key to (kindColorMap[it.bindingKind] ?: Colors.OTHER)
+      }
 
-    // Collect dependencies with default values for synthetic node generation
-    // Key: "default:{targetType}@{consumerKey}" to ensure uniqueness per usage site
-    data class DefaultValueInfo(
-      val syntheticKey: String,
-      val targetType: String,
-      val consumerKey: String,
-      val targetDisplayName: String,
-      val targetPackage: String,
-    )
+    fun build(): JsonObject = buildJsonObject {
+      put("typeNames", json.encodeToJsonElement(typeNames))
+      put("nodes", buildNodes())
+      put("links", buildLinks())
+    }
 
-    val defaultValueNodes = mutableListOf<DefaultValueInfo>()
-    for (binding in metadata.bindings) {
-      for (dep in binding.dependencies) {
-        if (dep.hasDefault) {
-          // Strip " = ..." suffix from default value keys (e.g., "com.example.Analytics = ..." ->
-          // "com.example.Analytics")
-          val rawKey = dep.key.substringBefore(" = ")
-          val targetKey = unwrapTypeKey(rawKey)
-          val syntheticKey = "default:$targetKey@${binding.key}"
-          defaultValueNodes.add(
-            DefaultValueInfo(
-              syntheticKey = syntheticKey,
-              targetType = targetKey,
-              consumerKey = binding.key,
-              targetDisplayName = extractDisplayName(targetKey),
-              targetPackage = extractPackage(targetKey),
+    private fun calculateGlowThresholds(): GlowThresholds {
+      val metrics = analysis.bindingMetrics.values
+      val graphSize = metadata.bindings.size.coerceAtLeast(1)
+
+      // For centrality: use top 10% and top 25% as high/medium thresholds
+      val centralityValues = metrics.map { it.betweennessCentrality }.filter { it > 0 }.sorted()
+      val highCentralityThreshold =
+        if (centralityValues.size >= 10) {
+          centralityValues[centralityValues.size * 9 / 10] // 90th percentile
+        } else {
+          0.3 // fallback for small graphs
+        }
+      val mediumCentralityThreshold =
+        if (centralityValues.size >= 4) {
+          centralityValues[centralityValues.size * 3 / 4] // 75th percentile
+        } else {
+          0.1 // fallback for small graphs
+        }
+
+      // For dominator count: scale threshold with graph size (top ~10% of graph)
+      val dominatorThreshold = (graphSize * 0.1).coerceAtLeast(3.0)
+
+      // For fan-in: use 90th percentile or scale with graph size
+      val fanInValues = metrics.map { it.fanIn }.filter { it > 0 }.sorted()
+      val fanInThreshold =
+        if (fanInValues.size >= 10) {
+          fanInValues[fanInValues.size * 9 / 10].toDouble() // 90th percentile
+        } else {
+          (graphSize * 0.15).coerceAtLeast(3.0) // fallback
+        }
+      return GlowThresholds(
+        highCentralityThreshold,
+        mediumCentralityThreshold,
+        dominatorThreshold,
+        fanInThreshold,
+      )
+    }
+
+    private fun findDefaultValues(): List<DefaultValueInfo> {
+      val resolvedKeys =
+        metadata.bindings.map { it.key }.toSet() +
+          metadata.bindings.mapNotNull { it.assistedTarget?.key }
+      val defaultValueNodes = mutableListOf<DefaultValueInfo>()
+      for (binding in metadata.bindings) {
+        for (dep in binding.dependencies) {
+          if (dep.hasDefault) {
+            // Strip " = ..." suffix from default value keys (e.g., "com.example.Analytics = ..." ->
+            // "com.example.Analytics")
+            val rawKey = dep.key.substringBefore(" = ")
+            val targetKey = unwrapTypeKey(rawKey)
+            if (targetKey in resolvedKeys) {
+              continue
+            }
+            val syntheticKey = "default:$targetKey@${binding.key}"
+            defaultValueNodes.add(
+              DefaultValueInfo(
+                syntheticKey = syntheticKey,
+                targetType = targetKey,
+                consumerKey = binding.key,
+                targetPackage = extractPackage(targetKey),
+              )
             )
-          )
+          }
         }
       }
+      return defaultValueNodes
     }
 
-    // Collect MembersInjected root bindings (those with injector declarations) to exclude from
-    // nodes
-    // These are skipped in the visualization - instead we show direct "injects" edges to their
-    // dependencies
-    val membersInjectedRoots =
-      metadata.bindings
-        .filter { it.bindingKind == "MembersInjected" && it.declaration != null }
+    private fun findMembersInjectedRoots(): Map<String, BindingMetadata> {
+      val injectorKeys = metadata.roots?.injectors.orEmpty().map { unwrapTypeKey(it.key) }.toSet()
+      // Injector roots carry member-injection dependencies.
+      return metadata.bindings
+        .filter { binding ->
+          val isRoot = binding.declaration != null || binding.key in injectorKeys
+          binding.bindingKind == "MembersInjected" && isRoot
+        }
         .associateBy { it.key }
-
-    val nodes = buildJsonArray {
-      for (binding in metadata.bindings) {
-        // Skip MembersInjected root bindings only (not other binding kinds with the same key like
-        // BoundInstance)
-        if (binding.bindingKind == "MembersInjected" && binding.key in membersInjectedRoots)
-          continue
-        // Determine if synthetic (infer if not explicitly set)
-        val isSynthetic =
-          binding.isSynthetic ||
-            binding.bindingKind == "Alias" ||
-            binding.key.contains("MetroContribution")
-
-        // Determine if this is the main graph or a graph extension
-        val isMainGraph = binding.key == metadata.graph
-        val isGraphExtension =
-          binding.bindingKind == "GraphExtension" || binding.bindingKind == "GraphExtensionFactory"
-
-        // Use helper functions for display name and package extraction
-        val displayName = extractDisplayName(binding.key)
-        val pkg = extractPackage(binding.key)
-
-        // Determine symbol (shape) and size based on node type
-        val symbol =
-          when {
-            isMainGraph -> "diamond"
-            isGraphExtension -> "roundRect"
-            else -> "circle"
-          }
-        val baseSize =
-          when {
-            isMainGraph -> 28
-            isGraphExtension -> 22
-            binding.isScoped -> 20
-            else -> 12
-          }
-
-        // Get analysis metrics for this binding
-        val metrics = analysis.bindingMetrics[binding.key]
-
-        add(
-          buildJsonObject {
-            // ECharts uses 'id' for link source/target matching
-            put("id", JsonPrimitive(binding.key))
-            put("name", JsonPrimitive(displayName))
-            put("fullKey", JsonPrimitive(binding.key))
-            put("pkg", JsonPrimitive(pkg))
-            put("kind", JsonPrimitive(binding.bindingKind))
-            put("scoped", JsonPrimitive(binding.isScoped))
-            put("synthetic", JsonPrimitive(isSynthetic))
-            put("isGraph", JsonPrimitive(isMainGraph))
-            put("isExtension", JsonPrimitive(isGraphExtension))
-            put("scope", binding.scope?.let { JsonPrimitive(it) } ?: JsonPrimitive(""))
-            put("origin", binding.origin?.let { JsonPrimitive(it) } ?: JsonPrimitive(""))
-            put("category", JsonPrimitive(categoryMap[binding.bindingKind] ?: 11))
-            put("symbol", JsonPrimitive(symbol))
-            put("symbolSize", JsonPrimitive(baseSize))
-
-            // Analysis metrics (if available)
-            if (metrics != null) {
-              put("fanIn", JsonPrimitive(metrics.fanIn))
-              put("fanOut", JsonPrimitive(metrics.fanOut))
-              put("centrality", JsonPrimitive(metrics.betweennessCentrality))
-              put("dominatorCount", JsonPrimitive(metrics.dominatorCount))
-            }
-
-            put(
-              "itemStyle",
-              buildJsonObject {
-                // Main graph gets green fill+border, extensions get orange border
-                when {
-                  isMainGraph -> {
-                    put("color", JsonPrimitive(Colors.GRAPH_NODE_BORDER))
-                    put("borderColor", JsonPrimitive(Colors.GRAPH_NODE_BORDER))
-                    put("borderWidth", JsonPrimitive(3))
-                  }
-                  isGraphExtension -> {
-                    put("color", JsonPrimitive(Colors.EXTENSION_NODE_BORDER))
-                    put("borderColor", JsonPrimitive(Colors.EXTENSION_NODE_BORDER))
-                    put("borderWidth", JsonPrimitive(3))
-                  }
-                  binding.isScoped -> {
-                    put("borderColor", JsonPrimitive(Colors.SCOPED_BORDER))
-                    put("borderWidth", JsonPrimitive(3))
-                  }
-                }
-                if (isSynthetic) {
-                  put("opacity", JsonPrimitive(0.6))
-                }
-                // Add glow effect based on analysis metrics (centrality takes priority)
-                // Skip glow for the main graph binding as it's expected to have high metrics
-                // Thresholds are dynamic based on graph size and metrics distribution
-                if (metrics != null && !isMainGraph) {
-                  when {
-                    metrics.betweennessCentrality > highCentralityThreshold -> {
-                      // High centrality (top 10%) - orange/red glow
-                      put("shadowBlur", JsonPrimitive(15))
-                      put("shadowColor", JsonPrimitive("#ff6b6b"))
-                    }
-                    metrics.betweennessCentrality > mediumCentralityThreshold -> {
-                      // Medium centrality (top 25%) - yellow glow
-                      put("shadowBlur", JsonPrimitive(10))
-                      put("shadowColor", JsonPrimitive("#F6BC26"))
-                    }
-                    metrics.dominatorCount > dominatorThreshold -> {
-                      // High dominator count (top ~10% of graph size) - red glow
-                      put("shadowBlur", JsonPrimitive(12))
-                      put("shadowColor", JsonPrimitive("#D82233"))
-                    }
-                    metrics.fanIn > fanInThreshold -> {
-                      // High fan-in (top 10%) - blue glow
-                      put("shadowBlur", JsonPrimitive(8))
-                      put("shadowColor", JsonPrimitive("#0078C6"))
-                    }
-                  }
-                }
-              },
-            )
-          }
-        )
-      }
-
-      // Add synthetic default value nodes
-      for (defaultInfo in defaultValueNodes) {
-        add(
-          buildJsonObject {
-            put("id", JsonPrimitive(defaultInfo.syntheticKey))
-            put("name", JsonPrimitive(defaultInfo.targetDisplayName))
-            put("fullKey", JsonPrimitive(defaultInfo.syntheticKey))
-            put("pkg", JsonPrimitive(defaultInfo.targetPackage))
-            put("kind", JsonPrimitive("DefaultValue"))
-            put("scoped", JsonPrimitive(false))
-            put("synthetic", JsonPrimitive(true))
-            put("isGraph", JsonPrimitive(false))
-            put("isExtension", JsonPrimitive(false))
-            put("isDefaultValue", JsonPrimitive(true))
-            put("scope", JsonPrimitive(""))
-            put("origin", JsonPrimitive(""))
-            put("category", JsonPrimitive(categoryMap["DefaultValue"] ?: 12))
-            put("symbol", JsonPrimitive("pin")) // Pin shape for default values
-            put("symbolSize", JsonPrimitive(16))
-            put("itemStyle", buildJsonObject { put("opacity", JsonPrimitive(0.8)) })
-          }
-        )
-      }
-
-      // Add nodes for assisted-inject targets (encapsulated within Assisted factory bindings)
-      for (binding in metadata.bindings) {
-        val target = binding.assistedTarget ?: continue
-        val displayName = extractDisplayName(target.key)
-        val pkg = extractPackage(target.key)
-
-        add(
-          buildJsonObject {
-            put("id", JsonPrimitive(target.key))
-            put("name", JsonPrimitive(displayName))
-            put("fullKey", JsonPrimitive(target.key))
-            put("pkg", JsonPrimitive(pkg))
-            put("kind", JsonPrimitive("AssistedInject"))
-            put("scoped", JsonPrimitive(target.isScoped))
-            put("synthetic", JsonPrimitive(false))
-            put("isGraph", JsonPrimitive(false))
-            put("isExtension", JsonPrimitive(false))
-            put("isAssistedTarget", JsonPrimitive(true))
-            put("scope", target.scope?.let { JsonPrimitive(it) } ?: JsonPrimitive(""))
-            put("origin", target.origin?.let { JsonPrimitive(it) } ?: JsonPrimitive(""))
-            put("category", JsonPrimitive(categoryMap["AssistedInject"] ?: 7))
-            put("symbol", JsonPrimitive("circle"))
-            put("symbolSize", JsonPrimitive(if (target.isScoped) 20 else 14))
-            // Include assisted parameters for tooltip display
-            put(
-              "assistedParams",
-              buildJsonArray {
-                for (param in target.assistedParameters) {
-                  add(
-                    buildJsonObject {
-                      put("name", JsonPrimitive(param.name))
-                      put("type", JsonPrimitive(extractDisplayName(param.key)))
-                    }
-                  )
-                }
-              },
-            )
-            put(
-              "itemStyle",
-              buildJsonObject {
-                put("color", JsonPrimitive(Colors.ASSISTED))
-                if (target.isScoped) {
-                  put("borderColor", JsonPrimitive(Colors.SCOPED_BORDER))
-                  put("borderWidth", JsonPrimitive(3))
-                }
-              },
-            )
-          }
-        )
-      }
     }
 
-    // For target lookup, we need to map type keys to their provider node IDs (not MembersInjected
-    // roots). Also include assisted-inject targets which are encapsulated within Assisted bindings.
-    val keyToProviderNodeId = buildMap {
+    private fun buildProviderNodeIds(): Map<String, String> = buildMap {
       for (binding in metadata.bindings) {
-        if (!(binding.bindingKind == "MembersInjected" && binding.key in membersInjectedRoots)) {
+        if (!isInjectorRoot(binding)) {
           put(binding.key, binding.key)
         }
-        // Include assisted-inject targets
         binding.assistedTarget?.let { target -> put(target.key, target.key) }
       }
     }
 
-    // Build map from (consumerKey, targetType) -> syntheticKey for default value edge routing
-    val defaultValueNodeMap = defaultValueNodes.associate {
-      (it.consumerKey to it.targetType) to it.syntheticKey
+    private fun collectAccessors(): List<AccessorMetadata> {
+      val accessors = metadata.roots?.accessors.orEmpty().toMutableList()
+      val extensionAccessors =
+        metadata.extensions?.accessors.orEmpty().map {
+          AccessorMetadata(it.key, name = it.name, isProperty = it.isProperty)
+        } +
+          metadata.extensions?.factoryAccessors.orEmpty().map {
+            AccessorMetadata(it.key, name = it.name, isProperty = it.isProperty)
+          }
+      for (accessor in extensionAccessors) {
+        val alreadyRecorded = accessors.any {
+          it.key == accessor.key && it.name == accessor.name && it.isProperty == accessor.isProperty
+        }
+        if (!alreadyRecorded) {
+          accessors.add(accessor)
+        }
+      }
+      return accessors
     }
 
-    // Build set of scoped binding keys for inherited scope detection
-    val scopedKeys = metadata.bindings.filter { it.isScoped }.map { it.key }.toSet()
-
-    val links = buildJsonArray {
-      for (binding in metadata.bindings) {
-        // Skip MembersInjected root bindings - they don't have nodes, we add "member injects" edges
-        // instead
-        if (binding.bindingKind == "MembersInjected" && binding.key in membersInjectedRoots)
-          continue
-
-        // Check if this is a multibinding (edges to sources)
-        val isMultibinding = binding.multibinding != null
-        val multibindingSourceKeys = binding.multibinding?.sources?.toSet() ?: emptySet()
-
-        // Check if this is an assisted factory
-        val isAssistedFactory = binding.bindingKind == "Assisted"
-
-        // Check if this is an alias binding
-        val isAlias = binding.bindingKind == "Alias"
-
-        // Check if this is a graph extension
-        val isGraphExtension =
-          binding.bindingKind == "GraphExtension" || binding.bindingKind == "GraphExtensionFactory"
-
-        for (dep in binding.dependencies) {
-          // Unwrap the dependency key to match node IDs (Provider<X>, Lazy<X> -> X)
-          // Also strip " = ..." suffix from default value keys
-          val rawKey = dep.key.substringBefore(" = ")
-          val targetKey = unwrapTypeKey(rawKey)
-
-          // Check if this dependency routes through a default value node
-          val defaultValueNodeKey = defaultValueNodeMap[binding.key to targetKey]
-
-          // Check if this is an inherited scoped binding (extension accessing parent's scoped
-          // binding)
-          val isInheritedScope = isGraphExtension && targetKey in scopedKeys
-
-          if (defaultValueNodeKey != null) {
-            // Route through the synthetic default value node:
-            // Consumer -> DefaultValue node -> Actual binding
-
-            // Edge from consumer to default value node
-            add(
-              buildJsonObject {
-                put("source", JsonPrimitive(binding.key))
-                put("target", JsonPrimitive(defaultValueNodeKey))
-                put("edgeType", JsonPrimitive("default"))
-                put(
-                  "lineStyle",
-                  buildJsonObject {
-                    put("color", JsonPrimitive(Colors.DEFAULT_VALUE))
-                    put("type", JsonPrimitive("dashed"))
-                    put("width", JsonPrimitive(2))
-                  },
-                )
-              }
-            )
-
-            // Edge from default value node to actual binding (if it exists)
-            if (targetKey in keyToProviderNodeId) {
-              add(
-                buildJsonObject {
-                  put("source", JsonPrimitive(defaultValueNodeKey))
-                  put("target", JsonPrimitive(targetKey))
-                  put("edgeType", JsonPrimitive("default-resolves"))
-                  put(
-                    "lineStyle",
-                    buildJsonObject {
-                      put("color", JsonPrimitive(Colors.DEFAULT_VALUE))
-                      put("type", JsonPrimitive("dotted"))
-                      put("opacity", JsonPrimitive(0.6))
-                    },
-                  )
-                }
-              )
-            }
-          } else {
-            // Normal edge - only create link if target exists in graph
-            // For targets, use the provider node ID (not MembersInjected)
-            if (targetKey !in keyToProviderNodeId) continue
-
-            // Determine edge type for coloring
-            val edgeType =
-              when {
-                isInheritedScope -> "inherited"
-                isAlias -> "alias"
-                // Assisted factory edges to its target's dependencies are "assisted" type
-                isAssistedFactory -> "assisted"
-                dep.isDeferrable -> "deferrable"
-                isMultibinding && dep.key in multibindingSourceKeys -> "multibinding"
-                else -> "normal"
-              }
-
-            // Edge value affects length in force layout (lower = shorter)
-            val edgeValue =
-              when (edgeType) {
-                "alias",
-                "assisted" -> 0.3 // Short edges for direct relationships
-                else -> 1.0
-              }
-
-            add(
-              buildJsonObject {
-                put("source", JsonPrimitive(binding.key))
-                put("target", JsonPrimitive(targetKey))
-                put("edgeType", JsonPrimitive(edgeType))
-                put("value", JsonPrimitive(edgeValue))
-                // Include wrapper type for deferrable edges
-                if (edgeType == "deferrable" && dep.wrapperType != null) {
-                  put("wrapperType", JsonPrimitive(dep.wrapperType))
-                }
-
-                // Apply line style based on edge type
-                // Normal edges inherit color from source binding
-                val sourceColor = bindingColorMap[binding.key] ?: Colors.OTHER
-                put(
-                  "lineStyle",
-                  buildJsonObject {
-                    when (edgeType) {
-                      "inherited" -> {
-                        put("color", JsonPrimitive(Colors.EDGE_INHERITED))
-                        put("type", JsonPrimitive("dashed"))
-                        put("width", JsonPrimitive(2))
-                      }
-                      "accessor" -> {
-                        put("color", JsonPrimitive(Colors.EDGE_ACCESSOR))
-                        put("width", JsonPrimitive(2))
-                      }
-                      "alias" -> {
-                        put("color", JsonPrimitive(Colors.EDGE_ALIAS))
-                        put("type", JsonPrimitive("dotted"))
-                        put("width", JsonPrimitive(2))
-                        put("curveness", JsonPrimitive(0.35))
-                      }
-                      "deferrable" -> {
-                        put("color", JsonPrimitive(sourceColor))
-                        put("type", JsonPrimitive("dashed"))
-                      }
-                      "assisted" -> {
-                        put("color", JsonPrimitive(Colors.EDGE_ASSISTED))
-                        put("width", JsonPrimitive(2))
-                        put("curveness", JsonPrimitive(0.05))
-                      }
-                      "multibinding" -> {
-                        put("color", JsonPrimitive(Colors.EDGE_MULTIBINDING))
-                      }
-                      else -> {
-                        // Normal edges inherit color from source binding
-                        put("color", JsonPrimitive(sourceColor))
-                      }
-                    }
-                  },
-                )
-              }
-            )
+    private fun resolveAccessorKey(accessor: AccessorMetadata): String? {
+      val targetKey = unwrapTypeKey(accessor.key)
+      if (targetKey in keyToProviderNodeId) {
+        return targetKey
+      }
+      val selectedKeys =
+        metadata.bindingExplanations
+          .filter {
+            it.request?.key == accessor.key && it.outcome == BindingExplanationOutcome.SELECTED
           }
+          .flatMap { it.candidates }
+          .filter { it.status == BindingCandidateStatus.SELECTED }
+          .map { it.key }
+          .distinct()
+      return selectedKeys.singleOrNull()?.takeIf { it in keyToProviderNodeId }
+    }
+
+    private fun buildAccessorRoot(index: Int, accessor: AccessorMetadata): RootMemberInfo {
+      val actualType = bindingType(accessor.key)
+      val wrapperType =
+        if (accessor.isDeferrable) {
+          when {
+            "Provider<" in actualType -> "Provider"
+            "Lazy<" in actualType -> "Lazy"
+            else -> null
+          }
+        } else {
+          null
         }
+      return RootMemberInfo(
+        id = "root:${metadata.graph}:accessor:$index:${accessor.key}",
+        key = accessor.key,
+        kind = "accessor",
+        name = accessor.name,
+        isProperty = accessor.isProperty,
+        resolvedKey = resolveAccessorKey(accessor),
+        isDeferrable = accessor.isDeferrable,
+        wrapperType = wrapperType,
+        isInherited = accessor.isInherited,
+        declaringGraph = accessor.declaringGraph,
+        declaringType = accessor.declaringType,
+        origin = accessor.origin,
+      )
+    }
+
+    private fun buildRootMembers(): List<RootMemberInfo> = buildList {
+      collectAccessors().forEachIndexed { index, accessor ->
+        add(buildAccessorRoot(index, accessor))
       }
-
-      // Add accessor edges from the graph node to each accessor (from roots)
-      metadata.roots?.accessors?.forEach { accessor ->
-        val targetKey = unwrapTypeKey(accessor.key)
-        if (targetKey in keyToProviderNodeId) {
-          add(
-            buildJsonObject {
-              put("source", JsonPrimitive(metadata.graph))
-              put("target", JsonPrimitive(targetKey))
-              put("edgeType", JsonPrimitive("accessor"))
-              put("value", JsonPrimitive(1.0))
-              put(
-                "lineStyle",
-                buildJsonObject {
-                  put("color", JsonPrimitive(Colors.EDGE_ACCESSOR))
-                  put("width", JsonPrimitive(2))
-                },
-              )
-            }
-          )
-        }
-      }
-
-      // Add "boundinstance" edges from BoundInstance bindings INTO the graph (graph inputs)
-      // Arrow points from the bound instance to the graph to show it's an input
-      // Skip the graph's own BoundInstance binding (metadata.graph)
-      metadata.bindings
-        .filter { it.bindingKind == "BoundInstance" && it.key != metadata.graph }
-        .forEach { binding ->
-          add(
-            buildJsonObject {
-              put("source", JsonPrimitive(binding.key))
-              put("target", JsonPrimitive(metadata.graph))
-              put("edgeType", JsonPrimitive("boundinstance"))
-              put("value", JsonPrimitive(1.0))
-              put(
-                "lineStyle",
-                buildJsonObject {
-                  put("color", JsonPrimitive(Colors.BOUND_INSTANCE))
-                  put("width", JsonPrimitive(3))
-                  put("curveness", JsonPrimitive(-0.4))
-                },
-              )
-            }
-          )
-        }
-
-      // Add "member injects" edges from the graph to MembersInjected targets
-      // Also add edges from the target to show what dependencies get injected into it
-      metadata.roots?.injectors?.forEach { injector ->
+      metadata.roots?.injectors.orEmpty().forEachIndexed { index, injector ->
         val targetKey = unwrapTypeKey(injector.key)
-        // Find the MembersInjected binding for this injector target
-        val membersInjectedBinding = membersInjectedRoots[targetKey]
-        if (membersInjectedBinding != null) {
-          // Create "member injects" edge from graph to the target type
-          if (targetKey in keyToProviderNodeId) {
-            add(
-              buildJsonObject {
-                put("source", JsonPrimitive(metadata.graph))
-                put("target", JsonPrimitive(targetKey))
-                put("edgeType", JsonPrimitive("injects"))
-                put("value", JsonPrimitive(1.0))
-                put(
-                  "lineStyle",
-                  buildJsonObject {
-                    put("color", JsonPrimitive(Colors.MEMBERS_INJECTED))
-                    put("width", JsonPrimitive(2))
-                  },
-                )
-              }
-            )
-          }
+        add(
+          RootMemberInfo(
+            id = "root:${metadata.graph}:injector:$index:${injector.key}",
+            key = injector.key,
+            kind = "injector",
+            name = injector.name,
+            binding = membersInjectedRoots[targetKey],
+          )
+        )
+      }
+    }
 
-          // Create edges from the target to each dependency that gets injected into it
-          for (dep in membersInjectedBinding.dependencies) {
-            val depTargetKey = unwrapTypeKey(dep.key.substringBefore(" = "))
-            if (depTargetKey in keyToProviderNodeId && targetKey in keyToProviderNodeId) {
-              add(
-                buildJsonObject {
-                  put("source", JsonPrimitive(targetKey))
-                  put("target", JsonPrimitive(depTargetKey))
-                  put("edgeType", JsonPrimitive("injects"))
-                  put("wrapperType", JsonPrimitive("MembersInjected"))
-                  put("value", JsonPrimitive(1.0))
-                  put(
-                    "lineStyle",
-                    buildJsonObject {
-                      put("color", JsonPrimitive(Colors.MEMBERS_INJECTED))
-                      put("type", JsonPrimitive("dashed"))
-                      put("width", JsonPrimitive(2))
-                    },
-                  )
-                }
-              )
-            }
+    private fun buildTypeNames(): Map<String, String> {
+      val nodeTypeKeys = buildList {
+        add(metadata.graph)
+        addAll(rootMembers.map { it.key })
+        addAll(rootMembers.mapNotNull { it.declaringType })
+        for (binding in metadata.bindings) {
+          if (!isInjectorRoot(binding)) {
+            add(binding.key)
           }
+          binding.assistedTarget?.let { add(it.key) }
+        }
+        addAll(defaultValueNodes.map { it.targetType })
+      }
+      return typeDisplayNames(nodeTypeKeys)
+    }
+
+    private fun isInjectorRoot(binding: BindingMetadata): Boolean =
+      binding.bindingKind == "MembersInjected" && binding.key in membersInjectedRoots
+
+    private fun isGraphExtension(binding: BindingMetadata): Boolean =
+      binding.bindingKind == "GraphExtension" || binding.bindingKind == "GraphExtensionFactory"
+
+    private fun buildNodes(): JsonArray = buildJsonArray {
+      add(buildGraphNode())
+      for (member in rootMembers) {
+        add(buildRootNode(member))
+      }
+      for (binding in metadata.bindings) {
+        if (!isInjectorRoot(binding)) {
+          add(buildBindingNode(binding))
         }
       }
-
-      // Add edges for assisted-inject targets (encapsulated within Assisted factory bindings)
-      // 1. Edge from Assisted factory to its target
-      // 2. Edges from target to its dependencies
+      for (defaultInfo in defaultValueNodes) {
+        add(buildDefaultValueNode(defaultInfo))
+      }
       for (binding in metadata.bindings) {
         val target = binding.assistedTarget ?: continue
+        add(buildAssistedTargetNode(target))
+      }
+    }
 
-        // Edge from factory to target (dashed to indicate factory creates instances)
+    private fun buildGraphNode(): JsonObject = buildJsonObject {
+      put("id", JsonPrimitive(graphNodeId))
+      put("name", JsonPrimitive(extractDisplayName(metadata.graph, typeNames)))
+      put("fullKey", JsonPrimitive(metadata.graph))
+      put("pkg", JsonPrimitive(graphPackage))
+      put("kind", JsonPrimitive("Graph"))
+      put("isGraph", JsonPrimitive(true))
+      put("isGraphInput", JsonPrimitive(false))
+      put("synthetic", JsonPrimitive(false))
+      put("category", JsonPrimitive(16))
+      put("symbol", JsonPrimitive("diamond"))
+      put("symbolSize", JsonPrimitive(28))
+      put("rawDependencies", JsonArray(emptyList()))
+      put("itemStyle", buildJsonObject { put("color", JsonPrimitive(Colors.GRAPH_NODE_BORDER)) })
+    }
+
+    private fun rootDisplayName(member: RootMemberInfo): String {
+      val declaration = member.name
+      val isAccessor = member.kind == "accessor"
+      val displayType = extractDisplayName(member.key, typeNames)
+      val actualType = bindingType(member.key)
+      val hasInjectorWrapper =
+        actualType.startsWith("dev.zacsweers.metro.MembersInjector<") ||
+          actualType.startsWith("MembersInjector<")
+      val injectorTarget =
+        if (hasInjectorWrapper && actualType.endsWith('>')) {
+          actualType.substringAfter('<').dropLast(1)
+        } else {
+          member.key
+        }
+      val accessorName =
+        if (declaration != null && member.isProperty) {
+          declaration
+        } else if (declaration != null) {
+          "$declaration()"
+        } else if (!isAccessor) {
+          "MembersInjector<${extractDisplayName(injectorTarget, typeNames)}>"
+        } else {
+          displayType
+        }
+      return if (member.isInherited && member.declaringType != null) {
+        "${extractDisplayName(member.declaringType, typeNames)}.$accessorName"
+      } else {
+        accessorName
+      }
+    }
+
+    private fun buildRootNode(member: RootMemberInfo): JsonObject = buildJsonObject {
+      val isAccessor = member.kind == "accessor"
+      val color =
+        if (isAccessor) {
+          Colors.EDGE_ACCESSOR
+        } else {
+          Colors.MEMBERS_INJECTED
+        }
+      put("id", JsonPrimitive(member.id))
+      put("name", JsonPrimitive(rootDisplayName(member)))
+      put("typeLabel", JsonPrimitive(extractDisplayName(member.key, typeNames)))
+      put("isProperty", JsonPrimitive(member.isProperty))
+      put("fullKey", JsonPrimitive(member.key))
+      put("requestedKey", JsonPrimitive(member.key))
+      put("pkg", JsonPrimitive(graphPackage))
+      put(
+        "kind",
+        JsonPrimitive(
+          if (isAccessor) {
+            "Accessor"
+          } else {
+            "Injector"
+          }
+        ),
+      )
+      put("isRootMember", JsonPrimitive(true))
+      put("rootOwner", JsonPrimitive(graphNodeId))
+      put("rootKind", JsonPrimitive(member.kind))
+      if (member.isInherited) {
+        put("isInheritedRoot", JsonPrimitive(true))
+        put("declaringGraph", JsonPrimitive(member.declaringGraph))
+        put("declaringType", JsonPrimitive(member.declaringType))
+      }
+      put("isGraph", JsonPrimitive(false))
+      put("isGraphInput", JsonPrimitive(false))
+      put("synthetic", JsonPrimitive(false))
+      put("scoped", JsonPrimitive(false))
+      put("isDeferrable", JsonPrimitive(member.isDeferrable))
+      put("declaration", JsonPrimitive(member.name.orEmpty()))
+      put("origin", JsonPrimitive(member.origin ?: member.binding?.origin.orEmpty()))
+      put(
+        "category",
+        JsonPrimitive(
+          if (isAccessor) {
+            14
+          } else {
+            15
+          }
+        ),
+      )
+      put("itemStyle", buildJsonObject { put("color", JsonPrimitive(color)) })
+      if (isAccessor) {
+        put(
+          "rawDependencies",
+          json.encodeToJsonElement(
+            listOf(DependencyMetadata(member.key, false, member.wrapperType))
+          ),
+        )
+        put("resolutionUnavailable", JsonPrimitive(member.resolvedKey == null))
+      } else {
+        put("injectorTarget", JsonPrimitive(member.key))
+        put("rawDependencies", json.encodeToJsonElement(member.binding?.dependencies.orEmpty()))
+        put("resolutionUnavailable", JsonPrimitive(member.binding == null))
+      }
+    }
+
+    private fun buildBindingNode(binding: BindingMetadata): JsonObject = buildJsonObject {
+      val isSynthetic =
+        binding.isSynthetic ||
+          binding.bindingKind == "Alias" ||
+          binding.key.contains("MetroContribution")
+      val isMainGraph = binding.key == metadata.graph
+      val isGraphExtension = isGraphExtension(binding)
+      val symbol =
+        if (isGraphExtension) {
+          "roundRect"
+        } else {
+          "circle"
+        }
+      val baseSize =
+        when {
+          isGraphExtension -> 22
+          binding.isScoped -> 20
+          else -> 12
+        }
+      val metrics = analysis.bindingMetrics[binding.key]
+      // Links refer to the complete binding key.
+      bindingDetails(binding)
+      put("id", JsonPrimitive(binding.key))
+      put("name", JsonPrimitive(extractDisplayName(binding.key, typeNames)))
+      put("fullKey", JsonPrimitive(binding.key))
+      put("pkg", JsonPrimitive(extractPackage(binding.key)))
+      put("kind", JsonPrimitive(binding.bindingKind))
+      put("scoped", JsonPrimitive(binding.isScoped))
+      put("synthetic", JsonPrimitive(isSynthetic))
+      put("isGraph", JsonPrimitive(false))
+      put("isGraphInstance", JsonPrimitive(isMainGraph))
+      put(
+        "isGraphInput",
+        JsonPrimitive(
+          binding.isGraphInput ?: (binding.bindingKind == "BoundInstance" && !isMainGraph)
+        ),
+      )
+      put("isIncludedGraph", JsonPrimitive(binding.key in metadata.includedGraphKeys))
+      put("isExtension", JsonPrimitive(isGraphExtension))
+      put("scope", binding.scope?.let { JsonPrimitive(it) } ?: JsonPrimitive(""))
+      put("origin", binding.origin?.let { JsonPrimitive(it) } ?: JsonPrimitive(""))
+      put("category", JsonPrimitive(categoryMap[binding.bindingKind] ?: 11))
+      put("symbol", JsonPrimitive(symbol))
+      put("symbolSize", JsonPrimitive(baseSize))
+
+      // Analysis metrics (if available)
+      if (metrics != null) {
+        put("fanIn", JsonPrimitive(metrics.fanIn))
+        put("fanOut", JsonPrimitive(metrics.fanOut))
+        put("centrality", JsonPrimitive(metrics.betweennessCentrality))
+        put("dominatorCount", JsonPrimitive(metrics.dominatorCount))
+      }
+      put("itemStyle", bindingNodeStyle(binding, isSynthetic, metrics))
+    }
+
+    private fun bindingNodeStyle(
+      binding: BindingMetadata,
+      isSynthetic: Boolean,
+      metrics: BindingAnalysisMetrics?,
+    ): JsonObject = buildJsonObject {
+      // Main graph gets green fill+border, extensions get orange border
+      when {
+        binding.key == metadata.graph -> {
+          put("color", JsonPrimitive(Colors.GRAPH_NODE_BORDER))
+          put("borderColor", JsonPrimitive(Colors.GRAPH_NODE_BORDER))
+          put("borderWidth", JsonPrimitive(3))
+        }
+        isGraphExtension(binding) -> {
+          put("color", JsonPrimitive(Colors.EXTENSION_NODE_BORDER))
+          put("borderColor", JsonPrimitive(Colors.EXTENSION_NODE_BORDER))
+          put("borderWidth", JsonPrimitive(3))
+        }
+        binding.isScoped -> {
+          put("borderColor", JsonPrimitive(Colors.SCOPED_BORDER))
+          put("borderWidth", JsonPrimitive(3))
+        }
+      }
+      if (isSynthetic) {
+        put("opacity", JsonPrimitive(0.6))
+      }
+
+      if (metrics != null && binding.key != metadata.graph) {
+        applyBindingGlow(metrics)
+      }
+    }
+
+    private fun JsonObjectBuilder.applyBindingGlow(metrics: BindingAnalysisMetrics) {
+      when {
+        metrics.betweennessCentrality > glowThresholds.highCentrality -> {
+          // High centrality (top 10%) - orange/red glow
+          put("shadowBlur", JsonPrimitive(15))
+          put("shadowColor", JsonPrimitive("#ff6b6b"))
+        }
+        metrics.betweennessCentrality > glowThresholds.mediumCentrality -> {
+          // Medium centrality (top 25%) - yellow glow
+          put("shadowBlur", JsonPrimitive(10))
+          put("shadowColor", JsonPrimitive("#F6BC26"))
+        }
+        metrics.dominatorCount > glowThresholds.dominatorCount -> {
+          // High dominator count (top ~10% of graph size) - red glow
+          put("shadowBlur", JsonPrimitive(12))
+          put("shadowColor", JsonPrimitive("#D82233"))
+        }
+        metrics.fanIn > glowThresholds.fanIn -> {
+          // High fan-in (top 10%) - blue glow
+          put("shadowBlur", JsonPrimitive(8))
+          put("shadowColor", JsonPrimitive("#0078C6"))
+        }
+      }
+    }
+
+    private fun buildDefaultValueNode(defaultInfo: DefaultValueInfo): JsonObject = buildJsonObject {
+      put("id", JsonPrimitive(defaultInfo.syntheticKey))
+      put("name", JsonPrimitive(extractDisplayName(defaultInfo.targetType, typeNames)))
+      put("fullKey", JsonPrimitive(defaultInfo.syntheticKey))
+      put("pkg", JsonPrimitive(defaultInfo.targetPackage))
+      put("kind", JsonPrimitive("DefaultValue"))
+      put("scoped", JsonPrimitive(false))
+      put("synthetic", JsonPrimitive(true))
+      put("isGraph", JsonPrimitive(false))
+      put("isExtension", JsonPrimitive(false))
+      put("isDefaultValue", JsonPrimitive(true))
+      put("rawDependencies", JsonArray(emptyList()))
+      put("scope", JsonPrimitive(""))
+      put("origin", JsonPrimitive(""))
+      put("category", JsonPrimitive(categoryMap["DefaultValue"] ?: 12))
+      put("symbol", JsonPrimitive("pin")) // Pin shape for default values
+      put("symbolSize", JsonPrimitive(16))
+      put("itemStyle", buildJsonObject { put("opacity", JsonPrimitive(0.8)) })
+    }
+
+    private fun buildAssistedTargetNode(target: AssistedTargetMetadata): JsonObject =
+      buildJsonObject {
+        put("declaration", JsonPrimitive(target.declaration.orEmpty()))
+        put("rawDependencies", json.encodeToJsonElement(target.dependencies))
+        put("multibinding", json.encodeToJsonElement(target.multibinding))
+        put("optionalWrapper", json.encodeToJsonElement(target.optionalWrapper))
+        put("id", JsonPrimitive(target.key))
+        put("name", JsonPrimitive(extractDisplayName(target.key, typeNames)))
+        put("fullKey", JsonPrimitive(target.key))
+        put("pkg", JsonPrimitive(extractPackage(target.key)))
+        put("kind", JsonPrimitive("AssistedInject"))
+        put("scoped", JsonPrimitive(target.isScoped))
+        put("synthetic", JsonPrimitive(false))
+        put("isGraph", JsonPrimitive(false))
+        put("isExtension", JsonPrimitive(false))
+        put("isAssistedTarget", JsonPrimitive(true))
+        put("scope", target.scope?.let { JsonPrimitive(it) } ?: JsonPrimitive(""))
+        put("origin", target.origin?.let { JsonPrimitive(it) } ?: JsonPrimitive(""))
+        put("category", JsonPrimitive(categoryMap["AssistedInject"] ?: 7))
+        put("symbol", JsonPrimitive("circle"))
+        put(
+          "symbolSize",
+          JsonPrimitive(
+            if (target.isScoped) {
+              20
+            } else {
+              14
+            }
+          ),
+        )
+        // Include assisted parameters for tooltip display
+        put(
+          "assistedParams",
+          buildJsonArray {
+            for (param in target.assistedParameters) {
+              add(
+                buildJsonObject {
+                  put("name", JsonPrimitive(param.name))
+                  put("type", JsonPrimitive(extractDisplayName(param.key, typeNames)))
+                  put("key", JsonPrimitive(param.key))
+                }
+              )
+            }
+          },
+        )
+        put(
+          "itemStyle",
+          buildJsonObject {
+            put("color", JsonPrimitive(Colors.ASSISTED))
+            if (target.isScoped) {
+              put("borderColor", JsonPrimitive(Colors.SCOPED_BORDER))
+              put("borderWidth", JsonPrimitive(3))
+            }
+          },
+        )
+      }
+
+    private fun buildLinks(): JsonArray = buildJsonArray {
+      for (binding in metadata.bindings) {
+        if (!isInjectorRoot(binding)) {
+          addAll(buildBindingLinks(binding))
+        }
+      }
+      for (member in rootMembers) {
+        addAll(buildRootLinks(member))
+      }
+      for (binding in metadata.bindings) {
+        val target = binding.assistedTarget ?: continue
+        addAll(buildAssistedTargetLinks(binding, target))
+      }
+    }
+
+    private fun buildBindingLinks(binding: BindingMetadata): JsonArray = buildJsonArray {
+      val multibindingSourceKeys = binding.multibinding?.sources?.toSet() ?: emptySet()
+      for (dependency in binding.dependencies) {
+        val targetKey = unwrapTypeKey(dependency.key.substringBefore(" = "))
+        val defaultKey = defaultValueNodeMap[binding.key to targetKey]
+        if (defaultKey != null) {
+          addAll(buildDefaultValueLinks(binding.key, defaultKey, targetKey))
+        } else if (targetKey in keyToProviderNodeId) {
+          val edgeType = dependencyEdgeType(binding, dependency, targetKey, multibindingSourceKeys)
+          add(buildDependencyLink(binding, dependency, targetKey, edgeType))
+        }
+      }
+    }
+
+    private fun buildDefaultValueLinks(
+      consumerKey: String,
+      defaultKey: String,
+      targetKey: String,
+    ): JsonArray = buildJsonArray {
+      // Edge from consumer to default value node
+      add(
+        buildJsonObject {
+          put("source", JsonPrimitive(consumerKey))
+          put("target", JsonPrimitive(defaultKey))
+          put("edgeType", JsonPrimitive("default"))
+          put(
+            "lineStyle",
+            buildJsonObject {
+              put("color", JsonPrimitive(Colors.DEFAULT_VALUE))
+              put("type", JsonPrimitive("dashed"))
+              put("width", JsonPrimitive(2))
+            },
+          )
+        }
+      )
+
+      // Edge from default value node to actual binding (if it exists)
+      if (targetKey in keyToProviderNodeId) {
         add(
           buildJsonObject {
-            put("source", JsonPrimitive(binding.key))
-            put("target", JsonPrimitive(target.key))
-            put("edgeType", JsonPrimitive("assisted"))
-            put("value", JsonPrimitive(0.3)) // Short edge for direct relationship
+            put("source", JsonPrimitive(defaultKey))
+            put("target", JsonPrimitive(targetKey))
+            put("edgeType", JsonPrimitive("default-resolves"))
             put(
               "lineStyle",
               buildJsonObject {
-                put("color", JsonPrimitive(Colors.EDGE_ASSISTED))
+                put("color", JsonPrimitive(Colors.DEFAULT_VALUE))
+                put("type", JsonPrimitive("dotted"))
+                put("opacity", JsonPrimitive(0.6))
+              },
+            )
+          }
+        )
+      }
+    }
+
+    private fun dependencyEdgeType(
+      binding: BindingMetadata,
+      dependency: DependencyMetadata,
+      targetKey: String,
+      multibindingSourceKeys: Set<String>,
+    ): String {
+      val isInheritedScope = isGraphExtension(binding) && targetKey in scopedKeys
+      val isAlias = binding.bindingKind == "Alias"
+      val isAssistedFactory = binding.bindingKind == "Assisted"
+      val isMultibinding = binding.multibinding != null
+      val includedOwner = binding.graphDependency?.takeUnless { it.fromParent }?.ownerKey
+      val isIncludedDependency =
+        includedOwner == dependency.key && includedOwner in metadata.includedGraphKeys
+      return when {
+        isIncludedDependency -> "includes"
+        isInheritedScope -> "inherited"
+        isAlias -> "alias"
+        // Assisted factory edges to its target's dependencies are "assisted" type
+        isAssistedFactory -> "assisted"
+        dependency.isDeferrable -> "deferrable"
+        isMultibinding && dependency.key in multibindingSourceKeys -> "multibinding"
+        else -> "normal"
+      }
+    }
+
+    private fun buildDependencyLink(
+      binding: BindingMetadata,
+      dependency: DependencyMetadata,
+      targetKey: String,
+      edgeType: String,
+    ): JsonObject = buildJsonObject {
+      val edgeValue =
+        when (edgeType) {
+          "alias",
+          "assisted" -> 0.3
+          else -> 1.0
+        }
+      put("source", JsonPrimitive(binding.key))
+      put("target", JsonPrimitive(targetKey))
+      put("edgeType", JsonPrimitive(edgeType))
+      put("hasDefault", JsonPrimitive(dependency.hasDefault))
+      put("value", JsonPrimitive(edgeValue))
+      // Include wrapper type for deferrable edges
+      if (edgeType == "deferrable" && dependency.wrapperType != null) {
+        put("wrapperType", JsonPrimitive(dependency.wrapperType))
+      }
+
+      val sourceColor = bindingColorMap[binding.key] ?: Colors.OTHER
+      put("lineStyle", dependencyLineStyle(edgeType, sourceColor))
+    }
+
+    private fun dependencyLineStyle(edgeType: String, sourceColor: String): JsonObject =
+      buildJsonObject {
+        when (edgeType) {
+          "inherited" -> {
+            put("color", JsonPrimitive(Colors.EDGE_INHERITED))
+            put("type", JsonPrimitive("dashed"))
+            put("width", JsonPrimitive(2))
+          }
+          "accessor" -> {
+            put("color", JsonPrimitive(Colors.EDGE_ACCESSOR))
+            put("width", JsonPrimitive(2))
+          }
+          "alias" -> {
+            put("color", JsonPrimitive(Colors.EDGE_ALIAS))
+            put("type", JsonPrimitive("dotted"))
+            put("width", JsonPrimitive(2))
+            put("curveness", JsonPrimitive(0.35))
+          }
+          "deferrable" -> {
+            put("color", JsonPrimitive(sourceColor))
+            put("type", JsonPrimitive("dashed"))
+          }
+          "assisted" -> {
+            put("color", JsonPrimitive(Colors.EDGE_ASSISTED))
+            put("width", JsonPrimitive(2))
+            put("curveness", JsonPrimitive(0.05))
+          }
+          "multibinding" -> {
+            put("color", JsonPrimitive(Colors.EDGE_MULTIBINDING))
+          }
+          else -> {
+            // Normal edges inherit color from source binding
+            put("color", JsonPrimitive(sourceColor))
+          }
+        }
+      }
+
+    private fun buildRootLinks(member: RootMemberInfo): JsonArray = buildJsonArray {
+      add(
+        buildJsonObject {
+          put("source", JsonPrimitive(graphNodeId))
+          put("target", JsonPrimitive(member.id))
+          put("edgeType", JsonPrimitive("root"))
+          put("rootMembership", JsonPrimitive(true))
+        }
+      )
+      if (member.kind == "accessor") {
+        val targetKey = member.resolvedKey
+        if (targetKey != null) {
+          add(buildAccessorLink(member, targetKey))
+        }
+      } else {
+        addAll(buildInjectorLinks(member))
+      }
+    }
+
+    private fun buildAccessorLink(member: RootMemberInfo, targetKey: String): JsonObject =
+      buildJsonObject {
+        put("source", JsonPrimitive(member.id))
+        put("target", JsonPrimitive(targetKey))
+        put(
+          "edgeType",
+          JsonPrimitive(
+            if (member.isDeferrable) {
+              "deferrable"
+            } else {
+              "accessor"
+            }
+          ),
+        )
+        put("rootKind", JsonPrimitive("accessor"))
+        put("requestedKey", JsonPrimitive(member.key))
+        put("isDeferrable", JsonPrimitive(member.isDeferrable))
+        if (member.wrapperType != null) {
+          put("wrapperType", JsonPrimitive(member.wrapperType))
+        }
+        put(
+          "lineStyle",
+          buildJsonObject {
+            put("color", JsonPrimitive(Colors.EDGE_ACCESSOR))
+            put("width", JsonPrimitive(2))
+            if (member.isDeferrable) {
+              put("type", JsonPrimitive("dashed"))
+            }
+          },
+        )
+      }
+
+    private fun buildInjectorLinks(member: RootMemberInfo): JsonArray = buildJsonArray {
+      val binding = member.binding ?: return@buildJsonArray
+      for (dependency in binding.dependencies) {
+        val targetKey = unwrapTypeKey(dependency.key.substringBefore(" = "))
+        val defaultKey = defaultValueNodeMap[binding.key to targetKey]
+        val resolvedKey = defaultKey ?: keyToProviderNodeId[targetKey]
+        if (resolvedKey == null) {
+          continue
+        }
+        add(
+          buildJsonObject {
+            put("source", JsonPrimitive(member.id))
+            put("target", JsonPrimitive(resolvedKey))
+            put("edgeType", JsonPrimitive("injects"))
+            put("rootKind", JsonPrimitive("injector"))
+            put("injectorTarget", JsonPrimitive(member.key))
+            put("requestedKey", JsonPrimitive(dependency.key))
+            put("hasDefault", JsonPrimitive(dependency.hasDefault))
+            if (dependency.wrapperType != null) {
+              put("wrapperType", JsonPrimitive(dependency.wrapperType))
+            }
+            put(
+              "lineStyle",
+              buildJsonObject {
+                put("color", JsonPrimitive(Colors.MEMBERS_INJECTED))
                 put("type", JsonPrimitive("dashed"))
                 put("width", JsonPrimitive(2))
               },
             )
           }
         )
-
-        // Edges from target to its dependencies
-        for (dep in target.dependencies) {
-          val depTargetKey = unwrapTypeKey(dep.key.substringBefore(" = "))
-          if (depTargetKey in keyToProviderNodeId) {
-            val edgeType = if (dep.isDeferrable) "deferrable" else "normal"
-            val sourceColor = Colors.ASSISTED
-            add(
-              buildJsonObject {
-                put("source", JsonPrimitive(target.key))
-                put("target", JsonPrimitive(depTargetKey))
-                put("edgeType", JsonPrimitive(edgeType))
-                put("value", JsonPrimitive(1.0))
-                if (edgeType == "deferrable" && dep.wrapperType != null) {
-                  put("wrapperType", JsonPrimitive(dep.wrapperType))
-                }
-                put(
-                  "lineStyle",
-                  buildJsonObject {
-                    put("color", JsonPrimitive(sourceColor))
-                    if (edgeType == "deferrable") {
-                      put("type", JsonPrimitive("dashed"))
-                    }
-                  },
-                )
-              }
-            )
-          }
-        }
       }
     }
 
-    return buildJsonObject {
-      put("nodes", nodes)
-      put("links", links)
+    private fun buildAssistedTargetLinks(
+      binding: BindingMetadata,
+      target: AssistedTargetMetadata,
+    ): JsonArray = buildJsonArray {
+      // Edge from factory to target (dashed to indicate factory creates instances)
+      add(
+        buildJsonObject {
+          put("source", JsonPrimitive(binding.key))
+          put("target", JsonPrimitive(target.key))
+          put("edgeType", JsonPrimitive("assisted"))
+          put("value", JsonPrimitive(0.3)) // Short edge for direct relationship
+          put(
+            "lineStyle",
+            buildJsonObject {
+              put("color", JsonPrimitive(Colors.EDGE_ASSISTED))
+              put("type", JsonPrimitive("dashed"))
+              put("width", JsonPrimitive(2))
+            },
+          )
+        }
+      )
+
+      // Edges from target to its dependencies
+      for (dep in target.dependencies) {
+        val depTargetKey = unwrapTypeKey(dep.key.substringBefore(" = "))
+        if (depTargetKey in keyToProviderNodeId) {
+          val edgeType =
+            if (dep.isDeferrable) {
+              "deferrable"
+            } else {
+              "normal"
+            }
+          val sourceColor = Colors.ASSISTED
+          add(
+            buildJsonObject {
+              put("source", JsonPrimitive(target.key))
+              put("target", JsonPrimitive(depTargetKey))
+              put("edgeType", JsonPrimitive(edgeType))
+              put("hasDefault", JsonPrimitive(dep.hasDefault))
+              put("value", JsonPrimitive(1.0))
+              if (edgeType == "deferrable" && dep.wrapperType != null) {
+                put("wrapperType", JsonPrimitive(dep.wrapperType))
+              }
+              put(
+                "lineStyle",
+                buildJsonObject {
+                  put("color", JsonPrimitive(sourceColor))
+                  if (edgeType == "deferrable") {
+                    put("type", JsonPrimitive("dashed"))
+                  }
+                },
+              )
+            }
+          )
+        }
+      }
     }
   }
 
@@ -2046,6 +1760,9 @@ ${packages.mapIndexed { i, pkg ->
         "CustomWrapper" to Colors.CUSTOM_WRAPPER,
         "DefaultValue" to Colors.DEFAULT_VALUE,
         "Other" to Colors.OTHER,
+        "Accessor" to Colors.EDGE_ACCESSOR,
+        "Injector" to Colors.MEMBERS_INJECTED,
+        "Graph" to Colors.GRAPH_NODE_BORDER,
       )
 
     return buildJsonArray {
@@ -2058,80 +1775,6 @@ ${packages.mapIndexed { i, pkg ->
         )
       }
     }
-  }
-
-  /**
-   * Computes the longest path in the graph using DFS with memoization. Returns the binding keys in
-   * order from start to end.
-   *
-   * This handles graphs with cycles by tracking the current path and skipping back-edges.
-   */
-  private fun computeLongestPath(metadata: GraphMetadata): List<String> {
-    val graph = mutableMapOf<String, MutableList<String>>()
-
-    // Initialize
-    for (binding in metadata.bindings) {
-      graph[binding.key] = mutableListOf()
-    }
-
-    // Build adjacency list
-    // Skip deferrable (Provider/Lazy) edges since they break cycles
-    for (binding in metadata.bindings) {
-      for (dep in binding.dependencies) {
-        if (dep.isDeferrable) continue
-        val targetKey = unwrapTypeKey(dep.key)
-        if (targetKey in graph) {
-          graph[binding.key]?.add(targetKey)
-        }
-      }
-    }
-
-    // Memoization for longest path from each node
-    val memo = mutableMapOf<String, List<String>>()
-    val inProgress = mutableSetOf<String>() // Track nodes in current DFS path to detect cycles
-
-    fun dfs(node: String): List<String> {
-      // If we've already computed this, return cached result
-      memo[node]?.let {
-        return it
-      }
-
-      // If this node is already in the current path, we have a cycle - return empty
-      if (node in inProgress) return emptyList()
-
-      inProgress.add(node)
-
-      var longestFromHere = listOf(node)
-
-      for (neighbor in graph[node] ?: emptyList()) {
-        val pathFromNeighbor = dfs(neighbor)
-        if (pathFromNeighbor.isNotEmpty()) {
-          val candidatePath = listOf(node) + pathFromNeighbor
-          if (candidatePath.size > longestFromHere.size) {
-            longestFromHere = candidatePath
-          }
-        }
-      }
-
-      inProgress.remove(node)
-      memo[node] = longestFromHere
-      return longestFromHere
-    }
-
-    // Find the longest path starting from any node
-    var longestPath = emptyList<String>()
-    for (node in graph.keys) {
-      val path = dfs(node)
-      if (path.size > longestPath.size) {
-        longestPath = path
-      }
-    }
-
-    return longestPath
-  }
-
-  internal companion object {
-    const val NAME = "generateMetroGraphHtml"
   }
 }
 
@@ -2229,7 +1872,14 @@ internal object Colors {
 internal fun unwrapTypeKey(key: String): String {
   // Pattern for Provider<T> and Lazy<T> - these need to be unwrapped to find the target node
   val wrapperPrefixes =
-    listOf("Provider<", "Lazy<", "javax.inject.Provider<", "jakarta.inject.Provider<")
+    listOf(
+      "Provider<",
+      "Lazy<",
+      "dev.zacsweers.metro.Provider<",
+      "kotlin.Lazy<",
+      "javax.inject.Provider<",
+      "jakarta.inject.Provider<",
+    )
   for (prefix in wrapperPrefixes) {
     if (key.startsWith(prefix) && key.endsWith(">")) {
       return key.removePrefix(prefix).removeSuffix(">")
@@ -2273,33 +1923,30 @@ internal fun extractClassName(fqn: String): String {
  * `Set<Presenter.Factory>` Handles annotated types like `@annotation.Foo(...) com.example.Bar` →
  * `Bar`
  */
-internal fun extractDisplayName(key: String): String {
-  // Handle annotated types like "@dev.zacsweers.metro.internal.MultibindingElement(...)
-  // actual.Type"
-  val actualType =
-    if (key.startsWith("@") && key.contains(") ")) {
-      key.substringAfter(") ")
-    } else {
-      key
-    }
-
-  // Check for generic types
-  val genericStart = actualType.indexOf('<')
-  if (genericStart != -1) {
-    // Extract base type name (e.g., "Set" from "kotlin.collections.Set")
-    val basePart = actualType.substring(0, genericStart)
-    val baseName = extractClassName(basePart)
-
-    // Extract and simplify type parameters, preserving nested class context
-    val typeParams = actualType.substring(genericStart + 1, actualType.length - 1)
-    val simplifiedParams =
-      typeParams.split(',').joinToString(", ") { param -> extractClassName(param.trim()) }
-
-    return "$baseName<$simplifiedParams>"
+internal fun extractDisplayName(key: String, typeNames: Map<String, String> = emptyMap()): String {
+  val actualType = bindingType(key)
+  return qualifiedTypePattern.replace(actualType) { match ->
+    typeNames[match.value] ?: extractClassName(match.value)
   }
+}
 
-  // Non-generic: extract class name preserving nested class context
-  return extractClassName(actualType)
+private val qualifiedTypePattern = Regex("""[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)+""")
+
+/** Keeps package names when distinct types would otherwise have the same display name. */
+private fun typeDisplayNames(keys: List<String>): Map<String, String> {
+  val types =
+    keys
+      .flatMap { key -> qualifiedTypePattern.findAll(bindingType(key)).map { it.value }.toList() }
+      .distinct()
+  val typesByName = types.groupBy(::extractClassName)
+  return types.associateWith { type ->
+    val shortName = extractClassName(type)
+    if (typesByName.getValue(shortName).size > 1) {
+      type
+    } else {
+      shortName
+    }
+  }
 }
 
 /**
@@ -2313,14 +1960,7 @@ internal fun extractDisplayName(key: String): String {
  * Uses the convention that package segments are lowercase and class names start with uppercase.
  */
 internal fun extractPackage(key: String): String {
-  // Handle annotated types like "@dev.zacsweers.metro.internal.MultibindingElement(...)
-  // actual.Type"
-  val actualType =
-    if (key.startsWith("@") && key.contains(") ")) {
-      key.substringAfter(") ")
-    } else {
-      key
-    }
+  val actualType = bindingType(key)
 
   // For generic collection types, extract package from the type parameter
   val genericStart = actualType.indexOf('<')
@@ -2351,4 +1991,49 @@ internal fun extractPackage(key: String): String {
   }
 
   return packageSegments.joinToString(".")
+}
+
+/** Removes leading qualifiers while retaining the bound type and its type arguments. */
+private fun bindingType(key: String): String {
+  var start = 0
+  while (key.getOrNull(start) == '@') {
+    var cursor = start + 1
+    while (cursor < key.length && (key[cursor].isLetterOrDigit() || key[cursor] in "._$")) {
+      cursor++
+    }
+    if (key.getOrNull(cursor) == '(') {
+      var depth = 0
+      var quoted = false
+      var escaped = false
+      do {
+        val character = key[cursor++]
+        if (quoted) {
+          if (escaped) {
+            escaped = false
+          } else if (character == '\\') {
+            escaped = true
+          } else if (character == '"') {
+            quoted = false
+          }
+        } else if (character == '"') {
+          quoted = true
+        } else if (character == '(') {
+          depth++
+        } else if (character == ')') {
+          depth--
+        }
+      } while (cursor < key.length && depth > 0)
+      if (depth > 0) {
+        return key
+      }
+    }
+    if (key.getOrNull(cursor)?.isWhitespace() != true) {
+      return key
+    }
+    while (key.getOrNull(cursor)?.isWhitespace() == true) {
+      cursor++
+    }
+    start = cursor
+  }
+  return key.substring(start)
 }
