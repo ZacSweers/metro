@@ -150,6 +150,7 @@ dependencies {
 
   lintChecks(libs.androidx.lint.gradle)
 
+  testImplementation(libs.assertk)
   testImplementation(libs.junit)
   testImplementation(libs.truth)
   testImplementation(libs.kotlin.stdlib)

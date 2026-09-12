@@ -2,8 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.gradle.analysis
 
-import com.google.common.truth.Truth.assertThat
-import org.junit.Test
+import assertk.assertThat
+import assertk.assertions.contains
+import assertk.assertions.doesNotContain
+import assertk.assertions.isEqualTo
+import kotlin.test.Test
 
 class GraphAnalyzerTest {
   @Test
@@ -29,11 +32,11 @@ class GraphAnalyzerTest {
 
     assertThat(result.rootKey).isEqualTo(metadata.graph)
     assertThat(result.paths)
-      .containsExactly(
-        metadata.graph,
-        listOf(metadata.graph),
-        "test.Value",
-        emptyList<String>(),
+      .isEqualTo(
+        mapOf(
+          metadata.graph to listOf(metadata.graph),
+          "test.Value" to emptyList(),
+        )
       )
   }
 
