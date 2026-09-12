@@ -49,11 +49,11 @@ The counters are available in per-graph and aggregated metadata.
 
 ### `generateMetroGraphMetadata`
 
-Generates raw JSON metadata files for each dependency graph in your project. This task runs automatically during compilation when `reportsDestination` is set.
+Combines the compiler's per-graph metadata into one JSON file for the current Gradle project.
 
-**Output:** `{reportsDestination}/{sourceSet}/graph-metadata/graph-{fully.qualified.GraphName}.json`
+**Output:** `build/reports/metro/graphMetadata.json`
 
-The other analysis tasks depend on this task. You usually don't need to run it directly.
+The compiler writes individual reports under `{reportsDestination}/{target}/{compilation}/graph-metadata/`. The target directory is omitted when the target has no name. The analysis and HTML tasks depend on this task. You usually don't need to run it directly.
 
 ### `analyzeMetroGraph`
 
@@ -84,7 +84,9 @@ Open the HTML files directly in a browser. They work offline and have no externa
 
 ## Browsing a Graph
 
-The viewer opens with a package overview. It groups related packages by namespace and shows the number of visible bindings in each group. Lines show dependencies between groups. The overview includes packages from all graphs.
+The viewer opens with a package overview. It groups related packages by namespace and shows the number of visible bindings in each group. Lines show dependencies between groups. The overview includes related graphs available in that HTML report, including extensions and identified graph dependencies.
+
+An extension report with ancestor metadata opens in **Full graph** and fits the extension and its ancestors to the view.
 
 Select a group to browse its bindings and their immediate connections. You can also select an individual package in the browser panel or search for a type. Bindings without package information appear under **Unassigned package**.
 
@@ -142,6 +144,8 @@ Clear the selection to inspect compiler counters and configuration for the whole
 
 An outline surrounds the bindings available to each graph. An extension's outline includes its own bindings and its ancestors' boundaries. Padding keeps the outline clear of the bindings and lines inside it. A faint fill and dot grid mark the enclosed area. Overlapping regions keep the same brightness. Graph names sit near their own binding groups and stay clear of the outline as you zoom.
 
+Hover over a graph name to highlight its boundary. This also reveals boundaries omitted from **Circular** while you hover.
+
 Accessors and injectors are roots. Graph inputs appear as squares. Roots and graph inputs sit on the boundary in Full graph, Radial, Connections, and routes. Short lines connect them to the bindings inside. Inputs enter on the left by default. Accessors and injectors sit on the right. Routes read from top to bottom.
 
 Ordinary bindings appear as circles. Scoped bindings have a white border. The graph instance appears as a separate binding when other bindings depend on it. Package groups in **Overview** show a binding count and use group colors.
@@ -169,7 +173,9 @@ Accessors show their property or function name above the requested type. Functio
 
 ### Display Options
 
-Turn off **Extensions** beside **Roots** to hide extension-owned bindings and boundaries in every layout. The map refits automatically. Selected bindings stay selected if they're still visible. An extension report keeps its own graph and ancestors visible. Opening a hidden extension or one of its bindings turns extensions back on. Graph dependencies remain visible.
+**Extensions** is on by default. Turn it off beside **Roots** to hide extension-owned bindings and boundaries in every layout. The map refits automatically. Selected bindings stay selected if they're still visible. An extension report keeps its own graph and ancestors visible. Graph dependencies remain visible.
+
+Hiding extensions returns to **Full graph** if it hides the starting binding in Connections or removes a required part of the current route or chain. Opening a hidden extension or one of its bindings turns extensions back on. **Longest chain** also shows extensions when the chain needs them.
 
 **Show synthetic bindings** and **Show default values** control which bindings appear on the map. Lines through hidden synthetic bindings connect their visible neighbors. Expand a connection's **Via** details in the inspector to see those hidden bindings. The selected binding and graph root stay visible. The **Connections** display filter limits the map to direct dependencies, deferred dependencies, or graph accessors.
 
@@ -252,19 +258,13 @@ Long paths give you more dependencies to inspect when debugging initialization. 
 
 ### Shortest Paths to Root
 
-The analysis uses Dijkstra's algorithm to compute the shortest path from each binding back to the graph root. These paths are included in the JSON report.
+The JSON report's `pathsToRoot` field uses eager dependencies from the recorded graph instance binding. Accessor connections and deferred dependencies are excluded. The result is empty when no graph instance binding is recorded. Bindings unreachable from that instance have empty path lists.
 
-The viewer's **Route from root** action computes its own route from the recorded connections. It includes roots and deferred dependencies. The analysis JSON uses eager edges. Its paths can differ from the route shown in the viewer.
-
-```kotlin
-val pathsToRoot = graph.pathsToRoot
-val path = pathsToRoot.paths["com.example.MyService"]
-// Returns: ["MyService", "MyRepository", "AppGraph"] (from binding to root)
-```
+The viewer's **Route from root** action starts from recorded accessors and injectors. It includes deferred dependencies. Use this action to trace how a root reaches a binding.
 
 ### Root and Leaf Analysis
 
-Roots have no dependents. They're typically bindings exposed by graph accessors. A large graph may have many roots. Review them to check whether every exposed binding is needed.
+The `rootBindings` statistic counts nodes with no dependents in the analysis graph. The viewer's roots are recorded accessors and injectors. These counts describe different things.
 
 Leaves have no dependencies. Configuration values, constants, and external dependencies are common examples.
 
@@ -306,7 +306,7 @@ for (graph in metadata.graphs) {
 The raw metadata includes:
 
 - **roots** - Accessor and injector roots
-    - `accessors` - Properties exposing bindings from the graph
+    - `accessors` - Property and function roots, including inherited multibinding requests
     - `injectors` - Functions that inject dependencies into targets
 - **extensions** - Graph extension information
     - `accessors` - Non-factory extension accessors
