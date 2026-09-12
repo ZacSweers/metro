@@ -25,7 +25,7 @@
       
       
       <link rel="icon" href="../site-assets/img/favicon.ico">
-      <meta name="generator" content="zensical-0.0.60">
+      <meta name="generator" content="zensical-0.0.61">
     
     
       
@@ -2012,16 +2012,12 @@
 <p>Similar to Compose, Metro supports a <code>reportsDestination</code> property in its Gradle DSL and can output various graph reports to this destination if specified. This is very much a WIP, feedback is welcome!</p>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
-<p>You should <em>not</em> leave this enabled by default as it can be quite verbose and potentially expensive. This property also does not participate in task inputs, so you may need to recompile with <code>--rerun</code> to force recompilation after adding this flag.</p>
+<p>You should <em>not</em> leave this enabled by default as it can be quite verbose and potentially expensive. The Kotlin Gradle Plugin does <em>not</em> include file inputs like <code>reportsDestination</code> as task inputs, so you may need to recompile with <code>--rerun</code> to force recompilation after adding this flag.</p>
 </div>
 <div class="highlight"><pre><span></span><code><span class="n">metro</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="n">reportsDestination</span><span class="p">.</span><span class="na">set</span><span class="p">(</span><span class="n">layout</span><span class="p">.</span><span class="na">buildDirectory</span><span class="p">.</span><span class="na">dir</span><span class="p">(</span><span class="s">"metro/reports"</span><span class="p">))</span>
 <span class="p">}</span>
 </code></pre></div>
-<div class="admonition warning">
-<p class="admonition-title">Warning</p>
-<p>The Kotlin Gradle Plugin does <em>not</em> include file inputs like <code>reportsDestination</code> as build inputs, so you may need to compile with <code>--rerun</code> to force recompilation after adding this flag.</p>
-</div>
 <h3 id="unmatched-exclusions-and-replacements">Unmatched Exclusions and Replacements<a class="headerlink" href="#unmatched-exclusions-and-replacements" title="Permanent link">&para;</a></h3>
 <p>When <code>reportsDestination</code> is configured, Metro will report any unmatched exclusions or replacements during contribution merging. This can help identify cases where a graph excludes or replaces a class that isn&rsquo;t actually present in the merged contributions.</p>
 <p>Reports are written to files like:</p>
@@ -2171,10 +2167,14 @@
     
       
       
-      <script id="__config" type="application/json">{"annotate":null,"base":"..","features":["content.code.copy","content.code.select","content.action.edit","content.action.view","content.tabs.link","navigation.tabs","navigation.footer","navigation.top","search.highlight","search.suggest"],"search":"../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":{"provider":"mike"}}</script>
+      
+      
+        
+        
+      <script id="__config" type="application/json">{"annotate":null,"base":"..","features":["content.code.copy","content.code.select","content.action.edit","content.action.view","content.tabs.link","navigation.tabs","navigation.footer","navigation.top","search.highlight","search.suggest"],"redirect":null,"search":"../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":{"provider":"mike"}}</script>
     
     
-      <script src="../assets/javascripts/bundle.88ee1349.min.js"></script>
+      <script src="../assets/javascripts/bundle.df5d1f2b.min.js"></script>
       
     
   </body>
