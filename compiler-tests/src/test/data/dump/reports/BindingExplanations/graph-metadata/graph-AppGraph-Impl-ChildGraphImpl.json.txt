@@ -1,15 +1,21 @@
 {
   "graph": "AppGraph.Impl.ChildGraphImpl",
+  "graphType": "ChildGraph",
+  "parentGraph": "AppGraph",
   "scopes": [],
   "aggregationScopes": [],
   "roots": {
     "accessors": [
       {
         "key": "FirstParentConsumer",
+        "name": "first",
+        "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "SecondParentConsumer",
+        "name": "second",
+        "isProperty": true,
         "isDeferrable": false
       }
     ],
@@ -185,6 +191,7 @@
       "bindingKind": "BoundInstance",
       "isScoped": false,
       "nameHint": "parent",
+      "isGraphInput": false,
       "dependencies": [],
       "isSynthetic": false,
       "declaration": "AppGraph"
@@ -222,6 +229,11 @@
       "bindingKind": "GraphDependency",
       "isScoped": false,
       "nameHint": "ChildGraphImplParentValue",
+      "graphDependency": {
+        "ownerKey": "AppGraph.Impl",
+        "ownerGraph": "AppGraph",
+        "fromParent": true
+      },
       "dependencies": [
         {
           "key": "AppGraph.Impl",

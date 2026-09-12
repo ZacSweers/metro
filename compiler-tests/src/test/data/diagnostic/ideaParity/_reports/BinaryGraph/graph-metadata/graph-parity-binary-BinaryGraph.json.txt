@@ -10,26 +10,38 @@
     "accessors": [
       {
         "key": "libtest.LibClientWithDeps",
+        "name": "client",
+        "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "libtest.LibService",
+        "name": "service",
+        "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "kotlin.collections.Set<libtest.LibAnalytics>",
+        "name": "analytics",
+        "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "libtest.LibExplicit",
+        "name": "explicit",
+        "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "libtest.LibContained",
+        "name": "contained",
+        "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "libtest.LibHidden? = ...",
+        "name": "hidden",
+        "isProperty": true,
         "isDeferrable": false
       }
     ],

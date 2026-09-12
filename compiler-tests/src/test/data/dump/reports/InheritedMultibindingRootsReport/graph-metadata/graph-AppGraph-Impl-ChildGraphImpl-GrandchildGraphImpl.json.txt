@@ -1,0 +1,454 @@
+{
+  "graph": "AppGraph.Impl.ChildGraphImpl.GrandchildGraphImpl",
+  "graphType": "GrandchildGraph",
+  "parentGraph": "AppGraph.Impl.ChildGraphImpl",
+  "scopes": [],
+  "aggregationScopes": [],
+  "roots": {
+    "accessors": [
+      {
+        "key": "ChildValue",
+        "name": "childValue",
+        "isProperty": true,
+        "isDeferrable": false
+      },
+      {
+        "key": "kotlin.collections.Set<kotlin.String>",
+        "name": "names",
+        "isProperty": false,
+        "isDeferrable": false,
+        "isInherited": true,
+        "declaringGraph": "AppGraph.Impl.ChildGraphImpl",
+        "declaringType": "ChildGraph",
+        "origin": "module_main_InheritedMultibindingRootsReport.kt:30:15"
+      },
+      {
+        "key": "kotlin.collections.Set<ValueFactory>",
+        "name": "factories",
+        "isProperty": true,
+        "isDeferrable": false,
+        "isInherited": true,
+        "declaringGraph": "AppGraph",
+        "declaringType": "ParentRoots"
+      }
+    ],
+    "injectors": []
+  },
+  "extensions": {
+    "accessors": [],
+    "factoryAccessors": [],
+    "factoriesImplemented": []
+  },
+  "config": {
+    "debug": false,
+    "enabled": true,
+    "generateAssistedFactories": false,
+    "enableTopLevelFunctionInjection": false,
+    "generateContributionHints": true,
+    "generateContributionHintsInFir": false,
+    "generateClassesInIr": false,
+    "enablePrivateProviderProperties": false,
+    "shrinkUnusedBindings": true,
+    "statementsPerInitFun": 25,
+    "enableGraphSharding": true,
+    "keysPerGraphShard": 2000,
+    "mergedSupertypeChunkSize": 0,
+    "enableSwitchingProviders": false,
+    "publicScopedProviderSeverity": "NONE",
+    "nonPublicContributionSeverity": "NONE",
+    "optionalBindingBehavior": "DEFAULT",
+    "warnOnInjectAnnotationPlacement": true,
+    "interopAnnotationsNamedArgSeverity": "NONE",
+    "unusedGraphInputsSeverity": "WARN",
+    "enabledLoggers": [],
+    "enableDaggerRuntimeInterop": false,
+    "enableGuiceRuntimeInterop": false,
+    "maxIrErrorsCount": 20,
+    "customProviderTypes": [],
+    "customLazyTypes": [],
+    "customAssistedAnnotations": [],
+    "customAssistedFactoryAnnotations": [],
+    "customAssistedInjectAnnotations": [],
+    "customBindsAnnotations": [],
+    "customContributesToAnnotations": [],
+    "customContributesBindingAnnotations": [],
+    "customContributesIntoSetAnnotations": [],
+    "customGraphExtensionAnnotations": [],
+    "customGraphExtensionFactoryAnnotations": [],
+    "customElementsIntoSetAnnotations": [],
+    "customGraphAnnotations": [],
+    "customGraphFactoryAnnotations": [],
+    "customInjectAnnotations": [],
+    "customIntoMapAnnotations": [],
+    "customIntoSetAnnotations": [],
+    "customMapKeyAnnotations": [],
+    "customMultibindsAnnotations": [],
+    "customProvidesAnnotations": [],
+    "customQualifierAnnotations": [],
+    "customScopeAnnotations": [],
+    "customBindingContainerAnnotations": [],
+    "enableDaggerAnvilInterop": false,
+    "enableFullBindingGraphValidation": false,
+    "enableGraphImplClassAsReturnType": false,
+    "customOriginAnnotations": [],
+    "customOptionalBindingAnnotations": [],
+    "contributesAsInject": false,
+    "enableKlibParamsCheck": false,
+    "patchKlibParams": true,
+    "forceEnableFirInIde": false,
+    "compilerVersionAliases": {},
+    "parallelThreads": 0,
+    "bufferedIcTracking": true,
+    "omitRedundantMirrors": false,
+    "enableProviderInlining": true,
+    "enableFunctionProviders": true,
+    "enableSuspendProviders": false,
+    "desugaredProviderSeverity": "WARN",
+    "enableKClassToClassInterop": false,
+    "generateContributionProviders": false,
+    "enableCircuitCodegen": false,
+    "enableHiltInterop": false,
+    "diagnosticsRenderMode": "PLAIN",
+    "generateStaticAnnotations": true,
+    "enableRuntimeTracing": false,
+    "memberNamingStrategy": "DESCRIPTIVE",
+    "maxGeneratedClassNameLength": 233
+  },
+  "stats": {
+    "providerFactories": 0,
+    "bindsCallables": 0,
+    "multibindsCallables": 0,
+    "optionalBindings": 0,
+    "accessors": 1,
+    "injectors": 0,
+    "graphExtensionAccessors": 0,
+    "graphExtensionFactories": 0,
+    "includedGraphs": 0,
+    "bindingContainers": 0,
+    "dynamicBindings": 0,
+    "graphPrivateKeys": 0,
+    "publishedBindsKeys": 0,
+    "populatedKeys": 6,
+    "validatedKeys": 6,
+    "reachableKeys": 6,
+    "deferredKeys": 0,
+    "unusedInputs": 0,
+    "providerProperties": 2,
+    "scopedProviderProperties": 0,
+    "shards": 0,
+    "optimizations": {
+      "bindingsPrunedByShrinking": 0,
+      "classConstructorDirectInvocations": 1,
+      "classConstructorNewInstanceCalls": 0,
+      "providerDirectInvocations": 1,
+      "providerNewInstanceCalls": 0,
+      "shardsGenerated": 0,
+      "shardedSupertypes": 0,
+      "shardedInitFunctions": 0,
+      "providerInlines": 1,
+      "providerInlineFallbacks": {
+        "deferredAccess": 0,
+        "unavailableValue": 0
+      }
+    }
+  },
+  "bindings": [
+    {
+      "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"ValueFactory\", \"610231206\") ValueFactory",
+      "bindingKind": "Provided",
+      "isScoped": false,
+      "nameHint": "factory",
+      "dependencies": [
+        {
+          "key": "ValueFactory",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "origin": "module_main_InheritedMultibindingRootsReport.kt:40:24",
+      "declaration": "factory"
+    },
+    {
+      "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String\", \"-1409686752\") kotlin.String",
+      "bindingKind": "Provided",
+      "isScoped": false,
+      "nameHint": "name",
+      "dependencies": [],
+      "isSynthetic": false,
+      "origin": "module_main_InheritedMultibindingRootsReport.kt:41:24",
+      "declaration": "name"
+    },
+    {
+      "key": "ChildValue",
+      "bindingKind": "ConstructorInjected",
+      "isScoped": false,
+      "nameHint": "ChildValue",
+      "dependencies": [],
+      "isSynthetic": false,
+      "origin": "module_main_InheritedMultibindingRootsReport.kt:21:1",
+      "declaration": "ChildValue"
+    },
+    {
+      "key": "ValueFactory",
+      "bindingKind": "AssistedFactory",
+      "isScoped": false,
+      "nameHint": "ValueFactory",
+      "dependencies": [],
+      "isSynthetic": false,
+      "declaration": "ValueFactory",
+      "assistedTarget": {
+        "key": "Value",
+        "bindingKind": "ConstructorInjected",
+        "isScoped": false,
+        "nameHint": "Value",
+        "dependencies": [],
+        "isSynthetic": false,
+        "declaration": "Value",
+        "assistedParameters": [
+          {
+            "key": "kotlin.String",
+            "name": "name"
+          }
+        ]
+      }
+    },
+    {
+      "key": "kotlin.collections.Set<ValueFactory>",
+      "bindingKind": "Multibinding",
+      "isScoped": false,
+      "nameHint": "setOfValueFactory",
+      "dependencies": [
+        {
+          "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"ValueFactory\", \"610231206\") ValueFactory",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "multibinding": {
+        "type": "SET",
+        "allowEmpty": false,
+        "sources": [
+          "@dev.zacsweers.metro.internal.MultibindingElement(\"ValueFactory\", \"610231206\") ValueFactory"
+        ]
+      }
+    },
+    {
+      "key": "kotlin.collections.Set<kotlin.String>",
+      "bindingKind": "Multibinding",
+      "isScoped": false,
+      "nameHint": "setOfString",
+      "dependencies": [
+        {
+          "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String\", \"-1409686752\") kotlin.String",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "multibinding": {
+        "type": "SET",
+        "allowEmpty": false,
+        "sources": [
+          "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String\", \"-1409686752\") kotlin.String"
+        ]
+      }
+    }
+  ],
+  "bindingExplanations": [
+    {
+      "context": {
+        "id": "8:AppGraph|28:AppGraph.Impl.ChildGraphImpl|48:AppGraph.Impl.ChildGraphImpl.GrandchildGraphImpl",
+        "label": "AppGraph -> AppGraph.Impl.ChildGraphImpl -> AppGraph.Impl.ChildGraphImpl.GrandchildGraphImpl"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "91:@dev.zacsweers.metro.internal.MultibindingElement(\"ValueFactory\", \"610231206\") ValueFactory|73:AppGraph.Companion.factory(AppGraph.Companion,ValueFactory): ValueFactory",
+          "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"ValueFactory\", \"610231206\") ValueFactory",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "AppGraph.Companion.factory(AppGraph.Companion,ValueFactory): ValueFactory",
+            "label": "AppGraph.Companion.factory",
+            "source": {
+              "path": "module_main_InheritedMultibindingRootsReport.kt",
+              "line": 40,
+              "column": 24
+            }
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"ValueFactory\", \"610231206\") ValueFactory",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph|28:AppGraph.Impl.ChildGraphImpl|48:AppGraph.Impl.ChildGraphImpl.GrandchildGraphImpl",
+        "label": "AppGraph -> AppGraph.Impl.ChildGraphImpl -> AppGraph.Impl.ChildGraphImpl.GrandchildGraphImpl"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "95:@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String\", \"-1409686752\") kotlin.String|58:AppGraph.Companion.name(AppGraph.Companion): kotlin.String",
+          "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String\", \"-1409686752\") kotlin.String",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "AppGraph.Companion.name(AppGraph.Companion): kotlin.String",
+            "label": "AppGraph.Companion.name",
+            "source": {
+              "path": "module_main_InheritedMultibindingRootsReport.kt",
+              "line": 41,
+              "column": 24
+            }
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String\", \"-1409686752\") kotlin.String",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph|28:AppGraph.Impl.ChildGraphImpl|48:AppGraph.Impl.ChildGraphImpl.GrandchildGraphImpl",
+        "label": "AppGraph -> AppGraph.Impl.ChildGraphImpl -> AppGraph.Impl.ChildGraphImpl.GrandchildGraphImpl"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "10:ChildValue|10:ChildValue",
+          "key": "ChildValue",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "ChildValue",
+            "label": "ChildValue",
+            "source": {
+              "path": "module_main_InheritedMultibindingRootsReport.kt",
+              "line": 21,
+              "column": 1
+            }
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "ChildValue",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph|28:AppGraph.Impl.ChildGraphImpl|48:AppGraph.Impl.ChildGraphImpl.GrandchildGraphImpl",
+        "label": "AppGraph -> AppGraph.Impl.ChildGraphImpl -> AppGraph.Impl.ChildGraphImpl.GrandchildGraphImpl"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "12:ValueFactory|12:ValueFactory",
+          "key": "ValueFactory",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "ValueFactory",
+            "label": "ValueFactory"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "ValueFactory",
+        "declaration": {
+          "id": "AppGraph.Companion.factory(AppGraph.Companion,ValueFactory): ValueFactory#factory",
+          "label": "AppGraph.Companion.factory.factory",
+          "source": {
+            "path": "module_main_InheritedMultibindingRootsReport.kt",
+            "line": 40,
+            "column": 36
+          }
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph|28:AppGraph.Impl.ChildGraphImpl|48:AppGraph.Impl.ChildGraphImpl.GrandchildGraphImpl",
+        "label": "AppGraph -> AppGraph.Impl.ChildGraphImpl -> AppGraph.Impl.ChildGraphImpl.GrandchildGraphImpl"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "36:kotlin.collections.Set<ValueFactory>|9:generated",
+          "key": "kotlin.collections.Set<ValueFactory>",
+          "status": "selected",
+          "reason": "selected_multibinding",
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "kotlin.collections.Set<ValueFactory>",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph|28:AppGraph.Impl.ChildGraphImpl|48:AppGraph.Impl.ChildGraphImpl.GrandchildGraphImpl",
+        "label": "AppGraph -> AppGraph.Impl.ChildGraphImpl -> AppGraph.Impl.ChildGraphImpl.GrandchildGraphImpl"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "37:kotlin.collections.Set<kotlin.String>|9:generated",
+          "key": "kotlin.collections.Set<kotlin.String>",
+          "status": "selected",
+          "reason": "selected_multibinding",
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "kotlin.collections.Set<kotlin.String>",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    }
+  ]
+}

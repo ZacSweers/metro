@@ -6,6 +6,8 @@
     "accessors": [
       {
         "key": "Provider<Settings>",
+        "name": "settingsProvider",
+        "isProperty": true,
         "isDeferrable": true
       }
     ],

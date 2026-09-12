@@ -1,15 +1,22 @@
 {
   "graph": "parity.composition.AppGraph",
+  "includedGraphKeys": [
+    "parity.composition.ExternalDependencies"
+  ],
   "scopes": [],
   "aggregationScopes": [],
   "roots": {
     "accessors": [
       {
         "key": "kotlin.String",
+        "name": "endpoint",
+        "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "parity.composition.Box<kotlin.Int>",
+        "name": "box",
+        "isProperty": true,
         "isDeferrable": false
       }
     ],
@@ -153,6 +160,11 @@
       "bindingKind": "GraphDependency",
       "isScoped": false,
       "nameHint": "ExternalDependenciesEndpoint",
+      "graphDependency": {
+        "ownerKey": "parity.composition.ExternalDependencies",
+        "ownerGraph": "parity.composition.ExternalDependencies",
+        "fromParent": false
+      },
       "dependencies": [
         {
           "key": "parity.composition.ExternalDependencies",
@@ -185,6 +197,7 @@
       "bindingKind": "BoundInstance",
       "isScoped": false,
       "nameHint": "ExternalDependenciesProvider",
+      "isGraphInput": true,
       "dependencies": [],
       "isSynthetic": false,
       "declaration": "dependencies"
@@ -194,6 +207,7 @@
       "bindingKind": "BoundInstance",
       "isScoped": false,
       "nameHint": "bindingsInstance",
+      "isGraphInput": true,
       "dependencies": [],
       "isSynthetic": false,
       "declaration": "bindings"

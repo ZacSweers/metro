@@ -1,12 +1,25 @@
 {
-  "graph": "parity.core.AppGraph",
-  "scopes": [],
-  "aggregationScopes": [],
+  "graph": "AppGraph",
+  "includedGraphKeys": [
+    "ExternalDependencies"
+  ],
+  "scopes": [
+    "@dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class)"
+  ],
+  "aggregationScopes": [
+    "dev.zacsweers.metro.AppScope"
+  ],
   "roots": {
     "accessors": [
       {
-        "key": "parity.core.Consumer",
-        "name": "consumer",
+        "key": "Value",
+        "name": "value",
+        "isProperty": true,
+        "isDeferrable": false
+      },
+      {
+        "key": "ChildGraph.Factory",
+        "name": "childFactory",
         "isProperty": true,
         "isDeferrable": false
       }
@@ -15,8 +28,17 @@
   },
   "extensions": {
     "accessors": [],
-    "factoryAccessors": [],
-    "factoriesImplemented": []
+    "factoryAccessors": [
+      {
+        "key": "ChildGraph.Factory",
+        "name": "childFactory",
+        "isProperty": true,
+        "isSAM": false
+      }
+    ],
+    "factoriesImplemented": [
+      "ChildGraph.Factory"
+    ]
   },
   "config": {
     "debug": false,
@@ -82,7 +104,7 @@
     "enableProviderInlining": true,
     "enableFunctionProviders": true,
     "enableSuspendProviders": false,
-    "desugaredProviderSeverity": "NONE",
+    "desugaredProviderSeverity": "WARN",
     "enableKClassToClassInterop": false,
     "generateContributionProviders": false,
     "enableCircuitCodegen": false,
@@ -94,37 +116,37 @@
     "maxGeneratedClassNameLength": 233
   },
   "stats": {
-    "providerFactories": 2,
-    "bindsCallables": 1,
+    "providerFactories": 0,
+    "bindsCallables": 0,
     "multibindsCallables": 0,
     "optionalBindings": 0,
-    "accessors": 1,
+    "accessors": 2,
     "injectors": 0,
     "graphExtensionAccessors": 0,
-    "graphExtensionFactories": 0,
-    "includedGraphs": 0,
+    "graphExtensionFactories": 1,
+    "includedGraphs": 1,
     "bindingContainers": 0,
     "dynamicBindings": 0,
     "graphPrivateKeys": 0,
     "publishedBindsKeys": 0,
-    "populatedKeys": 6,
-    "validatedKeys": 6,
-    "reachableKeys": 6,
+    "populatedKeys": 7,
+    "validatedKeys": 7,
+    "reachableKeys": 7,
     "deferredKeys": 0,
     "unusedInputs": 0,
-    "providerProperties": 1,
-    "scopedProviderProperties": 0,
+    "providerProperties": 2,
+    "scopedProviderProperties": 1,
     "shards": 0,
     "optimizations": {
       "bindingsPrunedByShrinking": 0,
-      "classConstructorDirectInvocations": 2,
+      "classConstructorDirectInvocations": 1,
       "classConstructorNewInstanceCalls": 0,
-      "providerDirectInvocations": 1,
+      "providerDirectInvocations": 0,
       "providerNewInstanceCalls": 0,
       "shardsGenerated": 0,
       "shardedSupertypes": 0,
       "shardedInitFunctions": 0,
-      "providerInlines": 1,
+      "providerInlines": 0,
       "providerInlineFallbacks": {
         "deferredAccess": 0,
         "unavailableValue": 0
@@ -133,127 +155,286 @@
   },
   "bindings": [
     {
-      "key": "@dev.zacsweers.metro.Named(\"base\") kotlin.String",
-      "bindingKind": "Provided",
+      "key": "AppGraph",
+      "bindingKind": "BoundInstance",
       "isScoped": false,
-      "nameHint": "name",
+      "nameHint": "AppGraphProvider",
+      "isGraphInput": false,
       "dependencies": [],
       "isSynthetic": false,
-      "declaration": "name"
+      "origin": "GraphRegionsReport.kt:31:1",
+      "declaration": "AppGraph"
     },
     {
-      "key": "parity.core.Api",
+      "key": "AppGraph.Impl",
       "bindingKind": "Alias",
       "isScoped": false,
-      "nameHint": "bindApi",
+      "nameHint": "Impl",
       "dependencies": [
         {
-          "key": "parity.core.RealApi",
+          "key": "AppGraph",
           "hasDefault": false
         }
       ],
-      "isSynthetic": false,
-      "declaration": "bindApi",
-      "aliasTarget": "parity.core.RealApi"
+      "isSynthetic": true,
+      "aliasTarget": "AppGraph"
     },
     {
-      "key": "parity.core.Consumer",
+      "key": "Cache",
       "bindingKind": "ConstructorInjected",
-      "isScoped": false,
-      "nameHint": "Consumer",
-      "dependencies": [
-        {
-          "key": "parity.core.Api",
-          "hasDefault": false
-        },
-        {
-          "key": "@dev.zacsweers.metro.Named(\"base\") kotlin.String",
-          "hasDefault": false
-        },
-        {
-          "key": "Provider<parity.core.Engine>",
-          "hasDefault": false,
-          "wrapperType": "Provider"
-        },
-        {
-          "key": "Lazy<parity.core.Engine>",
-          "hasDefault": false,
-          "wrapperType": "Lazy"
-        },
-        {
-          "key": "parity.core.OptionalValue",
-          "hasDefault": false
-        }
-      ],
-      "isSynthetic": false,
-      "declaration": "Consumer"
-    },
-    {
-      "key": "parity.core.Engine",
-      "bindingKind": "ConstructorInjected",
-      "isScoped": false,
-      "nameHint": "Engine",
+      "scope": "@dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class)",
+      "isScoped": true,
+      "nameHint": "Cache",
       "dependencies": [],
       "isSynthetic": false,
-      "declaration": "Engine"
+      "origin": "GraphRegionsReport.kt:11:1",
+      "declaration": "Cache"
     },
     {
-      "key": "parity.core.OptionalValue",
-      "bindingKind": "Provided",
+      "key": "ChildGraph.Factory",
+      "bindingKind": "GraphExtensionFactory",
       "isScoped": false,
-      "nameHint": "optionalValue",
+      "nameHint": "FactoryFactory",
+      "extensionType": "ChildGraph",
       "dependencies": [
         {
-          "key": "parity.core.MissingDependency? = ...",
-          "hasDefault": true
-        }
-      ],
-      "isSynthetic": false,
-      "declaration": "optionalValue"
-    },
-    {
-      "key": "parity.core.RealApi",
-      "bindingKind": "ConstructorInjected",
-      "isScoped": false,
-      "nameHint": "RealApi",
-      "dependencies": [
-        {
-          "key": "parity.core.Engine",
+          "key": "AppGraph.Impl",
           "hasDefault": false
         }
       ],
       "isSynthetic": false,
-      "declaration": "RealApi"
+      "origin": "GraphRegionsReport.kt:1:1",
+      "declaration": "<get-childFactory>"
+    },
+    {
+      "key": "ExternalDependencies",
+      "bindingKind": "BoundInstance",
+      "isScoped": false,
+      "nameHint": "ExternalDependenciesProvider",
+      "isGraphInput": true,
+      "dependencies": [],
+      "isSynthetic": false,
+      "origin": "GraphRegionsReport.kt:38:16",
+      "declaration": "dependencies"
+    },
+    {
+      "key": "Value",
+      "bindingKind": "ConstructorInjected",
+      "isScoped": false,
+      "nameHint": "Value",
+      "dependencies": [
+        {
+          "key": "Cache",
+          "hasDefault": false
+        },
+        {
+          "key": "kotlin.String",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "origin": "GraphRegionsReport.kt:13:1",
+      "declaration": "Value"
+    },
+    {
+      "key": "kotlin.String",
+      "bindingKind": "GraphDependency",
+      "isScoped": false,
+      "nameHint": "ExternalDependenciesEndpoint",
+      "graphDependency": {
+        "ownerKey": "ExternalDependencies",
+        "ownerGraph": "ExternalDependencies",
+        "fromParent": false
+      },
+      "dependencies": [
+        {
+          "key": "ExternalDependencies",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "origin": "GraphRegionsReport.kt:8:3",
+      "declaration": "endpoint"
     }
   ],
   "bindingExplanations": [
     {
       "context": {
-        "id": "20:parity.core.AppGraph",
-        "label": "parity.core.AppGraph"
+        "id": "8:AppGraph",
+        "label": "AppGraph"
       },
       "phase": "lookup",
       "outcome": "selected",
       "candidates": [
         {
-          "id": "48:@dev.zacsweers.metro.Named(\"base\") kotlin.String|90:parity.core.CoreBindings.Companion.name(parity.core.CoreBindings.Companion): kotlin.String",
-          "key": "@dev.zacsweers.metro.Named(\"base\") kotlin.String",
+          "id": "8:AppGraph|8:AppGraph",
+          "key": "AppGraph",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "AppGraph",
+            "label": "AppGraph",
+            "source": {
+              "path": "GraphRegionsReport.kt",
+              "line": 31,
+              "column": 1
+            }
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "AppGraph",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "13:AppGraph.Impl|9:generated",
+          "key": "AppGraph.Impl",
+          "status": "selected",
+          "reason": "selected_generated",
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "AppGraph.Impl",
+        "declaration": {
+          "id": "AppGraph.Impl.<get-childFactory>(AppGraph.Impl): ChildGraph.Factory",
+          "label": "AppGraph.Impl.<get-childFactory>",
+          "source": {
+            "path": "GraphRegionsReport.kt",
+            "line": 1,
+            "column": 1
+          }
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "5:Cache|5:Cache",
+          "key": "Cache",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "Cache",
+            "label": "Cache",
+            "source": {
+              "path": "GraphRegionsReport.kt",
+              "line": 11,
+              "column": 1
+            }
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "Cache",
+        "declaration": {
+          "id": "Value.MetroFactory.declarationMirror(Value.MetroFactory,Cache,kotlin.String): Value#cache",
+          "label": "Value.MetroFactory.declarationMirror.cache",
+          "source": {
+            "path": "GraphRegionsReport.kt",
+            "line": 13,
+            "column": 21
+          }
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "18:ChildGraph.Factory|67:AppGraph.Impl.<get-childFactory>(AppGraph.Impl): ChildGraph.Factory",
+          "key": "ChildGraph.Factory",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "AppGraph.Impl.<get-childFactory>(AppGraph.Impl): ChildGraph.Factory",
+            "label": "AppGraph.Impl.<get-childFactory>",
+            "source": {
+              "path": "GraphRegionsReport.kt",
+              "line": 1,
+              "column": 1
+            }
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "ChildGraph.Factory",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "20:ExternalDependencies|85:AppGraph.Factory.create(AppGraph.Factory,ExternalDependencies): AppGraph#dependencies",
+          "key": "ExternalDependencies",
           "status": "selected",
           "reason": "selected_explicit",
           "declaration": {
-            "id": "parity.core.CoreBindings.Companion.name(parity.core.CoreBindings.Companion): kotlin.String",
-            "label": "parity.core.CoreBindings.Companion.name"
+            "id": "AppGraph.Factory.create(AppGraph.Factory,ExternalDependencies): AppGraph#dependencies",
+            "label": "AppGraph.Factory.create.dependencies",
+            "source": {
+              "path": "GraphRegionsReport.kt",
+              "line": 38,
+              "column": 16
+            }
           },
           "relatedDeclarations": [],
           "details": []
         }
       ],
       "request": {
-        "key": "@dev.zacsweers.metro.Named(\"base\") kotlin.String",
-        "declaration": {
-          "id": "parity.core.Consumer.MetroFactory.declarationMirror(parity.core.Consumer.MetroFactory,parity.core.Api,kotlin.String,dev.zacsweers.metro.Provider<parity.core.Engine>,kotlin.Lazy<parity.core.Engine>,parity.core.OptionalValue): parity.core.Consumer#name",
-          "label": "parity.core.Consumer.MetroFactory.declarationMirror.name"
-        },
+        "key": "ExternalDependencies",
         "hasDefault": false,
         "isOptional": false
       },
@@ -263,31 +444,32 @@
     },
     {
       "context": {
-        "id": "20:parity.core.AppGraph",
-        "label": "parity.core.AppGraph"
+        "id": "8:AppGraph",
+        "label": "AppGraph"
       },
       "phase": "lookup",
       "outcome": "selected",
       "candidates": [
         {
-          "id": "18:parity.core.Engine|18:parity.core.Engine",
-          "key": "parity.core.Engine",
+          "id": "5:Cache|5:Cache",
+          "key": "Cache",
           "status": "selected",
           "reason": "selected_implicit",
           "declaration": {
-            "id": "parity.core.Engine",
-            "label": "parity.core.Engine"
+            "id": "Cache",
+            "label": "Cache",
+            "source": {
+              "path": "GraphRegionsReport.kt",
+              "line": 11,
+              "column": 1
+            }
           },
           "relatedDeclarations": [],
           "details": []
         }
       ],
       "request": {
-        "key": "Lazy<parity.core.Engine>",
-        "declaration": {
-          "id": "parity.core.Consumer.MetroFactory.declarationMirror(parity.core.Consumer.MetroFactory,parity.core.Api,kotlin.String,dev.zacsweers.metro.Provider<parity.core.Engine>,kotlin.Lazy<parity.core.Engine>,parity.core.OptionalValue): parity.core.Consumer#engineLazy",
-          "label": "parity.core.Consumer.MetroFactory.declarationMirror.engineLazy"
-        },
+        "key": "Provider<Cache>",
         "hasDefault": false,
         "isOptional": false
       },
@@ -297,31 +479,32 @@
     },
     {
       "context": {
-        "id": "20:parity.core.AppGraph",
-        "label": "parity.core.AppGraph"
+        "id": "8:AppGraph",
+        "label": "AppGraph"
       },
       "phase": "lookup",
       "outcome": "selected",
       "candidates": [
         {
-          "id": "18:parity.core.Engine|18:parity.core.Engine",
-          "key": "parity.core.Engine",
+          "id": "5:Value|5:Value",
+          "key": "Value",
           "status": "selected",
           "reason": "selected_implicit",
           "declaration": {
-            "id": "parity.core.Engine",
-            "label": "parity.core.Engine"
+            "id": "Value",
+            "label": "Value",
+            "source": {
+              "path": "GraphRegionsReport.kt",
+              "line": 13,
+              "column": 1
+            }
           },
           "relatedDeclarations": [],
           "details": []
         }
       ],
       "request": {
-        "key": "Provider<parity.core.Engine>",
-        "declaration": {
-          "id": "parity.core.Consumer.MetroFactory.declarationMirror(parity.core.Consumer.MetroFactory,parity.core.Api,kotlin.String,dev.zacsweers.metro.Provider<parity.core.Engine>,kotlin.Lazy<parity.core.Engine>,parity.core.OptionalValue): parity.core.Consumer#engineProvider",
-          "label": "parity.core.Consumer.MetroFactory.declarationMirror.engineProvider"
-        },
+        "key": "Value",
         "hasDefault": false,
         "isOptional": false
       },
@@ -331,31 +514,32 @@
     },
     {
       "context": {
-        "id": "20:parity.core.AppGraph",
-        "label": "parity.core.AppGraph"
+        "id": "8:AppGraph",
+        "label": "AppGraph"
       },
       "phase": "lookup",
       "outcome": "selected",
       "candidates": [
         {
-          "id": "15:parity.core.Api|95:parity.core.CoreBindings.bindApi(parity.core.CoreBindings,parity.core.RealApi): parity.core.Api",
-          "key": "parity.core.Api",
+          "id": "13:kotlin.String|44:ExternalDependencies.endpoint: kotlin.String",
+          "key": "kotlin.String",
           "status": "selected",
           "reason": "selected_explicit",
           "declaration": {
-            "id": "parity.core.CoreBindings.bindApi(parity.core.CoreBindings,parity.core.RealApi): parity.core.Api",
-            "label": "parity.core.CoreBindings.bindApi"
+            "id": "ExternalDependencies.endpoint: kotlin.String",
+            "label": "ExternalDependencies.endpoint",
+            "source": {
+              "path": "GraphRegionsReport.kt",
+              "line": 8,
+              "column": 3
+            }
           },
           "relatedDeclarations": [],
           "details": []
         }
       ],
       "request": {
-        "key": "parity.core.Api",
-        "declaration": {
-          "id": "parity.core.Consumer.MetroFactory.declarationMirror(parity.core.Consumer.MetroFactory,parity.core.Api,kotlin.String,dev.zacsweers.metro.Provider<parity.core.Engine>,kotlin.Lazy<parity.core.Engine>,parity.core.OptionalValue): parity.core.Consumer#api",
-          "label": "parity.core.Consumer.MetroFactory.declarationMirror.api"
-        },
+        "key": "kotlin.String",
         "hasDefault": false,
         "isOptional": false
       },
@@ -365,149 +549,40 @@
     },
     {
       "context": {
-        "id": "20:parity.core.AppGraph",
-        "label": "parity.core.AppGraph"
+        "id": "8:AppGraph",
+        "label": "AppGraph"
       },
       "phase": "lookup",
       "outcome": "selected",
       "candidates": [
         {
-          "id": "20:parity.core.Consumer|20:parity.core.Consumer",
-          "key": "parity.core.Consumer",
-          "status": "selected",
-          "reason": "selected_implicit",
-          "declaration": {
-            "id": "parity.core.Consumer",
-            "label": "parity.core.Consumer"
-          },
-          "relatedDeclarations": [],
-          "details": []
-        }
-      ],
-      "request": {
-        "key": "parity.core.Consumer",
-        "hasDefault": false,
-        "isOptional": false
-      },
-      "details": [
-        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
-      ]
-    },
-    {
-      "context": {
-        "id": "20:parity.core.AppGraph",
-        "label": "parity.core.AppGraph"
-      },
-      "phase": "lookup",
-      "outcome": "selected",
-      "candidates": [
-        {
-          "id": "18:parity.core.Engine|18:parity.core.Engine",
-          "key": "parity.core.Engine",
-          "status": "selected",
-          "reason": "selected_implicit",
-          "declaration": {
-            "id": "parity.core.Engine",
-            "label": "parity.core.Engine"
-          },
-          "relatedDeclarations": [],
-          "details": []
-        }
-      ],
-      "request": {
-        "key": "parity.core.Engine",
-        "declaration": {
-          "id": "parity.core.RealApi.MetroFactory.declarationMirror(parity.core.RealApi.MetroFactory,parity.core.Engine): parity.core.RealApi#engine",
-          "label": "parity.core.RealApi.MetroFactory.declarationMirror.engine"
-        },
-        "hasDefault": false,
-        "isOptional": false
-      },
-      "details": [
-        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
-      ]
-    },
-    {
-      "context": {
-        "id": "20:parity.core.AppGraph",
-        "label": "parity.core.AppGraph"
-      },
-      "phase": "lookup",
-      "outcome": "missing",
-      "candidates": [],
-      "request": {
-        "key": "parity.core.MissingDependency? = ...",
-        "declaration": {
-          "id": "parity.core.CoreBindings.Companion.optionalValue(parity.core.CoreBindings.Companion,parity.core.MissingDependency?): parity.core.OptionalValue#missing",
-          "label": "parity.core.CoreBindings.Companion.optionalValue.missing"
-        },
-        "hasDefault": true,
-        "isOptional": true
-      },
-      "details": [
-        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
-      ]
-    },
-    {
-      "context": {
-        "id": "20:parity.core.AppGraph",
-        "label": "parity.core.AppGraph"
-      },
-      "phase": "lookup",
-      "outcome": "selected",
-      "candidates": [
-        {
-          "id": "25:parity.core.OptionalValue|142:parity.core.CoreBindings.Companion.optionalValue(parity.core.CoreBindings.Companion,parity.core.MissingDependency?): parity.core.OptionalValue",
-          "key": "parity.core.OptionalValue",
+          "id": "13:kotlin.String|44:ExternalDependencies.endpoint: kotlin.String",
+          "key": "kotlin.String",
           "status": "selected",
           "reason": "selected_explicit",
           "declaration": {
-            "id": "parity.core.CoreBindings.Companion.optionalValue(parity.core.CoreBindings.Companion,parity.core.MissingDependency?): parity.core.OptionalValue",
-            "label": "parity.core.CoreBindings.Companion.optionalValue"
+            "id": "ExternalDependencies.endpoint: kotlin.String",
+            "label": "ExternalDependencies.endpoint",
+            "source": {
+              "path": "GraphRegionsReport.kt",
+              "line": 8,
+              "column": 3
+            }
           },
           "relatedDeclarations": [],
           "details": []
         }
       ],
       "request": {
-        "key": "parity.core.OptionalValue",
+        "key": "kotlin.String",
         "declaration": {
-          "id": "parity.core.Consumer.MetroFactory.declarationMirror(parity.core.Consumer.MetroFactory,parity.core.Api,kotlin.String,dev.zacsweers.metro.Provider<parity.core.Engine>,kotlin.Lazy<parity.core.Engine>,parity.core.OptionalValue): parity.core.Consumer#optionalValue",
-          "label": "parity.core.Consumer.MetroFactory.declarationMirror.optionalValue"
-        },
-        "hasDefault": false,
-        "isOptional": false
-      },
-      "details": [
-        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
-      ]
-    },
-    {
-      "context": {
-        "id": "20:parity.core.AppGraph",
-        "label": "parity.core.AppGraph"
-      },
-      "phase": "lookup",
-      "outcome": "selected",
-      "candidates": [
-        {
-          "id": "19:parity.core.RealApi|19:parity.core.RealApi",
-          "key": "parity.core.RealApi",
-          "status": "selected",
-          "reason": "selected_implicit",
-          "declaration": {
-            "id": "parity.core.RealApi",
-            "label": "parity.core.RealApi"
-          },
-          "relatedDeclarations": [],
-          "details": []
-        }
-      ],
-      "request": {
-        "key": "parity.core.RealApi",
-        "declaration": {
-          "id": "parity.core.CoreBindings.bindApi(parity.core.CoreBindings,parity.core.RealApi): parity.core.Api#impl",
-          "label": "parity.core.CoreBindings.bindApi.impl"
+          "id": "Value.MetroFactory.declarationMirror(Value.MetroFactory,Cache,kotlin.String): Value#endpoint",
+          "label": "Value.MetroFactory.declarationMirror.endpoint",
+          "source": {
+            "path": "GraphRegionsReport.kt",
+            "line": 13,
+            "column": 39
+          }
         },
         "hasDefault": false,
         "isOptional": false

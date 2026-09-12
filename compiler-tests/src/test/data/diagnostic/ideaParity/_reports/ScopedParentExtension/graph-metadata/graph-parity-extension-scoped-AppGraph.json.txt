@@ -11,7 +11,9 @@
   "extensions": {
     "accessors": [
       {
-        "key": "parity.extension.scoped.ChildGraph"
+        "key": "parity.extension.scoped.ChildGraph",
+        "name": "childGraph",
+        "isProperty": true
       }
     ],
     "factoryAccessors": [],
@@ -136,6 +138,7 @@
       "bindingKind": "BoundInstance",
       "isScoped": false,
       "nameHint": "AppGraphProvider",
+      "isGraphInput": false,
       "dependencies": [],
       "isSynthetic": false,
       "declaration": "AppGraph"

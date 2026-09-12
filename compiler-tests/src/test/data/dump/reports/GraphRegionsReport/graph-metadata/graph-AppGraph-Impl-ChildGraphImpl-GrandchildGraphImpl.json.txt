@@ -1,14 +1,14 @@
 {
-  "graph": "parity.extension.AppGraph.Impl.ChildGraphImpl",
-  "graphType": "parity.extension.ChildGraph",
-  "parentGraph": "parity.extension.AppGraph",
+  "graph": "AppGraph.Impl.ChildGraphImpl.GrandchildGraphImpl",
+  "graphType": "GrandchildGraph",
+  "parentGraph": "AppGraph.Impl.ChildGraphImpl",
   "scopes": [],
   "aggregationScopes": [],
   "roots": {
     "accessors": [
       {
-        "key": "parity.extension.ChildValue",
-        "name": "childValue",
+        "key": "Value",
+        "name": "value",
         "isProperty": true,
         "isDeferrable": false
       }
@@ -109,9 +109,9 @@
     "dynamicBindings": 0,
     "graphPrivateKeys": 0,
     "publishedBindsKeys": 0,
-    "populatedKeys": 3,
-    "validatedKeys": 3,
-    "reachableKeys": 3,
+    "populatedKeys": 5,
+    "validatedKeys": 5,
+    "reachableKeys": 5,
     "deferredKeys": 0,
     "unusedInputs": 0,
     "providerProperties": 0,
@@ -121,7 +121,7 @@
       "bindingsPrunedByShrinking": 0,
       "classConstructorDirectInvocations": 1,
       "classConstructorNewInstanceCalls": 0,
-      "providerDirectInvocations": 1,
+      "providerDirectInvocations": 0,
       "providerNewInstanceCalls": 0,
       "shardsGenerated": 0,
       "shardedSupertypes": 0,
@@ -135,72 +135,187 @@
   },
   "bindings": [
     {
-      "key": "parity.extension.AppGraph",
+      "key": "AppGraph",
       "bindingKind": "BoundInstance",
       "isScoped": false,
       "nameHint": "parent",
       "isGraphInput": false,
       "dependencies": [],
       "isSynthetic": false,
+      "origin": "GraphRegionsReport.kt:31:1",
       "declaration": "AppGraph"
     },
     {
-      "key": "parity.extension.ChildValue",
-      "bindingKind": "ConstructorInjected",
+      "key": "AppGraph.Impl.ChildGraphImpl",
+      "bindingKind": "BoundInstance",
       "isScoped": false,
-      "nameHint": "ChildValue",
-      "dependencies": [
-        {
-          "key": "parity.extension.ParentApi",
-          "hasDefault": false
-        }
-      ],
+      "nameHint": "parent",
+      "isGraphInput": false,
+      "dependencies": [],
       "isSynthetic": false,
-      "declaration": "ChildValue"
+      "declaration": "ChildGraphImpl"
     },
     {
-      "key": "parity.extension.ParentApi",
-      "bindingKind": "Provided",
+      "key": "Cache",
+      "bindingKind": "GraphDependency",
       "isScoped": false,
-      "nameHint": "parentApi",
+      "nameHint": "GrandchildGraphImplCache",
+      "graphDependency": {
+        "ownerKey": "AppGraph.Impl.ChildGraphImpl",
+        "ownerGraph": "AppGraph",
+        "fromParent": true
+      },
       "dependencies": [
         {
-          "key": "parity.extension.AppGraph",
+          "key": "AppGraph.Impl.ChildGraphImpl",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false
+    },
+    {
+      "key": "Value",
+      "bindingKind": "ConstructorInjected",
+      "isScoped": false,
+      "nameHint": "Value",
+      "dependencies": [
+        {
+          "key": "Cache",
+          "hasDefault": false
+        },
+        {
+          "key": "kotlin.String",
           "hasDefault": false
         }
       ],
       "isSynthetic": false,
-      "declaration": "parentApi"
+      "origin": "GraphRegionsReport.kt:13:1",
+      "declaration": "Value"
+    },
+    {
+      "key": "kotlin.String",
+      "bindingKind": "GraphDependency",
+      "isScoped": false,
+      "nameHint": "GrandchildGraphImplString",
+      "graphDependency": {
+        "ownerKey": "AppGraph",
+        "ownerGraph": "AppGraph",
+        "fromParent": true
+      },
+      "dependencies": [
+        {
+          "key": "AppGraph",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false
     }
   ],
   "bindingExplanations": [
     {
       "context": {
-        "id": "25:parity.extension.AppGraph|45:parity.extension.AppGraph.Impl.ChildGraphImpl",
-        "label": "parity.extension.AppGraph -> parity.extension.AppGraph.Impl.ChildGraphImpl"
+        "id": "8:AppGraph|28:AppGraph.Impl.ChildGraphImpl|48:AppGraph.Impl.ChildGraphImpl.GrandchildGraphImpl",
+        "label": "AppGraph -> AppGraph.Impl.ChildGraphImpl -> AppGraph.Impl.ChildGraphImpl.GrandchildGraphImpl"
       },
       "phase": "lookup",
       "outcome": "selected",
       "candidates": [
         {
-          "id": "25:parity.extension.AppGraph|25:parity.extension.AppGraph",
-          "key": "parity.extension.AppGraph",
+          "id": "8:AppGraph|8:AppGraph",
+          "key": "AppGraph",
           "status": "selected",
           "reason": "selected_parent",
           "declaration": {
-            "id": "parity.extension.AppGraph",
-            "label": "parity.extension.AppGraph"
+            "id": "AppGraph",
+            "label": "AppGraph",
+            "source": {
+              "path": "GraphRegionsReport.kt",
+              "line": 31,
+              "column": 1
+            }
           },
-          "ownerGraphId": "25:parity.extension.AppGraph",
+          "ownerGraphId": "8:AppGraph",
           "relatedDeclarations": [],
           "details": []
         }
       ],
       "request": {
-        "key": "parity.extension.AppGraph",
+        "key": "AppGraph",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph|28:AppGraph.Impl.ChildGraphImpl|48:AppGraph.Impl.ChildGraphImpl.GrandchildGraphImpl",
+        "label": "AppGraph -> AppGraph.Impl.ChildGraphImpl -> AppGraph.Impl.ChildGraphImpl.GrandchildGraphImpl"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "28:AppGraph.Impl.ChildGraphImpl|28:AppGraph.Impl.ChildGraphImpl",
+          "key": "AppGraph.Impl.ChildGraphImpl",
+          "status": "selected",
+          "reason": "selected_parent",
+          "declaration": {
+            "id": "AppGraph.Impl.ChildGraphImpl",
+            "label": "AppGraph.Impl.ChildGraphImpl"
+          },
+          "ownerGraphId": "8:AppGraph|28:AppGraph.Impl.ChildGraphImpl",
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "AppGraph.Impl.ChildGraphImpl",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph|28:AppGraph.Impl.ChildGraphImpl|48:AppGraph.Impl.ChildGraphImpl.GrandchildGraphImpl",
+        "label": "AppGraph -> AppGraph.Impl.ChildGraphImpl -> AppGraph.Impl.ChildGraphImpl.GrandchildGraphImpl"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "5:Cache|5:Cache",
+          "key": "Cache",
+          "status": "selected",
+          "reason": "selected_parent",
+          "declaration": {
+            "id": "Cache",
+            "label": "Cache",
+            "source": {
+              "path": "GraphRegionsReport.kt",
+              "line": 11,
+              "column": 1
+            }
+          },
+          "ownerGraphId": "8:AppGraph",
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "Cache",
         "declaration": {
-          "id": "parity.extension.AppGraph.parentApi(parity.extension.AppGraph): parity.extension.ParentApi#<this>",
-          "label": "parity.extension.AppGraph.parentApi.<this>"
+          "id": "Value.MetroFactory.declarationMirror(Value.MetroFactory,Cache,kotlin.String): Value#cache",
+          "label": "Value.MetroFactory.declarationMirror.cache",
+          "source": {
+            "path": "GraphRegionsReport.kt",
+            "line": 13,
+            "column": 21
+          }
         },
         "hasDefault": false,
         "isOptional": false
@@ -211,27 +326,32 @@
     },
     {
       "context": {
-        "id": "25:parity.extension.AppGraph|45:parity.extension.AppGraph.Impl.ChildGraphImpl",
-        "label": "parity.extension.AppGraph -> parity.extension.AppGraph.Impl.ChildGraphImpl"
+        "id": "8:AppGraph|28:AppGraph.Impl.ChildGraphImpl|48:AppGraph.Impl.ChildGraphImpl.GrandchildGraphImpl",
+        "label": "AppGraph -> AppGraph.Impl.ChildGraphImpl -> AppGraph.Impl.ChildGraphImpl.GrandchildGraphImpl"
       },
       "phase": "lookup",
       "outcome": "selected",
       "candidates": [
         {
-          "id": "27:parity.extension.ChildValue|27:parity.extension.ChildValue",
-          "key": "parity.extension.ChildValue",
+          "id": "5:Value|5:Value",
+          "key": "Value",
           "status": "selected",
           "reason": "selected_implicit",
           "declaration": {
-            "id": "parity.extension.ChildValue",
-            "label": "parity.extension.ChildValue"
+            "id": "Value",
+            "label": "Value",
+            "source": {
+              "path": "GraphRegionsReport.kt",
+              "line": 13,
+              "column": 1
+            }
           },
           "relatedDeclarations": [],
           "details": []
         }
       ],
       "request": {
-        "key": "parity.extension.ChildValue",
+        "key": "Value",
         "hasDefault": false,
         "isOptional": false
       },
@@ -241,30 +361,32 @@
     },
     {
       "context": {
-        "id": "25:parity.extension.AppGraph|45:parity.extension.AppGraph.Impl.ChildGraphImpl",
-        "label": "parity.extension.AppGraph -> parity.extension.AppGraph.Impl.ChildGraphImpl"
+        "id": "8:AppGraph|28:AppGraph.Impl.ChildGraphImpl|48:AppGraph.Impl.ChildGraphImpl.GrandchildGraphImpl",
+        "label": "AppGraph -> AppGraph.Impl.ChildGraphImpl -> AppGraph.Impl.ChildGraphImpl.GrandchildGraphImpl"
       },
       "phase": "lookup",
       "outcome": "selected",
       "candidates": [
         {
-          "id": "26:parity.extension.ParentApi|90:parity.extension.AppGraph.parentApi(parity.extension.AppGraph): parity.extension.ParentApi",
-          "key": "parity.extension.ParentApi",
+          "id": "13:kotlin.String|9:generated",
+          "key": "kotlin.String",
           "status": "selected",
-          "reason": "selected_explicit",
-          "declaration": {
-            "id": "parity.extension.AppGraph.parentApi(parity.extension.AppGraph): parity.extension.ParentApi",
-            "label": "parity.extension.AppGraph.parentApi"
-          },
+          "reason": "selected_parent",
+          "ownerGraphId": "8:AppGraph",
           "relatedDeclarations": [],
           "details": []
         }
       ],
       "request": {
-        "key": "parity.extension.ParentApi",
+        "key": "kotlin.String",
         "declaration": {
-          "id": "parity.extension.ChildValue.MetroFactory.declarationMirror(parity.extension.ChildValue.MetroFactory,parity.extension.ParentApi): parity.extension.ChildValue#api",
-          "label": "parity.extension.ChildValue.MetroFactory.declarationMirror.api"
+          "id": "Value.MetroFactory.declarationMirror(Value.MetroFactory,Cache,kotlin.String): Value#endpoint",
+          "label": "Value.MetroFactory.declarationMirror.endpoint",
+          "source": {
+            "path": "GraphRegionsReport.kt",
+            "line": 13,
+            "column": 39
+          }
         },
         "hasDefault": false,
         "isOptional": false

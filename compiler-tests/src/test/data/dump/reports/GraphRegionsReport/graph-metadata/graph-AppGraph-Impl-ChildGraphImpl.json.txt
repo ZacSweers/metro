@@ -1,0 +1,635 @@
+{
+  "graph": "AppGraph.Impl.ChildGraphImpl",
+  "graphType": "ChildGraph",
+  "parentGraph": "AppGraph",
+  "scopes": [],
+  "aggregationScopes": [],
+  "roots": {
+    "accessors": [
+      {
+        "key": "Value",
+        "name": "value",
+        "isProperty": true,
+        "isDeferrable": false
+      }
+    ],
+    "injectors": []
+  },
+  "extensions": {
+    "accessors": [
+      {
+        "key": "GrandchildGraph",
+        "name": "grandchild",
+        "isProperty": true
+      }
+    ],
+    "factoryAccessors": [],
+    "factoriesImplemented": []
+  },
+  "config": {
+    "debug": false,
+    "enabled": true,
+    "generateAssistedFactories": false,
+    "enableTopLevelFunctionInjection": false,
+    "generateContributionHints": true,
+    "generateContributionHintsInFir": false,
+    "generateClassesInIr": false,
+    "enablePrivateProviderProperties": false,
+    "shrinkUnusedBindings": true,
+    "statementsPerInitFun": 25,
+    "enableGraphSharding": true,
+    "keysPerGraphShard": 2000,
+    "mergedSupertypeChunkSize": 0,
+    "enableSwitchingProviders": false,
+    "publicScopedProviderSeverity": "NONE",
+    "nonPublicContributionSeverity": "NONE",
+    "optionalBindingBehavior": "DEFAULT",
+    "warnOnInjectAnnotationPlacement": true,
+    "interopAnnotationsNamedArgSeverity": "NONE",
+    "unusedGraphInputsSeverity": "WARN",
+    "enabledLoggers": [],
+    "enableDaggerRuntimeInterop": false,
+    "enableGuiceRuntimeInterop": false,
+    "maxIrErrorsCount": 20,
+    "customProviderTypes": [],
+    "customLazyTypes": [],
+    "customAssistedAnnotations": [],
+    "customAssistedFactoryAnnotations": [],
+    "customAssistedInjectAnnotations": [],
+    "customBindsAnnotations": [],
+    "customContributesToAnnotations": [],
+    "customContributesBindingAnnotations": [],
+    "customContributesIntoSetAnnotations": [],
+    "customGraphExtensionAnnotations": [],
+    "customGraphExtensionFactoryAnnotations": [],
+    "customElementsIntoSetAnnotations": [],
+    "customGraphAnnotations": [],
+    "customGraphFactoryAnnotations": [],
+    "customInjectAnnotations": [],
+    "customIntoMapAnnotations": [],
+    "customIntoSetAnnotations": [],
+    "customMapKeyAnnotations": [],
+    "customMultibindsAnnotations": [],
+    "customProvidesAnnotations": [],
+    "customQualifierAnnotations": [],
+    "customScopeAnnotations": [],
+    "customBindingContainerAnnotations": [],
+    "enableDaggerAnvilInterop": false,
+    "enableFullBindingGraphValidation": false,
+    "enableGraphImplClassAsReturnType": false,
+    "customOriginAnnotations": [],
+    "customOptionalBindingAnnotations": [],
+    "contributesAsInject": false,
+    "enableKlibParamsCheck": false,
+    "patchKlibParams": true,
+    "forceEnableFirInIde": false,
+    "compilerVersionAliases": {},
+    "parallelThreads": 0,
+    "bufferedIcTracking": true,
+    "omitRedundantMirrors": false,
+    "enableProviderInlining": true,
+    "enableFunctionProviders": true,
+    "enableSuspendProviders": false,
+    "desugaredProviderSeverity": "WARN",
+    "enableKClassToClassInterop": false,
+    "generateContributionProviders": false,
+    "enableCircuitCodegen": false,
+    "enableHiltInterop": false,
+    "diagnosticsRenderMode": "PLAIN",
+    "generateStaticAnnotations": true,
+    "enableRuntimeTracing": false,
+    "memberNamingStrategy": "DESCRIPTIVE",
+    "maxGeneratedClassNameLength": 233
+  },
+  "stats": {
+    "providerFactories": 0,
+    "bindsCallables": 0,
+    "multibindsCallables": 0,
+    "optionalBindings": 0,
+    "accessors": 1,
+    "injectors": 0,
+    "graphExtensionAccessors": 1,
+    "graphExtensionFactories": 0,
+    "includedGraphs": 0,
+    "bindingContainers": 0,
+    "dynamicBindings": 0,
+    "graphPrivateKeys": 0,
+    "publishedBindsKeys": 0,
+    "populatedKeys": 7,
+    "validatedKeys": 7,
+    "reachableKeys": 7,
+    "deferredKeys": 0,
+    "unusedInputs": 0,
+    "providerProperties": 0,
+    "scopedProviderProperties": 0,
+    "shards": 0,
+    "optimizations": {
+      "bindingsPrunedByShrinking": 0,
+      "classConstructorDirectInvocations": 1,
+      "classConstructorNewInstanceCalls": 0,
+      "providerDirectInvocations": 0,
+      "providerNewInstanceCalls": 0,
+      "shardsGenerated": 0,
+      "shardedSupertypes": 0,
+      "shardedInitFunctions": 0,
+      "providerInlines": 0,
+      "providerInlineFallbacks": {
+        "deferredAccess": 0,
+        "unavailableValue": 0
+      }
+    }
+  },
+  "bindings": [
+    {
+      "key": "AppGraph",
+      "bindingKind": "BoundInstance",
+      "isScoped": false,
+      "nameHint": "parent",
+      "isGraphInput": false,
+      "dependencies": [],
+      "isSynthetic": false,
+      "origin": "GraphRegionsReport.kt:31:1",
+      "declaration": "AppGraph"
+    },
+    {
+      "key": "AppGraph.Impl",
+      "bindingKind": "Alias",
+      "isScoped": false,
+      "nameHint": "Impl",
+      "dependencies": [
+        {
+          "key": "AppGraph",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": true,
+      "aliasTarget": "AppGraph"
+    },
+    {
+      "key": "AppGraph.Impl.ChildGraphImpl",
+      "bindingKind": "BoundInstance",
+      "isScoped": false,
+      "nameHint": "ChildGraphImplProvider",
+      "isGraphInput": false,
+      "dependencies": [],
+      "isSynthetic": false,
+      "declaration": "ChildGraphImpl"
+    },
+    {
+      "key": "Cache",
+      "bindingKind": "GraphDependency",
+      "isScoped": false,
+      "nameHint": "ChildGraphImplCache",
+      "graphDependency": {
+        "ownerKey": "AppGraph.Impl",
+        "ownerGraph": "AppGraph",
+        "fromParent": true
+      },
+      "dependencies": [
+        {
+          "key": "AppGraph.Impl",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false
+    },
+    {
+      "key": "GrandchildGraph",
+      "bindingKind": "GraphExtension",
+      "isScoped": false,
+      "nameHint": "GrandchildGraph",
+      "dependencies": [
+        {
+          "key": "AppGraph.Impl.ChildGraphImpl",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "origin": "GraphRegionsReport.kt:1:1",
+      "declaration": "<get-grandchild>"
+    },
+    {
+      "key": "Value",
+      "bindingKind": "ConstructorInjected",
+      "isScoped": false,
+      "nameHint": "Value",
+      "dependencies": [
+        {
+          "key": "Cache",
+          "hasDefault": false
+        },
+        {
+          "key": "kotlin.String",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "origin": "GraphRegionsReport.kt:13:1",
+      "declaration": "Value"
+    },
+    {
+      "key": "kotlin.String",
+      "bindingKind": "GraphDependency",
+      "isScoped": false,
+      "nameHint": "ChildGraphImplString",
+      "graphDependency": {
+        "ownerKey": "AppGraph",
+        "ownerGraph": "AppGraph",
+        "fromParent": true
+      },
+      "dependencies": [
+        {
+          "key": "AppGraph",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false
+    }
+  ],
+  "bindingExplanations": [
+    {
+      "context": {
+        "id": "8:AppGraph|28:AppGraph.Impl.ChildGraphImpl",
+        "label": "AppGraph -> AppGraph.Impl.ChildGraphImpl"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "8:AppGraph|8:AppGraph",
+          "key": "AppGraph",
+          "status": "selected",
+          "reason": "selected_parent",
+          "declaration": {
+            "id": "AppGraph",
+            "label": "AppGraph",
+            "source": {
+              "path": "GraphRegionsReport.kt",
+              "line": 31,
+              "column": 1
+            }
+          },
+          "ownerGraphId": "8:AppGraph",
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "AppGraph",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph|28:AppGraph.Impl.ChildGraphImpl",
+        "label": "AppGraph -> AppGraph.Impl.ChildGraphImpl"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "13:AppGraph.Impl|9:generated",
+          "key": "AppGraph.Impl",
+          "status": "selected",
+          "reason": "selected_generated",
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "AppGraph.Impl",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph|28:AppGraph.Impl.ChildGraphImpl",
+        "label": "AppGraph -> AppGraph.Impl.ChildGraphImpl"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "28:AppGraph.Impl.ChildGraphImpl|28:AppGraph.Impl.ChildGraphImpl",
+          "key": "AppGraph.Impl.ChildGraphImpl",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "AppGraph.Impl.ChildGraphImpl",
+            "label": "AppGraph.Impl.ChildGraphImpl"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "AppGraph.Impl.ChildGraphImpl",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph|28:AppGraph.Impl.ChildGraphImpl",
+        "label": "AppGraph -> AppGraph.Impl.ChildGraphImpl"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "28:AppGraph.Impl.ChildGraphImpl|28:AppGraph.Impl.ChildGraphImpl",
+          "key": "AppGraph.Impl.ChildGraphImpl",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "AppGraph.Impl.ChildGraphImpl",
+            "label": "AppGraph.Impl.ChildGraphImpl"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "AppGraph.Impl.ChildGraphImpl",
+        "declaration": {
+          "id": "AppGraph.Impl.ChildGraphImpl.<get-grandchild>(AppGraph.Impl.ChildGraphImpl): GrandchildGraph",
+          "label": "AppGraph.Impl.ChildGraphImpl.<get-grandchild>",
+          "source": {
+            "path": "GraphRegionsReport.kt",
+            "line": 1,
+            "column": 1
+          }
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph|28:AppGraph.Impl.ChildGraphImpl",
+        "label": "AppGraph -> AppGraph.Impl.ChildGraphImpl"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "5:Cache|5:Cache",
+          "key": "Cache",
+          "status": "selected",
+          "reason": "selected_parent",
+          "declaration": {
+            "id": "Cache",
+            "label": "Cache",
+            "source": {
+              "path": "GraphRegionsReport.kt",
+              "line": 11,
+              "column": 1
+            }
+          },
+          "ownerGraphId": "8:AppGraph",
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "Cache",
+        "declaration": {
+          "id": "Value.MetroFactory.declarationMirror(Value.MetroFactory,Cache,kotlin.String): Value#cache",
+          "label": "Value.MetroFactory.declarationMirror.cache",
+          "source": {
+            "path": "GraphRegionsReport.kt",
+            "line": 13,
+            "column": 21
+          }
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph|28:AppGraph.Impl.ChildGraphImpl",
+        "label": "AppGraph -> AppGraph.Impl.ChildGraphImpl"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "15:GrandchildGraph|92:AppGraph.Impl.ChildGraphImpl.<get-grandchild>(AppGraph.Impl.ChildGraphImpl): GrandchildGraph",
+          "key": "GrandchildGraph",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "AppGraph.Impl.ChildGraphImpl.<get-grandchild>(AppGraph.Impl.ChildGraphImpl): GrandchildGraph",
+            "label": "AppGraph.Impl.ChildGraphImpl.<get-grandchild>",
+            "source": {
+              "path": "GraphRegionsReport.kt",
+              "line": 1,
+              "column": 1
+            }
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "GrandchildGraph",
+        "declaration": {
+          "id": "AppGraph.Impl.ChildGraphImpl.<get-grandchild>(AppGraph.Impl.ChildGraphImpl): GrandchildGraph",
+          "label": "AppGraph.Impl.ChildGraphImpl.<get-grandchild>",
+          "source": {
+            "path": "GraphRegionsReport.kt",
+            "line": 1,
+            "column": 1
+          }
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph|28:AppGraph.Impl.ChildGraphImpl",
+        "label": "AppGraph -> AppGraph.Impl.ChildGraphImpl"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "5:Cache|5:Cache",
+          "key": "Cache",
+          "status": "selected",
+          "reason": "selected_parent",
+          "declaration": {
+            "id": "Cache",
+            "label": "Cache",
+            "source": {
+              "path": "GraphRegionsReport.kt",
+              "line": 11,
+              "column": 1
+            }
+          },
+          "ownerGraphId": "8:AppGraph",
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "Provider<Cache>",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph|28:AppGraph.Impl.ChildGraphImpl",
+        "label": "AppGraph -> AppGraph.Impl.ChildGraphImpl"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "5:Value|5:Value",
+          "key": "Value",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "Value",
+            "label": "Value",
+            "source": {
+              "path": "GraphRegionsReport.kt",
+              "line": 13,
+              "column": 1
+            }
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "Value",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph|28:AppGraph.Impl.ChildGraphImpl",
+        "label": "AppGraph -> AppGraph.Impl.ChildGraphImpl"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "13:kotlin.String|9:generated",
+          "key": "kotlin.String",
+          "status": "selected",
+          "reason": "selected_parent",
+          "ownerGraphId": "8:AppGraph",
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "kotlin.String",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph|28:AppGraph.Impl.ChildGraphImpl",
+        "label": "AppGraph -> AppGraph.Impl.ChildGraphImpl"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "13:kotlin.String|9:generated",
+          "key": "kotlin.String",
+          "status": "selected",
+          "reason": "selected_parent",
+          "ownerGraphId": "8:AppGraph",
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "kotlin.String",
+        "declaration": {
+          "id": "Value.MetroFactory.declarationMirror(Value.MetroFactory,Cache,kotlin.String): Value#endpoint",
+          "label": "Value.MetroFactory.declarationMirror.endpoint",
+          "source": {
+            "path": "GraphRegionsReport.kt",
+            "line": 13,
+            "column": 39
+          }
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph|28:AppGraph.Impl.ChildGraphImpl",
+        "label": "AppGraph -> AppGraph.Impl.ChildGraphImpl"
+      },
+      "phase": "registration",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "15:GrandchildGraph|92:AppGraph.Impl.ChildGraphImpl.<get-grandchild>(AppGraph.Impl.ChildGraphImpl): GrandchildGraph",
+          "key": "GrandchildGraph",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "AppGraph.Impl.ChildGraphImpl.<get-grandchild>(AppGraph.Impl.ChildGraphImpl): GrandchildGraph",
+            "label": "AppGraph.Impl.ChildGraphImpl.<get-grandchild>",
+            "source": {
+              "path": "GraphRegionsReport.kt",
+              "line": 1,
+              "column": 1
+            }
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "details": [
+        "Records bindings added directly to this graph, including member-injection dependencies."
+      ]
+    }
+  ]
+}
