@@ -354,6 +354,7 @@ internal class IrBindingGraph(
 
   // TODO hoist accessors up and visit in seal?
   private val accessors = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
+  private val inheritedAccessorRoots = mutableListOf<GraphAccessor>()
   private val injectors = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
   private val extraKeeps = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
   /**
@@ -367,9 +368,15 @@ internal class IrBindingGraph(
 
   fun keeps(): Set<IrContextualTypeKey> = extraKeeps.keys
 
-  fun addAccessor(key: IrContextualTypeKey, entry: IrBindingStack.Entry) {
+  fun inheritedAccessors(): List<GraphAccessor> = inheritedAccessorRoots
+
+  fun addAccessor(accessor: GraphAccessor, entry: IrBindingStack.Entry) {
+    val key = accessor.contextKey
     recordRuntimeCoroutinesUse(key)
     accessors.putGraphRoot(key, entry)
+    if (accessor.declaringGraph != null) {
+      inheritedAccessorRoots.add(accessor)
+    }
   }
 
   fun addInjector(key: IrContextualTypeKey, entry: IrBindingStack.Entry) {
