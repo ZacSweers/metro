@@ -37,6 +37,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
+import dev.zacsweers.metro.compiler.ir.renderSourceLocation
 import dev.zacsweers.metro.compiler.ir.requireSimpleType
 import dev.zacsweers.metro.compiler.ir.scopeOrNull
 import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
@@ -51,6 +52,7 @@ import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.types.typeWithArguments
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
+import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.name.ClassId
@@ -539,19 +541,20 @@ internal class BindingGraphGenerator(
         addAll(inheritedData.multibindingAccessors)
       }
 
-      for ((contextualTypeKey, getter, _) in accessorsToAdd) {
+      for (accessor in accessorsToAdd) {
+        val (contextualTypeKey, getter, _) = accessor
         val multibinds = getter.annotations.multibinds
         val isMultibindingDeclaration = multibinds != null
 
         if (isMultibindingDeclaration) {
           graph.addAccessor(
-            contextualTypeKey,
+            accessor,
             IrBindingStack.Entry.requestedAt(contextualTypeKey, getter.ir),
           )
           registerMultibindsDeclaration(contextualTypeKey, getter.ir, multibinds)
         } else {
           graph.addAccessor(
-            contextualTypeKey,
+            accessor,
             IrBindingStack.Entry.requestedAt(contextualTypeKey, getter.ir),
           )
         }
@@ -1063,7 +1066,16 @@ internal class BindingGraphGenerator(
       for (accessor in extendedNode.accessors) {
         if (accessor.contextKey.typeKey in extendedNode.graphPrivateKeys) continue
         if (accessor.metroFunction.annotations.isMultibinds) {
-          multibindingAccessors.add(accessor)
+          val function = accessor.metroFunction.ir
+          val property = function.correspondingPropertySymbol?.owner
+          val declaration = (property ?: function).originalDeclarationIfOverride()
+          multibindingAccessors.add(
+            accessor.copy(
+              declaringGraph = extendedNode.sourceGraph.kotlinFqName.asString(),
+              declaringType = declaration.parentAsClass.kotlinFqName.asString(),
+              origin = declaration.renderSourceLocation(short = true),
+            )
+          )
         }
       }
     }
