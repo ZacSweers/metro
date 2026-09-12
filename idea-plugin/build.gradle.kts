@@ -275,6 +275,13 @@ dependencies {
   testImplementation(libs.androidx.tracing.wire)
 }
 
+tasks.processResources {
+  from(layout.projectDirectory.dir("../design")) {
+    include("pluginIcon.svg", "pluginIcon_dark.svg")
+    into("META-INF")
+  }
+}
+
 tasks.jar {
   duplicatesStrategy = DuplicatesStrategy.EXCLUDE
   from(shadedClasspath.flatMap { it.elements }.map { files -> files.map { zipTree(it.asFile) } })
