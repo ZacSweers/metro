@@ -88,6 +88,10 @@ kotlin.compilerOptions.optIn.addAll(
   "kotlinx.serialization.ExperimentalSerializationApi",
 )
 
+tasks.compileTestKotlin {
+  compilerOptions.optIn.add("dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi")
+}
+
 /**
  * We shade guava and graph-support to avoid conflicts with other Gradle plugins that may use
  * different versions.
