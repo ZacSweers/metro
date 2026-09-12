@@ -17,16 +17,13 @@ In the future, we could possibly explore including information in IR to synthesi
 Similar to Compose, Metro supports a `reportsDestination` property in its Gradle DSL and can output various graph reports to this destination if specified. This is very much a WIP, feedback is welcome!
 
 !!! warning
-    You should _not_ leave this enabled by default as it can be quite verbose and potentially expensive. This property also does not participate in task inputs, so you may need to recompile with `--rerun` to force recompilation after adding this flag.
+    You should _not_ leave this enabled by default as it can be quite verbose and potentially expensive. The Kotlin Gradle Plugin does _not_ include file inputs like `reportsDestination` as task inputs, so you may need to recompile with `--rerun` to force recompilation after adding this flag.
 
 ```kotlin
 metro {
   reportsDestination.set(layout.buildDirectory.dir("metro/reports"))
 }
 ```
-
-!!! warning
-    The Kotlin Gradle Plugin does _not_ include file inputs like `reportsDestination` as build inputs, so you may need to compile with `--rerun` to force recompilation after adding this flag.
 
 ### Unmatched Exclusions and Replacements
 
