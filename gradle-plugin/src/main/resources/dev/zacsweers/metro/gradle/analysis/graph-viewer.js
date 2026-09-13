@@ -1253,6 +1253,7 @@
     expanded: false, chainLayout: 'full', flowDirection: 'auto',
     startHint: true,
     exploration: null,
+    bindingRegion: null,
     routeTarget: null,
     returnView: null,
   };
@@ -2012,10 +2013,13 @@
     element('canvas-tooltip').hidden = true;
     document.querySelectorAll('[data-mode]').forEach(node => {
       const focusedSelection = node.dataset.mode === 'explore' ? state.exploration?.anchor === state.selected : state.routeTarget === state.selected;
-      const selectionAction = node.dataset.mode === 'route' || node.dataset.mode === 'explore';
+      const selectionAction = Boolean(node.closest('#selection-toolbar'));
       const active = node.dataset.mode === state.mode && (!selectionAction || Boolean(selection && focusedSelection));
       node.classList.toggle('active', active);
       node.setAttribute('aria-pressed', String(active));
+      if (node.hasAttribute('data-context-view')) {
+        node.hidden = !active;
+      }
       if (selectionAction) {
         const routeAction = node.dataset.mode === 'route';
         const action = routeAction ? 'Route from root to ' : 'Focus connections of ';
@@ -2057,7 +2061,7 @@
     } else if (state.mode === 'route') {
       const target = model.byId.get(state.routeTarget || state.selected);
       title = view.inputRoute ? 'Graph input' : state.chain ? 'Longest dependency chain' : 'Route · ' + (target?.name || 'root');
-      subtitle = view.inputRoute ? 'Supplied when ' + (model.regionById.get(target?.regionId)?.name || shortName(model.root)) + ' is created. Use Connections to inspect its consumers.' : view.routeMissing ? unavailableRouteMessage() : 'Complete recorded route. Select any binding to inspect it; clear the selection to keep browsing this route.';
+      subtitle = view.inputRoute ? 'Supplied when ' + (model.regionById.get(target?.regionId)?.name || shortName(model.root)) + ' is created. Use Connections to inspect its consumers.' : view.routeMissing ? unavailableRouteMessage() : 'Complete recorded route. Select any binding to inspect it. Clear the selection to return to Overview.';
     } else if (state.mode === 'full') {
       title = 'Full graph';
       subtitle = 'Graph inputs → bindings → accessors and injectors. Extension outlines include their parent bindings.';
@@ -2071,7 +2075,7 @@
       const anchor = model.byId.get(state.exploration?.anchor);
       const packages = state.exploration?.packages;
       title = anchor?.isGraph ? 'Graph roots' : packages ? packageName(state.packageKey) : 'Connections · ' + (anchor?.name || 'graph');
-      subtitle = 'Select a binding to expand its connections. Click the selected binding again to collapse. Blank space clears selection.';
+      subtitle = 'Select a binding to expand its connections. Click the selected binding again to collapse. Clear the selection to return to Overview.';
     }
     if (state.chain) {
       if (state.mode !== 'route') {
@@ -2277,11 +2281,93 @@
     }
   }
 
+  function bindingCaption(node) {
+    const name = (node.name || node.fullKey).toLocaleLowerCase();
+    const declaration = [node.origin, node.declaration].find(value => value && value.toLocaleLowerCase() !== name && value !== node.fullKey);
+    return [qualifierCaption(node.fullKey), declaration].filter(Boolean).join(' · ');
+  }
+
+  function initializeBindingGraphFilter() {
+    const counts = new Map();
+    for (const node of model.bindingNodes) {
+      counts.set(node.regionId, (counts.get(node.regionId) || 0) + 1);
+    }
+    element('binding-graph-filter').hidden = counts.size < 2;
+    const select = element('binding-graph');
+    for (const region of model.regions) {
+      const count = counts.get(region.id);
+      if (!count) {
+        continue;
+      }
+      const option = text('option', '', region.name + ' (' + count.toLocaleString() + ')');
+      option.value = region.id;
+      select.append(option);
+    }
+    select.addEventListener('change', event => {
+      state.bindingRegion = event.target.value || null;
+      state.listLimit = LIST_PAGE;
+      state.listFocus = -1;
+      renderBindings();
+      element('binding-list').scrollTop = 0;
+      announce(element('result-count').getAttribute('aria-label') + ' in ' + select.selectedOptions[0].textContent);
+    });
+  }
+
+  function createBindingRow(node, index) {
+    const row = button('binding-item', '', () => {
+      if (state.selected === node.id) {
+        clearSelection();
+      } else {
+        selectNode(node.id, true);
+      }
+    });
+    const owner = model.regionById.get(node.regionId)?.name;
+    const caption = bindingCaption(node);
+    const kind = node.isGraphInput ? 'Graph input' : humanize(node.kind);
+    row.title = [displayText(node.fullKey), owner && 'Owned by ' + owner, kind, node.scope, caption].filter(Boolean).join('\n');
+    row.dataset.index = index;
+    row.dataset.bindingId = node.id;
+    row.classList.toggle('selected', node.id === state.selected);
+    row.setAttribute('aria-current', node.id === state.selected ? 'true' : 'false');
+    const dot = text('span', 'route-dot', '');
+    dot.style.background = color(node);
+    dot.setAttribute('aria-hidden', 'true');
+    const label = text('span', 'binding-copy', '');
+    label.append(text('span', 'binding-name', node.name || node.fullKey));
+    const details = text('span', 'binding-description', '');
+    if (owner && model.regions.length > 1 && !state.bindingRegion) {
+      const graph = text('span', 'binding-graph', owner);
+      graph.title = 'Owned by ' + owner;
+      details.append(graph);
+    }
+    if (caption) {
+      const detail = text('span', 'binding-package', caption);
+      detail.title = caption;
+      details.append(detail);
+    }
+    if (details.childElementCount) {
+      label.append(details);
+    }
+    row.append(dot, label);
+    if (state.sort !== 'name') {
+      const metric = state.sort === 'centrality' ? (100 * Number(node.centrality || 0)).toFixed(1) + '%' : String(node[state.sort] || 0);
+      const metricLabel = text('span', 'binding-meta', metric);
+      metricLabel.title = element('sort-mode').selectedOptions[0].textContent;
+      row.append(metricLabel);
+    } else if (node.scoped || node.isGraphInput) {
+      row.append(text('span', 'binding-meta', node.isGraphInput ? 'graph input' : 'scoped'));
+    }
+    return row;
+  }
+
   function renderBindings() {
     const focusedId = document.activeElement?.dataset?.bindingId;
     const query = state.query.trim().toLocaleLowerCase();
     const tokens = query.split(/\s+/).filter(Boolean);
     listNodes = model.bindingNodes.filter(node => {
+      if (state.bindingRegion && node.regionId !== state.bindingRegion) {
+        return false;
+      }
       if (state.packageMembers !== null && !state.packageMembers.includes(node.pkg || '')) {
         return false;
       }
@@ -2298,31 +2384,21 @@
       return (a.name || a.fullKey).localeCompare(b.name || b.fullKey) || a.fullKey.localeCompare(b.fullKey);
     });
     element('search-clear').hidden = !state.query;
-    element('result-count').textContent = listNodes.length.toLocaleString() + (listNodes.length === 1 ? ' binding' : ' bindings');
+    element('browse-selection-clear').hidden = !state.selected;
+    element('result-count').textContent = listNodes.length.toLocaleString();
+    element('result-count').setAttribute('aria-label', listNodes.length.toLocaleString() + (listNodes.length === 1 ? ' binding' : ' bindings'));
     const container = element('binding-list');
     container.replaceChildren();
     const shown = listNodes.slice(0, state.listLimit);
     shown.forEach((node, index) => {
-      const row = button('binding-item', '', () => selectNode(node.id, true));
-      row.title = displayText(node.fullKey);
-      row.dataset.index = index;
-      row.dataset.bindingId = node.id;
-      row.classList.toggle('selected', node.id === state.selected);
-      row.setAttribute('aria-current', node.id === state.selected ? 'true' : 'false');
-      const dot = text('span', 'route-dot', '');
-      dot.style.background = color(node);
-      const label = text('span', 'binding-copy', '');
-      const caption = [node.caption || packageName(node.pkg), model.regions.length > 1 ? model.regionById.get(node.regionId)?.name : null].filter(Boolean).join(' · ');
-      label.append(text('span', 'binding-name', node.name || node.fullKey), text('span', 'binding-package', caption));
-      const metric = state.sort === 'name' ? (node.scoped ? 'scoped' : humanize(node.kind)) : state.sort === 'centrality' ? (100 * Number(node.centrality || 0)).toFixed(1) + '%' : String(node[state.sort] || 0);
-      row.append(dot, label, text('span', 'binding-meta', metric));
+      const row = createBindingRow(node, index);
       container.append(row);
       if (node.id === focusedId) {
         row.focus();
       }
     });
     if (!shown.length) {
-      container.append(text('p', 'empty-state', 'No bindings match. Try a type, package, scope, or declaration.'));
+      container.append(text('p', 'empty-state', 'No bindings match. Try another search or change the graph or package filter.'));
     }
     if (listNodes.length > shown.length) {
       container.append(button('text-button list-more', 'Show more results (' + (listNodes.length - shown.length).toLocaleString() + ' remaining)', () => {
@@ -3452,14 +3528,17 @@
       clearChain();
       return;
     }
-    if (state.mode === 'route' && !state.routeTarget) {
-      state.routeTarget = state.selected;
-    }
+    const focusOverview = document.activeElement?.matches('#browse-selection-clear, #clear-map-selection, #selection-clear');
     state.selected = null;
-    renderDetails();
+    state.exploration = null;
+    state.routeTarget = null;
+    state.returnView = null;
     renderBindings();
-    refreshView();
-    announce('Selection cleared. Current view preserved.');
+    switchMode('overview');
+    if (focusOverview) {
+      document.querySelector('.view-switcher [data-mode="overview"]').focus({ preventScroll: true });
+    }
+    announce('Selection cleared. Showing Overview.');
   }
 
   function focusChain() {
@@ -3506,12 +3585,14 @@
 
   element('graph-name').textContent = shortName(metroData.graphName);
   element('graph-name').title = metroData.graphName;
+  initializeBindingGraphFilter();
   element('graph-summary').textContent = model.bindingNodes.length.toLocaleString() + ' bindings · ' + model.packages.size.toLocaleString() + ' packages';
   element('longest-path').disabled = !(metroData.longestPath || []).length;
   element('show-root').disabled = !model.root;
   element('show-root').addEventListener('click', () => showRoot());
   element('show-entry-points').addEventListener('click', () => showRoot(true));
   element('clear-map-selection').addEventListener('click', clearSelection);
+  element('browse-selection-clear').addEventListener('click', clearSelection);
   element('back-to-graph').addEventListener('click', returnToGraph);
   element('selected-binding-name').addEventListener('click', () => {
     if (!view.nodes.some(node => node.id === state.selected)) {
@@ -3552,7 +3633,7 @@
     state.listLimit = LIST_PAGE;
     renderBindings();
   });
-  document.querySelectorAll('[data-mode]').forEach(control => control.addEventListener('click', () => switchMode(control.dataset.mode)));
+  document.querySelectorAll('[data-mode]:not([data-context-view])').forEach(control => control.addEventListener('click', () => switchMode(control.dataset.mode)));
   element('longest-path').addEventListener('click', () => {
     if (state.chain) {
       clearChain();

@@ -27,7 +27,7 @@
         <summary aria-label="Show navigation help">?</summary>
         <div class="help-popover">
           <h2>Navigation help</h2>
-          <p>Use Graph or Roots to start from an accessor or injector on the graph boundary. Select a binding, then use Connections or Route from root beside its name. Click blank space to clear the selection without changing the view. Use Back to return from Connections or a route.</p>
+          <p>Use Graph or Roots to start from an accessor or injector on the graph boundary. Select a binding, then use Connections or Route from root beside its name. Clear the selection to return to Overview. Use Back to return to the previous view.</p>
           <dl>
             <div><dt>Zoom</dt><dd>Scroll</dd></div>
             <div><dt>Pan</dt><dd>Drag the map</dd></div>
@@ -67,6 +67,13 @@
           <div class="section-heading">
             <h3 id="bindings-heading">Bindings</h3>
             <span id="result-count" class="count-badge">0</span>
+            <button id="browse-selection-clear" class="text-button" type="button" hidden>Clear selection</button>
+          </div>
+          <div id="binding-graph-filter" class="sort-row" hidden>
+            <label for="binding-graph">Graph</label>
+            <select id="binding-graph" aria-label="Filter bindings by owning graph">
+              <option value="">All graphs</option>
+            </select>
           </div>
           <div class="sort-row">
             <label for="sort-mode">Sort by</label>
@@ -104,6 +111,8 @@
             <button class="mode-button" data-mode="full" type="button" aria-pressed="false">Full graph</button>
             <button class="mode-button" data-mode="radial" type="button" aria-pressed="false">Radial</button>
             <button class="mode-button" data-mode="circular" type="button" aria-pressed="false">Circular</button>
+            <button class="mode-button" data-mode="explore" data-context-view type="button" aria-pressed="false" hidden>Connections</button>
+            <button class="mode-button" data-mode="route" data-context-view type="button" aria-pressed="false" hidden>Route</button>
           </nav>
           <label class="flow-control" for="flow-direction">Direction
             <select id="flow-direction" aria-label="Graph flow direction" title="Automatic uses left to right for graphs and top to bottom for routes">
