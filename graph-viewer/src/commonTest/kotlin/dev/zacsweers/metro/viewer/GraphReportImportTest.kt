@@ -2,7 +2,20 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.viewer
 
-import dev.zacsweers.metro.gradle.analysis.*
+import dev.zacsweers.metro.gradle.analysis.AggregatedGraphMetadata
+import dev.zacsweers.metro.gradle.analysis.BindingMetadata
+import dev.zacsweers.metro.gradle.analysis.CentralityResult
+import dev.zacsweers.metro.gradle.analysis.DependencyMetadata
+import dev.zacsweers.metro.gradle.analysis.DominatorResult
+import dev.zacsweers.metro.gradle.analysis.FanAnalysisResult
+import dev.zacsweers.metro.gradle.analysis.FanScore
+import dev.zacsweers.metro.gradle.analysis.FullAnalysisReport
+import dev.zacsweers.metro.gradle.analysis.GraphAnalysis
+import dev.zacsweers.metro.gradle.analysis.GraphMetadata
+import dev.zacsweers.metro.gradle.analysis.GraphReportRenderer
+import dev.zacsweers.metro.gradle.analysis.GraphStatistics
+import dev.zacsweers.metro.gradle.analysis.LongestPathResult
+import dev.zacsweers.metro.gradle.analysis.analysisEdges
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
