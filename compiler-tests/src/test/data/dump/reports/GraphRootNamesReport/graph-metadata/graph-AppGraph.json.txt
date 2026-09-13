@@ -183,7 +183,6 @@
         }
       ],
       "isSynthetic": true,
-      "origin": "module_main_GraphRootNamesReport.kt:1:1",
       "declaration": "inject"
     }
   ],
@@ -267,12 +266,7 @@
           "reason": "selected_generated",
           "declaration": {
             "id": "AppGraph.Impl.inject(AppGraph.Impl,Target): kotlin.Unit",
-            "label": "AppGraph.Impl.inject",
-            "source": {
-              "path": "module_main_GraphRootNamesReport.kt",
-              "line": 1,
-              "column": 1
-            }
+            "label": "AppGraph.Impl.inject"
           },
           "relatedDeclarations": [],
           "details": []

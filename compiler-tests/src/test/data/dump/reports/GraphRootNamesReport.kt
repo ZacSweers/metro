@@ -1,4 +1,6 @@
 // RUN_PIPELINE_TILL: BACKEND
+// Generated injectors have different source offsets across Kotlin versions.
+// NORMALIZE_REPORT_SOURCE_LOCATIONS
 // CHECK_REPORTS: graph-metadata/graph-AppGraph.json
 
 // MODULE: api

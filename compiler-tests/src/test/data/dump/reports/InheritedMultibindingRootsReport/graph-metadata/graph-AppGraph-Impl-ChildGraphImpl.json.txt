@@ -167,7 +167,6 @@
         }
       ],
       "isSynthetic": false,
-      "origin": "module_main_InheritedMultibindingRootsReport.kt:40:24",
       "declaration": "factory"
     },
     {
@@ -177,7 +176,6 @@
       "nameHint": "name",
       "dependencies": [],
       "isSynthetic": false,
-      "origin": "module_main_InheritedMultibindingRootsReport.kt:41:24",
       "declaration": "name"
     },
     {
@@ -197,7 +195,6 @@
       "nameHint": "ChildValue",
       "dependencies": [],
       "isSynthetic": false,
-      "origin": "module_main_InheritedMultibindingRootsReport.kt:21:1",
       "declaration": "ChildValue"
     },
     {
@@ -212,7 +209,6 @@
         }
       ],
       "isSynthetic": false,
-      "origin": "module_main_InheritedMultibindingRootsReport.kt:1:1",
       "declaration": "<get-grandchild>"
     },
     {
@@ -296,12 +292,7 @@
           "reason": "selected_explicit",
           "declaration": {
             "id": "AppGraph.Companion.factory(AppGraph.Companion,ValueFactory): ValueFactory",
-            "label": "AppGraph.Companion.factory",
-            "source": {
-              "path": "module_main_InheritedMultibindingRootsReport.kt",
-              "line": 40,
-              "column": 24
-            }
+            "label": "AppGraph.Companion.factory"
           },
           "relatedDeclarations": [],
           "details": []
@@ -331,12 +322,7 @@
           "reason": "selected_explicit",
           "declaration": {
             "id": "AppGraph.Companion.name(AppGraph.Companion): kotlin.String",
-            "label": "AppGraph.Companion.name",
-            "source": {
-              "path": "module_main_InheritedMultibindingRootsReport.kt",
-              "line": 41,
-              "column": 24
-            }
+            "label": "AppGraph.Companion.name"
           },
           "relatedDeclarations": [],
           "details": []
@@ -406,12 +392,7 @@
         "key": "AppGraph.Impl.ChildGraphImpl",
         "declaration": {
           "id": "AppGraph.Impl.ChildGraphImpl.<get-grandchild>(AppGraph.Impl.ChildGraphImpl): GrandchildGraph",
-          "label": "AppGraph.Impl.ChildGraphImpl.<get-grandchild>",
-          "source": {
-            "path": "module_main_InheritedMultibindingRootsReport.kt",
-            "line": 1,
-            "column": 1
-          }
+          "label": "AppGraph.Impl.ChildGraphImpl.<get-grandchild>"
         },
         "hasDefault": false,
         "isOptional": false
@@ -435,12 +416,7 @@
           "reason": "selected_implicit",
           "declaration": {
             "id": "ChildValue",
-            "label": "ChildValue",
-            "source": {
-              "path": "module_main_InheritedMultibindingRootsReport.kt",
-              "line": 21,
-              "column": 1
-            }
+            "label": "ChildValue"
           },
           "relatedDeclarations": [],
           "details": []
@@ -470,12 +446,7 @@
           "reason": "selected_generated",
           "declaration": {
             "id": "AppGraph.Impl.ChildGraphImpl.<get-grandchild>(AppGraph.Impl.ChildGraphImpl): GrandchildGraph",
-            "label": "AppGraph.Impl.ChildGraphImpl.<get-grandchild>",
-            "source": {
-              "path": "module_main_InheritedMultibindingRootsReport.kt",
-              "line": 1,
-              "column": 1
-            }
+            "label": "AppGraph.Impl.ChildGraphImpl.<get-grandchild>"
           },
           "relatedDeclarations": [],
           "details": []
@@ -485,12 +456,7 @@
         "key": "GrandchildGraph",
         "declaration": {
           "id": "AppGraph.Impl.ChildGraphImpl.<get-grandchild>(AppGraph.Impl.ChildGraphImpl): GrandchildGraph",
-          "label": "AppGraph.Impl.ChildGraphImpl.<get-grandchild>",
-          "source": {
-            "path": "module_main_InheritedMultibindingRootsReport.kt",
-            "line": 1,
-            "column": 1
-          }
+          "label": "AppGraph.Impl.ChildGraphImpl.<get-grandchild>"
         },
         "hasDefault": false,
         "isOptional": false
@@ -524,12 +490,7 @@
         "key": "ValueFactory",
         "declaration": {
           "id": "AppGraph.Companion.factory(AppGraph.Companion,ValueFactory): ValueFactory#factory",
-          "label": "AppGraph.Companion.factory.factory",
-          "source": {
-            "path": "module_main_InheritedMultibindingRootsReport.kt",
-            "line": 40,
-            "column": 36
-          }
+          "label": "AppGraph.Companion.factory.factory"
         },
         "hasDefault": false,
         "isOptional": false
@@ -605,12 +566,7 @@
           "reason": "selected_generated",
           "declaration": {
             "id": "AppGraph.Impl.ChildGraphImpl.<get-grandchild>(AppGraph.Impl.ChildGraphImpl): GrandchildGraph",
-            "label": "AppGraph.Impl.ChildGraphImpl.<get-grandchild>",
-            "source": {
-              "path": "module_main_InheritedMultibindingRootsReport.kt",
-              "line": 1,
-              "column": 1
-            }
+            "label": "AppGraph.Impl.ChildGraphImpl.<get-grandchild>"
           },
           "relatedDeclarations": [],
           "details": []

@@ -398,6 +398,8 @@ class MetroArtifactsTest {
                 "accessors": [
                   {
                     "key": "kotlin.String",
+                    "name": "value",
+                    "isProperty": true,
                     "isDeferrable": false
                   }
                 ],
@@ -543,6 +545,7 @@ class MetroArtifactsTest {
                   "bindingKind": "BoundInstance",
                   "isScoped": false,
                   "nameHint": "AppGraphProvider",
+                  "isGraphInput": false,
                   "dependencies": [],
                   "isSynthetic": false,
                   "origin": "AppGraph.kt:5:1",

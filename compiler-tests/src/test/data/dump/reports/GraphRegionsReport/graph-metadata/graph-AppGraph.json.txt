@@ -162,7 +162,6 @@
       "isGraphInput": false,
       "dependencies": [],
       "isSynthetic": false,
-      "origin": "GraphRegionsReport.kt:31:1",
       "declaration": "AppGraph"
     },
     {
@@ -187,7 +186,6 @@
       "nameHint": "Cache",
       "dependencies": [],
       "isSynthetic": false,
-      "origin": "GraphRegionsReport.kt:11:1",
       "declaration": "Cache"
     },
     {
@@ -203,7 +201,6 @@
         }
       ],
       "isSynthetic": false,
-      "origin": "GraphRegionsReport.kt:1:1",
       "declaration": "<get-childFactory>"
     },
     {
@@ -214,7 +211,6 @@
       "isGraphInput": true,
       "dependencies": [],
       "isSynthetic": false,
-      "origin": "GraphRegionsReport.kt:38:16",
       "declaration": "dependencies"
     },
     {
@@ -233,7 +229,6 @@
         }
       ],
       "isSynthetic": false,
-      "origin": "GraphRegionsReport.kt:13:1",
       "declaration": "Value"
     },
     {
@@ -253,7 +248,6 @@
         }
       ],
       "isSynthetic": false,
-      "origin": "GraphRegionsReport.kt:8:3",
       "declaration": "endpoint"
     }
   ],
@@ -273,12 +267,7 @@
           "reason": "selected_generated",
           "declaration": {
             "id": "AppGraph",
-            "label": "AppGraph",
-            "source": {
-              "path": "GraphRegionsReport.kt",
-              "line": 31,
-              "column": 1
-            }
+            "label": "AppGraph"
           },
           "relatedDeclarations": [],
           "details": []
@@ -314,12 +303,7 @@
         "key": "AppGraph.Impl",
         "declaration": {
           "id": "AppGraph.Impl.<get-childFactory>(AppGraph.Impl): ChildGraph.Factory",
-          "label": "AppGraph.Impl.<get-childFactory>",
-          "source": {
-            "path": "GraphRegionsReport.kt",
-            "line": 1,
-            "column": 1
-          }
+          "label": "AppGraph.Impl.<get-childFactory>"
         },
         "hasDefault": false,
         "isOptional": false
@@ -343,12 +327,7 @@
           "reason": "selected_implicit",
           "declaration": {
             "id": "Cache",
-            "label": "Cache",
-            "source": {
-              "path": "GraphRegionsReport.kt",
-              "line": 11,
-              "column": 1
-            }
+            "label": "Cache"
           },
           "relatedDeclarations": [],
           "details": []
@@ -358,12 +337,7 @@
         "key": "Cache",
         "declaration": {
           "id": "Value.MetroFactory.declarationMirror(Value.MetroFactory,Cache,kotlin.String): Value#cache",
-          "label": "Value.MetroFactory.declarationMirror.cache",
-          "source": {
-            "path": "GraphRegionsReport.kt",
-            "line": 13,
-            "column": 21
-          }
+          "label": "Value.MetroFactory.declarationMirror.cache"
         },
         "hasDefault": false,
         "isOptional": false
@@ -387,12 +361,7 @@
           "reason": "selected_generated",
           "declaration": {
             "id": "AppGraph.Impl.<get-childFactory>(AppGraph.Impl): ChildGraph.Factory",
-            "label": "AppGraph.Impl.<get-childFactory>",
-            "source": {
-              "path": "GraphRegionsReport.kt",
-              "line": 1,
-              "column": 1
-            }
+            "label": "AppGraph.Impl.<get-childFactory>"
           },
           "relatedDeclarations": [],
           "details": []
@@ -422,12 +391,7 @@
           "reason": "selected_explicit",
           "declaration": {
             "id": "AppGraph.Factory.create(AppGraph.Factory,ExternalDependencies): AppGraph#dependencies",
-            "label": "AppGraph.Factory.create.dependencies",
-            "source": {
-              "path": "GraphRegionsReport.kt",
-              "line": 38,
-              "column": 16
-            }
+            "label": "AppGraph.Factory.create.dependencies"
           },
           "relatedDeclarations": [],
           "details": []
@@ -457,12 +421,7 @@
           "reason": "selected_implicit",
           "declaration": {
             "id": "Cache",
-            "label": "Cache",
-            "source": {
-              "path": "GraphRegionsReport.kt",
-              "line": 11,
-              "column": 1
-            }
+            "label": "Cache"
           },
           "relatedDeclarations": [],
           "details": []
@@ -492,12 +451,7 @@
           "reason": "selected_implicit",
           "declaration": {
             "id": "Value",
-            "label": "Value",
-            "source": {
-              "path": "GraphRegionsReport.kt",
-              "line": 13,
-              "column": 1
-            }
+            "label": "Value"
           },
           "relatedDeclarations": [],
           "details": []
@@ -527,12 +481,7 @@
           "reason": "selected_explicit",
           "declaration": {
             "id": "ExternalDependencies.endpoint: kotlin.String",
-            "label": "ExternalDependencies.endpoint",
-            "source": {
-              "path": "GraphRegionsReport.kt",
-              "line": 8,
-              "column": 3
-            }
+            "label": "ExternalDependencies.endpoint"
           },
           "relatedDeclarations": [],
           "details": []
@@ -562,12 +511,7 @@
           "reason": "selected_explicit",
           "declaration": {
             "id": "ExternalDependencies.endpoint: kotlin.String",
-            "label": "ExternalDependencies.endpoint",
-            "source": {
-              "path": "GraphRegionsReport.kt",
-              "line": 8,
-              "column": 3
-            }
+            "label": "ExternalDependencies.endpoint"
           },
           "relatedDeclarations": [],
           "details": []
@@ -577,12 +521,7 @@
         "key": "kotlin.String",
         "declaration": {
           "id": "Value.MetroFactory.declarationMirror(Value.MetroFactory,Cache,kotlin.String): Value#endpoint",
-          "label": "Value.MetroFactory.declarationMirror.endpoint",
-          "source": {
-            "path": "GraphRegionsReport.kt",
-            "line": 13,
-            "column": 39
-          }
+          "label": "Value.MetroFactory.declarationMirror.endpoint"
         },
         "hasDefault": false,
         "isOptional": false

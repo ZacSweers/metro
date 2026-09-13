@@ -142,7 +142,6 @@
       "isGraphInput": false,
       "dependencies": [],
       "isSynthetic": false,
-      "origin": "GraphRegionsReport.kt:31:1",
       "declaration": "AppGraph"
     },
     {
@@ -189,7 +188,6 @@
         }
       ],
       "isSynthetic": false,
-      "origin": "GraphRegionsReport.kt:13:1",
       "declaration": "Value"
     },
     {
@@ -227,12 +225,7 @@
           "reason": "selected_parent",
           "declaration": {
             "id": "AppGraph",
-            "label": "AppGraph",
-            "source": {
-              "path": "GraphRegionsReport.kt",
-              "line": 31,
-              "column": 1
-            }
+            "label": "AppGraph"
           },
           "ownerGraphId": "8:AppGraph",
           "relatedDeclarations": [],
@@ -294,12 +287,7 @@
           "reason": "selected_parent",
           "declaration": {
             "id": "Cache",
-            "label": "Cache",
-            "source": {
-              "path": "GraphRegionsReport.kt",
-              "line": 11,
-              "column": 1
-            }
+            "label": "Cache"
           },
           "ownerGraphId": "8:AppGraph",
           "relatedDeclarations": [],
@@ -310,12 +298,7 @@
         "key": "Cache",
         "declaration": {
           "id": "Value.MetroFactory.declarationMirror(Value.MetroFactory,Cache,kotlin.String): Value#cache",
-          "label": "Value.MetroFactory.declarationMirror.cache",
-          "source": {
-            "path": "GraphRegionsReport.kt",
-            "line": 13,
-            "column": 21
-          }
+          "label": "Value.MetroFactory.declarationMirror.cache"
         },
         "hasDefault": false,
         "isOptional": false
@@ -339,12 +322,7 @@
           "reason": "selected_implicit",
           "declaration": {
             "id": "Value",
-            "label": "Value",
-            "source": {
-              "path": "GraphRegionsReport.kt",
-              "line": 13,
-              "column": 1
-            }
+            "label": "Value"
           },
           "relatedDeclarations": [],
           "details": []
@@ -381,12 +359,7 @@
         "key": "kotlin.String",
         "declaration": {
           "id": "Value.MetroFactory.declarationMirror(Value.MetroFactory,Cache,kotlin.String): Value#endpoint",
-          "label": "Value.MetroFactory.declarationMirror.endpoint",
-          "source": {
-            "path": "GraphRegionsReport.kt",
-            "line": 13,
-            "column": 39
-          }
+          "label": "Value.MetroFactory.declarationMirror.endpoint"
         },
         "hasDefault": false,
         "isOptional": false
