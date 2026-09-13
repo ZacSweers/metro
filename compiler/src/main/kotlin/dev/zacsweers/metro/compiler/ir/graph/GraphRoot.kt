@@ -14,6 +14,9 @@ internal data class GraphAccessor(
   override val contextKey: IrContextualTypeKey,
   override val metroFunction: MetroSimpleFunction,
   val isAnnotatedOptionalBinding: Boolean,
+  val declaringGraph: String? = null,
+  val declaringType: String? = null,
+  val origin: String? = null,
 ) : GraphRoot
 
 internal data class InjectorFunction(

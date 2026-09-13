@@ -10,26 +10,38 @@
     "accessors": [
       {
         "key": "F",
+        "name": "f",
+        "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "G",
+        "name": "g",
+        "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "kotlin.Int",
+        "name": "number",
+        "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "A",
+        "name": "a",
+        "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "B",
+        "name": "b",
+        "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "C",
+        "name": "c",
+        "isProperty": true,
         "isDeferrable": false
       }
     ],

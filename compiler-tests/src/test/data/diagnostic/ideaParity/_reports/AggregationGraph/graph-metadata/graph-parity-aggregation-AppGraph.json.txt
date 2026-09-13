@@ -10,22 +10,32 @@
     "accessors": [
       {
         "key": "parity.aggregation.Repo",
+        "name": "repo",
+        "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "kotlin.collections.Set<parity.aggregation.Handler>",
+        "name": "handlers",
+        "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "Map<kotlin.String, parity.aggregation.Handler>",
+        "name": "handlersByName",
+        "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "kotlin.collections.Set<parity.aggregation.EmptyElement>",
+        "name": "emptyElements",
+        "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "parity.aggregation.ScopedValue",
+        "name": "scopedValue",
+        "isProperty": true,
         "isDeferrable": false
       }
     ],

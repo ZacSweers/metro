@@ -40,12 +40,7 @@ Reports are written to files like:
 
 ## Graph Analysis & Visualization
 
-Metro provides Gradle tasks for generating interactive HTML visualizations of your dependency graphs. See [Graph Analysis](graph-analysis.md) for full documentation on:
-
-- Generating and viewing interactive graph visualizations
-- Understanding node shapes, colors, and edge types
-- Using filters and analysis tools
-- Identifying potential issues in your dependency structure
+The interactive graph viewer lets you browse bindings, follow dependencies from roots, and inspect compiler decisions. It shows graph extensions and included graphs in the same map. See [Graph Analysis](graph-analysis.md) for setup and viewer controls.
 
 ## Decompiled Bytecode
 

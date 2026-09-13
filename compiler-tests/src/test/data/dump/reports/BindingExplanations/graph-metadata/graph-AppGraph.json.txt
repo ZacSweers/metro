@@ -10,38 +10,56 @@
     "accessors": [
       {
         "key": "Service",
+        "name": "service",
+        "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "PrioritizedService",
+        "name": "prioritizedService",
+        "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "kotlin.collections.Set<Handler>",
+        "name": "handlers",
+        "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "ExplicitValue",
+        "name": "explicitValue",
+        "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "DefaultValue",
+        "name": "defaultValue",
+        "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "java.util.Optional<kotlin.String>",
+        "name": "optionalString",
+        "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "MemberTarget",
+        "name": "memberTarget",
+        "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "FirstMapConsumer",
+        "name": "firstMapConsumer",
+        "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "MapConsumerHolder",
+        "name": "mapConsumerHolder",
+        "isProperty": true,
         "isDeferrable": false
       }
     ],
@@ -50,7 +68,9 @@
   "extensions": {
     "accessors": [
       {
-        "key": "ChildGraph"
+        "key": "ChildGraph",
+        "name": "child",
+        "isProperty": true
       }
     ],
     "factoryAccessors": [],
@@ -250,6 +270,7 @@
       "bindingKind": "BoundInstance",
       "isScoped": false,
       "nameHint": "AppGraphProvider",
+      "isGraphInput": false,
       "dependencies": [],
       "isSynthetic": false,
       "declaration": "AppGraph"

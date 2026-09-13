@@ -6,6 +6,8 @@
     "accessors": [
       {
         "key": "RequestedValue",
+        "name": "requestedValue",
+        "isProperty": true,
         "isDeferrable": false
       }
     ],
@@ -135,6 +137,7 @@
       "bindingKind": "BoundInstance",
       "isScoped": false,
       "nameHint": "AppGraphProvider",
+      "isGraphInput": false,
       "dependencies": [],
       "isSynthetic": false,
       "origin": "BindingExplanationsFullValidation.kt:10:1",

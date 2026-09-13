@@ -6,14 +6,20 @@
     "accessors": [
       {
         "key": "parity.suspend.Repository",
+        "name": "repository",
+        "isProperty": false,
         "isDeferrable": false
       },
       {
         "key": "parity.suspend.DeferredRepository",
+        "name": "deferredRepository",
+        "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "SuspendProvider<parity.suspend.Database>",
+        "name": "database",
+        "isProperty": true,
         "isDeferrable": true
       }
     ],
@@ -143,6 +149,7 @@
       "bindingKind": "BoundInstance",
       "isScoped": false,
       "nameHint": "AppGraphProvider",
+      "isGraphInput": false,
       "dependencies": [],
       "isSynthetic": false,
       "declaration": "AppGraph"

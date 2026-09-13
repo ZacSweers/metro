@@ -77,7 +77,20 @@ gradlePlugin {
   }
 }
 
-kotlin.compilerOptions.optIn.add("dev.zacsweers.metro.gradle.DelicateMetroGradleApi")
+tasks.processResources {
+  from(rootProject.isolated.projectDirectory.file("design/pluginIcon_dark.svg")) {
+    into("dev/zacsweers/metro/gradle/analysis")
+  }
+}
+
+kotlin.compilerOptions.optIn.addAll(
+  "dev.zacsweers.metro.gradle.DelicateMetroGradleApi",
+  "kotlinx.serialization.ExperimentalSerializationApi",
+)
+
+tasks.compileTestKotlin {
+  compilerOptions.optIn.add("dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi")
+}
 
 /**
  * We shade guava and graph-support to avoid conflicts with other Gradle plugins that may use
@@ -137,6 +150,7 @@ dependencies {
 
   lintChecks(libs.androidx.lint.gradle)
 
+  testImplementation(libs.assertk)
   testImplementation(libs.junit)
   testImplementation(libs.truth)
   testImplementation(libs.kotlin.stdlib)

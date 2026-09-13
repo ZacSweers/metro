@@ -35,6 +35,12 @@ public data class GraphMetadata(
   val bindings: List<BindingMetadata>,
   /** Decisions observed while the compiler assembled and resolved this graph. */
   val bindingExplanations: List<BindingExplanation> = emptyList(),
+  /** Original extension type when [graph] names its generated implementation. */
+  val graphType: String? = null,
+  /** Parent report's graph name for a graph extension. */
+  val parentGraph: String? = null,
+  /** Graph dependency instances supplied through Includes. */
+  val includedGraphKeys: List<String> = emptyList(),
 )
 
 /** Compiler-collected counters for a graph. */
@@ -86,19 +92,34 @@ public data class GraphOptimizationStatsMetadata(
 @ExperimentalMetroGradleApi
 @Serializable
 public data class RootsMetadata(
-  /** Accessor properties that expose bindings from the graph. */
+  /** Declared accessors and inherited multibinding root requests. */
   val accessors: List<AccessorMetadata> = emptyList(),
   /** Injector functions that inject dependencies into targets. */
   val injectors: List<InjectorMetadata> = emptyList(),
 )
 
-/** Metadata for an accessor property. */
+/** Metadata for an accessor property or function. */
 @ExperimentalMetroGradleApi
 @Serializable
-public data class AccessorMetadata(val key: String, val isDeferrable: Boolean = false)
+public data class AccessorMetadata(
+  val key: String,
+  val isDeferrable: Boolean = false,
+  /** Source property or function name. */
+  val name: String? = null,
+  val isProperty: Boolean = false,
+  /** Whether this is an inherited multibinding request resolved in this graph. */
+  val isInherited: Boolean = false,
+  /** Report identity of the ancestor graph that supplied this request. */
+  val declaringGraph: String? = null,
+  /** Type that declares the source property or function. */
+  val declaringType: String? = null,
+  val origin: String? = null,
+)
 
 /** Metadata for an injector function. */
-@ExperimentalMetroGradleApi @Serializable public data class InjectorMetadata(val key: String)
+@ExperimentalMetroGradleApi
+@Serializable
+public data class InjectorMetadata(val key: String, val name: String? = null)
 
 /** Graph extension information. */
 @ExperimentalMetroGradleApi
@@ -115,12 +136,21 @@ public data class ExtensionsMetadata(
 /** Metadata for an extension accessor. */
 @ExperimentalMetroGradleApi
 @Serializable
-public data class ExtensionAccessorMetadata(val key: String)
+public data class ExtensionAccessorMetadata(
+  val key: String,
+  val name: String? = null,
+  val isProperty: Boolean = false,
+)
 
 /** Metadata for an extension factory accessor. */
 @ExperimentalMetroGradleApi
 @Serializable
-public data class ExtensionFactoryAccessorMetadata(val key: String, val isSAM: Boolean = false)
+public data class ExtensionFactoryAccessorMetadata(
+  val key: String,
+  val isSAM: Boolean = false,
+  val name: String? = null,
+  val isProperty: Boolean = false,
+)
 
 /** Metadata for a single binding within a graph. */
 @ExperimentalMetroGradleApi
@@ -144,6 +174,20 @@ public data class BindingMetadata(
    * Assisted-inject targets are not in the main graph; their info is exposed here.
    */
   val assistedTarget: AssistedTargetMetadata? = null,
+  /** Whether this instance was supplied to the graph's creator. */
+  val isGraphInput: Boolean? = null,
+  /** The graph type created by a graph extension factory. */
+  val extensionType: String? = null,
+  val graphDependency: GraphDependencyMetadata? = null,
+)
+
+/** Source of a binding exposed by an included graph or inherited from a parent graph. */
+@ExperimentalMetroGradleApi
+@Serializable
+public data class GraphDependencyMetadata(
+  val ownerKey: String,
+  val ownerGraph: String? = null,
+  val fromParent: Boolean = false,
 )
 
 /**

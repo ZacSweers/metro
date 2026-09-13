@@ -6,6 +6,8 @@
     "accessors": [
       {
         "key": "Settings",
+        "name": "settings",
+        "isProperty": true,
         "isDeferrable": false
       }
     ],

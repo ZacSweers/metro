@@ -4,6 +4,10 @@ Changelog
 **Unreleased**
 --------------
 
+### Enhancements
+
+- **[Gradle]** Redesign the graph viewer feature.
+
 ### Fixes
 
 - **[IR]** Support `-Xwarning-level` overrides in fallback diagnostic reporting across all supported Kotlin versions.

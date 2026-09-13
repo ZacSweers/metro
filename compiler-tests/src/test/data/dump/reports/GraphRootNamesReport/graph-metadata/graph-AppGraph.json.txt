@@ -1,19 +1,46 @@
 {
-  "graph": "parity.extension.AppGraph.Impl.ChildGraphImpl",
-  "graphType": "parity.extension.ChildGraph",
-  "parentGraph": "parity.extension.AppGraph",
+  "graph": "AppGraph",
   "scopes": [],
   "aggregationScopes": [],
   "roots": {
     "accessors": [
       {
-        "key": "parity.extension.ChildValue",
-        "name": "childValue",
+        "key": "Value",
+        "name": "value",
+        "isProperty": true,
+        "isDeferrable": false
+      },
+      {
+        "key": "Value",
+        "name": "value",
+        "isProperty": false,
+        "isDeferrable": false
+      },
+      {
+        "key": "Value",
+        "name": "inheritedValue",
+        "isProperty": false,
+        "isDeferrable": false
+      },
+      {
+        "key": "Value",
+        "name": "inherited",
+        "isProperty": true,
+        "isDeferrable": false
+      },
+      {
+        "key": "Value",
+        "name": "sourceValue",
         "isProperty": true,
         "isDeferrable": false
       }
     ],
-    "injectors": []
+    "injectors": [
+      {
+        "key": "dev.zacsweers.metro.MembersInjector<Target>",
+        "name": "inject"
+      }
+    ]
   },
   "extensions": {
     "accessors": [],
@@ -100,8 +127,8 @@
     "bindsCallables": 0,
     "multibindsCallables": 0,
     "optionalBindings": 0,
-    "accessors": 1,
-    "injectors": 0,
+    "accessors": 5,
+    "injectors": 1,
     "graphExtensionAccessors": 0,
     "graphExtensionFactories": 0,
     "includedGraphs": 0,
@@ -109,9 +136,9 @@
     "dynamicBindings": 0,
     "graphPrivateKeys": 0,
     "publishedBindsKeys": 0,
-    "populatedKeys": 3,
-    "validatedKeys": 3,
-    "reachableKeys": 3,
+    "populatedKeys": 2,
+    "validatedKeys": 2,
+    "reachableKeys": 2,
     "deferredKeys": 0,
     "unusedInputs": 0,
     "providerProperties": 0,
@@ -119,9 +146,9 @@
     "shards": 0,
     "optimizations": {
       "bindingsPrunedByShrinking": 0,
-      "classConstructorDirectInvocations": 1,
+      "classConstructorDirectInvocations": 6,
       "classConstructorNewInstanceCalls": 0,
-      "providerDirectInvocations": 1,
+      "providerDirectInvocations": 0,
       "providerNewInstanceCalls": 0,
       "shardsGenerated": 0,
       "shardedSupertypes": 0,
@@ -135,103 +162,55 @@
   },
   "bindings": [
     {
-      "key": "parity.extension.AppGraph",
-      "bindingKind": "BoundInstance",
-      "isScoped": false,
-      "nameHint": "parent",
-      "isGraphInput": false,
-      "dependencies": [],
-      "isSynthetic": false,
-      "declaration": "AppGraph"
-    },
-    {
-      "key": "parity.extension.ChildValue",
+      "key": "Value",
       "bindingKind": "ConstructorInjected",
       "isScoped": false,
-      "nameHint": "ChildValue",
-      "dependencies": [
-        {
-          "key": "parity.extension.ParentApi",
-          "hasDefault": false
-        }
-      ],
+      "nameHint": "Value",
+      "dependencies": [],
       "isSynthetic": false,
-      "declaration": "ChildValue"
+      "declaration": "Value"
     },
     {
-      "key": "parity.extension.ParentApi",
-      "bindingKind": "Provided",
+      "key": "dev.zacsweers.metro.MembersInjector<Target>",
+      "bindingKind": "MembersInjected",
       "isScoped": false,
-      "nameHint": "parentApi",
+      "nameHint": "TargetMembersInjector",
       "dependencies": [
         {
-          "key": "parity.extension.AppGraph",
-          "hasDefault": false
+          "key": "Value",
+          "hasDefault": false,
+          "wrapperType": "MembersInjected"
         }
       ],
-      "isSynthetic": false,
-      "declaration": "parentApi"
+      "isSynthetic": true,
+      "origin": "module_main_GraphRootNamesReport.kt:1:1",
+      "declaration": "inject"
     }
   ],
   "bindingExplanations": [
     {
       "context": {
-        "id": "25:parity.extension.AppGraph|45:parity.extension.AppGraph.Impl.ChildGraphImpl",
-        "label": "parity.extension.AppGraph -> parity.extension.AppGraph.Impl.ChildGraphImpl"
+        "id": "8:AppGraph",
+        "label": "AppGraph"
       },
       "phase": "lookup",
       "outcome": "selected",
       "candidates": [
         {
-          "id": "25:parity.extension.AppGraph|25:parity.extension.AppGraph",
-          "key": "parity.extension.AppGraph",
-          "status": "selected",
-          "reason": "selected_parent",
-          "declaration": {
-            "id": "parity.extension.AppGraph",
-            "label": "parity.extension.AppGraph"
-          },
-          "ownerGraphId": "25:parity.extension.AppGraph",
-          "relatedDeclarations": [],
-          "details": []
-        }
-      ],
-      "request": {
-        "key": "parity.extension.AppGraph",
-        "declaration": {
-          "id": "parity.extension.AppGraph.parentApi(parity.extension.AppGraph): parity.extension.ParentApi#<this>",
-          "label": "parity.extension.AppGraph.parentApi.<this>"
-        },
-        "hasDefault": false,
-        "isOptional": false
-      },
-      "details": [
-        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
-      ]
-    },
-    {
-      "context": {
-        "id": "25:parity.extension.AppGraph|45:parity.extension.AppGraph.Impl.ChildGraphImpl",
-        "label": "parity.extension.AppGraph -> parity.extension.AppGraph.Impl.ChildGraphImpl"
-      },
-      "phase": "lookup",
-      "outcome": "selected",
-      "candidates": [
-        {
-          "id": "27:parity.extension.ChildValue|27:parity.extension.ChildValue",
-          "key": "parity.extension.ChildValue",
+          "id": "5:Value|5:Value",
+          "key": "Value",
           "status": "selected",
           "reason": "selected_implicit",
           "declaration": {
-            "id": "parity.extension.ChildValue",
-            "label": "parity.extension.ChildValue"
+            "id": "Value",
+            "label": "Value"
           },
           "relatedDeclarations": [],
           "details": []
         }
       ],
       "request": {
-        "key": "parity.extension.ChildValue",
+        "key": "Value",
         "hasDefault": false,
         "isOptional": false
       },
@@ -241,31 +220,66 @@
     },
     {
       "context": {
-        "id": "25:parity.extension.AppGraph|45:parity.extension.AppGraph.Impl.ChildGraphImpl",
-        "label": "parity.extension.AppGraph -> parity.extension.AppGraph.Impl.ChildGraphImpl"
+        "id": "8:AppGraph",
+        "label": "AppGraph"
       },
       "phase": "lookup",
       "outcome": "selected",
       "candidates": [
         {
-          "id": "26:parity.extension.ParentApi|90:parity.extension.AppGraph.parentApi(parity.extension.AppGraph): parity.extension.ParentApi",
-          "key": "parity.extension.ParentApi",
+          "id": "5:Value|5:Value",
+          "key": "Value",
           "status": "selected",
-          "reason": "selected_explicit",
+          "reason": "selected_implicit",
           "declaration": {
-            "id": "parity.extension.AppGraph.parentApi(parity.extension.AppGraph): parity.extension.ParentApi",
-            "label": "parity.extension.AppGraph.parentApi"
+            "id": "Value",
+            "label": "Value"
           },
           "relatedDeclarations": [],
           "details": []
         }
       ],
       "request": {
-        "key": "parity.extension.ParentApi",
+        "key": "Value",
         "declaration": {
-          "id": "parity.extension.ChildValue.MetroFactory.declarationMirror(parity.extension.ChildValue.MetroFactory,parity.extension.ParentApi): parity.extension.ChildValue#api",
-          "label": "parity.extension.ChildValue.MetroFactory.declarationMirror.api"
+          "id": "Target.MetroMembersInjector.Companion.injectValue(Target.MetroMembersInjector.Companion,Target,Value): kotlin.Unit#value",
+          "label": "Target.MetroMembersInjector.Companion.injectValue.value"
         },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "43:dev.zacsweers.metro.MembersInjector<Target>|55:AppGraph.Impl.inject(AppGraph.Impl,Target): kotlin.Unit",
+          "key": "dev.zacsweers.metro.MembersInjector<Target>",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "AppGraph.Impl.inject(AppGraph.Impl,Target): kotlin.Unit",
+            "label": "AppGraph.Impl.inject",
+            "source": {
+              "path": "module_main_GraphRootNamesReport.kt",
+              "line": 1,
+              "column": 1
+            }
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "dev.zacsweers.metro.MembersInjector<Target>",
         "hasDefault": false,
         "isOptional": false
       },

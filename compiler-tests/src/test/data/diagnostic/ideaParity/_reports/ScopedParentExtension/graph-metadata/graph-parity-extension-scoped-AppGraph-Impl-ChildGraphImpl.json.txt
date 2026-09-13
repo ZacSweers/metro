@@ -1,11 +1,15 @@
 {
   "graph": "parity.extension.scoped.AppGraph.Impl.ChildGraphImpl",
+  "graphType": "parity.extension.scoped.ChildGraph",
+  "parentGraph": "parity.extension.scoped.AppGraph",
   "scopes": [],
   "aggregationScopes": [],
   "roots": {
     "accessors": [
       {
         "key": "parity.extension.scoped.ChildThing",
+        "name": "childThing",
+        "isProperty": true,
         "isDeferrable": false
       }
     ],
@@ -135,6 +139,7 @@
       "bindingKind": "BoundInstance",
       "isScoped": false,
       "nameHint": "parent",
+      "isGraphInput": false,
       "dependencies": [],
       "isSynthetic": false,
       "declaration": "AppGraph"
@@ -158,6 +163,11 @@
       "bindingKind": "GraphDependency",
       "isScoped": false,
       "nameHint": "ChildGraphImplCache",
+      "graphDependency": {
+        "ownerKey": "parity.extension.scoped.AppGraph.Impl",
+        "ownerGraph": "parity.extension.scoped.AppGraph",
+        "fromParent": true
+      },
       "dependencies": [
         {
           "key": "parity.extension.scoped.AppGraph.Impl",

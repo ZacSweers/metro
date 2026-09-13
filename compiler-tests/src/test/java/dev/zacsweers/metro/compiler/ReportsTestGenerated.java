@@ -56,6 +56,24 @@ public class ReportsTestGenerated extends AbstractReportsTest {
   }
 
   @Test
+  @TestMetadata("GraphRegionsReport.kt")
+  public void testGraphRegionsReport() {
+    run("GraphRegionsReport.kt");
+  }
+
+  @Test
+  @TestMetadata("GraphRootNamesReport.kt")
+  public void testGraphRootNamesReport() {
+    run("GraphRootNamesReport.kt");
+  }
+
+  @Test
+  @TestMetadata("InheritedMultibindingRootsReport.kt")
+  public void testInheritedMultibindingRootsReport() {
+    run("InheritedMultibindingRootsReport.kt");
+  }
+
+  @Test
   @TestMetadata("ProviderInlineFallbacks.kt")
   public void testProviderInlineFallbacks() {
     run("ProviderInlineFallbacks.kt");
@@ -349,6 +367,90 @@ public class ReportsTestGenerated extends AbstractReportsTest {
       @Test
       public void testAllFilesPresentInProvider_factories() {
         KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/GraphMetadataStatsReport/provider-factories"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      }
+    }
+  }
+
+  @Nested
+  @TestMetadata("compiler-tests/src/test/data/dump/reports/GraphRegionsReport")
+  @TestDataPath("$PROJECT_ROOT")
+  public class GraphRegionsReport {
+    private void run(String fileName) {
+      runTest("compiler-tests/src/test/data/dump/reports/GraphRegionsReport/" + fileName);
+    }
+
+    @Test
+    public void testAllFilesPresentInGraphRegionsReport() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/GraphRegionsReport"), Pattern.compile("^(.+)\\.kt$"), null, true);
+    }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/dump/reports/GraphRegionsReport/graph-metadata")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Graph_metadata {
+      private void run(String fileName) {
+        runTest("compiler-tests/src/test/data/dump/reports/GraphRegionsReport/graph-metadata/" + fileName);
+      }
+
+      @Test
+      public void testAllFilesPresentInGraph_metadata() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/GraphRegionsReport/graph-metadata"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      }
+    }
+  }
+
+  @Nested
+  @TestMetadata("compiler-tests/src/test/data/dump/reports/GraphRootNamesReport")
+  @TestDataPath("$PROJECT_ROOT")
+  public class GraphRootNamesReport {
+    private void run(String fileName) {
+      runTest("compiler-tests/src/test/data/dump/reports/GraphRootNamesReport/" + fileName);
+    }
+
+    @Test
+    public void testAllFilesPresentInGraphRootNamesReport() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/GraphRootNamesReport"), Pattern.compile("^(.+)\\.kt$"), null, true);
+    }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/dump/reports/GraphRootNamesReport/graph-metadata")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Graph_metadata {
+      private void run(String fileName) {
+        runTest("compiler-tests/src/test/data/dump/reports/GraphRootNamesReport/graph-metadata/" + fileName);
+      }
+
+      @Test
+      public void testAllFilesPresentInGraph_metadata() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/GraphRootNamesReport/graph-metadata"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      }
+    }
+  }
+
+  @Nested
+  @TestMetadata("compiler-tests/src/test/data/dump/reports/InheritedMultibindingRootsReport")
+  @TestDataPath("$PROJECT_ROOT")
+  public class InheritedMultibindingRootsReport {
+    private void run(String fileName) {
+      runTest("compiler-tests/src/test/data/dump/reports/InheritedMultibindingRootsReport/" + fileName);
+    }
+
+    @Test
+    public void testAllFilesPresentInInheritedMultibindingRootsReport() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/InheritedMultibindingRootsReport"), Pattern.compile("^(.+)\\.kt$"), null, true);
+    }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/dump/reports/InheritedMultibindingRootsReport/graph-metadata")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Graph_metadata {
+      private void run(String fileName) {
+        runTest("compiler-tests/src/test/data/dump/reports/InheritedMultibindingRootsReport/graph-metadata/" + fileName);
+      }
+
+      @Test
+      public void testAllFilesPresentInGraph_metadata() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/InheritedMultibindingRootsReport/graph-metadata"), Pattern.compile("^(.+)\\.kt$"), null, true);
       }
     }
   }
