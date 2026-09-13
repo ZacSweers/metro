@@ -1218,6 +1218,16 @@
 
   if (metroData.hosted) {
     document.body.classList.add('hosted-viewer');
+    window.addEventListener('message', event => {
+      if (event.source !== window.parent || event.data?.type !== 'metro-viewer-resized') {
+        return;
+      }
+      if (event.data.requestId !== expansionRequestId) {
+        return;
+      }
+      resize();
+      fitView();
+    });
     window.addEventListener('error', event => {
       window.parent.postMessage({ type: 'metro-viewer-error', message: event.message }, '*');
     });
@@ -1303,6 +1313,7 @@
   let hasPainted = false;
   let canvasBounds = null;
   let attentionCache = null;
+  let expansionRequestId = 0;
 
   function motionEnabled() {
     return !state.paused && !document.hidden;
@@ -3603,15 +3614,17 @@
     control.setAttribute('aria-label', expanded ? 'Exit expanded map' : 'Expand map');
     control.setAttribute('aria-pressed', String(expanded));
     if (metroData.hosted) {
-      window.parent.postMessage({ type: 'metro-viewer-expanded', expanded }, '*');
+      const requestId = ++expansionRequestId;
+      window.parent.postMessage({ type: 'metro-viewer-expanded', expanded, requestId }, '*');
+    } else {
+      resize();
+      fitView();
     }
     if (expanded) {
       canvas.focus();
     } else {
       control.focus();
     }
-    resize();
-    fitView();
     announce(expanded ? 'Map expanded. Press F to return. Escape clears selection first.' : 'Map panels restored.');
   }
 

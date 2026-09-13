@@ -324,6 +324,16 @@ window.addEventListener('message', event => {
   }
   if (event.data?.type === 'metro-viewer-expanded') {
     document.body.classList.toggle('viewer-expanded', event.data.expanded === true);
+    const frame = activeFrame;
+    const requestId = event.data.requestId;
+    requestAnimationFrame(() => {
+      if (frame !== activeFrame) {
+        return;
+      }
+      // Apply the frame dimensions before the viewer fits its map.
+      frame.getBoundingClientRect();
+      frame.contentWindow.postMessage({ type: 'metro-viewer-resized', requestId }, '*');
+    });
   } else if (event.data?.type === 'metro-viewer-drop') {
     showDrop(false);
     dragDepth = 0;

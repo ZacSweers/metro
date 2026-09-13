@@ -23,9 +23,7 @@ code { color: #c4d4e3; font: .9em "SFMono-Regular", Consolas, monospace; }
 .host-header { display: flex; align-items: center; gap: 24px; min-height: 64px; padding: 12px 24px; background: #0b1017; border-bottom: 1px solid #202b38; }
 .brand { display: inline-flex; align-items: center; gap: 9px; font-size: 25px; font-weight: 760; letter-spacing: -1.2px; line-height: 1; }
 .header-title { border-left: 1px solid #2b3541; padding-left: 24px; color: #c4d0dc; font-size: 13px; font-weight: 600; }
-.local-note { display: inline-flex; align-items: center; gap: 7px; margin-left: auto; color: #9aa9bb; font-size: 11px; }
-.local-note > span { width: 6px; height: 6px; border-radius: 50%; background: #009952; }
-.docs-link { color: #a7bacd; font-size: 12px; }
+.docs-link { margin-left: auto; color: #a7bacd; font-size: 12px; }
 .docs-link:hover { color: white; }
 #workspace { position: relative; min-height: calc(100dvh - 64px); display: flex; flex-direction: column; }
 .welcome { width: min(680px, 100%); margin: auto; padding: 56px 28px 36px; }
@@ -40,6 +38,7 @@ h1 { font-size: clamp(25px, 4vw, 36px); line-height: 1.2; letter-spacing: -.9px;
 .drop-zone > svg { width: 32px; height: 32px; margin-bottom: 10px; color: #75baff; }
 .drop-zone h2 { font-size: 16px; font-weight: 600; margin-bottom: 7px; }
 .drop-zone p { font-size: 12px; color: #92a5b9; }
+.drop-zone .local-note { margin-top: 18px; color: #9aa9bb; font-size: 11px; }
 .welcome-actions { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
 .primary-button, .secondary-button, .text-button { padding: 8px 13px; border-radius: 6px; font-size: 12px; font-weight: 550; white-space: nowrap; }
 .primary-button { background: #0078c6; border-color: #218ccd; color: white; }
@@ -83,8 +82,7 @@ body.viewer-expanded .viewer-container { position: fixed; inset: 0; z-index: 10;
 @media (max-width: 640px) {
   .host-header { min-height: 58px; gap: 14px; padding: 10px 14px; }
   .header-title { padding-left: 14px; }
-  .local-note { display: none; }
-  .docs-link { margin-left: auto; font-size: 11px; }
+  .docs-link { font-size: 11px; }
   #workspace { min-height: calc(100dvh - 58px); }
   body.has-report #workspace { height: calc(100dvh - 58px); }
   .welcome { padding: 36px 20px 28px; }
