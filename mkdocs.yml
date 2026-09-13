@@ -163,4 +163,5 @@ nav:
       - 'Discussions ↗': https://github.com/ZacSweers/metro/discussions
   - 'Change Log': changelog.md
   - 'Sponsoring': sponsoring.md
+  - 'Graph Viewer ↗': graph-viewer/index.html
   - 'API ↗': api/index.html
