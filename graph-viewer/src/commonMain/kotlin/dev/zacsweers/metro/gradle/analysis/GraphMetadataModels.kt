@@ -4,11 +4,10 @@ package dev.zacsweers.metro.gradle.analysis
 
 import dev.zacsweers.metro.compiler.graph.explanation.BindingExplanation
 import dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi
-import dev.zacsweers.metro.gradle.artifacts.GenerateGraphMetadataTask
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 
-/** Aggregated graph metadata for a project, as produced by [GenerateGraphMetadataTask]. */
+/** Aggregated graph metadata for a project. */
 @ExperimentalMetroGradleApi
 @Serializable
 public data class AggregatedGraphMetadata(

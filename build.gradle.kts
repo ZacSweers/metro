@@ -52,6 +52,7 @@ apiValidation {
   ignoredProjects += buildList {
     add("compiler")
     add("metro-common")
+    add("graph-viewer")
     add("compiler-tests")
     add("compiler-compat")
     add("latest")

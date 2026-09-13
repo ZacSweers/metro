@@ -45,6 +45,7 @@ include(
   ":compiler-compat:latest",
   ":compiler-tests",
   ":gradle-plugin",
+  ":graph-viewer",
   ":interop-dagger",
   ":interop-javax",
   ":interop-jakarta",

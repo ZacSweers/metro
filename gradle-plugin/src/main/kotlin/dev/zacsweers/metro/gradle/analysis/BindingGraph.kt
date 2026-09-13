@@ -70,29 +70,10 @@ private constructor(
         eagerGraphBuilder.addNode(key)
       }
 
-      // Build edges from binding dependencies
-      for (binding in metadata.bindings) {
-        val from = binding.key
-        for (dep in binding.dependencies) {
-          // Unwrap Provider<X>/Lazy<X> to X to match node IDs
-          val to = unwrapTypeKey(dep.key)
-          if (to in bindingKeys) {
-            fullGraphBuilder.putEdge(from, to)
-            // Skip deferrable (Provider/Lazy/MembersInjected) edges from the eager graph -
-            // they don't represent construction-time dependencies
-            if (!dep.isDeferrable) {
-              eagerGraphBuilder.putEdge(from, to)
-            }
-          }
-        }
-      }
-
-      // Add accessor edges from the graph node to each accessor target
-      // These are entry points, so only in the full graph (not eager)
-      metadata.roots?.accessors?.forEach { accessor ->
-        val targetKey = unwrapTypeKey(accessor.key)
-        if (targetKey in bindingKeys) {
-          fullGraphBuilder.putEdge(metadata.graph, targetKey)
+      for (edge in metadata.analysisEdges()) {
+        fullGraphBuilder.putEdge(edge.source, edge.target)
+        if (edge.eager) {
+          eagerGraphBuilder.putEdge(edge.source, edge.target)
         }
       }
 

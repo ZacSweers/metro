@@ -34,6 +34,7 @@ project.afterEvaluate {
 }
 
 dependencies {
+  api(project(":graph-viewer"))
   compileOnly(libs.kotlin.compiler)
   compileOnly(libs.kotlin.stdlib)
   compileOnly(libs.poko.annotations)
