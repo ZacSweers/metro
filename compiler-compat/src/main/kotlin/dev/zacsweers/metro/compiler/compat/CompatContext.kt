@@ -84,6 +84,9 @@ public interface CompatContext {
      * 2. If none match, cross base versions: lower-base dev factories and non-dev factories
      *    compete, highest minVersion wins
      *
+     * Other versions prefer a compatible non-dev factory with the same base version. If none
+     * matches, they try same-base dev factories before falling back to older non-dev versions.
+     *
      * IDE versions like 2.4.0-ij261-64 use IntelliJ build numbers that are not comparable with
      * Kotlin dev build numbers, so unmapped IDE builds choose the earliest same-base factory.
      *
@@ -175,11 +178,13 @@ public interface CompatContext {
           ?.factory
       }
 
-      // For non-DEV versions, only consider non-DEV factories
-      val nonDevFactories = factoryDataList.filter {
-        !KotlinToolingVersion(it.factory.minVersion).isDev
+      // Same-base dev factories provide a fallback when no release factory matches this base
+      // version.
+      val candidateFactories = factoryDataList.filter {
+        val minVersion = KotlinToolingVersion(it.factory.minVersion)
+        !minVersion.isDev || minVersion.hasSameBaseVersionAs(currentVersion)
       }
-      return findHighestCompatibleFactory(currentVersion, nonDevFactories)
+      return findHighestCompatibleFactory(currentVersion, candidateFactories)
     }
 
     private fun findHighestCompatibleFactory(

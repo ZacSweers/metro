@@ -251,7 +251,7 @@ class CompatContextTest {
   }
 
   @Test
-  fun `Beta version does not select dev factory`() {
+  fun `Beta version prefers matching Beta factory over same-base dev factory`() {
     val factoryStable = FakeFactory(minVersion = "2.3.0", reportedCurrentVersion = "2.3.20-Beta1")
     val factoryDev =
       FakeFactory(minVersion = "2.3.20-dev-5437", reportedCurrentVersion = "2.3.20-Beta1")
@@ -261,8 +261,49 @@ class CompatContextTest {
     val factories = sequenceOf(factoryStable, factoryDev, factoryBeta)
     val resolved = CompatContext.resolveFactory(factories, testVersionString = "2.3.20-Beta1")
 
-    // Beta version should NOT select dev factory, should select Beta factory
     assertThat(resolved.minVersion).isEqualTo("2.3.20-Beta1")
+  }
+
+  @Test
+  fun `Beta version falls back to latest same-base dev factory`() {
+    val factoryStable = FakeFactory(minVersion = "2.4.20", reportedCurrentVersion = "2.5.0-Beta1")
+    val factoryDev1 =
+      FakeFactory(minVersion = "2.5.0-dev-4967", reportedCurrentVersion = "2.5.0-Beta1")
+    val factoryDev2 =
+      FakeFactory(minVersion = "2.5.0-dev-6460", reportedCurrentVersion = "2.5.0-Beta1")
+
+    val factories = sequenceOf(factoryStable, factoryDev2, factoryDev1)
+    val resolved = CompatContext.resolveFactory(factories, testVersionString = "2.5.0-Beta1")
+
+    assertThat(resolved.minVersion).isEqualTo("2.5.0-dev-6460")
+  }
+
+  @Test
+  fun `incompatible Beta factory permits same-base dev fallback`() {
+    val factoryStable = FakeFactory(minVersion = "2.4.20", reportedCurrentVersion = "2.5.0-Beta1")
+    val factoryDev =
+      FakeFactory(minVersion = "2.5.0-dev-6460", reportedCurrentVersion = "2.5.0-Beta1")
+    val factoryBeta =
+      FakeFactory(minVersion = "2.5.0-Beta2", reportedCurrentVersion = "2.5.0-Beta1")
+
+    val factories = sequenceOf(factoryStable, factoryDev, factoryBeta)
+    val resolved = CompatContext.resolveFactory(factories, testVersionString = "2.5.0-Beta1")
+
+    assertThat(resolved.minVersion).isEqualTo("2.5.0-dev-6460")
+  }
+
+  @Test
+  fun `Beta version skips dev factories with different base versions`() {
+    val factoryStable = FakeFactory(minVersion = "2.4.20", reportedCurrentVersion = "2.5.0-Beta1")
+    val factoryOldDev =
+      FakeFactory(minVersion = "2.4.30-dev-100", reportedCurrentVersion = "2.5.0-Beta1")
+    val factoryNewDev =
+      FakeFactory(minVersion = "2.5.20-dev-100", reportedCurrentVersion = "2.5.0-Beta1")
+
+    val factories = sequenceOf(factoryStable, factoryOldDev, factoryNewDev)
+    val resolved = CompatContext.resolveFactory(factories, testVersionString = "2.5.0-Beta1")
+
+    assertThat(resolved.minVersion).isEqualTo("2.4.20")
   }
 
   @Test
@@ -417,6 +458,11 @@ class CompatContextTest {
         // IJ 2026.3 EAP uses a regular dev version.
         "2.5.0-dev-5423" to "2.5.0-dev-4967",
         "2.5.0-dev-6460" to "2.5.0-dev-6460",
+        "2.5.0-Beta1" to "2.5.0-dev-6460",
+        "2.5.0-Beta1-123" to "2.5.0-dev-6460",
+        "2.5.0-Beta1-release-123" to "2.5.0-dev-6460",
+        "2.5.0-RC" to "2.5.0-dev-6460",
+        "2.5.0" to "2.5.0-dev-6460",
       )
 
     for ((currentVersion, expectedMinVersion) in expectations) {
