@@ -1216,7 +1216,28 @@
     });
   }
 
+  if (metroData.hosted) {
+    document.body.classList.add('hosted-viewer');
+    window.addEventListener('error', event => {
+      window.parent.postMessage({ type: 'metro-viewer-error', message: event.message }, '*');
+    });
+    window.addEventListener('dragover', event => {
+      if (Array.from(event.dataTransfer?.types || []).includes('Files')) {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'copy';
+      }
+    });
+    window.addEventListener('drop', event => {
+      if (event.dataTransfer?.files.length) {
+        event.preventDefault();
+        window.parent.postMessage({ type: 'metro-viewer-drop', files: Array.from(event.dataTransfer.files) }, '*');
+      }
+    });
+  }
+
   const model = indexGraph(metroData);
+  const analysisFields = ['fanIn', 'fanOut', 'centrality', 'dominatorCount'];
+  const hasMetric = (node, field) => typeof node[field] === 'number' && Number.isFinite(node[field]);
   const retainedRegions = new Set();
   let retainedRegion = metroData.initialRegionId || model.root;
   while (retainedRegion && !retainedRegions.has(retainedRegion)) {
@@ -2350,7 +2371,10 @@
     }
     row.append(dot, label);
     if (state.sort !== 'name') {
-      const metric = state.sort === 'centrality' ? (100 * Number(node.centrality || 0)).toFixed(1) + '%' : String(node[state.sort] || 0);
+      let metric = '—';
+      if (hasMetric(node, state.sort)) {
+        metric = state.sort === 'centrality' ? (100 * node.centrality).toFixed(1) + '%' : String(node[state.sort]);
+      }
       const metricLabel = text('span', 'binding-meta', metric);
       metricLabel.title = element('sort-mode').selectedOptions[0].textContent;
       row.append(metricLabel);
@@ -2376,7 +2400,7 @@
     });
     listNodes.sort((a, b) => {
       if (state.sort !== 'name') {
-        const difference = Number(b[state.sort] || 0) - Number(a[state.sort] || 0);
+        const difference = (hasMetric(b, state.sort) ? b[state.sort] : -Infinity) - (hasMetric(a, state.sort) ? a[state.sort] : -Infinity);
         if (difference) {
           return difference;
         }
@@ -2568,12 +2592,17 @@
     const metrics = detailSection(container, 'Analysis');
     metrics.hidden = node.isRootMember || node.kind === 'Graph';
     const grid = text('div', 'metric-grid', '');
-    for (const [label, value] of [['Analysis fan-in', node.fanIn], ['Analysis fan-out', node.fanOut], ['Centrality', node.centrality === undefined ? undefined : (100 * node.centrality).toFixed(1) + '%'], ['Dominates', node.dominatorCount]]) {
+    for (const [label, value] of [['Analysis fan-in', node.fanIn], ['Analysis fan-out', node.fanOut], ['Centrality', hasMetric(node, 'centrality') ? (100 * node.centrality).toFixed(1) + '%' : undefined], ['Dominates', node.dominatorCount]]) {
       const metric = text('div', 'metric', '');
       metric.append(text('span', 'metric-value', value ?? '—'), text('span', 'metric-label', label));
       grid.append(metric);
     }
-    metrics.append(grid, text('p', 'detail-note', 'Analysis uses the recorded binding graph. Roots, assisted targets, and default-value nodes can change the visible connection counts.'));
+    if (analysisFields.some(field => hasMetric(node, field))) {
+      metrics.append(grid, text('p', 'detail-note', 'Analysis uses the recorded binding graph. Roots, assisted targets, and default-value nodes can change the visible connection counts.'));
+    } else {
+      const note = metroData.hosted && metroData.hasAnalysis === false ? 'Add analysis.json to see metrics for this graph.' : 'Analysis is not available for this binding.';
+      metrics.append(text('p', 'detail-note', note));
+    }
     const inspectorModel = state.mode === 'route' ? scopedGraph() : displayGraph();
     const outgoing = inspectorModel.outgoing.get(node.id) || [];
     const incoming = (inspectorModel.incoming.get(node.id) || []).filter(edge => !edge.rootMembership);
@@ -3573,6 +3602,9 @@
     control.title = expanded ? 'Exit expanded map (F, or Esc after clearing selection)' : 'Expand map (F)';
     control.setAttribute('aria-label', expanded ? 'Exit expanded map' : 'Expand map');
     control.setAttribute('aria-pressed', String(expanded));
+    if (metroData.hosted) {
+      window.parent.postMessage({ type: 'metro-viewer-expanded', expanded }, '*');
+    }
     if (expanded) {
       canvas.focus();
     } else {
@@ -3588,6 +3620,15 @@
   initializeBindingGraphFilter();
   element('graph-summary').textContent = model.bindingNodes.length.toLocaleString() + ' bindings · ' + model.packages.size.toLocaleString() + ' packages';
   element('longest-path').disabled = !(metroData.longestPath || []).length;
+  if (metroData.hasAnalysis === false) {
+    element('longest-path').title = metroData.hosted ? 'Add analysis.json to find the longest dependency chain' : 'The longest chain requires graph analysis';
+  }
+  for (const option of element('sort-mode').options) {
+    if (option.value !== 'name' && !model.bindingNodes.some(node => hasMetric(node, option.value))) {
+      option.disabled = true;
+      option.title = 'No analysis is available for this metric';
+    }
+  }
   element('show-root').disabled = !model.root;
   element('show-root').addEventListener('click', () => showRoot());
   element('show-entry-points').addEventListener('click', () => showRoot(true));
@@ -3925,5 +3966,8 @@
   resize();
   if (metroData.initialRegionId) {
     showRegion(metroData.initialRegionId);
+  }
+  if (metroData.hosted) {
+    window.parent.postMessage({ type: 'metro-viewer-ready' }, '*');
   }
 })();

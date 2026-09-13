@@ -40,6 +40,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 
 .app { height: 100vh; height: 100dvh; display: flex; flex-direction: column; min-width: 320px; overflow: hidden; }
 .topbar { display: flex; align-items: center; flex: 0 0 72px; gap: 22px; padding: 0 24px; background: #0b1017; border-bottom: 1px solid var(--border); z-index: 5; }
+.hosted-viewer .topbar { flex-basis: 54px; padding: 0 18px; }
+.hosted-viewer .topbar > .brand, .hosted-viewer .topbar-divider, .hosted-viewer .index-link { display: none; }
 .brand { display: inline-flex; align-items: center; gap: 9px; flex-shrink: 0; font-size: 25px; line-height: 1; font-weight: 760; letter-spacing: -1.2px; }
 .brand-mark { width: 32px; height: 32px; }
 .topbar-divider { width: 1px; height: 28px; background: var(--border); }
