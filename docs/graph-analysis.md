@@ -82,6 +82,16 @@ Generates interactive HTML visualizations of your dependency graphs. Each file i
 
 Open the HTML files directly in a browser. They work offline and have no external dependencies.
 
+## Open Reports in the Browser
+
+[Open the graph viewer](graph-viewer/index.html) to browse reports without generating HTML first. Drop compiler `graph-*.json` files or `graphMetadata.json` onto the page. You can also choose files with the file picker or try the sample graph.
+
+Files stay in your browser. The viewer doesn't upload or save them. Choose several reports from the same compilation to see extensions, their parents, and included graph dependencies together. Missing related reports are listed above the graph. **Add reports** adds files to the current import. **Replace reports** starts a new import.
+
+Include `analysis.json` to see centrality, dominator counts, and the longest chain. Search, layouts, roots, and connections work without analysis. The viewer checks graph names and binding keys before accepting analysis. Generate both files from the same compilation.
+
+The viewer accepts Metro's current unversioned JSON reports. Use the docs version that matches the Metro version that produced your reports. Older reports may lack accessor names or ownership information. Conflicting reports for the same graph are rejected.
+
 ## Browsing a Graph
 
 The viewer opens with a package overview. It groups related packages by namespace and shows the number of visible bindings in each group. Lines show dependencies between groups. The overview includes related graphs available in that HTML report, including extensions and identified graph dependencies.

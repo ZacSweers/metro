@@ -54,4 +54,6 @@ convert_github_admonitions docs/metrox-android.md
 convert_github_admonitions docs/metrox-viewmodel.md
 convert_github_admonitions docs/metrox-viewmodel-compose.md
 
+./gradlew prepareGraphViewer --quiet
+
 echo "Copying documentation files complete!"

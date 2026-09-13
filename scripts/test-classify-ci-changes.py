@@ -39,6 +39,11 @@ class ClassifyPathsTest(unittest.TestCase):
                 {"full": True, "docs": True, "idea": True},
             ),
             (["metro-common/src/Graph.kt"], {"full": True, "docs": False, "idea": True}),
+            (["graph-viewer/src/host/host.js"], {"full": True, "docs": True, "idea": True}),
+            (
+                ["gradle-plugin/src/main/resources/dev/zacsweers/metro/gradle/analysis/graph-viewer.js"],
+                {"full": True, "docs": True, "idea": True},
+            ),
             (["scripts/unknown.py"], {"full": True, "docs": False, "idea": True}),
             ([], {"full": True, "docs": False, "idea": True}),
         ]
@@ -209,7 +214,7 @@ class SummaryTest(unittest.TestCase):
         summary = classifier.render_summary(
             paths, "pull_request", classifier.classify_paths(paths, "pull_request")
         )
-        self.assertIn("Documentation workflows select docs validation and retain full CI", summary)
+        self.assertIn("Documentation infrastructure and viewer code select docs validation and full CI", summary)
         self.assertIn("(1 changed path)", summary)
         for route in ("full", "docs", "idea"):
             self.assertIn(f"| {route} | Selected |", summary)

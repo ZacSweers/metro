@@ -41,6 +41,9 @@ def classify_paths(paths: list[str], event_name: str) -> dict[str, bool]:
             # Changes to documentation infrastructure also validate the full CI path.
             docs = True
             full = True
+        elif path.startswith("graph-viewer/") or path.startswith("gradle-plugin/src/main/resources/dev/zacsweers/metro/gradle/analysis/"):
+            docs = True
+            full = True
         elif path.endswith(".md") or path.startswith("docs/") or path in DOC_PATHS:
             docs = True
         elif path.startswith("idea-plugin/"):
@@ -150,7 +153,7 @@ def render_summary(paths: list[str], event_name: str, routes: dict[str, bool]) -
     else:
         reasons = {
             (True, False, True): "Other changed paths retain full CI and IDEA plugin tests",
-            (True, True, True): "Documentation workflows select docs validation and retain full CI",
+            (True, True, True): "Documentation infrastructure and viewer code select docs validation and full CI",
             (False, True, False): "Documentation paths select docs validation",
             (False, False, True): "IDEA plugin paths select IDEA plugin tests",
         }
