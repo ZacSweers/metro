@@ -398,6 +398,22 @@
   
   
     <li class="md-tabs__item">
+      <a href="../graph-viewer/index.html" class="md-tabs__link">
+        
+  
+  Graph Viewer ↗
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
       <a href="../api/index.html" class="md-tabs__link">
         
   
@@ -1466,6 +1482,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#open-reports-in-the-browser" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Open Reports in the Browser
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#browsing-a-graph" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2137,6 +2164,32 @@
   
   
     <li class="md-nav__item">
+      <a href="../graph-viewer/index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Graph Viewer ↗
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../api/index.html" class="md-nav__link">
         
   
@@ -2276,6 +2329,17 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#open-reports-in-the-browser" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Open Reports in the Browser
+      </span>
+    </span>
+  </a>
   
 </li>
       
@@ -2620,6 +2684,11 @@
 <li><code>{graph-name}.html</code> - Interactive visualization for each graph</li>
 </ul>
 <p>Open the HTML files directly in a browser. They work offline and have no external dependencies.</p>
+<h2 id="open-reports-in-the-browser">Open Reports in the Browser<a class="headerlink" href="#open-reports-in-the-browser" title="Permanent link">&para;</a></h2>
+<p><a href="../graph-viewer/index.html">Open the graph viewer</a> to browse reports without generating HTML first. Drop compiler <code>graph-*.json</code> files or <code>graphMetadata.json</code> onto the page. You can also choose files with the file picker or try the sample graph.</p>
+<p>Files stay in your browser. The viewer doesn&rsquo;t upload or save them. Choose several reports from the same compilation to see extensions, their parents, and included graph dependencies together. Missing related reports are listed above the graph. <strong>Add reports</strong> adds files to the current import. <strong>Replace reports</strong> starts a new import.</p>
+<p>Include <code>analysis.json</code> to see centrality, dominator counts, and the longest chain. Search, layouts, roots, and connections work without analysis. The viewer checks graph names and binding keys before accepting analysis. Generate both files from the same compilation.</p>
+<p>The viewer accepts Metro&rsquo;s current unversioned JSON reports. Use the docs version that matches the Metro version that produced your reports. Older reports may lack accessor names or ownership information. Conflicting reports for the same graph are rejected.</p>
 <h2 id="browsing-a-graph">Browsing a Graph<a class="headerlink" href="#browsing-a-graph" title="Permanent link">&para;</a></h2>
 <p>The viewer opens with a package overview. It groups related packages by namespace and shows the number of visible bindings in each group. Lines show dependencies between groups. The overview includes related graphs available in that HTML report, including extensions and identified graph dependencies.</p>
 <p>An extension report with ancestor metadata opens in <strong>Full graph</strong> and fits the extension and its ancestors to the view.</p>
