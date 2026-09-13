@@ -11,6 +11,15 @@ Changelog
 ### Fixes
 
 - **[IR]** Support `-Xwarning-level` overrides in fallback diagnostic reporting across all supported Kotlin versions.
+- **[compat]** Fix compiler compatibility selection for Beta, RC, and stable Kotlin builds when only dev support exists for their base version. For example, `2.5.0-Beta1` now selects the latest `2.5.0-dev-*` implementation if there is no `2.5.0-*` non-dev build.
+
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@kevinguitar](https://github.com/kevinguitar)
+
+### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
 
 1.4.3
 -----
