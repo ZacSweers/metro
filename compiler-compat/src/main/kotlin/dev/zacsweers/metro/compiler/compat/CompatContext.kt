@@ -41,6 +41,7 @@ import org.jetbrains.kotlin.fir.plugin.SimpleFunctionBuildingContext
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.ir.IrDiagnosticReporter
 import org.jetbrains.kotlin.ir.IrElement
@@ -354,6 +355,14 @@ public interface CompatContext {
     startOffset: Int = -1,
     endOffset: Int = -1,
   ): KtSourceElement
+
+  /** Returns the default value's source for diagnostics, if the compiler exposes it. */
+  @CompatApi(
+    since = "2.5.0-dev-7307",
+    reason = CompatApi.Reason.RENAMED,
+    message = "defaultValueSource was renamed to resolvedDefaultValueSource",
+  )
+  public fun FirValueParameterSymbol.defaultValueSourceCompat(): KtSourceElement?
 
   @CompatApi(
     since = "2.3.20",

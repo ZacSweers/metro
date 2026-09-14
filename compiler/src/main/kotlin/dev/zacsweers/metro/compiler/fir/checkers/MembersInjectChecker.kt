@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.fir.checkers
 
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.classIds
+import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.directCallableSymbols
 import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
 import dev.zacsweers.metro.compiler.fir.hasMetroDefault
@@ -163,8 +164,10 @@ internal object MembersInjectChecker : FirClassChecker(MppCheckerKind.Common) {
           )
 
           if (param.hasMetroDefault(session)) {
+            val defaultValueSource =
+              with(session.compatContext) { param.defaultValueSourceCompat() }
             reporter.reportOn(
-              param.defaultValueSource ?: param.source,
+              defaultValueSource ?: param.source,
               MetroDiagnostics.MEMBERS_INJECT_ERROR,
               "Function member injection cannot have default values.",
             )

@@ -270,26 +270,26 @@ class CompatContextTest {
     val factoryDev1 =
       FakeFactory(minVersion = "2.5.0-dev-4967", reportedCurrentVersion = "2.5.0-Beta1")
     val factoryDev2 =
-      FakeFactory(minVersion = "2.5.0-dev-6460", reportedCurrentVersion = "2.5.0-Beta1")
+      FakeFactory(minVersion = "2.5.0-dev-7307", reportedCurrentVersion = "2.5.0-Beta1")
 
     val factories = sequenceOf(factoryStable, factoryDev2, factoryDev1)
     val resolved = CompatContext.resolveFactory(factories, testVersionString = "2.5.0-Beta1")
 
-    assertThat(resolved.minVersion).isEqualTo("2.5.0-dev-6460")
+    assertThat(resolved.minVersion).isEqualTo("2.5.0-dev-7307")
   }
 
   @Test
   fun `incompatible Beta factory permits same-base dev fallback`() {
     val factoryStable = FakeFactory(minVersion = "2.4.20", reportedCurrentVersion = "2.5.0-Beta1")
     val factoryDev =
-      FakeFactory(minVersion = "2.5.0-dev-6460", reportedCurrentVersion = "2.5.0-Beta1")
+      FakeFactory(minVersion = "2.5.0-dev-7307", reportedCurrentVersion = "2.5.0-Beta1")
     val factoryBeta =
       FakeFactory(minVersion = "2.5.0-Beta2", reportedCurrentVersion = "2.5.0-Beta1")
 
     val factories = sequenceOf(factoryStable, factoryDev, factoryBeta)
     val resolved = CompatContext.resolveFactory(factories, testVersionString = "2.5.0-Beta1")
 
-    assertThat(resolved.minVersion).isEqualTo("2.5.0-dev-6460")
+    assertThat(resolved.minVersion).isEqualTo("2.5.0-dev-7307")
   }
 
   @Test
@@ -434,7 +434,7 @@ class CompatContextTest {
         "2.4.20-dev-6138",
         "2.4.20",
         "2.5.0-dev-4967",
-        "2.5.0-dev-6460",
+        "2.5.0-dev-7307",
       )
 
     // Current compiler version -> expected factory minVersion.
@@ -457,12 +457,12 @@ class CompatContextTest {
         "2.5.0-dev-4967" to "2.5.0-dev-4967",
         // IJ 2026.3 EAP uses a regular dev version.
         "2.5.0-dev-5423" to "2.5.0-dev-4967",
-        "2.5.0-dev-6460" to "2.5.0-dev-6460",
-        "2.5.0-Beta1" to "2.5.0-dev-6460",
-        "2.5.0-Beta1-123" to "2.5.0-dev-6460",
-        "2.5.0-Beta1-release-123" to "2.5.0-dev-6460",
-        "2.5.0-RC" to "2.5.0-dev-6460",
-        "2.5.0" to "2.5.0-dev-6460",
+        "2.5.0-dev-7307" to "2.5.0-dev-7307",
+        "2.5.0-Beta1" to "2.5.0-dev-7307",
+        "2.5.0-Beta1-123" to "2.5.0-dev-7307",
+        "2.5.0-Beta1-release-123" to "2.5.0-dev-7307",
+        "2.5.0-RC" to "2.5.0-dev-7307",
+        "2.5.0" to "2.5.0-dev-7307",
       )
 
     for ((currentVersion, expectedMinVersion) in expectations) {

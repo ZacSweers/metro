@@ -67,6 +67,7 @@ import org.jetbrains.kotlin.fir.plugin.createTopLevelFunction as createTopLevelF
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 import org.jetbrains.kotlin.fir.toEffectiveVisibility
 import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
@@ -206,6 +207,10 @@ public class CompatContextImpl : CompatContext {
     config: SimpleFunctionBuildingContext.() -> Unit,
   ): FirFunction {
     return createMemberFunctionNative(owner, key, name, returnTypeProvider, config)
+  }
+
+  override fun FirValueParameterSymbol.defaultValueSourceCompat(): KtSourceElement? {
+    return defaultValueSource
   }
 
   override fun KtSourceElement.fakeElement(
