@@ -6,6 +6,7 @@ Changelog
 
 ### Enhancements
 
+- **[IR]** Reduce repeated work when reporting dependency cycles.
 - **[Gradle]** Redesign the graph viewer feature.
 
 ### Fixes

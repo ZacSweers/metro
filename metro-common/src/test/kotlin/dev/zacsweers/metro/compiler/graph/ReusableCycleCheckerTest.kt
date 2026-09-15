@@ -4,7 +4,9 @@ package dev.zacsweers.metro.compiler.graph
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class ReusableCycleCheckerTest {
@@ -25,7 +27,99 @@ class ReusableCycleCheckerTest {
 
     // A failed check can leave unfinished frames, so the next check must reset traversal state.
     assertTrue(checker.isAcyclicWith(setOf(deferredSource)))
+    assertEquals(vertices, checker.findCycleWith(emptySet()))
+    assertNull(checker.findCycleWith(setOf(deferredSource)))
   }
+
+  @Test
+  fun cyclePathExcludesLeadingVerticesAndSurvivesReuse() {
+    val vertices = listOf("prefix", "A", "B")
+    val adjacency = mapOf("prefix" to setOf("A"), "A" to setOf("B"), "B" to setOf("A"))
+    val checker = ReusableCycleChecker(vertices, adjacency, mapOf("B" to setOf("A")))
+
+    val cycle = checker.findCycleWith(emptySet())
+    assertEquals(listOf("A", "B"), cycle)
+    assertTrue(checker.isAcyclicWith(setOf("B")))
+    assertFalse(checker.isAcyclicAfterRestoringEdges("B", emptySet()))
+    assertEquals(listOf("A", "B"), checker.findCycleWith(emptySet()))
+    assertEquals(listOf("A", "B"), cycle)
+  }
+
+  @Test
+  fun selfCycleListsItsVertexOnce() {
+    val checker = ReusableCycleChecker(listOf("A"), mapOf("A" to setOf("A")), emptyMap())
+
+    assertEquals(listOf("A"), checker.findCycleWith(emptySet()))
+  }
+
+  @Test
+  fun cycleCanStartAtANullVertex() {
+    val vertices = listOf(null, "A")
+    val adjacency = mapOf(null to setOf("A"), "A" to setOf(null))
+    val checker = ReusableCycleChecker(vertices, adjacency, emptyMap())
+
+    assertEquals(vertices, checker.findCycleWith(emptySet()))
+  }
+
+  @Test
+  fun cycleSearchExaminesEachEdgeAtMostOnce() {
+    val edges =
+      linkedMapOf(
+        "prefix" to setOf("left", "right"),
+        "left" to setOf("leaf"),
+        "right" to setOf("leaf", "A"),
+        "leaf" to emptySet(),
+        "A" to setOf("B"),
+        "B" to setOf("A"),
+      )
+    val examinedEdges = mutableSetOf<Pair<String, String>>()
+    val adjacency = edges.mapValues { (from, neighbors) ->
+      object : Set<String> by neighbors {
+        override fun iterator(): Iterator<String> {
+          val delegate = neighbors.iterator()
+          return object : Iterator<String> by delegate {
+            override fun next(): String {
+              val to = delegate.next()
+              assertTrue(examinedEdges.add(from to to), "Revisited edge $from -> $to")
+              return to
+            }
+          }
+        }
+      }
+    }
+    val checker = ReusableCycleChecker(edges.keys.toList(), adjacency, emptyMap())
+
+    assertEquals(listOf("A", "B"), checker.findCycleWith(emptySet()))
+    assertEquals(edges.values.sumOf { it.size }, examinedEdges.size)
+  }
+
+  @Test
+  fun cycleSearchAndReconstructionCheckCancellation() {
+    val vertices = listOf("prefix", "A", "B")
+    val adjacency = mapOf("prefix" to setOf("A"), "A" to setOf("B"), "B" to setOf("A"))
+    var checks = 0
+    var cancelAt = Int.MAX_VALUE
+    val checker =
+      ReusableCycleChecker(vertices, adjacency, emptyMap()) {
+        checks++
+        if (checks == cancelAt) {
+          throw CycleCheckCancelled()
+        }
+      }
+
+    assertFalse(checker.isAcyclicWith(emptySet()))
+    val traversalChecks = checks
+    // The first check after traversal belongs to cycle reconstruction.
+    for (cancellationCheck in listOf(2, traversalChecks + 1)) {
+      checks = 0
+      cancelAt = cancellationCheck
+      assertFailsWith<CycleCheckCancelled> { checker.findCycleWith(emptySet()) }
+      cancelAt = Int.MAX_VALUE
+      assertEquals(listOf("A", "B"), checker.findCycleWith(emptySet()))
+    }
+  }
+
+  private class CycleCheckCancelled : RuntimeException()
 
   @Test
   fun restoredEdgesDetectCyclesAndClearUnfinishedTraversalState() {
