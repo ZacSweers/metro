@@ -558,6 +558,124 @@ class MetroSortTest : TraceScope by TraceScope.noop() {
   }
 
   @Test
+  fun `eager cycles with many deferral candidates take linear traversal work`() {
+    // Cancellation polls count graph work without depending on wall-clock timing.
+    fun sortChecks(vertexCount: Int): Int {
+      val adjacency = sortedMapOf<Int, SortedSet<Int>>()
+      repeat(vertexCount) { vertex ->
+        adjacency[vertex] = sortedSetOf((vertex + 1) % vertexCount, (vertex + 2) % vertexCount)
+      }
+      var checks = 0
+      var reportedCycle: List<Int>? = null
+
+      // Every candidate leaves the eager ring intact after masking its deferred chord.
+      val failure =
+        assertFailsWith<IllegalArgumentException> {
+          metroSort(
+            fullAdjacency = adjacency,
+            isDeferrable = { from, to -> to == (from + 2) % vertexCount },
+            onCycle = { cycle ->
+              reportedCycle = cycle
+              throw IllegalArgumentException("hard cycle")
+            },
+            ensureActive = { checks++ },
+          )
+        }
+      assertEquals("hard cycle", failure.message)
+      assertEquals(adjacency.keys, reportedCycle?.toSet())
+      return checks
+    }
+
+    val smaller = sortChecks(128)
+    val larger = sortChecks(256)
+    assertTrue(larger < smaller * 3, "Traversal checks grew from $smaller to $larger")
+  }
+
+  @Test
+  fun `a sole deferral candidate can still leave a hard cycle`() {
+    val adjacency =
+      sortedMapOf(
+        "A" to typedSortedSetOf("B"),
+        "B" to typedSortedSetOf("A", "C"),
+        "C" to typedSortedSetOf("A"),
+      )
+    var reportedCycle: List<String>? = null
+
+    // Masking B's edge to C leaves the eager A-B cycle intact.
+    assertFailsWith<IllegalArgumentException> {
+      metroSort(
+        fullAdjacency = adjacency,
+        isDeferrable = { from, to -> from == "B" && to == "C" },
+        onCycle = { cycle ->
+          reportedCycle = cycle
+          throw IllegalArgumentException("hard cycle")
+        },
+      )
+    }
+    assertEquals(setOf("A", "B", "C"), reportedCycle?.toSet())
+  }
+
+  @Test
+  fun `the first successful singleton keeps implicit deferral priority`() {
+    val adjacency =
+      sortedMapOf(
+        "A" to typedSortedSetOf("B"),
+        "B" to typedSortedSetOf("C"),
+        "C" to typedSortedSetOf("A"),
+      )
+
+    val result =
+      metroSort(
+        fullAdjacency = adjacency,
+        isDeferrable = { _, _ -> true },
+        isImplicitlyDeferrable = { it == "C" },
+        onCycle = { fail("Every singleton breaks this cycle") },
+      )
+
+    assertEquals(setOf("C"), result.deferredTypes)
+  }
+
+  @Test
+  fun `a later singleton can break overlapping cycles`() {
+    // Only the last candidate Z can break both cycles on its own.
+    val adjacency =
+      sortedMapOf(
+        "A" to typedSortedSetOf("Z"),
+        "B" to typedSortedSetOf("Z"),
+        "Z" to typedSortedSetOf("A", "B"),
+      )
+
+    val result =
+      metroSort(
+        fullAdjacency = adjacency,
+        isDeferrable = { _, _ -> true },
+        onCycle = { fail("Deferring Z breaks both cycles") },
+      )
+
+    assertEquals(setOf("Z"), result.deferredTypes)
+  }
+
+  @Test
+  fun `multiple deferrals still remove redundant candidates`() {
+    val adjacency =
+      sortedMapOf(
+        "A" to typedSortedSetOf("B"),
+        "B" to typedSortedSetOf("A", "C"),
+        "C" to typedSortedSetOf("A", "B"),
+      )
+    val deferredEdges = mapOf("A" to setOf("B"), "B" to setOf("C"), "C" to setOf("A"))
+
+    val result =
+      metroSort(
+        fullAdjacency = adjacency,
+        isDeferrable = { from, to -> to in deferredEdges.getValue(from) },
+        onCycle = { fail("Deferring A and B breaks both cycles") },
+      )
+
+    assertEquals(setOf("A", "B"), result.deferredTypes)
+  }
+
+  @Test
   fun `hard cycle still reports correctly`() {
     val fullAdjacency =
       sortedMapOf(

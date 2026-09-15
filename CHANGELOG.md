@@ -6,6 +6,7 @@ Changelog
 
 ### Enhancements
 
+- **[IR]** Skip unnecessary checks for dependency cycles that providers or lazy values cannot break.
 - **[Gradle]** Redesign the graph viewer feature.
 
 ### Fixes
