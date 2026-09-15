@@ -19,6 +19,8 @@ internal class ReusableCycleChecker<V>(
   private val inStack: HashSet<V>
   // Keep DFS call frames on the heap so large dependency cycles don't overflow the stack.
   private val frames: ArrayDeque<Frame<V>>
+  // A failed traversal records the back edge's target, which may itself be null.
+  private var cycleStart: V? = null
 
   init {
     // Sized to the full SCC since the worst case is "every vertex visited."
@@ -45,6 +47,31 @@ internal class ReusableCycleChecker<V>(
   }
 
   /**
+   * Returns one cycle in traversal order. Each vertex appears once.
+   *
+   * The failed traversal leaves its active path in [frames]. Only this method copies the cycle into
+   * a separate list. The returned list survives later checks on this instance.
+   */
+  fun findCycleWith(deferredNodes: Set<V>): List<V>? {
+    if (isAcyclicWith(deferredNodes)) {
+      return null
+    }
+
+    val cycle = ArrayList<V>()
+    var inCycle = false
+    for (frame in frames) {
+      ensureActive()
+      if (frame.node == cycleStart) {
+        inCycle = true
+      }
+      if (inCycle) {
+        cycle.add(frame.node)
+      }
+    }
+    return cycle
+  }
+
+  /**
    * Checks whether restoring [node]'s deferred outgoing edges introduces a cycle.
    *
    * The graph must already have been acyclic while [node] was deferred, and [node] must no longer
@@ -61,6 +88,7 @@ internal class ReusableCycleChecker<V>(
     inStack.clear()
     // A previous check may have returned early with unfinished frames still on the stack.
     frames.clear()
+    cycleStart = null
   }
 
   /**
@@ -80,9 +108,11 @@ internal class ReusableCycleChecker<V>(
 
       val neighbor = frame.neighbors.next()
       // Skip deferrable edges from deferred nodes (this matches what sortVerticesInSCC will do)
-      if (frame.deferrableFromThis != null && neighbor in frame.deferrableFromThis) continue
+      if (frame.deferrableFromThis != null && neighbor in frame.deferrableFromThis) {
+        continue
+      }
       if (neighbor in inStack) {
-        // Cycle found
+        cycleStart = neighbor
         return false
       }
       if (neighbor !in visited) {

@@ -421,22 +421,7 @@ public open class MutableBindingGraph<
             ensureActive = ensureActive,
             onSortedCycle = { sortedCycles += it },
             onCycle = { sccVertices ->
-              val sccSet = HashSet<TypeKey>(sccVertices.size)
-              for (vertex in sccVertices) {
-                ensureActive()
-                sccSet += vertex
-              }
-
-              hardCycle =
-                sccVertices.firstNotNullOfOrNull { candidate ->
-                  findSimpleCycle(
-                    startNode = candidate,
-                    sccNodes = sccSet,
-                    fullAdjacency = fullAdjacency,
-                    isEdgeAllowed = isHardEdge,
-                    ensureActive = ensureActive,
-                  )
-                } ?: sccVertices
+              hardCycle = findHardCycle(sccVertices, fullAdjacency, isHardEdge, ensureActive)
               throw HardCycleFound()
             },
             isImplicitlyDeferrable = implicitlyDeferrableKeys::contains,
@@ -487,42 +472,39 @@ public open class MutableBindingGraph<
   /** Stops sorting so the preparing thread can report the captured cycle. */
   private class HardCycleFound : RuntimeException(null, null, false, false)
 
-  private fun <V : Comparable<V>> findSimpleCycle(
-    startNode: V,
-    sccNodes: Set<V>,
+  /** Searches captured hard edges once and returns the cycle's keys in traversal order. */
+  private fun <V> findHardCycle(
+    vertices: List<V>,
     fullAdjacency: Map<V, Set<V>>,
-    isEdgeAllowed: (from: V, to: V) -> Boolean,
+    isHardEdge: (from: V, to: V) -> Boolean,
     ensureActive: () -> Unit,
-  ): List<V>? {
-    val parents = mutableMapOf<V, V>()
-    val queue = ArrayDeque<V>().apply { add(startNode) }
-    val visited = mutableSetOf<V>()
-
-    while (queue.isNotEmpty()) {
+  ): List<V> {
+    val sccNodes = HashSet<V>(vertices.size)
+    for (vertex in vertices) {
       ensureActive()
-      val current = queue.removeFirst()
-      val neighbors = fullAdjacency[current].orEmpty()
-      for (neighbor in neighbors) {
+      sccNodes.add(vertex)
+    }
+
+    val hardAdjacency = HashMap<V, Set<V>>(vertices.size)
+    for (vertex in vertices) {
+      ensureActive()
+      // Keep the captured neighbor order so repeated analyses choose the same cycle.
+      val hardNeighbors = LinkedHashSet<V>()
+      for (neighbor in fullAdjacency[vertex].orEmpty()) {
         ensureActive()
-        if (neighbor !in sccNodes || !isEdgeAllowed(current, neighbor)) continue
-        if (neighbor == startNode) {
-          val cycle = mutableListOf<V>()
-          var curr: V? = current
-          while (curr != null) {
-            ensureActive()
-            cycle.add(curr)
-            curr = parents[curr]
-          }
-          return cycle.reversed()
-        }
-        if (neighbor !in visited) {
-          visited.add(neighbor)
-          parents[neighbor] = current
-          queue.addLast(neighbor)
+        if (neighbor in sccNodes && isHardEdge(vertex, neighbor)) {
+          hardNeighbors.add(neighbor)
         }
       }
+      hardAdjacency[vertex] = hardNeighbors
     }
-    return null
+
+    val checker = ReusableCycleChecker(vertices, hardAdjacency, emptyMap(), ensureActive)
+    val cycle = checker.findCycleWith(emptySet())
+    if (cycle == null) {
+      reportCompilerBug("Found an unbreakable component, but couldn't find a hard cycle.")
+    }
+    return cycle
   }
 
   private fun reportCycle(

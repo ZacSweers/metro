@@ -685,6 +685,57 @@ class BindingGraphTest : TraceScope by TraceScope.noop() {
   }
 
   @Test
+  fun hardCycleSearchScalesWithSparseTailEdges() {
+    val smaller = hardCycleAnalysisChecks(tailSize = 128, dense = false)
+    val larger = hardCycleAnalysisChecks(tailSize = 256, dense = false)
+
+    assertTrue(larger < smaller * 3, "Analysis checks grew from $smaller to $larger")
+  }
+
+  @Test
+  fun hardCycleSearchScalesWithDenseTailEdges() {
+    val smaller = hardCycleAnalysisChecks(tailSize = 128, dense = true)
+    val larger = hardCycleAnalysisChecks(tailSize = 256, dense = true)
+
+    // Doubling this tail adds about four times as many edges.
+    assertTrue(larger < smaller * 6, "Analysis checks grew from $smaller to $larger")
+  }
+
+  /** Builds eager paths into a hard cycle and counts work during prepared analysis. */
+  private fun hardCycleAnalysisChecks(tailSize: Int, dense: Boolean): Int {
+    val graph = newStringBindingGraph()
+    val first = "C0".typeKey
+    val second = "C1".typeKey
+    val tail = List(tailSize) { "Tail${it.toString().padStart(4, '0')}".typeKey }
+    graph.tryPut(first.toBinding(second))
+    // One deferred edge puts every tail vertex in the same component as the hard cycle.
+    graph.tryPut(
+      second.toBinding(first.contextualTypeKey, "() -> ${tail.last().type}".contextualTypeKey)
+    )
+    for ((index, key) in tail.withIndex()) {
+      val dependencies =
+        if (dense) {
+          listOf(first) + tail.take(index)
+        } else if (index == 0) {
+          listOf(first)
+        } else {
+          listOf(tail[index - 1])
+        }
+      graph.tryPut(key.toBinding(dependencies.map { it.contextualTypeKey }))
+    }
+
+    var checks = 0
+    val prepared = graph.prepareSeal(shrinkUnusedBindings = false, ensureActive = { checks++ })
+    checks = 0
+    val analysis = prepared.analyze()
+    val analysisChecks = checks
+    assertThat(analysis.hardCycle).containsExactly(first, second)
+    val failure = assertFailsWith<IllegalStateException> { prepared.finish(analysis) }
+    assertThat(failure).hasMessageThat().contains("[Metro/DependencyCycle]")
+    return analysisChecks
+  }
+
+  @Test
   fun `TypeKey dependsOn returns true for dependent keys`() {
     val a = "A".typeKey
     val b = "B".typeKey
