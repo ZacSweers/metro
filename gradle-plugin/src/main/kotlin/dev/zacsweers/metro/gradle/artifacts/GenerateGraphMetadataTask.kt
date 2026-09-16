@@ -67,6 +67,7 @@ public abstract class GenerateGraphMetadataTask : DefaultTask() {
   }
 
   // TODO sort outputs further?
+  /** Combines [graphJsonFiles] into [outputFile] and deduplicates graphs by name. */
   @TaskAction
   public fun generate() {
     val output = outputFile.get().asFile.toPath()
