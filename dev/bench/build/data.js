@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789515440678,
+  "lastUpdate": 1789518529240,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -24024,6 +24024,62 @@ window.BENCHMARK_DATA = {
             "value": 13315.864000000001,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +0.50%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "renovate[bot]",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "renovate[bot]",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "d77faef8~1",
+          "message": "[before] Update dependency dev.zacsweers.kctfork:ksp to v0.",
+          "timestamp": "2026-09-15T23:34:12Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/d77faef8492ec13c5014703693cc52805c8fc117"
+        },
+        "date": 1789518529240,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18407.114,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "renovate[bot]",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "renovate[bot]",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "d77faef8492ec13c5014703693cc52805c8fc117",
+          "message": "[after] Update dependency dev.zacsweers.kctfork:ksp to v0.",
+          "timestamp": "2026-09-15T23:34:12Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/d77faef8492ec13c5014703693cc52805c8fc117"
+        },
+        "date": 1789518529241,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18826.563000000002,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +2.28%"
           }
         ]
       }
