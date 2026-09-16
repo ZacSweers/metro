@@ -19,6 +19,6 @@
 # Retained for IDEs mapped to 2.4.20-dev-6725.
 2.4.20-dev-6138
 2.4.20
-# Retained for IntelliJ 2026.3 EAP (2.5.0-dev-5423).
-2.5.0-dev-4967
+# Retained for IntelliJ 2026.3 EAP (2.5.0-dev-6810).
+2.5.0-dev-6460
 2.5.0-dev-7307

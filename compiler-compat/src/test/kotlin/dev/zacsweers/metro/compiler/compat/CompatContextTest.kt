@@ -268,7 +268,7 @@ class CompatContextTest {
   fun `Beta version falls back to latest same-base dev factory`() {
     val factoryStable = FakeFactory(minVersion = "2.4.20", reportedCurrentVersion = "2.5.0-Beta1")
     val factoryDev1 =
-      FakeFactory(minVersion = "2.5.0-dev-4967", reportedCurrentVersion = "2.5.0-Beta1")
+      FakeFactory(minVersion = "2.5.0-dev-6460", reportedCurrentVersion = "2.5.0-Beta1")
     val factoryDev2 =
       FakeFactory(minVersion = "2.5.0-dev-7307", reportedCurrentVersion = "2.5.0-Beta1")
 
@@ -433,7 +433,7 @@ class CompatContextTest {
         "2.4.0",
         "2.4.20-dev-6138",
         "2.4.20",
-        "2.5.0-dev-4967",
+        "2.5.0-dev-6460",
         "2.5.0-dev-7307",
       )
 
@@ -454,9 +454,10 @@ class CompatContextTest {
         // Unmapped future IDE build picks the lowest same-base factory
         "2.4.20-ij262-1" to "2.4.20-dev-6138",
         "2.4.20" to "2.4.20",
-        "2.5.0-dev-4967" to "2.5.0-dev-4967",
+        "2.5.0-dev-6460" to "2.5.0-dev-6460",
         // IJ 2026.3 EAP uses a regular dev version.
-        "2.5.0-dev-5423" to "2.5.0-dev-4967",
+        "2.5.0-dev-6810" to "2.5.0-dev-6460",
+        "2.5.0-dev-7306" to "2.5.0-dev-6460",
         "2.5.0-dev-7307" to "2.5.0-dev-7307",
         "2.5.0-Beta1" to "2.5.0-dev-7307",
         "2.5.0-Beta1-123" to "2.5.0-dev-7307",

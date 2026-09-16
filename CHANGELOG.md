@@ -19,7 +19,8 @@ Changelog
 
 ### Changes
 
-- Update the latest Kotlin `2.5.0` compatibility module to `2.5.0-dev-7307`.
+- **[compat]** Update the latest Kotlin `2.5.0` compat to `2.5.0-dev-7307`.
+- **[compat]** Raise `2.5.0-dev-4967` compat to `2.5.0-dev-6460` (pacing with IntelliJ 2026.3 EAPs).
 
 ### Contributors
 

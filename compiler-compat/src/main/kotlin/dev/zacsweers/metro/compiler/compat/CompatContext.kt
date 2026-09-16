@@ -358,7 +358,7 @@ public interface CompatContext {
 
   /** Returns the default value's source for diagnostics, if the compiler exposes it. */
   @CompatApi(
-    since = "2.5.0-dev-7307",
+    since = "2.5.0-dev-6810",
     reason = CompatApi.Reason.RENAMED,
     message = "defaultValueSource was renamed to resolvedDefaultValueSource",
   )
