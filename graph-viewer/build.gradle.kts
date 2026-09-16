@@ -41,6 +41,4 @@ kotlin {
     }
     commonTest.dependencies { implementation(libs.kotlin.test) }
   }
-
-  compilerOptions.optIn.add("dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi")
 }
