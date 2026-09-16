@@ -1,0 +1,82 @@
+<!doctype html>
+<!-- Both routes default to build time; the Startup tab selects the existing startup history. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Metro benchmark history, with per-commit changes and context for GitHub Actions runner variation.">
+    <title>Metro benchmarks</title>
+    <link rel="stylesheet" href="dashboard.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/chart.js@2.9.2/dist/Chart.min.js"></script>
+    <script defer src="dashboard.js"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to benchmarks</a>
+    <header class="site-header">
+      <a class="brand" href="https://zacsweers.github.io/metro/latest/">Metro<span>/ Benchmarks</span></a>
+      <nav aria-label="Benchmark pages">
+        <a id="build-link" href="/metro/dev/bench/build/">Build time</a>
+        <a id="startup-link" href="/metro/dev/bench/?benchmark=startup">Startup</a>
+      </nav>
+      <a class="repository" href="https://github.com/ZacSweers/metro">GitHub ↗</a>
+    </header>
+
+    <main id="main">
+      <div class="page-heading">
+        <div>
+          <p class="eyebrow">Continuous benchmarks</p>
+          <h1 id="page-title">Metro performance</h1>
+          <p id="page-description">Follow the trend over time. Each before/after pair is measured on the same GitHub Actions runner.</p>
+        </div>
+        <p class="updated">Updated <time id="last-update">—</time></p>
+      </div>
+
+      <p id="error" class="notice" role="status" hidden></p>
+      <noscript><p class="notice">Enable JavaScript to explore the paired benchmark history.</p></noscript>
+
+      <div id="dashboard" hidden>
+        <section class="charts" aria-labelledby="trend-title">
+          <div class="chart-heading">
+            <div><h2 id="trend-title">Timing history</h2><p>The 10-pair median makes the broader trend easier to see.</p></div>
+            <label class="range-label">History
+              <select id="range">
+                <option value="30">Last 30 pairs</option>
+                <option value="90">Last 90 pairs</option>
+                <option value="all" selected>All history</option>
+              </select>
+            </label>
+          </div>
+          <div class="period-summary" aria-label="Summary of selected history" aria-live="polite">
+            <p id="summary-period" class="summary-period"></p>
+            <dl class="summary-stats">
+              <div><dt id="recent-time-label">Recent build time</dt><dd id="recent-time"></dd><dd id="recent-time-detail" class="summary-detail"></dd></div>
+              <div><dt>Measured time change</dt><dd id="period-change"></dd><dd id="period-change-detail" class="summary-detail"></dd></div>
+              <div><dt>Median same-run change</dt><dd id="median-change"></dd><dd id="median-change-detail" class="summary-detail"></dd></div>
+            </dl>
+            <p class="summary-note">Runner speed and benchmark changes can affect the time trend. Same-run deltas compare revisions on one machine.</p>
+          </div>
+          <div class="legend"><span><i class="key baseline"></i>Before · parent</span><span><i class="key current"></i>After · current</span><span><i class="key trend"></i>10-pair median</span><span><i class="key variation"></i>Possible slower or faster CI runner</span></div>
+          <div class="chart-container timing-chart"><canvas id="timing-chart" role="img" aria-label="Connected before and after timing history with a trailing 10-pair median. Hover or tap to see both measurements and their same-run change."></canvas></div>
+          <p class="chart-footnote">Diamonds flag pairs that may have run on a slower or faster GitHub Actions machine. Both timings moved together, while the change between revisions stayed within typical variation.</p>
+
+          <div class="change-heading"><h2>Same-run change</h2><p>Each point is the change from parent to current commit on one runner.</p></div>
+          <div class="legend"><span class="noise-label"><i class="key noise"></i><span id="variation-label"></span></span><span><i class="key faster"></i><span id="faster-label"></span></span><span><i class="key slower"></i><span id="slower-label"></span></span><span id="visible-count"></span></div>
+          <div class="chart-container"><canvas id="change-chart" role="img" aria-label="Connected history of same-run percentage changes. The shaded band shows estimated typical variation."></canvas></div>
+          <p class="chart-footnote">Hover or tap a point for its measurements. <span id="run-count"></span> recorded pairs · <span id="history-span"></span>.</p>
+        </section>
+
+        <details class="reading-guide">
+          <summary>Reading the charts</summary>
+          <p>Change is (after − before) ÷ before × 100. Each pair measures a commit and its parent in the same benchmark job. This controls for hardware differences between runners. The shaded band indicates estimated typical variation. Small real changes can fall inside it, and measurement variation can exceed it. These are separate before/after comparisons and are never added together.</p>
+          <p>The estimated bands are ±7% for build time and ±5% for startup. They were chosen from 423 pairs per metric recorded through September 8, 2026. The robust spread of paired changes is about 3.5% for build and 2.0% for startup. The build band is about twice that spread; the startup band allows a little more margin and contains 94% of its historical changes. These histories include real code changes, so the bands are guides for inspection. They do not establish statistical significance. The estimates stay fixed when you change the history range.</p>
+          <p>The trend line is the median of the current and previous 9 after measurements. It starts once 10 pairs are available. It uses the full history before the selected range is applied. Changes in runner conditions can affect this trend too.</p>
+          <p>The summary uses only the selected history. Measured time change compares the median of the first 10 current-commit timings with the median of the last 10. Histories with fewer than 20 pairs use smaller, separate windows. At least two pairs are needed to compare endpoints. Median same-run change is the median of the individual paired percentage changes across the selected history.</p>
+          <p>A diamond flags a possible change in CI runner speed. Both values must be at least 20% above or below their respective medians from the previous 10 pairs. The same-run change must also fall within the estimated variation band for that benchmark. At least 5 earlier pairs are required. This context always uses the full history, including pairs outside the selected range.</p>
+          <p>The published history contains no runner hardware or capacity details. Shared movement can come from a slower or faster runner, workload changes, tool updates, or measurement noise. A diamond is a clue to inspect; it does not confirm a hardware change.</p>
+          <p id="omitted-note" hidden></p>
+        </details>
+      </div>
+    </main>
+    <footer><button id="download" type="button" disabled>Download JSON ↓</button></footer>
+  </body>
+</html>
