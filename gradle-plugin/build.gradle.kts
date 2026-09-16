@@ -139,7 +139,7 @@ tasks.withType<AndroidLintAnalysisTask>().configureEach { dependsOn(shadowJar) }
 tasks.withType<LintModelWriterTask>().configureEach { dependsOn(shadowJar) }
 
 dependencies {
-  api(project(":graph-viewer"))
+  implementation(project(":graph-viewer"))
   compileOnly(libs.kotlin.gradlePlugin)
   compileOnly(libs.kotlin.gradlePlugin.api)
   compileOnly(libs.kotlin.stdlib)
