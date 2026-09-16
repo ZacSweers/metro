@@ -508,6 +508,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
       }
 
       @Test
+      @TestMetadata("generatedFactories.kt")
+      public void testGeneratedFactories() {
+        run("generatedFactories.kt");
+      }
+
+      @Test
       @TestMetadata("implTypeNotDirectlyAccessible.kt")
       public void testImplTypeNotDirectlyAccessible() {
         run("implTypeNotDirectlyAccessible.kt");
@@ -547,6 +553,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
       @TestMetadata("intoSet.kt")
       public void testIntoSet() {
         run("intoSet.kt");
+      }
+
+      @Test
+      @TestMetadata("memberInjectionAcrossModules.kt")
+      public void testMemberInjectionAcrossModules() {
+        run("memberInjectionAcrossModules.kt");
       }
 
       @Test

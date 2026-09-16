@@ -508,6 +508,12 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
       }
 
       @Test
+      @TestMetadata("generatedFactories.kt")
+      public void testGeneratedFactories() {
+        run("generatedFactories.kt");
+      }
+
+      @Test
       @TestMetadata("implTypeNotDirectlyAccessible.kt")
       public void testImplTypeNotDirectlyAccessible() {
         run("implTypeNotDirectlyAccessible.kt");
@@ -547,6 +553,12 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
       @TestMetadata("intoSet.kt")
       public void testIntoSet() {
         run("intoSet.kt");
+      }
+
+      @Test
+      @TestMetadata("memberInjectionAcrossModules.kt")
+      public void testMemberInjectionAcrossModules() {
+        run("memberInjectionAcrossModules.kt");
       }
 
       @Test

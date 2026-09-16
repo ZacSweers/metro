@@ -116,16 +116,20 @@ internal class InjectedClassTransformer(
     val injectableConstructor =
       declaration.findInjectableConstructor(onlyUsePrimaryConstructor = false) ?: return false
 
-    // Skip factory generation when generateContributionProviders is enabled and the class
-    // has binding contributions — the contribution provider handles construction.
+    // Contribution providers handle construction in both class generation modes.
     // @ExposeImplBinding opts out of this skip.
-    if (
-      !options.generateClassesInIr &&
-        declaration.usesContributionProviderPath(options, metroSymbols.classIds)
-    ) {
-      // Cache absence so later lookups (e.g., from BindingLookup) return null instead of
-      // attempting to generate after locking.
+    if (declaration.usesContributionProviderPath(options, metroSymbols.classIds)) {
+      // Cache absence so later binding lookups remain valid after the transformers lock.
       generatedFactories[declaration.classIdOrFail] = Optional.empty()
+
+      // Constructor-injected classes rely on this transformer to publish member-injector metadata.
+      val memberInjections = membersInjectorTransformer.getOrGenerateInjector(declaration)
+      if (memberInjections != null) {
+        declaration.writeInjectedClassMetadata(
+          classFactory = null,
+          memberInjectClass = memberInjections,
+        )
+      }
       return false
     }
 
