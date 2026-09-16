@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789518529240,
+  "lastUpdate": 1789589929176,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -24080,6 +24080,62 @@ window.BENCHMARK_DATA = {
             "value": 18826.563000000002,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +2.28%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "688c7534~1",
+          "message": "[before] Fix duplicate class factories when IR class gen an",
+          "timestamp": "2026-09-16T19:20:01Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/688c75345b9bcb53bc3752e7677681d62cf77e69"
+        },
+        "date": 1789589929176,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18986.258,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "688c75345b9bcb53bc3752e7677681d62cf77e69",
+          "message": "[after] Fix duplicate class factories when IR class gen an",
+          "timestamp": "2026-09-16T19:20:01Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/688c75345b9bcb53bc3752e7677681d62cf77e69"
+        },
+        "date": 1789589929177,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18584.908,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -2.11%"
           }
         ]
       }
