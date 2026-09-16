@@ -5,8 +5,12 @@ package dev.zacsweers.metro.compiler.graph
 import dev.zacsweers.metro.compiler.calculateInitialCapacity
 
 /**
- * Reusable cycle checker that avoids rebuilding adjacency maps for each candidate test. Instead, it
- * masks deferrable edges dynamically during iterative DFS traversal.
+ * Reusable cycle checker that avoids rebuilding adjacency maps for each candidate test.
+ *
+ * Initial checks skip deferred edges as they visit neighbors. Restoration checks enable cached rows
+ * containing only eager neighbors. Later checks reuse these rows. Adjacency and edge masks must
+ * remain unchanged for this checker's lifetime. The set of deferred vertices can change between
+ * checks.
  */
 internal class ReusableCycleChecker<V>(
   private val vertices: List<V>,
@@ -21,6 +25,8 @@ internal class ReusableCycleChecker<V>(
   private val frames: ArrayDeque<Frame<V>>
   // A failed traversal records the back edge's target, which may itself be null.
   private var cycleStart: V? = null
+  // The first restoration check enables caching for later checks.
+  private var hardAdjacency: MutableMap<V, List<V>>? = null
 
   init {
     // Sized to the full SCC since the worst case is "every vertex visited."
@@ -77,8 +83,13 @@ internal class ReusableCycleChecker<V>(
    * The graph must already have been acyclic while [node] was deferred, and [node] must no longer
    * be in [deferredNodes]. Any new cycle must pass through [node], so only vertices reachable from
    * it need to be checked.
+   *
+   * Enables cached rows for this check and subsequent checks.
    */
   fun isAcyclicAfterRestoringEdges(node: V, deferredNodes: Set<V>): Boolean {
+    if (hardAdjacency == null) {
+      hardAdjacency = HashMap()
+    }
     resetTraversal()
     return isAcyclicFrom(node, deferredNodes)
   }
@@ -107,7 +118,6 @@ internal class ReusableCycleChecker<V>(
       }
 
       val neighbor = frame.neighbors.next()
-      // Skip deferrable edges from deferred nodes (this matches what sortVerticesInSCC will do)
       if (frame.deferrableFromThis != null && neighbor in frame.deferrableFromThis) {
         continue
       }
@@ -126,7 +136,6 @@ internal class ReusableCycleChecker<V>(
   private fun pushFrame(node: V, deferredNodes: Set<V>) {
     visited.add(node)
     inStack.add(node)
-
     val deferrableFromThis =
       if (node in deferredNodes) {
         deferrableEdgesFrom[node]
@@ -134,10 +143,46 @@ internal class ReusableCycleChecker<V>(
         null
       }
 
-    frames.addLast(Frame(node, sccAdjacency[node].orEmpty().iterator(), deferrableFromThis))
+    val cache = hardAdjacency
+    val frame =
+      if (cache != null && !deferrableFromThis.isNullOrEmpty()) {
+        Frame(node, cachedNeighborsFor(node, deferrableFromThis, cache), null)
+      } else {
+        Frame(node, sccAdjacency[node].orEmpty().iterator(), deferrableFromThis)
+      }
+    frames.addLast(frame)
   }
 
-  /** Saves the node, remaining neighbors, and deferred-edge mask for one DFS step. */
+  /** Keeps the original neighbor order and caches a filtered row after it is complete. */
+  private fun cachedNeighborsFor(
+    node: V,
+    deferrableFromThis: Set<V>,
+    cache: MutableMap<V, List<V>>,
+  ): Iterator<V> {
+    val cached = cache[node]
+    if (cached != null) {
+      return cached.iterator()
+    }
+
+    val eagerNeighbors = ArrayList<V>()
+    for (neighbor in sccAdjacency[node].orEmpty()) {
+      ensureActive()
+      // Match sortVerticesInSCC by omitting deferrable edges from deferred sources.
+      if (neighbor !in deferrableFromThis) {
+        eagerNeighbors.add(neighbor)
+      }
+    }
+    val neighbors =
+      if (eagerNeighbors.isEmpty()) {
+        emptyList()
+      } else {
+        eagerNeighbors
+      }
+    cache[node] = neighbors
+    return neighbors.iterator()
+  }
+
+  /** Saves the node, remaining neighbors, and any mask applied during traversal. */
   private class Frame<V>(
     val node: V,
     val neighbors: Iterator<V>,
