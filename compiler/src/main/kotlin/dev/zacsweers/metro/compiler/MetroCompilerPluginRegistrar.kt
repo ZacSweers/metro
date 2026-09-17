@@ -18,23 +18,13 @@ import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
+import org.jetbrains.kotlin.config.AnalysisFlags
 import org.jetbrains.kotlin.config.CommonConfigurationKeys
 import org.jetbrains.kotlin.config.CompilerConfiguration
+import org.jetbrains.kotlin.config.languageVersionSettings
 import org.jetbrains.kotlin.incremental.components.ExpectActualTracker
 
 public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
-
-  private companion object {
-    val isIde by lazy {
-      try {
-        // Try to look up an IntelliJ-only class
-        Class.forName("org.jetbrains.kotlin.analysis.low.level.api.fir.sessions.LLFirSession")
-        true
-      } catch (_: ClassNotFoundException) {
-        false
-      }
-    }
-  }
 
   public override val pluginId: String = PLUGIN_ID
 
@@ -67,6 +57,8 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
               return
             }
         }
+
+    val isIde = configuration.languageVersionSettings.getFlag(AnalysisFlags.ideMode)
 
     val options = MetroOptions.load(configuration, version, isIde)
     val enableFir = version != null || (isIde && options.forceEnableFirInIde)

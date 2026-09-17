@@ -4,6 +4,10 @@ Changelog
 **Unreleased**
 --------------
 
+### Changes
+
+- Use `AnalysisFlags` API to detect IDE mode.
+
 1.4.4
 -----
 
