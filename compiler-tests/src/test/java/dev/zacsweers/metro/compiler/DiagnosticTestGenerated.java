@@ -105,6 +105,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("ContributesToMultibindsAccessor.kt")
+    public void testContributesToMultibindsAccessor() {
+      run("ContributesToMultibindsAccessor.kt");
+    }
+
+    @Test
     @TestMetadata("ContributesToOnlyPermittedOnInterfacesOrBindingContainers.kt")
     public void testContributesToOnlyPermittedOnInterfacesOrBindingContainers() {
       run("ContributesToOnlyPermittedOnInterfacesOrBindingContainers.kt");
