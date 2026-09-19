@@ -4,6 +4,18 @@ Changelog
 **Unreleased**
 --------------
 
+### Fixes
+
+- **[FIR]** Treat `@Multibinds` declarations as accessors to fix a false positive `CONTRIBUTES_TO_COULD_BE_BINDING_CONTAINER` warning.
+
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@vRallev](https://github.com/vRallev)
+
+### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
+
 1.4.4
 -----
 
