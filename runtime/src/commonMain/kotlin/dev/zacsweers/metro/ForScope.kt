@@ -16,6 +16,8 @@ import kotlin.reflect.KClass
  *   fun provideHttpClient(): HttpClient = ...
  * }
  * ```
+ *
+ * @property scope The scope key that distinguishes this binding.
  */
 @Target(
   AnnotationTarget.CLASS,
