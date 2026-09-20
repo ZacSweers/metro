@@ -6,12 +6,21 @@ Changelog
 
 ### Fixes
 
+- **[FIR]** Treat `@Multibinds` declarations as accessors to fix a false positive `CONTRIBUTES_TO_COULD_BE_BINDING_CONTAINER` warning.
 - **[Gradle]** Restore `ExperimentalMetroGradleApi` to the `gradle-plugin` artifact.
 
 ### Changes
 
 - Update a few misc kdocs.
 - **[Gradle]** Move shared graph report models into the `graphs` artifact and make `graph-viewer` an implementation dependency of the Gradle plugin. Model APIs now require opting into `@ExperimentalMetroGraphApi`. Existing model packages and the public experimental `BindingGraph` and `GraphAnalyzer` APIs are preserved.
+
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@vRallev](https://github.com/vRallev)
+
+### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
 
 1.4.4
 -----

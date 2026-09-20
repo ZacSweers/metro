@@ -37,7 +37,7 @@ kotlinPublished = "2.3.0"
 kotlinInject = "0.9.0"
 koin = "4.2.2"
 koin-compiler = "1.2.1"
-metro = "1.4.3"
+metro = "1.4.4"
 kotlinInject-anvil = "0.1.7"
 kotlinx-benchmark = "0.4.17"
 kotlinx-browser = "0.5.0"
@@ -49,7 +49,7 @@ mordant = "3.1.0"
 okhttp = "5.5.0"
 okio = "3.18.2"
 pluginId = "dev.zacsweers.metro.compiler"
-poko = "0.23.1"
+poko = "0.23.2"
 tracing = "2.0.2"
 wire = "7.0.3"
 
@@ -62,7 +62,7 @@ android-test = { id = "com.android.test", version.ref = "agp" }
 anvil = { id = "dev.zacsweers.anvil", version.ref = "anvil" }
 benchmark = { id = "androidx.benchmark", version = "1.5.0" }
 binaryCompatibilityValidator = { id = "org.jetbrains.kotlinx.binary-compatibility-validator", version = "0.18.1" }
-buildConfig = { id = "com.github.gmazzo.buildconfig", version = "6.1.0" }
+buildConfig = { id = "com.github.gmazzo.buildconfig", version = "6.1.1" }
 compose = { id = "org.jetbrains.compose", version.ref = "compose-jb" }
 dependencyGuard = { id = "com.dropbox.dependency-guard", version = "0.5.0" }
 dokka = { id = "org.jetbrains.dokka", version = "2.2.0" }
