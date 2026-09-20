@@ -67,9 +67,9 @@ public class SuspendBindingWorklist<
   /**
    * Edges waiting for their dependency binding to resolve.
    *
-   * Each edge retains its contextual dependency because [canPassThrough] may differ between wrapper
-   * shapes for the same type key. Once the binding resolves, the edge either becomes a
-   * [reverseEdges] entry or is discarded as pass-through.
+   * Each edge retains its contextual dependency because [SuspendBindingRules.canPassThrough] may
+   * differ between wrapper shapes for the same type key. Once the binding resolves, the edge either
+   * becomes a [reverseEdges] entry or is discarded as pass-through.
    */
   private val pendingEdges =
     mutableMapOf<TypeKey, MutableList<PendingEdge<TypeKey, ContextualTypeKey>>>()
@@ -115,13 +115,13 @@ public class SuspendBindingWorklist<
   public fun analyzeWithPaths(
     keys: Iterable<TypeKey>
   ): SuspendBindingAnalysisResult<TypeKey, ContextualTypeKey> {
-    analyze(keys)
+    val analyzedSuspendKeys = analyze(keys)
     val snapshot =
-      if (suspendKeys.isEmpty()) {
+      if (analyzedSuspendKeys.isEmpty()) {
         emptySet()
       } else {
         suspendKeysAreShared = true
-        suspendKeys
+        analyzedSuspendKeys
       }
     var witnessEdges: Map<TypeKey, SuspendBindingPathEdge<TypeKey, ContextualTypeKey>>? = null
     return SuspendBindingAnalysisResult(snapshot) { start, dependencyTypeKey ->
