@@ -4,7 +4,8 @@ package dev.zacsweers.metro.gradle.analysis
 
 import dev.zacsweers.metro.compiler.graph.explanation.BindingCandidateStatus
 import dev.zacsweers.metro.compiler.graph.explanation.BindingExplanationOutcome
-import dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi
+import kotlin.jvm.JvmName
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -19,7 +20,6 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 /** Converts compiler reports into the graph data used by the browser viewer. */
-@ExperimentalMetroGradleApi
 public class GraphReportRenderer(
   report: FullAnalysisReport = FullAnalysisReport("", emptyList()),
   private val graphs: List<GraphMetadata> = emptyList(),
@@ -681,6 +681,7 @@ public class GraphReportRenderer(
     val fanIn: Double,
   )
 
+  @OptIn(ExperimentalSerializationApi::class)
   private inner class GraphDataBuilder(
     private val metadata: GraphMetadata,
     private val analysis: GraphAnalysisData,
@@ -1683,35 +1684,9 @@ internal object Colors {
     )
 }
 
-/**
- * Unwraps wrapper types from a type key to find the underlying type.
- *
- * For example:
- * - `Provider<com.example.Foo>` → `com.example.Foo`
- * - `Lazy<com.example.Bar>` → `com.example.Bar`
- * - `kotlin.collections.Set<com.example.Plugin>` → `kotlin.collections.Set<com.example.Plugin>`
- *   (collections are not unwrapped as they are the actual type)
- * - `com.example.Baz` → `com.example.Baz` (unchanged)
- */
-@ExperimentalMetroGradleApi
-public fun unwrapTypeKey(key: String): String {
-  // Pattern for Provider<T> and Lazy<T> - these need to be unwrapped to find the target node
-  val wrapperPrefixes =
-    listOf(
-      "Provider<",
-      "Lazy<",
-      "dev.zacsweers.metro.Provider<",
-      "kotlin.Lazy<",
-      "javax.inject.Provider<",
-      "jakarta.inject.Provider<",
-    )
-  for (prefix in wrapperPrefixes) {
-    if (key.startsWith(prefix) && key.endsWith(">")) {
-      return key.removePrefix(prefix).removeSuffix(">")
-    }
-  }
-  return key
-}
+// Retains the JVM entry point used by callers compiled before the graphs module extraction.
+@JvmName("unwrapTypeKey")
+internal fun unwrapTypeKeyForBinaryCompatibility(key: String): String = unwrapTypeKey(key)
 
 /**
  * Extracts just the class name(s) from a fully qualified type, removing the package prefix.
@@ -1751,7 +1726,6 @@ internal fun extractClassName(fqn: String): String {
  * `Set<Presenter.Factory>` Handles annotated types like `@annotation.Foo(...) com.example.Bar` →
  * `Bar`
  */
-@ExperimentalMetroGradleApi
 public fun extractDisplayName(key: String, typeNames: Map<String, String> = emptyMap()): String {
   val actualType = bindingType(key)
   return qualifiedTypePattern.replace(actualType) { match ->
@@ -1762,7 +1736,6 @@ public fun extractDisplayName(key: String, typeNames: Map<String, String> = empt
 private val qualifiedTypePattern = Regex("""[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)+""")
 
 /** Keeps package names when distinct types would otherwise have the same display name. */
-@ExperimentalMetroGradleApi
 public fun typeDisplayNames(keys: List<String>): Map<String, String> {
   val types =
     keys
@@ -1789,7 +1762,6 @@ public fun typeDisplayNames(keys: List<String>): Map<String, String> {
  *
  * Uses the convention that package segments are lowercase and class names start with uppercase.
  */
-@ExperimentalMetroGradleApi
 public fun extractPackage(key: String): String {
   val actualType = bindingType(key)
 

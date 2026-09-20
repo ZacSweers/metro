@@ -67,7 +67,7 @@ internal object ContributesToBindingContainerChecker : FirClassChecker(MppChecke
     var hasBinding = false
     for (callable in symbol.directCallableSymbols()) {
       val annotations = callable.metroAnnotations()
-      if (annotations.isBindingDeclaration) {
+      if (annotations.isBindingOnlyDeclaration) {
         hasBinding = true
       } else if (callable.isEffectivelyOpen() || annotations.isOptionalBinding) {
         // Use the accessor checker's visibility rules to retain helpers and parameterized APIs too.
@@ -151,7 +151,7 @@ internal object ContributesToBindingContainerChecker : FirClassChecker(MppChecke
       isAnnotatedWithAny(session, classIds.graphFactoryLikeAnnotations)
   }
 
-  /** Collection modifiers alone do not declare a binding. */
-  private val MetroAnnotations<*>.isBindingDeclaration: Boolean
-    get() = isProvides || isBinds || isMultibinds || isBindsOptionalOf
+  /** Multibinds declarations also expose graph accessors. */
+  private val MetroAnnotations<*>.isBindingOnlyDeclaration: Boolean
+    get() = isProvides || isBinds || isBindsOptionalOf
 }

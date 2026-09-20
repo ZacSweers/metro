@@ -3,12 +3,12 @@
 package dev.zacsweers.metro.gradle.analysis
 
 import dev.zacsweers.metro.compiler.graph.explanation.BindingExplanation
-import dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi
+import dev.zacsweers.metro.graph.ExperimentalMetroGraphApi
 import kotlinx.serialization.Serializable
 
 /** Statistics about a dependency graph. */
-@ExperimentalMetroGradleApi
 @Serializable
+@ExperimentalMetroGraphApi
 public data class GraphStatistics(
   val totalBindings: Int,
   val scopedBindings: Int,
@@ -24,8 +24,8 @@ public data class GraphStatistics(
 )
 
 /** Result of longest path analysis. */
-@ExperimentalMetroGradleApi
 @Serializable
+@ExperimentalMetroGraphApi
 public data class LongestPathResult(
   val longestPathLength: Int,
   val longestPaths: List<List<String>>,
@@ -34,13 +34,13 @@ public data class LongestPathResult(
 )
 
 /** Result of dominator analysis. */
-@ExperimentalMetroGradleApi
 @Serializable
+@ExperimentalMetroGraphApi
 public data class DominatorResult(val dominators: List<DominatorNode>)
 
 /** A node in the dominator tree with its dominated nodes. */
-@ExperimentalMetroGradleApi
 @Serializable
+@ExperimentalMetroGraphApi
 public data class DominatorNode(
   val key: String,
   val bindingKind: String,
@@ -49,13 +49,13 @@ public data class DominatorNode(
 )
 
 /** Result of betweenness centrality analysis. */
-@ExperimentalMetroGradleApi
 @Serializable
+@ExperimentalMetroGraphApi
 public data class CentralityResult(val centralityScores: List<CentralityScore>)
 
 /** Centrality score for a single binding. */
-@ExperimentalMetroGradleApi
 @Serializable
+@ExperimentalMetroGraphApi
 public data class CentralityScore(
   val key: String,
   val bindingKind: String,
@@ -64,8 +64,8 @@ public data class CentralityScore(
 )
 
 /** Result of fan-in/fan-out analysis. */
-@ExperimentalMetroGradleApi
 @Serializable
+@ExperimentalMetroGraphApi
 public data class FanAnalysisResult(
   val bindings: List<FanScore>,
   val highFanIn: List<FanScore>,
@@ -75,8 +75,8 @@ public data class FanAnalysisResult(
 )
 
 /** Fan-in and fan-out scores for a single binding. */
-@ExperimentalMetroGradleApi
 @Serializable
+@ExperimentalMetroGraphApi
 public data class FanScore(
   val key: String,
   val bindingKind: String,
@@ -87,8 +87,8 @@ public data class FanScore(
 )
 
 /** Result of paths-to-root analysis. Contains shortest paths from each node to the graph root. */
-@ExperimentalMetroGradleApi
 @Serializable
+@ExperimentalMetroGraphApi
 public data class PathsToRootResult(
   /** The graph root node key. */
   val rootKey: String,
@@ -97,8 +97,8 @@ public data class PathsToRootResult(
 )
 
 /** Complete analysis for a single dependency graph. */
-@ExperimentalMetroGradleApi
 @Serializable
+@ExperimentalMetroGraphApi
 public data class GraphAnalysis(
   val graphName: String,
   val statistics: GraphStatistics,
@@ -112,8 +112,8 @@ public data class GraphAnalysis(
 )
 
 /** Combined analysis report for all graphs in a project. */
-@ExperimentalMetroGradleApi
 @Serializable
+@ExperimentalMetroGraphApi
 public data class FullAnalysisReport(val projectPath: String, val graphs: List<GraphAnalysis>) {
   /** Number of graphs in this report. */
   val graphCount: Int

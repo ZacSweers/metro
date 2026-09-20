@@ -8,6 +8,7 @@ import kotlin.jvm.JvmInline
 /** Produces values of type [T] in a suspend context. */
 @ExperimentalMetroCoroutinesApi
 public expect fun interface SuspendProvider<T> {
+  /** Returns an instance of [T]. */
   public suspend operator fun invoke(): T
 }
 

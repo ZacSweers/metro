@@ -1,0 +1,8 @@
+// Signature format: 4.0
+package dev.zacsweers.metro.graph {
+
+  @kotlin.RequiresOptIn(level=kotlin.RequiresOptIn.Level.WARNING, message="This is an experimental Metro graph API and may change or be removed in the future.") @kotlin.annotation.MustBeDocumented @kotlin.annotation.Retention(kotlin.annotation.AnnotationRetention.BINARY) public @interface ExperimentalMetroGraphApi {
+  }
+
+}
+

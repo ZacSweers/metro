@@ -84,6 +84,7 @@ tasks.processResources {
 }
 
 kotlin.compilerOptions.optIn.addAll(
+  "dev.zacsweers.metro.graph.ExperimentalMetroGraphApi",
   "dev.zacsweers.metro.gradle.DelicateMetroGradleApi",
   "kotlinx.serialization.ExperimentalSerializationApi",
 )
@@ -139,7 +140,8 @@ tasks.withType<AndroidLintAnalysisTask>().configureEach { dependsOn(shadowJar) }
 tasks.withType<LintModelWriterTask>().configureEach { dependsOn(shadowJar) }
 
 dependencies {
-  api(project(":graph-viewer"))
+  api(project(":graphs"))
+  implementation(project(":graph-viewer"))
   compileOnly(libs.kotlin.gradlePlugin)
   compileOnly(libs.kotlin.gradlePlugin.api)
   compileOnly(libs.kotlin.stdlib)

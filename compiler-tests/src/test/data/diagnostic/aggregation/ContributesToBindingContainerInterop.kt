@@ -8,7 +8,12 @@ import com.squareup.anvil.annotations.ContributesTo as AnvilContributesTo
 @AnvilContributesTo(scope = AppScope::class)
 interface <!CONTRIBUTES_TO_COULD_BE_BINDING_CONTAINER!>Bindings<!> {
   @dagger.Binds fun bindString(value: String): CharSequence
-  @dagger.multibindings.Multibinds fun strings(): Set<String>
   @dagger.BindsOptionalOf fun optionalInt(): Int
+  @dagger.Provides fun provideString(): String = "hello"
+}
+
+@AnvilContributesTo(scope = AppScope::class)
+interface MultibindsAccessor {
+  @dagger.multibindings.Multibinds fun strings(): Set<String>
   @dagger.Provides fun provideString(): String = "hello"
 }

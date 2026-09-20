@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.graph.explanation
 
+import dev.zacsweers.metro.graph.ExperimentalMetroGraphApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -9,6 +10,7 @@ import kotlinx.serialization.Serializable
  * Captured decisions for one concrete graph context, independent of frontend objects and renderers.
  */
 @Serializable
+@ExperimentalMetroGraphApi
 public data class BindingExplanation(
   val context: BindingExplanationContext,
   val phase: BindingExplanationPhase,
@@ -23,10 +25,13 @@ public data class BindingExplanation(
 /**
  * [id] includes the concrete parent chain and dynamic caller when either changes graph membership.
  */
-@Serializable public data class BindingExplanationContext(val id: String, val label: String)
+@ExperimentalMetroGraphApi
+@Serializable
+public data class BindingExplanationContext(val id: String, val label: String)
 
 /** The complete requested key, including wrappers, with optionality retained separately. */
 @Serializable
+@ExperimentalMetroGraphApi
 public data class BindingExplanationRequest(
   val key: String,
   val declaration: BindingDeclaration? = null,
@@ -38,6 +43,7 @@ public data class BindingExplanationRequest(
  * One observed candidate and its decision. [id] identifies it within the captured graph context.
  */
 @Serializable
+@ExperimentalMetroGraphApi
 public data class BindingExplanationCandidate(
   val id: String,
   val key: String,
@@ -56,6 +62,7 @@ public data class BindingExplanationCandidate(
  * A source or generated declaration. IDs use stable names and relative locations when available.
  */
 @Serializable
+@ExperimentalMetroGraphApi
 public data class BindingDeclaration(
   val id: String,
   val label: String,
@@ -64,6 +71,7 @@ public data class BindingDeclaration(
 
 /** Source positions are one-based; paths are relative or display paths chosen by the adapter. */
 @Serializable
+@ExperimentalMetroGraphApi
 public data class BindingSourceLocation(
   val path: String,
   val line: Int? = null,
@@ -72,6 +80,7 @@ public data class BindingSourceLocation(
 
 /** Distinguishes requested lookups from registration and filtering before a request was made. */
 @Serializable
+@ExperimentalMetroGraphApi
 public enum class BindingExplanationPhase {
   @SerialName("lookup") LOOKUP,
   @SerialName("registration") REGISTRATION,
@@ -80,6 +89,7 @@ public enum class BindingExplanationPhase {
 
 /** The result of the observed phase. [FILTERED] does not assert that a request can be resolved. */
 @Serializable
+@ExperimentalMetroGraphApi
 public enum class BindingExplanationOutcome {
   @SerialName("selected") SELECTED,
   @SerialName("missing") MISSING,
@@ -90,6 +100,7 @@ public enum class BindingExplanationOutcome {
 
 /** Conflicting candidates remain selected by lookup and require a duplicate-binding diagnostic. */
 @Serializable
+@ExperimentalMetroGraphApi
 public enum class BindingCandidateStatus {
   @SerialName("selected") SELECTED,
   @SerialName("rejected") REJECTED,
@@ -97,5 +108,6 @@ public enum class BindingCandidateStatus {
 }
 
 /** Builds an opaque deterministic ID without ambiguous separators or process-local identities. */
+@ExperimentalMetroGraphApi
 public fun bindingExplanationId(vararg parts: String): String =
   parts.joinToString("|") { "${it.length}:$it" }

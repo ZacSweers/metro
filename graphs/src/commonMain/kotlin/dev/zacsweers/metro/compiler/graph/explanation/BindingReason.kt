@@ -2,11 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.graph.explanation
 
+import dev.zacsweers.metro.graph.ExperimentalMetroGraphApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /** Stable decision codes shared by frontend adapters, structured reports, and IDE presentation. */
 @Serializable
+@ExperimentalMetroGraphApi
 public enum class BindingReason {
   @SerialName("selected_explicit") SELECTED_EXPLICIT,
   @SerialName("selected_generated") SELECTED_GENERATED,

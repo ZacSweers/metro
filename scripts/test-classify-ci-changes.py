@@ -39,6 +39,7 @@ class ClassifyPathsTest(unittest.TestCase):
                 {"full": True, "docs": True, "idea": True},
             ),
             (["metro-common/src/Graph.kt"], {"full": True, "docs": False, "idea": True}),
+            (["graphs/src/GraphMetadataModels.kt"], {"full": True, "docs": True, "idea": True}),
             (["graph-viewer/src/host/host.js"], {"full": True, "docs": True, "idea": True}),
             (
                 ["gradle-plugin/src/main/resources/dev/zacsweers/metro/gradle/analysis/graph-viewer.js"],

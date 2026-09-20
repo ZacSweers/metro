@@ -2,14 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.gradle.analysis
 
-import dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi
+import dev.zacsweers.metro.graph.ExperimentalMetroGraphApi
 
 /** An edge in the recorded graph used for analysis. */
-@ExperimentalMetroGradleApi
+@ExperimentalMetroGraphApi
 public data class AnalysisEdge(val source: String, val target: String, val eager: Boolean)
 
 /** Resolves recorded dependencies and accessor edges for graph analysis. */
-@ExperimentalMetroGradleApi
+@ExperimentalMetroGraphApi
 public fun GraphMetadata.analysisEdges(): List<AnalysisEdge> = buildList {
   val bindingKeys = bindings.mapTo(mutableSetOf()) { it.key }
   for (binding in bindings) {

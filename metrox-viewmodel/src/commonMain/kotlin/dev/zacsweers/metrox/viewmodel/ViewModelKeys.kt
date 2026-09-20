@@ -7,7 +7,12 @@ import androidx.lifecycle.viewmodel.CreationExtras
 import dev.zacsweers.metro.MapKey
 import kotlin.reflect.KClass
 
-/** A [MapKey] annotation for binding ViewModels in a multibinding map. */
+/**
+ * A [MapKey] annotation for binding ViewModels in a multibinding map.
+ *
+ * @property value The ViewModel class used as the key. Defaults to the annotated class when
+ *   omitted.
+ */
 @MapKey(implicitClassKey = true)
 @Target(
   AnnotationTarget.FUNCTION,
@@ -23,6 +28,8 @@ public annotation class ViewModelKey(val value: KClass<out ViewModel> = Nothing:
 /**
  * A [MapKey] annotation for binding [assisted ViewModel factories][ViewModelAssistedFactory] in a
  * multibinding map.
+ *
+ * @property value The ViewModel class created by the bound factory.
  */
 @MapKey
 @Target(
@@ -39,6 +46,8 @@ public annotation class ViewModelAssistedFactoryKey(val value: KClass<out ViewMo
 /**
  * A [MapKey] annotation for binding
  * [manually assisted ViewModel factories][ManualViewModelAssistedFactory] in a multibinding map.
+ *
+ * @property value The factory class used as the key. Defaults to the annotated class when omitted.
  */
 @MapKey(implicitClassKey = true)
 @Target(
@@ -82,6 +91,7 @@ public annotation class ManualViewModelAssistedFactoryKey(
  * ```
  */
 public interface ViewModelAssistedFactory {
+  /** Creates a ViewModel using runtime parameters from [extras]. */
   public fun create(extras: CreationExtras): ViewModel
 }
 

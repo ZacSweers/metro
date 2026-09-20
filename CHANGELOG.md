@@ -4,9 +4,24 @@ Changelog
 **Unreleased**
 --------------
 
+### Fixes
+
+- **[FIR]** Treat `@Multibinds` declarations as accessors to fix a false positive `CONTRIBUTES_TO_COULD_BE_BINDING_CONTAINER` warning.
+- **[Gradle]** Restore `ExperimentalMetroGradleApi` to the `gradle-plugin` artifact.
+
 ### Changes
 
+- Update a few misc kdocs.
 - Use `AnalysisFlags` API to detect IDE mode.
+- **[Gradle]** Move shared graph report models into the `graphs` artifact and make `graph-viewer` an implementation dependency of the Gradle plugin. Model APIs now require opting into `@ExperimentalMetroGraphApi`. Existing model packages and the public experimental `BindingGraph` and `GraphAnalyzer` APIs are preserved.
+
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@vRallev](https://github.com/vRallev)
+
+### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
 
 1.4.4
 -----
@@ -726,7 +741,7 @@ This may require some migration in existing codebases. To help with this, there'
 
 ### Changes
 
-- `enableFunctionProviders` (i.e. `() -> T` syntax for providers) is now enabled by default. Previously this required opting in. The function-syntax form is now the **recommended** way to declare provider dependencies; `Provider<T>` is still supported but treated as a desugared alternative and a **warning** by default, similar to if you were to use `Function0` instead of `() -> T` syntax for functions. See the [metro-intrinsics](docs/metro-intrinsics.md) docs for more details.
+- `enableFunctionProviders` (i.e. `() -> T` syntax for providers) is now enabled by default. Previously this required opting in. The function-syntax form is now the **recommended** way to declare provider dependencies; `Provider<T>` is still supported but treated as a desugared alternative and a **warning** by default, similar to if you were to use `Function0` instead of `() -> T` syntax for functions. See the [metro-intrinsics](https://zacsweers.github.io/metro/latest/metro-intrinsics/) docs for more details.
 - **[IR]** Remove deprecated `indexInOldValueParameters` use in IR for better `2.4.0`+ support.
 - **[Gradle]** Promote `enableFunctionProviders` to stable.
 - **[Gradle]** Remove deprecated `useAssistedParamNamesAsIdentifiers` property.

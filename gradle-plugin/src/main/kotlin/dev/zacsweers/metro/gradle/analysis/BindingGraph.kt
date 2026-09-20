@@ -7,6 +7,7 @@ import com.google.common.graph.GraphBuilder
 import com.google.common.graph.ImmutableGraph
 import dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi
 
+/** A dependency graph built from a compiler report for graph analysis. */
 @ExperimentalMetroGradleApi
 public class BindingGraph
 private constructor(
@@ -18,7 +19,9 @@ private constructor(
    * and critical path analysis where deferred dependencies (Provider, Lazy) don't contribute.
    */
   public val eagerGraph: Graph<String>,
+  /** The graph's name in the compiler report. */
   public val graphName: String,
+  /** Scope keys declared by this graph. */
   public val scopes: List<String>,
 ) {
   /** All binding keys in this graph. */
@@ -54,6 +57,7 @@ private constructor(
    */
   public fun findLeaves(): Set<String> = graph.nodes().filter { graph.outDegree(it) == 0 }.toSet()
 
+  /** Creates graphs from compiler metadata. */
   public companion object {
     /** Build a [BindingGraph] from [GraphMetadata]. */
     public fun from(metadata: GraphMetadata): BindingGraph {

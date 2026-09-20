@@ -8,6 +8,7 @@ import kotlin.jvm.JvmInline
 
 /** A simple class that produces instances of [T]. */
 public expect fun interface Provider<T> {
+  /** Returns an instance of [T]. */
   public operator fun invoke(): T
 }
 

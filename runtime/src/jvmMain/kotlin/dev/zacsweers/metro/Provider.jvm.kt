@@ -4,5 +4,6 @@ package dev.zacsweers.metro
 
 /** A simple class that produces instances of [T]. */
 public actual fun interface Provider<T> : () -> T {
+  /** Returns an instance of [T]. */
   public actual override operator fun invoke(): T
 }

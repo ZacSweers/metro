@@ -21,6 +21,7 @@ metroProject {
 }
 
 kotlin {
+  compilerOptions.optIn.add("dev.zacsweers.metro.graph.ExperimentalMetroGraphApi")
   jvm()
   js {
     outputModuleName.set("metro-graph-viewer")
@@ -32,6 +33,7 @@ kotlin {
 
   sourceSets {
     commonMain.dependencies {
+      api(project(":graphs"))
       api(libs.kotlin.stdlib.published)
       api(libs.kotlinx.serialization.json)
     }
@@ -41,6 +43,4 @@ kotlin {
     }
     commonTest.dependencies { implementation(libs.kotlin.test) }
   }
-
-  compilerOptions.optIn.add("dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi")
 }

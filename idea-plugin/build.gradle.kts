@@ -148,6 +148,7 @@ metroProject { jvmTarget.set(libs.versions.ideaJvmTarget) }
 kotlin {
   compilerOptions {
     optIn.addAll(
+      "dev.zacsweers.metro.graph.ExperimentalMetroGraphApi",
       // Analysis API type rendering used by MetroResolutionService
       "org.jetbrains.kotlin.analysis.api.KaExperimentalApi",
       // Platform extension points can run on the EDT, where analysis must be explicitly allowed.

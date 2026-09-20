@@ -116,4 +116,5 @@
 # Android Studio Rabbit 1 | 2026.2.1 Canary 4 (canary)
 # Android Studio Rabbit 1 | 2026.2.1 Canary 5 (canary)
 # Android Studio Rabbit 1 | 2026.2.1 RC 1 (beta)
+# Android Studio Rabbit 2 | 2026.2.2 Canary 1 (canary)
 2.4.255-dev-255=2.4.20-dev-6725

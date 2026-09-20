@@ -1,0 +1,7 @@
+org.jetbrains.kotlin:kotlin-stdlib:2.3.20
+org.jetbrains.kotlinx:kotlinx-serialization-bom:1.11.0
+org.jetbrains.kotlinx:kotlinx-serialization-core-jvm:1.11.0
+org.jetbrains.kotlinx:kotlinx-serialization-core:1.11.0
+org.jetbrains.kotlinx:kotlinx-serialization-json-jvm:1.11.0
+org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0
+org.jetbrains:annotations:13.0

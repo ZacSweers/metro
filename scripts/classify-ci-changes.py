@@ -41,7 +41,7 @@ def classify_paths(paths: list[str], event_name: str) -> dict[str, bool]:
             # Changes to documentation infrastructure also validate the full CI path.
             docs = True
             full = True
-        elif path.startswith("graph-viewer/") or path.startswith("gradle-plugin/src/main/resources/dev/zacsweers/metro/gradle/analysis/"):
+        elif path.startswith(("graphs/", "graph-viewer/")) or path.startswith("gradle-plugin/src/main/resources/dev/zacsweers/metro/gradle/analysis/"):
             docs = True
             full = True
         elif path.endswith(".md") or path.startswith("docs/") or path in DOC_PATHS:

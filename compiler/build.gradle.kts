@@ -45,6 +45,8 @@ poko {
   firIdeMode.set(PokoFirIdeMode.NONE)
 }
 
+kotlin.compilerOptions.optIn.add("dev.zacsweers.metro.graph.ExperimentalMetroGraphApi")
+
 // Extract the bootstrap compiler JAR from the buildscript classpath
 val bootstrapVersion = extra.properties["METRO_BOOTSTRAP_VERSION"]?.toString()!!
 val bootstrapJar =

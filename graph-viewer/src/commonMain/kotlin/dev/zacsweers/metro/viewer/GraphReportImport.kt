@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.viewer
 
-import dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi
 import dev.zacsweers.metro.gradle.analysis.FanScore
 import dev.zacsweers.metro.gradle.analysis.FullAnalysisReport
 import dev.zacsweers.metro.gradle.analysis.GraphAnalysis
@@ -37,7 +36,6 @@ public data class ReportSummary(
 public data class ImportedGraph(val name: String, val label: String, val bindingCount: Int)
 
 /** Validates imported reports and prepares the same data used by generated HTML reports. */
-@OptIn(ExperimentalMetroGradleApi::class)
 public class GraphReportImport(files: List<ReportFile>) {
   private val json = Json { ignoreUnknownKeys = true }
   private val graphDefinitions = linkedMapOf<String, JsonObject>()
@@ -150,7 +148,8 @@ public class GraphReportImport(files: List<ReportFile>) {
     validateVersion(document)
     val graph = json.decodeFromJsonElement<GraphMetadata>(document)
     require(graph.graph.isNotBlank()) { "The graph name is empty." }
-    require(graph.parentGraph == null || graph.parentGraph.isNotBlank()) {
+    val parentGraph = graph.parentGraph
+    require(parentGraph == null || parentGraph.isNotBlank()) {
       "The parent graph name is empty."
     }
     val referencedKeys = buildList {

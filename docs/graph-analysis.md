@@ -284,11 +284,17 @@ A binding that's both a root and a leaf is isolated. Nothing depends on it and i
 
 You can read the JSON reports in your own analysis tools.
 
+The serializable report models are published in `dev.zacsweers.metro:graphs`. The Metro Gradle plugin exposes these models as an API dependency. Their existing `dev.zacsweers.metro.gradle.analysis` package names are unchanged.
+
+Model APIs require opting into `dev.zacsweers.metro.graph.ExperimentalMetroGraphApi`. The Gradle plugin's `BindingGraph` and `GraphAnalyzer` helpers also require `ExperimentalMetroGradleApi`.
+
 ### Raw Metadata
 
 The raw graph metadata from `generateMetroGraphMetadata`:
 
 ```kotlin
+@file:OptIn(dev.zacsweers.metro.graph.ExperimentalMetroGraphApi::class)
+
 // Parse raw graph metadata
 val metadata = Json.decodeFromString<AggregatedGraphMetadata>(
     file("build/reports/metro/graphMetadata.json").readText()
@@ -332,6 +338,8 @@ The raw metadata includes:
 The `analyzeMetroGraph` report groups its results by graph:
 
 ```kotlin
+@file:OptIn(dev.zacsweers.metro.graph.ExperimentalMetroGraphApi::class)
+
 // Parse analysis report
 val report = Json.decodeFromString<FullAnalysisReport>(
     file("build/reports/metro/analysis.json").readText()

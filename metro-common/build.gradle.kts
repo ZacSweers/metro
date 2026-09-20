@@ -24,6 +24,7 @@ kotlin {
   compilerOptions {
     freeCompilerArgs.addAll("-Xreturn-value-checker=full", "-Xcontext-parameters")
     optIn.add("kotlin.contracts.ExperimentalContracts")
+    optIn.add("dev.zacsweers.metro.graph.ExperimentalMetroGraphApi")
   }
 }
 
@@ -34,7 +35,7 @@ project.afterEvaluate {
 }
 
 dependencies {
-  api(project(":graph-viewer"))
+  api(project(":graphs"))
   compileOnly(libs.kotlin.compiler)
   compileOnly(libs.kotlin.stdlib)
   compileOnly(libs.poko.annotations)

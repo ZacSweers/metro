@@ -18,12 +18,15 @@ import kotlin.reflect.KClass
  * ```
  */
 public interface MetroViewModelMultibindings {
+  /** Constructor-injected ViewModel providers keyed by their ViewModel class. */
   @Multibinds(allowEmpty = true)
   public val viewModelProviders: Map<KClass<out ViewModel>, () -> ViewModel>
 
+  /** Assisted factory providers keyed by the ViewModel class they create. */
   @Multibinds(allowEmpty = true)
   public val assistedFactoryProviders: Map<KClass<out ViewModel>, () -> ViewModelAssistedFactory>
 
+  /** Manually assisted factory providers keyed by their factory class. */
   @Multibinds(allowEmpty = true)
   public val manualAssistedFactoryProviders:
     Map<KClass<out ManualViewModelAssistedFactory>, () -> ManualViewModelAssistedFactory>
@@ -39,5 +42,6 @@ public interface MetroViewModelMultibindings {
  * ```
  */
 public interface ViewModelGraph : MetroViewModelMultibindings {
+  /** The factory that creates this graph's ViewModels and assisted factories. */
   public val metroViewModelFactory: MetroViewModelFactory
 }

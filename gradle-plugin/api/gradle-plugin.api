@@ -19,6 +19,9 @@ public final class dev/zacsweers/metro/gradle/DiagnosticSeverity : java/lang/Enu
 	public static fun values ()[Ldev/zacsweers/metro/gradle/DiagnosticSeverity;
 }
 
+public abstract interface annotation class dev/zacsweers/metro/gradle/ExperimentalMetroGradleApi : java/lang/annotation/Annotation {
+}
+
 public abstract interface annotation class dev/zacsweers/metro/gradle/MetroExtensionMarker : java/lang/annotation/Annotation {
 }
 
