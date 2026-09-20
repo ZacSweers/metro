@@ -2861,9 +2861,13 @@ open<span class="w"> </span>app/build/reports/metro/html/index.html
 <p>A binding that&rsquo;s both a root and a leaf is isolated. Nothing depends on it and it has no dependencies. Check whether it&rsquo;s still needed.</p>
 <h2 id="programmatic-access">Programmatic Access<a class="headerlink" href="#programmatic-access" title="Permanent link">&para;</a></h2>
 <p>You can read the JSON reports in your own analysis tools.</p>
+<p>The serializable report models are published in <code>dev.zacsweers.metro:graphs</code>. The Metro Gradle plugin exposes these models as an API dependency. Their existing <code>dev.zacsweers.metro.gradle.analysis</code> package names are unchanged.</p>
+<p>Model APIs require opting into <code>dev.zacsweers.metro.graph.ExperimentalMetroGraphApi</code>. The Gradle plugin&rsquo;s <code>BindingGraph</code> and <code>GraphAnalyzer</code> helpers also require <code>ExperimentalMetroGradleApi</code>.</p>
 <h3 id="raw-metadata">Raw Metadata<a class="headerlink" href="#raw-metadata" title="Permanent link">&para;</a></h3>
 <p>The raw graph metadata from <code>generateMetroGraphMetadata</code>:</p>
-<div class="highlight"><pre><span></span><code><span class="c1">// Parse raw graph metadata</span>
+<div class="highlight"><pre><span></span><code><span class="nd">@file</span><span class="p">:</span><span class="n">OptIn</span><span class="p">(</span><span class="n">dev</span><span class="p">.</span><span class="na">zacsweers</span><span class="p">.</span><span class="na">metro</span><span class="p">.</span><span class="na">graph</span><span class="p">.</span><span class="na">ExperimentalMetroGraphApi</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
+
+<span class="c1">// Parse raw graph metadata</span>
 <span class="kd">val</span><span class="w"> </span><span class="nv">metadata</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Json</span><span class="p">.</span><span class="na">decodeFromString</span><span class="o">&lt;</span><span class="n">AggregatedGraphMetadata</span><span class="o">&gt;</span><span class="p">(</span>
 <span class="w">    </span><span class="n">file</span><span class="p">(</span><span class="s">"build/reports/metro/graphMetadata.json"</span><span class="p">).</span><span class="na">readText</span><span class="p">()</span>
 <span class="p">)</span>
@@ -2906,7 +2910,9 @@ open<span class="w"> </span>app/build/reports/metro/html/index.html
 </ul>
 <h3 id="analysis-report">Analysis Report<a class="headerlink" href="#analysis-report" title="Permanent link">&para;</a></h3>
 <p>The <code>analyzeMetroGraph</code> report groups its results by graph:</p>
-<div class="highlight"><pre><span></span><code><span class="c1">// Parse analysis report</span>
+<div class="highlight"><pre><span></span><code><span class="nd">@file</span><span class="p">:</span><span class="n">OptIn</span><span class="p">(</span><span class="n">dev</span><span class="p">.</span><span class="na">zacsweers</span><span class="p">.</span><span class="na">metro</span><span class="p">.</span><span class="na">graph</span><span class="p">.</span><span class="na">ExperimentalMetroGraphApi</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
+
+<span class="c1">// Parse analysis report</span>
 <span class="kd">val</span><span class="w"> </span><span class="nv">report</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Json</span><span class="p">.</span><span class="na">decodeFromString</span><span class="o">&lt;</span><span class="n">FullAnalysisReport</span><span class="o">&gt;</span><span class="p">(</span>
 <span class="w">    </span><span class="n">file</span><span class="p">(</span><span class="s">"build/reports/metro/analysis.json"</span><span class="p">).</span><span class="na">readText</span><span class="p">()</span>
 <span class="p">)</span>

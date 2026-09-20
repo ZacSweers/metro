@@ -6299,15 +6299,6 @@ function startsWith(_this__u8e3s4, prefix, ignoreCase) {
   } else
     return regionMatches(_this__u8e3s4, 0, prefix, 0, prefix.length, ignoreCase);
 }
-function endsWith(_this__u8e3s4, suffix, ignoreCase) {
-  ignoreCase = ignoreCase === VOID ? false : ignoreCase;
-  if (!ignoreCase) {
-    // Inline function 'kotlin.text.nativeEndsWith' call
-    // Inline function 'kotlin.js.asDynamic' call
-    return _this__u8e3s4.endsWith(suffix);
-  } else
-    return regionMatches(_this__u8e3s4, _this__u8e3s4.length - suffix.length | 0, suffix, 0, suffix.length, ignoreCase);
-}
 function regionMatches(_this__u8e3s4, thisOffset, other, otherOffset, length, ignoreCase) {
   ignoreCase = ignoreCase === VOID ? false : ignoreCase;
   return regionMatchesImpl(_this__u8e3s4, thisOffset, other, otherOffset, length, ignoreCase);
@@ -6336,6 +6327,15 @@ function equals_0(_this__u8e3s4, other, ignoreCase) {
     }
      while (inductionVariable < last);
   return true;
+}
+function endsWith(_this__u8e3s4, suffix, ignoreCase) {
+  ignoreCase = ignoreCase === VOID ? false : ignoreCase;
+  if (!ignoreCase) {
+    // Inline function 'kotlin.text.nativeEndsWith' call
+    // Inline function 'kotlin.js.asDynamic' call
+    return _this__u8e3s4.endsWith(suffix);
+  } else
+    return regionMatches(_this__u8e3s4, _this__u8e3s4.length - suffix.length | 0, suffix, 0, suffix.length, ignoreCase);
 }
 var REPLACEMENT_BYTE_SEQUENCE;
 function decodeUtf8(bytes, startIndex, endIndex, throwOnMalformed) {
@@ -8506,18 +8506,6 @@ function substringAfter(_this__u8e3s4, delimiter, missingDelimiterValue) {
   var index = indexOf_4(_this__u8e3s4, delimiter);
   return index === -1 ? missingDelimiterValue : substring(_this__u8e3s4, index + 1 | 0, _this__u8e3s4.length);
 }
-function removeSuffix(_this__u8e3s4, suffix) {
-  if (endsWith_1(_this__u8e3s4, suffix)) {
-    return substring(_this__u8e3s4, 0, _this__u8e3s4.length - charSequenceLength(suffix) | 0);
-  }
-  return _this__u8e3s4;
-}
-function removePrefix(_this__u8e3s4, prefix) {
-  if (startsWith_0(_this__u8e3s4, prefix)) {
-    return substring_0(_this__u8e3s4, charSequenceLength(prefix));
-  }
-  return _this__u8e3s4;
-}
 function split(_this__u8e3s4, delimiters, ignoreCase, limit) {
   ignoreCase = ignoreCase === VOID ? false : ignoreCase;
   limit = limit === VOID ? 0 : limit;
@@ -8646,46 +8634,6 @@ function indexOf_6(_this__u8e3s4, other, startIndex, endIndex, ignoreCase, last)
        while (!(index_0 === last_1));
   }
   return -1;
-}
-function endsWith_1(_this__u8e3s4, suffix, ignoreCase) {
-  ignoreCase = ignoreCase === VOID ? false : ignoreCase;
-  var tmp;
-  var tmp_0;
-  if (!ignoreCase) {
-    tmp_0 = typeof _this__u8e3s4 === 'string';
-  } else {
-    tmp_0 = false;
-  }
-  if (tmp_0) {
-    tmp = typeof suffix === 'string';
-  } else {
-    tmp = false;
-  }
-  if (tmp)
-    return endsWith(_this__u8e3s4, suffix);
-  else {
-    return regionMatchesImpl(_this__u8e3s4, charSequenceLength(_this__u8e3s4) - charSequenceLength(suffix) | 0, suffix, 0, charSequenceLength(suffix), ignoreCase);
-  }
-}
-function startsWith_0(_this__u8e3s4, prefix, ignoreCase) {
-  ignoreCase = ignoreCase === VOID ? false : ignoreCase;
-  var tmp;
-  var tmp_0;
-  if (!ignoreCase) {
-    tmp_0 = typeof _this__u8e3s4 === 'string';
-  } else {
-    tmp_0 = false;
-  }
-  if (tmp_0) {
-    tmp = typeof prefix === 'string';
-  } else {
-    tmp = false;
-  }
-  if (tmp)
-    return startsWith(_this__u8e3s4, prefix);
-  else {
-    return regionMatchesImpl(_this__u8e3s4, 0, prefix, 0, charSequenceLength(prefix), ignoreCase);
-  }
 }
 function split_0(_this__u8e3s4, delimiter, ignoreCase, limit) {
   requireNonNegativeLimit(limit);
@@ -8974,6 +8922,17 @@ function lastIndexOfAny(_this__u8e3s4, chars, startIndex, ignoreCase) {
      while (0 <= inductionVariable);
   return -1;
 }
+function removeSuffix(_this__u8e3s4, suffix) {
+  if (endsWith_1(_this__u8e3s4, suffix)) {
+    return substring(_this__u8e3s4, 0, _this__u8e3s4.length - charSequenceLength(suffix) | 0);
+  }
+  return _this__u8e3s4;
+}
+function substringBefore_0(_this__u8e3s4, delimiter, missingDelimiterValue) {
+  missingDelimiterValue = missingDelimiterValue === VOID ? _this__u8e3s4 : missingDelimiterValue;
+  var index = indexOf_4(_this__u8e3s4, delimiter);
+  return index === -1 ? missingDelimiterValue : substring(_this__u8e3s4, 0, index);
+}
 function toBooleanStrictOrNull(_this__u8e3s4) {
   switch (_this__u8e3s4) {
     case 'true':
@@ -8983,11 +8942,6 @@ function toBooleanStrictOrNull(_this__u8e3s4) {
     default:
       return null;
   }
-}
-function substringBefore_0(_this__u8e3s4, delimiter, missingDelimiterValue) {
-  missingDelimiterValue = missingDelimiterValue === VOID ? _this__u8e3s4 : missingDelimiterValue;
-  var index = indexOf_4(_this__u8e3s4, delimiter);
-  return index === -1 ? missingDelimiterValue : substring(_this__u8e3s4, 0, index);
 }
 function lastIndexOf_0(_this__u8e3s4, string, startIndex, ignoreCase) {
   startIndex = startIndex === VOID ? get_lastIndex_3(_this__u8e3s4) : startIndex;
@@ -9007,6 +8961,52 @@ function lastIndexOf_0(_this__u8e3s4, string, startIndex, ignoreCase) {
     tmp = _this__u8e3s4.lastIndexOf(string, startIndex);
   }
   return tmp;
+}
+function removePrefix(_this__u8e3s4, prefix) {
+  if (startsWith_0(_this__u8e3s4, prefix)) {
+    return substring_0(_this__u8e3s4, charSequenceLength(prefix));
+  }
+  return _this__u8e3s4;
+}
+function endsWith_1(_this__u8e3s4, suffix, ignoreCase) {
+  ignoreCase = ignoreCase === VOID ? false : ignoreCase;
+  var tmp;
+  var tmp_0;
+  if (!ignoreCase) {
+    tmp_0 = typeof _this__u8e3s4 === 'string';
+  } else {
+    tmp_0 = false;
+  }
+  if (tmp_0) {
+    tmp = typeof suffix === 'string';
+  } else {
+    tmp = false;
+  }
+  if (tmp)
+    return endsWith(_this__u8e3s4, suffix);
+  else {
+    return regionMatchesImpl(_this__u8e3s4, charSequenceLength(_this__u8e3s4) - charSequenceLength(suffix) | 0, suffix, 0, charSequenceLength(suffix), ignoreCase);
+  }
+}
+function startsWith_0(_this__u8e3s4, prefix, ignoreCase) {
+  ignoreCase = ignoreCase === VOID ? false : ignoreCase;
+  var tmp;
+  var tmp_0;
+  if (!ignoreCase) {
+    tmp_0 = typeof _this__u8e3s4 === 'string';
+  } else {
+    tmp_0 = false;
+  }
+  if (tmp_0) {
+    tmp = typeof prefix === 'string';
+  } else {
+    tmp = false;
+  }
+  if (tmp)
+    return startsWith(_this__u8e3s4, prefix);
+  else {
+    return regionMatchesImpl(_this__u8e3s4, 0, prefix, 0, charSequenceLength(prefix), ignoreCase);
+  }
 }
 function lines(_this__u8e3s4) {
   return toList_1(lineSequence(_this__u8e3s4));
@@ -12086,9 +12086,6 @@ protoOf(UShortArray).hashCode = function () {
 protoOf(UShortArray).equals = function (other) {
   return UShortArray__equals_impl_tyc3mk(this.storage_1, other);
 };
-function toULongOrNull(_this__u8e3s4) {
-  return toULongOrNull_0(_this__u8e3s4, 10);
-}
 function toUInt(_this__u8e3s4) {
   var tmp0_elvis_lhs = toUIntOrNull(_this__u8e3s4);
   var tmp;
@@ -12132,6 +12129,18 @@ function toUShort(_this__u8e3s4) {
     tmp = tmp0_elvis_lhs;
   }
   return tmp;
+}
+function toULongOrNull(_this__u8e3s4) {
+  return toULongOrNull_0(_this__u8e3s4, 10);
+}
+function toUIntOrNull(_this__u8e3s4) {
+  return toUIntOrNull_0(_this__u8e3s4, 10);
+}
+function toUByteOrNull(_this__u8e3s4) {
+  return toUByteOrNull_0(_this__u8e3s4, 10);
+}
+function toUShortOrNull(_this__u8e3s4) {
+  return toUShortOrNull_0(_this__u8e3s4, 10);
 }
 function toULongOrNull_0(_this__u8e3s4, radix) {
   checkRadix(radix);
@@ -12201,15 +12210,6 @@ function toULongOrNull_0(_this__u8e3s4, radix) {
     }
      while (inductionVariable < length);
   return result;
-}
-function toUIntOrNull(_this__u8e3s4) {
-  return toUIntOrNull_0(_this__u8e3s4, 10);
-}
-function toUByteOrNull(_this__u8e3s4) {
-  return toUByteOrNull_0(_this__u8e3s4, 10);
-}
-function toUShortOrNull(_this__u8e3s4) {
-  return toUShortOrNull_0(_this__u8e3s4, 10);
 }
 function toUIntOrNull_0(_this__u8e3s4, radix) {
   checkRadix(radix);

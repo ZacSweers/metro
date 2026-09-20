@@ -6,11 +6,11 @@ import {
   serializer1x79l67jvwntn as serializer,
   InlinePrimitiveDescriptor3i6ccn1a4fw94 as InlinePrimitiveDescriptor,
   SerializableWithd2dap36updxd as SerializableWith,
-  MapSerializer11kmegt3g5c1g as MapSerializer,
-  SerialDescriptor2pelqekb5ic3a as SerialDescriptor,
-  KSerializerzf77vz1967fq as KSerializer,
   SEALED_getInstance19i1cdv1u9v1e as SEALED_getInstance,
   buildSerialDescriptor2873qmkp8r2ib as buildSerialDescriptor,
+  KSerializerzf77vz1967fq as KSerializer,
+  MapSerializer11kmegt3g5c1g as MapSerializer,
+  SerialDescriptor2pelqekb5ic3a as SerialDescriptor,
   STRING_getInstance7xungxdjbzv as STRING_getInstance,
   ListSerializer1hxuk9dx5n9du as ListSerializer,
   ENUM_getInstance25239ht7oag6o as ENUM_getInstance,
@@ -215,9 +215,9 @@ initMetadataForObject(JsonNull, 'JsonNull', VOID, JsonPrimitive, [SerializerFact
 initMetadataForClass(JsonLiteral, 'JsonLiteral', VOID, JsonPrimitive);
 initMetadataForClass(JsonObjectBuilder, 'JsonObjectBuilder');
 initMetadataForClass(JsonArrayBuilder, 'JsonArrayBuilder');
+initMetadataForObject(JsonElementSerializer, 'JsonElementSerializer', VOID, VOID, [KSerializer]);
 initMetadataForObject(JsonObjectDescriptor, 'JsonObjectDescriptor', VOID, VOID, [SerialDescriptor]);
 initMetadataForObject(JsonObjectSerializer, 'JsonObjectSerializer', VOID, VOID, [KSerializer]);
-initMetadataForObject(JsonElementSerializer, 'JsonElementSerializer', VOID, VOID, [KSerializer]);
 initMetadataForObject(JsonPrimitiveSerializer, 'JsonPrimitiveSerializer', VOID, VOID, [KSerializer]);
 initMetadataForObject(JsonArrayDescriptor, 'JsonArrayDescriptor', VOID, VOID, [SerialDescriptor]);
 initMetadataForObject(JsonArraySerializer, 'JsonArraySerializer', VOID, VOID, [KSerializer]);
@@ -819,6 +819,67 @@ protoOf(JsonArrayBuilder).addAll_s6d7z9_k$ = function (elements) {
 protoOf(JsonArrayBuilder).build_bkh6qh_k$ = function () {
   return new JsonArray(this.content_1);
 };
+function JsonElementSerializer$descriptor$lambda($this$buildSerialDescriptor) {
+  $this$buildSerialDescriptor.element$default_ey7ac9_k$('JsonPrimitive', defer(JsonElementSerializer$descriptor$lambda$lambda));
+  $this$buildSerialDescriptor.element$default_ey7ac9_k$('JsonNull', defer(JsonElementSerializer$descriptor$lambda$lambda_0));
+  $this$buildSerialDescriptor.element$default_ey7ac9_k$('JsonLiteral', defer(JsonElementSerializer$descriptor$lambda$lambda_1));
+  $this$buildSerialDescriptor.element$default_ey7ac9_k$('JsonObject', defer(JsonElementSerializer$descriptor$lambda$lambda_2));
+  $this$buildSerialDescriptor.element$default_ey7ac9_k$('JsonArray', defer(JsonElementSerializer$descriptor$lambda$lambda_3));
+  return Unit_instance;
+}
+function JsonElementSerializer$descriptor$lambda$lambda() {
+  return JsonPrimitiveSerializer_getInstance().descriptor_1;
+}
+function JsonElementSerializer$descriptor$lambda$lambda_0() {
+  return JsonNullSerializer_getInstance().descriptor_1;
+}
+function JsonElementSerializer$descriptor$lambda$lambda_1() {
+  return JsonLiteralSerializer_getInstance().descriptor_1;
+}
+function JsonElementSerializer$descriptor$lambda$lambda_2() {
+  return JsonObjectSerializer_getInstance().descriptor_1;
+}
+function JsonElementSerializer$descriptor$lambda$lambda_3() {
+  return JsonArraySerializer_getInstance().descriptor_1;
+}
+function JsonElementSerializer() {
+  JsonElementSerializer_instance = this;
+  var tmp = this;
+  var tmp_0 = SEALED_getInstance();
+  tmp.descriptor_1 = buildSerialDescriptor('kotlinx.serialization.json.JsonElement', tmp_0, [], JsonElementSerializer$descriptor$lambda);
+}
+protoOf(JsonElementSerializer).get_descriptor_wjt6a0_k$ = function () {
+  return this.descriptor_1;
+};
+protoOf(JsonElementSerializer).serialize_pk22vx_k$ = function (encoder, value) {
+  verify(encoder);
+  if (value instanceof JsonPrimitive) {
+    encoder.encodeSerializableValue_3uuzip_k$(JsonPrimitiveSerializer_getInstance(), value);
+  } else {
+    if (value instanceof JsonObject) {
+      encoder.encodeSerializableValue_3uuzip_k$(JsonObjectSerializer_getInstance(), value);
+    } else {
+      if (value instanceof JsonArray) {
+        encoder.encodeSerializableValue_3uuzip_k$(JsonArraySerializer_getInstance(), value);
+      } else {
+        noWhenBranchMatchedException();
+      }
+    }
+  }
+};
+protoOf(JsonElementSerializer).serialize_5ase3y_k$ = function (encoder, value) {
+  return this.serialize_pk22vx_k$(encoder, value instanceof JsonElement ? value : THROW_CCE());
+};
+protoOf(JsonElementSerializer).deserialize_sy6x50_k$ = function (decoder) {
+  var input = asJsonDecoder(decoder);
+  return input.decodeJsonElement_6lz9ye_k$();
+};
+var JsonElementSerializer_instance;
+function JsonElementSerializer_getInstance() {
+  if (JsonElementSerializer_instance == null)
+    new JsonElementSerializer();
+  return JsonElementSerializer_instance;
+}
 function JsonObjectDescriptor() {
   JsonObjectDescriptor_instance = this;
   this.$$delegate_0__1 = MapSerializer(serializer(StringCompanionObject_instance), JsonElementSerializer_getInstance()).get_descriptor_wjt6a0_k$();
@@ -886,67 +947,6 @@ function JsonObjectSerializer_getInstance() {
   if (JsonObjectSerializer_instance == null)
     new JsonObjectSerializer();
   return JsonObjectSerializer_instance;
-}
-function JsonElementSerializer$descriptor$lambda($this$buildSerialDescriptor) {
-  $this$buildSerialDescriptor.element$default_ey7ac9_k$('JsonPrimitive', defer(JsonElementSerializer$descriptor$lambda$lambda));
-  $this$buildSerialDescriptor.element$default_ey7ac9_k$('JsonNull', defer(JsonElementSerializer$descriptor$lambda$lambda_0));
-  $this$buildSerialDescriptor.element$default_ey7ac9_k$('JsonLiteral', defer(JsonElementSerializer$descriptor$lambda$lambda_1));
-  $this$buildSerialDescriptor.element$default_ey7ac9_k$('JsonObject', defer(JsonElementSerializer$descriptor$lambda$lambda_2));
-  $this$buildSerialDescriptor.element$default_ey7ac9_k$('JsonArray', defer(JsonElementSerializer$descriptor$lambda$lambda_3));
-  return Unit_instance;
-}
-function JsonElementSerializer$descriptor$lambda$lambda() {
-  return JsonPrimitiveSerializer_getInstance().descriptor_1;
-}
-function JsonElementSerializer$descriptor$lambda$lambda_0() {
-  return JsonNullSerializer_getInstance().descriptor_1;
-}
-function JsonElementSerializer$descriptor$lambda$lambda_1() {
-  return JsonLiteralSerializer_getInstance().descriptor_1;
-}
-function JsonElementSerializer$descriptor$lambda$lambda_2() {
-  return JsonObjectSerializer_getInstance().descriptor_1;
-}
-function JsonElementSerializer$descriptor$lambda$lambda_3() {
-  return JsonArraySerializer_getInstance().descriptor_1;
-}
-function JsonElementSerializer() {
-  JsonElementSerializer_instance = this;
-  var tmp = this;
-  var tmp_0 = SEALED_getInstance();
-  tmp.descriptor_1 = buildSerialDescriptor('kotlinx.serialization.json.JsonElement', tmp_0, [], JsonElementSerializer$descriptor$lambda);
-}
-protoOf(JsonElementSerializer).get_descriptor_wjt6a0_k$ = function () {
-  return this.descriptor_1;
-};
-protoOf(JsonElementSerializer).serialize_pk22vx_k$ = function (encoder, value) {
-  verify(encoder);
-  if (value instanceof JsonPrimitive) {
-    encoder.encodeSerializableValue_3uuzip_k$(JsonPrimitiveSerializer_getInstance(), value);
-  } else {
-    if (value instanceof JsonObject) {
-      encoder.encodeSerializableValue_3uuzip_k$(JsonObjectSerializer_getInstance(), value);
-    } else {
-      if (value instanceof JsonArray) {
-        encoder.encodeSerializableValue_3uuzip_k$(JsonArraySerializer_getInstance(), value);
-      } else {
-        noWhenBranchMatchedException();
-      }
-    }
-  }
-};
-protoOf(JsonElementSerializer).serialize_5ase3y_k$ = function (encoder, value) {
-  return this.serialize_pk22vx_k$(encoder, value instanceof JsonElement ? value : THROW_CCE());
-};
-protoOf(JsonElementSerializer).deserialize_sy6x50_k$ = function (decoder) {
-  var input = asJsonDecoder(decoder);
-  return input.decodeJsonElement_6lz9ye_k$();
-};
-var JsonElementSerializer_instance;
-function JsonElementSerializer_getInstance() {
-  if (JsonElementSerializer_instance == null)
-    new JsonElementSerializer();
-  return JsonElementSerializer_instance;
 }
 function JsonPrimitiveSerializer() {
   JsonPrimitiveSerializer_instance = this;
@@ -1091,12 +1091,6 @@ function JsonNullSerializer_getInstance() {
     new JsonNullSerializer();
   return JsonNullSerializer_instance;
 }
-function verify(encoder) {
-  asJsonEncoder(encoder);
-}
-function verify_0(decoder) {
-  asJsonDecoder(decoder);
-}
 function defer(deferred) {
   return new defer$1(deferred);
 }
@@ -1179,6 +1173,9 @@ function JsonLiteralSerializer_getInstance() {
     new JsonLiteralSerializer();
   return JsonLiteralSerializer_instance;
 }
+function verify(encoder) {
+  asJsonEncoder(encoder);
+}
 function asJsonDecoder(_this__u8e3s4) {
   var tmp0_elvis_lhs = isInterface(_this__u8e3s4, JsonDecoder) ? _this__u8e3s4 : null;
   var tmp;
@@ -1188,6 +1185,9 @@ function asJsonDecoder(_this__u8e3s4) {
     tmp = tmp0_elvis_lhs;
   }
   return tmp;
+}
+function verify_0(decoder) {
+  asJsonDecoder(decoder);
 }
 function asJsonEncoder(_this__u8e3s4) {
   var tmp0_elvis_lhs = isInterface(_this__u8e3s4, JsonEncoder) ? _this__u8e3s4 : null;
@@ -1249,15 +1249,6 @@ function JsonDecodingException(fullMessage, shortMessage, offset, path, input, h
   this.input_1 = input;
   this.hint_1 = hint;
 }
-function JsonException(message) {
-  SerializationException_init_$Init$(message, this);
-  captureStack(this, JsonException);
-  this.message_1 = message;
-  delete this.message;
-}
-protoOf(JsonException).get_message_h23axq_k$ = function () {
-  return this.message_1;
-};
 function JsonEncodingException(shortMessage, classSerialName, hint) {
   classSerialName = classSerialName === VOID ? null : classSerialName;
   hint = hint === VOID ? null : hint;
@@ -1267,6 +1258,15 @@ function JsonEncodingException(shortMessage, classSerialName, hint) {
   this.classSerialName_1 = classSerialName;
   this.hint_1 = hint;
 }
+function JsonException(message) {
+  SerializationException_init_$Init$(message, this);
+  captureStack(this, JsonException);
+  this.message_1 = message;
+  delete this.message;
+}
+protoOf(JsonException).get_message_h23axq_k$ = function () {
+  return this.message_1;
+};
 function Composer(writer) {
   this.writer_1 = writer;
   this.writingFirst_1 = true;
@@ -1459,8 +1459,46 @@ function minify(_this__u8e3s4, offset) {
 function access$formatDecodingException$tJsonExceptionsKt(offset, shortMessage, path, hint, input) {
   return formatDecodingException(offset, shortMessage, path, hint, input);
 }
+function invalidTrailingComma(_this__u8e3s4, entity) {
+  entity = entity === VOID ? 'object' : entity;
+  _this__u8e3s4.fail_5m5zd7_k$('Trailing comma before the end of JSON ' + entity, _this__u8e3s4.currentPosition_1 - 1 | 0, "Trailing commas are non-complaint JSON and not allowed by default. Use 'allowTrailingComma = true' in 'Json {}' builder to support them.");
+}
+function throwInvalidFloatingPointDecoded(_this__u8e3s4, result) {
+  _this__u8e3s4.fail$default_ly4hfp_k$(nonFiniteFpMessage(result, null), VOID, "It is possible to deserialize them using 'JsonBuilder.allowSpecialFloatingPointValues = true'");
+}
+function InvalidKeyKindException(keyDescriptor) {
+  return new JsonEncodingException("Value of type '" + keyDescriptor.get_serialName_u2rqhk_k$() + "' can't be used in JSON as a key in the map. " + ("It should have either primitive or enum kind, but its kind is '" + keyDescriptor.get_kind_wop7ml_k$().toString() + "'"), keyDescriptor.get_serialName_u2rqhk_k$(), "Use 'allowStructuredMapKeys = true' in 'Json {}' builder to convert such maps to [key1, value1, key2, value2,...] arrays.");
+}
+function InvalidFloatingPointEncoded(value, key) {
+  key = key === VOID ? null : key;
+  return new JsonEncodingException(nonFiniteFpMessage(value, key), VOID, "It is possible to deserialize them using 'JsonBuilder.allowSpecialFloatingPointValues = true'");
+}
+function access$nonFiniteFpMessage$tJsonExceptionsKt(value, key) {
+  return nonFiniteFpMessage(value, key);
+}
 function decodingExceptionOf(shortMessage) {
   return new JsonDecodingException(formatDecodingException(-1, shortMessage, null, null, null), shortMessage, -1, null, null, null);
+}
+function formatEncodingException(shortMessage, hint) {
+  var tmp;
+  // Inline function 'kotlin.text.isNullOrBlank' call
+  if (hint == null || isBlank(hint)) {
+    tmp = '';
+  } else {
+    tmp = '\n' + hint;
+  }
+  return shortMessage + tmp;
+}
+function decodingExceptionOf_0(_this__u8e3s4, shortMessage, offset, path, hint, input) {
+  // Inline function 'kotlinx.serialization.json.internal.ifDebugInput' call
+  var tmp;
+  if (_this__u8e3s4.configuration_1.exceptionsWithDebugInfo_1) {
+    tmp = toString(minify(input, offset));
+  } else {
+    tmp = null;
+  }
+  var inputValue = tmp;
+  return new JsonDecodingException(formatDecodingException(offset, shortMessage, path, hint, inputValue), shortMessage, offset, path, inputValue, hint);
 }
 function formatDecodingException(offset, shortMessage, path, hint, input) {
   // Inline function 'kotlin.text.buildString' call
@@ -1484,44 +1522,6 @@ function formatDecodingException(offset, shortMessage, path, hint, input) {
     this_0.append_22ad7x_k$(input);
   }
   return this_0.toString();
-}
-function invalidTrailingComma(_this__u8e3s4, entity) {
-  entity = entity === VOID ? 'object' : entity;
-  _this__u8e3s4.fail_5m5zd7_k$('Trailing comma before the end of JSON ' + entity, _this__u8e3s4.currentPosition_1 - 1 | 0, "Trailing commas are non-complaint JSON and not allowed by default. Use 'allowTrailingComma = true' in 'Json {}' builder to support them.");
-}
-function throwInvalidFloatingPointDecoded(_this__u8e3s4, result) {
-  _this__u8e3s4.fail$default_ly4hfp_k$(nonFiniteFpMessage(result, null), VOID, "It is possible to deserialize them using 'JsonBuilder.allowSpecialFloatingPointValues = true'");
-}
-function InvalidKeyKindException(keyDescriptor) {
-  return new JsonEncodingException("Value of type '" + keyDescriptor.get_serialName_u2rqhk_k$() + "' can't be used in JSON as a key in the map. " + ("It should have either primitive or enum kind, but its kind is '" + keyDescriptor.get_kind_wop7ml_k$().toString() + "'"), keyDescriptor.get_serialName_u2rqhk_k$(), "Use 'allowStructuredMapKeys = true' in 'Json {}' builder to convert such maps to [key1, value1, key2, value2,...] arrays.");
-}
-function InvalidFloatingPointEncoded(value, key) {
-  key = key === VOID ? null : key;
-  return new JsonEncodingException(nonFiniteFpMessage(value, key), VOID, "It is possible to deserialize them using 'JsonBuilder.allowSpecialFloatingPointValues = true'");
-}
-function access$nonFiniteFpMessage$tJsonExceptionsKt(value, key) {
-  return nonFiniteFpMessage(value, key);
-}
-function decodingExceptionOf_0(_this__u8e3s4, shortMessage, offset, path, hint, input) {
-  // Inline function 'kotlinx.serialization.json.internal.ifDebugInput' call
-  var tmp;
-  if (_this__u8e3s4.configuration_1.exceptionsWithDebugInfo_1) {
-    tmp = toString(minify(input, offset));
-  } else {
-    tmp = null;
-  }
-  var inputValue = tmp;
-  return new JsonDecodingException(formatDecodingException(offset, shortMessage, path, hint, inputValue), shortMessage, offset, path, inputValue, hint);
-}
-function formatEncodingException(shortMessage, hint) {
-  var tmp;
-  // Inline function 'kotlin.text.isNullOrBlank' call
-  if (hint == null || isBlank(hint)) {
-    tmp = '';
-  } else {
-    tmp = '\n' + hint;
-  }
-  return shortMessage + tmp;
 }
 function nonFiniteFpMessage(value, key) {
   return 'Unexpected special floating-point value ' + toString(value) + (!(key == null) ? ' with key ' + key + '. ' : '. ') + 'By default, ' + 'non-finite floating point values are prohibited because they do not conform JSON specification.';
