@@ -2,7 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro
 
-/** A simple [Qualifier] that disambiguates based on the [name] value. */
+/**
+ * A simple [Qualifier] that disambiguates based on the [name] value.
+ *
+ * @property name The name that distinguishes this binding.
+ */
 @Target(
   AnnotationTarget.CLASS,
   AnnotationTarget.FIELD,

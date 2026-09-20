@@ -13,6 +13,7 @@ import kotlin.reflect.KClass
  * This is safe for other code generators to use but should not be used by user-written code
  * directly.
  *
+ * @property value The original class represented by the generated class.
  * @property context Optional extra context about the origin, such as what generated this class.
  */
 @MustBeDocumented
