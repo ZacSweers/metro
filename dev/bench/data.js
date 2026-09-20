@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789598684787,
+  "lastUpdate": 1789862856021,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -24192,6 +24192,62 @@ window.BENCHMARK_DATA = {
             "value": 0.22992479784344017,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: +1.78%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Ralf Wondratschek",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Ralf Wondratschek",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "a40aa486~1",
+          "message": "[before] Fix false binding-container warnings for multibind",
+          "timestamp": "2026-09-19T19:19:56-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/a40aa4868e7106f12c9dbf35beb8319bb43777c0"
+        },
+        "date": 1789862856021,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.18831165449544526,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Ralf Wondratschek",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Ralf Wondratschek",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "a40aa4868e7106f12c9dbf35beb8319bb43777c0",
+          "message": "[after] Fix false binding-container warnings for multibind",
+          "timestamp": "2026-09-19T19:19:56-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/a40aa4868e7106f12c9dbf35beb8319bb43777c0"
+        },
+        "date": 1789862856022,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.18823033392751076,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: -0.04%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }

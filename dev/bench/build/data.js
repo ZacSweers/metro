@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789598684941,
+  "lastUpdate": 1789862856276,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -24192,6 +24192,62 @@ window.BENCHMARK_DATA = {
             "value": 17925.07,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +3.33%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Ralf Wondratschek",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Ralf Wondratschek",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "a40aa486~1",
+          "message": "[before] Fix false binding-container warnings for multibind",
+          "timestamp": "2026-09-19T19:19:56-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/a40aa4868e7106f12c9dbf35beb8319bb43777c0"
+        },
+        "date": 1789862856276,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 13370.454000000002,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Ralf Wondratschek",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Ralf Wondratschek",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "a40aa4868e7106f12c9dbf35beb8319bb43777c0",
+          "message": "[after] Fix false binding-container warnings for multibind",
+          "timestamp": "2026-09-19T19:19:56-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/a40aa4868e7106f12c9dbf35beb8319bb43777c0"
+        },
+        "date": 1789862856277,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 13059.532000000001,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -2.33%"
           }
         ]
       }
