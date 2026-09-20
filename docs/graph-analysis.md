@@ -284,7 +284,7 @@ A binding that's both a root and a leaf is isolated. Nothing depends on it and i
 
 You can read the JSON reports in your own analysis tools.
 
-The serializable report models are published in `dev.zacsweers.metro:graph-models`. The Metro Gradle plugin exposes these models as an API dependency. Their existing `dev.zacsweers.metro.gradle.analysis` package names are unchanged.
+The serializable report models are published in `dev.zacsweers.metro:graphs`. The Metro Gradle plugin exposes these models as an API dependency. Their existing `dev.zacsweers.metro.gradle.analysis` package names are unchanged.
 
 Model APIs require opting into `dev.zacsweers.metro.graph.ExperimentalMetroGraphApi`. The Gradle plugin's `BindingGraph` and `GraphAnalyzer` helpers also require `ExperimentalMetroGradleApi`.
 

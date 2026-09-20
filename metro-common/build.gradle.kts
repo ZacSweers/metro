@@ -35,7 +35,7 @@ project.afterEvaluate {
 }
 
 dependencies {
-  api(project(":graph-models"))
+  api(project(":graphs"))
   compileOnly(libs.kotlin.compiler)
   compileOnly(libs.kotlin.stdlib)
   compileOnly(libs.poko.annotations)

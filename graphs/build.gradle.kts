@@ -10,8 +10,8 @@ plugins {
 }
 
 metroArtifact {
-  artifactId.set("graph-models")
-  name.set("Metro Graph Models")
+  artifactId.set("graphs")
+  name.set("Metro Graphs")
 }
 
 metroProject {
@@ -23,7 +23,7 @@ metroProject {
 kotlin {
   jvm()
   js {
-    outputModuleName.set("metro-graph-models")
+    outputModuleName.set("metro-graphs")
     useEsModules()
     browser()
     nodejs()

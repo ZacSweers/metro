@@ -1684,7 +1684,7 @@ internal object Colors {
     )
 }
 
-// Retains the JVM entry point used by callers compiled before the graph-models extraction.
+// Retains the JVM entry point used by callers compiled before the graphs module extraction.
 @JvmName("unwrapTypeKey")
 internal fun unwrapTypeKeyForBinaryCompatibility(key: String): String = unwrapTypeKey(key)
 

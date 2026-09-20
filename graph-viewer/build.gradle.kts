@@ -33,7 +33,7 @@ kotlin {
 
   sourceSets {
     commonMain.dependencies {
-      api(project(":graph-models"))
+      api(project(":graphs"))
       api(libs.kotlin.stdlib.published)
       api(libs.kotlinx.serialization.json)
     }

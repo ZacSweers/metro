@@ -32,9 +32,9 @@ flowchart TD
 
 ### Shared Models
 
-- `graph-models/src/commonMain/.../gradle/analysis/GraphMetadataModels.kt` - Serializable compiler report models
-- `graph-models/src/commonMain/.../gradle/analysis/AnalysisResults.kt` - Serializable graph analysis results
-- `graph-models/src/commonMain/.../compiler/graph/explanation/` - Binding explanation models shared by the compiler and viewer
+- `graphs/src/commonMain/.../gradle/analysis/GraphMetadataModels.kt` - Serializable compiler report models
+- `graphs/src/commonMain/.../gradle/analysis/AnalysisResults.kt` - Serializable graph analysis results
+- `graphs/src/commonMain/.../compiler/graph/explanation/` - Binding explanation models shared by the compiler and viewer
 
 These APIs require opting into `dev.zacsweers.metro.graph.ExperimentalMetroGraphApi`. Their packages and serialized report fields are unchanged. The Gradle plugin's `BindingGraph` and `GraphAnalyzer` helpers also require `ExperimentalMetroGradleApi`.
 
