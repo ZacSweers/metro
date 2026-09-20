@@ -19,4 +19,5 @@ val metroApiNonPublicMarkers =
     "dev.zacsweers.metro.ExperimentalMetroCoroutinesApi",
     "dev.zacsweers.metro.ExperimentalMetroApi",
     "dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi",
+    "dev.zacsweers.metro.graph.ExperimentalMetroGraphApi",
   )

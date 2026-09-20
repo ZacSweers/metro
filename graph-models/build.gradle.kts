@@ -10,8 +10,8 @@ plugins {
 }
 
 metroArtifact {
-  artifactId.set("graph-viewer")
-  name.set("Metro Graph Viewer")
+  artifactId.set("graph-models")
+  name.set("Metro Graph Models")
 }
 
 metroProject {
@@ -21,19 +21,16 @@ metroProject {
 }
 
 kotlin {
-  compilerOptions.optIn.add("dev.zacsweers.metro.graph.ExperimentalMetroGraphApi")
   jvm()
   js {
-    outputModuleName.set("metro-graph-viewer")
+    outputModuleName.set("metro-graph-models")
     useEsModules()
     browser()
-    nodejs { testTask { useMocha { timeout = "30s" } } }
-    binaries.library()
+    nodejs()
   }
 
   sourceSets {
     commonMain.dependencies {
-      api(project(":graph-models"))
       api(libs.kotlin.stdlib.published)
       api(libs.kotlinx.serialization.json)
     }
@@ -41,6 +38,5 @@ kotlin {
       // https://youtrack.jetbrains.com/issue/KT-84582
       api(libs.kotlin.stdlib)
     }
-    commonTest.dependencies { implementation(libs.kotlin.test) }
   }
 }

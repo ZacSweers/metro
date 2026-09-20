@@ -151,6 +151,10 @@ public final class dev/zacsweers/metro/gradle/analysis/BetweennessCentrality$Ove
 	public static fun values ()[Ldev/zacsweers/metro/gradle/analysis/BetweennessCentrality$OverflowStrategy;
 }
 
+public final class dev/zacsweers/metro/gradle/analysis/BindingGraph$Companion {
+	public final fun from (Ldev/zacsweers/metro/gradle/analysis/GraphMetadata;)Ldev/zacsweers/metro/gradle/analysis/BindingGraph;
+}
+
 public abstract class dev/zacsweers/metro/gradle/artifacts/GenerateGraphMetadataTask : org/gradle/api/DefaultTask {
 	public static final field NAME Ljava/lang/String;
 	public fun <init> ()V

@@ -561,6 +561,88 @@ class MetroArtifactsTest {
   }
 
   @Test
+  fun `graph analysis APIs are available to consuming build scripts`() {
+    val fixture =
+      object :
+        MetroProject(
+          multiplatform = false,
+          additionalGradleProperties = listOf("org.gradle.kotlin.dsl.allWarningsAsErrors=true"),
+        ) {
+        override fun StringBuilder.onBuildScript() {
+          appendLine(
+            """
+            @OptIn(
+              dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi::class,
+              dev.zacsweers.metro.graph.ExperimentalMetroGraphApi::class,
+            )
+            tasks.register("checkGraphAnalysisApi") {
+              doLast {
+                val metadata = dev.zacsweers.metro.gradle.analysis.GraphMetadata(
+                  graph = "test.AppGraph",
+                  scopes = emptyList(),
+                  aggregationScopes = emptyList(),
+                  bindings = listOf(
+                    dev.zacsweers.metro.gradle.analysis.BindingMetadata(
+                      key = "test.AppGraph",
+                      bindingKind = "BoundInstance",
+                      isScoped = false,
+                      nameHint = "AppGraphProvider",
+                      dependencies = emptyList(),
+                    )
+                  ),
+                )
+                val graph = dev.zacsweers.metro.gradle.analysis.BindingGraph.from(metadata)
+                check(graph.graph.nodes() == setOf("test.AppGraph"))
+                check(graph.getBinding("test.AppGraph") == metadata.bindings.single())
+
+                val statistics =
+                  dev.zacsweers.metro.gradle.analysis.GraphAnalyzer(graph).computeStatistics()
+                check(statistics.totalBindings == 1)
+                check(statistics.bindingsByKind == mapOf("BoundInstance" to 1))
+                check(statistics.rootBindings == 1)
+                check(statistics.leafBindings == 1)
+              }
+            }
+            """
+              .trimIndent()
+          )
+        }
+      }
+
+    val result = build(fixture.gradleProject.rootDir, "checkGraphAnalysisApi")
+    assertThat(result.task(":checkGraphAnalysisApi")?.outcome)
+      .isEqualTo(org.gradle.testkit.runner.TaskOutcome.SUCCESS)
+  }
+
+  @Test
+  fun `graph model APIs require their own opt in`() {
+    val fixture =
+      object :
+        MetroProject(
+          multiplatform = false,
+          additionalGradleProperties = listOf("org.gradle.kotlin.dsl.allWarningsAsErrors=true"),
+        ) {
+        override fun StringBuilder.onBuildScript() {
+          appendLine(
+            """
+            @OptIn(dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi::class)
+            val metadata = dev.zacsweers.metro.gradle.analysis.GraphMetadata(
+              graph = "test.AppGraph",
+              scopes = emptyList(),
+              aggregationScopes = emptyList(),
+              bindings = emptyList(),
+            )
+            """
+              .trimIndent()
+          )
+        }
+      }
+
+    val result = buildAndFail(fixture.gradleProject.rootDir, "help")
+    assertThat(result.output).contains("experimental Metro graph API")
+  }
+
+  @Test
   fun `analyzeMetroGraph task for graph with just injectors`() {
     val fixture =
       object : MetroProject(multiplatform = false) {
