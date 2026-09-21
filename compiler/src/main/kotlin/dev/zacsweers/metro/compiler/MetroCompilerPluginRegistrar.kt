@@ -18,10 +18,8 @@ import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
-import org.jetbrains.kotlin.config.AnalysisFlags
 import org.jetbrains.kotlin.config.CommonConfigurationKeys
 import org.jetbrains.kotlin.config.CompilerConfiguration
-import org.jetbrains.kotlin.config.languageVersionSettings
 import org.jetbrains.kotlin.incremental.components.ExpectActualTracker
 
 public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
@@ -58,7 +56,7 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
             }
         }
 
-    val isIde = configuration.languageVersionSettings.getFlag(AnalysisFlags.ideMode)
+    val isIde = configuration.isIdeMode(version)
 
     val options = MetroOptions.load(configuration, version, isIde)
     val enableFir = version != null || (isIde && options.forceEnableFirInIde)
