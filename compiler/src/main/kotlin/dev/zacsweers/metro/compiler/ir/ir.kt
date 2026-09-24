@@ -535,6 +535,7 @@ context(context: IrMetroContext)
 internal fun IrClass.declaredCallableMembers(
   functionFilter: (IrSimpleFunction) -> Boolean = { true },
   propertyFilter: (IrProperty) -> Boolean = { true },
+  preserveDeclarationOrder: Boolean = false,
 ): Sequence<MetroSimpleFunction> =
   allCallableMembers(
     excludeAnyFunctions = true,
@@ -542,6 +543,7 @@ internal fun IrClass.declaredCallableMembers(
     excludeCompanionObjectMembers = true,
     functionFilter = functionFilter,
     propertyFilter = propertyFilter,
+    preserveDeclarationOrder = preserveDeclarationOrder,
   )
 
 // TODO create an instance of this that caches lookups?
@@ -552,13 +554,35 @@ internal fun IrClass.allCallableMembers(
   excludeCompanionObjectMembers: Boolean = false,
   functionFilter: (IrSimpleFunction) -> Boolean = { true },
   propertyFilter: (IrProperty) -> Boolean = { true },
+  preserveDeclarationOrder: Boolean = false,
 ): Sequence<MetroSimpleFunction> {
-  return functions
-    .letIf(excludeAnyFunctions) {
-      it.filterNot { function -> function.isCompilerIntrinsicOrAny(context.irBuiltIns, isData) }
+  val declaredCallables =
+    if (preserveDeclarationOrder) {
+      declarations.asSequence().mapNotNull { declaration ->
+        when (declaration) {
+          is IrSimpleFunction -> {
+            if (
+              excludeAnyFunctions &&
+                declaration.isCompilerIntrinsicOrAny(context.irBuiltIns, isData)
+            ) {
+              null
+            } else {
+              declaration.takeIf(functionFilter)
+            }
+          }
+          is IrProperty -> declaration.takeIf(propertyFilter)?.getter
+          else -> null
+        }
+      }
+    } else {
+      functions
+        .letIf(excludeAnyFunctions) {
+          it.filterNot { function -> function.isCompilerIntrinsicOrAny(context.irBuiltIns, isData) }
+        }
+        .filter(functionFilter)
+        .plus(properties.filter(propertyFilter).mapNotNull { property -> property.getter })
     }
-    .filter(functionFilter)
-    .plus(properties.filter(propertyFilter).mapNotNull { property -> property.getter })
+  return declaredCallables
     .letIf(excludeInheritedMembers) { it.filterNot { function -> function.isFakeOverride } }
     .let { parentClassCallables ->
       val asFunctions = parentClassCallables.map { metroFunctionOf(it) }
@@ -571,6 +595,7 @@ internal fun IrClass.allCallableMembers(
               excludeAnyFunctions = excludeAnyFunctions,
               excludeInheritedMembers = excludeInheritedMembers,
               excludeCompanionObjectMembers = false,
+              preserveDeclarationOrder = preserveDeclarationOrder,
             )
         } ?: asFunctions
       }

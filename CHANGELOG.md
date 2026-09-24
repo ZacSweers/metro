@@ -7,6 +7,7 @@ Changelog
 ### Fixes
 
 - **[FIR]** Treat `@Multibinds` declarations as accessors to fix a false positive `CONTRIBUTES_TO_COULD_BE_BINDING_CONTAINER` warning.
+- **[IR]** Fix a `ClassCastException` during member injection when a class declares an injected method before an injected property.
 - **[Gradle]** Restore `ExperimentalMetroGradleApi` to the `gradle-plugin` artifact.
 
 ### Changes

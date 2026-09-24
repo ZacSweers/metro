@@ -3555,6 +3555,18 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
     }
 
     @Test
+    @TestMetadata("MethodAndFieldInjectionKeepDependencyOrder.kt")
+    public void testMethodAndFieldInjectionKeepDependencyOrder() {
+      run("MethodAndFieldInjectionKeepDependencyOrder.kt");
+    }
+
+    @Test
+    @TestMetadata("MethodBeforeFieldInjectionWithoutInterop.kt")
+    public void testMethodBeforeFieldInjectionWithoutInterop() {
+      run("MethodBeforeFieldInjectionWithoutInterop.kt");
+    }
+
+    @Test
     @TestMetadata("ScopedInjectIntoBaseMember.kt")
     public void testScopedInjectIntoBaseMember() {
       run("ScopedInjectIntoBaseMember.kt");

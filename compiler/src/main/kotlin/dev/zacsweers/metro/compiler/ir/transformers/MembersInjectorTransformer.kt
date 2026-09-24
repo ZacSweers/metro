@@ -605,11 +605,10 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
                         it.setter?.isAnnotatedWithAny(metroSymbols.injectAnnotations) == true ||
                         it.backingField?.isAnnotatedWithAny(metroSymbols.injectAnnotations) == true)
                   },
+                  // FIR uses source declaration order for the injector constructor.
+                  preserveDeclarationOrder = true,
                 )
                 .map { it.ir.memberInjectParameters(nameAllocator, clazz) }
-                // Stable sort properties first
-                // TODO this implicit ordering requirement is brittle
-                .sortedBy { !it.isProperty }
                 .toList()
 
             if (sourceParameters.isNotEmpty()) {
