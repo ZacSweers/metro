@@ -7,7 +7,7 @@ This document describes the graph analysis and visualization system for Metro de
 The system generates self-contained HTML explorers for Metro dependency graphs. A Canvas viewer renders the graph with subway-style lines. HTML controls provide search, navigation, and binding details. Generation has four phases:
 
 1. **Metadata Generation** (Compiler) - The compiler plugin exports graph metadata as JSON during IR transformation
-2. **Metadata Aggregation** (Gradle) - Gradle tasks aggregate per-graph JSON files into a single file
+2. **Metadata Aggregation** (Gradle) - Gradle tasks aggregate per-graph JSON files from one compilation into a single file
 3. **Analysis** (Gradle) - Computes graph statistics, paths, and binding metrics
 4. **HTML Generation** (Gradle) - Generates interactive HTML visualizations from the metadata and analysis
 
@@ -22,8 +22,14 @@ flowchart TD
     analyze --> analysis["analysis.json"]
     metadata --> html[GenerateGraphHtmlTask]
     analysis --> html
-    html --> output["build/reports/metro/html/"]
+    html --> output["build/reports/metro/{target}/{compilation}/html/"]
 ```
+
+Each Kotlin compilation owns a separate metadata, analysis, and HTML task chain. Task names include the capitalized target and compilation names. A blank target name is omitted. For example, Android `internalDebug` registers `generateInternalDebugMetroGraphMetadata`, `analyzeInternalDebugMetroGraph`, and `generateInternalDebugMetroGraphHtml`. A KMP `jvm` target's `main` compilation uses `JvmMain` in those names.
+
+The metadata task consumes the artifact-copy task for its compilation. Analysis consumes that metadata output. HTML consumes both outputs from the same chain. Reports are written under `build/reports/metro/{target}/{compilation}/` as `graphMetadata.json`, `analysis.json`, and `html/`. The target directory is omitted when its name is blank.
+
+The former unqualified report tasks have been removed. Callers must select a compilation and read its output directory. Browser imports should use metadata and analysis from the same compilation.
 
 ## Key Files
 
@@ -359,6 +365,6 @@ HTML buttons, search results, and inspector links provide keyboard navigation al
 
 ### Verification
 
-Renderer tests can use `GraphHtmlRenderer` without starting Gradle. Keep coverage focused on semantic relationships, complete type keys, and safe embedding of report content. Functional tests exercise `generateMetroGraphHtml` through the Gradle plugin.
+Renderer tests can use `GraphHtmlRenderer` without starting Gradle. Keep coverage focused on semantic relationships, complete type keys, and safe embedding of report content. Functional tests exercise compilation-specific tasks such as `generateMainMetroGraphHtml` through the Gradle plugin.
 
 For browser verification, open generated HTML directly from disk and exercise overview, search, Connections, routes, the inspector, and motion controls. Include a real consumer graph and a larger fixture to check that the bounded views remain usable as the graph grows.
