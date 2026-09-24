@@ -8248,6 +8248,7 @@
 <h3 id="changes">Changes<a class="headerlink" href="#changes" title="Permanent link">&para;</a></h3>
 <ul>
 <li>Update a few misc kdocs.</li>
+<li>Use <code>AnalysisFlags</code> API to detect IDE mode.</li>
 <li><strong>[Gradle]</strong> Move shared graph report models into the <code>graphs</code> artifact and make <code>graph-viewer</code> an implementation dependency of the Gradle plugin. Model APIs now require opting into <code>@ExperimentalMetroGraphApi</code>. Existing model packages and the public experimental <code>BindingGraph</code> and <code>GraphAnalyzer</code> APIs are preserved.</li>
 <li><strong>[Gradle]</strong> Graph reports now have tasks for individual compilations, such as <code>generateMainMetroGraphHtml</code>. Outputs move to <code>build/reports/metro/{target}/{compilation}/</code>. See <a href="../docs/graph-analysis/#updating-existing-commands">migration details</a>.</li>
 <li>Update <code>androidx.tracing</code> dependency to <code>2.0.3</code>.</li>
