@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789880452327,
+  "lastUpdate": 1790227993768,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -24304,6 +24304,62 @@ window.BENCHMARK_DATA = {
             "value": 18875.021,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -5.98%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "49ef1fb1~1",
+          "message": "[before] Fix member injects when functions appear before pr",
+          "timestamp": "2026-09-24T04:30:11Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/49ef1fb102d6a260df65f1e780b0dc5612708313"
+        },
+        "date": 1790227993768,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 20202.257999999998,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "49ef1fb102d6a260df65f1e780b0dc5612708313",
+          "message": "[after] Fix member injects when functions appear before pr",
+          "timestamp": "2026-09-24T04:30:11Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/49ef1fb102d6a260df65f1e780b0dc5612708313"
+        },
+        "date": 1790227993769,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19695.743,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -2.51%"
           }
         ]
       }
