@@ -156,7 +156,6 @@ public final class dev/zacsweers/metro/gradle/analysis/BindingGraph$Companion {
 }
 
 public abstract class dev/zacsweers/metro/gradle/artifacts/GenerateGraphMetadataTask : org/gradle/api/DefaultTask {
-	public static final field NAME Ljava/lang/String;
 	public fun <init> ()V
 	public final fun generate ()V
 	public abstract fun getCompilationName ()Lorg/gradle/api/provider/Property;

@@ -507,8 +507,10 @@ constructor(
    *
    * This behaves similar to the compose-compiler's option of the same name.
    *
-   * This also enables the `generateMetroGraphMetadata` task, which will dump JSON representations
-   * of all graphs per compilation in this project.
+   * This also enables report tasks for each compilation. For example,
+   * `generateInternalDebugMetroGraphMetadata` combines graph JSON for Android's `internalDebug`
+   * compilation. Task names include the capitalized target and compilation names. A blank target
+   * name is omitted. Reports are written under `build/reports/metro/{target}/{compilation}/`.
    *
    * This enables a nontrivial amount of logging and overhead and should only be used for debugging.
    *

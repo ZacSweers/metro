@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.gradle.artifacts
 
 import kotlin.io.path.bufferedWriter
+import kotlin.io.path.createParentDirectories
 import kotlin.io.path.deleteIfExists
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
@@ -73,7 +74,7 @@ public abstract class GenerateGraphMetadataTask : DefaultTask() {
     val output = outputFile.get().asFile.toPath()
     output.deleteIfExists()
 
-    // Track seen graph names to deduplicate (KMP projects may have same graph in multiple targets)
+    // Overlapping input file trees can include the same graph more than once.
     val seenGraphs = mutableSetOf<String>()
 
     val graphJsonElements =
@@ -92,8 +93,7 @@ public abstract class GenerateGraphMetadataTask : DefaultTask() {
             }
         }
         .filter { element ->
-          // Deduplicate by graph name - in KMP projects, the same graph may be compiled
-          // by multiple targets (e.g., android and jvm both compiling shared code)
+          // Keep one report for each graph name.
           val graphName =
             (element as? JsonObject)?.get("graph")?.let { (it as? JsonPrimitive)?.content }
           if (graphName != null && !seenGraphs.add(graphName)) {
@@ -111,13 +111,10 @@ public abstract class GenerateGraphMetadataTask : DefaultTask() {
       put("graphs", JsonArray(graphJsonElements))
     }
 
+    output.createParentDirectories()
     output.bufferedWriter().use { writer ->
       writer.write(json.encodeToString(JsonObject.serializer(), result))
     }
     logger.lifecycle("Generated metro graph metadata file to file://$output")
-  }
-
-  internal companion object {
-    const val NAME = "generateMetroGraphMetadata"
   }
 }

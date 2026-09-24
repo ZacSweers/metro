@@ -137,8 +137,4 @@ public abstract class AnalyzeGraphTask : DefaultTask() {
       }
     }
   }
-
-  internal companion object {
-    const val NAME = "analyzeMetroGraph"
-  }
 }

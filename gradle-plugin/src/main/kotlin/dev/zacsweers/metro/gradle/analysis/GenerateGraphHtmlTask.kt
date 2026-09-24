@@ -92,10 +92,6 @@ public abstract class GenerateGraphHtmlTask : DefaultTask() {
     indexFile.toPath().writeText(indexContent)
     logger.lifecycle("Generated file://${indexFile.absolutePath}")
   }
-
-  internal companion object {
-    const val NAME = "generateMetroGraphHtml"
-  }
 }
 
 @OptIn(ExperimentalMetroGradleApi::class)

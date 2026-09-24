@@ -11,7 +11,7 @@ import org.gradle.api.file.RegularFile
 import org.gradle.api.provider.Provider
 
 /**
- * Provides access to Metro's analysis reports for a project.
+ * Provides access to Metro's analysis reports for one compilation.
  *
  * Use [Project.metroAnalysisReports] to get an instance for a project, or [AnalysisReports.from]
  * for file-based access (useful in tests).
@@ -19,9 +19,10 @@ import org.gradle.api.provider.Provider
 interface AnalysisReports {
 
   /**
-   * Base directory containing all Metro reports.
+   * Directory containing the selected compilation's Metro reports.
    *
-   * The structure is: `{buildDir}/reports/metro/`
+   * The structure is: `{buildDir}/reports/metro/{target}/{compilation}/`. Compilations with an
+   * empty target name omit the target segment.
    */
   val reportsDir: Provider<Directory>
 
@@ -33,12 +34,18 @@ interface AnalysisReports {
      *
      * Example usage:
      * ```kotlin
-     * val reports = AnalysisReports.from(project.rootDir)
+     * val reports = AnalysisReports.from(project.rootDir, compilationName = "main")
      * val metadataFile = reports.graphMetadataFile
      * ```
      */
-    fun from(projectRootDir: File): PathBasedAnalysisReports =
-      PathBasedAnalysisReports(projectRootDir.toPath().resolve("build/reports/metro"))
+    fun from(
+      projectRootDir: File,
+      compilationName: String,
+      targetName: String = "",
+    ): PathBasedAnalysisReports =
+      PathBasedAnalysisReports(
+        projectRootDir.toPath().resolve("build/${reportPath(compilationName, targetName)}")
+      )
   }
 }
 
@@ -71,20 +78,28 @@ class PathBasedAnalysisReports(val reportsDir: Path) {
  *
  * Example usage:
  * ```kotlin
- * val reports = project.metroAnalysisReports()
+ * val reports = project.metroAnalysisReports(compilationName = "main")
  * val htmlDir = reports.htmlDirectory.get().asFile
  * ```
  */
-fun Project.metroAnalysisReports(): AnalysisReports =
+fun Project.metroAnalysisReports(
+  compilationName: String,
+  targetName: String = "",
+): AnalysisReports =
   object : AnalysisReports {
-    override val reportsDir: Provider<Directory> = layout.buildDirectory.dir("reports/metro")
+    override val reportsDir: Provider<Directory> =
+      layout.buildDirectory.dir(reportPath(compilationName, targetName))
   }
+
+/** Uses the same target and compilation directory layout for both access methods. */
+private fun reportPath(compilationName: String, targetName: String): String =
+  listOf("reports/metro", targetName, compilationName).filter { it.isNotBlank() }.joinToString("/")
 
 /**
  * The aggregated graph metadata JSON file.
  *
- * Contains machine-readable metadata for all dependency graphs in the project, including bindings,
- * dependencies, scopes, and roots.
+ * Contains machine-readable metadata for all dependency graphs in the compilation, including
+ * bindings, dependencies, scopes, and roots.
  *
  * Location: `{reportsDir}/graphMetadata.json`
  */
