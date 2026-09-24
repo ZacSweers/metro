@@ -13,6 +13,7 @@ Changelog
 
 - Update a few misc kdocs.
 - **[Gradle]** Move shared graph report models into the `graphs` artifact and make `graph-viewer` an implementation dependency of the Gradle plugin. Model APIs now require opting into `@ExperimentalMetroGraphApi`. Existing model packages and the public experimental `BindingGraph` and `GraphAnalyzer` APIs are preserved.
+- Update `androidx.tracing` dependency to `2.0.3`.
 
 ### Contributors
 
