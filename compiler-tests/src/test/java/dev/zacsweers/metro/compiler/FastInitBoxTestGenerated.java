@@ -2776,9 +2776,21 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       }
 
       @Test
+      @TestMetadata("GenericMemberInjectionAcrossModules.kt")
+      public void testGenericMemberInjectionAcrossModules() {
+        run("GenericMemberInjectionAcrossModules.kt");
+      }
+
+      @Test
       @TestMetadata("GenericMemberInjectionFromGraph.kt")
       public void testGenericMemberInjectionFromGraph() {
         run("GenericMemberInjectionFromGraph.kt");
+      }
+
+      @Test
+      @TestMetadata("GenericMemberInjectionSameModule.kt")
+      public void testGenericMemberInjectionSameModule() {
+        run("GenericMemberInjectionSameModule.kt");
       }
 
       @Test
