@@ -30,13 +30,16 @@ internal data class IdeTraceLane(val name: String, val intervals: List<IdeTraceI
 /**
  * Keeps bounded, completed operations until capture drain. Export orders begin/end packets by time
  * and places final metadata on the selected duration bar. Suspension stays inside the interval.
+ * Root outcomes have a bounded reserve that survives detail saturation.
  */
 internal class IdeTraceTimeline(
   private val capacity: Int = 20_000,
   private val enclosingReserve: Int = minOf(1024, capacity / 4),
   private val priorityReserve: Int = minOf(4096, (capacity - enclosingReserve) / 4),
+  private val terminalCapacity: Int = minOf(1024, capacity),
 ) {
   private val intervals = mutableListOf<IdeTraceInterval>()
+  private val terminalIntervals = ArrayDeque<IdeTraceInterval>()
   private var dropped = 0
   private var reservedDetails = 0
 
@@ -44,6 +47,7 @@ internal class IdeTraceTimeline(
     require(capacity >= 0)
     require(enclosingReserve in 0..capacity)
     require(priorityReserve in 0..(capacity - enclosingReserve))
+    require(terminalCapacity >= 0)
   }
 
   /** A reserved parent keeps its slot while its metadata emits nested detail intervals. */
@@ -83,13 +87,39 @@ internal class IdeTraceTimeline(
 
   @Synchronized
   fun record(interval: IdeTraceInterval) {
-    if (intervals.size + reservedDetails < capacity) intervals += interval else dropped++
+    val preservesOutcome = interval.parentId == null || interval.name in TERMINAL_OPERATIONS
+    if (preservesOutcome) {
+      recordTerminal(interval)
+    } else if (intervals.size + reservedDetails < capacity) {
+      intervals += interval
+    } else {
+      dropped++
+    }
   }
+
+  /** Keeps the newest root outcomes without changing any already reported item-bar counts. */
+  private fun recordTerminal(interval: IdeTraceInterval) {
+    if (terminalCapacity == 0) {
+      dropped++
+      return
+    }
+    if (terminalIntervals.size == terminalCapacity) {
+      terminalIntervals.removeFirst()
+      dropped++
+    }
+    terminalIntervals.addLast(interval)
+  }
+
+  /** The two budgets together bound retained intervals to capacity plus terminalCapacity. */
+  private fun recordedIntervals(): List<IdeTraceInterval> = intervals + terminalIntervals
 
   /** The collapsed parent shows the envelope of recorded work, including gaps and suspension. */
   @Synchronized
   internal fun overview(): IdeTraceInterval? {
-    if (intervals.isEmpty()) return null
+    val intervals = recordedIntervals()
+    if (intervals.isEmpty()) {
+      return null
+    }
     val work = intervals.filter { it.finished != null }
     val first = work.minOfOrNull { it.started } ?: intervals.minOf { it.started }
     val last = work.maxOfOrNull { checkNotNull(it.finished) } ?: intervals.maxOf { it.started }
@@ -111,7 +141,7 @@ internal class IdeTraceTimeline(
   /** Uses ancestry to prevent overlapping sibling operations from looking like nested calls. */
   @Synchronized
   fun lanes(): List<IdeTraceLane> = buildList {
-    for ((_, group) in intervals.groupBy { it.rootId }) {
+    for ((_, group) in recordedIntervals().groupBy { it.rootId }) {
       val ordered =
         group.sortedWith(
           compareBy<IdeTraceInterval> { it.started }
@@ -221,6 +251,14 @@ internal class IdeTraceTimeline(
   }
 
   private companion object {
+    // Refresh outcomes remain readable after the item timeline fills.
+    val TERMINAL_OPERATIONS =
+      setOf(
+        "refresh",
+        "index.candidate",
+        "capture.finish",
+      )
+
     // Separate sequence and UUID namespace from AndroidX's thread tracks in the same file.
     const val SEQUENCE = 2
     const val TRACK_BASE = 0x4d4554524f000000L

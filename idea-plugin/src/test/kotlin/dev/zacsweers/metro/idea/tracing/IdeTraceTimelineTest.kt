@@ -85,6 +85,122 @@ class IdeTraceTimelineTest : TestCase() {
     assertEquals(2, timeline.lanes().sumOf { it.intervals.size })
   }
 
+  fun testSourceWorkKeepsRefreshOutcomesAfterTimelineSaturation() {
+    val timeline = IdeTraceTimeline()
+    var now = 0L
+    val capture =
+      IdeTraceCapture(TraceScope.noop(), { now }, { throw AssertionError(it) }, timeline)
+    IdeTraceOperation(capture, "refresh").run { refresh ->
+      checkNotNull(refresh).attribute("manualRequest", 12)
+      now = 5
+      IdeTraceOperation(capture, "index.candidate").run { candidate ->
+        checkNotNull(candidate).attribute("manualRequest", 12)
+        candidate.phase("source.scan") { scan ->
+          repeat(25) { batch ->
+            val summary = IdeTraceWorkSummary(checkNotNull(scan), "source.file")
+            repeat(1000) { index ->
+              summary.measure { item ->
+                checkNotNull(item).module = "module${index % 500}"
+                item.file = "example/Batch$batch/File$index.kt"
+                item.stage("source.file.annotationScan") { now++ }
+              }
+            }
+            summary.report()
+          }
+        }
+        now = 30_000
+        candidate.outcome("published")
+      }
+      now = 30_010
+      refresh.outcome("published")
+    }
+    now = 30_011
+    IdeTraceOperation(capture, "capture.finish").apply {
+      attribute("stop_reason", "completed")
+      attribute("partial", false)
+      instant()
+    }
+
+    val intervals = timeline.lanes().flatMap { it.intervals }
+    assertTrue(intervals.size <= 21_024)
+    val candidate = intervals.single { it.name == "index.candidate" }
+    assertEquals("published", candidate.attributes["outcome"])
+    assertEquals("12", candidate.attributes["manualRequest"])
+    assertEquals("29995", candidate.attributes["elapsed_ns"])
+    val refresh = intervals.single { it.name == "refresh" }
+    assertEquals("published", refresh.attributes["outcome"])
+    assertEquals("30010", refresh.attributes["elapsed_ns"])
+    assertTrue(intervals.any { it.name == "source.file.item" })
+    val finish = intervals.single { it.name == "capture.finish" }
+    assertEquals("completed", finish.attributes["stop_reason"])
+    assertEquals("false", finish.attributes["partial"])
+    val overview = checkNotNull(timeline.overview())
+    assertEquals("30010", overview.attributes["elapsed_ns"])
+    assertEquals("completed", overview.attributes["stop_reason"])
+    assertEquals("false", overview.attributes["partial"])
+    assertTrue(checkNotNull(overview.attributes["dropped_events"]).toInt() > 0)
+  }
+
+  fun testTerminalReserveKeepsNewestOutcomesAndPreservesDetailCounts() {
+    val timeline =
+      IdeTraceTimeline(
+        capacity = 4,
+        enclosingReserve = 0,
+        priorityReserve = 0,
+        terminalCapacity = 3,
+      )
+    repeat(4) { index ->
+      val reservation = checkNotNull(timeline.reserveDetail(priority = false))
+      timeline.recordReservedDetail(reservation, span(index + 1L, 99, index * 2L, index * 2L + 1))
+    }
+    repeat(10) { index ->
+      timeline.record(
+        IdeTraceInterval(
+          index + 10L,
+          null,
+          index + 10L,
+          "index.candidate",
+          10,
+          20,
+          mapOf("outcome" to "published", "manualRequest" to index.toString()),
+        )
+      )
+    }
+    timeline.record(
+      IdeTraceInterval(
+        20,
+        null,
+        20,
+        "refresh",
+        0,
+        25,
+        mapOf("outcome" to "published"),
+      )
+    )
+    timeline.record(
+      IdeTraceInterval(
+        21,
+        null,
+        21,
+        "capture.finish",
+        30,
+        null,
+        mapOf("stop_reason" to "completed", "partial" to "false"),
+      )
+    )
+
+    val intervals = timeline.lanes().flatMap { it.intervals }
+    assertEquals(7, intervals.size)
+    assertEquals(
+      setOf(1L, 2L, 3L, 4L),
+      intervals.filter { it.parentId == 99L }.map { it.id }.toSet(),
+    )
+    assertEquals("9", intervals.single { it.name == "index.candidate" }.attributes["manualRequest"])
+    assertEquals("published", intervals.single { it.name == "refresh" }.attributes["outcome"])
+    assertEquals("9", timeline.overview()?.attributes?.get("dropped_events"))
+    assertEquals("completed", timeline.overview()?.attributes?.get("stop_reason"))
+  }
+
   fun testDetailSaturationPreservesRankedChildrenAndLaterPhaseSummary() {
     val timeline = IdeTraceTimeline(capacity = 8, enclosingReserve = 2, priorityReserve = 2)
     var now = 0L
