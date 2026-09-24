@@ -1451,10 +1451,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#generatemetrographmetadata" class="md-nav__link">
+  <a href="#generatetargetcompilationmetrographmetadata" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        <code>generateMetroGraphMetadata</code>
+        <code>generate&lt;Target&gt;&lt;Compilation&gt;MetroGraphMetadata</code>
       </span>
     </span>
   </a>
@@ -1462,10 +1462,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#analyzemetrograph" class="md-nav__link">
+  <a href="#analyzetargetcompilationmetrograph" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        <code>analyzeMetroGraph</code>
+        <code>analyze&lt;Target&gt;&lt;Compilation&gt;MetroGraph</code>
       </span>
     </span>
   </a>
@@ -1473,10 +1473,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#generatemetrographhtml" class="md-nav__link">
+  <a href="#generatetargetcompilationmetrographhtml" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        <code>generateMetroGraphHtml</code>
+        <code>generate&lt;Target&gt;&lt;Compilation&gt;MetroGraphHtml</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#updating-existing-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Updating Existing Commands
       </span>
     </span>
   </a>
@@ -2307,10 +2318,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#generatemetrographmetadata" class="md-nav__link">
+  <a href="#generatetargetcompilationmetrographmetadata" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        <code>generateMetroGraphMetadata</code>
+        <code>generate&lt;Target&gt;&lt;Compilation&gt;MetroGraphMetadata</code>
       </span>
     </span>
   </a>
@@ -2318,10 +2329,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#analyzemetrograph" class="md-nav__link">
+  <a href="#analyzetargetcompilationmetrograph" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        <code>analyzeMetroGraph</code>
+        <code>analyze&lt;Target&gt;&lt;Compilation&gt;MetroGraph</code>
       </span>
     </span>
   </a>
@@ -2329,10 +2340,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#generatemetrographhtml" class="md-nav__link">
+  <a href="#generatetargetcompilationmetrographhtml" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        <code>generateMetroGraphHtml</code>
+        <code>generate&lt;Target&gt;&lt;Compilation&gt;MetroGraphHtml</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#updating-existing-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Updating Existing Commands
       </span>
     </span>
   </a>
@@ -2676,30 +2698,65 @@
 <p class="admonition-title">Warning</p>
 <p>These tasks are intended for analysis and visualization. They aren&rsquo;t intended for continuous validation because of the <code>reportsDestination</code> limitations described above.</p>
 </div>
-<h3 id="generatemetrographmetadata"><code>generateMetroGraphMetadata</code><a class="headerlink" href="#generatemetrographmetadata" title="Permanent link">&para;</a></h3>
-<p>Combines the compiler&rsquo;s per-graph metadata into one JSON file for the current Gradle project.</p>
-<p><strong>Output:</strong> <code>build/reports/metro/graphMetadata.json</code></p>
-<p>The compiler writes individual reports under <code>{reportsDestination}/{target}/{compilation}/graph-metadata/</code>. The target directory is omitted when the target has no name. The analysis and HTML tasks depend on this task. You usually don&rsquo;t need to run it directly.</p>
-<h3 id="analyzemetrograph"><code>analyzeMetroGraph</code><a class="headerlink" href="#analyzemetrograph" title="Permanent link">&para;</a></h3>
-<p>Combines graph metadata into an analysis report.</p>
-<div class="highlight"><pre><span></span><code>./gradlew<span class="w"> </span>:app:analyzeMetroGraph
+<p>The global <code>generateMetroGraphMetadata</code>, <code>analyzeMetroGraph</code>, and <code>generateMetroGraphHtml</code> tasks run their corresponding report tasks for every Kotlin compilation in the project.</p>
+<p>To target one compilation, use a scoped task name. It includes the capitalized target and compilation names. A blank target name is omitted. Running a scoped report task compiles its selected compilation and the dependencies that compilation needs.</p>
+<table>
+<thead>
+<tr>
+<th>Compilation</th>
+<th>Metadata task</th>
+<th>Output directory</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Android <code>internalDebug</code></td>
+<td><code>generateInternalDebugMetroGraphMetadata</code></td>
+<td><code>build/reports/metro/internalDebug/</code></td>
+</tr>
+<tr>
+<td>JVM <code>main</code></td>
+<td><code>generateMainMetroGraphMetadata</code></td>
+<td><code>build/reports/metro/main/</code></td>
+</tr>
+<tr>
+<td>KMP <code>jvm</code> target, <code>main</code> compilation</td>
+<td><code>generateJvmMainMetroGraphMetadata</code></td>
+<td><code>build/reports/metro/jvm/main/</code></td>
+</tr>
+</tbody>
+</table>
+<p>Outputs use <code>build/reports/metro/{target}/{compilation}/</code>. The target directory is omitted when the target has no name. Each compilation has its own metadata, analysis, and HTML reports.</p>
+<h3 id="generatetargetcompilationmetrographmetadata"><code>generate&lt;Target&gt;&lt;Compilation&gt;MetroGraphMetadata</code><a class="headerlink" href="#generatetargetcompilationmetrographmetadata" title="Permanent link">&para;</a></h3>
+<p>Combines the compiler&rsquo;s per-graph metadata from the selected compilation into one JSON file.</p>
+<div class="highlight"><pre><span></span><code>./gradlew<span class="w"> </span>:app:generateInternalDebugMetroGraphMetadata
 </code></pre></div>
-<p><strong>Output:</strong> <code>build/reports/metro/analysis.json</code></p>
+<p><strong>Output:</strong> <code>build/reports/metro/internalDebug/graphMetadata.json</code></p>
+<p>The compiler writes individual reports under <code>{reportsDestination}/{target}/{compilation}/graph-metadata/</code>. The analysis and HTML tasks depend on the metadata task for the same compilation. You usually don&rsquo;t need to run it directly.</p>
+<h3 id="analyzetargetcompilationmetrograph"><code>analyze&lt;Target&gt;&lt;Compilation&gt;MetroGraph</code><a class="headerlink" href="#analyzetargetcompilationmetrograph" title="Permanent link">&para;</a></h3>
+<p>Combines graph metadata from the selected compilation into an analysis report.</p>
+<div class="highlight"><pre><span></span><code>./gradlew<span class="w"> </span>:app:analyzeInternalDebugMetroGraph
+</code></pre></div>
+<p><strong>Output:</strong> <code>build/reports/metro/internalDebug/analysis.json</code></p>
 <p>This task analyzes the combined graph metadata. You can use its JSON output in other tools.</p>
-<h3 id="generatemetrographhtml"><code>generateMetroGraphHtml</code><a class="headerlink" href="#generatemetrographhtml" title="Permanent link">&para;</a></h3>
+<h3 id="generatetargetcompilationmetrographhtml"><code>generate&lt;Target&gt;&lt;Compilation&gt;MetroGraphHtml</code><a class="headerlink" href="#generatetargetcompilationmetrographhtml" title="Permanent link">&para;</a></h3>
 <p>Generates interactive HTML visualizations of your dependency graphs. Each file includes the graph data, styles, and scripts.</p>
-<div class="highlight"><pre><span></span><code>./gradlew<span class="w"> </span>:app:generateMetroGraphHtml
+<div class="highlight"><pre><span></span><code>./gradlew<span class="w"> </span>:app:generateInternalDebugMetroGraphHtml
 </code></pre></div>
-<p><strong>Output:</strong> <code>build/reports/metro/html/</code> containing:</p>
+<p><strong>Output:</strong> <code>build/reports/metro/internalDebug/html/</code> containing:</p>
 <ul>
 <li><code>index.html</code> - Lists all graphs</li>
 <li><code>{graph-name}.html</code> - Interactive visualization for each graph</li>
 </ul>
 <p>Open the HTML files directly in a browser. They work offline and have no external dependencies.</p>
+<h3 id="updating-existing-commands">Updating Existing Commands<a class="headerlink" href="#updating-existing-commands" title="Permanent link">&para;</a></h3>
+<p>Existing commands using the global task names remain valid and run all compilations. Use the scoped names above when you want to target one compilation.</p>
+<p>Update report readers to use the compilation&rsquo;s output directory. For example, <code>build/reports/metro/graphMetadata.json</code> moves to <code>build/reports/metro/internalDebug/graphMetadata.json</code> for Android <code>internalDebug</code>. Global tasks also write separate reports for each compilation.</p>
+<p>The global names now refer to aggregate tasks. Move typed task configuration to a scoped task, such as <code>tasks.named&lt;GenerateGraphHtmlTask&gt;("generateMainMetroGraphHtml")</code>. To configure HTML reports for all compilations, use <code>tasks.withType&lt;GenerateGraphHtmlTask&gt;().configureEach { ... }</code>. The same applies to <code>GenerateGraphMetadataTask</code> and <code>AnalyzeGraphTask</code>.</p>
 <h2 id="open-reports-in-the-browser">Open Reports in the Browser<a class="headerlink" href="#open-reports-in-the-browser" title="Permanent link">&para;</a></h2>
 <p><a href="../graph-viewer/index.html">Open the graph viewer</a> to browse reports without generating HTML first. Drop compiler <code>graph-*.json</code> files or <code>graphMetadata.json</code> onto the page. You can also choose files with the file picker or try the sample graph.</p>
 <p>Files stay in your browser. The viewer doesn&rsquo;t upload or save them. Choose several reports from the same compilation to see extensions, their parents, and included graph dependencies together. Missing related reports are listed above the graph. <strong>Add reports</strong> adds files to the current import. <strong>Replace reports</strong> starts a new import.</p>
-<p>Include <code>analysis.json</code> to see centrality, dominator counts, and the longest chain. Search, layouts, roots, and connections work without analysis. The viewer checks graph names and binding keys before accepting analysis. Generate both files from the same compilation.</p>
+<p>Include <code>analysis.json</code> to see centrality, dominator counts, and the longest chain. Search, layouts, roots, and connections work without analysis. The viewer checks graph names and binding keys before accepting analysis. Import <code>graphMetadata.json</code> and <code>analysis.json</code> from the same compilation&rsquo;s output directory. Use <strong>Replace reports</strong> when switching variants or targets.</p>
 <p>The viewer accepts Metro&rsquo;s current unversioned JSON reports. Use the docs version that matches the Metro version that produced your reports. Older reports may lack accessor names or ownership information. Conflicting reports for the same graph are rejected.</p>
 <h2 id="browsing-a-graph">Browsing a Graph<a class="headerlink" href="#browsing-a-graph" title="Permanent link">&para;</a></h2>
 <p>The viewer opens with a package overview. It groups related packages by namespace and shows the number of visible bindings in each group. Lines show dependencies between groups. The overview includes related graphs available in that HTML report, including extensions and identified graph dependencies.</p>
@@ -2805,11 +2862,11 @@
 </ul>
 <p>The map uses a fixed layout and draws only the visible area. You can start browsing immediately. Package groups, limited Connections views, and hidden labels help keep large graphs readable.</p>
 <h2 id="example-workflow">Example Workflow<a class="headerlink" href="#example-workflow" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="c1"># Generate visualizations</span>
-./gradlew<span class="w"> </span>:app:generateMetroGraphHtml
+<div class="highlight"><pre><span></span><code><span class="c1"># Generate visualizations for internalDebug</span>
+./gradlew<span class="w"> </span>:app:generateInternalDebugMetroGraphHtml
 
 <span class="c1"># Open in browser</span>
-open<span class="w"> </span>app/build/reports/metro/html/index.html
+open<span class="w"> </span>app/build/reports/metro/internalDebug/html/index.html
 </code></pre></div>
 <ol>
 <li>Open a graph and use the package overview to find the area you want to inspect.</li>
@@ -2820,7 +2877,7 @@ open<span class="w"> </span>app/build/reports/metro/html/index.html
 </ol>
 <p>Each graph&rsquo;s HTML file contains its data and viewer resources. You can open it directly from disk or share it with someone who needs to inspect the same report.</p>
 <h2 id="analysis-metrics">Analysis Metrics<a class="headerlink" href="#analysis-metrics" title="Permanent link">&para;</a></h2>
-<p>The <code>analyzeMetroGraph</code> task computes the following metrics for each graph.</p>
+<p>The <code>analyze&lt;Target&gt;&lt;Compilation&gt;MetroGraph</code> task computes the following metrics for each graph.</p>
 <h3 id="fan-in-and-fan-out">Fan-In and Fan-Out<a class="headerlink" href="#fan-in-and-fan-out" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -2864,12 +2921,12 @@ open<span class="w"> </span>app/build/reports/metro/html/index.html
 <p>The serializable report models are published in <code>dev.zacsweers.metro:graphs</code>. The Metro Gradle plugin exposes these models as an API dependency. Their existing <code>dev.zacsweers.metro.gradle.analysis</code> package names are unchanged.</p>
 <p>Model APIs require opting into <code>dev.zacsweers.metro.graph.ExperimentalMetroGraphApi</code>. The Gradle plugin&rsquo;s <code>BindingGraph</code> and <code>GraphAnalyzer</code> helpers also require <code>ExperimentalMetroGradleApi</code>.</p>
 <h3 id="raw-metadata">Raw Metadata<a class="headerlink" href="#raw-metadata" title="Permanent link">&para;</a></h3>
-<p>The raw graph metadata from <code>generateMetroGraphMetadata</code>:</p>
+<p>The raw graph metadata from <code>generateInternalDebugMetroGraphMetadata</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@file</span><span class="p">:</span><span class="n">OptIn</span><span class="p">(</span><span class="n">dev</span><span class="p">.</span><span class="na">zacsweers</span><span class="p">.</span><span class="na">metro</span><span class="p">.</span><span class="na">graph</span><span class="p">.</span><span class="na">ExperimentalMetroGraphApi</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
 
 <span class="c1">// Parse raw graph metadata</span>
 <span class="kd">val</span><span class="w"> </span><span class="nv">metadata</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Json</span><span class="p">.</span><span class="na">decodeFromString</span><span class="o">&lt;</span><span class="n">AggregatedGraphMetadata</span><span class="o">&gt;</span><span class="p">(</span>
-<span class="w">    </span><span class="n">file</span><span class="p">(</span><span class="s">"build/reports/metro/graphMetadata.json"</span><span class="p">).</span><span class="na">readText</span><span class="p">()</span>
+<span class="w">    </span><span class="n">file</span><span class="p">(</span><span class="s">"build/reports/metro/internalDebug/graphMetadata.json"</span><span class="p">).</span><span class="na">readText</span><span class="p">()</span>
 <span class="p">)</span>
 
 <span class="c1">// Analyze bindings</span>
@@ -2909,12 +2966,12 @@ open<span class="w"> </span>app/build/reports/metro/html/index.html
 <li>Synthetic binding flags</li>
 </ul>
 <h3 id="analysis-report">Analysis Report<a class="headerlink" href="#analysis-report" title="Permanent link">&para;</a></h3>
-<p>The <code>analyzeMetroGraph</code> report groups its results by graph:</p>
+<p>The <code>analyzeInternalDebugMetroGraph</code> report groups its results by graph:</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@file</span><span class="p">:</span><span class="n">OptIn</span><span class="p">(</span><span class="n">dev</span><span class="p">.</span><span class="na">zacsweers</span><span class="p">.</span><span class="na">metro</span><span class="p">.</span><span class="na">graph</span><span class="p">.</span><span class="na">ExperimentalMetroGraphApi</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
 
 <span class="c1">// Parse analysis report</span>
 <span class="kd">val</span><span class="w"> </span><span class="nv">report</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Json</span><span class="p">.</span><span class="na">decodeFromString</span><span class="o">&lt;</span><span class="n">FullAnalysisReport</span><span class="o">&gt;</span><span class="p">(</span>
-<span class="w">    </span><span class="n">file</span><span class="p">(</span><span class="s">"build/reports/metro/analysis.json"</span><span class="p">).</span><span class="na">readText</span><span class="p">()</span>
+<span class="w">    </span><span class="n">file</span><span class="p">(</span><span class="s">"build/reports/metro/internalDebug/analysis.json"</span><span class="p">).</span><span class="na">readText</span><span class="p">()</span>
 <span class="p">)</span>
 
 <span class="c1">// Each graph has all its analysis co-located</span>
