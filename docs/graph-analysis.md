@@ -96,12 +96,6 @@ Generates interactive HTML visualizations of your dependency graphs. Each file i
 
 Open the HTML files directly in a browser. They work offline and have no external dependencies.
 
-### Updating Existing Commands
-
-The unqualified `generateMetroGraphMetadata`, `analyzeMetroGraph`, and `generateMetroGraphHtml` tasks have been removed. Update scripts to select the compilation they need. For an Android `internalDebug` build, use the commands above. For a JVM `main` compilation, use `generateMainMetroGraphMetadata`, `analyzeMainMetroGraph`, and `generateMainMetroGraphHtml`.
-
-Update report readers to use the compilation's output directory. For example, `build/reports/metro/graphMetadata.json` moves to `build/reports/metro/internalDebug/graphMetadata.json` for Android `internalDebug`. Select each desired compilation explicitly when generating reports for several variants or targets.
-
 ## Open Reports in the Browser
 
 [Open the graph viewer](graph-viewer/index.html) to browse reports without generating HTML first. Drop compiler `graph-*.json` files or `graphMetadata.json` onto the page. You can also choose files with the file picker or try the sample graph.
