@@ -22,3 +22,4 @@
 # Retained for IntelliJ 2026.3 EAP (2.5.0-dev-6810).
 2.5.0-dev-6460
 2.5.0-dev-7307
+2.5.0-Beta1
