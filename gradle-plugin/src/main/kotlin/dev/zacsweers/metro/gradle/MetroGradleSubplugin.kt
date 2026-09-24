@@ -73,6 +73,23 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
       )
     }
 
+    // Global commands delegate to compilation tasks that keep their report outputs separate.
+    target.tasks.register("generateMetroGraphMetadata") { task ->
+      task.group = "metro"
+      task.description = "Generates Metro graph metadata for all Kotlin compilations"
+      task.dependsOn(target.tasks.withType(GenerateGraphMetadataTask::class.java))
+    }
+    target.tasks.register("analyzeMetroGraph") { task ->
+      task.group = "metro"
+      task.description = "Analyzes Metro dependency graphs for all Kotlin compilations"
+      task.dependsOn(target.tasks.withType(AnalyzeGraphTask::class.java))
+    }
+    target.tasks.register("generateMetroGraphHtml") { task ->
+      task.group = "metro"
+      task.description = "Generates interactive Metro graph HTML for all Kotlin compilations"
+      task.dependsOn(target.tasks.withType(GenerateGraphHtmlTask::class.java))
+    }
+
     target.afterEvaluate {
       // Check version and show warning by default.
       val checkVersions =

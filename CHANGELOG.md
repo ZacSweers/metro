@@ -14,7 +14,7 @@ Changelog
 
 - Update a few misc kdocs.
 - **[Gradle]** Move shared graph report models into the `graphs` artifact and make `graph-viewer` an implementation dependency of the Gradle plugin. Model APIs now require opting into `@ExperimentalMetroGraphApi`. Existing model packages and the public experimental `BindingGraph` and `GraphAnalyzer` APIs are preserved.
-- **[Gradle]** Graph report tasks now include the compilation in their names, such as `generateMainMetroGraphHtml`. Outputs move to `build/reports/metro/{target}/{compilation}/`.
+- **[Gradle]** Graph reports now have tasks for individual compilations, such as `generateMainMetroGraphHtml`. Outputs move to `build/reports/metro/{target}/{compilation}/`. See [migration details](docs/graph-analysis.md#updating-existing-commands).
 - Update `androidx.tracing` dependency to `2.0.3`.
 
 ### Contributors

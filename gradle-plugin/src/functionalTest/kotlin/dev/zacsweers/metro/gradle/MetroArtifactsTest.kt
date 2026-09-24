@@ -388,9 +388,10 @@ class MetroArtifactsTest {
         "generateMainMetroGraphMetadata",
         "analyzeMainMetroGraph",
         "generateMainMetroGraphHtml",
+        "generateMetroGraphMetadata",
+        "analyzeMetroGraph",
+        "generateMetroGraphHtml",
       )
-    assertThat(taskNames)
-      .containsNoneOf("generateMetroGraphMetadata", "analyzeMetroGraph", "generateMetroGraphHtml")
     assertThat(taskListing.tasks.map { it.path }.filter { it.startsWith(":compile") }).isEmpty()
 
     // Plain console keeps the recorded diagnosticsRenderMode option deterministic.
@@ -971,6 +972,97 @@ class MetroArtifactsTest {
     assertTrue(htmlFile.exists(), "Graph HTML file should exist")
   }
 
+  /** Aggregate tasks preserve each compilation's report chain and output directory. */
+  @Test
+  fun `aggregate report tasks include all compilations and reuse configuration cache`() {
+    val fixture =
+      object :
+        MetroProject(
+          multiplatform = false,
+          additionalGradleProperties =
+            listOf(
+              "org.gradle.configuration-cache=true",
+              "org.gradle.configuration-cache.read-only=false",
+            ),
+        ) {
+        override fun sources() =
+          listOf(
+            source(
+              """
+              @DependencyGraph
+              interface AppGraph
+              """,
+              "AppGraph",
+            ),
+            dev.zacsweers.metro.gradle.source(
+              """
+              @DependencyGraph
+              interface TestGraph
+              """,
+              "TestGraph",
+              sourceSet = "test",
+            ),
+          )
+      }
+
+    val project = fixture.gradleProject
+    val mainReports = AnalysisReports.from(project.rootDir, compilationName = "main")
+    val testReports = AnalysisReports.from(project.rootDir, compilationName = "test")
+    val compilations = listOf("Main", "Test")
+
+    val metadataResult = build(project.rootDir, "generateMetroGraphMetadata", "--console=plain")
+    assertThat(metadataResult.task(":generateMetroGraphMetadata")).isNotNull()
+    assertThat(metadataResult.task(":compileKotlin")).isNotNull()
+    assertThat(metadataResult.task(":compileTestKotlin")).isNotNull()
+    for (compilation in compilations) {
+      assertThat(metadataResult.task(":generate${compilation}MetroGraphMetadata")?.outcome)
+        .isEqualTo(TaskOutcome.SUCCESS)
+      assertThat(metadataResult.task(":analyze${compilation}MetroGraph")).isNull()
+      assertThat(metadataResult.task(":generate${compilation}MetroGraphHtml")).isNull()
+    }
+    val mainMetadata = mainReports.graphMetadataFile.readText()
+    val testMetadata = testReports.graphMetadataFile.readText()
+    assertThat(mainMetadata).contains("test.AppGraph")
+    assertThat(mainMetadata).doesNotContain("test.TestGraph")
+    assertThat(testMetadata).contains("test.TestGraph")
+    assertThat(testMetadata).doesNotContain("test.AppGraph")
+
+    val analysisResult = build(project.rootDir, "analyzeMetroGraph", "--console=plain")
+    assertThat(analysisResult.task(":analyzeMetroGraph")).isNotNull()
+    for (compilation in compilations) {
+      assertThat(analysisResult.task(":analyze${compilation}MetroGraph")?.outcome)
+        .isEqualTo(TaskOutcome.SUCCESS)
+      assertThat(analysisResult.task(":generate${compilation}MetroGraphHtml")).isNull()
+    }
+    assertTrue(mainReports.analysisFile.exists())
+    assertTrue(testReports.analysisFile.exists())
+
+    val htmlResult = build(project.rootDir, "generateMetroGraphHtml", "--console=plain")
+    assertThat(htmlResult.task(":generateMetroGraphHtml")).isNotNull()
+    for (compilation in compilations) {
+      assertThat(htmlResult.task(":generate${compilation}MetroGraphHtml")?.outcome)
+        .isEqualTo(TaskOutcome.SUCCESS)
+    }
+    assertThat(htmlResult.output).contains("Configuration cache entry stored")
+    assertTrue(mainReports.htmlFileForGraph("test.AppGraph").exists())
+    assertFalse(mainReports.htmlFileForGraph("test.TestGraph").exists())
+    assertTrue(testReports.htmlFileForGraph("test.TestGraph").exists())
+    assertFalse(testReports.htmlFileForGraph("test.AppGraph").exists())
+
+    val cachedResult = build(project.rootDir, "generateMetroGraphHtml", "--console=plain")
+    assertThat(cachedResult.output).contains("Reusing configuration cache")
+    for (compilation in compilations) {
+      assertThat(cachedResult.task(":generate${compilation}MetroGraphMetadata")?.outcome)
+        .isEqualTo(TaskOutcome.UP_TO_DATE)
+      assertThat(cachedResult.task(":analyze${compilation}MetroGraph")?.outcome)
+        .isEqualTo(TaskOutcome.UP_TO_DATE)
+      assertThat(cachedResult.task(":generate${compilation}MetroGraphHtml")?.outcome)
+        .isEqualTo(TaskOutcome.UP_TO_DATE)
+    }
+    assertThat(mainReports.graphMetadataFile.readText()).isEqualTo(mainMetadata)
+    assertThat(testReports.graphMetadataFile.readText()).isEqualTo(testMetadata)
+  }
+
   @Test
   fun `multiplatform report tasks compile only their selected target and isolate outputs`() {
     val fixture =
@@ -1174,7 +1266,7 @@ class MetroArtifactsTest {
   }
 
   @Test
-  fun `analysis tasks are skipped when reportsDestination is not present`() {
+  fun `aggregate report tasks do not compile when reportsDestination is not present`() {
     val fixture =
       object : MetroProject(multiplatform = false, reportsEnabled = false) {
         override fun sources() =
@@ -1190,13 +1282,27 @@ class MetroArtifactsTest {
       }
 
     val project = fixture.gradleProject
-    val result = build(project.rootDir, "generateMainMetroGraphHtml", "--console=plain")
+    val result =
+      build(
+        project.rootDir,
+        "generateMetroGraphMetadata",
+        "analyzeMetroGraph",
+        "generateMetroGraphHtml",
+        "--console=plain",
+      )
 
-    assertThat(result.task(":generateMainMetroGraphMetadata")?.outcome)
-      .isEqualTo(TaskOutcome.SKIPPED)
-    assertThat(result.task(":analyzeMainMetroGraph")?.outcome).isEqualTo(TaskOutcome.SKIPPED)
-    assertThat(result.task(":generateMainMetroGraphHtml")?.outcome).isEqualTo(TaskOutcome.SKIPPED)
-    assertThat(result.task(":compileKotlin")).isNull()
+    assertThat(result.task(":generateMetroGraphMetadata")).isNotNull()
+    assertThat(result.task(":analyzeMetroGraph")).isNotNull()
+    assertThat(result.task(":generateMetroGraphHtml")).isNotNull()
+    for (compilation in listOf("Main", "Test")) {
+      assertThat(result.task(":generate${compilation}MetroGraphMetadata")?.outcome)
+        .isEqualTo(TaskOutcome.SKIPPED)
+      assertThat(result.task(":analyze${compilation}MetroGraph")?.outcome)
+        .isEqualTo(TaskOutcome.SKIPPED)
+      assertThat(result.task(":generate${compilation}MetroGraphHtml")?.outcome)
+        .isEqualTo(TaskOutcome.SKIPPED)
+    }
+    assertThat(result.tasks.map { it.path }.filter { it.startsWith(":compile") }).isEmpty()
 
     val reportingDir = project.rootDir.toPath().resolve("build/tmp/metro/reporting")
     assertFalse(reportingDir.exists())

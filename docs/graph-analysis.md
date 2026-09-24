@@ -47,13 +47,15 @@ The counters are available in per-graph and aggregated metadata.
 !!! warning
     These tasks are intended for analysis and visualization. They aren't intended for continuous validation because of the `reportsDestination` limitations described above.
 
-Each task selects one Kotlin compilation. Its name includes the capitalized target and compilation names. A blank target name is omitted. Running a report task compiles its selected compilation and the dependencies that compilation needs.
+The global `generateMetroGraphMetadata`, `analyzeMetroGraph`, and `generateMetroGraphHtml` tasks run their corresponding report tasks for every Kotlin compilation in the project.
 
-| Compilation | Metadata task | Output directory |
-|-------------|---------------|------------------|
-| Android `internalDebug` | `generateInternalDebugMetroGraphMetadata` | `build/reports/metro/internalDebug/` |
-| JVM `main` | `generateMainMetroGraphMetadata` | `build/reports/metro/main/` |
-| KMP `jvm` target, `main` compilation | `generateJvmMainMetroGraphMetadata` | `build/reports/metro/jvm/main/` |
+To target one compilation, use a scoped task name. It includes the capitalized target and compilation names. A blank target name is omitted. Running a scoped report task compiles its selected compilation and the dependencies that compilation needs.
+
+| Compilation                          | Metadata task                             | Output directory                     |
+|--------------------------------------|-------------------------------------------|--------------------------------------|
+| Android `internalDebug`              | `generateInternalDebugMetroGraphMetadata` | `build/reports/metro/internalDebug/` |
+| JVM `main`                           | `generateMainMetroGraphMetadata`          | `build/reports/metro/main/`          |
+| KMP `jvm` target, `main` compilation | `generateJvmMainMetroGraphMetadata`       | `build/reports/metro/jvm/main/`      |
 
 Outputs use `build/reports/metro/{target}/{compilation}/`. The target directory is omitted when the target has no name. Each compilation has its own metadata, analysis, and HTML reports.
 
@@ -95,6 +97,14 @@ Generates interactive HTML visualizations of your dependency graphs. Each file i
 - `{graph-name}.html` - Interactive visualization for each graph
 
 Open the HTML files directly in a browser. They work offline and have no external dependencies.
+
+### Updating Existing Commands
+
+Existing commands using the global task names remain valid and run all compilations. Use the scoped names above when you want to target one compilation.
+
+Update report readers to use the compilation's output directory. For example, `build/reports/metro/graphMetadata.json` moves to `build/reports/metro/internalDebug/graphMetadata.json` for Android `internalDebug`. Global tasks also write separate reports for each compilation.
+
+The global names now refer to aggregate tasks. Move typed task configuration to a scoped task, such as `tasks.named<GenerateGraphHtmlTask>("generateMainMetroGraphHtml")`. To configure HTML reports for all compilations, use `tasks.withType<GenerateGraphHtmlTask>().configureEach { ... }`. The same applies to `GenerateGraphMetadataTask` and `AnalyzeGraphTask`.
 
 ## Open Reports in the Browser
 
