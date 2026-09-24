@@ -8242,12 +8242,14 @@
 <h3 id="fixes">Fixes<a class="headerlink" href="#fixes" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>[FIR]</strong> Treat <code>@Multibinds</code> declarations as accessors to fix a false positive <code>CONTRIBUTES_TO_COULD_BE_BINDING_CONTAINER</code> warning.</li>
+<li><strong>[IR]</strong> Fix a <code>ClassCastException</code> during member injection when a class declares an injected method before an injected property.</li>
 <li><strong>[Gradle]</strong> Restore <code>ExperimentalMetroGradleApi</code> to the <code>gradle-plugin</code> artifact.</li>
 </ul>
 <h3 id="changes">Changes<a class="headerlink" href="#changes" title="Permanent link">&para;</a></h3>
 <ul>
 <li>Update a few misc kdocs.</li>
 <li><strong>[Gradle]</strong> Move shared graph report models into the <code>graphs</code> artifact and make <code>graph-viewer</code> an implementation dependency of the Gradle plugin. Model APIs now require opting into <code>@ExperimentalMetroGraphApi</code>. Existing model packages and the public experimental <code>BindingGraph</code> and <code>GraphAnalyzer</code> APIs are preserved.</li>
+<li>Update <code>androidx.tracing</code> dependency to <code>2.0.3</code>.</li>
 </ul>
 <h3 id="contributors">Contributors<a class="headerlink" href="#contributors" title="Permanent link">&para;</a></h3>
 <p>Special thanks to the following contributors for contributing to this release!</p>
