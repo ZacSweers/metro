@@ -1803,7 +1803,18 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Unreleased">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#145" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        1.4.5
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1.4.5">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -5073,7 +5084,18 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Unreleased">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#145" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        1.4.5
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1.4.5">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -8239,6 +8261,8 @@
 
 <h1 id="changelog">Changelog<a class="headerlink" href="#changelog" title="Permanent link">&para;</a></h1>
 <h2 id="unreleased"><strong>Unreleased</strong><a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
+<h2 id="145">1.4.5<a class="headerlink" href="#145" title="Permanent link">&para;</a></h2>
+<p><em>2026-09-24</em></p>
 <h3 id="fixes">Fixes<a class="headerlink" href="#fixes" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>[FIR]</strong> Treat <code>@Multibinds</code> declarations as accessors to fix a false positive <code>CONTRIBUTES_TO_COULD_BE_BINDING_CONTAINER</code> warning.</li>
@@ -8248,10 +8272,11 @@
 <h3 id="changes">Changes<a class="headerlink" href="#changes" title="Permanent link">&para;</a></h3>
 <ul>
 <li>Update a few misc kdocs.</li>
-<li>Use <code>AnalysisFlags</code> API to detect IDE mode.</li>
+<li>Use <code>AnalysisFlags</code> API to detect IDE mode in newer Kotlin versions.</li>
 <li><strong>[Gradle]</strong> Move shared graph report models into the <code>graphs</code> artifact and make <code>graph-viewer</code> an implementation dependency of the Gradle plugin. Model APIs now require opting into <code>@ExperimentalMetroGraphApi</code>. Existing model packages and the public experimental <code>BindingGraph</code> and <code>GraphAnalyzer</code> APIs are preserved.</li>
 <li><strong>[Gradle]</strong> Graph reports now have tasks for individual compilations, such as <code>generateMainMetroGraphHtml</code>. Outputs move to <code>build/reports/metro/{target}/{compilation}/</code>. See <a href="../docs/graph-analysis/#updating-existing-commands">migration details</a>.</li>
 <li>Update <code>androidx.tracing</code> dependency to <code>2.0.3</code>.</li>
+<li>Test again Kotlin <code>2.5.0-Beta1</code>.</li>
 </ul>
 <h3 id="contributors">Contributors<a class="headerlink" href="#contributors" title="Permanent link">&para;</a></h3>
 <p>Special thanks to the following contributors for contributing to this release!</p>
