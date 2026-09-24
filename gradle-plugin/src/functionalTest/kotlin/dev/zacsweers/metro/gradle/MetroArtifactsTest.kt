@@ -23,6 +23,7 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -1061,6 +1062,103 @@ class MetroArtifactsTest {
     }
     assertThat(mainReports.graphMetadataFile.readText()).isEqualTo(mainMetadata)
     assertThat(testReports.graphMetadataFile.readText()).isEqualTo(testMetadata)
+  }
+
+  /** Project isolation rejects cross-project task access when configuring the aggregates. */
+  @Test
+  fun `aggregate report tasks support isolated projects and reuse configuration cache`() {
+    val fixture =
+      object :
+        MetroProject(
+          multiplatform = false,
+          additionalGradleProperties =
+            listOf(
+              "org.gradle.configuration-cache=true",
+              "org.gradle.configuration-cache.read-only=false",
+            ),
+        ) {
+        override fun buildGradleProject() = multiModuleProject {
+          root { sources(graphSources("app")) }
+          subproject("lib") { sources(graphSources("lib")) }
+        }
+
+        /** Distinct packages make accidental report sharing between projects visible. */
+        private fun graphSources(packageName: String) =
+          listOf(
+            source(
+              """
+              @DependencyGraph
+              interface AppGraph
+              """,
+              "AppGraph",
+              packageName = packageName,
+            ),
+            dev.zacsweers.metro.gradle.source(
+              """
+              @DependencyGraph
+              interface TestGraph
+              """,
+              "TestGraph",
+              packageName = packageName,
+              sourceSet = "test",
+            ),
+          )
+      }
+
+    val project = fixture.gradleProject
+    val aggregateTasks =
+      listOf("generateMetroGraphMetadata", "analyzeMetroGraph", "generateMetroGraphHtml")
+    val arguments =
+      (aggregateTasks + listOf("--isolated-projects", "--console=plain")).toTypedArray()
+    val result = build(project.rootDir, *arguments)
+    assertThat(result.output).contains("Configuration cache entry stored")
+
+    val cachedResult = build(project.rootDir, *arguments)
+    assertThat(cachedResult.output).contains("Reusing configuration cache")
+
+    for ((module, packageName) in mapOf("" to "app", "lib" to "lib")) {
+      val projectPath = ":$module"
+      val taskPrefix =
+        if (module.isEmpty()) {
+          ":"
+        } else {
+          "$projectPath:"
+        }
+      for (task in aggregateTasks) {
+        assertThat(result.task("$taskPrefix$task")).isNotNull()
+        assertThat(cachedResult.task("$taskPrefix$task")).isNotNull()
+      }
+      for ((compilation, graphName) in mapOf("Main" to "AppGraph", "Test" to "TestGraph")) {
+        val reportTasks =
+          listOf(
+            "generate${compilation}MetroGraphMetadata",
+            "analyze${compilation}MetroGraph",
+            "generate${compilation}MetroGraphHtml",
+          )
+        for (task in reportTasks) {
+          assertThat(result.task("$taskPrefix$task")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+          assertThat(cachedResult.task("$taskPrefix$task")?.outcome)
+            .isEqualTo(TaskOutcome.UP_TO_DATE)
+        }
+
+        val reports =
+          AnalysisReports.from(
+            project.rootDir.resolve(module),
+            compilationName = compilation.lowercase(),
+          )
+        val graphFqName = "$packageName.$graphName"
+        for ((file, graphKey) in
+          listOf(reports.graphMetadataFile to "graph", reports.analysisFile to "graphName")) {
+          val report = reportJson.parseToJsonElement(file.readText()).jsonObject
+          assertThat(report.getValue("projectPath")).isEqualTo(JsonPrimitive(projectPath))
+          val graphs = report.getValue("graphs").jsonArray
+          assertThat(graphs).hasSize(1)
+          assertThat(graphs.single().jsonObject.getValue(graphKey))
+            .isEqualTo(JsonPrimitive(graphFqName))
+        }
+        assertTrue(reports.htmlFileForGraph(graphFqName).exists())
+      }
+    }
   }
 
   @Test
