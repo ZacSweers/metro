@@ -4,6 +4,18 @@ Changelog
 **Unreleased**
 --------------
 
+### Fixes
+
+- **[IR]** Fix member injection across modules when an injected member uses a generic base class's type parameter.
+
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@agrosner](https://github.com/agrosner)
+
+### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
+
 1.4.5
 -----
 

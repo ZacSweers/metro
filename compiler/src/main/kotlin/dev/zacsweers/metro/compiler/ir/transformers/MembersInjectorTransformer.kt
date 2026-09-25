@@ -827,6 +827,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
     // Drop the first as that's always the instance param, which we'll handle separately
     val dependencyParams = function.nonDispatchParameters.drop(1)
     val memberName = function.name.asString().removePrefix("inject").decapitalizeUS()
+    val classTypeRemapper = function.typeRemapperFor(clazz.defaultType)
 
     // Create a synthetic Parameters object from the inject function
     val callableId = CallableId(clazz.classIdOrFail, memberName.asName())
@@ -862,12 +863,14 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
 
       // Create the parameter with the determined qualifier
       val contextKey =
-        param.type.asContextualTypeKey(
-          qualifierAnnotation = qualifier,
-          hasDefault = param.defaultValue != null,
-          patchMutableCollections = false,
-          declaration = param,
-        )
+        classTypeRemapper
+          .remapType(param.type)
+          .asContextualTypeKey(
+            qualifierAnnotation = qualifier,
+            hasDefault = param.defaultValue != null,
+            patchMutableCollections = false,
+            declaration = param,
+          )
 
       Parameter.member(
         kind = param.kind,
