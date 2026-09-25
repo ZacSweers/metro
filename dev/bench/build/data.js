@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790269840080,
+  "lastUpdate": 1790359260501,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -24528,6 +24528,62 @@ window.BENCHMARK_DATA = {
             "value": 19528.272999999997,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -0.09%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Andrew Grosner",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Andrew Grosner",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "eab019e6~1",
+          "message": "[before] IR crash: member injection of a type-parameter-typ",
+          "timestamp": "2026-09-25T17:10:58Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/eab019e68f57824374cf1e8649a9690c8c253962"
+        },
+        "date": 1790359260501,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 14478.645999999999,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Andrew Grosner",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Andrew Grosner",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "eab019e68f57824374cf1e8649a9690c8c253962",
+          "message": "[after] IR crash: member injection of a type-parameter-typ",
+          "timestamp": "2026-09-25T17:10:58Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/eab019e68f57824374cf1e8649a9690c8c253962"
+        },
+        "date": 1790359260502,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 14333.556,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -1.00%"
           }
         ]
       }

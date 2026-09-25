@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790269839923,
+  "lastUpdate": 1790359259992,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -24528,6 +24528,62 @@ window.BENCHMARK_DATA = {
             "value": 0.21028948596378175,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: -0.57%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Andrew Grosner",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Andrew Grosner",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "eab019e6~1",
+          "message": "[before] IR crash: member injection of a type-parameter-typ",
+          "timestamp": "2026-09-25T17:10:58Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/eab019e68f57824374cf1e8649a9690c8c253962"
+        },
+        "date": 1790359259992,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.26818317077981396,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Andrew Grosner",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Andrew Grosner",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "eab019e68f57824374cf1e8649a9690c8c253962",
+          "message": "[after] IR crash: member injection of a type-parameter-typ",
+          "timestamp": "2026-09-25T17:10:58Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/eab019e68f57824374cf1e8649a9690c8c253962"
+        },
+        "date": 1790359259993,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.2662889999287187,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: -0.71%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }
