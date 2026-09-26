@@ -33,17 +33,6 @@ class ContributionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(ta
     fun targets(): List<KmpTarget> = KmpTarget.selectedTargets()
   }
 
-  private val generateClassesInIrEnabled =
-    getTestCompilerToolingVersion() >= KotlinToolingVersion("2.4.20-dev-6138")
-
-  private fun someRepositoryProviderRequestPath(): String {
-    return if (generateClassesInIrEnabled) {
-      "test.SomeRepositoryProvider.someRepository"
-    } else {
-      "test.SomeRepositoryProvider.MetroContributionToLoggedInScope.someRepository"
-    }
-  }
-
   @Test
   fun newContributesIntoSetDetected() {
     val fixture =
@@ -244,14 +233,12 @@ class ContributionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(ta
 
     val firstBuildResult = project.compileKotlinAndFail()
 
-    // Asserted in pieces: the trace line wraps (or not) at 100 columns depending on the
-    // version-dependent request path length.
     val output = firstBuildResult.output.cleanOutputLine()
     assertThat(output).contains("e: ExampleGraph.kt:6:11")
     assertThat(output).contains("[Metro/MissingBinding] No binding found for SomeRepository")
     assertThat(output).contains("trace (in test.ExampleGraph.Impl.LoggedInGraphImpl):")
-    assertThat(output).contains("SomeRepository is requested at")
-    assertThat(output).contains(someRepositoryProviderRequestPath())
+    assertThat(output)
+      .contains("SomeRepository is requested at test.SomeRepositoryProvider.someRepository")
     assertThat(output).contains("similar bindings:")
     assertThat(output)
       .contains(
