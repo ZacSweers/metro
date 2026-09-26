@@ -6,6 +6,7 @@ import dev.zacsweers.metro.gradle.analysis.AnalyzeGraphTask
 import dev.zacsweers.metro.gradle.analysis.GenerateGraphHtmlTask
 import dev.zacsweers.metro.gradle.artifacts.GenerateGraphMetadataTask
 import dev.zacsweers.metro.gradle.artifacts.MetroArtifactCopyTask
+import dev.zacsweers.metro.gradle.validation.registerHiddenDependencyTasks
 import javax.inject.Inject
 import org.gradle.api.JavaVersion
 import org.gradle.api.Project
@@ -289,6 +290,9 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
       }
 
     registerGraphReportTasks(project, extension, kotlinCompilation, reportsDir)
+    if (isJvmTarget) {
+      registerHiddenDependencyTasks(project, extension, kotlinCompilation)
+    }
 
     val metroOptions =
       project.metroCompilerPluginOptions(
