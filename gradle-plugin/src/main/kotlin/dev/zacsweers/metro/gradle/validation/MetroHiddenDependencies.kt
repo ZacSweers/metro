@@ -13,6 +13,7 @@ import org.gradle.api.artifacts.component.ProjectComponentIdentifier
 import org.gradle.api.artifacts.result.ResolvedComponentResult
 import org.gradle.api.artifacts.result.ResolvedDependencyResult
 import org.gradle.api.artifacts.type.ArtifactTypeDefinition
+import org.gradle.api.provider.Provider
 import org.jetbrains.kotlin.gradle.plugin.KotlinCompilation
 import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
 
@@ -99,11 +100,28 @@ internal fun registerHiddenDependencyTasks(
       task.runtimeFiles.from(artifacts.artifactFiles)
     }
     task.scopes.set(extension.aggregationScopes)
+    val interop = extension.interop
+    task.hintFormats.add(HintFormat.METRO)
+    task.hintFormats.addAll(interop.includeAnvilAnnotations.formatIfEnabled(HintFormat.ANVIL))
+    task.hintFormats.addAll(
+      interop.includeKotlinInjectAnvilAnnotations.formatIfEnabled(HintFormat.KOTLIN_INJECT_ANVIL)
+    )
+    task.hintFormats.addAll(interop.includeHiltAnnotations.formatIfEnabled(HintFormat.HILT))
     task.reportFile.convention(
       project.layout.buildDirectory.file("reports/metro/$compilationPath/hidden-dependencies.txt")
     )
   }
 }
+
+/** Interop formats are checked only when Metro reads them. */
+private fun Provider<Boolean>.formatIfEnabled(format: HintFormat): Provider<Set<HintFormat>> =
+  map { enabled ->
+    if (enabled) {
+      setOf(format)
+    } else {
+      emptySet()
+    }
+  }
 
 /** Plain values from resolution. Provider mappings expose only strings and sets to task inputs. */
 private data class MetroDependencyGraph(

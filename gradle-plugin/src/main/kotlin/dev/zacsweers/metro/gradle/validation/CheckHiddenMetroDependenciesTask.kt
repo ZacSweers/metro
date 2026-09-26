@@ -47,8 +47,11 @@ internal abstract class CheckHiddenMetroDependenciesTask : DefaultTask() {
    */
   @get:Classpath abstract val runtimeFiles: ConfigurableFileCollection
 
-  /** Empty selects every Metro hint. Values use Kotlin's ClassId string format. */
+  /** Empty selects every hint. Values use Kotlin's ClassId string format. */
   @get:Input abstract val scopes: SetProperty<String>
+
+  /** Metro hints plus the formats of each enabled interop. */
+  @get:Input abstract val hintFormats: SetProperty<HintFormat>
 
   /** The first resolved path to each runtime component, keyed by its stable component identity. */
   @get:Input abstract val runtimeDependencyPaths: MapProperty<String, String>
@@ -59,6 +62,7 @@ internal abstract class CheckHiddenMetroDependenciesTask : DefaultTask() {
   init {
     group = "verification"
     scopes.convention(emptySet())
+    hintFormats.convention(setOf(HintFormat.METRO))
     runtimeDependencyPaths.convention(emptyMap())
   }
 
@@ -66,6 +70,7 @@ internal abstract class CheckHiddenMetroDependenciesTask : DefaultTask() {
   fun check() {
     val compileIds = compileComponentIds.get()
     val selectedScopes = scopes.get()
+    val formats = hintFormats.get()
     val paths = runtimeDependencyPaths.get()
     val hidden =
       runtimeArtifacts.get().filter { it.componentId !in compileIds }.groupBy { it.componentId }
@@ -75,7 +80,7 @@ internal abstract class CheckHiddenMetroDependenciesTask : DefaultTask() {
       for ((componentId, artifacts) in hidden.toSortedMap()) {
         val hints = sortedSetOf<String>()
         for (artifact in artifacts) {
-          hints += MetroHintScanner.findHints(artifact.file, selectedScopes)
+          hints += MetroHintScanner.findHints(artifact.file, selectedScopes, formats)
         }
         if (hints.isEmpty()) {
           continue

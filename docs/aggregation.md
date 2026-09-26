@@ -55,9 +55,14 @@ metro {
 }
 ```
 
+!!! tip "Interop"
+    The check also reads other frameworks' aggregation metadata when their interop is enabled. `includeAnvilForDagger()` adds Anvil's `anvil.hint` hints. `includeAnvilForKotlinInject()` adds kotlin-inject-anvil's lookup interfaces. `includeHilt()` adds Hilt's `hilt_aggregated_deps` markers.
+    
+    Hilt markers name the components they install into. A standard Hilt component matches its canonical scope, so `javax/inject/Singleton` selects `SingletonComponent` markers. To select a custom `@DefineComponent`, add the component's own ClassId.
+
 Each check writes its report to `build/reports/metro/<target>/<compilation>/hidden-dependencies.txt` and fails if it finds hidden contributions. An empty file means the check passed. A blank target is omitted. Successful checks can be reused from Gradle's build cache.
 
-The check currently covers JVM and Android artifacts, including JVM targets in KMP projects. Other KMP platforms and Hilt-only aggregation metadata are outside its current scope. A finding means a dependency advertises Metro hints. The compiler remains responsible for scope and Kotlin visibility rules. Dependencies without hints can still be needed for types referenced by bindings.
+The check currently covers JVM and Android artifacts, including JVM targets in KMP projects. Other KMP platforms are outside its current scope. A finding means a dependency advertises contribution hints. The compiler remains responsible for scope and Kotlin visibility rules. Dependencies without hints can still be needed for types referenced by bindings.
 
 ## @ContributesTo
 

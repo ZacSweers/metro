@@ -91,6 +91,40 @@ class MetroHiddenDependenciesTest {
   }
 
   @Test
+  fun `interop hints are checked only when their interop is enabled`() {
+    val project = InteropHintsProject().gradleProject
+    val arguments =
+      arrayOf(":checkMainMetroHiddenDependencies", "--isolated-projects", "--console=plain")
+
+    val disabled = build(project.rootDir, *arguments)
+    assertThat(disabled.task(":checkMainMetroHiddenDependencies")?.outcome)
+      .isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(project.hiddenDependenciesReport()).isEmpty()
+
+    val otherScope =
+      build(project.rootDir, *arguments, "-PmetroTestInterop", "-PmetroTestScopes=test/OtherScope")
+    assertThat(otherScope.task(":checkMainMetroHiddenDependencies")?.outcome)
+      .isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(project.hiddenDependenciesReport()).isEmpty()
+
+    val enabled =
+      buildAndFail(
+        project.rootDir,
+        *arguments,
+        "-PmetroTestInterop",
+        "-PmetroTestScopes=test/AppScope,javax/inject/Singleton",
+      )
+    assertThat(enabled.task(":checkMainMetroHiddenDependencies")?.outcome)
+      .isEqualTo(TaskOutcome.FAILED)
+    assertThat(enabled.task(":compileKotlin")).isNull()
+    val report = project.hiddenDependenciesReport()
+    assertThat(report).contains("project ':impl'")
+    assertThat(report).contains("Hint: anvil/hint/Test_AnvilBindingsKt.class")
+    assertThat(report).contains("Hint: amazon/lastmile/inject/TestKotlinInjectBindings.class")
+    assertThat(report).contains("Hint: hilt_aggregated_deps/_test_HiltModule.class")
+  }
+
+  @Test
   fun `KMP JVM check scans only the selected target`() {
     val project = HiddenDependenciesProject(kmp = true).gradleProject
 
@@ -378,6 +412,134 @@ class MetroHiddenDependenciesTest {
         )
       }
       subproject("plain") { sources(source("class OrdinaryDependency")) }
+    }
+  }
+
+  /**
+   * A hidden dependency with hand-written Anvil, kotlin-inject-anvil, and Hilt metadata. Kotlin
+   * compiles the hints, so checks see real Kotlin field signatures and annotations. Stubs stand in
+   * for each framework's annotations. Only the consumer enables interop, so impl gets no Metro
+   * hints.
+   */
+  private class InteropHintsProject :
+    MetroProject(
+      multiplatform = false,
+      reportsEnabled = false,
+      additionalGradleProperties =
+        listOf(
+          "org.gradle.configuration-cache=true",
+          "org.gradle.configuration-cache.read-only=false",
+        ),
+    ) {
+
+    override fun StringBuilder.onBuildScript() {
+      appendLine(
+        """
+        @OptIn(dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi::class)
+        metro {
+          if (path == ":" && providers.gradleProperty("metroTestInterop").isPresent) {
+            interop {
+              includeAnvilForDagger()
+              includeAnvilForKotlinInject()
+              includeHilt()
+            }
+          }
+          aggregationScopes.addAll(
+            providers.gradleProperty("metroTestScopes").map { it.split(",") }.orElse(emptyList())
+          )
+        }
+        """
+          .trimIndent()
+      )
+    }
+
+    override fun buildGradleProject() = multiModuleProject {
+      root {
+        dependencies(Dependency.implementation(":bridge"))
+        sources(source("class Consumer(val value: MissingFromConsumerClasspath)"))
+      }
+      subproject("bridge") {
+        dependencies(Dependency.implementation(":impl"))
+        sources(source("class Bridge"))
+      }
+      subproject("impl") {
+        sources(
+          source(
+            """
+            abstract class AppScope
+            abstract class OtherScope
+
+            interface AnvilBindings
+
+            @ContributesTo(scope = AppScope::class)
+            interface KotlinInjectBindings
+            """,
+            fileNameWithoutExtension = "Scopes",
+            includeDefaultImports = false,
+            extraImports = arrayOf("software.amazon.lastmile.kotlin.inject.anvil.ContributesTo"),
+          ),
+          source(
+            "annotation class ContributesTo(val scope: KClass<*>)",
+            packageName = "software.amazon.lastmile.kotlin.inject.anvil",
+            includeDefaultImports = false,
+            extraImports = arrayOf("kotlin.reflect.KClass"),
+          ),
+          source(
+            "annotation class Origin(val value: KClass<*>)",
+            packageName = "software.amazon.lastmile.kotlin.inject.anvil.internal",
+            includeDefaultImports = false,
+            extraImports = arrayOf("kotlin.reflect.KClass"),
+          ),
+          source(
+            """
+            @Retention(AnnotationRetention.BINARY)
+            annotation class AggregatedDeps(
+              val components: Array<String>,
+              val test: String = "",
+              val modules: Array<String> = [],
+              val entryPoints: Array<String> = [],
+            )
+            """,
+            packageName = "dagger.hilt.processor.internal.aggregateddeps",
+            includeDefaultImports = false,
+          ),
+          source(
+            """
+            val test_AnvilBindings_reference: KClass<AnvilBindings> = AnvilBindings::class
+            val test_AnvilBindings_scope0: KClass<AppScope> = AppScope::class
+            """,
+            fileNameWithoutExtension = "Test_AnvilBindings",
+            packageName = "anvil.hint",
+            includeDefaultImports = false,
+            extraImports = arrayOf("kotlin.reflect.KClass", "test.AnvilBindings", "test.AppScope"),
+          ),
+          source(
+            """
+            @Origin(KotlinInjectBindings::class)
+            interface TestKotlinInjectBindings : KotlinInjectBindings
+            """,
+            packageName = "amazon.lastmile.inject",
+            includeDefaultImports = false,
+            extraImports =
+              arrayOf(
+                "software.amazon.lastmile.kotlin.inject.anvil.internal.Origin",
+                "test.KotlinInjectBindings",
+              ),
+          ),
+          source(
+            """
+            @AggregatedDeps(
+              components = ["dagger.hilt.components.SingletonComponent"],
+              modules = ["test.HiltModule"],
+            )
+            class _test_HiltModule
+            """,
+            packageName = "hilt_aggregated_deps",
+            includeDefaultImports = false,
+            extraImports = arrayOf("dagger.hilt.processor.internal.aggregateddeps.AggregatedDeps"),
+          ),
+        )
+      }
     }
   }
 

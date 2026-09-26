@@ -8,6 +8,7 @@ Changelog
 
 - **[Gradle]** Add opt-in checks to find Metro contributions hidden from a graph's compile classpath. Run `checkMainMetroHiddenDependencies` (i.e., on CI). It writes a report and fails if it finds hidden contributions.
   - Supports JVM and Android compilations, including JVM targets in KMP. See [checking for hidden contributions](docs/aggregation.md#checking-for-hidden-contributions).
+  - Also checks Anvil, kotlin-inject-anvil, and Hilt aggregation metadata when their interop is enabled.
 
 ### Fixes
 
