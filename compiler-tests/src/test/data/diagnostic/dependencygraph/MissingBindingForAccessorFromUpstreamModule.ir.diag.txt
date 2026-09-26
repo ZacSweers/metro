@@ -1,0 +1,8 @@
+/module_main_MissingBindingForAccessorFromUpstreamModule.kt:15:11: error: [Metro/MissingBinding] No binding found for Int
+
+  trace (in AppGraph):
+      Int is requested at AppGraph.number
+
+  help: ensure Int has an @Inject constructor or is provided by an @Provides or @Binds declaration
+        visible to AppGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding

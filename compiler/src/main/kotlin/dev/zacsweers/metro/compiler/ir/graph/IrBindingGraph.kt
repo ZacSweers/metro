@@ -103,6 +103,7 @@ import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.file
+import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.ir.util.isSubtypeOf
 import org.jetbrains.kotlin.ir.util.kotlinFqName
@@ -234,9 +235,7 @@ internal class IrBindingGraph(
   }
 
   override fun report(diagnostic: MetroDiagnostic, stack: IrBindingStack) {
-    val element =
-      stack.lastEntryOrGraph?.originalDeclarationIfOverride()
-        ?: node.reportableSourceGraphDeclaration
+    val element = stack.lastEntryOrGraph ?: node.reportableSourceGraphDeclaration
     hasErrors = true
     if (element is IrDeclaration) {
       // For missing bindings the anchor is the interesting injection/request site — carry its
@@ -1611,7 +1610,9 @@ internal class IrBindingGraph(
         injectionSite = textOf("${declaration?.fqNameWhenAvailable}", Style.EMPHASIS),
         assistedFactory = assistedFactory?.toText(),
       )
-    collectDiagnostic(diagnostic, declaration ?: node.sourceGraph)
+    // An accessor inherited from another module has no file to report on in this compilation.
+    val reportableDeclaration = declaration?.takeUnless { it.fileOrNull == null }
+    collectDiagnostic(diagnostic, reportableDeclaration ?: node.sourceGraph)
   }
 
   private fun Appendable.appendBinding(binding: IrBinding, short: Boolean, isNested: Boolean) {

@@ -657,6 +657,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("MissingBindingForAccessorFromUpstreamModule.kt")
+    public void testMissingBindingForAccessorFromUpstreamModule() {
+      run("MissingBindingForAccessorFromUpstreamModule.kt");
+    }
+
+    @Test
     @TestMetadata("MissingBindingHintsShouldReportInternalOnlyIfInternal.kt")
     public void testMissingBindingHintsShouldReportInternalOnlyIfInternal() {
       run("MissingBindingHintsShouldReportInternalOnlyIfInternal.kt");
