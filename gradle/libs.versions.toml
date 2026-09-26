@@ -87,6 +87,7 @@ testkit = { id = "com.autonomousapps.testkit", version = "0.20" }
 wire = { id = "com.squareup.wire", version.ref = "wire" }
 
 [libraries]
+asm = "org.ow2.asm:asm:9.10.1"
 android-gradlePlugin = { module = "com.android.tools.build:gradle", version.ref = "agp" }
 
 androidx-activity = "androidx.activity:activity-compose:1.13.0"
@@ -204,6 +205,7 @@ ktor-serialization-json = { module = "io.ktor:ktor-serialization-kotlinx-json", 
 okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 
 okio = { module = "com.squareup.okio:okio", version.ref = "okio" }
+okioFakeFileSystem = { module = "com.squareup.okio:okio-fakefilesystem", version.ref = "okio" }
 
 picnic = "com.jakewharton.picnic:picnic:0.7.0"
 
