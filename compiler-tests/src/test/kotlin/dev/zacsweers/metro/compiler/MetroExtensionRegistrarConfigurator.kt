@@ -81,7 +81,8 @@ fun TestConfigurationBuilder.configurePlugin(
   configureHiltAnnotations()
   configureCircuit()
   useAdditionalSourceProviders(::Ksp2AdditionalSourceProvider)
-  useAfterAnalysisCheckers(::MetroReportsChecker)
+  useAdditionalService { MetroMessageCollectorErrors() }
+  useAfterAnalysisCheckers(::MetroReportsChecker, ::MetroMessageCollectorErrorsChecker)
 }
 
 class MetroExtensionRegistrarConfigurator(
@@ -402,7 +403,11 @@ class MetroExtensionRegistrarConfigurator(
     IrGenerationExtension.registerExtension(GenerateProvidersInGraphIrExtension())
     IrGenerationExtension.registerExtension(
       MetroIrGenerationExtension(
-        messageCollector = with(compatContext) { configuration.messageCollectorCompat() },
+        messageCollector =
+          testServices.metroMessageCollectorErrors.wrap(
+            module,
+            with(compatContext) { configuration.messageCollectorCompat() },
+          ),
         classIds = classIds,
         options = options,
         // TODO ever support this in tests?
