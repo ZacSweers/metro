@@ -102,8 +102,12 @@ constructor(
    * Limits hidden-dependency checks to contributions for these scopes. Use Kotlin ClassId strings
    * such as `com/example/AppScope` or `com/example/Scopes.User`.
    *
-   * An empty set checks for any Metro hints. Checks run only when explicitly requested. JVM and
-   * Android compilations support them, including those in multiplatform projects.
+   * An empty set checks every hint. Checks run only when explicitly requested. JVM and Android
+   * compilations support them, including those in multiplatform projects.
+   *
+   * Anvil, kotlin-inject-anvil, and Hilt metadata is checked when that interop is enabled. Hilt
+   * markers match a standard component's canonical scope, such as `javax/inject/Singleton`. They
+   * also match the component's own ClassId.
    */
   @ExperimentalMetroGradleApi
   public val aggregationScopes: SetProperty<String> =

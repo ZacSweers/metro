@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.hilt
 
+import dev.zacsweers.metro.compiler.HiltBuiltInComponents
 import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.memoize
@@ -121,15 +122,8 @@ internal class HiltComponentScopeMapping(private val session: FirSession) {
   companion object {
     /** The 8 standard Android Hilt components and their canonical scopes. */
     val BUILT_INS: Map<ClassId, ClassId> =
-      mapOf(
-        HiltSymbols.SingletonComponent to HiltSymbols.Singleton,
-        HiltSymbols.ActivityRetainedComponent to HiltSymbols.ActivityRetainedScoped,
-        HiltSymbols.ActivityComponent to HiltSymbols.ActivityScoped,
-        HiltSymbols.ViewModelComponent to HiltSymbols.ViewModelScoped,
-        HiltSymbols.FragmentComponent to HiltSymbols.FragmentScoped,
-        HiltSymbols.ServiceComponent to HiltSymbols.ServiceScoped,
-        HiltSymbols.ViewComponent to HiltSymbols.ViewScoped,
-        HiltSymbols.ViewWithFragmentComponent to HiltSymbols.ViewScoped,
-      )
+      HiltBuiltInComponents.scopes.entries.associate { (component, scope) ->
+        ClassId.fromString(component) to ClassId.fromString(scope)
+      }
   }
 }
