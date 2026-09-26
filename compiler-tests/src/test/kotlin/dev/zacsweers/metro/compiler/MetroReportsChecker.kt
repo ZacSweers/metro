@@ -47,7 +47,8 @@ import org.opentest4j.AssertionFailedError
  * `<id>-(fir|ir)-<moduleName>.perfetto-trace`, all files share the same `<id>` prefix, and both
  * phases are represented.
  */
-class MetroReportsChecker(testServices: TestServices) : MetroReportsCheckerCompat(testServices) {
+class MetroReportsChecker(testServices: TestServices) :
+  MetroAfterAnalysisCheckerCompat(testServices) {
   companion object {
     const val DEFAULT_REPORTS_DIR = "metro/reports"
     const val DEFAULT_TRACES_DIR = "metro/traces"
@@ -62,7 +63,7 @@ class MetroReportsChecker(testServices: TestServices) : MetroReportsCheckerCompa
   override val directiveContainers: List<DirectivesContainer>
     get() = listOf(MetroDirectives)
 
-  override fun checkMetroReports(thereWereFailures: Boolean) {
+  override fun checkAfterAnalysis(thereWereFailures: Boolean) {
     val allDirectives = testServices.moduleStructure.allDirectives
 
     if (allDirectives[MetroDirectives.CHECK_REPORTS].isNotEmpty()) {

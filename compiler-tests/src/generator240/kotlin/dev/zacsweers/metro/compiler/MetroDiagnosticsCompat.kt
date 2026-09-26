@@ -97,11 +97,11 @@ fun RegisteredDirectivesBuilder.firIdenticalCompat() {
   +FIR_IDENTICAL
 }
 
-abstract class MetroReportsCheckerCompat(testServices: TestServices) :
+abstract class MetroAfterAnalysisCheckerCompat(testServices: TestServices) :
   AfterAnalysisChecker(testServices) {
   final override fun check(failedAssertions: List<WrappedException>) {
-    checkMetroReports(failedAssertions.isNotEmpty())
+    checkAfterAnalysis(failedAssertions.isNotEmpty())
   }
 
-  abstract fun checkMetroReports(thereWereFailures: Boolean)
+  abstract fun checkAfterAnalysis(thereWereFailures: Boolean)
 }
