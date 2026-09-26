@@ -60,11 +60,11 @@ fun TestConfigurationBuilder.usePhasedPipelineFailureSuppressorCompat() {
 
 fun RegisteredDirectivesBuilder.firIdenticalCompat() = Unit
 
-abstract class MetroReportsCheckerCompat(testServices: TestServices) :
+abstract class MetroAfterAnalysisCheckerCompat(testServices: TestServices) :
   AfterAnalysisChecker(testServices) {
   final override fun check(thereWereFailures: Boolean) {
-    checkMetroReports(thereWereFailures)
+    checkAfterAnalysis(thereWereFailures)
   }
 
-  abstract fun checkMetroReports(thereWereFailures: Boolean)
+  abstract fun checkAfterAnalysis(thereWereFailures: Boolean)
 }
