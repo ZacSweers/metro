@@ -94,7 +94,7 @@ tasks.compileTestKotlin {
 }
 
 /**
- * We shade guava and graph-support to avoid conflicts with other Gradle plugins that may use
+ * We shade guava, graph-support, and ASM to avoid conflicts with other Gradle plugins that may use
  * different versions.
  */
 val embedded = configurations.dependencyScope("embedded")
@@ -128,6 +128,7 @@ val shadowJar =
     relocate("com.google.errorprone", "dev.zacsweers.metro.gradle.shaded.com.google.errorprone")
     relocate("com.google.j2objc", "dev.zacsweers.metro.gradle.shaded.com.google.j2objc")
     relocate("com.autonomousapps", "dev.zacsweers.metro.gradle.shaded.com.autonomousapps")
+    relocate("org.objectweb.asm", "dev.zacsweers.metro.gradle.shaded.org.objectweb.asm")
   }
 
 for (c in arrayOf("apiElements", "runtimeElements")) {
@@ -147,9 +148,11 @@ dependencies {
   compileOnly(libs.kotlin.stdlib)
   implementation(project(":metro-common"))
   implementation(libs.kotlinx.serialization.json)
+  implementation(libs.okio)
 
   add(embedded.name, libs.graphSupport)
   add(embedded.name, libs.guava)
+  add(embedded.name, libs.asm)
 
   lintChecks(libs.androidx.lint.gradle)
 
@@ -158,6 +161,7 @@ dependencies {
   testImplementation(libs.truth)
   testImplementation(libs.kotlin.stdlib)
   testImplementation(libs.kotlin.test)
+  testImplementation(libs.okioFakeFileSystem)
 
   functionalTestImplementation(libs.junit)
   functionalTestImplementation(libs.truth)
