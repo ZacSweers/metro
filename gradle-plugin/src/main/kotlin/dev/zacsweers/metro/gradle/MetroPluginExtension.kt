@@ -99,6 +99,21 @@ constructor(
   public val generateContributionHints: Property<Boolean> = objects.booleanProperty()
 
   /**
+   * Limits hidden-dependency checks to contributions for these scopes. Use Kotlin ClassId strings
+   * such as `com/example/AppScope` or `com/example/Scopes.User`.
+   *
+   * An empty set checks every hint. Checks run only when explicitly requested. JVM and Android
+   * compilations support them, including those in multiplatform projects.
+   *
+   * Anvil, kotlin-inject-anvil, and Hilt metadata is checked when that interop is enabled. Hilt
+   * markers match a standard component's canonical scope, such as `javax/inject/Singleton`. They
+   * also match the component's own ClassId.
+   */
+  @ExperimentalMetroGradleApi
+  public val aggregationScopes: SetProperty<String> =
+    objects.setProperty(String::class.java).convention(emptySet())
+
+  /**
    * Generates contribution hints in FIR. Requires [generateContributionHints] to be true.
    *
    * When unset, the compiler plugin enables this on supported Kotlin versions. Explicit values are
