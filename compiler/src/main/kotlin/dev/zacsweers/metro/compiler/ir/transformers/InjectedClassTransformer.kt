@@ -492,8 +492,8 @@ internal class InjectedClassTransformer(
     if (coroutinesRuntimeAvailability.isAvailable) return
     // Function injection carries its params on the injected function, not the synthetic
     // constructor.
-    val injectedFunctionParams =
-      declaration.injectedFunctionOrNull()?.owner?.parameters()?.regularParameters.orEmpty()
+    val injectedFunction = declaration.injectedFunctionOrNull()?.owner
+    val injectedFunctionParams = injectedFunction?.parameters()?.regularParameters.orEmpty()
     val allParams =
       constructorParameters.allParameters +
         memberInjectParameters.flatMap { it.regularParameters } +
@@ -502,7 +502,9 @@ internal class InjectedClassTransformer(
       it.contextualTypeKey.wrappedType.containsSuspendLazy()
     }
     if (!requestsSuspendLazy) return
-    reportMissingRuntimeCoroutines(declaration, "'${declaration.kotlinFqName}'")
+    // An injected function's class is generated and has no source to report on.
+    val reportedDeclaration = injectedFunction ?: declaration
+    reportMissingRuntimeCoroutines(reportedDeclaration, "'${declaration.kotlinFqName}'")
   }
 
   private fun createInjectConstructorFactoryShell(
