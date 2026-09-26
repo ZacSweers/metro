@@ -106,11 +106,8 @@ internal interface IrBindingStack :
         val declaration =
           if (accessor is IrSimpleFunction) {
             val rawDeclaration = accessor.correspondingPropertySymbol?.owner ?: accessor
-            if (rawDeclaration.isFakeOverride) {
-              rawDeclaration.resolveOverriddenTypeIfAny()
-            } else {
-              rawDeclaration
-            }
+            // Inherited accessors resolve to the type that declares them.
+            rawDeclaration.originalDeclarationIfOverride().expectAs<IrDeclarationWithName>()
           } else {
             accessor
           }
