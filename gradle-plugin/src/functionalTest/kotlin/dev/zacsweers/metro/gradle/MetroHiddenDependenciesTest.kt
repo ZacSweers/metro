@@ -232,11 +232,23 @@ class MetroHiddenDependenciesTest {
           .withRootProject {
             withMetroSettings()
             withFile("local.properties", "sdk.dir=$sdkDir")
+            // Newer Kotlin Gradle plugins fail when subprojects load their own copies of it.
+            withBuildScript {
+              val agpVersion = System.getProperty("metro.agpVersion")
+              val kotlinVersion = getTestCompilerVersion()
+              plugins(
+                Plugin(ANDROID_APPLICATION, agpVersion, apply = false),
+                Plugin(ANDROID_LIBRARY, agpVersion, apply = false),
+                Plugin(KOTLIN_JVM, kotlinVersion, apply = false),
+                Plugin(KOTLIN_PARCELIZE, kotlinVersion, apply = false),
+                Plugin(GradlePlugins.metro.id, GradlePlugins.metro.version, apply = false),
+              )
+            }
           }
           .withSubproject("app") {
             sources += source("class Consumer(val value: MissingFromConsumerClasspath)")
             withBuildScript {
-              applyAndroidDefaults("com.android.application", "test.app")
+              applyAndroidDefaults(ANDROID_APPLICATION, "test.app")
               if (jvmImplementation) {
                 dependencies(
                   Dependency.implementation(":bridge"),
@@ -250,7 +262,7 @@ class MetroHiddenDependenciesTest {
           .withSubproject("bridge") {
             sources += source("class Bridge")
             withBuildScript {
-              applyAndroidDefaults("com.android.library", "test.bridge")
+              applyAndroidDefaults(ANDROID_LIBRARY, "test.bridge")
               dependencies(
                 Dependency.implementation(":impl").copy(configuration = "debugImplementation")
               )
@@ -268,9 +280,9 @@ class MetroHiddenDependenciesTest {
               )
             withBuildScript {
               if (jvmImplementation) {
-                applyMetroDefault()
+                applyJvmDefaults()
               } else {
-                applyAndroidDefaults("com.android.library", "test.impl")
+                applyAndroidDefaults(ANDROID_LIBRARY, "test.impl")
               }
             }
           }
@@ -286,7 +298,7 @@ class MetroHiddenDependenciesTest {
                     interface VisibleBindings
                     """
                   )
-                withBuildScript { applyMetroDefault() }
+                withBuildScript { applyJvmDefaults() }
               }
             }
           }
@@ -303,12 +315,17 @@ class MetroHiddenDependenciesTest {
       return project
     }
 
+    private fun BuildScript.Builder.applyJvmDefaults() {
+      plugins(Plugin(KOTLIN_JVM), Plugin(GradlePlugins.metro.id))
+      withKotlin(buildMetroBlock())
+    }
+
     private fun BuildScript.Builder.applyAndroidDefaults(pluginId: String, namespace: String) {
       plugins(
-        Plugin(pluginId, System.getProperty("metro.agpVersion")),
+        Plugin(pluginId),
         // Parcelize registers Metro with AGP's built-in Kotlin compilation support.
-        Plugin("org.jetbrains.kotlin.plugin.parcelize", getTestCompilerVersion()),
-        GradlePlugins.metro,
+        Plugin(KOTLIN_PARCELIZE),
+        Plugin(GradlePlugins.metro.id),
       )
       withKotlin(
         """
@@ -321,6 +338,13 @@ class MetroHiddenDependenciesTest {
         """
           .trimIndent()
       )
+    }
+
+    private companion object {
+      const val ANDROID_APPLICATION = "com.android.application"
+      const val ANDROID_LIBRARY = "com.android.library"
+      const val KOTLIN_JVM = "org.jetbrains.kotlin.jvm"
+      const val KOTLIN_PARCELIZE = "org.jetbrains.kotlin.plugin.parcelize"
     }
   }
 
