@@ -7,6 +7,7 @@ Changelog
 ### Fixes
 
 - **[IR]** Fix member injection across modules when an injected member uses a generic base class's type parameter.
+- **[FIR/IR/interop]** Fix incremental builds not updating graphs when an upstream Hilt `@AggregatedDeps` marker changes or is removed.
 
 ### Contributors
 

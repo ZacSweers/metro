@@ -11,6 +11,7 @@ import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.types.constructClassLikeType
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.FqName
 
 /**
  * Contributes Hilt entry-point interfaces as FIR graph supertypes.
@@ -57,6 +58,9 @@ public class HiltContributionExtension(
 
     return contributions
   }
+
+  override fun lookupFqNames(scopeClassId: ClassId): Collection<FqName> =
+    scanner.markerFqNames(scopeClassId, componentScopes)
 
   private fun contributionFor(entryPointClassId: ClassId): MetroContributionExtension.Contribution =
     MetroContributionExtension.Contribution(

@@ -26,6 +26,8 @@ internal class HiltAggregatedDepsScanner(private val session: FirSession) {
 
   /** Materialized `@AggregatedDeps` annotation. */
   data class AggregatedDep(
+    /** The marker class that carries the annotation. */
+    val markerClassId: ClassId,
     val components: List<ClassId>,
     val modules: List<ClassId>,
     val entryPoints: List<ClassId>,
@@ -35,6 +37,16 @@ internal class HiltAggregatedDepsScanner(private val session: FirSession) {
   private val cached: List<AggregatedDep> by lazy { scan() }
 
   fun getAllDeps(): List<AggregatedDep> = cached
+
+  /**
+   * Returns the markers that install into [scope]. Graphs with that scope record lookups of them,
+   * so a changed or removed marker recompiles those graphs.
+   */
+  fun markerFqNames(scope: ClassId, componentScopes: HiltComponentScopeMapping): List<FqName> {
+    return getAllDeps()
+      .filter { dep -> dep.components.any { componentScopes.resolveScope(it) == scope } }
+      .map { it.markerClassId.asSingleFqName() }
+  }
 
   private fun scan(): List<AggregatedDep> {
     val names =
@@ -62,6 +74,7 @@ internal class HiltAggregatedDepsScanner(private val session: FirSession) {
 
       result +=
         AggregatedDep(
+          markerClassId = markerClassId,
           components =
             annotation
               .stringArrayArgument(session, HiltNames.components, index = 0)
