@@ -968,6 +968,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#checking-for-hidden-contributions" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Checking for hidden contributions
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#contributesto" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2068,6 +2079,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#checking-for-hidden-contributions" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Checking for hidden contributions
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#contributesto" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2267,6 +2289,25 @@
 <span class="w">  </span><span class="nd">@Provides</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideHttpClient</span><span class="p">():</span><span class="w"> </span><span class="n">HttpClient</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">TestHttpClient</span><span class="p">()</span>
 <span class="p">}</span>
 </code></pre></div>
+<h2 id="checking-for-hidden-contributions">Checking for hidden contributions<a class="headerlink" href="#checking-for-hidden-contributions" title="Permanent link">&para;</a></h2>
+<p>A graph can miss contributions when an upstream project&rsquo;s <code>implementation</code> dependencies are hidden from its compile classpath. The Metro Gradle plugin has an opt-in check for this. Run it on the project that owns the graph, including on CI:</p>
+<div class="highlight"><pre><span></span><code>./gradlew<span class="w"> </span>:app:checkMainMetroHiddenDependencies
+</code></pre></div>
+<p>Task names include the target and compilation when present. For example, KMP JVM uses <code>checkJvmMainMetroHiddenDependencies</code> and an Android debug compilation uses <code>checkDebugMetroHiddenDependencies</code>. Each check resolves just that compilation&rsquo;s dependencies. The graph project itself can have compilation errors and still run the check. Local dependencies may need to compile before their hints can be inspected.</p>
+<p>The report lists the resolved dependency, a path through the runtime dependency graph, and matching hint entries. Add the reported dependency directly in the graph project, or expose it with <code>api</code> upstream if it belongs in that project&rsquo;s public API.</p>
+<p>By default any Metro hints count. You can limit checks to selected scopes using Kotlin ClassId strings. Slashes separate package segments and dots separate nested classes:</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@OptIn</span><span class="p">(</span><span class="n">ExperimentalMetroGradleApi</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
+<span class="n">metro</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="n">aggregationScopes</span><span class="p">.</span><span class="na">addAll</span><span class="p">(</span><span class="s">"dev/zacsweers/metro/AppScope"</span><span class="p">,</span><span class="w"> </span><span class="s">"com/example/Scopes.User"</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></div>
+<div class="admonition tip">
+<p class="admonition-title">Interop</p>
+<p>With <code>includeHilt()</code>, the check also reads Hilt&rsquo;s <code>hilt_aggregated_deps</code> markers.</p>
+<p>Hilt markers name the components they install into. A standard Hilt component matches its canonical scope, so <code>javax/inject/Singleton</code> selects <code>SingletonComponent</code> markers. To select a custom <code>@DefineComponent</code>, add the component&rsquo;s own ClassId.</p>
+</div>
+<p>Each check writes its report to <code>build/reports/metro/&lt;target&gt;/&lt;compilation&gt;/hidden-dependencies.txt</code> and fails if it finds hidden contributions. An empty file means the check passed. A blank target is omitted. Successful checks can be reused from Gradle&rsquo;s build cache.</p>
+<p>The check currently covers JVM and Android artifacts, including JVM targets in KMP projects. Other KMP platforms are outside its current scope. A finding means a dependency advertises contribution hints. The compiler remains responsible for scope and Kotlin visibility rules. Dependencies without hints can still be needed for types referenced by bindings.</p>
 <h2 id="contributesto">@ContributesTo<a class="headerlink" href="#contributesto" title="Permanent link">&para;</a></h2>
 <p>This annotation is used to contribute graph interfaces to the target scope to be merged in at graph-processing time to the final merged graph class as another supertype.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@ContributesTo</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
