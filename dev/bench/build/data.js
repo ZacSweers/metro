@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790490877747,
+  "lastUpdate": 1790530392065,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -24640,6 +24640,62 @@ window.BENCHMARK_DATA = {
             "value": 18100.493,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -4.42%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "0bae4536~1",
+          "message": "[before] Report missing bindings for upstream accessors on ",
+          "timestamp": "2026-09-27T12:34:30-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/0bae45366fdcb30ceacbf5c7e9315fdc2655a70a"
+        },
+        "date": 1790530392065,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19723.682,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "0bae45366fdcb30ceacbf5c7e9315fdc2655a70a",
+          "message": "[after] Report missing bindings for upstream accessors on ",
+          "timestamp": "2026-09-27T12:34:30-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/0bae45366fdcb30ceacbf5c7e9315fdc2655a70a"
+        },
+        "date": 1790530392066,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 20362.688000000002,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +3.24%"
           }
         ]
       }
