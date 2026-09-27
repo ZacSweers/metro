@@ -160,7 +160,7 @@ Note the companion Gradle plugin automatically adds an extra `dev.zacsweers.metr
 * `@ContributesBinding` and `@ContributesMultibinding` classes merge through the binding modules Anvil generates for them. Their `rank` is treated as Metro's `priority`.
 * A `@ContributesSubcomponent` merges its nested `@ContributesSubcomponent.Factory` into the graph for its `parentScope`. The subcomponent then works like a Metro graph extension whose factory is annotated with `@ContributesTo`.
 
-A subcomponent without a factory needs a parent component interface annotated with `@ContributesTo(parentScope)`, as Anvil recommends. Metro can't add the accessor that Anvil generates for the parent.
+A subcomponent without a factory needs a parent component interface annotated with `@ContributesTo(parentScope)`, as Anvil recommends. Metro can't add the accessor that Anvil generates for the parent. A graph that would merge a subcomponent with neither reports an error. Exclude the subcomponent from that graph if you don't need it.
 
 Graph exclusions and Anvil's `replaces` apply to these contributions. They can name a contributed binding's class directly. Graph exclusions can also name a contributed subcomponent. Anvil doesn't write hints for modules that set `generateDaggerFactoriesOnly`.
 

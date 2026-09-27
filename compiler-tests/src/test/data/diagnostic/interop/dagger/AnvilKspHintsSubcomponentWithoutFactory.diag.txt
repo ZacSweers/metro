@@ -1,0 +1,5 @@
+/module_main_AnvilKspHintsSubcomponentWithoutFactory.kt:59:11: error: Metro can't reach these Anvil-compiled subcomponents from this graph:
+- test.NestedOrphanComponent (parent scope test.ChildScope)
+- test.OrphanComponent (parent scope test.LibScope)
+
+Each one needs a nested @ContributesSubcomponent.Factory or a nested interface annotated with @ContributesTo(parentScope) that returns it. Metro can't add the accessor that Anvil generates for a subcomponent without one. Add one, or exclude the subcomponent from this graph.

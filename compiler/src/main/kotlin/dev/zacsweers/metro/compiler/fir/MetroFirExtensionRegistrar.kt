@@ -5,6 +5,8 @@ package dev.zacsweers.metro.compiler.fir
 import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.MetroOptions
+import dev.zacsweers.metro.compiler.anvil.AnvilFirCheckers
+import dev.zacsweers.metro.compiler.anvil.AnvilHintScanner
 import dev.zacsweers.metro.compiler.api.fir.MetroContributionExtension
 import dev.zacsweers.metro.compiler.api.fir.MetroContributionHintExtension
 import dev.zacsweers.metro.compiler.api.fir.MetroFirDeclarationGenerationExtension
@@ -63,6 +65,10 @@ public class MetroFirExtensionRegistrar(
   override fun ExtensionRegistrarContext.configurePlugin() {
     +MetroFirBuiltIns.getFactory(classIds, options, compatContext, traceContext)
     +::MetroFirCheckers
+    if (options.enableDaggerAnvilInterop) {
+      +AnvilHintScanner.getFactory()
+      +::AnvilFirCheckers
+    }
     +supertypeGenerator("Supertypes - graph factory", ::GraphFactoryFirSupertypeGenerator, false)
     +supertypeGenerator(
       "Supertypes - contributed interfaces",

@@ -20,7 +20,7 @@ import org.jetbrains.kotlin.name.ClassId
  */
 public class AnvilContributionExtension(session: FirSession) : MetroContributionExtension {
 
-  private val scanner by memoize { AnvilHintScanner(session) }
+  private val scanner by memoize { session.anvilHintScanner }
 
   // Hints only come from the classpath, so there are no source predicates to register.
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {}

@@ -1518,6 +1518,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       }
 
       @Test
+      @TestMetadata("AnvilKspHintsSubcomponentWithoutFactory.kt")
+      public void testAnvilKspHintsSubcomponentWithoutFactory() {
+        run("AnvilKspHintsSubcomponentWithoutFactory.kt");
+      }
+
+      @Test
       @TestMetadata("ArrayClassKeyArgumentsInterop.kt")
       public void testArrayClassKeyArgumentsInterop() {
         run("ArrayClassKeyArgumentsInterop.kt");

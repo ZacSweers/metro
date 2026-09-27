@@ -11,6 +11,7 @@ Changelog
   - Also checks Anvil, kotlin-inject-anvil, and Hilt aggregation metadata when their interop is enabled.
 - **[FIR/IR/interop]** Merge contributions from upstream modules that Anvil compiled when Anvil interop is enabled. Metro reads Anvil's `anvil.hint` hints for `@ContributesTo` interfaces and modules. `@ContributesBinding` and `@ContributesMultibinding` merge through the binding modules Anvil generates for them. See [Anvil-compiled modules](docs/interop.md#anvil-compiled-modules).
 - **[FIR/IR/interop]** Support `@ContributesSubcomponent` from Anvil-compiled modules. Metro merges the subcomponent's `@ContributesSubcomponent.Factory` into the graph for its `parentScope`, like a graph extension factory annotated with `@ContributesTo`.
+  - A graph reports an error if it would merge a subcomponent with no factory or parent component interface. Metro can't add the accessor that Anvil generates for those.
 
 ### Fixes
 

@@ -1238,6 +1238,14 @@ internal fun FirAnnotation.resolvedAdditionalScopesClassIds(
   }
 }
 
+internal fun FirAnnotation.resolvedExcludedClassIds(session: FirSession): Set<ClassId> {
+  val excludesArgument =
+    excludesArgument(session)?.argumentList?.arguments?.mapNotNull {
+      it.expectAsOrNull<FirGetClassCall>()
+    } ?: return emptySet()
+  return excludesArgument.mapNotNullTo(mutableSetOf()) { it.resolveClassId(session) }
+}
+
 internal fun FirAnnotation.resolvedExcludedClassIds(
   session: FirSession,
   typeResolver: TypeResolveService,
