@@ -13,6 +13,8 @@ Changelog
 ### Fixes
 
 - **[IR]** Fix member injection across modules when an injected member uses a generic base class's type parameter.
+- **[IR]** Fix missing binding errors for accessors inherited from another module having no source location.
+- **[IR]** Fix `MissingRuntimeCoroutines` errors for injected top-level functions pointing at `0:0` in a generated file. They're now reported on the function.
 
 ### Contributors
 
