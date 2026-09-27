@@ -446,7 +446,7 @@ class MetroArtifactsTest {
                 "debug": false,
                 "enabled": true,
                 "generateAssistedFactories": false,
-                "enableTopLevelFunctionInjection": $topLevelFirGenEnabled,
+                "enableTopLevelFunctionInjection": false,
                 "generateContributionHints": true,
                 "generateContributionHintsInFir": $topLevelFirGenEnabled,
                 "generateClassesInIr": $generateClassesInIrEnabled,

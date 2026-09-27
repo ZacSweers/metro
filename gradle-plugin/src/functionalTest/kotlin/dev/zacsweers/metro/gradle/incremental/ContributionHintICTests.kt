@@ -6,8 +6,12 @@ import com.autonomousapps.kit.gradle.Dependency
 import com.google.common.truth.Truth.assertThat
 import dev.zacsweers.metro.gradle.KmpTarget
 import dev.zacsweers.metro.gradle.MetroProject
+import dev.zacsweers.metro.gradle.classLoader
 import dev.zacsweers.metro.gradle.getTestCompilerToolingVersion
+import dev.zacsweers.metro.gradle.invokeMain
 import dev.zacsweers.metro.gradle.supportsTopLevelFirGen
+import java.io.File
+import java.net.URLClassLoader
 import org.gradle.testkit.runner.TaskOutcome
 import org.junit.Assume.assumeFalse
 import org.junit.Assume.assumeTrue
@@ -18,6 +22,245 @@ class ContributionHintICTests :
     target = KmpTarget.JVM,
     requiresMultiplatformIc = false,
   ) {
+
+  // https://github.com/ZacSweers/metro/issues/2890
+  @Test
+  fun unrelatedPrivateEditDoesNotRecompileInjectOnlyFiles() {
+    assumeFirHintsSupported()
+    val fixture =
+      object :
+        MetroProject(
+          multiplatform = false,
+          additionalGradleProperties = listOf("kotlin.build.report.output=file"),
+        ) {
+        override fun sources() =
+          listOf(
+            source("@Inject class ClassInjected", "ClassInjected"),
+            source("class ConstructorInjected @Inject constructor()", "ConstructorInjected"),
+            source(
+              """
+              class MemberInjected {
+                @Inject lateinit var value: String
+              }
+              """,
+              "MemberInjected",
+            ),
+            source(
+              """
+              interface Value {
+                fun value(): String
+              }
+
+              @Inject
+              @ContributesBinding(AppScope::class)
+              class ContributedValue : Value {
+                override fun value(): String = "contributed"
+              }
+              """,
+              "ContributedValue",
+            ),
+            source(
+              """
+              @DependencyGraph(AppScope::class)
+              interface AppGraph {
+                val value: Value
+              }
+
+              fun main(): String = createGraph<AppGraph>().value.value()
+              """,
+              "Main",
+            ),
+            source("private fun unrelated(): String = \"before\"", "Unrelated"),
+          )
+      }
+
+    val project = fixture.gradleProject
+    val firstBuild = project.compileKotlin(":compileKotlin", false, "--no-build-cache")
+    assertThat(firstBuild.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(project.invokeMain<String>(target = null)).isEqualTo("contributed")
+    val reportsDir = project.rootDir.resolve("build/reports/kotlin-build")
+    val initialReports = reportsDir.listFiles().orEmpty().toSet()
+    assertThat(initialReports).isNotEmpty()
+
+    project.rootDir
+      .resolve("src/main/kotlin/test/Unrelated.kt")
+      .writeText("package test\nprivate fun unrelated(): String = \"after\"\n")
+
+    val secondBuild = project.compileKotlin(":compileKotlin", false, "--no-build-cache")
+    assertThat(secondBuild.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    val report = reportsDir.listFiles().orEmpty().single { it !in initialReports }
+    val compiledSources = compiledMainSources(report)
+    assertThat(compiledSources).contains("Unrelated.kt")
+    assertThat(compiledSources)
+      .containsNoneOf("ClassInjected.kt", "ConstructorInjected.kt", "MemberInjected.kt")
+    assertThat(project.invokeMain<String>(target = null)).isEqualTo("contributed")
+  }
+
+  // https://github.com/ZacSweers/metro/issues/2890
+  @Test
+  fun incrementalMainCompilationPreservesContributionHintsForTestGraphs() {
+    assumeFirHintsSupported()
+    val fixture =
+      object : MetroProject(multiplatform = false) {
+        override fun sources() =
+          listOf(
+            source(
+              """
+              interface Value {
+                fun value(): String
+              }
+
+              @Inject
+              @ContributesBinding(AppScope::class)
+              class ContributedValue : Value {
+                override fun value(): String = "contributed"
+              }
+              """,
+              "ContributedValue",
+            ),
+            source(
+              """
+              @GraphExtension
+              interface ChildGraph {
+                val message: String
+
+                @GraphExtension.Factory
+                @ContributesTo(AppScope::class)
+                interface Factory {
+                  fun createChild(@Provides message: String): ChildGraph
+                }
+              }
+              """,
+              "ChildGraph",
+            ),
+            source("private fun unrelated(): String = \"before\"", "Unrelated"),
+            dev.zacsweers.metro.gradle.source(
+              """
+              @DependencyGraph(AppScope::class)
+              interface TestGraph {
+                val value: Value
+              }
+
+              fun main(): String {
+                val graph = createGraph<TestGraph>()
+                return graph.value.value() + ":" + graph.createChild("child").message
+              }
+              """,
+              "TestGraph",
+              sourceSet = "test",
+            ),
+          )
+      }
+
+    val project = fixture.gradleProject
+    val firstBuild = project.compileKotlin(":compileKotlin", false, "--no-build-cache")
+    assertThat(firstBuild.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(firstBuild.task(":compileTestKotlin")).isNull()
+
+    project.rootDir
+      .resolve("src/main/kotlin/test/Unrelated.kt")
+      .writeText("package test\nprivate fun unrelated(): String = \"after\"\n")
+
+    val secondBuild = project.compileKotlin(":compileKotlin", false, "--no-build-cache")
+    assertThat(secondBuild.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(secondBuild.task(":compileTestKotlin")).isNull()
+
+    val testBuild = project.compileKotlin(":compileTestKotlin", false, "--no-build-cache")
+    assertThat(testBuild.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.UP_TO_DATE)
+    assertThat(testBuild.task(":compileTestKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    val testClasses = project.rootDir.resolve("build/classes/kotlin/test")
+    URLClassLoader(arrayOf(testClasses.toURI().toURL()), project.classLoader(target = null)).use {
+      val value = it.loadClass("test.TestGraphKt").getMethod("main").invoke(null)
+      assertThat(value).isEqualTo("contributed:child")
+    }
+  }
+
+  // https://github.com/ZacSweers/metro/issues/2890
+  @Test
+  fun explicitlyEnabledTopLevelInjectionSurvivesIncrementalEdits() {
+    assumeFirHintsSupported()
+    val fixture =
+      object : MetroProject(multiplatform = false) {
+        override fun StringBuilder.onBuildScript() {
+          appendLine(
+            """
+            @OptIn(dev.zacsweers.metro.gradle.DelicateMetroGradleApi::class)
+            metro {
+              enableTopLevelFunctionInjection.set(true)
+            }
+            """
+              .trimIndent()
+          )
+        }
+
+        override fun sources() =
+          listOf(
+            source("@Inject fun message(): String = \"before\"", "Message"),
+            source(
+              """
+              @DependencyGraph
+              interface AppGraph {
+                val message: Message
+              }
+
+              fun main(): String = createGraph<AppGraph>().message()
+              """,
+              "Main",
+            ),
+          )
+      }
+
+    val project = fixture.gradleProject
+    val firstBuild = project.compileKotlin(":compileKotlin", false, "--no-build-cache")
+    assertThat(firstBuild.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(project.invokeMain<String>(target = null)).isEqualTo("before")
+
+    project.rootDir
+      .resolve("src/main/kotlin/test/Message.kt")
+      .writeText(
+        "package test\nimport dev.zacsweers.metro.Inject\n@Inject fun message(): String = \"after\"\n"
+      )
+
+    val secondBuild = project.compileKotlin(":compileKotlin", false, "--no-build-cache")
+    assertThat(secondBuild.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(project.invokeMain<String>(target = null)).isEqualTo("after")
+  }
+
+  private fun assumeFirHintsSupported() {
+    val selectedTarget = System.getProperty("metro.functionalTestKmpTarget")
+    assumeTrue(selectedTarget == null || selectedTarget == "jvm")
+    assumeTrue(getTestCompilerToolingVersion().supportsTopLevelFirGen())
+  }
+
+  private fun compiledMainSources(report: File): Set<String> {
+    val sources = mutableSetOf<String>()
+    var inMainCompilation = false
+    var inIteration = false
+    for (line in report.readLines()) {
+      val text = line.trim()
+      if (text.startsWith("Compilation log for task ")) {
+        inMainCompilation = text == "Compilation log for task ':compileKotlin':"
+        inIteration = false
+        continue
+      }
+      if (!inMainCompilation) {
+        continue
+      }
+      if (text == "Compile iteration:") {
+        inIteration = true
+        continue
+      }
+      if (inIteration) {
+        val sourcePath = text.substringBefore(" <- ")
+        if (sourcePath.endsWith(".kt")) {
+          sources += File(sourcePath).name
+        } else {
+          inIteration = false
+        }
+      }
+    }
+    return sources
+  }
 
   @Test
   fun contributionScopeArgumentChangeRemovesOldIrHint() {

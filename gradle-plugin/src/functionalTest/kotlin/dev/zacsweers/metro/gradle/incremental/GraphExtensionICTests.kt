@@ -35,6 +35,56 @@ class GraphExtensionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(
     fun targets(): List<KmpTarget> = KmpTarget.selectedTargets()
   }
 
+  // https://github.com/ZacSweers/metro/issues/2890
+  @Test
+  fun commonContributedFactoryRemainsAvailableToPlatformGraphAfterUnrelatedEdit() {
+    val fixture =
+      object : MetroProject() {
+        val unrelated = source("private fun unrelated(): String = \"before\"", "Unrelated")
+
+        override fun sources() =
+          listOf(
+            source(
+              """
+              @GraphExtension
+              interface ChildGraph {
+                val message: String
+
+                @GraphExtension.Factory
+                @ContributesTo(AppScope::class)
+                interface Factory {
+                  fun createChild(@Provides message: String): ChildGraph
+                }
+              }
+              """,
+              "ChildGraph",
+            ),
+            dev.zacsweers.metro.gradle.source(
+              """
+              @DependencyGraph(AppScope::class)
+              interface AppGraph
+
+              fun main(): String = createGraph<AppGraph>().createChild("child").message
+              """,
+              "Main",
+              sourceSet = "${target.gradleTargetName}Main",
+            ),
+            unrelated,
+          )
+      }
+
+    val project = fixture.gradleProject
+    val firstBuild = project.compileKotlin(compileTaskFor(), false, "--no-build-cache")
+    assertThat(firstBuild.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    ifJvmTarget { assertThat(project.invokeMain<String>()).isEqualTo("child") }
+
+    project.modify(fixture.unrelated, "private fun unrelated(): String = \"after\"")
+
+    val secondBuild = project.compileKotlin(compileTaskFor(), false, "--no-build-cache")
+    assertThat(secondBuild.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    ifJvmTarget { assertThat(project.invokeMain<String>()).isEqualTo("child") }
+  }
+
   @Test
   fun extendingGraphChangesDetected() {
     val fixture =
