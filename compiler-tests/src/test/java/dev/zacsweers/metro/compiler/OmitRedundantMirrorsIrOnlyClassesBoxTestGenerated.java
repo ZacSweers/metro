@@ -3261,6 +3261,42 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
         }
 
         @Test
+        @TestMetadata("AnvilKspHintsContributeBindings.kt")
+        public void testAnvilKspHintsContributeBindings() {
+          run("AnvilKspHintsContributeBindings.kt");
+        }
+
+        @Test
+        @TestMetadata("AnvilKspHintsContributeInterfacesAndModules.kt")
+        public void testAnvilKspHintsContributeInterfacesAndModules() {
+          run("AnvilKspHintsContributeInterfacesAndModules.kt");
+        }
+
+        @Test
+        @TestMetadata("AnvilKspHintsContributeSubcomponents.kt")
+        public void testAnvilKspHintsContributeSubcomponents() {
+          run("AnvilKspHintsContributeSubcomponents.kt");
+        }
+
+        @Test
+        @TestMetadata("AnvilKspHintsHonorReplacementsAndExclusions.kt")
+        public void testAnvilKspHintsHonorReplacementsAndExclusions() {
+          run("AnvilKspHintsHonorReplacementsAndExclusions.kt");
+        }
+
+        @Test
+        @TestMetadata("AnvilKspHintsIgnoredWithoutInterop.kt")
+        public void testAnvilKspHintsIgnoredWithoutInterop() {
+          run("AnvilKspHintsIgnoredWithoutInterop.kt");
+        }
+
+        @Test
+        @TestMetadata("AnvilKspHintsTreatRankAsPriority.kt")
+        public void testAnvilKspHintsTreatRankAsPriority() {
+          run("AnvilKspHintsTreatRankAsPriority.kt");
+        }
+
+        @Test
         @TestMetadata("ContributesSubcomponentFactoryContributedAndExposedByParent.kt")
         public void testContributesSubcomponentFactoryContributedAndExposedByParent() {
           run("ContributesSubcomponentFactoryContributedAndExposedByParent.kt");
