@@ -1458,6 +1458,34 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#incremental-compilation" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Incremental compilation
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Incremental compilation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#kotlin-multiplatform" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Kotlin Multiplatform
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#scaling-to-very-large-graphs" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2253,6 +2281,34 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#incremental-compilation" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Incremental compilation
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Incremental compilation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#kotlin-multiplatform" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Kotlin Multiplatform
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#scaling-to-very-large-graphs" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2835,6 +2891,31 @@
 <blockquote>
 <p>Metro consolidated all the best practices from other popular frameworks, while leaving out the not-so-best practices on the side, allowed us to enable K2 and immediately experience significant build time improvements, while also unlocking incremental compilation, which means that the builds will be getting even faster</p>
 </blockquote>
+</div>
+<h2 id="incremental-compilation">Incremental compilation<a class="headerlink" href="#incremental-compilation" title="Permanent link">&para;</a></h2>
+<p>On Kotlin 2.3.20 and later, Metro generates contribution hints as top-level declarations in FIR. Kotlin can&rsquo;t tell which source file a generated top-level declaration came from. To keep them up to date, it regenerates them on every incremental build. That means recompiling every file the plugin found them through (<a href="https://youtrack.jetbrains.com/issue/KT-75864">KT-75864</a>).</p>
+<p>For Metro, every file with a <code>@Contributes*</code>-annotated class recompiles on every incremental build of its module. This happens even when you only edit an unrelated file. Files with <code>@GraphExtension</code>-annotated classes recompile too. By default, enabling <code>enableTopLevelFunctionInjection</code> also makes every file with an <code>@Inject</code>-annotated declaration recompile. When an edit changes a public API, Kotlin runs a second compile pass and recompiles these files again.</p>
+<p>The cost grows with the number of contributing files in the module you edit. You can keep it down in a few ways.</p>
+<ul>
+<li>Split large modules. Contributions only add to the incremental builds of their own module.</li>
+<li>Leave <code>enableTopLevelFunctionInjection</code> off unless you use it.</li>
+<li>If you use top-level function injection, <a href="../injection-types/#custom-function-injection-annotations">give it a dedicated annotation</a> to narrow its annotation lookups.</li>
+</ul>
+<p><a href="https://youtrack.jetbrains.com/issue/KT-89706">KT-89706</a> proposes letting compiler plugins narrow these lookups by declaration kind. With it, Metro could look up only top-level functions for top-level function injection and the dedicated annotation wouldn&rsquo;t be needed. Follow that issue for updates.</p>
+<p>Disabling <code>generateContributionHints</code> in a module doesn&rsquo;t help if that module also has a graph. Graphs find contributions in their own compilation the same way.</p>
+<h3 id="kotlin-multiplatform">Kotlin Multiplatform<a class="headerlink" href="#kotlin-multiplatform" title="Permanent link">&para;</a></h3>
+<p>By default, Kotlin&rsquo;s JVM incremental compiler falls back to a full rebuild when a file in a shared source set like <code>commonMain</code> needs recompiling (<a href="https://youtrack.jetbrains.com/issue/KT-62686">KT-62686</a>). Contributing files always need recompiling. So a contribution in <code>commonMain</code> turns every incremental JVM build of that module into a full rebuild, including edits that only touch <code>jvmMain</code>.</p>
+<p>Kotlin has an opt-in for incremental compilation of common sources on JVM targets (<a href="https://youtrack.jetbrains.com/issue/KT-86703">KT-86703</a>). With it enabled, those builds stay incremental.</p>
+<p>On Kotlin 2.5.0 and later, enable it with the public property.</p>
+<div class="highlight"><pre><span></span><code><span class="na">kotlin.jvm.enableIncrementalCompilationOfCommonSources</span><span class="o">=</span><span class="s">true</span>
+</code></pre></div>
+<p>On Kotlin 2.4.20, the same feature is behind two internal properties.</p>
+<div class="highlight"><pre><span></span><code><span class="na">kotlin.internal.incremental.enableUnsafeOptimizationsForMultiplatform</span><span class="o">=</span><span class="s">true</span>
+<span class="na">kotlin.internal.jvm.enableKmpClasspathMetadataForIncrementalCompilation</span><span class="o">=</span><span class="s">true</span>
+</code></pre></div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>This feature is new and may not work in every project, especially before Kotlin 2.5.0. On Kotlin 2.4.20, the internal properties currently break compilation of any module with contributions in a shared source set, which is the case they&rsquo;d help with. Kotlin fails to write metadata for Metro&rsquo;s generated hints there. If you run into problems, remove the properties to go back to full rebuilds.</p>
 </div>
 <h2 id="scaling-to-very-large-graphs">Scaling to Very Large Graphs<a class="headerlink" href="#scaling-to-very-large-graphs" title="Permanent link">&para;</a></h2>
 <p>For graphs aggregating thousands of contributions, two opt-in knobs help work around JVM and Kotlin metadata size limits. Both are power-user features and unnecessary for typical graphs.</p>

@@ -966,6 +966,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#custom-function-injection-annotations" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Custom function injection annotations
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2196,6 +2207,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#custom-function-injection-annotations" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Custom function injection annotations
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2503,11 +2525,11 @@
 <h3 id="why-opt-in_1">Why opt-in?<a class="headerlink" href="#why-opt-in_1" title="Permanent link">&para;</a></h3>
 <p>There are three reasons this is behind an opt-in option at the moment.</p>
 <ol>
-<li>Generating top-level declarations in Kotlin compiler plugins (in FIR specifically) is not currently compatible with incremental compilation on the JVM.</li>
-<li>Generating top-level declarations in Kotlin compiler plugins (in FIR specifically) is not currently compatible with non-JVM targets.</li>
-<li>IDE support is rudimentary at best and currently requires enabling a custom registry flag. See <a href="../installation/#ide-support">the docs for how to enable IDE support</a>.</li>
+<li>It makes incremental builds recompile more files. See <a href="../performance/#incremental-compilation">incremental compilation</a>.</li>
+<li>IDE support requires enabling a custom registry flag. See <a href="../installation/#ide-support">the docs for how to enable IDE support</a>.</li>
+<li>Before Kotlin 2.3.20, generating top-level declarations in FIR isn&rsquo;t compatible with incremental compilation or with non-JVM targets. Kotlin/JS gained incremental compilation support for generated top-level declarations in Kotlin 2.3.21 and Kotlin 2.4.0-Beta2. See <a href="https://youtrack.jetbrains.com/issue/KT-82395">KT-82395</a>.</li>
 </ol>
-<p>Because of this, it&rsquo;s likely better for now to just hand-write the equivalent class that Metro generates. If you still wish to proceed with using this, it can be enabled via the Gradle DSL.</p>
+<p>You can enable it via the Gradle DSL.</p>
 <div class="highlight"><pre><span></span><code><span class="n">metro</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="n">enableTopLevelFunctionInjection</span><span class="p">.</span><span class="na">set</span><span class="p">(</span><span class="kc">true</span><span class="p">)</span>
 <span class="p">}</span>
@@ -2519,6 +2541,14 @@
 <li>Since the compose-compiler&rsquo;s IR transformer may run <em>before</em> Metro&rsquo;s, we check for this during implementation body generation and look up the transformed target composable function as needed.</li>
 </ul>
 </details>
+<h3 id="custom-function-injection-annotations">Custom function injection annotations<a class="headerlink" href="#custom-function-injection-annotations" title="Permanent link">&para;</a></h3>
+<p>To narrow annotation lookups for top-level function injection, define a dedicated annotation such as <code>com.example.InjectFunction</code> and configure it with this free compiler option:</p>
+<div class="highlight"><pre><span></span><code><span class="n">metro</span><span class="p">.</span><span class="na">compilerOptions</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="n">put</span><span class="p">(</span><span class="s">"function-inject-annotations-override"</span><span class="p">,</span><span class="w"> </span><span class="s">"com/example/InjectFunction"</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>This replaces the default function injection annotation set only when <code>enableTopLevelFunctionInjection</code> is enabled. Values use compiler class IDs such as <code>com/example/InjectFunction</code>. Separate multiple IDs with <code>:</code>. Class and member injection keep their existing annotations.</p>
+<p>For why this helps incremental builds, see <a href="../performance/#incremental-compilation">incremental compilation</a>.</p>
 
 
 
