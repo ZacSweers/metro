@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler
 
-import java.util.Collections
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
@@ -18,9 +17,9 @@ import org.opentest4j.AssertionFailedError
  * pipelines only check diagnostics. Without this, these errors pass silently.
  */
 class MetroMessageCollectorErrors : TestService {
-  private val _errors = Collections.synchronizedList(mutableListOf<String>())
+  private val _errors = mutableListOf<String>()
   val errors: List<String>
-    get() = synchronized(_errors) { _errors.toList() }
+    get() = _errors
 
   fun wrap(module: TestModule, delegate: MessageCollector): MessageCollector =
     object : MessageCollector by delegate {
