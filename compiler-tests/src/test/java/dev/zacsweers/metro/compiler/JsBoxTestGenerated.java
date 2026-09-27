@@ -655,9 +655,21 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
     }
 
     @Test
+    @TestMetadata("GeneratedContributionsAcrossScopes.kt")
+    public void testGeneratedContributionsAcrossScopes() {
+      run("GeneratedContributionsAcrossScopes.kt");
+    }
+
+    @Test
     @TestMetadata("GeneratedDependencyGraph.kt")
     public void testGeneratedDependencyGraph() {
       run("GeneratedDependencyGraph.kt");
+    }
+
+    @Test
+    @TestMetadata("GeneratedFactoryInSourceGraphAcrossModules.kt")
+    public void testGeneratedFactoryInSourceGraphAcrossModules() {
+      run("GeneratedFactoryInSourceGraphAcrossModules.kt");
     }
 
     @Test

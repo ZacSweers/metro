@@ -101,6 +101,8 @@ internal class GenerateGraphExtensionExtension(
   object Key : GeneratedDeclarationKey()
 
   private val predicate = LookupPredicate.BuilderContext.annotated(ANNOTATION_FQ_NAME)
+  private val factoryPredicate =
+    LookupPredicate.BuilderContext.annotated(FqName("test.GenerateGraphExtensionFactory"))
 
   private val annotatedClasses by lazy {
     session.predicateBasedProvider
@@ -114,13 +116,23 @@ internal class GenerateGraphExtensionExtension(
     annotatedClasses.map { it.classId.createNestedClassId(LOGIN_GRAPH_NAME) }.toSet()
   }
 
-  /** ClassIds of Factory interfaces nested inside generated graphs. */
+  private val graphsWithGeneratedFactories by lazy {
+    val sourceGraphs =
+      session.predicateBasedProvider
+        .getSymbolsByPredicate(factoryPredicate)
+        .filterIsInstance<FirRegularClassSymbol>()
+        .map { it.classId }
+    generatedGraphClassIds + sourceGraphs
+  }
+
+  /** ClassIds of generated Factory interfaces. */
   private val generatedFactoryClassIds by lazy {
-    generatedGraphClassIds.map { it.createNestedClassId(FACTORY_NAME) }.toSet()
+    graphsWithGeneratedFactories.map { it.createNestedClassId(FACTORY_NAME) }.toSet()
   }
 
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
     register(predicate)
+    register(factoryPredicate)
   }
 
   // -- LoginGraph generation (nested inside annotated class) --
@@ -131,8 +143,10 @@ internal class GenerateGraphExtensionExtension(
   ): Set<Name> {
     // Generate LoginGraph inside annotated classes
     if (classSymbol in annotatedClasses) return setOf(LOGIN_GRAPH_NAME)
-    // Generate Factory inside generated LoginGraph
-    if (classSymbol.classId in generatedGraphClassIds) return setOf(FACTORY_NAME)
+    // Generate Factory inside generated LoginGraph or an annotated source graph.
+    if (classSymbol.classId in graphsWithGeneratedFactories) {
+      return setOf(FACTORY_NAME)
+    }
     return emptySet()
   }
 
@@ -177,7 +191,9 @@ internal class GenerateGraphExtensionExtension(
   }
 
   private fun generateFactory(owner: FirClassSymbol<*>, name: Name): FirClassLikeSymbol<*>? {
-    if (owner.classId !in generatedGraphClassIds) return null
+    if (owner.classId !in graphsWithGeneratedFactories) {
+      return null
+    }
 
     val nestedClassId = owner.classId.createNestedClassId(name)
     val classSymbol = FirRegularClassSymbol(nestedClassId)
