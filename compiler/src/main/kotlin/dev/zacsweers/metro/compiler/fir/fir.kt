@@ -84,7 +84,9 @@ import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension.TypeR
 import org.jetbrains.kotlin.fir.extensions.NestedClassGenerationContext
 import org.jetbrains.kotlin.fir.extensions.QualifierPartBuilder
 import org.jetbrains.kotlin.fir.java.FirCliSession
+import org.jetbrains.kotlin.fir.lookupTracker
 import org.jetbrains.kotlin.fir.moduleData
+import org.jetbrains.kotlin.fir.recordFqNameLookup
 import org.jetbrains.kotlin.fir.references.impl.FirSimpleNamedReference
 import org.jetbrains.kotlin.fir.references.toResolvedCallableSymbol
 import org.jetbrains.kotlin.fir.render
@@ -146,6 +148,7 @@ import org.jetbrains.kotlin.fir.types.type
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.ClassIdBasedLocality
+import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.StandardClassIds
 import org.jetbrains.kotlin.platform.TargetPlatform
@@ -1948,3 +1951,13 @@ internal fun ClassId?.isIntrinsicType(session: FirSession): Boolean {
 
 internal fun FirSession.shouldCheckRuntimeTracingGraphInputs(): Boolean =
   metroFirBuiltIns.options.enableRuntimeTracing
+
+/**
+ * Records an incremental compilation lookup of [fqName] from [source]. A change to [fqName] then
+ * recompiles the file that holds [source].
+ */
+internal fun FirSession.trackFqNameLookup(fqName: FqName, source: KtSourceElement?) {
+  // The declaration's source stands in for its file's source. The file path lookup is cached
+  // internally.
+  lookupTracker?.recordFqNameLookup(fqName, source, source)
+}

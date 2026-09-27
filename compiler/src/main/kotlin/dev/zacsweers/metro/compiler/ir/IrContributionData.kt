@@ -200,7 +200,7 @@ internal class IrContributionData(
   /**
    * Tracks a lookup on scope hint functions for incremental compilation. This should be called
    * before checking any caches to ensure all callers register their dependency on scope hint
-   * changes.
+   * changes. Extensions' lookups for the scope are tracked too.
    */
   fun trackScopeHintLookup(scope: Scope, callingDeclaration: IrDeclaration?) {
     callingDeclaration?.let { caller ->
@@ -211,6 +211,15 @@ internal class IrContributionData(
           container = scopeHintName.packageName,
           declarationName = scopeHintName.callableName.asString(),
         )
+        for (extension in irContributionExtensions) {
+          for (fqName in extension.lookupFqNames(scope)) {
+            trackClassLookup(
+              callingDeclaration = caller,
+              container = fqName.parent(),
+              declarationName = fqName.shortName().asString(),
+            )
+          }
+        }
       }
     }
   }

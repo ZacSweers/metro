@@ -9,6 +9,7 @@ import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.FqName
 
 /**
  * Extension point for third-party code generators to contribute bindings to Metro's dependency
@@ -86,6 +87,17 @@ public interface MetroContributionExtension {
     scopeClassId: ClassId,
     typeResolverFactory: MetroFirTypeResolver.Factory,
   ): List<Contribution>
+
+  /**
+   * Returns the names that this extension's contributions for [scopeClassId] depend on.
+   *
+   * Metro records an incremental compilation lookup of each name from every graph with this scope.
+   * A change to one of them recompiles those graphs. Extensions that read contributions from the
+   * classpath need this, since Metro's own hints don't cover them.
+   *
+   * The default implementation returns an empty list.
+   */
+  public fun lookupFqNames(scopeClassId: ClassId): Collection<FqName> = emptyList()
 
   /**
    * Represents a contribution to be merged into a dependency graph.

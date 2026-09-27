@@ -9,6 +9,7 @@ import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.FqName
 
 /**
  * IR-side counterpart to
@@ -51,6 +52,17 @@ public interface MetroIrContributionExtension {
    */
   public fun contributeSupertypes(scope: ClassId, callingDeclaration: IrDeclaration): List<IrType> =
     emptyList()
+
+  /**
+   * Returns the names that this extension's contributions for [scope] depend on.
+   *
+   * Metro records an incremental compilation lookup of each name from every graph with this scope.
+   * A change to one of them recompiles those graphs. Extensions that read contributions from the
+   * classpath need this, since Metro's own hints don't cover them.
+   *
+   * The default implementation returns an empty list.
+   */
+  public fun lookupFqNames(scope: ClassId): Collection<FqName> = emptyList()
 
   /**
    * Factory for creating [MetroIrContributionExtension] instances.

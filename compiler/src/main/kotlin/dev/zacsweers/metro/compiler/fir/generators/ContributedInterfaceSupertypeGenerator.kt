@@ -23,6 +23,7 @@ import dev.zacsweers.metro.compiler.fir.resolvedExcludedClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedReplacedClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.fir.scopeArgument
+import dev.zacsweers.metro.compiler.fir.trackFqNameLookup
 import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.hilt.HiltComponentScopeMapping
 import dev.zacsweers.metro.compiler.hilt.HiltSymbols
@@ -48,10 +49,8 @@ import org.jetbrains.kotlin.fir.extensions.ExperimentalSupertypesGenerationApi
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.predicateBasedProvider
-import org.jetbrains.kotlin.fir.lookupTracker
 import org.jetbrains.kotlin.fir.moduleData
 import org.jetbrains.kotlin.fir.moduleVisibilityChecker
-import org.jetbrains.kotlin.fir.recordFqNameLookup
 import org.jetbrains.kotlin.fir.render
 import org.jetbrains.kotlin.fir.resolve.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
@@ -404,13 +403,12 @@ internal class ContributedInterfaceSupertypeGenerator(
       .filterNotTo(mutableSetOf()) { it == StandardClassIds.Nothing }
 
     for (classId in scopes) {
-      session.lookupTracker?.recordFqNameLookup(
-        Symbols.FqNames.scopeHint(classId),
-        classLikeDeclaration.source,
-        // The class source is the closest we can get to the file source,
-        // and the file path lookup is cached internally.
-        classLikeDeclaration.source,
-      )
+      session.trackFqNameLookup(Symbols.FqNames.scopeHint(classId), classLikeDeclaration.source)
+      for (extension in externalContributionExtensions) {
+        for (fqName in extension.lookupFqNames(classId)) {
+          session.trackFqNameLookup(fqName, classLikeDeclaration.source)
+        }
+      }
     }
 
     // Cache lambdas trace themselves on miss; cache hits don't open spans.
