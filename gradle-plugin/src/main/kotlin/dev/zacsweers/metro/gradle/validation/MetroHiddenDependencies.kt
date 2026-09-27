@@ -102,10 +102,6 @@ internal fun registerHiddenDependencyTasks(
     task.scopes.set(extension.aggregationScopes)
     val interop = extension.interop
     task.hintFormats.add(HintFormat.METRO)
-    task.hintFormats.addAll(interop.includeAnvilAnnotations.formatIfEnabled(HintFormat.ANVIL))
-    task.hintFormats.addAll(
-      interop.includeKotlinInjectAnvilAnnotations.formatIfEnabled(HintFormat.KOTLIN_INJECT_ANVIL)
-    )
     task.hintFormats.addAll(interop.includeHiltAnnotations.formatIfEnabled(HintFormat.HILT))
     task.reportFile.convention(
       project.layout.buildDirectory.file("reports/metro/$compilationPath/hidden-dependencies.txt")

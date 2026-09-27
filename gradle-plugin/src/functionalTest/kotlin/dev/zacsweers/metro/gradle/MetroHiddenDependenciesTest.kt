@@ -112,15 +112,13 @@ class MetroHiddenDependenciesTest {
         project.rootDir,
         *arguments,
         "-PmetroTestInterop",
-        "-PmetroTestScopes=test/AppScope,javax/inject/Singleton",
+        "-PmetroTestScopes=javax/inject/Singleton",
       )
     assertThat(enabled.task(":checkMainMetroHiddenDependencies")?.outcome)
       .isEqualTo(TaskOutcome.FAILED)
     assertThat(enabled.task(":compileKotlin")).isNull()
     val report = project.hiddenDependenciesReport()
     assertThat(report).contains("project ':impl'")
-    assertThat(report).contains("Hint: anvil/hint/Test_AnvilBindingsKt.class")
-    assertThat(report).contains("Hint: amazon/lastmile/inject/TestKotlinInjectBindings.class")
     assertThat(report).contains("Hint: hilt_aggregated_deps/_test_HiltModule.class")
   }
 
@@ -416,10 +414,9 @@ class MetroHiddenDependenciesTest {
   }
 
   /**
-   * A hidden dependency with hand-written Anvil, kotlin-inject-anvil, and Hilt metadata. Kotlin
-   * compiles the hints, so checks see real Kotlin field signatures and annotations. Stubs stand in
-   * for each framework's annotations. Only the consumer enables interop, so impl gets no Metro
-   * hints.
+   * A hidden dependency with hand-written Hilt metadata. Kotlin compiles the marker, so checks see
+   * a real Kotlin annotation. A stub stands in for Hilt's annotation. Only the consumer enables
+   * interop, so impl gets no Metro hints.
    */
   private class InteropHintsProject :
     MetroProject(
@@ -439,8 +436,6 @@ class MetroHiddenDependenciesTest {
         metro {
           if (path == ":" && providers.gradleProperty("metroTestInterop").isPresent) {
             interop {
-              includeAnvilForDagger()
-              includeAnvilForKotlinInject()
               includeHilt()
             }
           }
@@ -466,32 +461,6 @@ class MetroHiddenDependenciesTest {
         sources(
           source(
             """
-            abstract class AppScope
-            abstract class OtherScope
-
-            interface AnvilBindings
-
-            @ContributesTo(scope = AppScope::class)
-            interface KotlinInjectBindings
-            """,
-            fileNameWithoutExtension = "Scopes",
-            includeDefaultImports = false,
-            extraImports = arrayOf("software.amazon.lastmile.kotlin.inject.anvil.ContributesTo"),
-          ),
-          source(
-            "annotation class ContributesTo(val scope: KClass<*>)",
-            packageName = "software.amazon.lastmile.kotlin.inject.anvil",
-            includeDefaultImports = false,
-            extraImports = arrayOf("kotlin.reflect.KClass"),
-          ),
-          source(
-            "annotation class Origin(val value: KClass<*>)",
-            packageName = "software.amazon.lastmile.kotlin.inject.anvil.internal",
-            includeDefaultImports = false,
-            extraImports = arrayOf("kotlin.reflect.KClass"),
-          ),
-          source(
-            """
             @Retention(AnnotationRetention.BINARY)
             annotation class AggregatedDeps(
               val components: Array<String>,
@@ -502,29 +471,6 @@ class MetroHiddenDependenciesTest {
             """,
             packageName = "dagger.hilt.processor.internal.aggregateddeps",
             includeDefaultImports = false,
-          ),
-          source(
-            """
-            val test_AnvilBindings_reference: KClass<AnvilBindings> = AnvilBindings::class
-            val test_AnvilBindings_scope0: KClass<AppScope> = AppScope::class
-            """,
-            fileNameWithoutExtension = "Test_AnvilBindings",
-            packageName = "anvil.hint",
-            includeDefaultImports = false,
-            extraImports = arrayOf("kotlin.reflect.KClass", "test.AnvilBindings", "test.AppScope"),
-          ),
-          source(
-            """
-            @Origin(KotlinInjectBindings::class)
-            interface TestKotlinInjectBindings : KotlinInjectBindings
-            """,
-            packageName = "amazon.lastmile.inject",
-            includeDefaultImports = false,
-            extraImports =
-              arrayOf(
-                "software.amazon.lastmile.kotlin.inject.anvil.internal.Origin",
-                "test.KotlinInjectBindings",
-              ),
           ),
           source(
             """

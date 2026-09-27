@@ -106,58 +106,8 @@ class MetroHintScannerTest {
   }
 
   @Test
-  fun `Anvil hints select scope properties and accept older unnumbered scopes`() {
-    val classes = compileInteropHints()
-    val anvil = setOf(HintFormat.ANVIL)
-    val foo = "anvil/hint/Com_example_FooKt.class"
-    val legacy = "anvil/hint/merge/Com_example_LegacyKt.class"
-
-    assertThat(findHints(classes, emptySet(), anvil)).isEqualTo(setOf(foo, legacy))
-    assertThat(findHints(classes, setOf("com/example/Scopes.App"), anvil)).isEqualTo(setOf(foo))
-    assertThat(findHints(classes, setOf("com/example/AppScope"), anvil)).isEqualTo(setOf(legacy))
-    // Reference properties name the contributed class. Outer classes don't select nested scopes.
-    assertThat(findHints(classes, setOf("com/example/Foo"), anvil)).isEmpty()
-    assertThat(findHints(classes, setOf("com/example/Scopes"), anvil)).isEmpty()
-  }
-
-  @Test
-  fun `kotlin-inject-anvil lookups follow origin chains to their scopes`() {
-    val classes = compileInteropHints()
-    val kotlinInjectAnvil = setOf(HintFormat.KOTLIN_INJECT_ANVIL)
-    val bindings = "amazon/lastmile/inject/ComExampleBindings.class"
-    val generated = "amazon/lastmile/inject/ComExampleGenerated.class"
-    val missing = "amazon/lastmile/inject/ComExampleMissing.class"
-
-    // DefaultImpls has no @Origin, so it isn't a lookup.
-    assertThat(findHints(classes, emptySet(), kotlinInjectAnvil))
-      .isEqualTo(setOf(bindings, generated, missing))
-    // A lookup whose origin isn't in the artifact is always reported.
-    assertThat(findHints(classes, setOf("com/example/AppScope"), kotlinInjectAnvil))
-      .isEqualTo(setOf(bindings, missing))
-    assertThat(findHints(classes, setOf("com/example/Scopes.App"), kotlinInjectAnvil))
-      .isEqualTo(setOf(generated, missing))
-  }
-
-  @Test
-  fun `kotlin-inject-anvil origins resolve inside jars and nested AAR jars`() {
-    val classes = compileInteropHints()
-    val jar = "/interop.jar".toPath()
-    writeZip(jar, classEntries(classes))
-    val aar = "/interop.aar".toPath()
-    writeZip(aar, mapOf("classes.jar" to fileSystem.read(jar) { readByteArray() }))
-    val kotlinInjectAnvil = setOf(HintFormat.KOTLIN_INJECT_ANVIL)
-    val scopes = setOf("com/example/Scopes.App")
-    val generated = "amazon/lastmile/inject/ComExampleGenerated.class"
-    val missing = "amazon/lastmile/inject/ComExampleMissing.class"
-
-    assertThat(findHints(jar, scopes, kotlinInjectAnvil)).isEqualTo(setOf(generated, missing))
-    assertThat(findHints(aar, scopes, kotlinInjectAnvil))
-      .isEqualTo(setOf("classes.jar!/$generated", "classes.jar!/$missing"))
-  }
-
-  @Test
   fun `Hilt markers map built-in components to scopes and skip test and injector markers`() {
-    val classes = compileInteropHints()
+    val classes = compileHiltHints()
     val hilt = setOf(HintFormat.HILT)
     val singletonModule = "hilt_aggregated_deps/_com_example_SingletonModule.class"
     val featureEntryPoint = "hilt_aggregated_deps/_com_example_FeatureEntryPoint.class"
@@ -178,10 +128,10 @@ class MetroHintScannerTest {
 
   @Test
   fun `interop hints are ignored unless their format is enabled`() {
-    val classes = compileInteropHints()
+    val classes = compileHiltHints()
 
     assertThat(findHints(classes, emptySet(), setOf(HintFormat.METRO))).isEmpty()
-    assertThat(findHints(classes, emptySet(), HintFormat.entries.toSet())).hasSize(7)
+    assertThat(findHints(classes, emptySet(), HintFormat.entries.toSet())).hasSize(2)
   }
 
   /**
@@ -217,108 +167,11 @@ class MetroHintScannerTest {
     )
   }
 
-  /**
-   * Mirrors the class files that Anvil, kotlin-inject-anvil, and Hilt generate. Stub annotations
-   * and a stub `KClass` stand in for their runtimes. `com/example/Missing.class` is removed after
-   * compiling so one lookup's origin can't be found.
-   */
-  private fun compileInteropHints(): Path {
-    val classes =
-      compile(
-        "kotlin/reflect/KClass.java" to "package kotlin.reflect; public interface KClass<T> {}",
-        "com/example/AppScope.java" to "package com.example; public final class AppScope {}",
-        "com/example/Scopes.java" to
-          "package com.example; public final class Scopes { public static final class App {} }",
-        "com/example/Foo.java" to "package com.example; public interface Foo {}",
-        "com/example/Legacy.java" to "package com.example; public interface Legacy {}",
-        "anvil/hint/Com_example_FooKt.java" to
-          """
-          package anvil.hint;
-          import com.example.Foo;
-          import com.example.Scopes;
-          import kotlin.reflect.KClass;
-          public final class Com_example_FooKt {
-            private static final KClass<Foo> com_example_Foo_reference = null;
-            private static final KClass<Scopes.App> com_example_Foo_scope0 = null;
-          }
-          """,
-        "anvil/hint/merge/Com_example_LegacyKt.java" to
-          """
-          package anvil.hint.merge;
-          import com.example.AppScope;
-          import com.example.Legacy;
-          import kotlin.reflect.KClass;
-          public final class Com_example_LegacyKt {
-            private static final KClass<Legacy> com_example_Legacy_reference = null;
-            private static final KClass<AppScope> com_example_Legacy_scope = null;
-          }
-          """,
-        "software/amazon/lastmile/kotlin/inject/anvil/internal/Origin.java" to
-          """
-          package software.amazon.lastmile.kotlin.inject.anvil.internal;
-          import java.lang.annotation.Retention;
-          import java.lang.annotation.RetentionPolicy;
-          @Retention(RetentionPolicy.RUNTIME)
-          public @interface Origin { Class<?> value(); }
-          """,
-        "com/example/ContributesTo.java" to
-          """
-          package com.example;
-          import java.lang.annotation.Retention;
-          import java.lang.annotation.RetentionPolicy;
-          @Retention(RetentionPolicy.RUNTIME)
-          public @interface ContributesTo { Class<?> scope(); }
-          """,
-        "com/example/Bindings.java" to
-          """
-          package com.example;
-          @ContributesTo(scope = AppScope.class)
-          public interface Bindings {}
-          """,
-        "com/example/OtherBindings.java" to
-          """
-          package com.example;
-          @ContributesTo(scope = Scopes.App.class)
-          public interface OtherBindings {}
-          """,
-        "com/example/Generated.java" to
-          """
-          package com.example;
-          import software.amazon.lastmile.kotlin.inject.anvil.internal.Origin;
-          @Origin(OtherBindings.class)
-          public interface Generated {}
-          """,
-        "com/example/Missing.java" to
-          """
-          package com.example;
-          @ContributesTo(scope = Scopes.App.class)
-          public interface Missing {}
-          """,
-        "amazon/lastmile/inject/ComExampleBindings.java" to
-          """
-          package amazon.lastmile.inject;
-          import software.amazon.lastmile.kotlin.inject.anvil.internal.Origin;
-          @Origin(com.example.Bindings.class)
-          public interface ComExampleBindings extends com.example.Bindings {
-            final class DefaultImpls {}
-          }
-          """,
-        "amazon/lastmile/inject/ComExampleGenerated.java" to
-          """
-          package amazon.lastmile.inject;
-          import software.amazon.lastmile.kotlin.inject.anvil.internal.Origin;
-          @Origin(com.example.Generated.class)
-          public interface ComExampleGenerated {}
-          """,
-        "amazon/lastmile/inject/ComExampleMissing.java" to
-          """
-          package amazon.lastmile.inject;
-          import software.amazon.lastmile.kotlin.inject.anvil.internal.Origin;
-          @Origin(com.example.Missing.class)
-          public interface ComExampleMissing {}
-          """,
-        "dagger/hilt/processor/internal/aggregateddeps/AggregatedDeps.java" to
-          """
+  /** Mirrors the class files that Hilt generates. A stub annotation stands in for its runtime. */
+  private fun compileHiltHints(): Path {
+    return compile(
+      "dagger/hilt/processor/internal/aggregateddeps/AggregatedDeps.java" to
+        """
           package dagger.hilt.processor.internal.aggregateddeps;
           import java.lang.annotation.Retention;
           import java.lang.annotation.RetentionPolicy;
@@ -332,8 +185,8 @@ class MetroHintScannerTest {
             String[] componentEntryPoints() default {};
           }
           """,
-        "hilt_aggregated_deps/_com_example_SingletonModule.java" to
-          """
+      "hilt_aggregated_deps/_com_example_SingletonModule.java" to
+        """
           package hilt_aggregated_deps;
           import dagger.hilt.processor.internal.aggregateddeps.AggregatedDeps;
           @AggregatedDeps(
@@ -341,8 +194,8 @@ class MetroHintScannerTest {
               modules = "com.example.SingletonModule")
           public class _com_example_SingletonModule {}
           """,
-        "hilt_aggregated_deps/_com_example_FeatureEntryPoint.java" to
-          """
+      "hilt_aggregated_deps/_com_example_FeatureEntryPoint.java" to
+        """
           package hilt_aggregated_deps;
           import dagger.hilt.processor.internal.aggregateddeps.AggregatedDeps;
           @AggregatedDeps(
@@ -350,8 +203,8 @@ class MetroHintScannerTest {
               entryPoints = "com.example.FeatureEntryPoint")
           public class _com_example_FeatureEntryPoint {}
           """,
-        "hilt_aggregated_deps/_com_example_TestModule.java" to
-          """
+      "hilt_aggregated_deps/_com_example_TestModule.java" to
+        """
           package hilt_aggregated_deps;
           import dagger.hilt.processor.internal.aggregateddeps.AggregatedDeps;
           @AggregatedDeps(
@@ -360,8 +213,8 @@ class MetroHintScannerTest {
               modules = "com.example.TestModule")
           public class _com_example_TestModule {}
           """,
-        "hilt_aggregated_deps/_com_example_MainActivity_GeneratedInjector.java" to
-          """
+      "hilt_aggregated_deps/_com_example_MainActivity_GeneratedInjector.java" to
+        """
           package hilt_aggregated_deps;
           import dagger.hilt.processor.internal.aggregateddeps.AggregatedDeps;
           @AggregatedDeps(
@@ -369,9 +222,7 @@ class MetroHintScannerTest {
               componentEntryPoints = "com.example.MainActivity_GeneratedInjector")
           public class _com_example_MainActivity_GeneratedInjector {}
           """,
-      )
-    fileSystem.delete(classes / "com/example/Missing.class")
-    return classes
+    )
   }
 
   /**

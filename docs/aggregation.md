@@ -56,7 +56,7 @@ metro {
 ```
 
 !!! tip "Interop"
-    The check also reads other frameworks' aggregation metadata when their interop is enabled. `includeAnvilForDagger()` adds Anvil's `anvil.hint` hints. `includeAnvilForKotlinInject()` adds kotlin-inject-anvil's lookup interfaces. `includeHilt()` adds Hilt's `hilt_aggregated_deps` markers.
+    With `includeHilt()`, the check also reads Hilt's `hilt_aggregated_deps` markers.
     
     Hilt markers name the components they install into. A standard Hilt component matches its canonical scope, so `javax/inject/Singleton` selects `SingletonComponent` markers. To select a custom `@DefineComponent`, add the component's own ClassId.
 
