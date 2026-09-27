@@ -59,11 +59,7 @@ internal class ContributionHintFirGenerator(
         session.predicates.contributesAnnotationPredicate
       )
 
-    val graphExtensionFactories =
-      session.predicateBasedProvider.getSymbolsByPredicate(
-        session.predicates.graphExtensionFactoryPredicate
-      )
-
+    // Other plugins can generate contributed factories inside source graph extensions.
     val nestedGraphExtensionFactories =
       session.predicateBasedProvider
         .getSymbolsByPredicate(session.predicates.graphExtensionPredicate)
@@ -78,16 +74,10 @@ internal class ContributionHintFirGenerator(
           nestedClass.annotationsIn(session, session.classIds.allContributesAnnotations).any()
         }
 
-    return sequenceOf(
-        contributedClasses,
-        graphExtensionFactories,
-        nestedGraphExtensionFactories,
-      )
-      .flatten()
+    return (contributedClasses + nestedGraphExtensionFactories)
       .filterIsInstance<FirClassSymbol<*>>()
       .filterNot { it.visibility == Visibilities.Private }
       .distinct()
-      .toList()
   }
 
   private val typeResolverFactory by lazy { MetroFirTypeResolver.Factory(session) }
