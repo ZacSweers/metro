@@ -327,11 +327,11 @@ Any assisted context parameters will be carried as context parameters to the gen
 
 There are three reasons this is behind an opt-in option at the moment.
 
-1. Generating top-level declarations in Kotlin compiler plugins (in FIR specifically) is not currently compatible with incremental compilation on the JVM.
-2. Generating top-level declarations in Kotlin compiler plugins (in FIR specifically) is not currently compatible with non-JVM targets.
-3. IDE support is rudimentary at best and currently requires enabling a custom registry flag. See [the docs for how to enable IDE support](installation.md#ide-support).
+1. It makes incremental builds recompile more files. See [incremental compilation](performance.md#incremental-compilation).
+2. IDE support requires enabling a custom registry flag. See [the docs for how to enable IDE support](installation.md#ide-support).
+3. Before Kotlin 2.3.20, generating top-level declarations in FIR isn't compatible with incremental compilation or with non-JVM targets. Kotlin/JS gained incremental compilation support for generated top-level declarations in Kotlin 2.3.21 and Kotlin 2.4.0-Beta2. See [KT-82395](https://youtrack.jetbrains.com/issue/KT-82395).
 
-Because of this, it's likely better for now to just hand-write the equivalent class that Metro generates. If you still wish to proceed with using this, it can be enabled via the Gradle DSL.
+You can enable it via the Gradle DSL.
 
 ```kotlin
 metro {

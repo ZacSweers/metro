@@ -253,6 +253,41 @@ Below are some results from real-world projects, shared with the developers' per
 
     > Metro consolidated all the best practices from other popular frameworks, while leaving out the not-so-best practices on the side, allowed us to enable K2 and immediately experience significant build time improvements, while also unlocking incremental compilation, which means that the builds will be getting even faster
 
+## Incremental compilation
+
+On Kotlin 2.3.20 and later, Metro generates contribution hints as top-level declarations in FIR. Kotlin can't tell which source file a generated top-level declaration came from. To keep them up to date, it regenerates them on every incremental build. That means recompiling every file the plugin found them through ([KT-75864](https://youtrack.jetbrains.com/issue/KT-75864)).
+
+For Metro, every file with a `@Contributes*`-annotated class recompiles on every incremental build of its module. This happens even when you only edit an unrelated file. Files with `@GraphExtension`-annotated classes recompile too. If you enable `enableTopLevelFunctionInjection`, every file with an `@Inject`-annotated declaration recompiles as well. When an edit changes a public API, Kotlin runs a second compile pass and recompiles these files again.
+
+The cost grows with the number of contributing files in the module you edit. You can keep it down in a few ways.
+
+- Split large modules. Contributions only add to the incremental builds of their own module.
+- Leave `enableTopLevelFunctionInjection` off unless you use it.
+
+Disabling `generateContributionHints` in a module doesn't help if that module also has a graph. Graphs find contributions in their own compilation the same way.
+
+### Kotlin Multiplatform
+
+By default, Kotlin's JVM incremental compiler falls back to a full rebuild when a file in a shared source set like `commonMain` needs recompiling ([KT-62686](https://youtrack.jetbrains.com/issue/KT-62686)). Contributing files always need recompiling. So a contribution in `commonMain` turns every incremental JVM build of that module into a full rebuild, including edits that only touch `jvmMain`.
+
+Kotlin has an opt-in for incremental compilation of common sources on JVM targets ([KT-86703](https://youtrack.jetbrains.com/issue/KT-86703)). With it enabled, those builds stay incremental.
+
+On Kotlin 2.5.0 and later, enable it with the public property.
+
+```properties
+kotlin.jvm.enableIncrementalCompilationOfCommonSources=true
+```
+
+On Kotlin 2.4.20, the same feature is behind two internal properties.
+
+```properties
+kotlin.internal.incremental.enableUnsafeOptimizationsForMultiplatform=true
+kotlin.internal.jvm.enableKmpClasspathMetadataForIncrementalCompilation=true
+```
+
+!!! warning
+    This feature is new and may not work in every project, especially before Kotlin 2.5.0. On Kotlin 2.4.20, the internal properties currently break compilation of any module with contributions in a shared source set, which is the case they'd help with. Kotlin fails to write metadata for Metro's generated hints there. If you run into problems, remove the properties to go back to full rebuilds.
+
 ## Scaling to Very Large Graphs
 
 For graphs aggregating thousands of contributions, two opt-in knobs help work around JVM and Kotlin metadata size limits. Both are power-user features and unnecessary for typical graphs.
