@@ -1806,6 +1806,8 @@ public class MetroOptions(
       customGraphExtensionFactoryAnnotations.add(anvilPackage.classId("MergeSubcomponent.Factory"))
       customGraphExtensionAnnotations.add(anvilPackage.classId("MergeSubcomponent"))
       customGraphFactoryAnnotations.add(anvilPackage.classId("MergeComponent.Factory"))
+      // Anvil's generated binding modules name their source class with this marker.
+      customOriginAnnotations.add(anvilPackage.child(internalName).classId("InternalBindingMarker"))
       includeDaggerAnnotations()
     }
 

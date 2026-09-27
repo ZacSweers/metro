@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.drewhamilton.poko.Poko
+import dev.zacsweers.metro.compiler.anvil.anvilBindingModuleOrigin
 import dev.zacsweers.metro.compiler.appendLineWithUnderlinedRanges
 import dev.zacsweers.metro.compiler.graph.LocationDiagnostic
 import dev.zacsweers.metro.compiler.ir.graph.IrBinding
@@ -70,16 +71,20 @@ internal class BindsCallable(
   fun resolveSourceDeclaration(): Pair<IrDeclarationWithName, Boolean> {
     val ir = function
     val resolvedIr = ir.overriddenSymbolsSequence().lastOrNull()?.owner ?: ir
-    val isMetroContribution =
-      resolvedIr.parentClassOrNull?.hasAnnotation(Symbols.ClassIds.metroContribution) == true
-    return if (isMetroContribution) {
+    val parentClass = resolvedIr.parentClassOrNull
+    val isMetroContribution = parentClass?.hasAnnotation(Symbols.ClassIds.metroContribution) == true
+    if (isMetroContribution) {
       // If it's a contribution, the source is
       // SourceClass.MetroContributionScopeName.bindingFunction
       //                                        ^^^
-      resolvedIr.parentAsClass.parentAsClass to true
-    } else {
-      ir to false
+      return resolvedIr.parentAsClass.parentAsClass to true
     }
+    // Anvil's generated binding modules point back to the class they bind.
+    val anvilOrigin = parentClass?.anvilBindingModuleOrigin()
+    if (anvilOrigin != null) {
+      return anvilOrigin to true
+    }
+    return ir to false
   }
 
   fun remapTypes(remapper: TypeRemapper): BindsCallable {

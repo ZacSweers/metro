@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.ir.graph
 
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.Origins
+import dev.zacsweers.metro.compiler.anvil.anvilBindingModuleOrigin
 import dev.zacsweers.metro.compiler.compat.propertyIfAccessorCompat
 import dev.zacsweers.metro.compiler.graph.computeLowerPriorityContributions
 import dev.zacsweers.metro.compiler.graph.explanation.BindingReason
@@ -22,6 +23,7 @@ import dev.zacsweers.metro.compiler.ir.MultibindsCallable
 import dev.zacsweers.metro.compiler.ir.ParentContextReader
 import dev.zacsweers.metro.compiler.ir.PriorityKind
 import dev.zacsweers.metro.compiler.ir.ProviderFactory
+import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.batchTrackForCallingDeclaration
 import dev.zacsweers.metro.compiler.ir.findAnnotations
 import dev.zacsweers.metro.compiler.ir.getAnnotation
@@ -781,7 +783,10 @@ internal class BindingGraphGenerator(
     return lowerPriorityCandidates.mapTo(mutableSetOf()) { it.declaration }
   }
 
-  /** Resolves generated providers through their existing contribution-provider `@Origin`. */
+  /**
+   * Resolves generated providers through their existing contribution-provider `@Origin`. Anvil's
+   * binding modules for contributed objects resolve through their binding marker.
+   */
   private fun ProviderFactoryCandidate.priorityCandidate(
     priorityProcessing: IrPriorityProcessing
   ): PriorityCandidate? {
@@ -789,23 +794,12 @@ internal class BindingGraphGenerator(
     if (providerFactory.isDynamic || providerFactory.typeKey in node.dynamicTypeKeys) return null
 
     val contributionContainer = providerFactory.function.parentClassOrNull ?: return null
-    val originAnnotation =
-      contributionContainer.getAnnotation(Symbols.ClassIds.metroOrigin.asSingleFqName())
-        ?: return null
-    val isGeneratedContributionProvider =
-      originAnnotation.originContextOrNull() ==
-        Symbols.StringNames.CONTRIBUTION_PROVIDER_ORIGIN_CONTEXT
-    if (!isGeneratedContributionProvider) return null
-
-    // Binary provider stubs already resolve internal origins into realDeclaration. Source
-    // providers instead retain their function there, so resolve the container's origin instead.
-    val resolvedOrigin = providerFactory.realDeclaration as? IrClass
+    val anvilOrigin = contributionContainer.anvilBindingModuleOrigin()
     val contributingType =
-      if (resolvedOrigin != null) {
-        resolvedOrigin
+      if (anvilOrigin != null) {
+        anvilOrigin
       } else {
-        val originClassId = originAnnotation.originOrNull() ?: return null
-        contributionContainer.lookupClass(originClassId)?.owner ?: return null
+        providerFactory.contributionProviderOrigin(contributionContainer) ?: return null
       }
     val contributionScope = contributionContainer.contributionScope() ?: return null
 
@@ -819,6 +813,26 @@ internal class BindingGraphGenerator(
       isLocallyDeclared = isLocallyDeclared,
       priorityProcessing = priorityProcessing,
     )
+  }
+
+  private fun ProviderFactory.contributionProviderOrigin(container: IrClass): IrClass? {
+    val originAnnotation =
+      container.getAnnotation(Symbols.ClassIds.metroOrigin.asSingleFqName()) ?: return null
+    val isGeneratedContributionProvider =
+      originAnnotation.originContextOrNull() ==
+        Symbols.StringNames.CONTRIBUTION_PROVIDER_ORIGIN_CONTEXT
+    if (!isGeneratedContributionProvider) {
+      return null
+    }
+
+    // Binary provider stubs already resolve internal origins into realDeclaration. Source
+    // providers instead retain their function there, so resolve the container's origin instead.
+    val resolvedOrigin = realDeclaration as? IrClass
+    if (resolvedOrigin != null) {
+      return resolvedOrigin
+    }
+    val originClassId = originAnnotation.originOrNull() ?: return null
+    return container.lookupClass(originClassId)?.owner
   }
 
   /** Resolves generated aliases through their original contributed `@Binds` declaration. */
@@ -901,7 +915,15 @@ internal class BindingGraphGenerator(
 
   private fun IrClass.contributionScope(): ClassId? {
     val contributionAnnotation = findAnnotations(Symbols.ClassIds.metroContribution).singleOrNull()
-    return contributionAnnotation?.scopeOrNull()
+    if (contributionAnnotation != null) {
+      return contributionAnnotation.scopeOrNull()
+    }
+    // Anvil's generated binding modules declare their scope with @ContributesTo.
+    if (anvilBindingModuleOrigin() == null) {
+      return null
+    }
+    val contributesTo = annotationsIn(metroSymbols.classIds.contributesToAnnotations).singleOrNull()
+    return contributesTo?.scopeOrNull()
   }
 
   /** Collects all inherited data from parent nodes in a single pass. */
