@@ -15,6 +15,7 @@ import dev.zacsweers.metro.compiler.fir.caching
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isBindingContainer
+import dev.zacsweers.metro.compiler.fir.isCli
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.originClassId
 import dev.zacsweers.metro.compiler.fir.predicates
@@ -100,6 +101,23 @@ internal class ContributedInterfaceSupertypeGenerator(
     }
   }
 
+  private val inCompilationContributingClasses:
+    FirCache<Unit, List<FirRegularClassSymbol>, Nothing?> =
+    session.firCachesFactory.createCache { _, _ -> findInCompilationContributingClasses() }
+
+  private fun findInCompilationContributingClasses(): List<FirRegularClassSymbol> {
+    val allSessions =
+      sequenceOf(session).plus(session.moduleData.allDependsOnDependencies.map { it.session })
+    return allSessions
+      .flatMap {
+        it.predicateBasedProvider.getSymbolsByPredicate(
+          session.predicates.contributesAnnotationPredicate
+        )
+      }
+      .filterIsInstance<FirRegularClassSymbol>()
+      .toList()
+  }
+
   private val inCompilationScopesToContributions:
     FirCache<ClassId, Map<ClassId, Boolean>, TypeResolveService> =
     session.firCachesFactory.createCache { scopeClassId, typeResolver ->
@@ -107,27 +125,20 @@ internal class ContributedInterfaceSupertypeGenerator(
         name = { "In-compilation contributions for $scopeClassId" },
         category = TraceCategories.FIR_SUPERTYPE,
       ) {
-        // In a KMP compilation we want to capture _all_ sessions' symbols. For example, if we are
-        // generating supertypes for a graph in jvmMain, we want to capture contributions declared
-        // in commonMain.
-        val allSessions =
-          sequenceOf(session).plus(session.moduleData.allDependsOnDependencies.map { it.session })
-
-        // Predicates can't see the generated `MetroContribution` classes, but we can access them
-        // by first querying the top level @ContributeX-annotated source symbols and then checking
-        // their declaration scopes
+        // The CLI resolves each phase for every file before starting the next one. Plugin
+        // annotations are indexed during COMPILER_REQUIRED_ANNOTATIONS, so the index is complete
+        // before supertypes resolve and one query can serve every scope. The IDE resolves lazily,
+        // so it queries per scope. Generated contributions are resolved separately for each scope.
         val contributingClasses =
-          allSessions
-            .flatMap {
-              it.predicateBasedProvider.getSymbolsByPredicate(
-                session.predicates.contributesAnnotationPredicate
-              )
-            }
-            .filterIsInstance<FirRegularClassSymbol>()
-            .filterNot { it.visibility == Visibilities.Private }
-            .toList()
-
-        getScopedContributions(contributingClasses, scopeClassId, typeResolver)
+          if (session.isCli()) {
+            inCompilationContributingClasses.getValue(Unit, null)
+          } else {
+            findInCompilationContributingClasses()
+          }
+        val visibleContributingClasses = contributingClasses.filterNot {
+          it.visibility == Visibilities.Private
+        }
+        getScopedContributions(visibleContributingClasses, scopeClassId, typeResolver)
       }
     }
 
