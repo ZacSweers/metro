@@ -190,8 +190,9 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       defaultValue = false,
       valueDescription = "<true | false>",
       description =
-        "Enable injection for top-level functions. Disabled by default because it is not " +
-          "compatible with incremental compilation.",
+        "Enable injection for top-level functions. Disabled by default because it makes " +
+          "incremental builds recompile more files. See " +
+          "https://zacsweers.github.io/metro/latest/performance/#incremental-compilation.",
       required = false,
       allowMultipleOccurrences = false,
     )
