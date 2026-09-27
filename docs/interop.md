@@ -151,6 +151,26 @@ This specifically enables three features.
 
 Note the companion Gradle plugin automatically adds an extra `dev.zacsweers.metro:interop-dagger` runtime dependency to support this interop. If you only want annotation interop, just replace the annotations only.
 
+### Anvil-compiled modules
+
+`includeAnvilForDagger()` also merges contributions from upstream modules that Anvil compiled. Anvil records each contribution in the `anvil.hint` package, and Metro reads those hints from the classpath.
+
+* `@ContributesTo` interfaces become graph supertypes.
+* `@ContributesTo` Dagger modules become binding containers through the Dagger module interop above.
+* `@ContributesBinding` and `@ContributesMultibinding` classes merge through the binding modules Anvil generates for them. Their `rank` is treated as Metro's `priority`.
+* A `@ContributesSubcomponent` merges its nested `@ContributesSubcomponent.Factory` into the graph for its `parentScope`. The subcomponent then works like a Metro graph extension whose factory is annotated with `@ContributesTo`.
+
+A subcomponent without a factory needs a parent component interface annotated with `@ContributesTo(parentScope)`, as Anvil recommends. Metro can't add the accessor that Anvil generates for the parent.
+
+Graph exclusions and Anvil's `replaces` apply to these contributions. They can name a contributed binding's class directly. Graph exclusions can also name a contributed subcomponent. Anvil doesn't write hints for modules that set `generateDaggerFactoriesOnly`.
+
+A few things aren't read from hints yet:
+
+* `replaces` on `@ContributesSubcomponent`.
+* Hints from Anvil 2.4 and earlier, which used subpackages of `anvil.hint`.
+
+kotlin-inject-anvil interop only covers its annotations. Metro doesn't read the lookup interfaces that kotlin-inject-anvil generates.
+
 ### `Class`/`KClass` map key interop
 
 A special opt-in form of interop exists for `java.lang.Class` and `kotlin.reflect.KClass` on JVM/android compilations. While these types are not intrinsics of each other in regular code, they _are_ in annotations and are often used in `Map` multibindings. Metro can support these if you enable the `enableKClassToClassMapKeyInterop` option. When enabled, `java.lang.Class` and `kotlin.reflect.KClass` are treated as interchangeable in map key types, matching Kotlin's own annotation compilation behavior. This only applies to map keys because these are the only scenario where annotation arguments are materialized into non-annotation code (i.e. `@ClassKey(Foo::class) -> Map<Class<*>, V>`).

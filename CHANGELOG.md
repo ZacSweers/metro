@@ -9,6 +9,8 @@ Changelog
 - **[Gradle]** Add opt-in checks to find Metro contributions hidden from a graph's compile classpath. Run `checkMainMetroHiddenDependencies` (i.e., on CI). It writes a report and fails if it finds hidden contributions.
   - Supports JVM and Android compilations, including JVM targets in KMP. See [checking for hidden contributions](docs/aggregation.md#checking-for-hidden-contributions).
   - Also checks Anvil, kotlin-inject-anvil, and Hilt aggregation metadata when their interop is enabled.
+- **[FIR/IR/interop]** Merge contributions from upstream modules that Anvil compiled when Anvil interop is enabled. Metro reads Anvil's `anvil.hint` hints for `@ContributesTo` interfaces and modules. `@ContributesBinding` and `@ContributesMultibinding` merge through the binding modules Anvil generates for them. See [Anvil-compiled modules](docs/interop.md#anvil-compiled-modules).
+- **[FIR/IR/interop]** Support `@ContributesSubcomponent` from Anvil-compiled modules. Metro merges the subcomponent's `@ContributesSubcomponent.Factory` into the graph for its `parentScope`, like a graph extension factory annotated with `@ContributesTo`.
 
 ### Fixes
 
