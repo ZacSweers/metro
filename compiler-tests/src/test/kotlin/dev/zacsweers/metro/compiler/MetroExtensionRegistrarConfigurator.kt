@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler
 
 import androidx.compose.compiler.plugins.kotlin.ComposePluginRegistrar
 import androidx.compose.compiler.plugins.kotlin.k2.ComposeFirExtensionRegistrar
+import dev.zacsweers.metro.compiler.anvil.AnvilContributionExtension
 import dev.zacsweers.metro.compiler.api.GenerateBindsContributionExtension
 import dev.zacsweers.metro.compiler.api.GenerateBindsContributionMetroExtension
 import dev.zacsweers.metro.compiler.api.GenerateDependencyGraphExtension
@@ -355,6 +356,7 @@ class MetroExtensionRegistrarConfigurator(
                 .create(session, options, compatContext)
                 ?.let(::add)
             }
+            AnvilContributionExtension.Factory().create(session, options, compatContext)?.let(::add)
           }
         },
       )
