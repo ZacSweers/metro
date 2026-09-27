@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790530392065,
+  "lastUpdate": 1790553328726,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -24696,6 +24696,62 @@ window.BENCHMARK_DATA = {
             "value": 20362.688000000002,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +3.24%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "f84a11df~1",
+          "message": "[before] Optimize predicate lookups + disable function inje",
+          "timestamp": "2026-09-27T22:53:21Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/f84a11df95effa54e0e0c47b9e7fc7364e6a1341"
+        },
+        "date": 1790553328726,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19719.417999999998,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "f84a11df95effa54e0e0c47b9e7fc7364e6a1341",
+          "message": "[after] Optimize predicate lookups + disable function inje",
+          "timestamp": "2026-09-27T22:53:21Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/f84a11df95effa54e0e0c47b9e7fc7364e6a1341"
+        },
+        "date": 1790553328727,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18854.568,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -4.39%"
           }
         ]
       }
