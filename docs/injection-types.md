@@ -355,3 +355,5 @@ metro.compilerOptions {
 ```
 
 This replaces the default function injection annotation set only when `enableTopLevelFunctionInjection` is enabled. Values use compiler class IDs such as `com/example/InjectFunction`. Separate multiple IDs with `:`. Class and member injection keep their existing annotations.
+
+For why this helps incremental builds, see [incremental compilation](performance.md#incremental-compilation).

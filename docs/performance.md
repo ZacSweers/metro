@@ -265,6 +265,8 @@ The cost grows with the number of contributing files in the module you edit. You
 - Leave `enableTopLevelFunctionInjection` off unless you use it.
 - If you use top-level function injection, [give it a dedicated annotation](injection-types.md#custom-function-injection-annotations) to narrow its annotation lookups.
 
+[KT-89706](https://youtrack.jetbrains.com/issue/KT-89706) proposes letting compiler plugins narrow these lookups by declaration kind. With it, Metro could look up only top-level functions for top-level function injection and the dedicated annotation wouldn't be needed. Follow that issue for updates.
+
 Disabling `generateContributionHints` in a module doesn't help if that module also has a graph. Graphs find contributions in their own compilation the same way.
 
 ### Kotlin Multiplatform
