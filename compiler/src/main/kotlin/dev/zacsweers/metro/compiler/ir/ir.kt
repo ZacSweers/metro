@@ -2884,7 +2884,7 @@ internal fun IrClass.injectedFunctionOrNull(): IrSimpleFunctionSymbol? {
       ?: reportCompilerBug("Injected function class annotation is missing its callable name")
   val callableId = CallableId(packageFqName!!, callableName)
   return lookupFunctions(callableId).single {
-    it.owner.isAnnotatedWithAny(context.metroSymbols.classIds.injectAnnotations)
+    it.owner.isAnnotatedWithAny(context.metroSymbols.classIds.topLevelFunctionInjectAnnotations)
   }
 }
 

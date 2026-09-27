@@ -126,6 +126,10 @@ abstract class MetroCompilerTest {
               processor.option(entry.raw.cliOption, generateAssistedFactories)
             ENABLE_TOP_LEVEL_FUNCTION_INJECTION ->
               processor.option(entry.raw.cliOption, enableTopLevelFunctionInjection)
+            FUNCTION_INJECT_ANNOTATIONS_OVERRIDE -> {
+              val annotations = functionInjectAnnotationsOverride ?: continue
+              processor.option(entry.raw.cliOption, annotations.joinToString(":"))
+            }
             GENERATE_CONTRIBUTION_HINTS ->
               processor.option(entry.raw.cliOption, generateContributionHints)
             GENERATE_CONTRIBUTION_HINTS_IN_FIR ->

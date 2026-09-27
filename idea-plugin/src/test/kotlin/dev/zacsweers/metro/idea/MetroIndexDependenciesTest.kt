@@ -876,6 +876,98 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
     assertEquals(binding.typeKey.type.classId, consumer.originClassId)
   }
 
+  fun testFunctionInjectionOverrideFindsCustomFunctionsAndPreservesMemberInjection() {
+    project.setMetroOptions(
+      "enable-top-level-function-injection" to "true",
+      "function-inject-annotations-override" to "test/FunctionInject",
+    )
+    val customFile =
+      myFixture.addFileToProject(
+        "test/Custom.kt",
+        """
+        package test
+
+        @FunctionInject fun custom(customService: Service) {}
+        """
+          .trimIndent(),
+      ) as KtFile
+    val file =
+      myFixture.configureMetroFile(
+        """
+        annotation class FunctionInject
+        interface Service
+
+        @Inject fun ordinary(ordinaryService: Service) {}
+
+        @Inject class Consumer {
+          @Inject fun install(memberService: Service) {}
+          @FunctionInject fun ignored(ignoredService: Service) {}
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val customDeclarations = customFile.declarationsIncludingNested()
+    val declarations = file.declarationsIncludingNested()
+
+    val custom = index.bindingEntriesAt(customDeclarations.function("custom")).single()
+    assertEquals("test.Custom", custom.typeKey.renderedType)
+    assertEquals(listOf("test.Service"), custom.dependencies.map { it.typeKey.renderedType })
+    assertTrue(index.bindingEntriesAt(declarations.function("ordinary")).isEmpty())
+    assertNull(index.consumerEntryAt(declarations.parameter("ordinaryService")))
+    assertEquals(
+      "test.Service",
+      index.consumerEntryAt(declarations.parameter("memberService"))!!.key.renderedType,
+    )
+    assertNull(index.consumerEntryAt(declarations.parameter("ignoredService")))
+    assertTrue(index.bindingEntriesAt(declarations.klass("Consumer")).isNotEmpty())
+  }
+
+  fun testFunctionInjectionOverrideChangesRefreshIndexedBindings() {
+    project.setMetroOptions("enable-top-level-function-injection" to "true")
+    val file =
+      myFixture.configureMetroFile(
+        """
+        annotation class FunctionInject
+
+        @Inject fun ordinary() {}
+        @FunctionInject fun custom() {}
+        """
+      )
+    val service = project.service<MetroResolutionService>()
+    val declarations = file.declarationsIncludingNested()
+    val ordinary = declarations.function("ordinary")
+    val custom = declarations.function("custom")
+    val initial = service.awaitIndex(file)
+    assertTrue(initial.bindingEntriesAt(ordinary).isNotEmpty())
+    assertTrue(initial.bindingEntriesAt(custom).isEmpty())
+
+    project.setMetroOptions(
+      "enable-top-level-function-injection" to "true",
+      "function-inject-annotations-override" to "test/FunctionInject",
+    )
+    val overridden = service.awaitIndex(file)
+    assertTrue(overridden.bindingEntriesAt(ordinary).isEmpty())
+    assertTrue(overridden.bindingEntriesAt(custom).isNotEmpty())
+
+    project.setMetroOptions(
+      "enable-top-level-function-injection" to "true",
+      "function-inject-annotations-override" to "",
+    )
+    val empty = service.awaitIndex(file)
+    assertTrue(empty.bindingEntriesAt(ordinary).isEmpty())
+    assertTrue(empty.bindingEntriesAt(custom).isEmpty())
+
+    project.setMetroOptions("function-inject-annotations-override" to "test/FunctionInject")
+    val disabled = service.awaitIndex(file)
+    assertTrue(disabled.bindingEntriesAt(ordinary).isEmpty())
+    assertTrue(disabled.bindingEntriesAt(custom).isEmpty())
+
+    project.setMetroOptions("enable-top-level-function-injection" to "true")
+    val restored = service.awaitIndex(file)
+    assertTrue(restored.bindingEntriesAt(ordinary).isNotEmpty())
+    assertTrue(restored.bindingEntriesAt(custom).isEmpty())
+  }
+
   fun testTopLevelFunctionInjectionIsInertWhenDisabled() {
     // With default options the compiler generates nothing for top-level inject functions, so the
     // index must not surface a binding or consumers for them.

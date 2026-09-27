@@ -343,3 +343,15 @@ metro {
 
     - This is fairly different from kotlin-inject’s typealias approach. This is necessary because Metro doesn’t use higher order function types or typealiases as qualifiers.
     - Since the compose-compiler's IR transformer may run _before_ Metro's, we check for this during implementation body generation and look up the transformed target composable function as needed.
+
+### Custom function injection annotations
+
+To narrow annotation lookups for top-level function injection, define a dedicated annotation such as `com.example.InjectFunction` and configure it with this free compiler option:
+
+```kotlin
+metro.compilerOptions {
+  put("function-inject-annotations-override", "com/example/InjectFunction")
+}
+```
+
+This replaces the default function injection annotation set only when `enableTopLevelFunctionInjection` is enabled. Values use compiler class IDs such as `com/example/InjectFunction`. Separate multiple IDs with `:`. Class and member injection keep their existing annotations.

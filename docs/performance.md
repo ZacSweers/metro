@@ -257,12 +257,13 @@ Below are some results from real-world projects, shared with the developers' per
 
 On Kotlin 2.3.20 and later, Metro generates contribution hints as top-level declarations in FIR. Kotlin can't tell which source file a generated top-level declaration came from. To keep them up to date, it regenerates them on every incremental build. That means recompiling every file the plugin found them through ([KT-75864](https://youtrack.jetbrains.com/issue/KT-75864)).
 
-For Metro, every file with a `@Contributes*`-annotated class recompiles on every incremental build of its module. This happens even when you only edit an unrelated file. Files with `@GraphExtension`-annotated classes recompile too. If you enable `enableTopLevelFunctionInjection`, every file with an `@Inject`-annotated declaration recompiles as well. When an edit changes a public API, Kotlin runs a second compile pass and recompiles these files again.
+For Metro, every file with a `@Contributes*`-annotated class recompiles on every incremental build of its module. This happens even when you only edit an unrelated file. Files with `@GraphExtension`-annotated classes recompile too. By default, enabling `enableTopLevelFunctionInjection` also makes every file with an `@Inject`-annotated declaration recompile. When an edit changes a public API, Kotlin runs a second compile pass and recompiles these files again.
 
 The cost grows with the number of contributing files in the module you edit. You can keep it down in a few ways.
 
 - Split large modules. Contributions only add to the incremental builds of their own module.
 - Leave `enableTopLevelFunctionInjection` off unless you use it.
+- If you use top-level function injection, [give it a dedicated annotation](injection-types.md#custom-function-injection-annotations) to narrow its annotation lookups.
 
 Disabling `generateContributionHints` in a module doesn't help if that module also has a graph. Graphs find contributions in their own compilation the same way.
 

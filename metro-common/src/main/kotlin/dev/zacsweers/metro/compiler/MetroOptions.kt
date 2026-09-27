@@ -197,6 +197,25 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
+  FUNCTION_INJECT_ANNOTATIONS_OVERRIDE(
+    RawMetroOption(
+      name = "function-inject-annotations-override",
+      defaultValue = emptySet(),
+      valueDescription = "<annotation class IDs separated by ':'>",
+      description =
+        "Replace the annotations used for top-level function injection. " +
+          "Only applies when enable-top-level-function-injection is enabled.",
+      required = false,
+      allowMultipleOccurrences = false,
+      valueMapper = {
+        if (it.isEmpty()) {
+          emptySet()
+        } else {
+          it.splitToSequence(':').mapToSet { ClassId.fromString(it, false) }
+        }
+      },
+    )
+  ),
   ENABLE_DAGGER_RUNTIME_INTEROP(
     RawMetroOption.boolean(
       name = "enable-dagger-runtime-interop",
@@ -1120,6 +1139,7 @@ public class MetroOptions(
     MetroOption.GENERATE_ASSISTED_FACTORIES.raw.defaultValue.expectAs(),
   public val enableTopLevelFunctionInjection: Boolean =
     MetroOption.ENABLE_TOP_LEVEL_FUNCTION_INJECTION.raw.defaultValue.expectAs(),
+  public val functionInjectAnnotationsOverride: Set<ClassId>? = null,
   public val generateContributionHints: Boolean =
     MetroOption.GENERATE_CONTRIBUTION_HINTS.raw.defaultValue.expectAs(),
   public val generateContributionHintsInFir: Boolean =
@@ -1362,6 +1382,15 @@ public class MetroOptions(
   public val injectAnnotations: Set<ClassId> =
     MetroClassIds.inject.withCustom(customInjectAnnotations)
 
+  /** Annotations used to discover and validate injected top-level functions. */
+  @Transient
+  public val topLevelFunctionInjectAnnotations: Set<ClassId> =
+    if (enableTopLevelFunctionInjection && functionInjectAnnotationsOverride != null) {
+      functionInjectAnnotationsOverride
+    } else {
+      injectAnnotations
+    }
+
   @Transient
   public val allInjectAnnotations: Set<ClassId> = injectAnnotations + assistedInjectAnnotations
 
@@ -1484,6 +1513,9 @@ public class MetroOptions(
     addAll(customGraphAnnotations)
     addAll(customGraphFactoryAnnotations)
     addAll(customInjectAnnotations)
+    if (enableTopLevelFunctionInjection) {
+      addAll(functionInjectAnnotationsOverride.orEmpty())
+    }
     addAll(customIntoMapAnnotations)
     addAll(customIntoSetAnnotations)
     addAll(customMapKeyAnnotations)
@@ -1530,6 +1562,8 @@ public class MetroOptions(
     public var traceDestination: Path? = base.rawTraceDestination
     public var generateAssistedFactories: Boolean = base.generateAssistedFactories
     public var enableTopLevelFunctionInjection: Boolean = base.enableTopLevelFunctionInjection
+    public var functionInjectAnnotationsOverride: Set<ClassId>? =
+      base.functionInjectAnnotationsOverride
     public var generateContributionHints: Boolean = base.generateContributionHints
     public var generateContributionHintsInFir: Boolean = base.generateContributionHintsInFir
     public var generateClassesInIr: Boolean = base.generateClassesInIr
@@ -1872,6 +1906,8 @@ public class MetroOptions(
         MetroOption.GENERATE_ASSISTED_FACTORIES -> generateAssistedFactories = value.expectAs()
         MetroOption.ENABLE_TOP_LEVEL_FUNCTION_INJECTION ->
           enableTopLevelFunctionInjection = value.expectAs()
+        MetroOption.FUNCTION_INJECT_ANNOTATIONS_OVERRIDE ->
+          functionInjectAnnotationsOverride = value.expectAs()
         MetroOption.GENERATE_CONTRIBUTION_HINTS -> generateContributionHints = value.expectAs()
         MetroOption.GENERATE_CONTRIBUTION_HINTS_IN_FIR ->
           generateContributionHintsInFir = value.expectAs()
@@ -2009,6 +2045,7 @@ public class MetroOptions(
         rawTraceDestination = traceDestination,
         generateAssistedFactories = generateAssistedFactories,
         enableTopLevelFunctionInjection = enableTopLevelFunctionInjection,
+        functionInjectAnnotationsOverride = functionInjectAnnotationsOverride,
         generateContributionHints = generateContributionHints,
         generateContributionHintsInFir = generateContributionHintsInFir,
         generateClassesInIr = generateClassesInIr,

@@ -55,11 +55,17 @@ internal class MetroIdeAnnotationClassIds(private val options: MetroOptions) {
   }
 
   val functionAnnotations: Set<ClassId> by lazy {
-    buildSet {
-      addAll(options.bindsAnnotations)
-      addAll(options.providesAnnotations)
-      addAll(options.multibindsAnnotations)
-      addAll(options.injectAnnotations)
+    functionAnnotations(options.injectAnnotations)
+  }
+
+  val topLevelFunctionAnnotations: Set<ClassId> by lazy {
+    functionAnnotations(options.topLevelFunctionInjectAnnotations)
+  }
+
+  private fun functionAnnotations(injectAnnotations: Set<ClassId>): Set<ClassId> {
+    return buildSet {
+      addAll(bindingContainerCallableAnnotations)
+      addAll(injectAnnotations)
       if (options.enableCircuitCodegen) {
         add(CircuitClassIds.CircuitInject)
       }

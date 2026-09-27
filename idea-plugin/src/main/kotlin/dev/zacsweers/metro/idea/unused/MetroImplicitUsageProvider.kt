@@ -375,7 +375,15 @@ private fun KtDeclaration.isMetroImplicitUsage(
     // Contributed objects are instance bindings even though they have no injectable constructor.
     is KtClassOrObject -> hasGeneratedCodeUsage(options, annotationClassIds, hasAnnotation)
     is KtConstructor<*> -> hasAnnotation(this, annotationClassIds.constructorInjectionAnnotations)
-    is KtNamedFunction -> hasAnnotation(this, annotationClassIds.functionAnnotations)
+    is KtNamedFunction -> {
+      val functionAnnotations =
+        if (isTopLevel) {
+          annotationClassIds.topLevelFunctionAnnotations
+        } else {
+          annotationClassIds.functionAnnotations
+        }
+      hasAnnotation(this, functionAnnotations)
+    }
     is KtProperty -> hasAnyMetroAnnotationOnPropertyOrGetter(annotationClassIds, hasAnnotation)
     is KtPropertyAccessor ->
       isGetter && hasAnnotation(this, annotationClassIds.bindingContainerCallableAnnotations)

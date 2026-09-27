@@ -171,7 +171,8 @@ internal class FileShardBuilder(
           options.multibindsAnnotations +
           bindsOptionalOfAnnotations(options)
       )
-    val injectNames = annotationNames(options.injectAnnotations + options.assistedInjectAnnotations)
+    val injectNames =
+      annotationNames(options.allInjectAnnotations + options.topLevelFunctionInjectAnnotations)
     val contributesNames = annotationNames(options.allContributesAnnotations)
     val graphNames =
       annotationNames(options.dependencyGraphAnnotations + options.graphExtensionAnnotations)
@@ -449,7 +450,13 @@ internal class FileShardBuilder(
         if (declaration.isLocal || !processedMemberInjects.add(declaration)) return
         analyze(declaration) {
           val symbol = declaration.symbol as? KaNamedFunctionSymbol ?: return@analyze
-          if (!symbol.hasAnyAnnotation(options.allInjectAnnotations)) return@analyze
+          val injectAnnotations =
+            if (declaration.isTopLevel && options.functionInjectAnnotationsOverride != null) {
+              options.topLevelFunctionInjectAnnotations
+            } else {
+              options.allInjectAnnotations
+            }
+          if (!symbol.hasAnyAnnotation(injectAnnotations)) return@analyze
           if (declaration.isTopLevel) {
             // The compiler only generates injectable classes for top-level inject functions when
             // the option is on, so an indexed binding would be a phantom otherwise.

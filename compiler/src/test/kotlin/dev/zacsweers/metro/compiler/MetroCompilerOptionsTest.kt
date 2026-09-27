@@ -6,11 +6,72 @@ import com.google.common.truth.Truth.assertThat
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.compat.KotlinToolingVersion
 import org.jetbrains.kotlin.config.CompilerConfiguration
+import org.jetbrains.kotlin.name.ClassId
 import org.junit.Test
 
 class MetroCompilerOptionsTest {
 
   private val compatContext by lazy { CompatContext.create() }
+
+  @Test
+  fun `function injection uses the configured inject annotations without an override`() {
+    for (enabled in listOf(false, true)) {
+      val options = MetroOptions.buildOptions {
+        enableTopLevelFunctionInjection = enabled
+        applyRawOption("custom-inject", "test/CustomInject")
+      }
+
+      assertThat(options.topLevelFunctionInjectAnnotations)
+        .containsExactly(MetroClassIds.inject, ClassId.fromString("test/CustomInject"))
+    }
+  }
+
+  @Test
+  fun `function injection override replaces annotations only for functions`() {
+    val options = MetroOptions.buildOptions {
+      enableTopLevelFunctionInjection = true
+      applyRawOptions(
+        mapOf(
+          "custom-inject" to "test/CustomInject",
+          "function-inject-annotations-override" to "test/InjectFunction:test/OtherInjectFunction",
+        )
+      )
+    }
+
+    assertThat(options.topLevelFunctionInjectAnnotations)
+      .containsExactly(
+        ClassId.fromString("test/InjectFunction"),
+        ClassId.fromString("test/OtherInjectFunction"),
+      )
+    assertThat(options.injectAnnotations)
+      .containsExactly(MetroClassIds.inject, ClassId.fromString("test/CustomInject"))
+    assertThat(options.toBuilder().build().topLevelFunctionInjectAnnotations)
+      .containsExactlyElementsIn(options.topLevelFunctionInjectAnnotations)
+  }
+
+  @Test
+  fun `disabled function injection ignores the annotation override`() {
+    val options = MetroOptions.buildOptions {
+      enableTopLevelFunctionInjection = false
+      applyRawOption("custom-inject", "test/CustomInject")
+      applyRawOption("function-inject-annotations-override", "test/InjectFunction")
+    }
+
+    assertThat(options.topLevelFunctionInjectAnnotations)
+      .containsExactly(MetroClassIds.inject, ClassId.fromString("test/CustomInject"))
+  }
+
+  @Test
+  fun `empty function injection override disables function annotation discovery`() {
+    val options = MetroOptions.buildOptions {
+      enableTopLevelFunctionInjection = true
+      applyRawOption("function-inject-annotations-override", "")
+    }
+
+    assertThat(options.topLevelFunctionInjectAnnotations).isEmpty()
+    assertThat(options.toBuilder().build().topLevelFunctionInjectAnnotations).isEmpty()
+    assertThat(options.injectAnnotations).containsExactly(MetroClassIds.inject)
+  }
 
   @Test
   fun `FIR contribution hint defaults follow compiler capabilities when option is absent`() {

@@ -97,6 +97,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
 
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
     register(session.predicates.injectLikeAnnotationsPredicate)
+    session.predicates.topLevelFunctionInjectPredicate?.let { register(it) }
     register(session.predicates.assistedAnnotationPredicate)
     register(session.predicates.hasMemberInjectionsAnnotationPredicate)
     register(session.predicates.exposeImplBindingPredicate)
@@ -104,8 +105,10 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
 
   private val symbols: FirCache<Unit, Map<ClassId, FirNamedFunctionSymbol>, TypeResolveService?> =
     session.firCachesFactory.createCache { _, _ ->
+      val predicate =
+        session.predicates.topLevelFunctionInjectPredicate ?: return@createCache emptyMap()
       session.predicateBasedProvider
-        .getSymbolsByPredicate(session.predicates.injectAnnotationPredicate)
+        .getSymbolsByPredicate(predicate)
         .filterIsInstance<FirNamedFunctionSymbol>()
         .filter { it.callableId.classId == null }
         .associateBy {
