@@ -64,7 +64,6 @@ internal object MetroHintScanner {
 
   /** Uses the same paths and matchers for on-disk classes and archives. */
   private fun FileSystem.scanRoot(root: Path, scan: Scan) {
-    val classes = { entryName: String -> readClassOrNull(root / entryName) }
     for (format in scan.formats) {
       val hints = root / format.packagePath
       if (metadataOrNull(hints)?.isDirectory != true) {
@@ -74,19 +73,12 @@ internal object MetroHintScanner {
         if (!path.name.endsWith(".class") || !metadata(path).isRegularFile) {
           continue
         }
-        if (scan.matcher.matches(format, { read(path) { readByteArray() } }, classes)) {
+        if (scan.matcher.matches(format) { read(path) { readByteArray() } }) {
           val relativeEntry = path.relativeTo(root).segments.joinToString("/")
           scan.result += relativeEntry
         }
       }
     }
-  }
-
-  private fun FileSystem.readClassOrNull(path: Path): ByteArray? {
-    if (metadataOrNull(path)?.isRegularFile != true) {
-      return null
-    }
-    return read(path) { readByteArray() }
   }
 
   /** AARs store application bytecode in classes.jar and may also include jars under libs/. */
@@ -113,7 +105,6 @@ internal object MetroHintScanner {
    */
   private fun FileSystem.scanAarJar(path: Path, scan: Scan) {
     val jarName = path.relativeTo(archiveRoot).segments.joinToString("/")
-    val classes = NestedJarClasses(this, path)
     read(path) {
       ZipInputStream(inputStream()).use { nested ->
         while (true) {
@@ -122,7 +113,7 @@ internal object MetroHintScanner {
           val format = scan.formatOf(entry.name)
           if (format != null) {
             val hint = { nested.source().buffer().readByteArray() }
-            if (scan.matcher.matches(format, hint, classes::read)) {
+            if (scan.matcher.matches(format, hint)) {
               scan.result += "$jarName!/${entry.name}"
             }
           }
@@ -130,29 +121,5 @@ internal object MetroHintScanner {
         }
       }
     }
-  }
-
-  /**
-   * Some hints need other classes from their jar. A nested jar can only be streamed, so the first
-   * lookup buffers all of its classes.
-   */
-  private class NestedJarClasses(private val fileSystem: FileSystem, private val path: Path) {
-    private val classes: Map<String, ByteArray> by lazy {
-      buildMap {
-        fileSystem.read(path) {
-          ZipInputStream(inputStream()).use { nested ->
-            while (true) {
-              val entry = nested.nextEntry ?: break
-              if (!entry.isDirectory && entry.name.endsWith(".class")) {
-                put(entry.name, nested.source().buffer().readByteArray())
-              }
-              nested.closeEntry()
-            }
-          }
-        }
-      }
-    }
-
-    fun read(entryName: String): ByteArray? = classes[entryName]
   }
 }
