@@ -14,6 +14,8 @@ Changelog
 
 - **[IR]** Fix member injection across modules when an injected member uses a generic base class's type parameter.
 - **[FIR/IR/interop]** Fix incremental builds not updating graphs when an upstream Hilt `@AggregatedDeps` marker changes or is removed.
+- **[IR]** Fix missing binding errors for accessors inherited from another module having no source location.
+- **[IR]** Fix `MissingRuntimeCoroutines` errors for injected top-level functions pointing at `0:0` in a generated file. They're now reported on the function.
 
 ### Contributors
 
