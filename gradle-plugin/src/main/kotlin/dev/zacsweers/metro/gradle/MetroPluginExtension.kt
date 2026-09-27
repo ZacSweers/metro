@@ -64,30 +64,23 @@ constructor(
   /**
    * Enables injection for top-level functions. See the kdoc on `Inject` for more details.
    *
+   * This is disabled by default because it makes incremental builds recompile more files. See
+   * https://zacsweers.github.io/metro/latest/performance/#incremental-compilation.
+   *
    * **Warnings**
    * - Prior to Kotlin 2.3.20-Beta1, top-level function injection is only compatible with
    *   jvm/android targets.
    * - Prior to Kotlin 2.3.20-Beta1, top-level function injection is not yet compatible with
    *   incremental compilation on any platform
-   * - Kotlin/JS does not support this with incremental compilation enabled. See
-   *   https://youtrack.jetbrains.com/issue/KT-82395
+   * - Kotlin/JS supports this with incremental compilation enabled starting in Kotlin 2.3.21 and
+   *   Kotlin 2.4.0-Beta2. See https://youtrack.jetbrains.com/issue/KT-82395
    */
   @RequiresIdeSupport
   @DelicateMetroGradleApi(
     "Top-level function injection is experimental and does not work yet in all cases. See the kdoc."
   )
   public val enableTopLevelFunctionInjection: Property<Boolean> =
-    objects
-      .booleanProperty()
-      .convention(
-        compilerVersion.map {
-          // Kotlin 2.3.20-Beta1, top-level declaration generation is supported on all platforms
-          // except JS.
-          // https://youtrack.jetbrains.com/issue/KT-82395
-          // https://youtrack.jetbrains.com/issue/KT-82989
-          KotlinVersions.supportsTopLevelFirGen(it)
-        }
-      )
+    objects.booleanProperty().convention(false)
 
   /**
    * Generates contribution hints.
@@ -122,13 +115,16 @@ constructor(
    * This is independent of [generateClassesInIr]. It must remain enabled with contribution hints on
    * Kotlin `2.3.20-Beta1` and newer.
    *
+   * For how this affects incremental builds, see
+   * https://zacsweers.github.io/metro/latest/performance/#incremental-compilation.
+   *
    * **Warnings**
    * - Prior to Kotlin 2.3.20-Beta1, FIR contribution hint generation is only compatible with
    *   jvm/android targets.
    * - Prior to Kotlin 2.3.20-Beta1, FIR contribution hint generation is not yet compatible with
    *   incremental compilation on any platform
-   * - Kotlin/JS does not support this with incremental compilation enabled. See
-   *   https://youtrack.jetbrains.com/issue/KT-82395
+   * - Kotlin/JS supports this with incremental compilation enabled starting in Kotlin 2.3.21 and
+   *   Kotlin 2.4.0-Beta2. See https://youtrack.jetbrains.com/issue/KT-82395
    */
   @ExperimentalMetroGradleApi // Will eventually be the default and removed
   @DelicateMetroGradleApi(
