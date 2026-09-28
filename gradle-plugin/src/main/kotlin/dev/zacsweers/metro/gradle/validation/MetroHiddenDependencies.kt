@@ -37,16 +37,26 @@ internal fun registerHiddenDependencyTasks(
     project.configurations.named(compilation.compileDependencyConfigurationName)
   val runtimeConfiguration = project.configurations.named(runtimeName)
 
-  // Metadata providers are flattened to strings before they become task inputs.
+  // Artifact filters read these providers for every component. Cache each graph on its first read.
   val compileIds =
-    compileConfiguration
-      .flatMap { it.incoming.resolutionResult.rootComponent }
-      .map { dependencyGraph(it).paths.keys }
+    project.objects.setProperty(String::class.java).apply {
+      set(
+        compileConfiguration
+          .flatMap { it.incoming.resolutionResult.rootComponent }
+          .map { dependencyGraph(it).paths.keys }
+      )
+      finalizeValueOnRead()
+    }
 
   val runtimeGraph =
-    runtimeConfiguration
-      .flatMap { it.incoming.resolutionResult.rootComponent }
-      .map(::dependencyGraph)
+    project.objects.property(MetroDependencyGraph::class.java).apply {
+      set(
+        runtimeConfiguration
+          .flatMap { it.incoming.resolutionResult.rootComponent }
+          .map(::dependencyGraph)
+      )
+      finalizeValueOnRead()
+    }
 
   project.tasks.register(
     "check${taskQualifier}MetroHiddenDependencies",
