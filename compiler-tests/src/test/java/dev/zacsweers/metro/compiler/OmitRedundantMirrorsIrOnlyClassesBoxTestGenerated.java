@@ -2495,6 +2495,12 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
     }
 
     @Test
+    @TestMetadata("CopiedCallableDefaults.kt")
+    public void testCopiedCallableDefaults() {
+      run("CopiedCallableDefaults.kt");
+    }
+
+    @Test
     @TestMetadata("DefaultValuesPropagateToNewInstanceParams.kt")
     public void testDefaultValuesPropagateToNewInstanceParams() {
       run("DefaultValuesPropagateToNewInstanceParams.kt");

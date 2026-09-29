@@ -6,13 +6,10 @@ import dev.zacsweers.metro.compiler.OptionalBindingBehavior
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.symbols.Symbols
-import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.builders.irReturn
-import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrExpression
-import org.jetbrains.kotlin.ir.expressions.IrFunctionExpression
 import org.jetbrains.kotlin.ir.expressions.IrGetValue
 import org.jetbrains.kotlin.ir.expressions.impl.IrCallImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrGetValueImpl
@@ -22,9 +19,8 @@ import org.jetbrains.kotlin.ir.util.SYNTHETIC_OFFSET
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.kotlinFqName
-import org.jetbrains.kotlin.ir.util.setDeclarationsParent
+import org.jetbrains.kotlin.ir.util.patchDeclarationParents
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
-import org.jetbrains.kotlin.ir.visitors.IrTransformer
 
 /**
  * Remaps default value expressions from [sourceParameters] to [targetParameters].
@@ -48,24 +44,18 @@ internal fun copyParameterDefaultValues(
     "Source parameters (${sourceParameters.size}) and target parameters (${targetParameters.size}) must be the same size! Function: ${sourceParameters.first().parent.kotlinFqName}\nSource: ${sourceParameters.map { "${it.name}: ${it.type}" }}\nTarget: ${targetParameters.map { "${it.name}: ${it.type}" }}"
   }
 
-  /**
-   * [deepCopyWithSymbols] doesn't appear to remap lambda function parents, so we do it in our
-   * transformation.
-   */
-  class RemappingData(val initialParent: IrDeclarationParent, val newParent: IrDeclarationParent)
-
   val transformer =
-    object : IrTransformer<RemappingData>() {
-      override fun visitExpression(expression: IrExpression, data: RemappingData): IrExpression {
+    object : IrElementTransformerVoid() {
+      override fun visitExpression(expression: IrExpression): IrExpression {
         if (isTopLevelFunction) {
           // https://youtrack.jetbrains.com/issue/KT-81656
           expression.startOffset = SYNTHETIC_OFFSET
           expression.endOffset = SYNTHETIC_OFFSET
         }
-        return super.visitExpression(expression, data)
+        return super.visitExpression(expression)
       }
 
-      override fun visitGetValue(expression: IrGetValue, data: RemappingData): IrExpression {
+      override fun visitGetValue(expression: IrGetValue): IrExpression {
         // Check if the expression is the instance receiver
         if (expression.symbol == providerFunction?.dispatchReceiverParameter?.symbol) {
           return IrGetValueImpl(SYNTHETIC_OFFSET, SYNTHETIC_OFFSET, containerParameter!!.symbol)
@@ -88,18 +78,7 @@ internal fun copyParameterDefaultValues(
             newGet
           }
         }
-        return super.visitGetValue(expression, data)
-      }
-
-      override fun visitFunctionExpression(
-        expression: IrFunctionExpression,
-        data: RemappingData,
-      ): IrElement {
-        if (expression.function.parent == data.initialParent) {
-          // remap the lambda's parent
-          expression.function.setDeclarationsParent(data.newParent)
-        }
-        return super.visitFunctionExpression(expression, data)
+        return super.visitGetValue(expression)
       }
     }
 
@@ -111,7 +90,6 @@ internal fun copyParameterDefaultValues(
     val defaultValue = parameter.defaultValue ?: continue
 
     val targetParameter = targetParameters[index]
-    val remappingData = RemappingData(parameter.parent, targetParameter.parent)
     if (wrapInProvider) {
       // When the source parameter is itself a Function0 treated as a provider intrinsic
       // (enableFunctionProviders), the default expression is already a () -> T lambda and
@@ -138,7 +116,7 @@ internal fun copyParameterDefaultValues(
             val remappedDefault =
               defaultValue.expression
                 .deepCopyWithSymbols(initialParent = parameter.parent)
-                .transform(transformer, remappingData)
+                .transform(transformer, null)
             arguments[0] =
               if (isFunctionProvider) {
                 remappedDefault
@@ -161,7 +139,9 @@ internal fun copyParameterDefaultValues(
       targetParameter.defaultValue =
         defaultValue
           .deepCopyWithSymbols(initialParent = parameter.parent)
-          .transform(transformer, remappingData)
+          .transform(transformer, null)
     }
+    // Reparent after wrapping so nested functions belong to their new enclosing declarations.
+    targetParameter.defaultValue?.patchDeclarationParents(targetParameter.parent)
   }
 }
