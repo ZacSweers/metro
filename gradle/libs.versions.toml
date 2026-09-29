@@ -192,7 +192,7 @@ kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serializa
 
 graphSupport = "com.autonomousapps:graph-support:0.12.0"
 
-guava = "com.google.guava:guava:33.7.1-jre"
+guava = "com.google.guava:guava:33.7.2-jre"
 
 mordant-core = { module = "com.github.ajalt.mordant:mordant-core", version.ref = "mordant" }
 
