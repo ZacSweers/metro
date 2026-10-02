@@ -1,4 +1,4 @@
-// DUMP_IR
+// METRO_DUMP_FUNCTION_EXPRESSION_TYPES
 
 @DependencyGraph
 interface ExampleGraph {

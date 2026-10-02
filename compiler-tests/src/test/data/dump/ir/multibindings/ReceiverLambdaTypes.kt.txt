@@ -61,7 +61,7 @@ interface ExampleGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "firstElement", propertyName = "", startOffset = 146, endOffset = 201, newInstanceName = "firstElement")
+  @CallableMetadata(callableName = "firstElement", propertyName = "", startOffset = 175, endOffset = 230, newInstanceName = "firstElement")
   class FirstElementMetroFactory : Factory<String> {
     private /* final field */ val instance: ExampleGraph = instance
     companion object Companion {
@@ -109,7 +109,7 @@ interface ExampleGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "firstEntry", propertyName = "", startOffset = 265, endOffset = 329, newInstanceName = "firstEntry")
+  @CallableMetadata(callableName = "firstEntry", propertyName = "", startOffset = 294, endOffset = 358, newInstanceName = "firstEntry")
   class FirstEntryMetroFactory : Factory<String> {
     private /* final field */ val instance: ExampleGraph = instance
     companion object Companion {
@@ -158,7 +158,7 @@ interface ExampleGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "secondElement", propertyName = "", startOffset = 204, endOffset = 261, newInstanceName = "secondElement")
+  @CallableMetadata(callableName = "secondElement", propertyName = "", startOffset = 233, endOffset = 290, newInstanceName = "secondElement")
   class SecondElementMetroFactory : Factory<String> {
     private /* final field */ val instance: ExampleGraph = instance
     companion object Companion {
@@ -206,7 +206,7 @@ interface ExampleGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "secondEntry", propertyName = "", startOffset = 332, endOffset = 398, newInstanceName = "secondEntry")
+  @CallableMetadata(callableName = "secondEntry", propertyName = "", startOffset = 361, endOffset = 427, newInstanceName = "secondEntry")
   class SecondEntryMetroFactory : Factory<String> {
     private /* final field */ val instance: ExampleGraph = instance
     companion object Companion {
@@ -287,3 +287,7 @@ interface ExampleGraph {
     abstract get
 
 }
+
+// Function expression types:
+// Function1<MutableMap<Int, String>, Unit>
+// Function1<MutableSet<String>, Unit>
