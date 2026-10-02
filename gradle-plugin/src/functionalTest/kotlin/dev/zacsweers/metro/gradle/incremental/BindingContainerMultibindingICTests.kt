@@ -403,7 +403,7 @@ class BindingContainerMultibindingICTests(target: KmpTarget) :
     val secondBuildResult = project.compileKotlinAndFail()
     val expectedColumn =
       if (
-        getTestOmitRedundantMirrorsOverride() == true &&
+        getTestOmitRedundantMirrorsOverride() != false &&
           getTestCompilerToolingVersion() >= KotlinToolingVersion("2.4.0")
       ) {
         7

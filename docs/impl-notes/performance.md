@@ -586,7 +586,7 @@ Some factory or mirror declarations exist for compiler metadata and cross-module
 
 Constant provider inlining must not remove a factory that is still needed to preserve lazy class initialization. Declaration mirrors must also remain available when compiler metadata does not provide the same information.
 
-`omit-redundant-mirrors` is disabled by default. Changes to mirrors need both binary-size measurements and cross-module coverage.
+`omit-redundant-mirrors` is enabled by default on Kotlin 2.4.0 and newer. It is disabled by default on older Kotlin versions. Changes to mirrors need both binary-size measurements and cross-module coverage.
 
 ## Measuring changes
 

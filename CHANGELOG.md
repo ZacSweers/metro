@@ -10,6 +10,7 @@ Changelog
 - **[Gradle]** Add opt-in checks to find Metro contributions hidden from a graph's compile classpath. Run `checkMainMetroHiddenDependencies` (i.e., on CI). It writes a report and fails if it finds hidden contributions.
   - Supports JVM and Android compilations, including JVM targets in KMP. See [checking for hidden contributions](docs/aggregation.md#checking-for-hidden-contributions).
   - Also checks Hilt aggregation metadata when Hilt interop is enabled.
+  - Configure scope filters with `scopes` in the experimental `metro.hiddenDependencies` DSL. Enable `checkOnCompile` in the same block to run each check automatically after its Kotlin compilation, including when compilation fails. Automatic checks are disabled by default and may become the default in a future release.
 
 ### Fixes
 
@@ -22,6 +23,7 @@ Changelog
 
 ### Changes
 
+- **[FIR/IR/IC]** Enable `omit-redundant-mirrors` by default on Kotlin 2.4.0 and newer to omit generated declaration mirrors when compiler metadata and declaration finders provide the same information. It remains disabled by default on older Kotlin versions. Disable it with `compilerOptions.disable("omit-redundant-mirrors")` in the `metro` DSL.
 - **[Gradle]** `enableTopLevelFunctionInjection` is **disabled by default** for now on **all** Kotlin versions because it makes incremental builds recompile more files. If you use top-level function injection, enable it with `enableTopLevelFunctionInjection.set(true)` in the `metro` DSL. See [incremental compilation perf docs](docs/performance.md#incremental-compilation).
 
 ### Contributors
