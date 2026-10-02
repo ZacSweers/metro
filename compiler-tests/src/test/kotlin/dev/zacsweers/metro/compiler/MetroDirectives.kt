@@ -209,6 +209,8 @@ object MetroDirectives : SimpleDirectivesContainer() {
     )
   val METRO_DUMP_KT_IR by
     directive("Like DUMP_KT_IR but uses betterDumpKotlinLike() for nested class name rendering.")
+  val METRO_DUMP_FUNCTION_EXPRESSION_TYPES by
+    directive("Append function expression types to the Kotlin IR dump.")
   val MAX_GENERATED_CLASS_NAME_LENGTH by
     valueDirective("Maximum UTF-8 byte length of a generated binary class basename.") {
       it.toInt()
