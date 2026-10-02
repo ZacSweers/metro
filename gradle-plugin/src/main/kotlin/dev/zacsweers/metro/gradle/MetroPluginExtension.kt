@@ -30,6 +30,16 @@ constructor(
   public val compilerOptions: CompilerOptionsHandler =
     objects.newInstance(CompilerOptionsHandler::class.java)
 
+  @ExperimentalMetroGradleApi
+  public val hiddenDependencies: HiddenDependenciesHandler =
+    objects.newInstance(HiddenDependenciesHandler::class.java).also { hiddenDependencies ->
+      hiddenDependencies.checkOnCompile.propertyNameConventionImpl(
+        "metro.hiddenDependencies.checkOnCompile",
+        false,
+        String::toBoolean,
+      )
+    }
+
   /** Enables Metro for this project. */
   public val enabled: Property<Boolean> = objects.booleanProperty("metro.enabled", true)
 
@@ -90,21 +100,6 @@ constructor(
    * default for each compilation's platform type.
    */
   public val generateContributionHints: Property<Boolean> = objects.booleanProperty()
-
-  /**
-   * Limits hidden-dependency checks to contributions for these scopes. Use Kotlin ClassId strings
-   * such as `com/example/AppScope` or `com/example/Scopes.User`.
-   *
-   * An empty set checks every hint. Checks run only when explicitly requested. JVM and Android
-   * compilations support them, including those in multiplatform projects.
-   *
-   * Hilt metadata is checked when Hilt interop is enabled. Hilt markers match a standard
-   * component's canonical scope, such as `javax/inject/Singleton`. They also match the component's
-   * own ClassId.
-   */
-  @ExperimentalMetroGradleApi
-  public val aggregationScopes: SetProperty<String> =
-    objects.setProperty(String::class.java).convention(emptySet())
 
   /**
    * Generates contribution hints in FIR. Requires [generateContributionHints] to be true.
@@ -556,6 +551,43 @@ constructor(
       .convention(
         providers.gradleProperty("metro.traceDestination").flatMap { layout.buildDirectory.dir(it) }
       )
+
+  /** Configures hidden-dependency checks. */
+  @ExperimentalMetroGradleApi
+  public fun hiddenDependencies(action: Action<HiddenDependenciesHandler>) {
+    action.execute(hiddenDependencies)
+  }
+
+  @MetroExtensionMarker
+  @ExperimentalMetroGradleApi
+  public abstract class HiddenDependenciesHandler @Inject constructor(objects: ObjectFactory) {
+    /**
+     * Limits hidden-dependency checks to contributions for these scopes. Use Kotlin ClassId strings
+     * such as `com/example/AppScope` or `com/example/Scopes.User`.
+     *
+     * An empty set checks every hint. Checks run when explicitly requested or when [checkOnCompile]
+     * is enabled. JVM and Android compilations support them, including those in multiplatform
+     * projects.
+     *
+     * Hilt metadata is checked when Hilt interop is enabled. Hilt markers match a standard
+     * component's canonical scope, such as `javax/inject/Singleton`. They also match the
+     * component's own ClassId.
+     */
+    public val scopes: SetProperty<String> =
+      objects.setProperty(String::class.java).convention(emptySet())
+
+    /**
+     * Runs each hidden-dependency check as a finalizer of its Kotlin compilation task, including
+     * when compilation fails. Supported for JVM and Android compilations, including those in
+     * multiplatform projects.
+     *
+     * Disabled by default. This may be enabled by default in a future release.
+     *
+     * Optionally, set the `metro.hiddenDependencies.checkOnCompile` Gradle property to enable this
+     * globally.
+     */
+    public abstract val checkOnCompile: Property<Boolean>
+  }
 
   /**
    * Configures interop to support in generated code, usually from another DI framework.

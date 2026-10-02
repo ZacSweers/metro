@@ -165,7 +165,9 @@ class MetroHiddenDependenciesKmpTest {
 
         @OptIn(dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi::class)
         metro {
-          aggregationScopes.add("test/Scopes.SessionScope")
+          hiddenDependencies {
+            scopes.add("test/Scopes.SessionScope")
+          }
         }
         """
           .trimIndent()

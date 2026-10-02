@@ -21,6 +21,118 @@ import org.junit.Test
 class MetroHiddenDependenciesTest {
 
   @Test
+  fun `compilation does not check hidden dependencies by default`() {
+    val project = HiddenDependenciesProject(consumerCompiles = true).gradleProject
+
+    val result = build(project.rootDir, ":compileKotlin", "--isolated-projects", "--console=plain")
+
+    assertThat(result.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(result.tasks.map { it.path }.filter { "MetroHiddenDependencies" in it }).isEmpty()
+  }
+
+  @Test
+  fun `automatic check reports hidden contributions after successful compilation`() {
+    val project =
+      HiddenDependenciesProject(checkOnCompile = true, consumerCompiles = true).gradleProject
+
+    val result =
+      buildAndFail(project.rootDir, ":compileKotlin", "--isolated-projects", "--console=plain")
+
+    assertThat(result.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(result.task(":checkMainMetroHiddenDependencies")?.outcome)
+      .isEqualTo(TaskOutcome.FAILED)
+    assertThat(result.task(":checkTestMetroHiddenDependencies")).isNull()
+    assertThat(project.hiddenDependenciesReport()).contains("project ':impl'")
+    val taskPaths = result.tasks.map { it.path }
+    assertThat(taskPaths.indexOf(":checkMainMetroHiddenDependencies"))
+      .isGreaterThan(taskPaths.indexOf(":compileKotlin"))
+  }
+
+  @Test
+  fun `automatic check reports hidden contributions after failed compilation`() {
+    val project = HiddenDependenciesProject(checkOnCompile = true).gradleProject
+
+    val result =
+      buildAndFail(project.rootDir, ":compileKotlin", "--isolated-projects", "--console=plain")
+
+    assertThat(result.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.FAILED)
+    assertThat(result.task(":checkMainMetroHiddenDependencies")?.outcome)
+      .isEqualTo(TaskOutcome.FAILED)
+    assertThat(project.hiddenDependenciesReport()).contains("project ':impl'")
+  }
+
+  @Test
+  fun `automatic checks finalize main and test compilations and reuse configuration cache`() {
+    val project =
+      HiddenDependenciesProject(
+          checkOnCompile = true,
+          exposeImplementation = true,
+          consumerCompiles = true,
+        )
+        .gradleProject
+    val arguments = arrayOf(":compileTestKotlin", "--isolated-projects", "--console=plain")
+
+    val result = build(project.rootDir, *arguments)
+    assertThat(result.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(result.task(":checkMainMetroHiddenDependencies")?.outcome)
+      .isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(result.task(":checkTestMetroHiddenDependencies")?.outcome)
+      .isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(result.output).contains("Configuration cache entry stored")
+
+    val cached = build(project.rootDir, *arguments)
+    assertThat(cached.output).contains("Reusing configuration cache")
+    assertThat(cached.task(":checkMainMetroHiddenDependencies")?.outcome)
+      .isEqualTo(TaskOutcome.UP_TO_DATE)
+    assertThat(cached.task(":checkTestMetroHiddenDependencies")?.outcome)
+      .isEqualTo(TaskOutcome.UP_TO_DATE)
+  }
+
+  @Test
+  fun `automatic KMP check finalizes only the selected compilation`() {
+    val project =
+      HiddenDependenciesProject(
+          checkOnCompile = true,
+          consumerCompiles = true,
+          kmp = true,
+        )
+        .gradleProject
+
+    val result = buildAndFail(project.rootDir, ":compileKotlinJvm", "--console=plain")
+
+    assertThat(result.task(":compileKotlinJvm")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(result.task(":checkJvmMainMetroHiddenDependencies")?.outcome)
+      .isEqualTo(TaskOutcome.FAILED)
+    assertThat(result.task(":checkJvmTestMetroHiddenDependencies")).isNull()
+    assertThat(result.tasks.map { it.path }.filter { "compile" in it && "Js" in it }).isEmpty()
+    assertThat(project.hiddenDependenciesReport("jvm/main")).contains("project ':impl'")
+  }
+
+  @Test
+  fun `Gradle property enables automatic checks for the selected Android variant`() {
+    val project = AndroidHiddenDependenciesProject().gradleProject
+
+    val result =
+      buildAndFail(
+        project.rootDir,
+        ":app:compileDebugKotlin",
+        "-Pmetro.hiddenDependencies.checkOnCompile=true",
+        "--isolated-projects",
+        "--console=plain",
+      )
+
+    assertThat(result.task(":app:compileDebugKotlin")?.outcome).isEqualTo(TaskOutcome.FAILED)
+    assertThat(result.task(":app:checkDebugMetroHiddenDependencies")?.outcome)
+      .isEqualTo(TaskOutcome.FAILED)
+    assertThat(result.task(":app:checkReleaseMetroHiddenDependencies")).isNull()
+    assertThat(result.task(":app:checkDebugUnitTestMetroHiddenDependencies")).isNull()
+    assertThat(
+        project.rootDir.resolve("app/build/reports/metro/debug/hidden-dependencies.txt").readText()
+      )
+      .contains("project ':impl'")
+  }
+
+  @Test
   fun `default JVM check reports hidden hints without compiling its consumer`() {
     val project = HiddenDependenciesProject().gradleProject
 
@@ -352,6 +464,8 @@ class MetroHiddenDependenciesTest {
   private class HiddenDependenciesProject(
     private val exposeImplementation: Boolean = false,
     private val filterByGradleProperty: Boolean = false,
+    private val checkOnCompile: Boolean = false,
+    private val consumerCompiles: Boolean = false,
     kmp: Boolean = false,
   ) :
     MetroProject(
@@ -374,14 +488,29 @@ class MetroHiddenDependenciesTest {
         .trimIndent()
 
     override fun StringBuilder.onBuildScript() {
+      if (checkOnCompile) {
+        appendLine(
+          """
+          @OptIn(dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi::class)
+          metro {
+            hiddenDependencies {
+              checkOnCompile.set(true)
+            }
+          }
+          """
+            .trimIndent()
+        )
+      }
       if (filterByGradleProperty) {
         appendLine(
           """
           @OptIn(dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi::class)
           metro {
-            aggregationScopes.addAll(
-              providers.gradleProperty("metroTestScope").map { listOf(it) }.orElse(emptyList())
-            )
+            hiddenDependencies {
+              scopes.addAll(
+                providers.gradleProperty("metroTestScope").map { listOf(it) }.orElse(emptyList())
+              )
+            }
           }
           """
             .trimIndent()
@@ -392,8 +521,12 @@ class MetroHiddenDependenciesTest {
     override fun buildGradleProject() = multiModuleProject {
       root {
         dependencies(Dependency.implementation(":bridge"))
-        // An accidental dependency on the consumer compile task makes validation fail here.
-        sources(source("class Consumer(val value: MissingFromConsumerClasspath)"))
+        if (consumerCompiles) {
+          sources(source("class Consumer"))
+        } else {
+          // An accidental dependency on the consumer compile task makes validation fail here.
+          sources(source("class Consumer(val value: MissingFromConsumerClasspath)"))
+        }
       }
       subproject("bridge") {
         dependencies(
@@ -463,9 +596,11 @@ class MetroHiddenDependenciesTest {
               includeHilt()
             }
           }
-          aggregationScopes.addAll(
-            providers.gradleProperty("metroTestScopes").map { it.split(",") }.orElse(emptyList())
-          )
+          hiddenDependencies {
+            scopes.addAll(
+              providers.gradleProperty("metroTestScopes").map { it.split(",") }.orElse(emptyList())
+            )
+          }
         }
         """
           .trimIndent()

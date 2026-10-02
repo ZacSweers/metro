@@ -44,14 +44,29 @@ A graph can miss contributions when an upstream project's `implementation` depen
 
 Task names include the target and compilation when present. For example, KMP JVM uses `checkJvmMainMetroHiddenDependencies` and an Android debug compilation uses `checkDebugMetroHiddenDependencies`. Each check resolves just that compilation's dependencies. The graph project itself can have compilation errors and still run the check. Local dependencies may need to compile before their hints can be inspected.
 
-The report lists the resolved dependency, a path through the runtime dependency graph, and matching hint entries. Add the reported dependency directly in the graph project, or expose it with `api` upstream if it belongs in that project's public API.
-
-By default any Metro hints count. You can limit checks to selected scopes using Kotlin ClassId strings. Slashes separate package segments and dots separate nested classes:
+To run these checks automatically, enable `checkOnCompile` in the graph project's `metro.hiddenDependencies` DSL:
 
 ```kotlin
 @OptIn(ExperimentalMetroGradleApi::class)
 metro {
-  aggregationScopes.addAll("dev/zacsweers/metro/AppScope", "com/example/Scopes.User")
+  hiddenDependencies {
+    checkOnCompile.set(true)
+  }
+}
+```
+
+Each supported Kotlin compilation task runs its associated check as a Gradle finalizer, including when compilation fails or is up to date. This option is experimental and disabled by default. It may be enabled by default in a future release. You can also enable it with the `metro.hiddenDependencies.checkOnCompile=true` Gradle property.
+
+The report lists the resolved dependency, a path through the runtime dependency graph, and matching hint entries. Add the reported dependency directly in the graph project, or expose it with `api` upstream if it belongs in that project's public API.
+
+By default any Metro hints count. You can limit checks with `hiddenDependencies.scopes` using Kotlin ClassId strings. Slashes separate package segments and dots separate nested classes:
+
+```kotlin
+@OptIn(ExperimentalMetroGradleApi::class)
+metro {
+  hiddenDependencies {
+    scopes.addAll("dev/zacsweers/metro/AppScope", "com/example/Scopes.User")
+  }
 }
 ```
 
