@@ -22,6 +22,7 @@ Changelog
 
 ### Changes
 
+- **[FIR/IR/IC]** Enable `omit-redundant-mirrors` by default on Kotlin 2.4.0 and newer to omit generated declaration mirrors when compiler metadata and declaration finders provide the same information. It remains disabled by default on older Kotlin versions. Disable it with `compilerOptions.disable("omit-redundant-mirrors")` in the `metro` DSL.
 - **[Gradle]** `enableTopLevelFunctionInjection` is **disabled by default** for now on **all** Kotlin versions because it makes incremental builds recompile more files. If you use top-level function injection, enable it with `enableTopLevelFunctionInjection.set(true)` in the `metro` DSL. See [incremental compilation perf docs](docs/performance.md#incremental-compilation).
 
 ### Contributors

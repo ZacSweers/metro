@@ -958,7 +958,7 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       valueDescription = "<true | false>",
       description =
         "Omit generated declaration mirrors when compiler metadata and declaration finders " +
-          "provide the same information.",
+          "provide the same information. Enabled by default on Kotlin 2.4.0 and newer.",
       required = false,
       allowMultipleOccurrences = false,
     )

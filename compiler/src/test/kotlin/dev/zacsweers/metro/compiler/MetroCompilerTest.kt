@@ -50,7 +50,9 @@ abstract class MetroCompilerTest {
         generateContributionHintsInFir = supportsFirContributionHints,
         omitRedundantMirrors =
           testOmitRedundantMirrors
-            ?: MetroOption.OMIT_REDUNDANT_MIRRORS.raw.defaultValue.expectAs<Boolean>(),
+            ?: kotlinVersionSupportsOmittingRedundantMirrors(
+              CompatContext.Factory.loadCompilerVersion()
+            ),
       )
 
   protected val debugOutputDir: Path

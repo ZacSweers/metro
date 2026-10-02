@@ -74,6 +74,38 @@ class MetroCompilerOptionsTest {
   }
 
   @Test
+  fun `redundant mirror defaults follow the Kotlin version`() {
+    for (version in listOf("2.4.0", "2.4.10", "2.4.20-dev-6138", "2.4.20", "2.5.0-Beta1")) {
+      assertThat(loadOptions(version).omitRedundantMirrors).isTrue()
+      assertThat(loadOptions(version, isIde = true).omitRedundantMirrors).isTrue()
+    }
+    for (version in listOf("2.3.0", "2.3.21", "2.4.0-dev-2633", "2.4.0-Beta2", "2.4.0-RC3")) {
+      assertThat(loadOptions(version).omitRedundantMirrors).isFalse()
+      assertThat(loadOptions(version, isIde = true).omitRedundantMirrors).isFalse()
+    }
+  }
+
+  @Test
+  fun `unknown compiler versions preserve redundant mirrors by default`() {
+    assertThat(loadOptions(null).omitRedundantMirrors).isFalse()
+    assertThat(loadOptions(null, isIde = true).omitRedundantMirrors).isFalse()
+  }
+
+  @Test
+  fun `explicit redundant mirror options override compiler defaults`() {
+    for (version in listOf("2.3.21", "2.4.0", "2.4.20", null)) {
+      for (enabled in listOf(false, true)) {
+        val options =
+          loadOptions(version) {
+            MetroOption.OMIT_REDUNDANT_MIRRORS.raw.put(this, enabled.toString())
+          }
+
+        assertThat(options.omitRedundantMirrors).isEqualTo(enabled)
+      }
+    }
+  }
+
+  @Test
   fun `FIR contribution hint defaults follow compiler capabilities when option is absent`() {
     for (version in listOf("2.3.20-Beta1", "2.3.20-dev-6204", "2.3.21")) {
       assertThat(loadOptions(version).generateContributionHintsInFir).isTrue()
@@ -161,11 +193,11 @@ class MetroCompilerOptionsTest {
   }
 
   private fun loadOptions(
-    compilerVersion: String,
+    compilerVersion: String?,
     isIde: Boolean = false,
     configure: CompilerConfiguration.() -> Unit = {},
   ): MetroOptions {
-    val version = KotlinToolingVersion(compilerVersion)
+    val version = compilerVersion?.let(::KotlinToolingVersion)
     val configuration = createCompilerConfiguration().apply(configure)
     return MetroOptions.load(configuration, version, isIde)
   }
