@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.fir.checkers
 
 import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.compat.CompatContext
+import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
 import dev.zacsweers.metro.compiler.fir.additionalScopesArgument
@@ -14,8 +15,11 @@ import dev.zacsweers.metro.compiler.fir.callableSymbols
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
+import dev.zacsweers.metro.compiler.fir.generators.findSamFunction
+import dev.zacsweers.metro.compiler.fir.hasOrigin
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isEffectivelyOpen
+import dev.zacsweers.metro.compiler.fir.isGraphFactory
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.nestedClasses
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
@@ -32,6 +36,7 @@ import dev.zacsweers.metro.compiler.fir.validateInjectionSiteType
 import dev.zacsweers.metro.compiler.graph.SuspendDiagnosticMessages
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.metroAnnotations
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.trace
 import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.descriptors.Modality
@@ -45,8 +50,11 @@ import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.directOverriddenSymbolsSafe
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.constructors
+import org.jetbrains.kotlin.fir.declarations.processAllDeclarations
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.declarations.utils.classId
+import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
+import org.jetbrains.kotlin.fir.declarations.utils.isInterface
 import org.jetbrains.kotlin.fir.declarations.utils.isOverride
 import org.jetbrains.kotlin.fir.declarations.utils.isSuspend
 import org.jetbrains.kotlin.fir.dispatchReceiverClassLookupTagOrNull
@@ -54,6 +62,7 @@ import org.jetbrains.kotlin.fir.dispatchReceiverClassTypeOrNull
 import org.jetbrains.kotlin.fir.expectActualMatchingContextFactory
 import org.jetbrains.kotlin.fir.resolve.firClassLike
 import org.jetbrains.kotlin.fir.resolve.getContainingClassSymbol
+import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
@@ -88,6 +97,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
     declaration.source ?: return
     val session = context.session
     val classIds = session.classIds
+    checkStaticCreatorCollisions(declaration)
 
     val dependencyGraphAnnos =
       declaration.annotationsIn(session, classIds.graphLikeAnnotations).toList().ifEmpty {
@@ -623,5 +633,81 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
     matchingContext: FirExpectActualMatchingContext,
   ): Boolean {
     return with(matchingContext) { this@isFakeOverride.isFakeOverride(containingClass) }
+  }
+
+  /** Reports user statics that would share the generated graph creator's signature. */
+  @OptIn(SymbolInternals::class)
+  context(context: CheckerContext, reporter: DiagnosticReporter, compatContext: CompatContext)
+  private fun checkStaticCreatorCollisions(graph: FirClass) {
+    if (!context.session.metroFirBuiltIns.options.companionMode.requiresCompanionBlocks) {
+      return
+    }
+    val factory = graph.symbol.nestedClasses().firstOrNull { it.isGraphFactory(context.session) }
+    val sam = factory?.findSamFunction(context.session)
+    val creatorName =
+      if (factory == null) {
+        Symbols.Names.invoke
+      } else if (factory.isInterface) {
+        sam?.name ?: return
+      } else {
+        Symbols.Names.factory
+      }
+    val creatorParameters =
+      if (factory?.isInterface == true && sam != null) {
+        with(compatContext) { sam.contextParameterSymbols }.map { it.resolvedReturnType } +
+          sam.valueParameterSymbols.map { it.resolvedReturnType }
+      } else {
+        emptyList()
+      }
+    // The instance member scope excludes source declarations in companion blocks.
+    val candidates = mutableListOf<FirNamedFunctionSymbol>()
+    graph.processAllDeclarations(context.session) { symbol ->
+      if (symbol is FirNamedFunctionSymbol) {
+        candidates += symbol
+      }
+    }
+    for (companion in graph.symbol.nestedClasses().filter { it.isCompanion }) {
+      candidates +=
+        companion.callableSymbols().filterIsInstance<FirNamedFunctionSymbol>().filter {
+          it.isAnnotatedWithAny(
+            context.session,
+            setOf(Symbols.ClassIds.JvmStatic, Symbols.ClassIds.JsStatic),
+          )
+        }
+    }
+    for (function in candidates) {
+      if (
+        function.hasOrigin(
+          Keys.MetroGraphCreatorsObjectInvokeDeclaration,
+          Keys.MetroGraphFactoryCompanionGetter,
+        )
+      ) {
+        continue
+      }
+      if (function.source == null || function.name != creatorName) {
+        continue
+      }
+      val isStatic =
+        with(compatContext) { function.fir.isCompanionBlockMemberCompat } ||
+          function.isAnnotatedWithAny(
+            context.session,
+            setOf(Symbols.ClassIds.JvmStatic, Symbols.ClassIds.JsStatic),
+          )
+      val platformParameters = buildList {
+        addAll(
+          with(compatContext) { function.contextParameterSymbols }.map { it.resolvedReturnType }
+        )
+        function.receiverParameterSymbol?.let { add(it.fir.typeRef.coneType) }
+        addAll(function.valueParameterSymbols.map { it.resolvedReturnType })
+      }
+      if (!isStatic || platformParameters != creatorParameters) {
+        continue
+      }
+      reporter.reportOn(
+        function.source,
+        MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
+        "Companion-block graph creator '$creatorName' conflicts with this static function. Change its signature or select a different companion-mode.",
+      )
+    }
   }
 }
