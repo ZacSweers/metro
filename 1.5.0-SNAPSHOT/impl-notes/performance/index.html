@@ -21,7 +21,7 @@
       
       
       <link rel="icon" href="../../site-assets/img/favicon.ico">
-      <meta name="generator" content="zensical-0.0.65">
+      <meta name="generator" content="zensical-0.0.68">
     
     
       
@@ -32,12 +32,12 @@
       
         
       
-      <link rel="stylesheet" href="../../assets/stylesheets/modern/main.40d3fdbb.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/modern/main.595f2bf5.min.css">
       
         
           
         
-        <link rel="stylesheet" href="../../assets/stylesheets/modern/palette.812a03bb.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/modern/palette.b27955a4.min.css">
       
       
 
@@ -62,7 +62,19 @@
 
     
     
-  </head>
+  <meta property="og:type" content="website" />
+<meta property="og:title" content="Performance Implementation Notes - Metro" />
+<meta property="og:description" content="A multiplatform dependency injection framework for Kotlin" />
+<meta property="og:image" content="https://zacsweers.github.io/metro/1.5.0-SNAPSHOT/assets/images/social/impl-notes/performance.png" />
+<meta property="og:image:type" content="image/png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:url" content="https://zacsweers.github.io/metro/1.5.0-SNAPSHOT/impl-notes/performance/" />
+<meta property="twitter:card" content="summary_large_image" />
+<meta property="twitter:title" content="Performance Implementation Notes - Metro" />
+<meta property="twitter:description" content="A multiplatform dependency injection framework for Kotlin" />
+<meta property="twitter:image" content="https://zacsweers.github.io/metro/1.5.0-SNAPSHOT/assets/images/social/impl-notes/performance.png" />
+</head>
   
   
     
@@ -77,14 +89,11 @@
     
     <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
     <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
-    <label class="md-overlay" for="__drawer" aria-label="Navigation"></label>
+    <label class="md-overlay" for="__drawer" aria-hidden="true"></label>
     <div data-md-component="skip">
-      
-        
-        <a href="#performance-implementation-notes" class="md-skip">
-          Skip to content
-        </a>
-      
+      <a href="#__skip" class="md-skip">
+        Skip to content
+      </a>
     </div>
     <div data-md-component="announce">
       
@@ -2225,8 +2234,10 @@
             <div class="md-content" data-md-component="content">
               
               <article class="md-content__inner md-typeset">
+                <a id="__skip" tabindex="-1"></a>
                 
                   
+
   
     <a href="https://github.com/ZacSweers/metro/edit/main/docs/impl-notes/performance.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
@@ -2648,7 +2659,7 @@ Stored order:           A -&gt; B, C
 <h3 id="compile-time-only-declarations">Compile-time-only declarations<a class="headerlink" href="#compile-time-only-declarations" title="Permanent link">&para;</a></h3>
 <p>Some factory or mirror declarations exist for compiler metadata and cross-module discovery even when generated graph code does not need them at runtime. Eligible declarations can be marked <code>@ComptimeOnly</code> so JVM shrinkers can remove them.</p>
 <p>Constant provider inlining must not remove a factory that is still needed to preserve lazy class initialization. Declaration mirrors must also remain available when compiler metadata does not provide the same information.</p>
-<p><code>omit-redundant-mirrors</code> is disabled by default. Changes to mirrors need both binary-size measurements and cross-module coverage.</p>
+<p><code>omit-redundant-mirrors</code> is enabled by default on Kotlin 2.4.0 and newer. It is disabled by default on older Kotlin versions. Changes to mirrors need both binary-size measurements and cross-module coverage.</p>
 <h2 id="measuring-changes">Measuring changes<a class="headerlink" href="#measuring-changes" title="Permanent link">&para;</a></h2>
 <p>Measure each of these separately:</p>
 <ul>
@@ -2844,7 +2855,7 @@ Stored order:           A -&gt; B, C
 </footer>
       
     </div>
-    <div class="md-dialog" data-md-component="dialog">
+    <div class="md-dialog" data-md-component="dialog" role="status" aria-atomic="true">
       <div class="md-dialog__inner md-typeset"></div>
     </div>
     
@@ -2856,10 +2867,10 @@ Stored order:           A -&gt; B, C
       
         
         
-      <script id="__config" type="application/json">{"annotate":null,"base":"../..","features":["content.code.copy","content.code.select","content.action.edit","content.action.view","content.tabs.link","navigation.tabs","navigation.footer","navigation.top","search.highlight","search.suggest"],"redirect":null,"search":"../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":{"provider":"mike"}}</script>
+      <script id="__config" type="application/json">{"annotate":null,"base":"../..","features":["content.code.copy","content.code.select","content.action.edit","content.action.view","content.tabs.link","navigation.tabs","navigation.footer","navigation.top","search.highlight","search.suggest"],"redirect":null,"search":"../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","clipboard.error":"Could not copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":{"provider":"mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.c04ba553.min.js"></script>
+      <script src="../../assets/javascripts/bundle.3c842f4c.min.js"></script>
       
     
   </body>

@@ -25,7 +25,7 @@
       
       
       <link rel="icon" href="../site-assets/img/favicon.ico">
-      <meta name="generator" content="zensical-0.0.65">
+      <meta name="generator" content="zensical-0.0.68">
     
     
       
@@ -36,12 +36,12 @@
       
         
       
-      <link rel="stylesheet" href="../assets/stylesheets/modern/main.40d3fdbb.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/modern/main.595f2bf5.min.css">
       
         
           
         
-        <link rel="stylesheet" href="../assets/stylesheets/modern/palette.812a03bb.min.css">
+        <link rel="stylesheet" href="../assets/stylesheets/modern/palette.b27955a4.min.css">
       
       
 
@@ -66,7 +66,19 @@
 
     
     
-  </head>
+  <meta property="og:type" content="website" />
+<meta property="og:title" content="Change Log - Metro" />
+<meta property="og:description" content="A multiplatform dependency injection framework for Kotlin" />
+<meta property="og:image" content="https://zacsweers.github.io/metro/1.5.0-SNAPSHOT/assets/images/social/changelog.png" />
+<meta property="og:image:type" content="image/png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:url" content="https://zacsweers.github.io/metro/1.5.0-SNAPSHOT/changelog/" />
+<meta property="twitter:card" content="summary_large_image" />
+<meta property="twitter:title" content="Change Log - Metro" />
+<meta property="twitter:description" content="A multiplatform dependency injection framework for Kotlin" />
+<meta property="twitter:image" content="https://zacsweers.github.io/metro/1.5.0-SNAPSHOT/assets/images/social/changelog.png" />
+</head>
   
   
     
@@ -81,14 +93,11 @@
     
     <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
     <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
-    <label class="md-overlay" for="__drawer" aria-label="Navigation"></label>
+    <label class="md-overlay" for="__drawer" aria-hidden="true"></label>
     <div data-md-component="skip">
-      
-        
-        <a href="#changelog" class="md-skip">
-          Skip to content
-        </a>
-      
+      <a href="#__skip" class="md-skip">
+        Skip to content
+      </a>
     </div>
     <div data-md-component="announce">
       
@@ -8362,8 +8371,10 @@
             <div class="md-content" data-md-component="content">
               
               <article class="md-content__inner md-typeset">
+                <a id="__skip" tabindex="-1"></a>
                 
                   
+
   
     <a href="https://github.com/ZacSweers/metro/edit/main/docs/changelog.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
@@ -8389,6 +8400,7 @@
 <li><strong>[Gradle]</strong> Add opt-in checks to find Metro contributions hidden from a graph&rsquo;s compile classpath. Run <code>checkMainMetroHiddenDependencies</code> (i.e., on CI). It writes a report and fails if it finds hidden contributions.</li>
 <li>Supports JVM and Android compilations, including JVM targets in KMP. See <a href="../docs/aggregation/#checking-for-hidden-contributions">checking for hidden contributions</a>.</li>
 <li>Also checks Hilt aggregation metadata when Hilt interop is enabled.</li>
+<li>Configure scope filters with <code>scopes</code> in the experimental <code>metro.hiddenDependencies</code> DSL. Enable <code>checkOnCompile</code> in the same block to run each check automatically after its Kotlin compilation, including when compilation fails. Automatic checks are disabled by default and may become the default in a future release.</li>
 </ul>
 <h3 id="fixes">Fixes<a class="headerlink" href="#fixes" title="Permanent link">&para;</a></h3>
 <ul>
@@ -8398,9 +8410,13 @@
 <li><strong>[IR]</strong> Fix member injection across modules when an injected member uses a generic base class&rsquo;s type parameter.</li>
 <li><strong>[IR]</strong> Fix missing binding errors for accessors inherited from another module having no source location.</li>
 <li><strong>[IR]</strong> Fix <code>MissingRuntimeCoroutines</code> errors for injected top-level functions pointing at <code>0:0</code> in a generated file. They&rsquo;re now reported on the function.</li>
+<li><strong>[IR]</strong> Fix declaration parents for copied default argument lambdas and callable references, including references inside generated provider wrappers.</li>
+<li><strong>[IR]</strong> Include extension receivers in generated lambda function types, including set and map builder callbacks.</li>
+<li><strong>[IR/native/circuit]</strong> Fix an <code>IrLinkageError</code> in generated <code>SubCircuit</code> UI factories on Kotlin/Native with Kotlin <code>2.5.0-Beta1</code>.</li>
 </ul>
 <h3 id="changes">Changes<a class="headerlink" href="#changes" title="Permanent link">&para;</a></h3>
 <ul>
+<li><strong>[FIR/IR/IC]</strong> Enable <code>omit-redundant-mirrors</code> by default on Kotlin 2.4.0 and newer to omit generated declaration mirrors when compiler metadata and declaration finders provide the same information. It remains disabled by default on older Kotlin versions. Disable it with <code>compilerOptions.disable("omit-redundant-mirrors")</code> in the <code>metro</code> DSL.</li>
 <li><strong>[Gradle]</strong> <code>enableTopLevelFunctionInjection</code> is <strong>disabled by default</strong> for now on <strong>all</strong> Kotlin versions because it makes incremental builds recompile more files. If you use top-level function injection, enable it with <code>enableTopLevelFunctionInjection.set(true)</code> in the <code>metro</code> DSL. See <a href="../docs/performance/#incremental-compilation">incremental compilation perf docs</a>.</li>
 </ul>
 <h3 id="contributors">Contributors<a class="headerlink" href="#contributors" title="Permanent link">&para;</a></h3>
@@ -11035,7 +11051,7 @@ Possible fixes:
 </footer>
       
     </div>
-    <div class="md-dialog" data-md-component="dialog">
+    <div class="md-dialog" data-md-component="dialog" role="status" aria-atomic="true">
       <div class="md-dialog__inner md-typeset"></div>
     </div>
     
@@ -11047,10 +11063,10 @@ Possible fixes:
       
         
         
-      <script id="__config" type="application/json">{"annotate":null,"base":"..","features":["content.code.copy","content.code.select","content.action.edit","content.action.view","content.tabs.link","navigation.tabs","navigation.footer","navigation.top","search.highlight","search.suggest"],"redirect":null,"search":"../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":{"provider":"mike"}}</script>
+      <script id="__config" type="application/json">{"annotate":null,"base":"..","features":["content.code.copy","content.code.select","content.action.edit","content.action.view","content.tabs.link","navigation.tabs","navigation.footer","navigation.top","search.highlight","search.suggest"],"redirect":null,"search":"../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","clipboard.error":"Could not copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":{"provider":"mike"}}</script>
     
     
-      <script src="../assets/javascripts/bundle.c04ba553.min.js"></script>
+      <script src="../assets/javascripts/bundle.3c842f4c.min.js"></script>
       
     
   </body>
