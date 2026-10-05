@@ -2959,8 +2959,16 @@ internal fun IrClass.requireStaticIshDeclarationContainer(): IrClass {
 }
 
 /**
- * Finds the producer's helper container from its declarations. Kotlin companion-block helpers
- * belong directly to the class and older Kotlin helpers belong to its companion object.
+ * Returns the container that can hold static-ish declarations.
+ *
+ * - If Java -> this
+ * - If Kotlin ->
+ *     - If isObject -> this
+ *     - Companion object -> it
+ *     - Companion-block functions on the class -> this
+ *     - else null
+ *
+ * An existing companion object takes precedence over companion-block functions.
  */
 internal fun IrClass.staticIshDeclarationContainerOrNull(): IrClass? {
   val companion = companionObject()
