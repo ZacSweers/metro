@@ -310,13 +310,14 @@ jobs:
           cache-read-only: true
 
       - name: Generate tests
+        if: github.ref == 'refs/heads/main' || matrix.compiler == 'default'
         run: |
           ./scripts/run-ci-gradle.sh :compiler-tests:generateTests --quiet \
             "-Pmetro.testCompilerVersion=$METRO_TEST_COMPILER_VERSION" \
             ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
 
       - name: Run JS box smoke tests
-        if: github.ref != 'refs/heads/main' && matrix.compiler == 'default'
+        if: matrix.compiler == 'default'
         run: |
           ./scripts/run-ci-gradle.sh :compiler-tests:test --quiet \
             "-Pmetro.testCompilerVersion=$METRO_TEST_COMPILER_VERSION" \
@@ -336,30 +337,27 @@ jobs:
             --tests 'dev.zacsweers.metro.gradle.incremental.GenerateContributionProvidersICTests.scopeChangeInContributionProviderTriggersDownstreamRecompilation*' \
             -Dorg.gradle.configuration-cache.read-only=true
 
-      # Latest runs full suites on PRs so version-gated fixtures are picked up automatically.
+      # Main runs the full JS suites once with the latest compiler.
       - name: Run standard JS box tests
-        if: github.ref == 'refs/heads/main' || matrix.compiler == 'latest'
+        if: github.ref == 'refs/heads/main' && matrix.compiler == 'latest'
         run: |
           ./scripts/run-ci-gradle.sh :compiler-tests:test --quiet \
             "-Pmetro.testCompilerVersion=$METRO_TEST_COMPILER_VERSION" \
-            --tests 'dev.zacsweers.metro.compiler.JsBoxTestGenerated*' \
-            ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+            --tests 'dev.zacsweers.metro.compiler.JsBoxTestGenerated*'
 
       - name: Run FastInit JS box tests
-        if: github.ref == 'refs/heads/main' || matrix.compiler == 'latest'
+        if: github.ref == 'refs/heads/main' && matrix.compiler == 'latest'
         run: |
           ./scripts/run-ci-gradle.sh :compiler-tests:test --quiet \
             "-Pmetro.testCompilerVersion=$METRO_TEST_COMPILER_VERSION" \
-            --tests 'dev.zacsweers.metro.compiler.JsFastInitBoxTestGenerated*' \
-            ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+            --tests 'dev.zacsweers.metro.compiler.JsFastInitBoxTestGenerated*'
 
       - name: Run contribution provider JS box tests
-        if: github.ref == 'refs/heads/main' || matrix.compiler == 'latest'
+        if: github.ref == 'refs/heads/main' && matrix.compiler == 'latest'
         run: |
           ./scripts/run-ci-gradle.sh :compiler-tests:test --quiet \
             "-Pmetro.testCompilerVersion=$METRO_TEST_COMPILER_VERSION" \
-            --tests 'dev.zacsweers.metro.compiler.JsContributionProvidersBoxTestGenerated*' \
-            ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+            --tests 'dev.zacsweers.metro.compiler.JsContributionProvidersBoxTestGenerated*'
 
       - name: (Fail-only) Upload reports
         if: failure()
