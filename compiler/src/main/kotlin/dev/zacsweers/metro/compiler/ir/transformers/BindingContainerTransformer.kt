@@ -1475,6 +1475,8 @@ internal class BindingContainerTransformer(
 
   private fun IrClass.addCallableMetadataAnnotation(reference: CallableReference) {
     val target = reference.callee?.owner?.propertyIfAccessorCompat ?: reference.backingField
+    // Object backing fields can be static independently of companion blocks.
+    val isCompanionBlockMember = !reference.parent.owner.isObject && reference.isStatic
     val callableMetadata =
       buildAnnotation(symbol, metroSymbols.callableMetadataAnnotationConstructor) { annotation ->
         with(pluginContext.createIrBuilder(symbol)) {
@@ -1491,7 +1493,7 @@ internal class BindingContainerTransformer(
           annotation.arguments[2] = irInt(target?.startOffset ?: startOffset)
           annotation.arguments[3] = irInt(target?.endOffset ?: endOffset)
           annotation.arguments[4] = irString(reference.name.asString())
-          annotation.arguments[5] = irBoolean(reference.isStatic)
+          annotation.arguments[5] = irBoolean(isCompanionBlockMember)
         }
       }
     addAnnotationCompat(callableMetadata)

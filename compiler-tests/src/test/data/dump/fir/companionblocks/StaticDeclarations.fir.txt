@@ -21,7 +21,7 @@ FILE: StaticDeclarations.kt
 
         @R|dev/zacsweers/metro/internal/GraphFactoryInvokeFunctionMarker|() public final static operator fun invoke(): R|AppGraph|
 
-        @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) @R|dev/zacsweers/metro/internal/CallableMetadata|(callableName = String(text), propertyName = String(), startOffset = Int(230), endOffset = Int(265), newInstanceName = String(text), isStatic = Boolean(true)) public final object TextMetroFactory : R|kotlin/Any| {
+        @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) @R|dev/zacsweers/metro/internal/CallableMetadata|(callableName = String(text), propertyName = String(), startOffset = Int(230), endOffset = Int(265), newInstanceName = String(text), isCompanionBlockMember = Boolean(true)) public final object TextMetroFactory : R|kotlin/Any| {
             private constructor(): R|AppGraph.TextMetroFactory| {
                 super<R|kotlin/Any|>()
             }

@@ -148,7 +148,7 @@ interface AppGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "value", propertyName = "", startOffset = 349, endOffset = 389, newInstanceName = "value", isStatic = false)
+  @CallableMetadata(callableName = "value", propertyName = "", startOffset = 349, endOffset = 389, newInstanceName = "value", isCompanionBlockMember = false)
   class ValueMetroFactory : Factory<String> {
     private /* final field */ val instance: AppGraph = instance
     @HiddenFromObjC
@@ -182,7 +182,7 @@ interface AppGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "values", propertyName = "", startOffset = 392, endOffset = 447, newInstanceName = "values", isStatic = false)
+  @CallableMetadata(callableName = "values", propertyName = "", startOffset = 392, endOffset = 447, newInstanceName = "values", isCompanionBlockMember = false)
   class ValuesMetroFactory : Factory<List<String>> {
     private /* final field */ val instance: AppGraph = instance
     @HiddenFromObjC

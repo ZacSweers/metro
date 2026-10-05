@@ -140,7 +140,7 @@ internal fun IrConstructorCall.toIrCallableMetadata(
   val annoStartOffset = constArgumentOfTypeAt<Int>(2)!!
   val annoEndOffset = constArgumentOfTypeAt<Int>(3)!!
   val newInstanceName = constArgumentOfTypeAt<String>(4)?.asName()
-  val isStatic = constArgumentOfTypeAt<Boolean>(5) == true
+  val isCompanionBlockMember = constArgumentOfTypeAt<Boolean>(5) == true
   val sourceCallableName = propertyName.ifBlank { callableName }.asName()
   val callableId =
     CallableId(
@@ -159,7 +159,9 @@ internal fun IrConstructorCall.toIrCallableMetadata(
         typeParameters = emptyList()
       }
       val creatorCarriesInstance =
-        signatureCarrier == SignatureCarrier.CREATOR_FUNCTION && !parentClass.isObject && !isStatic
+        signatureCarrier == SignatureCarrier.CREATOR_FUNCTION &&
+          !parentClass.isObject &&
+          !isCompanionBlockMember
       if (creatorCarriesInstance) {
         val instanceParameter = regularParameters.firstOrNull()
         if (instanceParameter?.name != Symbols.Names.instance) {
@@ -170,7 +172,7 @@ internal fun IrConstructorCall.toIrCallableMetadata(
         parameters = parameters.filterNot { it === instanceParameter }
       }
       // The receiver copy keeps the type parameters owned by the original class.
-      if (isStatic) {
+      if (isCompanionBlockMember) {
         setDispatchReceiver(null)
       } else {
         val originalReceiver = parentClass.thisReceiverOrFail
@@ -205,7 +207,7 @@ internal fun IrConstructorCall.toIrCallableMetadata(
     annotations = annotations,
     isPropertyAccessor = propertyName.isNotBlank(),
     newInstanceName = newInstanceName,
-    isStatic = isStatic,
+    isStatic = function.isStatic,
     function = function,
     signatureFunction = signatureFunction,
   )

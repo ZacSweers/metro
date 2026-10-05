@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.generators
 
+import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.Keys
@@ -183,9 +184,9 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
 
   @OptIn(SymbolInternals::class)
   private fun FirCallableSymbol<*>.asProviderCallable(owner: FirClassSymbol<*>): ProviderCallable? {
-    val isStatic = fir.isCompanionBlockMemberCompat
+    val isCompanionBlockMember = fir.isCompanionBlockMemberCompat
     val instanceReceiver =
-      if (owner.classKind.isObject || isStatic) {
+      if (owner.classKind.isObject || isCompanionBlockMember) {
         null
       } else {
         owner.defaultType()
@@ -199,7 +200,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
           }
         else -> return null
       }
-    return ProviderCallable(owner, this, instanceReceiver, params, isStatic)
+    return ProviderCallable(owner, this, instanceReceiver, params, isCompanionBlockMember)
   }
 
   private fun buildCallableMetadataAnnotation(sourceCallable: ProviderCallable): FirAnnotation {
@@ -209,7 +210,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
       annotationTypeRef = anno.defaultType().toFirResolvedTypeRef()
 
       argumentMapping = buildAnnotationArgumentMapping {
-        mapping[Name.identifier("callableName")] =
+        mapping["callableName".asName()] =
           buildLiteralExpression(
             source = null,
             kind = ConstantValueKind.String,
@@ -236,7 +237,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
           } else {
             ""
           }
-        mapping[Name.identifier("propertyName")] =
+        mapping["propertyName".asName()] =
           buildLiteralExpression(
             source = null,
             kind = ConstantValueKind.String,
@@ -246,7 +247,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
             prefix = null,
           )
 
-        mapping[Name.identifier("startOffset")] =
+        mapping["startOffset".asName()] =
           buildLiteralExpression(
             source = null,
             kind = ConstantValueKind.Int,
@@ -256,7 +257,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
             prefix = null,
           )
 
-        mapping[Name.identifier("endOffset")] =
+        mapping["endOffset".asName()] =
           buildLiteralExpression(
             source = null,
             kind = ConstantValueKind.Int,
@@ -266,7 +267,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
             prefix = null,
           )
 
-        mapping[Name.identifier("newInstanceName")] =
+        mapping["newInstanceName".asName()] =
           buildLiteralExpression(
             source = null,
             kind = ConstantValueKind.String,
@@ -275,11 +276,11 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
             setType = true,
             prefix = null,
           )
-        mapping[Name.identifier("isStatic")] =
+        mapping["isCompanionBlockMember".asName()] =
           buildLiteralExpression(
             source = null,
             kind = ConstantValueKind.Boolean,
-            value = sourceCallable.isStatic,
+            value = sourceCallable.isCompanionBlockMember,
             annotations = null,
             setType = true,
             prefix = null,
@@ -293,7 +294,8 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
     val symbol: FirCallableSymbol<*>,
     val instanceReceiver: ConeClassLikeType?,
     val valueParameters: List<MetroFirValueParameter>,
-    val isStatic: Boolean,
+    /** Source companion-block members don't need an instance receiver. */
+    val isCompanionBlockMember: Boolean,
   ) {
     val callableId = CallableId(owner.classId, symbol.name)
     val name = symbol.name
