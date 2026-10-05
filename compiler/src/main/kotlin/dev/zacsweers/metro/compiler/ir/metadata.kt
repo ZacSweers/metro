@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.BitFieldBuilder
+import dev.zacsweers.metro.compiler.CompanionMode
 import dev.zacsweers.metro.compiler.METADATA_VERSION
 import dev.zacsweers.metro.compiler.PLUGIN_ID
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
@@ -11,6 +12,7 @@ import dev.zacsweers.metro.compiler.ir.graph.IrBinding
 import dev.zacsweers.metro.compiler.ir.graph.IrBindingGraph
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainer
 import dev.zacsweers.metro.compiler.proto.AssistedFactoryImplProto
+import dev.zacsweers.metro.compiler.proto.CompanionMode as CompanionModeProto
 import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
 import dev.zacsweers.metro.compiler.proto.InjectedClassProto
 import dev.zacsweers.metro.compiler.proto.MetroMetadata
@@ -19,11 +21,10 @@ import dev.zacsweers.metro.compiler.proto.SignatureCarrier
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.util.classIdOrFail
-import org.jetbrains.kotlin.ir.util.companionObject
-import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.isStatic
+import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.name.ClassId
 
@@ -39,6 +40,12 @@ internal fun createMetroMetadata(
     injected_class = injected_class,
     assisted_factory_impl = assisted_factory_impl,
   )
+
+/** Keeps the producer's full mode in binary metadata. */
+internal fun CompanionMode.toProto(): CompanionModeProto = CompanionModeProto.valueOf(name)
+
+/** Reads the producer's mode independently of the consumer's compiler options. */
+internal fun CompanionModeProto.toCompanionMode(): CompanionMode = CompanionMode.valueOf(name)
 
 // TODO cache lookups of injected_class since it's checked multiple times
 context(context: IrMetroContext)
@@ -153,13 +160,15 @@ private fun createGraphProto(
                 is ProviderFactory.Metro -> factory.signatureCarrier
                 is ProviderFactory.Dagger -> SignatureCarrier.MIRROR_FUNCTION
               },
-            source_callable_is_static = factory.function.isStatic,
-            static_helpers =
-              // Compatibility bridges keep the companion as the canonical binary helper owner.
-              factoryClass.companionObject() == null &&
-                factoryClass.functions.any {
-                  it.name == factory.newInstanceName && it.isStatic
-                },
+            is_companion_block_member =
+              factory is ProviderFactory.Metro &&
+                !factory.function.parentAsClass.isObject &&
+                factory.function.isStatic,
+            companion_mode =
+              when (factory) {
+                is ProviderFactory.Metro -> factory.companionMode.toProto()
+                is ProviderFactory.Dagger -> CompanionModeProto.COMPANION_OBJECT
+              },
           )
         }
         .sortedBy { it.class_id },

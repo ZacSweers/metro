@@ -6,6 +6,7 @@ import dev.zacsweers.metro.ContributesIntoSet
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.binding
+import dev.zacsweers.metro.compiler.CompanionMode
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Origins
@@ -77,6 +78,7 @@ import dev.zacsweers.metro.compiler.ir.staticIshDeclarationContainerOrNull
 import dev.zacsweers.metro.compiler.ir.subcomponentsArgument
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.toClassReferences
+import dev.zacsweers.metro.compiler.ir.toCompanionMode
 import dev.zacsweers.metro.compiler.ir.toProto
 import dev.zacsweers.metro.compiler.ir.transformIfIntoMultibinding
 import dev.zacsweers.metro.compiler.ir.typeRemapperFor
@@ -992,6 +994,7 @@ internal class BindingContainerTransformer(
       callableMetadata,
       inlinedValue = entry.inlinedValueIfEnabled(),
       computeInlinedValue = false,
+      companionMode = entry.companion_mode.toCompanionMode(),
     ) ?: exitProcessing()
   }
 
@@ -1265,6 +1268,8 @@ internal class BindingContainerTransformer(
     entry: ProviderFactoryProto,
   ): ProviderFactory.Metro? {
     val providesFunction = findProvidesForInvisibleFactory(container, entry.callable_name)
+    val companionMode = entry.companion_mode.toCompanionMode()
+    val staticHelpers = !entry.is_object && companionMode.usesStaticHelpers
 
     val existingFactory = container.lookupClass(classId)?.owner
     val stub =
@@ -1273,7 +1278,7 @@ internal class BindingContainerTransformer(
           container,
           classId,
           isObject = entry.is_object,
-          staticHelpers = entry.static_helpers,
+          companionMode = companionMode,
         )
 
     val mirrorFunction =
@@ -1294,7 +1299,7 @@ internal class BindingContainerTransformer(
       providesFunction
         ?: mirrorFunction.deepCopyWithSymbols().apply {
           name = Name.identifier(entry.callable_name)
-          if (entry.source_callable_is_static) {
+          if (entry.is_companion_block_member) {
             setDispatchReceiver(null)
           } else {
             setDispatchReceiver(container.thisReceiverOrFail.copyTo(this))
@@ -1314,7 +1319,7 @@ internal class BindingContainerTransformer(
 
     // FIR can export an invisible factory header while its IR-generated helpers stay invisible.
     val helperOwner =
-      if (entry.static_helpers || entry.is_object) {
+      if (staticHelpers || entry.is_object) {
         stub
       } else {
         stub.staticIshDeclarationContainerOrNull()
@@ -1322,7 +1327,7 @@ internal class BindingContainerTransformer(
 
     val hasCreateHelper =
       helperOwner?.functions?.any {
-        it.name == Symbols.Names.create && (!entry.static_helpers || it.isStatic)
+        it.name == Symbols.Names.create && (!staticHelpers || it.isStatic)
       } == true
 
     val propertyHelperName = entry.new_instance_name.removeSurrounding("<get-", ">")
@@ -1332,7 +1337,7 @@ internal class BindingContainerTransformer(
         val matchesName =
           it.name.asString() == entry.new_instance_name || it.name.asString() == propertyHelperName
 
-        matchesName && (!entry.static_helpers || it.isStatic)
+        matchesName && (!staticHelpers || it.isStatic)
       } == true
 
     if (!hasCreateHelper || !hasNewInstanceHelper) {
@@ -1341,7 +1346,7 @@ internal class BindingContainerTransformer(
         callableName = entry.callable_name,
         returnType = sourceFunction.returnType,
         sourceFunction = sourceFunction,
-        staticHelpers = entry.static_helpers,
+        companionMode = companionMode,
       )
     }
 
@@ -1353,7 +1358,7 @@ internal class BindingContainerTransformer(
         annotations = sourceAnnotations,
         isPropertyAccessor = entry.property_name.isNotEmpty(),
         newInstanceName = Name.identifier(entry.new_instance_name),
-        isStatic = entry.source_callable_is_static,
+        isStatic = sourceFunction.isStatic,
         function = sourceFunction,
         signatureFunction = mirrorFunction,
       )
@@ -1372,6 +1377,7 @@ internal class BindingContainerTransformer(
       clazz = stub,
       signatureFunction = mirrorFunction,
       signatureCarrier = SignatureCarrier.MIRROR_FUNCTION,
+      companionMode = companionMode,
       sourceAnnotations = sourceAnnotations,
       callableMetadata = callableMetadata,
       realDeclaration = originClass ?: providesFunction,
@@ -1409,7 +1415,7 @@ internal class BindingContainerTransformer(
     parentClass: IrClass,
     classId: ClassId,
     isObject: Boolean,
-    staticHelpers: Boolean = false,
+    companionMode: CompanionMode = CompanionMode.COMPANION_OBJECT,
   ): IrClass {
     val classKind = if (isObject) ClassKind.OBJECT else ClassKind.CLASS
 
@@ -1430,7 +1436,7 @@ internal class BindingContainerTransformer(
 
         if (isObject) {
           addDefaultConstructor().apply { visibility = DescriptorVisibilities.PRIVATE }
-        } else if (!staticHelpers) {
+        } else if (!companionMode.usesStaticHelpers) {
           // Non-objects need a companion for create()/newInstance() static methods
           val factoryCls = this
           pluginContext.irFactory
@@ -1462,12 +1468,11 @@ internal class BindingContainerTransformer(
     // Generic factory owners require a class even when the source provider has no dependencies.
     val hasCopiedTypeParameters = parentClass.typeParameters.isNotEmpty()
     val isObject = reference.parameters.allParameters.isEmpty() && !hasCopiedTypeParameters
-    val staticHelpers = !isObject && options.companionMode.usesStaticHelpers
     return createContributionProviderFactoryStub(
         parentClass,
         generatedClassId,
         isObject,
-        staticHelpers,
+        options.companionMode,
       )
       .also {
         it.addCallableMetadataAnnotation(reference)

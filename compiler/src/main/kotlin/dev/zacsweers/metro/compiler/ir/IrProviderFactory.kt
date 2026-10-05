@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
+import dev.zacsweers.metro.compiler.CompanionMode
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.ir.graph.IrBinding
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
@@ -106,6 +107,8 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
     override val realDeclaration: IrDeclaration?,
     private val callableMetadata: IrCallableMetadata,
     val signatureCarrier: SignatureCarrier,
+    /** Preserves the producer's helper mode across binary loading and type substitution. */
+    val companionMode: CompanionMode,
     parametersLazy: Lazy<Parameters>,
     override val inlinedValue: IrInlinedProvider? = null,
     override val creatorTypeArguments: List<IrType>? = null,
@@ -155,6 +158,7 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
         realDeclaration = realDeclaration,
         callableMetadata = callableMetadata,
         signatureCarrier = signatureCarrier,
+        companionMode = companionMode,
         parametersLazy = lazy { parameters.remapTypes(factoryRemapper) },
         inlinedValue = inlinedValue,
         creatorTypeArguments = concreteTypes,
@@ -207,6 +211,7 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
       realDeclaration: IrDeclaration? = null,
       inlinedValue: IrInlinedProvider? = null,
       computeInlinedValue: Boolean = true,
+      companionMode: CompanionMode = context.options.companionMode,
     ): Metro? {
       val rawTypeKey = contextKey.typeKey.copy(qualifier = callableMetadata.annotations.qualifier)
       val typeKey = rawTypeKey.transformIfIntoMultibinding(callableMetadata.annotations)
@@ -275,6 +280,7 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
         realDeclaration = realDecl,
         parametersLazy = lazyParams,
         signatureCarrier = signatureCarrier,
+        companionMode = companionMode,
         inlinedValue = computedInlinedValue,
       )
     }

@@ -33,9 +33,11 @@ internal class AssistedServiceImpl(@Assisted id: Int, value: String) : AssistedS
 }
 
 // MODULE: main(lib)
-// COMPANION_MODE: COMPANION_BLOCK
+// COMPANION_BLOCKS: false
+// COMPANION_MODE: NONE
 // FILE: Main.kt
 
+// The consumer reconstructs invisible helpers from the producer's mode.
 @DependencyGraph(AppScope::class)
 interface AppGraph {
   val service: Service

@@ -6,6 +6,7 @@ import dev.zacsweers.metro.ContributesIntoSet
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.binding
+import dev.zacsweers.metro.compiler.CompanionMode
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
@@ -41,6 +42,8 @@ import dev.zacsweers.metro.compiler.ir.requireStaticIshDeclarationContainer
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.singleAbstractFunction
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
+import dev.zacsweers.metro.compiler.ir.toCompanionMode
+import dev.zacsweers.metro.compiler.ir.toProto
 import dev.zacsweers.metro.compiler.ir.transformers.AssistedFactoryTransformer.AssistedFactoryFunction.Companion.toAssistedFactoryFunction
 import dev.zacsweers.metro.compiler.ir.typeRemapperFor
 import dev.zacsweers.metro.compiler.ir.wrapInProvider
@@ -74,7 +77,6 @@ import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.addFakeOverrides
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
-import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.copyTypeParametersFrom
 import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
@@ -138,7 +140,7 @@ internal class AssistedFactoryTransformer(
             targetType,
             isExternal = true,
             samFunction,
-            staticHelpers = metadata.static_helpers,
+            companionMode = metadata.companion_mode.toCompanionMode(),
           )
 
         val metroImpl = AssistedFactoryImpl.Metro(creatorDeclarations.createFunction)
@@ -265,8 +267,10 @@ internal class AssistedFactoryTransformer(
     targetType: IrClass,
     isExternal: Boolean,
     samFunction: IrSimpleFunction,
-    staticHelpers: Boolean = options.companionMode.usesStaticHelpers,
+    companionMode: CompanionMode = options.companionMode,
   ): ImplCreatorDeclarations {
+    val staticHelpers = companionMode.usesStaticHelpers
+
     val helperOwner =
       if (staticHelpers) {
         implClass
@@ -517,11 +521,7 @@ internal class AssistedFactoryTransformer(
       AssistedFactoryImplProto(
         sam_function_name = samFunctionName,
         impl_class_name = implClass.name.asString(),
-        static_helpers =
-          implClass.companionObject() == null &&
-            implClass.functions.any {
-              it.name == Symbols.Names.create && it.dispatchReceiverParameter == null
-            },
+        companion_mode = options.companionMode.toProto(),
       )
 
     // Store the metadata for this factory class

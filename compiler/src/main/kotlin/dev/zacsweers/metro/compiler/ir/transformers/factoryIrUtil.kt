@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.transformers
 
+import dev.zacsweers.metro.compiler.CompanionMode
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.applyIf
@@ -632,8 +633,10 @@ internal fun generateStubCreatorFunctions(
   callableName: String,
   returnType: IrType,
   sourceFunction: IrSimpleFunction,
-  staticHelpers: Boolean = false,
+  companionMode: CompanionMode = CompanionMode.COMPANION_OBJECT,
 ) {
+  val staticHelpers = !factoryClass.isObject && companionMode.usesStaticHelpers
+
   val creatorClass =
     if (staticHelpers) {
       factoryClass
