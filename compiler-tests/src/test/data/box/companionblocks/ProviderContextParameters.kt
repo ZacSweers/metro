@@ -1,5 +1,4 @@
 // MIN_COMPILER_VERSION: 2.5.0-Beta1
-// LANGUAGE: +ContextParameters
 
 class ContextValue(val value: String)
 
