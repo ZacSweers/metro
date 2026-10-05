@@ -637,72 +637,89 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
   /** Reports user statics that would share the generated graph creator's signature. */
   context(context: CheckerContext, reporter: DiagnosticReporter, compatContext: CompatContext)
   private fun checkStaticCreatorCollisions(graph: FirClass) {
-    if (!context.session.metroFirBuiltIns.options.companionMode.requiresCompanionBlocks) {
+    val session = context.session
+    val companionMode = session.metroFirBuiltIns.options.companionMode
+    if (!companionMode.requiresCompanionBlocks) {
       return
     }
-    val factory = graph.symbol.nestedClasses().firstOrNull { it.isGraphFactory(context.session) }
-    val sam = factory?.findSamFunction(context.session)
-    val creatorName =
-      if (factory == null) {
-        Symbols.Names.invoke
-      } else if (factory.isInterface) {
-        sam?.name ?: return
+
+    val nestedClasses = graph.symbol.nestedClasses()
+    val factory = nestedClasses.firstOrNull { it.isGraphFactory(session) }
+    val sam =
+      if (factory?.isInterface == true) {
+        factory.findSamFunction(session) ?: return
       } else {
-        Symbols.Names.factory
+        null
       }
+
+    val creatorName =
+      when {
+        factory == null -> Symbols.Names.invoke
+        sam != null -> sam.name
+        else -> Symbols.Names.factory
+      }
+
     val creatorParameters =
-      if (factory?.isInterface == true && sam != null) {
-        with(compatContext) { sam.contextParameterSymbols }.map { it.resolvedReturnType } +
-          sam.valueParameterSymbols.map { it.resolvedReturnType }
+      if (sam != null) {
+        val contextParameterTypes = sam.contextParameterSymbols.map { it.resolvedReturnType }
+        val valueParameterTypes = sam.valueParameterSymbols.map { it.resolvedReturnType }
+        contextParameterTypes + valueParameterTypes
       } else {
         emptyList()
       }
+
+    val staticAnnotations = setOf(Symbols.ClassIds.JvmStatic, Symbols.ClassIds.JsStatic)
+
     // The instance member scope excludes source declarations in companion blocks.
     val candidates = mutableListOf<FirNamedFunctionSymbol>()
-    graph.processAllDeclarations(context.session) { symbol ->
+    graph.processAllDeclarations(session) { symbol ->
       if (symbol is FirNamedFunctionSymbol) {
         candidates += symbol
       }
     }
-    for (companion in graph.symbol.nestedClasses().filter { it.isCompanion }) {
-      candidates +=
-        companion.callableSymbols().filterIsInstance<FirNamedFunctionSymbol>().filter {
-          it.isAnnotatedWithAny(
-            context.session,
-            setOf(Symbols.ClassIds.JvmStatic, Symbols.ClassIds.JsStatic),
-          )
+
+    for (companion in nestedClasses.filter { it.isCompanion }) {
+      val functions = companion.callableSymbols().filterIsInstance<FirNamedFunctionSymbol>()
+      for (function in functions) {
+        if (function.isAnnotatedWithAny(session, staticAnnotations)) {
+          candidates += function
         }
+      }
     }
+
     for (function in candidates) {
-      if (
+      val isGeneratedCreator =
         function.hasOrigin(
           Keys.MetroGraphCreatorsObjectInvokeDeclaration,
           Keys.MetroGraphFactoryCompanionGetter,
         )
-      ) {
+      if (isGeneratedCreator) {
         continue
       }
-      if (function.source == null || function.name != creatorName) {
+
+      val source = function.source ?: continue
+      if (function.name != creatorName) {
         continue
       }
+
       val isStatic =
         with(compatContext) { function.isCompanionBlockMemberCompat } ||
-          function.isAnnotatedWithAny(
-            context.session,
-            setOf(Symbols.ClassIds.JvmStatic, Symbols.ClassIds.JsStatic),
-          )
+          function.isAnnotatedWithAny(session, staticAnnotations)
+      if (!isStatic) {
+        continue
+      }
+
       val platformParameters = buildList {
-        addAll(
-          with(compatContext) { function.contextParameterSymbols }.map { it.resolvedReturnType }
-        )
+        addAll(function.contextParameterSymbols.map { it.resolvedReturnType })
         function.resolvedReceiverType?.let { add(it) }
         addAll(function.valueParameterSymbols.map { it.resolvedReturnType })
       }
-      if (!isStatic || platformParameters != creatorParameters) {
+      if (platformParameters != creatorParameters) {
         continue
       }
+
       reporter.reportOn(
-        function.source,
+        source,
         MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
         "Companion-block graph creator '$creatorName' conflicts with this static function. Change its signature or select a different companion-mode.",
       )

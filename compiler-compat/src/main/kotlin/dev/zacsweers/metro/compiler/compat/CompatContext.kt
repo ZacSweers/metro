@@ -808,7 +808,7 @@ public interface CompatContext {
     since = "2.5.0-dev-6460",
     reason = CompatApi.Reason.ABI_CHANGE,
     message =
-      "The 2.5.0-dev-6460 adapter reads FirCallableDeclaration.isCompanionBlockMember through the callable symbol. SymbolInternals access stays in the adapter.",
+      "The 2.5.0-dev-6460 adapter reads FirCallableSymbol.isCompanionBlockMember. Older adapters report false.",
   )
   public val FirCallableSymbol<*>.isCompanionBlockMemberCompat: Boolean
     get() = false

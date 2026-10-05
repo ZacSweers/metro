@@ -479,9 +479,21 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("AnnotatedStaticCreatorCollision.kt")
+    public void testAnnotatedStaticCreatorCollision() {
+      run("AnnotatedStaticCreatorCollision.kt");
+    }
+
+    @Test
     @TestMetadata("StaticCreatorCollision.kt")
     public void testStaticCreatorCollision() {
       run("StaticCreatorCollision.kt");
+    }
+
+    @Test
+    @TestMetadata("StaticCreatorCompatibilityCollision.kt")
+    public void testStaticCreatorCompatibilityCollision() {
+      run("StaticCreatorCompatibilityCollision.kt");
     }
   }
 

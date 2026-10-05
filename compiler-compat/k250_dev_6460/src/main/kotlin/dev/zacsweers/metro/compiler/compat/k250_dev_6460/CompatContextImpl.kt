@@ -17,7 +17,6 @@ import org.jetbrains.kotlin.fir.declarations.FirNamedFunction
 import org.jetbrains.kotlin.fir.declarations.builder.buildNamedFunctionCopy
 import org.jetbrains.kotlin.fir.declarations.impl.FirDeclarationStatusImpl
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanionBlockMember
-import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
@@ -65,9 +64,8 @@ public class CompatContextImpl private constructor(private val delegate: Delegat
     return supportsFeature(LanguageFeature.CompanionExtensions)
   }
 
-  @OptIn(SymbolInternals::class)
   override val FirCallableSymbol<*>.isCompanionBlockMemberCompat: Boolean
-    get() = fir.isCompanionBlockMember
+    get() = isCompanionBlockMember
 
   override fun FirFunction.markAsCompanionBlockMemberCompat(owner: FirClassSymbol<*>): FirFunction {
     // FIR fixes dispatch receiver types when it constructs declarations.
