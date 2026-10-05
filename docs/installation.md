@@ -73,7 +73,7 @@ metro-compiler = { module = "dev.zacsweers.metro:compiler", version.ref = "metro
 
 ## Companion blocks and generated APIs
 
-Kotlin 2.5.0-Beta1 and later can place `@Provides` functions and properties in companion blocks. Enable Kotlin's `-Xcompanion-blocks` option for each compilation that uses them. `-Xcompanion-blocks-and-extensions` also enables blocks.
+Metro supports companion-block `@Provides` functions and properties with Kotlin 2.5.0-dev-6460 and later. Enable Kotlin's `-Xcompanion-blocks` option for each compilation that uses them. `-Xcompanion-blocks-and-extensions` also enables blocks.
 
 ```kotlin
 @BindingContainer
@@ -107,7 +107,7 @@ kotlin {
 | `COMPATIBILITY` | Keeps the companion APIs and adds static functions that delegate to them. |
 | `NONE` | Omits graph-level creator APIs. Required internal factory and injector helpers use companions. Both creation intrinsics remain available. |
 
-The dashed spellings `companion-object`, `companion-block`, `compatibility`, and `none` are also accepted. Values are case-insensitive. The block and compatibility modes require enabled companion blocks and Kotlin 2.5.0-Beta1 or later. Singleton factory objects keep their object-based helpers in every mode because Kotlin prohibits companion blocks inside objects.
+The dashed spellings `companion-object`, `companion-block`, `compatibility`, and `none` are also accepted. Values are case-insensitive. The block and compatibility modes require enabled companion blocks and Kotlin 2.5.0-dev-6460 or later. Singleton factory objects keep their object-based helpers in every mode because Kotlin prohibits companion blocks inside objects.
 
 Creator names follow the declared factory method. An interface factory with `fun build(...)` exposes `AppGraph.build(...)`. A factoryless graph exposes `AppGraph()`. An abstract-class factory exposes `AppGraph.factory()`.
 
