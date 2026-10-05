@@ -20,6 +20,7 @@ import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
 import org.jetbrains.kotlin.config.CommonConfigurationKeys
 import org.jetbrains.kotlin.config.CompilerConfiguration
+import org.jetbrains.kotlin.config.languageVersionSettings
 import org.jetbrains.kotlin.incremental.components.ExpectActualTracker
 
 public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
@@ -96,6 +97,28 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
         "Metro mode: ${if (isIde) "IDE" else "CLI"}",
       )
       messageCollector.report(CompilerMessageSeverity.INFO, "Metro options:\n$options")
+    }
+
+    if (options.companionMode.requiresCompanionBlocks) {
+      if (!compatContext.supportsCompanionBlocks) {
+        messageCollector.report(
+          CompilerMessageSeverity.ERROR,
+          "companion-mode=${options.companionMode.name} requires " + "Kotlin 2.5.0-Beta1 or later.",
+        )
+        return
+      }
+      val blocksEnabled =
+        with(compatContext) {
+          configuration.languageVersionSettings.companionBlocksEnabledCompat()
+        }
+      if (!blocksEnabled) {
+        messageCollector.report(
+          CompilerMessageSeverity.ERROR,
+          "companion-mode=${options.companionMode.name} requires " +
+            "-Xcompanion-blocks or -Xcompanion-blocks-and-extensions.",
+        )
+        return
+      }
     }
 
     if (options.maxIrErrorsCount < 1) {

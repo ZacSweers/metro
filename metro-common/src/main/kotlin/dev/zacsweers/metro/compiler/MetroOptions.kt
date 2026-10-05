@@ -1072,6 +1072,18 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
+  COMPANION_MODE(
+    RawMetroOption(
+      name = "companion-mode",
+      defaultValue = CompanionMode.COMPANION_OBJECT.name,
+      valueDescription = "<companion-object | companion-block | compatibility | none>",
+      description =
+        "Controls generated graph creators and factory/injector helper APIs. " +
+          "Companion-block and compatibility require " +
+          "Kotlin's companion-blocks feature to be enabled.",
+      valueMapper = { CompanionMode.parse(it).name },
+    )
+  ),
   ENABLE_RUNTIME_TRACING(
     RawMetroOption.boolean(
       name = "enable-runtime-tracing",
@@ -1304,6 +1316,8 @@ public class MetroOptions(
       .let(DiagnosticsRenderMode::parse),
   public val generateStaticAnnotations: Boolean =
     MetroOption.GENERATE_STATIC_ANNOTATIONS.raw.defaultValue.expectAs(),
+  public val companionMode: CompanionMode =
+    CompanionMode.parse(MetroOption.COMPANION_MODE.raw.defaultValue.expectAs()),
   public val enableRuntimeTracing: Boolean =
     MetroOption.ENABLE_RUNTIME_TRACING.raw.defaultValue.expectAs(),
   public val memberNamingStrategy: MemberNamingStrategy =
@@ -1657,6 +1671,7 @@ public class MetroOptions(
     public var enableHiltInterop: Boolean = base.enableHiltInterop
     public var diagnosticsRenderMode: DiagnosticsRenderMode = base.diagnosticsRenderMode
     public var generateStaticAnnotations: Boolean = base.generateStaticAnnotations
+    public var companionMode: CompanionMode = base.companionMode
     public var enableRuntimeTracing: Boolean = base.enableRuntimeTracing
     public var memberNamingStrategy: MemberNamingStrategy = base.memberNamingStrategy
     public var maxGeneratedClassNameLength: Int = base.maxGeneratedClassNameLength
@@ -2023,6 +2038,7 @@ public class MetroOptions(
         MetroOption.DIAGNOSTICS_RENDER_MODE ->
           diagnosticsRenderMode = DiagnosticsRenderMode.parse(value.expectAs<String>())
         MetroOption.GENERATE_STATIC_ANNOTATIONS -> generateStaticAnnotations = value.expectAs()
+        MetroOption.COMPANION_MODE -> companionMode = CompanionMode.parse(value.expectAs())
         MetroOption.ENABLE_RUNTIME_TRACING -> enableRuntimeTracing = value.expectAs()
         MetroOption.MEMBER_NAMING_STRATEGY ->
           memberNamingStrategy =
@@ -2119,6 +2135,7 @@ public class MetroOptions(
         enableHiltInterop = enableHiltInterop,
         diagnosticsRenderMode = diagnosticsRenderMode,
         generateStaticAnnotations = generateStaticAnnotations,
+        companionMode = companionMode,
         enableRuntimeTracing = enableRuntimeTracing,
         memberNamingStrategy = memberNamingStrategy,
         maxGeneratedClassNameLength = maxGeneratedClassNameLength,

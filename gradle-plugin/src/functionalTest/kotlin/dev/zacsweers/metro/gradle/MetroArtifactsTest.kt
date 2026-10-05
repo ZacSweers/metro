@@ -516,6 +516,7 @@ class MetroArtifactsTest {
                 "enableHiltInterop": false,
                 "diagnosticsRenderMode": "PLAIN",
                 "generateStaticAnnotations": true,
+                "companionMode": "COMPANION_OBJECT",
                 "enableRuntimeTracing": false,
                 "memberNamingStrategy": "DESCRIPTIVE",
                 "maxGeneratedClassNameLength": $DEFAULT_MAX_GENERATED_CLASS_NAME_LENGTH
