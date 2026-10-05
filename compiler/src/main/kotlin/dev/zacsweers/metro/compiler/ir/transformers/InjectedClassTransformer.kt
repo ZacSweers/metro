@@ -64,7 +64,6 @@ import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.Optional
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.jvm.optionals.getOrNull
-import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.ir.builders.declarations.addConstructor
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
@@ -73,7 +72,6 @@ import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
-import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
@@ -88,7 +86,6 @@ import org.jetbrains.kotlin.ir.types.typeWithParameters
 import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
-import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.file
 import org.jetbrains.kotlin.ir.util.functions
@@ -96,7 +93,6 @@ import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.nonDispatchParameters
-import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
@@ -523,7 +519,9 @@ internal class InjectedClassTransformer(
             buildAnnotation(symbol, metroSymbols.assistedMarkerConstructor),
           )
         }
-        addMetadataVisibleHiddenCompanionObject()
+        if (!options.companionMode.usesStaticHelpers) {
+          addMetadataVisibleHiddenCompanionObject()
+        }
       }
   }
 
@@ -620,7 +618,7 @@ internal class InjectedClassTransformer(
               // Record for IC
               trackFunctionCall(invokeFunction, function)
               +irInvoke(
-                dispatchReceiver = irGetObject(function.parentAsClass.symbol),
+                dispatchReceiver = dispatchReceiverFor(function),
                 callee = function.symbol,
                 args =
                   buildList {
@@ -804,14 +802,7 @@ internal class InjectedClassTransformer(
     isAssistedInject: Boolean,
     useCreatorSignatureCarrier: Boolean,
   ): IrSimpleFunction {
-    // If this is an object, we can generate directly into this object
-    val isObject = factoryCls.kind == ClassKind.OBJECT
-    val classToGenerateCreatorsIn =
-      if (isObject) {
-        factoryCls
-      } else {
-        factoryCls.companionObject()!!
-      }
+    val classToGenerateCreatorsIn = factoryCls.factoryHelperDeclarationContainer()
 
     val mergedParameters = allParameters.reduce { current, next ->
       current.mergeValueParametersWithUntyped(next)
@@ -861,6 +852,7 @@ internal class InjectedClassTransformer(
             }
           }
       }
+    generateCompatibilityFactoryHelpers(factoryCls)
     return newInstanceFunction
   }
 }

@@ -34,6 +34,7 @@ import org.jetbrains.kotlin.fir.plugin.createCompanionObject
 import org.jetbrains.kotlin.fir.plugin.createDefaultPrivateConstructor
 import org.jetbrains.kotlin.fir.plugin.createNestedClass
 import org.jetbrains.kotlin.fir.resolve.defaultType
+import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirBackingFieldSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
@@ -104,8 +105,9 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
       // It's a factory's companion object
       emptySet()
     } else if (classSymbol.classId in providerFactoryClassIdsToCallables) {
-      // It's a generated factory, give it a companion object if it isn't going to be an object
-      if (classSymbol.classKind.isObject) {
+      // Compatibility helpers retain the companion as their canonical implementation.
+      val hasStaticHelpers = session.metroFirBuiltIns.options.companionMode.usesStaticHelpers
+      if (classSymbol.classKind.isObject || hasStaticHelpers) {
         emptySet()
       } else {
         setOf(SpecialNames.DEFAULT_NAME_FOR_COMPANION_OBJECT)
@@ -179,16 +181,25 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
     }
   }
 
+  @OptIn(SymbolInternals::class)
   private fun FirCallableSymbol<*>.asProviderCallable(owner: FirClassSymbol<*>): ProviderCallable? {
-    val instanceReceiver = if (owner.classKind.isObject) null else owner.defaultType()
+    val isStatic = fir.isCompanionBlockMemberCompat
+    val instanceReceiver =
+      if (owner.classKind.isObject || isStatic) {
+        null
+      } else {
+        owner.defaultType()
+      }
     val params =
       when (this) {
-        is FirPropertySymbol -> emptyList()
+        is FirPropertySymbol -> contextParameterSymbols.map { MetroFirValueParameter(session, it) }
         is FirNamedFunctionSymbol ->
-          this.valueParameterSymbols.map { MetroFirValueParameter(session, it) }
+          (contextParameterSymbols + valueParameterSymbols).map {
+            MetroFirValueParameter(session, it)
+          }
         else -> return null
       }
-    return ProviderCallable(owner, this, instanceReceiver, params)
+    return ProviderCallable(owner, this, instanceReceiver, params, isStatic)
   }
 
   private fun buildCallableMetadataAnnotation(sourceCallable: ProviderCallable): FirAnnotation {
@@ -264,6 +275,15 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
             setType = true,
             prefix = null,
           )
+        mapping[Name.identifier("isStatic")] =
+          buildLiteralExpression(
+            source = null,
+            kind = ConstantValueKind.Boolean,
+            value = sourceCallable.isStatic,
+            annotations = null,
+            setType = true,
+            prefix = null,
+          )
       }
     }
   }
@@ -273,14 +293,16 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
     val symbol: FirCallableSymbol<*>,
     val instanceReceiver: ConeClassLikeType?,
     val valueParameters: List<MetroFirValueParameter>,
+    val isStatic: Boolean,
   ) {
     val callableId = CallableId(owner.classId, symbol.name)
     val name = symbol.name
     val shouldGenerateObject by memoize {
-      instanceReceiver == null && (isProperty || valueParameters.isEmpty())
+      val hasReceiverDependency = instanceReceiver != null || symbol.receiverParameterSymbol != null
+      // Factories copy their owner's type parameters. A singleton object can't declare them.
+      val hasCopiedTypeParameters = owner.typeParameterSymbols.isNotEmpty()
+      !hasReceiverDependency && valueParameters.isEmpty() && !hasCopiedTypeParameters
     }
-    private val isProperty
-      get() = symbol is FirPropertySymbol
 
     val returnType
       get() = symbol.resolvedReturnType

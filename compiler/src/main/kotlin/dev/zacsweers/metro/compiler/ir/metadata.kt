@@ -19,8 +19,11 @@ import dev.zacsweers.metro.compiler.proto.SignatureCarrier
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.util.classIdOrFail
+import org.jetbrains.kotlin.ir.util.companionObject
+import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isObject
+import org.jetbrains.kotlin.ir.util.isStatic
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.name.ClassId
 
@@ -150,6 +153,13 @@ private fun createGraphProto(
                 is ProviderFactory.Metro -> factory.signatureCarrier
                 is ProviderFactory.Dagger -> SignatureCarrier.MIRROR_FUNCTION
               },
+            source_callable_is_static = factory.function.isStatic,
+            static_helpers =
+              // Compatibility bridges keep the companion as the canonical binary helper owner.
+              factoryClass.companionObject() == null &&
+                factoryClass.functions.any {
+                  it.name == factory.newInstanceName && it.isStatic
+                },
           )
         }
         .sortedBy { it.class_id },

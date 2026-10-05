@@ -210,6 +210,9 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
     ): Metro? {
       val rawTypeKey = contextKey.typeKey.copy(qualifier = callableMetadata.annotations.qualifier)
       val typeKey = rawTypeKey.transformIfIntoMultibinding(callableMetadata.annotations)
+      val hasInstanceDependency =
+        callableMetadata.function.dispatchReceiverParameter != null &&
+          callableMetadata.function.parentClassOrNull?.isObject != true
 
       // Validate and optionally patch parameter types due to
       // https://github.com/ZacSweers/metro/issues/1556
@@ -226,13 +229,18 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
             }
           },
           reportingFunction = callableMetadata.function,
-          primaryConstructorParamOffset = 1,
+          primaryConstructorParamOffset =
+            if (hasInstanceDependency) {
+              1
+            } else {
+              0
+            },
         ) {
           it
             .parameters()
             .regularParameters
-            // Drop the dispatch receiver if this original class is not an object class
-            .runIf(callableMetadata.function.parentClassOrNull?.isObject != true) { drop(1) }
+            // Instance providers carry their owner as the first helper argument.
+            .runIf(hasInstanceDependency) { drop(1) }
         }
 
       if (hadUnpatchedMismatch) {

@@ -429,9 +429,11 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
         it in injectFactoryClassIdsToSymbols || it in membersInjectorClassIdsToSymbols
       }
     ) {
-      // It's a generated factory/injector, give it a companion object if it isn't going to be an
-      // object
-      if (classSymbol.classKind == ClassKind.OBJECT) {
+      // Companion-block helpers belong directly to the generated class.
+      if (
+        classSymbol.classKind == ClassKind.OBJECT ||
+          session.metroFirBuiltIns.options.companionMode.usesStaticHelpers
+      ) {
         emptySet()
       } else {
         setOf(SpecialNames.DEFAULT_NAME_FOR_COMPANION_OBJECT)
@@ -586,7 +588,9 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
       (isFactoryClass && isObject) ||
         classSymbol.hasOrigin(Keys.InjectConstructorFactoryCompanionDeclaration)
     val isInjectorClass = classSymbol.hasOrigin(Keys.MembersInjectorClassDeclaration)
-    val isInjectorCreatorClass = classSymbol.hasOrigin(Keys.MembersInjectorCompanionDeclaration)
+    val isInjectorCreatorClass =
+      classSymbol.hasOrigin(Keys.MembersInjectorCompanionDeclaration) ||
+        (isInjectorClass && session.metroFirBuiltIns.options.companionMode.requiresCompanionBlocks)
 
     if (!isFactoryClass && !isFactoryCreatorClass && !isInjectorCreatorClass && !isInjectorClass) {
       return emptySet()
@@ -608,7 +612,12 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
     // MembersInjector companion object
     if (isInjectorCreatorClass) {
       names += Symbols.Names.create
-      val targetClass = classSymbol.getContainingClassSymbol()?.classId ?: return emptySet()
+      val targetClass =
+        if (classSymbol.isCompanion) {
+          classSymbol.getContainingClassSymbol()?.classId ?: return emptySet()
+        } else {
+          classSymbol.classId
+        }
       val injectedClass = membersInjectorClassIdsToInjectedClass[targetClass] ?: return emptySet()
       // Only declared members matter here
       names += injectedClass.injectedMembersParamsByMemberKey.keys
@@ -844,9 +853,23 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
                 valueParameters[0].apply {
                   replaceAnnotationsSafe(annotations + buildAssistedAnnotation())
                 }
-                val staticAnnotations = buildStaticAnnotations(session)
-                if (staticAnnotations.isNotEmpty()) {
-                  replaceAnnotationsSafe(annotations + staticAnnotations)
+                val companionUsesStaticBridges =
+                  nonNullContext.owner.isCompanion &&
+                    session.metroFirBuiltIns.options.companionMode.addsStaticHelperBridges
+                if (
+                  nonNullContext.owner.classKind == ClassKind.OBJECT && !companionUsesStaticBridges
+                ) {
+                  val staticAnnotations = buildStaticAnnotations(session)
+                  if (staticAnnotations.isNotEmpty()) {
+                    replaceAnnotationsSafe(annotations + staticAnnotations)
+                  }
+                }
+              }
+              .let { function ->
+                if (nonNullContext.owner.classKind != ClassKind.OBJECT) {
+                  function.markAsCompanionBlockMemberCompat(nonNullContext.owner)
+                } else {
+                  function
                 }
               }
               .symbol as FirNamedFunctionSymbol

@@ -44,6 +44,10 @@ message ProviderFactoryProto {
   InlinedProviderProto inlined = 7;
   // The generated function that carries the source callable's signature.
   SignatureCarrier signature_carrier = 8;
+  // Static source providers have no dispatch receiver.
+  bool source_callable_is_static = 9;
+  // Receiverless helper methods are declared directly on the factory class.
+  bool static_helpers = 10;
 }
 
 // Identifies which generated function carries the source callable's signature.
@@ -89,6 +93,8 @@ message AssistedFactoryImplProto {
 
   // The simple name of the generated impl class
   string impl_class_name = 2;
+  // Receiverless helpers are declared directly on the implementation class.
+  bool static_helpers = 3;
 }
 
 message InjectedClassProto {

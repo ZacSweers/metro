@@ -18,6 +18,7 @@ import dev.zacsweers.metro.compiler.ir.addStaticAnnotations
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.createMetroMetadata
+import dev.zacsweers.metro.compiler.ir.dispatchReceiverFor
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.findInjectableConstructor
 import dev.zacsweers.metro.compiler.ir.generateDefaultConstructorBody
@@ -57,7 +58,6 @@ import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.builders.declarations.buildClass
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
-import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
@@ -74,6 +74,7 @@ import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.addFakeOverrides
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
+import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.copyTypeParametersFrom
 import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
@@ -81,7 +82,6 @@ import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
-import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.simpleFunctions
 import org.jetbrains.kotlin.name.ClassId
@@ -130,17 +130,18 @@ internal class AssistedFactoryTransformer(
         val returnType = samFunction.returnType
         val targetType = returnType.rawType()
 
-        // Generate companion + create() stubs
-        val companionDeclarations =
-          generateCompanionDeclarations(
+        // The producer's metadata determines where its create() helper lives.
+        val creatorDeclarations =
+          generateCreatorDeclarations(
             implClass,
             declaration,
             targetType,
             isExternal = true,
             samFunction,
+            staticHelpers = metadata.static_helpers,
           )
 
-        val metroImpl = AssistedFactoryImpl.Metro(companionDeclarations.createFunction)
+        val metroImpl = AssistedFactoryImpl.Metro(creatorDeclarations.createFunction)
         implsCache[classId] = metroImpl
         return metroImpl
       } else if (options.enableDaggerRuntimeInterop) {
@@ -177,14 +178,14 @@ internal class AssistedFactoryTransformer(
     val returnType = samFunction.returnType
     val targetType = returnType.rawType()
 
-    // Always generate companion + create() stub (for both external and in-compilation)
-    val companionDeclarations =
-      generateCompanionDeclarations(implClass, declaration, targetType, isExternal, samFunction)
+    // Generate the helper declaration before implementing its body.
+    val creatorDeclarations =
+      generateCreatorDeclarations(implClass, declaration, targetType, isExternal, samFunction)
 
     val implementation =
       if (isExternal) {
         // For external declarations, generate stubs only (no bodies, no constructor)
-        AssistedFactoryImpl.Metro(companionDeclarations.createFunction)
+        AssistedFactoryImpl.Metro(creatorDeclarations.createFunction)
       } else {
         // For in-compilation, add constructor and implement bodies
         val injectConstructor =
@@ -218,10 +219,10 @@ internal class AssistedFactoryTransformer(
           samFunction,
           targetType,
           injectConstructor,
-          companionDeclarations,
+          creatorDeclarations,
         )
 
-        AssistedFactoryImpl.Metro(companionDeclarations.createFunction)
+        AssistedFactoryImpl.Metro(creatorDeclarations.createFunction)
       }
 
     implsCache[classId] = implementation
@@ -255,48 +256,52 @@ internal class AssistedFactoryTransformer(
     return implClass
   }
 
-  /** Data class to model the components of the generated companion object */
-  data class ImplCompanionDeclarations(val companion: IrClass, val createFunction: IrSimpleFunction)
+  /** Holds the helper owner and its create function for body generation. */
+  data class ImplCreatorDeclarations(val owner: IrClass, val createFunction: IrSimpleFunction)
 
-  private fun generateCompanionDeclarations(
+  private fun generateCreatorDeclarations(
     implClass: IrClass,
     declaration: IrClass,
     targetType: IrClass,
     isExternal: Boolean,
     samFunction: IrSimpleFunction,
-  ): ImplCompanionDeclarations {
-    val companion =
-      pluginContext.irFactory
-        .buildClass {
-          name = SpecialNames.DEFAULT_NAME_FOR_COMPANION_OBJECT
-          kind = ClassKind.OBJECT
-          visibility = DescriptorVisibilities.PUBLIC
-          origin = Origins.Default
-          isCompanion = true
-        }
-        .apply {
-          superTypes = listOf(irBuiltIns.anyType)
-          createThisReceiverParameter()
-          implClass.addChild(this)
-        }
-
-    val companionReceiver = companion.thisReceiverOrFail
-
-    companion
-      .addConstructor {
-        visibility = DescriptorVisibilities.PRIVATE
-        isPrimary = true
-        origin = Origins.Default
+    staticHelpers: Boolean = options.companionMode.usesStaticHelpers,
+  ): ImplCreatorDeclarations {
+    val helperOwner =
+      if (staticHelpers) {
+        implClass
+      } else {
+        pluginContext.irFactory
+          .buildClass {
+            name = SpecialNames.DEFAULT_NAME_FOR_COMPANION_OBJECT
+            kind = ClassKind.OBJECT
+            visibility = DescriptorVisibilities.PUBLIC
+            origin = Origins.Default
+            isCompanion = true
+          }
+          .apply {
+            superTypes = listOf(irBuiltIns.anyType)
+            createThisReceiverParameter()
+            implClass.addChild(this)
+          }
+          .also { companion ->
+            companion
+              .addConstructor {
+                visibility = DescriptorVisibilities.PRIVATE
+                isPrimary = true
+                origin = Origins.Default
+              }
+              .apply {
+                if (!isExternal) {
+                  body = generateDefaultConstructorBody()
+                }
+              }
+          }
       }
-      .apply {
-        if (!isExternal) {
-          body = generateDefaultConstructorBody()
-        }
-      }
 
-    // Add create function to companion
+    // The static function shares the existing companion helper's signature.
     val createFunction =
-      companion
+      helperOwner
         .addFunction {
           name = Symbols.StringNames.CREATE.asName()
           visibility = DescriptorVisibilities.PUBLIC
@@ -305,7 +310,11 @@ internal class AssistedFactoryTransformer(
           returnType = irBuiltIns.unitType
         }
         .apply {
-          setDispatchReceiver(companionReceiver.copyTo(this))
+          if (!staticHelpers) {
+            setDispatchReceiver(helperOwner.thisReceiverOrFail.copyTo(this))
+          } else {
+            setDispatchReceiver(null)
+          }
           val copiedTypeParameters = copyTypeParametersFrom(declaration)
           val factoryType = declaration.symbol.typeWithParameters(copiedTypeParameters)
           returnType = metroSymbols.metroProvider.typeWith(factoryType)
@@ -337,7 +346,7 @@ internal class AssistedFactoryTransformer(
           // Body will be implemented in implementImplClass
         }
 
-    return ImplCompanionDeclarations(companion, createFunction)
+    return ImplCreatorDeclarations(helperOwner, createFunction)
   }
 
   private fun IrClass.metroFactoryType(typeArguments: List<IrType>): IrType {
@@ -369,7 +378,7 @@ internal class AssistedFactoryTransformer(
     samFunction: IrSimpleFunction,
     targetType: IrClass,
     injectConstructor: IrConstructor,
-    companionDeclarations: ImplCompanionDeclarations,
+    creatorDeclarations: ImplCreatorDeclarations,
   ) {
     // Get the SAM function from the impl class (it's a fake override)
     val implSamFunction =
@@ -469,7 +478,7 @@ internal class AssistedFactoryTransformer(
         }
     }
 
-    companionDeclarations.createFunction.apply {
+    creatorDeclarations.createFunction.apply {
       val factoryParam = regularParameters.single()
       val factoryType = declaration.symbol.typeWithParameters(typeParameters)
       val implType = implClass.symbol.typeWithParameters(typeParameters)
@@ -489,6 +498,12 @@ internal class AssistedFactoryTransformer(
           )
         }
     }
+    generateCompatibilityFactoryHelpers(
+      implClass,
+      listOf(creatorDeclarations.createFunction),
+      // Assisted implementations use their enclosing factory's proto metadata for binary stubs.
+      registerAsMetadataVisible = false,
+    )
 
     // Write metadata to indicate Metro generated this impl
     writeMetadata(declaration, implClass, samFunction.name.asString())
@@ -502,6 +517,11 @@ internal class AssistedFactoryTransformer(
       AssistedFactoryImplProto(
         sam_function_name = samFunctionName,
         impl_class_name = implClass.name.asString(),
+        static_helpers =
+          implClass.companionObject() == null &&
+            implClass.functions.any {
+              it.name == Symbols.Names.create && it.dispatchReceiverParameter == null
+            },
       )
 
     // Store the metadata for this factory class
@@ -566,7 +586,7 @@ internal sealed interface AssistedFactoryImpl {
           (argument as IrTypeProjection).type
         }
       return irInvoke(
-        dispatchReceiver = irGetObject(createFunction.parentAsClass.symbol),
+        dispatchReceiver = dispatchReceiverFor(createFunction),
         callee = createFunction.symbol,
         args = listOf(delegateFactory),
         typeHint = context.metroSymbols.metroProvider.typeWith(factoryType),

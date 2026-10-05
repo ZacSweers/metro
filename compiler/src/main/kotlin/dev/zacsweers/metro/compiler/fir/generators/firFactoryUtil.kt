@@ -13,9 +13,11 @@ import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.copyParameters
 import dev.zacsweers.metro.compiler.fir.generateMemberFunction
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
 import dev.zacsweers.metro.compiler.fir.wrapInProviderIfNecessary
 import dev.zacsweers.metro.compiler.symbols.Symbols
+import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.containingClassForStaticMemberAttr
@@ -139,7 +141,7 @@ internal fun FirDeclarationGenerationExtension.buildFactoryCreateFunction(
             // companion -> class factory -> original class
             containingClassSymbol.getContainingClassSymbol()!!
           } else {
-            // object factory -> original class
+            // factory -> original class
             containingClassSymbol
           }
             as FirClassSymbol<*>
@@ -203,14 +205,27 @@ internal fun FirDeclarationGenerationExtension.buildFactoryCreateFunction(
               .toFirResolvedTypeRef()
         }
       }
-      .also { func ->
+      .let { originalFunction ->
+        val isCompanionBlockMember = context.owner.classKind != ClassKind.OBJECT
+        val function =
+          if (isCompanionBlockMember) {
+            originalFunction.markAsCompanionBlockMemberCompat(context.owner)
+          } else {
+            originalFunction
+          }
         val extraAnnotations = buildList {
           buildHiddenFromObjCAnnotation(session)?.let(::add)
-          addAll(buildStaticAnnotations(session))
+          val companionUsesStaticBridges =
+            context.owner.isCompanion &&
+              session.metroFirBuiltIns.options.companionMode.addsStaticHelperBridges
+          if (!isCompanionBlockMember && !companionUsesStaticBridges) {
+            addAll(buildStaticAnnotations(session))
+          }
         }
         if (extraAnnotations.isNotEmpty()) {
-          func.replaceAnnotationsSafe(func.annotations + extraAnnotations)
+          function.replaceAnnotationsSafe(function.annotations + extraAnnotations)
         }
+        function
       }
       .symbol as FirNamedFunctionSymbol
   }

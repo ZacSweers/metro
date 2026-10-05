@@ -25,6 +25,7 @@ import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.isPropertyAccessor
+import org.jetbrains.kotlin.ir.util.isStatic
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.remapTypes
@@ -40,6 +41,8 @@ internal class IrCallableMetadata(
   val isPropertyAccessor: Boolean,
   /** The name for the generated newInstance function. */
   val newInstanceName: Name?,
+  /** Static providers don't acquire a container receiver during binary reconstruction. */
+  val isStatic: Boolean,
   @Poko.Skip val function: IrSimpleFunction,
   @Poko.Skip val signatureFunction: IrSimpleFunction,
 ) {
@@ -68,6 +71,7 @@ internal class IrCallableMetadata(
         annotations = annotations,
         isPropertyAccessor = isPropertyAccessor,
         newInstanceName = newInstanceName,
+        isStatic = sourceFunction.isStatic,
         function = sourceFunction,
         signatureFunction = signatureFunction,
       )
@@ -98,6 +102,7 @@ internal fun IrAnnotationContainer.irCallableMetadata(
         sourceAnnotations ?: signatureFunction.metroAnnotations(context.metroSymbols.classIds),
       isPropertyAccessor = signatureFunction.isPropertyAccessor,
       newInstanceName = signatureFunction.name,
+      isStatic = signatureFunction.isStatic,
       function = signatureFunction,
       signatureFunction = signatureFunction,
     )
@@ -135,6 +140,7 @@ internal fun IrConstructorCall.toIrCallableMetadata(
   val annoStartOffset = constArgumentOfTypeAt<Int>(2)!!
   val annoEndOffset = constArgumentOfTypeAt<Int>(3)!!
   val newInstanceName = constArgumentOfTypeAt<String>(4)?.asName()
+  val isStatic = constArgumentOfTypeAt<Boolean>(5) == true
   val sourceCallableName = propertyName.ifBlank { callableName }.asName()
   val callableId =
     CallableId(
@@ -152,7 +158,9 @@ internal fun IrConstructorCall.toIrCallableMetadata(
         remapTypes(typeRemapperFor(parentClass.typeParameters.map { it.defaultType }, this))
         typeParameters = emptyList()
       }
-      if (signatureCarrier == SignatureCarrier.CREATOR_FUNCTION && !parentClass.isObject) {
+      val creatorCarriesInstance =
+        signatureCarrier == SignatureCarrier.CREATOR_FUNCTION && !parentClass.isObject && !isStatic
+      if (creatorCarriesInstance) {
         val instanceParameter = regularParameters.firstOrNull()
         if (instanceParameter?.name != Symbols.Names.instance) {
           reportCompilerBug(
@@ -162,8 +170,12 @@ internal fun IrConstructorCall.toIrCallableMetadata(
         parameters = parameters.filterNot { it === instanceParameter }
       }
       // The receiver copy keeps the type parameters owned by the original class.
-      val originalReceiver = parentClass.thisReceiverOrFail
-      setDispatchReceiver(originalReceiver.copyTo(this, type = originalReceiver.type))
+      if (isStatic) {
+        setDispatchReceiver(null)
+      } else {
+        val originalReceiver = parentClass.thisReceiverOrFail
+        setDispatchReceiver(originalReceiver.copyTo(this, type = originalReceiver.type))
+      }
       // Point at the original class
       parent = parentClass
     }
@@ -193,6 +205,7 @@ internal fun IrConstructorCall.toIrCallableMetadata(
     annotations = annotations,
     isPropertyAccessor = propertyName.isNotBlank(),
     newInstanceName = newInstanceName,
+    isStatic = isStatic,
     function = function,
     signatureFunction = signatureFunction,
   )

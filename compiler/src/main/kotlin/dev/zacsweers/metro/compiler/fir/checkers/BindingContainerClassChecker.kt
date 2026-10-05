@@ -49,6 +49,7 @@ import org.jetbrains.kotlin.fir.declarations.utils.nameOrSpecialName
 import org.jetbrains.kotlin.fir.declarations.utils.visibility
 import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
 import org.jetbrains.kotlin.fir.resolve.getSuperTypes
+import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.toLookupTag
@@ -79,6 +80,7 @@ internal object BindingContainerClassChecker : FirClassChecker(MppCheckerKind.Co
     }
   }
 
+  @OptIn(SymbolInternals::class)
   context(context: CheckerContext, reporter: DiagnosticReporter, compatContext: CompatContext)
   private fun checkImpl(declaration: FirClass, source: KtSourceElement) {
     val session = context.session
@@ -300,7 +302,8 @@ internal object BindingContainerClassChecker : FirClassChecker(MppCheckerKind.Co
       if (symbol !is FirCallableSymbol<*>) return@processAllDeclarations
       if (symbol.isAnnotatedWithAny(session, classIds.providesAnnotations)) {
 
-        if (isBindingContainer && isAbstract) {
+        val isStaticProvider = with(compatContext) { symbol.fir.isCompanionBlockMemberCompat }
+        if (isBindingContainer && isAbstract && !isStaticProvider) {
           val type = if (declaration.isInterface) "interface" else "abstract class"
           reporter.reportOn(
             symbol.source,

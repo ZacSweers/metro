@@ -32,6 +32,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider as wrapTypeInPr
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
+import dev.zacsweers.metro.compiler.ir.requireStaticIshDeclarationContainer
 import dev.zacsweers.metro.compiler.ir.toIrType
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.metro.compiler.letIf
@@ -45,6 +46,7 @@ import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.parent
 import org.jetbrains.kotlin.ir.declarations.IrFunction
+import org.jetbrains.kotlin.ir.declarations.IrParameterKind
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
@@ -55,7 +57,6 @@ import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.allParameters
-import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isObject
@@ -479,7 +480,7 @@ private constructor(
                 )
 
               val directExpr: IrExpression =
-                irInvoke(callee = realFunction.symbol, args = args, typeHint = binding.typeKey.type)
+                invokeSourceProvider(realFunction, args, binding.typeKey.type)
               directExpr
                 .letIf(accessType == AccessType.INSTANCE) {
                   maybeTraceDirectExpression(
@@ -663,8 +664,7 @@ private constructor(
                 bindingKind = bindingKind,
               )
           } else {
-            val injectorCreatorClass =
-              if (injectorClass.isObject) injectorClass else injectorClass.companionObject()!!
+            val injectorCreatorClass = injectorClass.requireStaticIshDeclarationContainer()
             val createFunction =
               injectorCreatorClass.requireSimpleFunction(Symbols.StringNames.CREATE)
             val args =
@@ -1204,11 +1204,7 @@ private constructor(
               providerFactory.realDeclaration?.expectAsOrNull<IrFunction>()
                 ?: providerFactory.function
             buildSourceCall = { resolved ->
-              irInvoke(
-                callee = realFunction.symbol,
-                args = resolved,
-                typeHint = binding.typeKey.type,
-              )
+              invokeSourceProvider(realFunction, resolved, binding.typeKey.type)
             }
           } else {
             buildSourceCall = { resolved ->
@@ -1244,6 +1240,34 @@ private constructor(
         }
         .decorateNewSuspendProvider(contextualTypeKey, binding.diagnosticTypeName)
     }
+
+  /** Splits Metro's dependency argument order into Kotlin's receiver and parameter kinds. */
+  context(scope: IrBuilderWithScope)
+  private fun invokeSourceProvider(
+    function: IrFunction,
+    arguments: List<IrExpression?>,
+    typeHint: IrType,
+  ): IrExpression {
+    val parameters = function.parameters().allParameters
+    check(parameters.size == arguments.size) {
+      "Expected ${parameters.size} dependency arguments for ${function.kotlinFqName}, got ${arguments.size}"
+    }
+    val argumentsByKind =
+      parameters
+        .zip(arguments)
+        .groupBy(
+          keySelector = { (parameter, _) -> parameter.asValueParameter.kind },
+          valueTransform = { (_, argument) -> argument },
+        )
+    return scope.irInvoke(
+      callee = function.symbol,
+      dispatchReceiver = argumentsByKind[IrParameterKind.DispatchReceiver]?.single(),
+      extensionReceiver = argumentsByKind[IrParameterKind.ExtensionReceiver]?.single(),
+      contextArgs = argumentsByKind[IrParameterKind.Context].orEmpty(),
+      args = argumentsByKind[IrParameterKind.Regular].orEmpty(),
+      typeHint = typeHint,
+    )
+  }
 
   context(scope: IrBuilderWithScope)
   private fun generateBindingArguments(

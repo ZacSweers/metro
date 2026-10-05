@@ -63,6 +63,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.dedupeParameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parameters.toCanonicalProviderKey
+import dev.zacsweers.metro.compiler.ir.parameters.toConstructorParameter
 import dev.zacsweers.metro.compiler.ir.parametersAsProviderArguments
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
@@ -72,6 +73,7 @@ import dev.zacsweers.metro.compiler.ir.requireDeclarationMirrorFunction
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.requireStaticIshDeclarationContainer
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
+import dev.zacsweers.metro.compiler.ir.staticIshDeclarationContainerOrNull
 import dev.zacsweers.metro.compiler.ir.subcomponentsArgument
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.toClassReferences
@@ -105,6 +107,7 @@ import org.jetbrains.kotlin.ir.builders.declarations.addConstructor
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
 import org.jetbrains.kotlin.ir.builders.declarations.buildClass
 import org.jetbrains.kotlin.ir.builders.declarations.buildProperty
+import org.jetbrains.kotlin.ir.builders.irBoolean
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.builders.irInt
@@ -143,6 +146,7 @@ import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isFakeOverride
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.isPropertyAccessor
+import org.jetbrains.kotlin.ir.util.isStatic
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.packageFqName
@@ -611,7 +615,11 @@ internal class BindingContainerTransformer(
             val copiedSourceFunction =
               signatureFunction.deepCopyWithSymbols().apply {
                 name = reference.callableId.callableName
-                setDispatchReceiver(reference.parent.owner.thisReceiverOrFail.copyTo(this))
+                if (reference.isStatic) {
+                  setDispatchReceiver(null)
+                } else {
+                  setDispatchReceiver(reference.parent.owner.thisReceiverOrFail.copyTo(this))
+                }
                 parent = reference.parent.owner
                 correspondingPropertySymbol = backingField.correspondingPropertySymbol
               }
@@ -621,6 +629,7 @@ internal class BindingContainerTransformer(
               annotations = reference.annotations,
               isPropertyAccessor = reference.isPropertyAccessor,
               newInstanceName = reference.name,
+              isStatic = reference.isStatic,
               function = copiedSourceFunction,
               signatureFunction = signatureFunction,
             )
@@ -741,12 +750,30 @@ internal class BindingContainerTransformer(
         } else {
           IrTypeKey(backingField!!.type)
         }
+      val parameters =
+        if (useBackingField != null) {
+          // Field access uses the field's receiver shape even when a getter exists in IR.
+          val instanceParameter =
+            if (useBackingField.isStatic || parent.isObject) {
+              null
+            } else {
+              parent.thisReceiverOrFail.toConstructorParameter(IrParameterKind.DispatchReceiver)
+            }
+          Parameters.empty()
+            .copy(
+              callableId = callableId,
+              dispatchReceiverParameter = instanceParameter,
+              ir = getter,
+            )
+        } else {
+          getter!!.parameters()
+        }
 
       CallableReference(
         callableId = callableId,
         name = property.name,
         isPropertyAccessor = true,
-        parameters = getter?.parameters() ?: Parameters.empty(),
+        parameters = parameters,
         typeKey = typeKey,
         returnType = getter?.returnType ?: backingField!!.type,
         isNullable = typeKey.type.isMarkedNullable(),
@@ -769,13 +796,7 @@ internal class BindingContainerTransformer(
     useCreatorSignatureCarrier: Boolean,
   ): IrSimpleFunction {
     // If this is an object, we can generate directly into this object
-    val isObject = factoryCls.kind == ClassKind.OBJECT
-    val classToGenerateCreatorsIn =
-      if (isObject) {
-        factoryCls
-      } else {
-        factoryCls.companionObject()!!
-      }
+    val classToGenerateCreatorsIn = factoryCls.factoryHelperDeclarationContainer()
 
     // Generate create()
     @Suppress("RETURN_VALUE_NOT_USED")
@@ -817,12 +838,12 @@ internal class BindingContainerTransformer(
         val parameters = function.regularParameters
 
         val dispatchReceiver =
-          if (reference.isInObject) {
-            null
-          } else {
+          if (reference.parameters.dispatchReceiverParameter != null) {
             // Instance graph call
             // exampleGraph.$callableName$arguments
             irGet(parameters[0])
+          } else {
+            null
           }
 
         if (reference.backingField != null) {
@@ -848,6 +869,7 @@ internal class BindingContainerTransformer(
         }
       }
 
+    generateCompatibilityFactoryHelpers(factoryCls)
     return newInstanceFunction
   }
 
@@ -897,8 +919,9 @@ internal class BindingContainerTransformer(
     val isSuspend: Boolean,
     private val maxGeneratedClassNameLength: Int,
   ) {
-    val isInObject: Boolean
-      get() = parent.owner.isObject
+    /** Static access is determined by the source callable or field. */
+    val isStatic: Boolean
+      get() = callee?.owner?.isStatic ?: backingField?.isStatic ?: false
 
     val containerClass =
       if (parent.owner.isCompanionObject) {
@@ -1246,7 +1269,12 @@ internal class BindingContainerTransformer(
     val existingFactory = container.lookupClass(classId)?.owner
     val stub =
       existingFactory
-        ?: createContributionProviderFactoryStub(container, classId, isObject = entry.is_object)
+        ?: createContributionProviderFactoryStub(
+          container,
+          classId,
+          isObject = entry.is_object,
+          staticHelpers = entry.static_helpers,
+        )
 
     val mirrorFunction =
       if (existingFactory != null) {
@@ -1266,7 +1294,11 @@ internal class BindingContainerTransformer(
       providesFunction
         ?: mirrorFunction.deepCopyWithSymbols().apply {
           name = Name.identifier(entry.callable_name)
-          setDispatchReceiver(container.thisReceiverOrFail.copyTo(this))
+          if (entry.source_callable_is_static) {
+            setDispatchReceiver(null)
+          } else {
+            setDispatchReceiver(container.thisReceiverOrFail.copyTo(this))
+          }
           parent = container
         }
     if (providesFunction == null && entry.property_name.isNotEmpty()) {
@@ -1280,13 +1312,31 @@ internal class BindingContainerTransformer(
     }
     val sourceAnnotations = sourceFunction.metroAnnotations(metroSymbols.classIds)
 
-    // Add creator functions to the stub so IrMetroFactory can find them
-    if (existingFactory == null) {
+    // FIR can export an invisible factory header while its IR-generated helpers stay invisible.
+    val helperOwner =
+      if (entry.static_helpers || entry.is_object) {
+        stub
+      } else {
+        stub.staticIshDeclarationContainerOrNull()
+      }
+    val hasCreateHelper =
+      helperOwner?.functions?.any {
+        it.name == Symbols.Names.create && (!entry.static_helpers || it.isStatic)
+      } == true
+    val propertyHelperName = entry.new_instance_name.removeSurrounding("<get-", ">")
+    val hasNewInstanceHelper =
+      helperOwner?.functions?.any {
+        val matchesName =
+          it.name.asString() == entry.new_instance_name || it.name.asString() == propertyHelperName
+        matchesName && (!entry.static_helpers || it.isStatic)
+      } == true
+    if (!hasCreateHelper || !hasNewInstanceHelper) {
       generateStubCreatorFunctions(
         factoryClass = stub,
         callableName = entry.callable_name,
         returnType = sourceFunction.returnType,
         sourceFunction = sourceFunction,
+        staticHelpers = entry.static_helpers,
       )
     }
 
@@ -1298,6 +1348,7 @@ internal class BindingContainerTransformer(
         annotations = sourceAnnotations,
         isPropertyAccessor = entry.property_name.isNotEmpty(),
         newInstanceName = Name.identifier(entry.new_instance_name),
+        isStatic = entry.source_callable_is_static,
         function = sourceFunction,
         signatureFunction = mirrorFunction,
       )
@@ -1353,6 +1404,7 @@ internal class BindingContainerTransformer(
     parentClass: IrClass,
     classId: ClassId,
     isObject: Boolean,
+    staticHelpers: Boolean = false,
   ): IrClass {
     val classKind = if (isObject) ClassKind.OBJECT else ClassKind.CLASS
 
@@ -1373,7 +1425,7 @@ internal class BindingContainerTransformer(
 
         if (isObject) {
           addDefaultConstructor().apply { visibility = DescriptorVisibilities.PRIVATE }
-        } else {
+        } else if (!staticHelpers) {
           // Non-objects need a companion for create()/newInstance() static methods
           val factoryCls = this
           pluginContext.irFactory
@@ -1402,14 +1454,23 @@ internal class BindingContainerTransformer(
     generatedClassId: ClassId,
     reference: CallableReference,
   ): IrClass {
-    val isObject = reference.parameters.allParameters.isEmpty()
-    return createContributionProviderFactoryStub(parentClass, generatedClassId, isObject).also {
-      it.addCallableMetadataAnnotation(reference)
-      if (options.generateClassesInIr) {
-        metadataDeclarationRegistrarCompat.registerClassAsMetadataVisible(it)
+    // Generic factory owners require a class even when the source provider has no dependencies.
+    val hasCopiedTypeParameters = parentClass.typeParameters.isNotEmpty()
+    val isObject = reference.parameters.allParameters.isEmpty() && !hasCopiedTypeParameters
+    val staticHelpers = !isObject && options.companionMode.usesStaticHelpers
+    return createContributionProviderFactoryStub(
+        parentClass,
+        generatedClassId,
+        isObject,
+        staticHelpers,
+      )
+      .also {
+        it.addCallableMetadataAnnotation(reference)
+        if (options.generateClassesInIr) {
+          metadataDeclarationRegistrarCompat.registerClassAsMetadataVisible(it)
+        }
+        parentClass.declarations.add(it)
       }
-      parentClass.declarations.add(it)
-    }
   }
 
   private fun IrClass.addCallableMetadataAnnotation(reference: CallableReference) {
@@ -1430,6 +1491,7 @@ internal class BindingContainerTransformer(
           annotation.arguments[2] = irInt(target?.startOffset ?: startOffset)
           annotation.arguments[3] = irInt(target?.endOffset ?: endOffset)
           annotation.arguments[4] = irString(reference.name.asString())
+          annotation.arguments[5] = irBoolean(reference.isStatic)
         }
       }
     addAnnotationCompat(callableMetadata)
