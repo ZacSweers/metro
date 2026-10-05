@@ -24,6 +24,7 @@ import org.jetbrains.kotlin.fir.FirAnnotationContainer
 import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.DeprecationsProvider
+import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationStatus
 import org.jetbrains.kotlin.fir.declarations.FirFunction
@@ -765,6 +766,62 @@ public interface CompatContext {
     message = "IrAnnotation arguments moved from getValueArgument(Name) to argumentMapping",
   )
   public fun IrConstructorCall.getAnnotationArgumentCompat(name: Name): IrExpression?
+
+  /** Whether this adapter can use Kotlin's companion-block compiler APIs. */
+  @CompatApi(
+    since = "2.5.0-Beta1",
+    reason = CompatApi.Reason.COMPAT,
+    message =
+      "2.5.0-Beta1 introduced companion-block compiler APIs. Older adapters report unavailable.",
+  )
+  public val supportsCompanionBlocks: Boolean
+    get() = false
+
+  /** Whether this adapter can use Kotlin's companion-extension compiler APIs. */
+  @CompatApi(
+    since = "2.5.0-Beta1",
+    reason = CompatApi.Reason.COMPAT,
+    message =
+      "2.5.0-Beta1 introduced companion-extension compiler APIs. Older adapters report unavailable.",
+  )
+  public val supportsCompanionExtensions: Boolean
+    get() = false
+
+  /** Reads companion-block enablement from this compilation's effective settings. */
+  @CompatApi(
+    since = "2.5.0-Beta1",
+    reason = CompatApi.Reason.COMPAT,
+    message = "LanguageFeature.CompanionBlocks is unavailable before 2.5.0-Beta1",
+  )
+  public fun LanguageVersionSettings.companionBlocksEnabledCompat(): Boolean = false
+
+  /** Reads companion-extension enablement from this compilation's effective settings. */
+  @CompatApi(
+    since = "2.5.0-Beta1",
+    reason = CompatApi.Reason.COMPAT,
+    message = "LanguageFeature.CompanionExtensions is unavailable before 2.5.0-Beta1",
+  )
+  public fun LanguageVersionSettings.companionExtensionsEnabledCompat(): Boolean = false
+
+  /** Identifies a receiverless declaration owned by a companion block. */
+  @CompatApi(
+    since = "2.5.0-Beta1",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message = "FirCallableDeclaration.isCompanionBlockMember is unavailable before 2.5.0-Beta1",
+  )
+  public val FirCallableDeclaration.isCompanionBlockMemberCompat: Boolean
+    get() = false
+
+  /** Returns a static member owned by [owner] and preserves the generated function's symbol. */
+  @CompatApi(
+    since = "2.5.0-Beta1",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message =
+      "2.5.0-Beta1 companion-block functions require a receiverless FIR copy, static status, and containingClassForStaticMemberAttr",
+  )
+  public fun FirFunction.markAsCompanionBlockMemberCompat(owner: FirClassSymbol<*>): FirFunction {
+    error("Companion-block generation requires Kotlin 2.5.0-Beta1 or later.")
+  }
 }
 
 private data class FactoryData(
