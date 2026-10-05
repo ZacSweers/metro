@@ -3414,6 +3414,12 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
       public void testHiltNestedInstallIn() {
         run("HiltNestedInstallIn.kt");
       }
+
+      @Test
+      @TestMetadata("HiltUpstreamModulesDoNotEmitHints.kt")
+      public void testHiltUpstreamModulesDoNotEmitHints() {
+        run("HiltUpstreamModulesDoNotEmitHints.kt");
+      }
     }
 
     @Nested

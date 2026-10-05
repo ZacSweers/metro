@@ -16,6 +16,7 @@ Changelog
 
 - **[FIR]** Reduce redundant lookups when discovering contributed graph extension factories.
 - **[FIR/IC]** Avoid unnecessary recompilation of independent injected classes when generating contribution hints.
+- **[FIR/interop]** Fix duplicate class errors during caused by Hilt interop generating hints for upstream modules.
 - **[FIR/IR/interop]** Fix incremental builds not updating graphs when an upstream Hilt `@AggregatedDeps` marker changes or is removed.
 - **[IR]** Fix member injection across modules when an injected member uses a generic base class's type parameter.
 - **[IR]** Fix missing binding errors for accessors inherited from another module having no source location.
