@@ -878,6 +878,95 @@ class ContributionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(ta
   }
 
   @Test
+  fun bindingContainerReplacementDetectedWhenContributionIsCommentedOutAndRestored() {
+    val fixture =
+      object : MetroProject(multiplatform = false) {
+        override fun buildGradleProject() = multiModuleProject {
+          root {
+            sources(appGraph, fakeProvider, main)
+            dependencies(implementation(":lib"))
+          }
+          subproject("lib") { sources(downloader, realProvider) }
+        }
+
+        private val downloader =
+          source(
+            """
+            class Downloader(val tag: String)
+            """
+              .trimIndent()
+          )
+
+        private val realProvider =
+          source(
+            """
+            @ContributesTo(AppScope::class)
+            @BindingContainer
+            object RealProvider {
+              @Provides fun realDownloader(): Downloader = Downloader("real")
+            }
+            """
+              .trimIndent()
+          )
+
+        val fakeProviderContent =
+          """
+          @ContributesTo(AppScope::class, replaces = [RealProvider::class])
+          @BindingContainer
+          object FakeProvider {
+            @Provides fun fakeProvider(): Downloader = Downloader("fake")
+          }
+          """
+            .trimIndent()
+
+        val fakeProvider = source(fakeProviderContent)
+
+        private val appGraph =
+          source(
+            """
+            @DependencyGraph(AppScope::class)
+            interface AppGraph {
+              val downloader: Downloader
+            }
+            """
+              .trimIndent()
+          )
+
+        private val main =
+          source(
+            """
+            fun main(): String = createGraph<AppGraph>().downloader.tag
+            """
+              .trimIndent()
+          )
+      }
+    val project = fixture.gradleProject
+
+    fun buildAndAssertTag(expectedTag: String) {
+      val buildResult = project.compileKotlin(":compileKotlin")
+      assertThat(buildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+      assertThat(project.invokeMain<String>(target = null)).isEqualTo(expectedTag)
+    }
+
+    fun modifyFake(content: String) {
+      val updatedSource = source(content, fixture.fakeProvider.name, sourceSet = "main")
+      project.rootDir
+        .resolve("src/main/kotlin/test/FakeProvider.kt")
+        .writeText(updatedSource.source)
+    }
+
+    buildAndAssertTag("fake")
+
+    // Comment out the fake's contribution
+    modifyFake(fixture.fakeProviderContent.replace("@ContributesTo", "// @ContributesTo"))
+    buildAndAssertTag("real")
+
+    // Restore the contribution without touching the graph or provider bodies.
+    modifyFake(fixture.fakeProviderContent)
+    buildAndAssertTag("fake")
+  }
+
+  @Test
   fun mapKeyArgumentChangeDetectedWhenOmittingRedundantMirrors() {
     assumeTrue(getTestCompilerToolingVersion() >= KotlinToolingVersion("2.4.0"))
 
