@@ -473,19 +473,13 @@ internal fun IrBuilderWithScope.irInvoke(
     }
   }
 
-  val argSize =
-    args.size +
-      (contextArgs?.size ?: 0) +
-      (if (finalReceiverExpression != null) {
-        1
-      } else {
-        0
-      }) +
-      (if (extensionReceiver != null) {
-        1
-      } else {
-        0
-      })
+  var argSize = args.size + (contextArgs?.size ?: 0)
+  if (finalReceiverExpression != null) {
+    argSize++
+  }
+  if (extensionReceiver != null) {
+    argSize++
+  }
   val hasExpectedReceivers =
     (target.dispatchReceiverParameter != null) == (finalReceiverExpression != null) &&
       (target.extensionReceiverParameterCompat != null) == (extensionReceiver != null)
