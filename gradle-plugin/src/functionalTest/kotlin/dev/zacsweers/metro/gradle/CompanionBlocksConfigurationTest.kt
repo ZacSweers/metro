@@ -57,10 +57,10 @@ class CompanionBlocksConfigurationTest {
           .gradleProject
       val result = buildAndFail(project.rootDir, "compileKotlin", "--console=plain")
       val expectedRequirement =
-        if (getTestCompilerToolingVersion() >= KotlinToolingVersion("2.5.0-Beta1")) {
+        if (getTestCompilerToolingVersion() >= KotlinToolingVersion("2.5.0-dev-6460")) {
           "-Xcompanion-blocks or -Xcompanion-blocks-and-extensions"
         } else {
-          "Kotlin 2.5.0-Beta1 or later"
+          "Kotlin 2.5.0-dev-6460 or later"
         }
       assertThat(result.output).contains("companion-mode=")
       assertThat(result.output).contains(expectedRequirement)

@@ -58,7 +58,7 @@ class CompanionCapabilitiesTest {
 
   private fun currentCompanionContext(): CompatContext {
     val currentVersion = CompatContext.Factory.loadCompilerVersion()
-    assumeTrue(currentVersion >= KotlinToolingVersion("2.5.0-Beta1"))
+    assumeTrue(currentVersion >= KotlinToolingVersion("2.5.0-dev-6460"))
     val compatContext = CompatContext.create()
     assertTrue(compatContext.supportsCompanionBlocks)
     assertTrue(compatContext.supportsCompanionExtensions)

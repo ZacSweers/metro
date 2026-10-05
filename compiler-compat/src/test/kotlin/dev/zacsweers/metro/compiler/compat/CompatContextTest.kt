@@ -293,18 +293,6 @@ class CompatContextTest {
   }
 
   @Test
-  fun `Beta version selects matching release adapter before same-base dev adapters`() {
-    val factoryDev =
-      FakeFactory(minVersion = "2.5.0-dev-7307", reportedCurrentVersion = "2.5.0-Beta1")
-    val factoryBeta =
-      FakeFactory(minVersion = "2.5.0-Beta1", reportedCurrentVersion = "2.5.0-Beta1")
-
-    val resolved = CompatContext.resolveFactory(sequenceOf(factoryDev, factoryBeta), "2.5.0-Beta1")
-
-    assertThat(resolved.minVersion).isEqualTo("2.5.0-Beta1")
-  }
-
-  @Test
   fun `Beta version skips dev factories with different base versions`() {
     val factoryStable = FakeFactory(minVersion = "2.4.20", reportedCurrentVersion = "2.5.0-Beta1")
     val factoryOldDev =

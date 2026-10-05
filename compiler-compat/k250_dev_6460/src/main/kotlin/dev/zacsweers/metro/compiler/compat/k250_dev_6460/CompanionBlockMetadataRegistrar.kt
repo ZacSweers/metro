@@ -1,6 +1,6 @@
 // Copyright (C) 2026 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
-package dev.zacsweers.metro.compiler.compat.k250_beta1
+package dev.zacsweers.metro.compiler.compat.k250_dev_6460
 
 import dev.zacsweers.metro.compiler.compat.IrGeneratedDeclarationsRegistrarCompat
 import org.jetbrains.kotlin.fir.backend.FirMetadataSource
@@ -10,7 +10,7 @@ import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.util.isObject
 
-/** Supplies the companion-block metadata flags omitted by Beta1's IR declaration registrar. */
+/** Supplies the companion-block metadata flags omitted by Kotlin's IR declaration registrar. */
 internal class CompanionBlockMetadataRegistrar(
   private val delegate: IrGeneratedDeclarationsRegistrarCompat
 ) : IrGeneratedDeclarationsRegistrarCompat by delegate {

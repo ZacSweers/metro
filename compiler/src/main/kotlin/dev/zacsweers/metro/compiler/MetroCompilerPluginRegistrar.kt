@@ -103,7 +103,8 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
       if (!compatContext.supportsCompanionBlocks) {
         messageCollector.report(
           CompilerMessageSeverity.ERROR,
-          "companion-mode=${options.companionMode.name} requires " + "Kotlin 2.5.0-Beta1 or later.",
+          "companion-mode=${options.companionMode.name} requires " +
+            "Kotlin 2.5.0-dev-6460 or later.",
         )
         return
       }
