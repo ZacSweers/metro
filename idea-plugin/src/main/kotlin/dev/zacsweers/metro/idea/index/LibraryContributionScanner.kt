@@ -315,7 +315,15 @@ internal class LibraryContributionScanner(
       val memberHolders = listOf(ktClass) + ktClass.declarations.filterIsInstance<KtClassOrObject>()
       for (holder in memberHolders) {
         ProgressManager.checkCanceled()
-        for (member in holder.declarations.filterIsInstance<KtCallableDeclaration>()) {
+        val staticMembers =
+          (holder.symbol as? KaNamedClassSymbol)
+            ?.staticDeclaredMemberScope
+            ?.callables
+            ?.mapNotNull { it.psi as? KtCallableDeclaration }
+            .orEmpty()
+        val members =
+          (holder.declarations.filterIsInstance<KtCallableDeclaration>() + staticMembers).distinct()
+        for (member in members) {
           for (data in member.bindingData(this, options, recordFile)) {
             val matchingContribution = classContributions.firstOrNull { contribution ->
               contribution.key == data.key &&

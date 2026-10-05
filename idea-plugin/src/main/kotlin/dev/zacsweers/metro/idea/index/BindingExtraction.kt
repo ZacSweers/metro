@@ -42,6 +42,7 @@ import org.jetbrains.kotlin.analysis.api.symbols.KaPropertySymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolModality
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolOrigin
 import org.jetbrains.kotlin.analysis.api.symbols.KaValueParameterSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.contextParameters
 import org.jetbrains.kotlin.analysis.api.types.KaClassType
 import org.jetbrains.kotlin.analysis.api.types.KaType
 import org.jetbrains.kotlin.lexer.KtTokens
@@ -60,6 +61,7 @@ import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtParameter
 import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.kotlin.psi.KtPropertyAccessor
+import org.jetbrains.kotlin.psi.psiUtil.containingClassOrObject
 
 // Dagger interop: `@BindsOptionalOf fun foo(): Foo` makes `java.util.Optional<Foo>` available,
 // mirroring the compiler's IrBinding.CustomWrapper. Only active when Dagger runtime interop is on.
@@ -171,15 +173,33 @@ internal class CallableBindingView(
   val returnType: KaType,
   val receiver: CallableParameterView?,
   val valueParameters: List<CallableParameterView>,
-)
+  val contextParameters: List<CallableParameterView>,
+) {
+  /** Provider dependencies follow Metro's context and ordinary parameter order. */
+  val dependencyParameters: List<CallableParameterView> = contextParameters + valueParameters
+}
+
+/** Uses the static scope so extraction also works on IDEs predating companion blocks. */
+internal fun KaSession.isStaticProvider(symbol: KaCallableSymbol): Boolean {
+  val declaration = symbol.psi as? KtCallableDeclaration ?: return false
+  val owner = declaration.containingClassOrObject?.symbol as? KaClassSymbol ?: return false
+  return owner.staticDeclaredMemberScope.callables.any { it == symbol }
+}
 
 internal fun callableBindingView(symbol: KaCallableSymbol): CallableBindingView {
   val receiver = symbol.receiverParameter?.let { CallableParameterView(it, it.returnType) }
+  val contextParameters = symbol.contextParameters.map { CallableParameterView(it, it.returnType) }
   val valueParameters =
     (symbol as? KaNamedFunctionSymbol)?.valueParameters.orEmpty().map {
       CallableParameterView(it, it.returnType)
     }
-  return CallableBindingView(symbol, symbol.returnType, receiver, valueParameters)
+  return CallableBindingView(
+    symbol,
+    symbol.returnType,
+    receiver,
+    valueParameters,
+    contextParameters,
+  )
 }
 
 /** Unwraps fake overrides for source metadata while retaining [signature]'s substituted types. */
@@ -189,7 +209,9 @@ internal fun KaSession.callableBindingView(
   val sourceSymbol = signature.symbol.fakeOverrideOriginal
   val sourceParameters = (sourceSymbol as? KaNamedFunctionSymbol)?.valueParameters.orEmpty()
   val signatureParameters = (signature as? KaFunctionSignature<*>)?.valueParameters.orEmpty()
-  if (sourceParameters.size != signatureParameters.size) return null
+  if (sourceParameters.size != signatureParameters.size) {
+    return null
+  }
 
   val receiver =
     sourceSymbol.receiverParameter?.let { sourceReceiver ->
@@ -199,7 +221,21 @@ internal fun KaSession.callableBindingView(
   val valueParameters = signatureParameters.mapIndexed { index, parameter ->
     CallableParameterView(sourceParameters[index], parameter.returnType)
   }
-  return CallableBindingView(sourceSymbol, signature.returnType, receiver, valueParameters)
+  val sourceContextParameters = sourceSymbol.contextParameters
+  val signatureContextParameters = signature.contextParameters
+  if (sourceContextParameters.size != signatureContextParameters.size) {
+    return null
+  }
+  val contextParameters = signatureContextParameters.mapIndexed { index, parameter ->
+    CallableParameterView(sourceContextParameters[index], parameter.returnType)
+  }
+  return CallableBindingView(
+    sourceSymbol,
+    signature.returnType,
+    receiver,
+    valueParameters,
+    contextParameters,
+  )
 }
 
 /** Resolves an assisted factory's SAM for the concrete type requested by its graph. */
@@ -460,7 +496,7 @@ internal fun CallableBindingView.bindingData(
           callable.receiver?.let { dependencyKey(it.returnType, it.symbol, options) }
         val dependencies =
           listOfNotNull(receiverDependency) +
-            callable.valueParameters
+            callable.dependencyParameters
               .filterIndexed { index, parameter ->
                 checkCanceledEvery(index)
                 !parameter.symbol.hasAnyAnnotation(options.assistedAnnotations)
