@@ -1,0 +1,240 @@
+@Inject
+class InjectedValue<T : Any?> {
+  val value: T
+    field = value
+    get
+
+  lateinit var values: List<T>
+    get
+    set
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory<T : Any?> : Factory<InjectedValue<T>> {
+    private /* final field */ val value: Provider<T> = value
+    private /* final field */ val values: Provider<List<T>> = values
+    @HiddenFromObjC
+    private constructor(value: Provider<T>, values: Provider<List<T>>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    companion fun <T : Any?> create(value: Provider<T>, values: Provider<List<T>>): MetroFactory<T> {
+      return MetroFactory<T>(value = value, values = values)
+    }
+
+    @HiddenFromObjC
+    companion fun <T : Any?> newInstance(value: T): InjectedValue<T> {
+      return InjectedValue<T>(value = value)
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun <T : Any?> declarationMirror(value: T): InjectedValue<T> {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): InjectedValue<T> {
+      val tmp0: InjectedValue<T> = newInstance<T>(value = <this>.#value.invoke())
+      injectValues</* null */>(instance = tmp0, values = <this>.#values.invoke())
+      return tmp0
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroMembersInjector<T : Any?> : MembersInjector<InjectedValue<T>> {
+    private /* final field */ val values: Provider<List<T>> = values
+    private constructor(values: Provider<List<T>>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    companion fun <T : Any?> create(values: Provider<List<T>>): MembersInjector<InjectedValue<T>> {
+      return MetroMembersInjector<T>(values = values)
+    }
+
+    companion fun <T : Any?> injectValues(@Assisted instance: InjectedValue<T>, values: List<T>) {
+      return instance.#values = values
+    }
+
+    override fun injectMembers(instance: InjectedValue<T>) {
+      injectValues<T>(instance = instance, values = <this>.#values.invoke())
+    }
+
+  }
+
+  private constructor(value: T) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@Inject
+class SingletonValue {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  object MetroFactory : Factory<SingletonValue> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun create(): MetroFactory {
+      return MetroFactory
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun newInstance(): SingletonValue {
+      return SingletonValue()
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): SingletonValue {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): SingletonValue {
+      return MetroFactory.newInstance()
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@DependencyGraph
+interface AppGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : AppGraph {
+    private val thisGraphInstance: Impl
+      field = <this>
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override val singleton: SingletonValue
+      override get(): SingletonValue {
+        return SingletonValue()
+      }
+
+    override val value: InjectedValue<String>
+      override get(): InjectedValue<String> {
+        return create<String>(value = create(instance = <this>.#thisGraphInstance), values = create(instance = <this>.#thisGraphInstance)).invoke()
+      }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "value", propertyName = "", startOffset = 349, endOffset = 389, newInstanceName = "value", isStatic = false)
+  class ValueMetroFactory : Factory<String> {
+    private /* final field */ val instance: AppGraph = instance
+    @HiddenFromObjC
+    private constructor(instance: AppGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    companion fun create(instance: AppGraph): ValueMetroFactory {
+      return ValueMetroFactory(instance = instance)
+    }
+
+    @HiddenFromObjC
+    companion fun value(instance: AppGraph): String {
+      return instance.value()
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): String {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): String {
+      return value(instance = <this>.#instance)
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "values", propertyName = "", startOffset = 392, endOffset = 447, newInstanceName = "values", isStatic = false)
+  class ValuesMetroFactory : Factory<List<String>> {
+    private /* final field */ val instance: AppGraph = instance
+    @HiddenFromObjC
+    private constructor(instance: AppGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    companion fun create(instance: AppGraph): ValuesMetroFactory {
+      return ValuesMetroFactory(instance = instance)
+    }
+
+    @HiddenFromObjC
+    companion fun values(instance: AppGraph): List<String> {
+      return instance.values()
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): List<String> {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): List<String> {
+      return values(instance = <this>.#instance)
+    }
+
+  }
+
+  @GraphFactoryInvokeFunctionMarker
+  final companion operator fun invoke(): AppGraph {
+    return Impl()
+  }
+
+  @Provides
+  fun value(): String {
+    return "static"
+  }
+
+  @Provides
+  fun values(): List<String> {
+    return listOf<String>(element = "static")
+  }
+
+  abstract val singleton: SingletonValue
+    abstract get
+
+  abstract val value: InjectedValue<String>
+    abstract get
+
+}
+

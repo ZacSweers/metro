@@ -1206,6 +1206,200 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
   }
 
   @Nested
+  @TestMetadata("compiler-tests/src/test/data/box/companionblocks")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Companionblocks {
+    private void run(String fileName) {
+      runTest("compiler-tests/src/test/data/box/companionblocks/" + fileName);
+    }
+
+    @Test
+    public void testAllFilesPresentInCompanionblocks() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/companionblocks"), Pattern.compile("^(.+)\\.kt$"), null, true);
+    }
+
+    @Test
+    @TestMetadata("CompanionObjectHelpers.kt")
+    public void testCompanionObjectHelpers() {
+      run("CompanionObjectHelpers.kt");
+    }
+
+    @Test
+    @TestMetadata("CompatibilityHelpersAcrossModules.kt")
+    public void testCompatibilityHelpersAcrossModules() {
+      run("CompatibilityHelpersAcrossModules.kt");
+    }
+
+    @Test
+    @TestMetadata("GenericGraphCreator.kt")
+    public void testGenericGraphCreator() {
+      run("GenericGraphCreator.kt");
+    }
+
+    @Test
+    @TestMetadata("GenericProviderAcrossModules.kt")
+    public void testGenericProviderAcrossModules() {
+      run("GenericProviderAcrossModules.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphBlockAcrossModules.kt")
+    public void testGraphBlockAcrossModules() {
+      run("GraphBlockAcrossModules.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphBlockDefaultsAcrossModules.kt")
+    public void testGraphBlockDefaultsAcrossModules() {
+      run("GraphBlockDefaultsAcrossModules.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphBlockExtensions.kt")
+    public void testGraphBlockExtensions() {
+      run("GraphBlockExtensions.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphBlockInheritedFactory.kt")
+    public void testGraphBlockInheritedFactory() {
+      run("GraphBlockInheritedFactory.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphBlockMode.kt")
+    public void testGraphBlockMode() {
+      run("GraphBlockMode.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphBlockSingleton.kt")
+    public void testGraphBlockSingleton() {
+      run("GraphBlockSingleton.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphCompatibilityDefaultsAcrossModules.kt")
+    public void testGraphCompatibilityDefaultsAcrossModules() {
+      run("GraphCompatibilityDefaultsAcrossModules.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphCompatibilityMode.kt")
+    public void testGraphCompatibilityMode() {
+      run("GraphCompatibilityMode.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphNoneAcrossModules.kt")
+    public void testGraphNoneAcrossModules() {
+      run("GraphNoneAcrossModules.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphNoneMode.kt")
+    public void testGraphNoneMode() {
+      run("GraphNoneMode.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphObjectMode.kt")
+    public void testGraphObjectMode() {
+      run("GraphObjectMode.kt");
+    }
+
+    @Test
+    @TestMetadata("InvisibleHelpersAcrossModules.kt")
+    public void testInvisibleHelpersAcrossModules() {
+      run("InvisibleHelpersAcrossModules.kt");
+    }
+
+    @Test
+    @TestMetadata("ProviderBackingFieldsCreatorCarrier.kt")
+    public void testProviderBackingFieldsCreatorCarrier() {
+      run("ProviderBackingFieldsCreatorCarrier.kt");
+    }
+
+    @Test
+    @TestMetadata("ProviderBackingFieldsMirrorCarrier.kt")
+    public void testProviderBackingFieldsMirrorCarrier() {
+      run("ProviderBackingFieldsMirrorCarrier.kt");
+    }
+
+    @Test
+    @TestMetadata("ProviderContextParameters.kt")
+    public void testProviderContextParameters() {
+      run("ProviderContextParameters.kt");
+    }
+
+    @Test
+    @TestMetadata("ProviderCreatorSignatureCarriers.kt")
+    public void testProviderCreatorSignatureCarriers() {
+      run("ProviderCreatorSignatureCarriers.kt");
+    }
+
+    @Test
+    @TestMetadata("ProviderMirrorSignatureCarriers.kt")
+    public void testProviderMirrorSignatureCarriers() {
+      run("ProviderMirrorSignatureCarriers.kt");
+    }
+
+    @Test
+    @TestMetadata("Providers.kt")
+    public void testProviders() {
+      run("Providers.kt");
+    }
+
+    @Test
+    @TestMetadata("ProvidersAcrossModules.kt")
+    public void testProvidersAcrossModules() {
+      run("ProvidersAcrossModules.kt");
+    }
+
+    @Test
+    @TestMetadata("StaticHelperBytecode.kt")
+    public void testStaticHelperBytecode() {
+      run("StaticHelperBytecode.kt");
+    }
+
+    @Test
+    @TestMetadata("StaticHelperJavaConsumer.kt")
+    public void testStaticHelperJavaConsumer() {
+      run("StaticHelperJavaConsumer.kt");
+    }
+
+    @Test
+    @TestMetadata("StaticHelpers.kt")
+    public void testStaticHelpers() {
+      run("StaticHelpers.kt");
+    }
+
+    @Test
+    @TestMetadata("StaticHelpersAcrossModules.kt")
+    public void testStaticHelpersAcrossModules() {
+      run("StaticHelpersAcrossModules.kt");
+    }
+
+    @Test
+    @TestMetadata("StaticHelpersDisabledProducerEnabledConsumer.kt")
+    public void testStaticHelpersDisabledProducerEnabledConsumer() {
+      run("StaticHelpersDisabledProducerEnabledConsumer.kt");
+    }
+
+    @Test
+    @TestMetadata("StaticHelpersEnabledProducerDisabledConsumer.kt")
+    public void testStaticHelpersEnabledProducerDisabledConsumer() {
+      run("StaticHelpersEnabledProducerDisabledConsumer.kt");
+    }
+
+    @Test
+    @TestMetadata("StaticHelpersMirrorCarrier.kt")
+    public void testStaticHelpersMirrorCarrier() {
+      run("StaticHelpersMirrorCarrier.kt");
+    }
+  }
+
+  @Nested
   @TestMetadata("compiler-tests/src/test/data/box/contributesgraphextension")
   @TestDataPath("$PROJECT_ROOT")
   public class Contributesgraphextension {

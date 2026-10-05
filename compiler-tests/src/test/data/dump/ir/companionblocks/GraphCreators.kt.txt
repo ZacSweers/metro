@@ -1,0 +1,72 @@
+@DependencyGraph
+interface EmptyGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : EmptyGraph {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+  }
+
+  @GraphFactoryInvokeFunctionMarker
+  final companion operator fun invoke(): EmptyGraph {
+    return Impl()
+  }
+
+}
+
+@DependencyGraph
+interface InputGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : InputGraph {
+    private val textInstance: String
+      field = text
+
+    private constructor(@Provides text: String) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override val text: String
+      override get(): String {
+        return <this>.#textInstance
+      }
+
+  }
+
+  @DependencyGraph.Factory
+  fun interface Factory {
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    @MetroImplMarker
+    object Impl : Factory {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @GraphFactoryInvokeFunctionMarker
+      override fun build(@Provides text: String): InputGraph {
+        return Impl(text = text)
+      }
+
+    }
+
+    abstract fun build(@Provides text: String): InputGraph
+
+  }
+
+  @GraphFactoryInvokeFunctionMarker
+  final companion fun build(@Provides text: String): InputGraph {
+    return Impl(text = text)
+  }
+
+  abstract val text: String
+    abstract get
+
+}
