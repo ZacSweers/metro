@@ -348,7 +348,9 @@ class MetroArtifactsTest {
       testCompilerVersion >= KotlinToolingVersion("2.3.0") &&
         testCompilerVersion < KotlinToolingVersion("2.3.20-Beta2")
     val generateClassesInIrEnabled = testCompilerVersion >= KotlinToolingVersion("2.4.20-dev-6138")
-    val omitRedundantMirrors = getTestOmitRedundantMirrorsOverride() == true
+    val omitRedundantMirrors =
+      getTestOmitRedundantMirrorsOverride()
+        ?: (testCompilerVersion >= KotlinToolingVersion("2.4.0"))
     val privateProviderPropertiesEnabled =
       testCompilerVersion >= KotlinToolingVersion("2.4.20-Beta1")
 

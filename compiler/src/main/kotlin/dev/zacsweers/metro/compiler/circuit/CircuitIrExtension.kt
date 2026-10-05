@@ -7,6 +7,7 @@ import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.ir.abstractFunctions
+import dev.zacsweers.metro.compiler.ir.addDefaultConstructor
 import dev.zacsweers.metro.compiler.ir.annotationsCompat
 import dev.zacsweers.metro.compiler.ir.classReferenceArgument
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
@@ -46,7 +47,6 @@ import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irIs
 import org.jetbrains.kotlin.ir.builders.irNull
 import org.jetbrains.kotlin.ir.builders.irReturn
-import org.jetbrains.kotlin.ir.builders.irSamConversion
 import org.jetbrains.kotlin.ir.builders.irTemporary
 import org.jetbrains.kotlin.ir.builders.irWhen
 import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
@@ -1059,23 +1059,35 @@ private class CircuitIrFactoryTransformer(
               modifierParam?.let { put(it.name, CircuitNames.modifier) }
             }
 
-            val lambda =
-              buildComposableLambda(
+            if (target == CircuitCodegenTarget.SUBCIRCUIT) {
+              //  Kotlin 2.5.0-Beta1 stopped transforming the SAM method in
+              // overriddenFunctionSymbol.
+              // A concrete override makes Compose transform SubUi.Content through
+              // overriddenSymbols.
+              // https://github.com/JetBrains/kotlin/commit/3286b986762de1ee616fb239d5e1f1fdefeb82e8
+              generateSubUiInstance(
                 createFunction = createFunction,
                 originalFunction = originalFunction,
                 originalFunctionSymbol = originalFunctionSymbol,
-                returnType = pluginContext.irBuiltIns.unitType,
-                lambdaParamTypes =
-                  listOf(
-                    CircuitNames.state to stateType,
-                    CircuitNames.modifier to symbols.modifier.defaultType,
-                  ),
+                stateType = stateType,
                 capturedParams = allAvailableParams,
-                lambdaParamBindings = lambdaParamBindings,
+                parameterBindings = lambdaParamBindings,
               )
-            if (target == CircuitCodegenTarget.SUBCIRCUIT) {
-              irSamConversion(lambda, symbols.ui(target).typeWith(stateType))
             } else {
+              val lambda =
+                buildComposableLambda(
+                  createFunction = createFunction,
+                  originalFunction = originalFunction,
+                  originalFunctionSymbol = originalFunctionSymbol,
+                  returnType = pluginContext.irBuiltIns.unitType,
+                  lambdaParamTypes =
+                    listOf(
+                      CircuitNames.state to stateType,
+                      CircuitNames.modifier to symbols.modifier.defaultType,
+                    ),
+                  capturedParams = allAvailableParams,
+                  lambdaParamBindings = lambdaParamBindings,
+                )
               irInvoke(
                 callee = symbols.uiFun,
                 typeArgs = listOf(stateType),
@@ -1085,6 +1097,55 @@ private class CircuitIrFactoryTransformer(
           }
         }
       +factoryCall
+    }
+  }
+
+  private fun IrBuilderWithScope.generateSubUiInstance(
+    createFunction: IrSimpleFunction,
+    originalFunction: IrSimpleFunction,
+    originalFunctionSymbol: IrSimpleFunctionSymbol,
+    stateType: IrType,
+    capturedParams: Map<Name, IrValueDeclaration>,
+    parameterBindings: Map<Name, Name>,
+  ): IrExpression {
+    val implementation =
+      pluginContext.irFactory
+        .buildClass {
+          startOffset = SYNTHETIC_OFFSET
+          endOffset = SYNTHETIC_OFFSET
+          name = Name.identifier("SubUiImpl")
+          kind = ClassKind.CLASS
+          visibility = DescriptorVisibilities.LOCAL
+          modality = Modality.FINAL
+          origin = Origins.Default
+        }
+        .apply {
+          parent = createFunction
+          superTypes = listOf(symbols.ui(CircuitCodegenTarget.SUBCIRCUIT).typeWith(stateType))
+          createThisReceiverParameter()
+          addFakeOverrides(generationSupport.irTypeSystemContext)
+        }
+    val constructor = context(pluginContext) { implementation.addDefaultConstructor() }
+    val content = implementation.abstractFunctions().single()
+    content.finalizeFakeOverride(implementation.thisReceiver!!)
+    if (!content.isAnnotatedWithAny(setOf(Symbols.ClassIds.Composable))) {
+      content.addAnnotationCompat(
+        pluginContext.createIrBuilder(content.symbol).run {
+          irAnnotationCompat(composableAnnotationCtor, typeArguments = emptyList())
+        }
+      )
+    }
+    content.body =
+      buildComposableBody(
+        content,
+        originalFunction,
+        originalFunctionSymbol,
+        capturedParams,
+        parameterBindings,
+      )
+    return irBlock {
+      +implementation
+      +irCall(constructor)
     }
   }
 
@@ -1128,35 +1189,14 @@ private class CircuitIrFactoryTransformer(
             addValueParameter(paramName.asString(), paramType)
           }
 
-          // Merge all available params. Lambda parameters are keyed by the corresponding source
-          // function parameter name so source declarations do not need to use `state`/`modifier`.
-          val allParams = buildMap {
-            putAll(capturedParams)
-            val lambdaParamsByName = regularParameters.associateBy { it.name }
-            for ((sourceName, lambdaName) in lambdaParamBindings) {
-              put(sourceName, lambdaParamsByName.getValue(lambdaName))
-            }
-          }
-
           body =
-            pluginContext.createIrBuilder(symbol).irBlockBody {
-              val call =
-                irCall(originalFunctionSymbol).apply {
-                  var argIndex = 0
-                  for (param in originalFunction.regularParameters) {
-                    // Wasm requires precise reference types; cast when the captured value
-                    // (e.g. Screen) is wider than the original function param
-                    // (e.g. CounterScreen). https://github.com/ZacSweers/metro/issues/2227
-                    arguments[argIndex++] =
-                      allParams[param.name]?.let { irGet(it).implicitCastIfNeededTo(param.type) }
-                  }
-                }
-              if (returnType == pluginContext.irBuiltIns.unitType) {
-                +call
-              } else {
-                +irReturn(call)
-              }
-            }
+            buildComposableBody(
+              this,
+              originalFunction,
+              originalFunctionSymbol,
+              capturedParams,
+              lambdaParamBindings,
+            )
         }
 
     return IrFunctionExpressionImpl(
@@ -1169,6 +1209,37 @@ private class CircuitIrFactoryTransformer(
       origin = IrStatementOrigin.LAMBDA,
       function = lambda,
     )
+  }
+
+  private fun buildComposableBody(
+    function: IrSimpleFunction,
+    originalFunction: IrSimpleFunction,
+    originalFunctionSymbol: IrSimpleFunctionSymbol,
+    capturedParams: Map<Name, IrValueDeclaration>,
+    parameterBindings: Map<Name, Name>,
+  ): IrBody {
+    val allParams = buildMap {
+      putAll(capturedParams)
+      val parametersByName = function.regularParameters.associateBy { it.name }
+      for ((sourceName, parameterName) in parameterBindings) {
+        put(sourceName, parametersByName.getValue(parameterName))
+      }
+    }
+    return pluginContext.createIrBuilder(function.symbol).irBlockBody {
+      val call =
+        irCall(originalFunctionSymbol).apply {
+          for ((index, param) in originalFunction.regularParameters.withIndex()) {
+            // Wasm requires the captured value to have the source parameter's precise type.
+            arguments[index] =
+              allParams[param.name]?.let { irGet(it).implicitCastIfNeededTo(param.type) }
+          }
+        }
+      if (function.returnType == pluginContext.irBuiltIns.unitType) {
+        +call
+      } else {
+        +irReturn(call)
+      }
+    }
   }
 
   private fun determineFactoryType(

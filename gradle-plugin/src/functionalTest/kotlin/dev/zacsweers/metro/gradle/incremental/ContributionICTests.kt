@@ -584,7 +584,7 @@ class ContributionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(ta
       }
     }
 
-    val omitRedundantMirrorsEnabled = getTestOmitRedundantMirrorsOverride() == true
+    val omitRedundantMirrorsEnabled = getTestOmitRedundantMirrorsOverride() != false
     val annotationArgumentChangesSupported =
       getTestCompilerToolingVersion() >= KotlinToolingVersion("2.4.0")
     val requiresAnnotationRemovalWorkaround =

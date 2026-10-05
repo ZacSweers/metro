@@ -6,6 +6,7 @@ import dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi
 import dev.zacsweers.metro.gradle.MetroPluginExtension
 import dev.zacsweers.metro.gradle.capitalizeUS
 import java.io.Serializable
+import java.util.concurrent.Callable
 import org.gradle.api.Project
 import org.gradle.api.artifacts.component.ComponentIdentifier
 import org.gradle.api.artifacts.component.ModuleComponentIdentifier
@@ -58,63 +59,76 @@ internal fun registerHiddenDependencyTasks(
       finalizeValueOnRead()
     }
 
-  project.tasks.register(
-    "check${taskQualifier}MetroHiddenDependencies",
-    CheckHiddenMetroDependenciesTask::class.java,
-  ) { task ->
-    val incoming = runtimeConfiguration.get().incoming
-    val artifactViews = buildList {
-      add(
-        incoming.artifactView { view ->
-          view.componentFilter { id ->
-            val key = componentKey(id)
-            val hidden = key !in compileIds.get()
-            val androidVariant = isAndroid && key in runtimeGraph.get().androidComponents
-            hidden && !androidVariant
-          }
-        }
-      )
-      if (isAndroid) {
-        // Android components need a specific artifact type to disambiguate AGP's runtime outputs.
+  val checkTask =
+    project.tasks.register(
+      "check${taskQualifier}MetroHiddenDependencies",
+      CheckHiddenMetroDependenciesTask::class.java,
+    ) { task ->
+      val incoming = runtimeConfiguration.get().incoming
+      val artifactViews = buildList {
         add(
           incoming.artifactView { view ->
-            view.attributes.attribute(
-              ArtifactTypeDefinition.ARTIFACT_TYPE_ATTRIBUTE,
-              "android-classes-jar",
-            )
             view.componentFilter { id ->
               val key = componentKey(id)
               val hidden = key !in compileIds.get()
-              val androidVariant = key in runtimeGraph.get().androidComponents
-              hidden && androidVariant
+              val androidVariant = isAndroid && key in runtimeGraph.get().androidComponents
+              hidden && !androidVariant
             }
           }
         )
+        if (isAndroid) {
+          // Android components need a specific artifact type to disambiguate AGP's runtime outputs.
+          add(
+            incoming.artifactView { view ->
+              view.attributes.attribute(
+                ArtifactTypeDefinition.ARTIFACT_TYPE_ATTRIBUTE,
+                "android-classes-jar",
+              )
+              view.componentFilter { id ->
+                val key = componentKey(id)
+                val hidden = key !in compileIds.get()
+                val androidVariant = key in runtimeGraph.get().androidComponents
+                hidden && androidVariant
+              }
+            }
+          )
+        }
       }
+
+      task.description = "Checks dependencies with hidden Metro hints for $compilationPath"
+      task.compileComponentIds.set(compileIds)
+      task.runtimeDependencyPaths.set(runtimeGraph.map { it.paths })
+      for (view in artifactViews) {
+        val artifacts = view.artifacts
+        task.runtimeArtifacts.addAll(
+          artifacts.resolvedArtifacts.map { resolved ->
+            resolved.map { artifact ->
+              val id = artifact.id.componentIdentifier
+              MetroValidationArtifact(componentKey(id), id.displayName, artifact.file)
+            }
+          }
+        )
+        // Keep the original file collections so Gradle sees each producer's task dependencies.
+        task.runtimeFiles.from(artifacts.artifactFiles)
+      }
+      task.scopes.set(extension.hiddenDependencies.scopes)
+      val interop = extension.interop
+      task.hintFormats.add(HintFormat.METRO)
+      task.hintFormats.addAll(interop.includeHiltAnnotations.formatIfEnabled(HintFormat.HILT))
+      task.reportFile.convention(
+        project.layout.buildDirectory.file("reports/metro/$compilationPath/hidden-dependencies.txt")
+      )
     }
 
-    task.description = "Checks dependencies with hidden Metro hints for $compilationPath"
-    task.compileComponentIds.set(compileIds)
-    task.runtimeDependencyPaths.set(runtimeGraph.map { it.paths })
-    for (view in artifactViews) {
-      val artifacts = view.artifacts
-      task.runtimeArtifacts.addAll(
-        artifacts.resolvedArtifacts.map { resolved ->
-          resolved.map { artifact ->
-            val id = artifact.id.componentIdentifier
-            MetroValidationArtifact(componentKey(id), id.displayName, artifact.file)
-          }
+  compilation.compileTaskProvider.configure { task ->
+    task.finalizedBy(
+      Callable {
+        if (extension.hiddenDependencies.checkOnCompile.get()) {
+          listOf(checkTask)
+        } else {
+          emptyList()
         }
-      )
-      // Keep the original file collections so Gradle sees each producer's task dependencies.
-      task.runtimeFiles.from(artifacts.artifactFiles)
-    }
-    task.scopes.set(extension.aggregationScopes)
-    val interop = extension.interop
-    task.hintFormats.add(HintFormat.METRO)
-    task.hintFormats.addAll(interop.includeHiltAnnotations.formatIfEnabled(HintFormat.HILT))
-    task.reportFile.convention(
-      project.layout.buildDirectory.file("reports/metro/$compilationPath/hidden-dependencies.txt")
+      }
     )
   }
 }

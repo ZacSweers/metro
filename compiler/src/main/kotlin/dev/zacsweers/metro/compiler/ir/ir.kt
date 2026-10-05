@@ -630,15 +630,16 @@ internal fun irLambda(
         valueParameters.forEachIndexed { index, type -> addValueParameter("arg$index", type) }
         body = context.createIrBuilder(this.symbol).irBlockBody { content(this@apply) }
       }
+  val parameterTypes = listOfNotNull(receiverParameter) + valueParameters
   return IrFunctionExpressionImpl(
     startOffset = SYNTHETIC_OFFSET,
     endOffset = SYNTHETIC_OFFSET,
     type =
       run {
         when (suspend) {
-          false -> context.irBuiltIns.functionN(valueParameters.size)
-          else -> context.irBuiltIns.suspendFunctionN(valueParameters.size)
-        }.typeWith(*valueParameters.toTypedArray(), returnType)
+          false -> context.irBuiltIns.functionN(parameterTypes.size)
+          else -> context.irBuiltIns.suspendFunctionN(parameterTypes.size)
+        }.typeWith(*parameterTypes.toTypedArray(), returnType)
       },
     origin = IrStatementOrigin.LAMBDA,
     function = lambda,
