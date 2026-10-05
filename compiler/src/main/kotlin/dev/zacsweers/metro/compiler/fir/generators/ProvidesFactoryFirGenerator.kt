@@ -35,7 +35,6 @@ import org.jetbrains.kotlin.fir.plugin.createCompanionObject
 import org.jetbrains.kotlin.fir.plugin.createDefaultPrivateConstructor
 import org.jetbrains.kotlin.fir.plugin.createNestedClass
 import org.jetbrains.kotlin.fir.resolve.defaultType
-import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirBackingFieldSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
@@ -182,9 +181,8 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
     }
   }
 
-  @OptIn(SymbolInternals::class)
   private fun FirCallableSymbol<*>.asProviderCallable(owner: FirClassSymbol<*>): ProviderCallable? {
-    val isCompanionBlockMember = fir.isCompanionBlockMemberCompat
+    val isCompanionBlockMember = isCompanionBlockMemberCompat
     val instanceReceiver =
       if (owner.classKind.isObject || isCompanionBlockMember) {
         null

@@ -24,7 +24,6 @@ import org.jetbrains.kotlin.fir.FirAnnotationContainer
 import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.DeprecationsProvider
-import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationStatus
 import org.jetbrains.kotlin.fir.declarations.FirFunction
@@ -40,6 +39,7 @@ import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirExtension
 import org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrar
 import org.jetbrains.kotlin.fir.plugin.SimpleFunctionBuildingContext
+import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
@@ -803,13 +803,14 @@ public interface CompatContext {
   )
   public fun LanguageVersionSettings.companionExtensionsEnabledCompat(): Boolean = false
 
-  /** Identifies a receiverless declaration owned by a companion block. */
+  /** Checks companion-block status without exposing FIR internals to callers. */
   @CompatApi(
     since = "2.5.0-dev-6460",
     reason = CompatApi.Reason.ABI_CHANGE,
-    message = "The 2.5.0-dev-6460 adapter reads FirCallableDeclaration.isCompanionBlockMember",
+    message =
+      "The 2.5.0-dev-6460 adapter reads FirCallableDeclaration.isCompanionBlockMember through the callable symbol. SymbolInternals access stays in the adapter.",
   )
-  public val FirCallableDeclaration.isCompanionBlockMemberCompat: Boolean
+  public val FirCallableSymbol<*>.isCompanionBlockMemberCompat: Boolean
     get() = false
 
   /** Returns a static member owned by [owner] and preserves the generated function's symbol. */

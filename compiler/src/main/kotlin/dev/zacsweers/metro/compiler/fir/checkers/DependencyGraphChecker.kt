@@ -62,7 +62,6 @@ import org.jetbrains.kotlin.fir.dispatchReceiverClassTypeOrNull
 import org.jetbrains.kotlin.fir.expectActualMatchingContextFactory
 import org.jetbrains.kotlin.fir.resolve.firClassLike
 import org.jetbrains.kotlin.fir.resolve.getContainingClassSymbol
-import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
@@ -636,7 +635,6 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
   }
 
   /** Reports user statics that would share the generated graph creator's signature. */
-  @OptIn(SymbolInternals::class)
   context(context: CheckerContext, reporter: DiagnosticReporter, compatContext: CompatContext)
   private fun checkStaticCreatorCollisions(graph: FirClass) {
     if (!context.session.metroFirBuiltIns.options.companionMode.requiresCompanionBlocks) {
@@ -688,7 +686,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
         continue
       }
       val isStatic =
-        with(compatContext) { function.fir.isCompanionBlockMemberCompat } ||
+        with(compatContext) { function.isCompanionBlockMemberCompat } ||
           function.isAnnotatedWithAny(
             context.session,
             setOf(Symbols.ClassIds.JvmStatic, Symbols.ClassIds.JsStatic),
@@ -697,7 +695,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
         addAll(
           with(compatContext) { function.contextParameterSymbols }.map { it.resolvedReturnType }
         )
-        function.receiverParameterSymbol?.let { add(it.fir.typeRef.coneType) }
+        function.resolvedReceiverType?.let { add(it) }
         addAll(function.valueParameterSymbols.map { it.resolvedReturnType })
       }
       if (!isStatic || platformParameters != creatorParameters) {
