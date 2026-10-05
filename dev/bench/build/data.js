@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791243516844,
+  "lastUpdate": 1791243707048,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -24808,6 +24808,62 @@ window.BENCHMARK_DATA = {
             "value": 14242.885,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -7.61%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "e4ae2d30~1",
+          "message": "[before] Fix Circuit IR symbol ref (#2900)",
+          "timestamp": "2026-10-05T18:39:52-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/e4ae2d30e01793bc1795aecbb5f4531bd2e75639"
+        },
+        "date": 1791243707048,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18565.428,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "e4ae2d30e01793bc1795aecbb5f4531bd2e75639",
+          "message": "[after] Fix Circuit IR symbol ref (#2900)",
+          "timestamp": "2026-10-05T18:39:52-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/e4ae2d30e01793bc1795aecbb5f4531bd2e75639"
+        },
+        "date": 1791243707049,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18716.963,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +0.82%"
           }
         ]
       }

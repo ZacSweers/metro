@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791243516420,
+  "lastUpdate": 1791243706894,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -24808,6 +24808,62 @@ window.BENCHMARK_DATA = {
             "value": 0.26863695303379653,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: +1.62%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "e4ae2d30~1",
+          "message": "[before] Fix Circuit IR symbol ref (#2900)",
+          "timestamp": "2026-10-05T18:39:52-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/e4ae2d30e01793bc1795aecbb5f4531bd2e75639"
+        },
+        "date": 1791243706894,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.21579299274909974,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "e4ae2d30e01793bc1795aecbb5f4531bd2e75639",
+          "message": "[after] Fix Circuit IR symbol ref (#2900)",
+          "timestamp": "2026-10-05T18:39:52-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/e4ae2d30e01793bc1795aecbb5f4531bd2e75639"
+        },
+        "date": 1791243706895,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.21950453737009226,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: +1.72%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }
