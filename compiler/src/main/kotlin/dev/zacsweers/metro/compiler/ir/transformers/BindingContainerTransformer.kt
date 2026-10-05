@@ -1319,17 +1319,22 @@ internal class BindingContainerTransformer(
       } else {
         stub.staticIshDeclarationContainerOrNull()
       }
+
     val hasCreateHelper =
       helperOwner?.functions?.any {
         it.name == Symbols.Names.create && (!entry.static_helpers || it.isStatic)
       } == true
+
     val propertyHelperName = entry.new_instance_name.removeSurrounding("<get-", ">")
+
     val hasNewInstanceHelper =
       helperOwner?.functions?.any {
         val matchesName =
           it.name.asString() == entry.new_instance_name || it.name.asString() == propertyHelperName
+
         matchesName && (!entry.static_helpers || it.isStatic)
       } == true
+
     if (!hasCreateHelper || !hasNewInstanceHelper) {
       generateStubCreatorFunctions(
         factoryClass = stub,
