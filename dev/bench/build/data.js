@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791243707048,
+  "lastUpdate": 1791247015671,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -24864,6 +24864,62 @@ window.BENCHMARK_DATA = {
             "value": 18716.963,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +0.82%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "9f786baa~1",
+          "message": "[before] Fix duplicate hint gen for hilt (#2915)",
+          "timestamp": "2026-10-05T23:46:23Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/9f786baab6fd35e106419751b72c628bf404ede1"
+        },
+        "date": 1791247015671,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 14564.954000000002,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "9f786baab6fd35e106419751b72c628bf404ede1",
+          "message": "[after] Fix duplicate hint gen for hilt (#2915)",
+          "timestamp": "2026-10-05T23:46:23Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/9f786baab6fd35e106419751b72c628bf404ede1"
+        },
+        "date": 1791247015672,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 13655.807,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -6.24%"
           }
         ]
       }
