@@ -1,3 +1,5 @@
+// METRO_JVM_ONLY
+// The V8 box runner can't load Circuit's Skiko dependency.
 // ENABLE_CIRCUIT
 // ENABLE_SERIALIZATION
 // GENERATE_CONTRIBUTION_HINTS_IN_FIR
