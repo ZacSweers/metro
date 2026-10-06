@@ -97,7 +97,7 @@ interface AppGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideFirst", propertyName = "", startOffset = 271, endOffset = 382, newInstanceName = "provideFirst")
+  @CallableMetadata(callableName = "provideFirst", propertyName = "", startOffset = 271, endOffset = 382, newInstanceName = "provideFirst", isCompanionBlockMember = false)
   class ProvideFirstMetroFactory : Factory<String> {
     private /* final field */ val instance: AppGraph = instance
     private /* final field */ val sharedDependency: Provider<SharedDependency> = sharedDependency
@@ -147,7 +147,7 @@ interface AppGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 98, endOffset = 133, newInstanceName = "provideInt")
+  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 98, endOffset = 133, newInstanceName = "provideInt", isCompanionBlockMember = false)
   class ProvideIntMetroFactory : Factory<Int> {
     private /* final field */ val instance: AppGraph = instance
     companion object Companion {
@@ -194,7 +194,7 @@ interface AppGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideSecond", propertyName = "", startOffset = 386, endOffset = 500, newInstanceName = "provideSecond")
+  @CallableMetadata(callableName = "provideSecond", propertyName = "", startOffset = 386, endOffset = 500, newInstanceName = "provideSecond", isCompanionBlockMember = false)
   class ProvideSecondMetroFactory : Factory<String> {
     private /* final field */ val instance: AppGraph = instance
     private /* final field */ val sharedDependency: Provider<SharedDependency> = sharedDependency
@@ -244,7 +244,7 @@ interface AppGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideSharedDependency", propertyName = "", startOffset = 189, endOffset = 267, newInstanceName = "provideSharedDependency")
+  @CallableMetadata(callableName = "provideSharedDependency", propertyName = "", startOffset = 189, endOffset = 267, newInstanceName = "provideSharedDependency", isCompanionBlockMember = false)
   class ProvideSharedDependencyMetroFactory : Factory<SharedDependency> {
     private /* final field */ val instance: AppGraph = instance
     companion object Companion {

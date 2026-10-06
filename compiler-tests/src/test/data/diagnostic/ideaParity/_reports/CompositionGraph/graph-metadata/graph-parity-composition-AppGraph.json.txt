@@ -100,7 +100,8 @@
     "generateStaticAnnotations": true,
     "enableRuntimeTracing": false,
     "memberNamingStrategy": "DESCRIPTIVE",
-    "maxGeneratedClassNameLength": 233
+    "maxGeneratedClassNameLength": 233,
+    "companionMode": "COMPANION_OBJECT"
   },
   "stats": {
     "providerFactories": 2,

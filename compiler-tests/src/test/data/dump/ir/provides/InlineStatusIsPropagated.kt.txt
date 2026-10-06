@@ -1,7 +1,7 @@
 @BindingContainer
 object Bindings {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideBoolean", propertyName = "", startOffset = 113, endOffset = 194, newInstanceName = "provideBoolean")
+  @CallableMetadata(callableName = "provideBoolean", propertyName = "", startOffset = 113, endOffset = 194, newInstanceName = "provideBoolean", isCompanionBlockMember = false)
   @ComptimeOnly
   object ProvideBooleanMetroFactory : Factory<Boolean> {
     private constructor() /* primary */ {
@@ -38,7 +38,7 @@ object Bindings {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideFloat", propertyName = "", startOffset = 307, endOffset = 441, newInstanceName = "provideFloat")
+  @CallableMetadata(callableName = "provideFloat", propertyName = "", startOffset = 307, endOffset = 441, newInstanceName = "provideFloat", isCompanionBlockMember = false)
   @ComptimeOnly
   object ProvideFloatMetroFactory : Factory<Float> {
     private constructor() /* primary */ {
@@ -75,7 +75,7 @@ object Bindings {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 67, endOffset = 109, newInstanceName = "provideInt")
+  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 67, endOffset = 109, newInstanceName = "provideInt", isCompanionBlockMember = false)
   @ComptimeOnly
   object ProvideIntMetroFactory : Factory<Int> {
     private constructor() /* primary */ {
@@ -112,7 +112,7 @@ object Bindings {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideLong", propertyName = "", startOffset = 198, endOffset = 303, newInstanceName = "provideLong")
+  @CallableMetadata(callableName = "provideLong", propertyName = "", startOffset = 198, endOffset = 303, newInstanceName = "provideLong", isCompanionBlockMember = false)
   @ComptimeOnly
   object ProvideLongMetroFactory : Factory<Long> {
     private constructor() /* primary */ {

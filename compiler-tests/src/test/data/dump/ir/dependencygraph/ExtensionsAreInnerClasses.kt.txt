@@ -61,7 +61,7 @@ interface AppGraph : LoggedInGraph.Factory {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideCount", propertyName = "", startOffset = 290, endOffset = 327, newInstanceName = "provideCount")
+  @CallableMetadata(callableName = "provideCount", propertyName = "", startOffset = 290, endOffset = 327, newInstanceName = "provideCount", isCompanionBlockMember = false)
   class ProvideCountMetroFactory : Factory<Int> {
     private /* final field */ val instance: AppGraph = instance
     companion object Companion {

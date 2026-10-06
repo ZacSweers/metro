@@ -266,7 +266,7 @@ abstract class ProviderContributionContributions {
   @ContributesTo(scope = AppScope::class)
   @Origin(value = ProviderContribution::class, context = "contribution_provider")
   object ToAppScope {
-    @CallableMetadata(callableName = "providesProviderContribution", propertyName = "", startOffset = -1, endOffset = -1, newInstanceName = "providesProviderContribution")
+    @CallableMetadata(callableName = "providesProviderContribution", propertyName = "", startOffset = -1, endOffset = -1, newInstanceName = "providesProviderContribution", isCompanionBlockMember = false)
     object ProvidesProviderContributionMetroFactory : Factory<ProviderBinding> {
       private constructor() /* primary */ {
         super/*Any*/()
@@ -359,7 +359,7 @@ interface ProviderBinding {
 
 @BindingContainer
 object Bindings {
-  @CallableMetadata(callableName = "provideString", propertyName = "", startOffset = 231, endOffset = 287, newInstanceName = "provideString")
+  @CallableMetadata(callableName = "provideString", propertyName = "", startOffset = 231, endOffset = 287, newInstanceName = "provideString", isCompanionBlockMember = false)
   class ProvideStringMetroFactory : Factory<String> {
     private /* final field */ val value: Provider<Int> = value
     companion object Companion {

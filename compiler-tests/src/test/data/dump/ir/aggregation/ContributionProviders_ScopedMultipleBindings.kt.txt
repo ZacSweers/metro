@@ -60,7 +60,7 @@ abstract class ImplContributions {
   @IROnlyFactories
   @ContributesTo(scope = AppScope::class)
   object ToAppScope {
-    @CallableMetadata(callableName = "provideImplAsBar", propertyName = "", startOffset = -1, endOffset = -1, newInstanceName = "provideImplAsBar")
+    @CallableMetadata(callableName = "provideImplAsBar", propertyName = "", startOffset = -1, endOffset = -1, newInstanceName = "provideImplAsBar", isCompanionBlockMember = false)
     class ProvideImplAsBarMetroFactory : Factory<Bar> {
       private /* final field */ val instance: Provider<Any?> = instance
       companion object Companion {
@@ -106,7 +106,7 @@ abstract class ImplContributions {
 
     }
 
-    @CallableMetadata(callableName = "provideImplAsFoo", propertyName = "", startOffset = -1, endOffset = -1, newInstanceName = "provideImplAsFoo")
+    @CallableMetadata(callableName = "provideImplAsFoo", propertyName = "", startOffset = -1, endOffset = -1, newInstanceName = "provideImplAsFoo", isCompanionBlockMember = false)
     class ProvideImplAsFooMetroFactory : Factory<Foo> {
       private /* final field */ val instance: Provider<Any?> = instance
       companion object Companion {
@@ -152,7 +152,7 @@ abstract class ImplContributions {
 
     }
 
-    @CallableMetadata(callableName = "provideScopedInstanceImpl", propertyName = "", startOffset = -1, endOffset = -1, newInstanceName = "provideScopedInstanceImpl")
+    @CallableMetadata(callableName = "provideScopedInstanceImpl", propertyName = "", startOffset = -1, endOffset = -1, newInstanceName = "provideScopedInstanceImpl", isCompanionBlockMember = false)
     class ProvideScopedInstanceImplMetroFactory : Factory<Any?> {
       private /* final field */ val string: Provider<String> = string
       private /* final field */ val longProvider: Provider<Long> = longProvider
