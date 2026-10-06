@@ -8414,11 +8414,15 @@
 <li><strong>[IR]</strong> Fix declaration parents for copied default argument lambdas and callable references, including references inside generated provider wrappers.</li>
 <li><strong>[IR]</strong> Include extension receivers in generated lambda function types, including set and map builder callbacks.</li>
 <li><strong>[IR/native/circuit]</strong> Fix an <code>IrLinkageError</code> in generated <code>SubCircuit</code> UI factories on Kotlin/Native with Kotlin <code>2.5.0-Beta1</code>.</li>
+<li><strong>[FIR]</strong> Fix accessor override status on Kotlin <code>2.5.0-dev-9169</code>.</li>
 </ul>
 <h3 id="changes">Changes<a class="headerlink" href="#changes" title="Permanent link">&para;</a></h3>
 <ul>
+<li><strong>[compat]</strong> Test against Kotlin <code>2.5.0-dev-9169</code>.</li>
 <li><strong>[FIR/IR/IC]</strong> Enable <code>omit-redundant-mirrors</code> by default on Kotlin 2.4.0 and newer to omit generated declaration mirrors when compiler metadata and declaration finders provide the same information. It remains disabled by default on older Kotlin versions. Disable it with <code>compilerOptions.disable("omit-redundant-mirrors")</code> in the <code>metro</code> DSL.</li>
 <li><strong>[Gradle]</strong> <code>enableTopLevelFunctionInjection</code> is <strong>disabled by default</strong> for now on <strong>all</strong> Kotlin versions because it makes incremental builds recompile more files. If you use top-level function injection, enable it with <code>enableTopLevelFunctionInjection.set(true)</code> in the <code>metro</code> DSL. See <a href="../docs/performance/#incremental-compilation">incremental compilation perf docs</a>.</li>
+<li>Test Android Studio Rabbit 1 (<code>2026.2.1.8</code>).</li>
+<li>Test IntelliJ <code>2026.2.3</code>.</li>
 </ul>
 <h3 id="contributors">Contributors<a class="headerlink" href="#contributors" title="Permanent link">&para;</a></h3>
 <p>Special thanks to the following contributors for contributing to this release!</p>
