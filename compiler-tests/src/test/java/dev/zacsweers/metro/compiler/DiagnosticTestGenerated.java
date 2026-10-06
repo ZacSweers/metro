@@ -189,6 +189,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("InvalidGenericScopeAliases_k250.kt")
+    public void testInvalidGenericScopeAliases_k250() {
+      run("InvalidGenericScopeAliases_k250.kt");
+    }
+
+    @Test
     @TestMetadata("MissingBindingInContributionProviderRedirectsToOrigin.kt")
     public void testMissingBindingInContributionProviderRedirectsToOrigin() {
       run("MissingBindingInContributionProviderRedirectsToOrigin.kt");
