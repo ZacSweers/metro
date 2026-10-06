@@ -8,9 +8,15 @@ import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactory1
 import org.jetbrains.kotlin.ir.IrDiagnosticReporter
 import org.jetbrains.kotlin.ir.at
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
+import org.jetbrains.kotlin.ir.declarations.IrFile
+import org.jetbrains.kotlin.ir.fileForTopLevelPluginDeclarations
 
-/** Adapts IR diagnostics to Kotlin 2.5.0-dev-7307. */
+/** Adapts IR APIs to Kotlin 2.5.0-dev-7307. */
 public class CompatContextImpl : CompatContext by DelegateType() {
+  override fun IrFile.clearTopLevelPluginFileMarkerCompat() {
+    fileForTopLevelPluginDeclarations = false
+  }
+
   override fun <A : Any> IrDiagnosticReporter.reportAt(
     declaration: IrDeclaration,
     factory: KtDiagnosticFactory1<A>,

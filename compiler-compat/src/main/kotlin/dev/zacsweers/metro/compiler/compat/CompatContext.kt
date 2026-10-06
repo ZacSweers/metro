@@ -581,6 +581,14 @@ public interface CompatContext {
     replaceAnnotationsCompat(annotationsCompat() + annotation)
   }
 
+  /** Lets a FIR-generated file use normal output tracking for incremental compilation. */
+  @CompatApi(
+    since = "2.5.0-dev-7307",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message = "fileForTopLevelPluginDeclarations moved from backend.common to ir",
+  )
+  public fun IrFile.clearTopLevelPluginFileMarkerCompat()
+
   @CompatApi(
     since = "2.4.0",
     reason = CompatApi.Reason.ABI_CHANGE,

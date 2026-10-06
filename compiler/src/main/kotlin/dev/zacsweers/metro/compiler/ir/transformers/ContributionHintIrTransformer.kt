@@ -10,20 +10,35 @@ import dev.zacsweers.metro.compiler.api.fir.MetroContributions
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.annotationsIn
+import dev.zacsweers.metro.compiler.ir.buildAnnotation
+import dev.zacsweers.metro.compiler.ir.builtinsFinderCompat
+import dev.zacsweers.metro.compiler.ir.linkDeclarationsInCompilation
+import dev.zacsweers.metro.compiler.ir.lookupClass
+import dev.zacsweers.metro.compiler.ir.originClassId
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.scopeOrNull
 import dev.zacsweers.metro.compiler.ir.stubExpressionBody
+import dev.zacsweers.metro.compiler.ir.trackClassLookup
 import dev.zacsweers.metro.compiler.ir.usesContributionProviderPath
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.scopeHintFunctionName
+import kotlin.io.path.Path
+import kotlin.io.path.absolutePathString
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
+import org.jetbrains.kotlin.ir.builders.irString
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.types.classOrFail
+import org.jetbrains.kotlin.ir.util.NaiveSourceBasedFileEntryImpl
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.file
+import org.jetbrains.kotlin.ir.util.fileEntry
 import org.jetbrains.kotlin.ir.util.nestedClasses
+import org.jetbrains.kotlin.ir.util.primaryConstructor
+import org.jetbrains.kotlin.load.kotlin.PackagePartClassUtils
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.JvmStandardClassIds
+import org.jetbrains.kotlin.platform.jvm.isJvm
 
 /**
  * A transformer that generates hint marker functions for _downstream_ compilations. This handles
@@ -45,6 +60,57 @@ internal class ContributionHintIrTransformer(
     if (declaration.origin == Origins.ContributionHint) {
       declaration.apply { body = stubExpressionBody() }
       writeContributionProviderContainer(declaration)
+      prepareHintFile(declaration)
+    }
+  }
+
+  /**
+   * Links FIR-generated hints to their contributing source for incremental compilation. JVM hints
+   * use the source path and retain their unique facade names. Clearing the plugin-file marker lets
+   * JVM output tracking use that source as the owner. KLIB hints use unique sibling paths so
+   * Native's file caches remain distinct. The original FIR file keeps its metadata and symbols.
+   * This works around https://youtrack.jetbrains.com/issue/KT-90002.
+   */
+  private fun prepareHintFile(hint: IrSimpleFunction) {
+    val file = hint.file
+    val contributingClass = hint.regularParameters.single().type.classOrFail.owner
+    val originClassId = contributingClass.originClassId()
+    val sourceClass =
+      if (originClassId != null) {
+        hint.lookupClass(originClassId)?.owner ?: contributingClass
+      } else {
+        contributingClass
+      }
+
+    val hintFileName = Path(file.fileEntry.name).fileName.toString()
+    val isJvm = pluginContext.platform.isJvm()
+    val hintPath =
+      if (isJvm) {
+        sourceClass.fileEntry.name
+      } else {
+        Path(sourceClass.fileEntry.name).parent.resolve(hintFileName).absolutePathString()
+      }
+
+    file.fileEntry = NaiveSourceBasedFileEntryImpl(hintPath)
+    if (isJvm) {
+      file.clearTopLevelPluginFileMarkerCompat()
+      val jvmNameConstructor =
+        builtinsFinderCompat()
+          .findClass(ClassId.topLevel(JvmStandardClassIds.JVM_NAME))!!
+          .owner
+          .primaryConstructor!!
+
+      val jvmNameAnnotation =
+        with(pluginContext) {
+          buildAnnotation(hint.symbol, jvmNameConstructor.symbol) { annotation ->
+            annotation.arguments[0] =
+              irString(PackagePartClassUtils.getFilePartShortName(hintFileName))
+          }
+        }
+      file.addAnnotationCompat(jvmNameAnnotation)
+    } else {
+      trackClassLookup(hint, sourceClass)
+      linkDeclarationsInCompilation(callingFile = file, sourceClass)
     }
   }
 

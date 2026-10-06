@@ -19,6 +19,7 @@ Changelog
 - **[IR]** Fix member injection across modules when an injected member uses a generic base class's type parameter.
 - **[IR]** Fix missing binding errors for accessors inherited from another module having no source location.
 - **[IR]** Fix `MissingRuntimeCoroutines` errors for injected top-level functions pointing at `0:0` in a generated file. They're now reported on the function.
+- **[IR/IC]** Fix stale graphs in incremental builds when a replacing binding container's `@ContributesTo` annotation is removed and restored.
 
 ### Changes
 
@@ -29,6 +30,8 @@ Changelog
 Special thanks to the following contributors for contributing to this release!
 
 - [@agrosner](https://github.com/agrosner)
+- [@joshfriend](https://github.com/joshfriend)
+- [@kevinguitar](https://github.com/kevinguitar)
 
 ### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
 
