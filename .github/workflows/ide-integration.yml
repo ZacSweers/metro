@@ -50,7 +50,6 @@ jobs:
           INPUT_IDE: ${{ github.event.inputs.ide }}
         # language=bash
         run: |
-          python3 scripts/test-generate-ide-ci-matrix.py
           json=$(python3 scripts/generate-ide-ci-matrix.py \
             --event-name "$GITHUB_EVENT_NAME" --ide "$INPUT_IDE")
           echo "ide-matrix=$json" >> "$GITHUB_OUTPUT"
