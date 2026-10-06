@@ -8,6 +8,7 @@ Pre-release versions are normally only tested during their development cycle. Af
 
 | Kotlin version  | Metro versions (inclusive) | Notes                                                 |
 |-----------------|----------------------------|-------------------------------------------------------|
+| 2.5.0-dev-9169  | unreleased -               |                                                       |
 | 2.5.0-dev-7307  | unreleased -               |                                                       |
 | 2.5.0-dev-6460  | 1.4.3 -                    |                                                       |
 | 2.5.0-dev-4967  | 1.4.3 - [1.4.3]            |                                                       |

@@ -1,5 +1,5 @@
 // RENDER_DIAGNOSTICS_FULL_TEXT
-// TARGET_BACKEND: JVM_IR
+// TARGET_BACKEND: JVM
 
 import kotlin.reflect.KClass
 

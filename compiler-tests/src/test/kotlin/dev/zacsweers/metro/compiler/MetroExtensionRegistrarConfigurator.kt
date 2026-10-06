@@ -69,6 +69,7 @@ fun TestConfigurationBuilder.configurePlugin(
   )
 
   useDirectives(MetroDirectives, CliDirectives)
+  configureTestPhaseCompat()
 
   useCustomRuntimeClasspathProviders(::MetroRuntimeClassPathProvider)
 

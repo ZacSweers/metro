@@ -50,23 +50,8 @@ jobs:
           INPUT_IDE: ${{ github.event.inputs.ide }}
         # language=bash
         run: |
-          input_ide="$INPUT_IDE"
-          if [[ -n "$input_ide" ]] && [[ "$input_ide" != "all" ]]; then
-            json=$(echo "[\"$input_ide\"]" | jq -c .)
-          else
-            json=$(awk -v event="$GITHUB_EVENT_NAME" '
-              /^# main-only$/ { main_only = 1; next }
-              /^#/ || /^[[:space:]]*$/ { next }
-              {
-                if (event != "pull_request" || !main_only) {
-                  sub(/ #.*/, "")
-                  print
-                }
-                main_only = 0
-              }
-              ' ide-integration-tests/ide-versions.txt \
-              | jq -R -s -c 'split("\n") | map(select(length > 0))')
-          fi
+          json=$(python3 scripts/generate-ide-ci-matrix.py \
+            --event-name "$GITHUB_EVENT_NAME" --ide "$INPUT_IDE")
           echo "ide-matrix=$json" >> "$GITHUB_OUTPUT"
 
   build-metro:

@@ -77,7 +77,7 @@ open class AbstractDiagnosticTest : AbstractPhasedJvmDiagnosticLightTreeTest() {
   private fun configureWithMetroDiagnosticHandlers(builder: TestConfigurationBuilder) =
     with(builder) {
       defaultDirectives {
-        LATEST_PHASE_IN_PIPELINE with TestPhase.BACKEND
+        LATEST_PHASE_IN_PIPELINE with backendTestPhase
         LANGUAGE + "+EnableDfaWarningsInK2"
       }
 

@@ -27,7 +27,6 @@ import org.jetbrains.kotlin.test.directives.model.SimpleDirective
 import org.jetbrains.kotlin.test.runners.AbstractKotlinCompilerWithTargetBackendTest
 import org.jetbrains.kotlin.test.services.EnvironmentBasedStandardLibrariesPathProvider
 import org.jetbrains.kotlin.test.services.KotlinStandardLibrariesPathProvider
-import org.jetbrains.kotlin.test.services.TestPhase
 
 /**
  * IR dump test that uses [MetroIrPrettyKotlinDumpHandler] (with `betterDumpKotlinLike`) instead of
@@ -75,7 +74,7 @@ open class AbstractIrDumpTest : AbstractKotlinCompilerWithTargetBackendTest(Targ
         +WITH_STDLIB
         commonMetroTestDirectives()
 
-        LATEST_PHASE_IN_PIPELINE with TestPhase.BACKEND
+        LATEST_PHASE_IN_PIPELINE with backendTestPhase
         +IGNORE_DEXING // Avoids loading R8 from the classpath.
         +DISABLE_GENERATED_FIR_TAGS
 
