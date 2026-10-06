@@ -1,0 +1,293 @@
+@DependencyGraph
+interface ExampleGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : ExampleGraph {
+    private val thisGraphInstance: Impl
+      field = <this>
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override val elements: Set<String>
+      override get(): Set<String> {
+        return <this>.<get-setOfString>()
+      }
+
+    override val entries: Map<Int, String>
+      override get(): Map<Int, String> {
+        return <this>.<get-mapOfIntToString>()
+      }
+
+    private val mapOfIntToString: Map<Int, String>
+      private get(): Map<Int, String> {
+        return buildMap<Int, String>(capacity = 2, builderAction = local fun MutableMap<Int, String>.<anonymous>() {
+          $receiver.put(key = 1, value = <this>.#thisGraphInstance.firstEntry())
+          $receiver.put(key = 2, value = <this>.#thisGraphInstance.secondEntry())
+        }
+)
+      }
+
+    private val setOfString: Set<String>
+      private get(): Set<String> {
+        return { // BLOCK
+          buildSet<String>(capacity = 2, builderAction = local fun MutableSet<String>.<anonymous>() {
+            $receiver.add(element = <this>.#thisGraphInstance.firstElement())
+            $receiver.add(element = <this>.#thisGraphInstance.secondElement())
+          }
+)
+        }
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
+    operator fun invoke(): ExampleGraph {
+      return Impl()
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "firstElement", propertyName = "", startOffset = 175, endOffset = 230, newInstanceName = "firstElement")
+  class FirstElementMetroFactory : Factory<String> {
+    private /* final field */ val instance: ExampleGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(instance: ExampleGraph): FirstElementMetroFactory {
+        return FirstElementMetroFactory(instance = instance)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun firstElement(instance: ExampleGraph): String {
+        return instance.firstElement()
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(instance: ExampleGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @IntoSet
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): String {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): String {
+      return FirstElementMetroFactory/* companion */.firstElement(instance = <this>.#instance)
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "firstEntry", propertyName = "", startOffset = 294, endOffset = 358, newInstanceName = "firstEntry")
+  class FirstEntryMetroFactory : Factory<String> {
+    private /* final field */ val instance: ExampleGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(instance: ExampleGraph): FirstEntryMetroFactory {
+        return FirstEntryMetroFactory(instance = instance)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun firstEntry(instance: ExampleGraph): String {
+        return instance.firstEntry()
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(instance: ExampleGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @IntoMap
+    @IntKey(value = 1)
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): String {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): String {
+      return FirstEntryMetroFactory/* companion */.firstEntry(instance = <this>.#instance)
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "secondElement", propertyName = "", startOffset = 233, endOffset = 290, newInstanceName = "secondElement")
+  class SecondElementMetroFactory : Factory<String> {
+    private /* final field */ val instance: ExampleGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(instance: ExampleGraph): SecondElementMetroFactory {
+        return SecondElementMetroFactory(instance = instance)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun secondElement(instance: ExampleGraph): String {
+        return instance.secondElement()
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(instance: ExampleGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @IntoSet
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): String {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): String {
+      return SecondElementMetroFactory/* companion */.secondElement(instance = <this>.#instance)
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "secondEntry", propertyName = "", startOffset = 361, endOffset = 427, newInstanceName = "secondEntry")
+  class SecondEntryMetroFactory : Factory<String> {
+    private /* final field */ val instance: ExampleGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(instance: ExampleGraph): SecondEntryMetroFactory {
+        return SecondEntryMetroFactory(instance = instance)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun secondEntry(instance: ExampleGraph): String {
+        return instance.secondEntry()
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(instance: ExampleGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @IntoMap
+    @IntKey(value = 2)
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): String {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): String {
+      return SecondEntryMetroFactory/* companion */.secondEntry(instance = <this>.#instance)
+    }
+
+  }
+
+  @Provides
+  @IntoSet
+  fun firstElement(): String {
+    return "first"
+  }
+
+  @Provides
+  @IntoMap
+  @IntKey(value = 1)
+  fun firstEntry(): String {
+    return "first"
+  }
+
+  @Provides
+  @IntoSet
+  fun secondElement(): String {
+    return "second"
+  }
+
+  @Provides
+  @IntoMap
+  @IntKey(value = 2)
+  fun secondEntry(): String {
+    return "second"
+  }
+
+  abstract val elements: Set<String>
+    abstract get
+
+  abstract val entries: Map<Int, String>
+    abstract get
+
+}
+
+// Function expression types:
+// Function1<MutableMap<Int, String>, Unit>
+// Function1<MutableSet<String>, Unit>

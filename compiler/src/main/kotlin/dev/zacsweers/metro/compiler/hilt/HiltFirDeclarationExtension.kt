@@ -41,8 +41,6 @@ public class HiltFirDeclarationExtension(
   MetroContributionHintExtension,
   CompatContext by compatContext {
 
-  private val scanner by memoize { HiltAggregatedDepsScanner(session) }
-
   /** Owns this extension's single-pass in-round `@InstallIn` scan. */
   private val componentScopes by memoize { HiltComponentScopeMapping(session) }
 
@@ -54,16 +52,6 @@ public class HiltFirDeclarationExtension(
 
   override fun getContributionHints(): List<ContributionHint> {
     val hints = mutableListOf<ContributionHint>()
-
-    // Upstream Hilt-processed modules need Metro hints for classpath discovery.
-    for (dep in scanner.getAllDeps()) {
-      if (dep.modules.isEmpty()) continue
-      val scopes = dep.components.mapNotNull(componentScopes::resolveScope)
-      if (scopes.isEmpty()) continue
-      for (moduleClassId in dep.modules) {
-        for (scope in scopes) hints += ContributionHint(moduleClassId, scope)
-      }
-    }
 
     // Current-compilation modules and entry points also emit hints for downstream modules.
     for (installIn in componentScopes.inRoundInstallIns) {

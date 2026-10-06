@@ -2495,6 +2495,12 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
     }
 
     @Test
+    @TestMetadata("CopiedCallableDefaults.kt")
+    public void testCopiedCallableDefaults() {
+      run("CopiedCallableDefaults.kt");
+    }
+
+    @Test
     @TestMetadata("DefaultValuesPropagateToNewInstanceParams.kt")
     public void testDefaultValuesPropagateToNewInstanceParams() {
       run("DefaultValuesPropagateToNewInstanceParams.kt");
@@ -3407,6 +3413,12 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
       @TestMetadata("HiltNestedInstallIn.kt")
       public void testHiltNestedInstallIn() {
         run("HiltNestedInstallIn.kt");
+      }
+
+      @Test
+      @TestMetadata("HiltUpstreamModulesDoNotEmitHints.kt")
+      public void testHiltUpstreamModulesDoNotEmitHints() {
+        run("HiltUpstreamModulesDoNotEmitHints.kt");
       }
     }
 

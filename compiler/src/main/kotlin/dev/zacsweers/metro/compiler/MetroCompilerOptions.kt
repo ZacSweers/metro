@@ -45,6 +45,9 @@ internal fun MetroOptions.Companion.load(
   kotlinCompilerVersion: KotlinToolingVersion?,
   isIde: Boolean,
 ): MetroOptions = buildOptions {
+  omitRedundantMirrors =
+    kotlinCompilerVersion?.let(::kotlinVersionSupportsOmittingRedundantMirrors) == true
+
   for (entry in MetroOption.entries) {
     configuration[entry.raw.key]?.let { applyOptionValue(entry, it) }
   }
@@ -143,6 +146,12 @@ private val MIN_KOTLIN_2_4_DEV_JS_IC = KotlinToolingVersion("2.4.0-dev-8064")
  * Minimum Kotlin non-dev version on the 2.4.x line that supports JS IC with top-level declarations.
  */
 private val MIN_KOTLIN_2_4_JS_IC = KotlinToolingVersion("2.4.0-Beta2")
+
+private val MIN_KOTLIN_OMIT_REDUNDANT_MIRRORS = KotlinToolingVersion("2.4.0")
+
+internal fun kotlinVersionSupportsOmittingRedundantMirrors(version: KotlinToolingVersion): Boolean {
+  return version >= MIN_KOTLIN_OMIT_REDUNDANT_MIRRORS
+}
 
 internal fun kotlinVersionSupportsTopLevelFirGen(version: KotlinToolingVersion): Boolean {
   val isDevVersion = version.maturity == KotlinToolingVersion.Maturity.DEV

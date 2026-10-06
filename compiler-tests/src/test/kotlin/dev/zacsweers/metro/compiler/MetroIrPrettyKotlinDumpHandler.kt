@@ -4,8 +4,12 @@ package dev.zacsweers.metro.compiler
 
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.ir.metroDumpKotlinLike
+import org.jetbrains.kotlin.ir.IrElement
+import org.jetbrains.kotlin.ir.expressions.IrFunctionExpression
 import org.jetbrains.kotlin.ir.util.FakeOverridesStrategy
 import org.jetbrains.kotlin.ir.util.KotlinLikeDumpOptions
+import org.jetbrains.kotlin.ir.util.dumpKotlinLike
+import org.jetbrains.kotlin.ir.visitors.IrVisitor
 import org.jetbrains.kotlin.test.backend.handlers.AbstractIrHandler
 import org.jetbrains.kotlin.test.backend.handlers.IrTextDumpHandler.Companion.groupWithTestFiles
 import org.jetbrains.kotlin.test.backend.handlers.assertFileDoesntExist
@@ -67,6 +71,26 @@ class MetroIrPrettyKotlinDumpHandler(
     val modifiedOptions = options.copy(printFileName = printFileName)
     for (irFile in filteredIrFiles) {
       builder.append(irFile.metroDumpKotlinLike(modifiedOptions))
+      if (MetroDirectives.METRO_DUMP_FUNCTION_EXPRESSION_TYPES in module.directives) {
+        val expressionTypes = mutableListOf<String>()
+        builder.appendLine("// Function expression types:")
+        irFile.accept(
+          object : IrVisitor<Unit, Unit>() {
+            override fun visitElement(element: IrElement, data: Unit) {
+              element.acceptChildren(this, data)
+            }
+
+            override fun visitFunctionExpression(expression: IrFunctionExpression, data: Unit) {
+              expressionTypes += expression.type.dumpKotlinLike()
+              super.visitFunctionExpression(expression, data)
+            }
+          },
+          Unit,
+        )
+        for (type in expressionTypes.sorted()) {
+          builder.appendLine("// $type")
+        }
+      }
     }
   }
 

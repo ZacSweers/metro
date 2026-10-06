@@ -1,6 +1,6 @@
 # Zensical - used for local dev and CI validation builds
 # https://zensical.org/
-zensical==0.0.65
+zensical==0.0.68
 
 # MkDocs + Material - transitive dependencies of the mike fork (not used directly)
 # Can be removed once zensical ships native versioning and the mike fork is dropped
@@ -11,7 +11,7 @@ Jinja2==3.1.6
 livereload==2.7.1
 lunr==0.8.0
 Markdown==3.11
-MarkupSafe==3.0.3
+MarkupSafe==3.0.4
 # Mike (Zensical fork by squidfunk) - versioned docs deployment to gh-pages
 # https://zensical.org/docs/setup/versioning/
 # NOTE: Not published to PyPI, must install from GitHub

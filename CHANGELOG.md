@@ -10,19 +10,25 @@ Changelog
 - **[Gradle]** Add opt-in checks to find Metro contributions hidden from a graph's compile classpath. Run `checkMainMetroHiddenDependencies` (i.e., on CI). It writes a report and fails if it finds hidden contributions.
   - Supports JVM and Android compilations, including JVM targets in KMP. See [checking for hidden contributions](docs/aggregation.md#checking-for-hidden-contributions).
   - Also checks Hilt aggregation metadata when Hilt interop is enabled.
+  - Configure scope filters with `scopes` in the experimental `metro.hiddenDependencies` DSL. Enable `checkOnCompile` in the same block to run each check automatically after its Kotlin compilation, including when compilation fails. Automatic checks are disabled by default and may become the default in a future release.
 
 ### Fixes
 
 - **[FIR]** Reduce redundant lookups when discovering contributed graph extension factories.
 - **[FIR/IC]** Avoid unnecessary recompilation of independent injected classes when generating contribution hints.
+- **[FIR/interop]** Fix duplicate class errors during caused by Hilt interop generating hints for upstream modules.
 - **[FIR/IR/interop]** Fix incremental builds not updating graphs when an upstream Hilt `@AggregatedDeps` marker changes or is removed.
 - **[IR]** Fix member injection across modules when an injected member uses a generic base class's type parameter.
 - **[IR]** Fix missing binding errors for accessors inherited from another module having no source location.
 - **[IR]** Fix `MissingRuntimeCoroutines` errors for injected top-level functions pointing at `0:0` in a generated file. They're now reported on the function.
+- **[IR]** Fix declaration parents for copied default argument lambdas and callable references, including references inside generated provider wrappers.
+- **[IR]** Include extension receivers in generated lambda function types, including set and map builder callbacks.
 - **[IR/IC]** Fix stale graphs in incremental builds when a replacing binding container's `@ContributesTo` annotation is removed and restored.
+- **[IR/native/circuit]** Fix an `IrLinkageError` in generated `SubCircuit` UI factories on Kotlin/Native with Kotlin `2.5.0-Beta1`.
 
 ### Changes
 
+- **[FIR/IR/IC]** Enable `omit-redundant-mirrors` by default on Kotlin 2.4.0 and newer to omit generated declaration mirrors when compiler metadata and declaration finders provide the same information. It remains disabled by default on older Kotlin versions. Disable it with `compilerOptions.disable("omit-redundant-mirrors")` in the `metro` DSL.
 - **[Gradle]** `enableTopLevelFunctionInjection` is **disabled by default** for now on **all** Kotlin versions because it makes incremental builds recompile more files. If you use top-level function injection, enable it with `enableTopLevelFunctionInjection.set(true)` in the `metro` DSL. See [incremental compilation perf docs](docs/performance.md#incremental-compilation).
 
 ### Contributors

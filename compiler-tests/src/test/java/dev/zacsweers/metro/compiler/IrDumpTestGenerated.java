@@ -671,6 +671,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("ReceiverLambdaTypes.kt")
+    public void testReceiverLambdaTypes() {
+      run("ReceiverLambdaTypes.kt");
+    }
+
+    @Test
     @TestMetadata("SingletonMapFactory.kt")
     public void testSingletonMapFactory() {
       run("SingletonMapFactory.kt");
