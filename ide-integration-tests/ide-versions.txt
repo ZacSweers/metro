@@ -25,6 +25,7 @@ IU:2026.1.3
 IU:2026.2
 IU:2026.2.1
 IU:2026.2.2
+IU:2026.2.3
 # IntelliJ EAP
 IU:263.6259.32:eap # 2026.3 EAP
 # AS stable
@@ -36,6 +37,6 @@ AS:2026.1.1.8:android-studio-quail1 # Quail 1
 AS:2026.1.2.10:android-studio-quail2 # Quail 2
 AS:2026.1.3.7:android-studio-quail3 # Quail 3
 AS:2026.1.4.7:android-studio-quail4 # Quail 4
+AS:2026.2.1.8:android-studio-rabbit1 # Rabbit 1
 # AS RC
 # AS Canary
-AS:2026.2.1.4:android-studio-rabbit1-canary4 # Rabbit 1 Canary 4
