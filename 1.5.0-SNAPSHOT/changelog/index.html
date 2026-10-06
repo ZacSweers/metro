@@ -8413,6 +8413,7 @@
 <li><strong>[IR]</strong> Fix <code>MissingRuntimeCoroutines</code> errors for injected top-level functions pointing at <code>0:0</code> in a generated file. They&rsquo;re now reported on the function.</li>
 <li><strong>[IR]</strong> Fix declaration parents for copied default argument lambdas and callable references, including references inside generated provider wrappers.</li>
 <li><strong>[IR]</strong> Include extension receivers in generated lambda function types, including set and map builder callbacks.</li>
+<li><strong>[IR/IC]</strong> Fix stale graphs in incremental builds when a replacing binding container&rsquo;s <code>@ContributesTo</code> annotation is removed and restored.</li>
 <li><strong>[IR/native/circuit]</strong> Fix an <code>IrLinkageError</code> in generated <code>SubCircuit</code> UI factories on Kotlin/Native with Kotlin <code>2.5.0-Beta1</code>.</li>
 <li><strong>[FIR]</strong> Fix accessor override status on Kotlin <code>2.5.0-dev-9169</code>.</li>
 </ul>
@@ -8428,6 +8429,8 @@
 <p>Special thanks to the following contributors for contributing to this release!</p>
 <ul>
 <li><a href="https://github.com/agrosner">@agrosner</a></li>
+<li><a href="https://github.com/joshfriend">@joshfriend</a></li>
+<li><a href="https://github.com/kevinguitar">@kevinguitar</a></li>
 </ul>
 <h3 id="consider-sponsoring-metros-development"><a href="https://www.zacsweers.dev/sponsoring-metro/">Consider sponsoring Metro&rsquo;s development</a><a class="headerlink" href="#consider-sponsoring-metros-development" title="Permanent link">&para;</a></h3>
 <h2 id="145">1.4.5<a class="headerlink" href="#145" title="Permanent link">&para;</a></h2>
