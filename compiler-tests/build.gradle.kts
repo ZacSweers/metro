@@ -211,6 +211,11 @@ reflectVersion =
   }
 
 dependencies {
+  // The 9169 test framework calls Kotlin assertion helpers removed by JUnit 6.
+  if (testCompilerVersion == "2.5.0-dev-9169") {
+    testImplementation(enforcedPlatform("org.junit:junit-bom:5.14.4"))
+  }
+
   // 2.3.0 changed the test gen APIs around into different packages
   "generator230CompileOnly"(
     "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:$compilerTestFrameworkVersion"

@@ -25,6 +25,7 @@ import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.DeprecationsProvider
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
+import org.jetbrains.kotlin.fir.declarations.FirDeclarationStatus
 import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameter
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
@@ -343,6 +344,14 @@ public interface CompatContext {
     returnTypeProvider: (List<FirTypeParameter>) -> ConeKotlinType,
     config: SimpleFunctionBuildingContext.() -> Unit = {},
   ): FirFunction
+
+  /** Copies this status with the requested override flag. */
+  @CompatApi(
+    since = "2.5.0-dev-9169",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message = "FirDeclarationStatus.copy added isRichError",
+  )
+  public fun FirDeclarationStatus.copyWithOverrideCompat(isOverride: Boolean): FirDeclarationStatus
 
   // Changed to a new KtSourceElementOffsetStrategy overload in Kotlin 2.3.0
   @CompatApi(

@@ -82,10 +82,12 @@ val tagsGeneratorCheckerHandler: Constructor<AnalysisHandler<FirOutputArtifact>>
 
 val tagsGeneratorCheckerAfterAnalysis: Constructor<AfterAnalysisChecker>? = null
 
+val backendTestPhase: TestPhase = TestPhase.BACKEND
+
 fun TestConfigurationBuilder.useIrDumpFailureSuppressorsCompat() {
   useAfterAnalysisCheckers(
     ::BlackBoxCodegenSuppressor,
-    ::PhasedPipelineChecker.bind(TestPhase.BACKEND),
+    ::PhasedPipelineChecker.bind(backendTestPhase),
   )
 }
 

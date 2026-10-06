@@ -32,8 +32,10 @@ import org.jetbrains.kotlin.fakeElement as fakeElementNative
 import org.jetbrains.kotlin.fir.FirAnnotationContainer
 import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.FirSession
+import org.jetbrains.kotlin.fir.copy
 import org.jetbrains.kotlin.fir.declarations.DeprecationsProvider
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
+import org.jetbrains.kotlin.fir.declarations.FirDeclarationStatus
 import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.FirResolvePhase
 import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
@@ -105,6 +107,10 @@ import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.util.PrivateForInline
 
 public class CompatContextImpl : CompatContext {
+
+  override fun FirDeclarationStatus.copyWithOverrideCompat(
+    isOverride: Boolean
+  ): FirDeclarationStatus = copy(isOverride = isOverride)
 
   override fun createCompilerConfigurationCompat(): CompilerConfiguration {
     return CompilerConfiguration()
