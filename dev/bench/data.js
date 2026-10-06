@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791304525595,
+  "lastUpdate": 1791306549573,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -24976,6 +24976,62 @@ window.BENCHMARK_DATA = {
             "value": 0.21420273362218153,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: -0.78%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "e112de2e~1",
+          "message": "[before] Failing IC test for binding replacement (#2908)",
+          "timestamp": "2026-10-06T16:18:02Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/e112de2ec77761c7aed0c02c069b11a18e33f2b0"
+        },
+        "date": 1791306549573,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.21497292232825888,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "e112de2ec77761c7aed0c02c069b11a18e33f2b0",
+          "message": "[after] Failing IC test for binding replacement (#2908)",
+          "timestamp": "2026-10-06T16:18:02Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/e112de2ec77761c7aed0c02c069b11a18e33f2b0"
+        },
+        "date": 1791306549574,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.21119045351018037,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: -1.76%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }

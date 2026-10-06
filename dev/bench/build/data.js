@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791304525751,
+  "lastUpdate": 1791306549720,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -24976,6 +24976,62 @@ window.BENCHMARK_DATA = {
             "value": 18474.405,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +0.16%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "e112de2e~1",
+          "message": "[before] Failing IC test for binding replacement (#2908)",
+          "timestamp": "2026-10-06T16:18:02Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/e112de2ec77761c7aed0c02c069b11a18e33f2b0"
+        },
+        "date": 1791306549720,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 14462.446,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "e112de2ec77761c7aed0c02c069b11a18e33f2b0",
+          "message": "[after] Failing IC test for binding replacement (#2908)",
+          "timestamp": "2026-10-06T16:18:02Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/e112de2ec77761c7aed0c02c069b11a18e33f2b0"
+        },
+        "date": 1791306549721,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 13806.405999999999,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -4.54%"
           }
         ]
       }
