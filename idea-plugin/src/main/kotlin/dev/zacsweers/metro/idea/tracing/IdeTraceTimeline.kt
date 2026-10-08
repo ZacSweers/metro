@@ -146,7 +146,7 @@ internal class IdeTraceTimeline(
         group.sortedWith(
           compareBy<IdeTraceInterval> { it.started }
             .thenByDescending { it.finished ?: it.started }
-            .thenBy { it.id }
+            .thenBy { it.id },
         )
       val root = group.firstOrNull { it.id == it.rootId && it.finished != null } ?: ordered.first()
       val laneContents = mutableListOf<MutableList<IdeTraceInterval>>()
@@ -225,7 +225,7 @@ internal class IdeTraceTimeline(
             .thenBy {
               if (it.type == 2) -it.interval.started else -(it.interval.finished ?: it.time)
             }
-            .thenBy { if (it.type == 2) -it.interval.id else it.interval.id }
+            .thenBy { if (it.type == 2) -it.interval.id else it.interval.id },
         )
       for (boundary in boundaries) {
         sink.event(

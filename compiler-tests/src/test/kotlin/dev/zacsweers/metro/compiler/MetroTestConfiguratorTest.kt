@@ -78,7 +78,7 @@ class MetroTestConfiguratorTest {
         targetVersion = "2.4",
         minVersion = "2.5",
         maxVersion = "2.3",
-      )
+      ),
     )
   }
 
@@ -91,7 +91,7 @@ class MetroTestConfiguratorTest {
         targetVersion = "2.4",
         minVersion = "2.2",
         maxVersion = "2.5",
-      )
+      ),
     )
   }
 

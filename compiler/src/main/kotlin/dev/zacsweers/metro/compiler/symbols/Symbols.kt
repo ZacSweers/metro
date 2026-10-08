@@ -495,7 +495,7 @@ internal class Symbols(
 
   private val providerOfLazy: IrClassSymbol by lazy {
     builtinsFinder.findClass(
-      ClassId(metroRuntimeInternal.packageFqName, "ProviderOfLazy".asName())
+      ClassId(metroRuntimeInternal.packageFqName, "ProviderOfLazy".asName()),
     )!!
   }
   val providerOfLazyCompanionObject by lazy { providerOfLazy.owner.companionObject()!!.symbol }
@@ -620,7 +620,7 @@ internal class Symbols(
 
   private val suspendDoubleCheck: IrClassSymbol? by lazy {
     builtinsFinder.findClass(
-      ClassId(metroRuntimeInternal.packageFqName, "SuspendDoubleCheck".asName())
+      ClassId(metroRuntimeInternal.packageFqName, "SuspendDoubleCheck".asName()),
     )
   }
   val suspendDoubleCheckCompanionObject by lazy {
@@ -636,7 +636,7 @@ internal class Symbols(
 
   private val metroDelegateFactory: IrClassSymbol by lazy {
     builtinsFinder.findClass(
-      ClassId(metroRuntimeInternal.packageFqName, "DelegateFactory".asName())
+      ClassId(metroRuntimeInternal.packageFqName, "DelegateFactory".asName()),
     )!!
   }
 
@@ -654,7 +654,7 @@ internal class Symbols(
 
   private val metroSuspendDelegateFactory: IrClassSymbol by lazy {
     builtinsFinder.findClass(
-      ClassId(metroRuntimeInternal.packageFqName, "SuspendDelegateFactory".asName())
+      ClassId(metroRuntimeInternal.packageFqName, "SuspendDelegateFactory".asName()),
     )!!
   }
 
@@ -676,7 +676,7 @@ internal class Symbols(
 
   val metroMembersInjectors: IrClassSymbol by lazy {
     builtinsFinder.findClass(
-      ClassId(metroRuntimeInternal.packageFqName, "MembersInjectors".asName())
+      ClassId(metroRuntimeInternal.packageFqName, "MembersInjectors".asName()),
     )!!
   }
 
@@ -690,7 +690,7 @@ internal class Symbols(
 
   val metroSuspendFactory: IrClassSymbol by lazy {
     builtinsFinder.findClass(
-      ClassId(metroRuntimeInternal.packageFqName, "SuspendFactory".asName())
+      ClassId(metroRuntimeInternal.packageFqName, "SuspendFactory".asName()),
     )!!
   }
 
@@ -702,7 +702,7 @@ internal class Symbols(
 
   val graphFactoryInvokeFunctionMarkerClass: IrClassSymbol by lazy {
     builtinsFinder.findClass(
-      ClassId(metroRuntime.packageFqName, "GraphFactoryInvokeFunctionMarker".asName())
+      ClassId(metroRuntime.packageFqName, "GraphFactoryInvokeFunctionMarker".asName()),
     )!!
   }
 

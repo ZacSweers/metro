@@ -64,7 +64,7 @@ class MetroMakeInjectableIntentionTest : BasePlatformTestCase() {
         class <caret>Service(val value: String) {
           constructor() : this("default")
         }
-        """
+        """,
       )
     val before = file.text
     myFixture.checkIntentionPreviewHtml(
@@ -98,7 +98,7 @@ class MetroMakeInjectableIntentionTest : BasePlatformTestCase() {
         class <caret>Service(val value: String) {
           constructor() : this("default")
         }
-        """
+        """,
       )
     val action = constructorChoice(file).actions[1].asIntention()
     myFixture.checkPreviewAndLaunchAction(action)
@@ -119,7 +119,7 @@ class MetroMakeInjectableIntentionTest : BasePlatformTestCase() {
           class <caret>Service $visibility constructor(val value: String) {
             constructor() : this("default")
           }
-          """
+          """,
         )
       myFixture.checkPreviewAndLaunchAction(intention())
       val klass = file.declarations.single() as KtClass
@@ -139,7 +139,7 @@ class MetroMakeInjectableIntentionTest : BasePlatformTestCase() {
         class <caret>Service(val value: String) {
           private constructor() : this("default")
         }
-        """
+        """,
       )
     val expected = file.text.replace("class Service(", "class Service @Inject constructor(")
     myFixture.checkPreviewAndLaunchAction(intention())
@@ -155,7 +155,7 @@ class MetroMakeInjectableIntentionTest : BasePlatformTestCase() {
           constructor(value: Int) {}
           private constructor() {}
         }
-        """
+        """,
       )
     val choice = constructorChoice(file)
     assertEquals(
@@ -180,7 +180,7 @@ class MetroMakeInjectableIntentionTest : BasePlatformTestCase() {
         class <caret>Service {
           constructor(value: String) {}
         }
-        """
+        """,
       )
     myFixture.checkPreviewAndLaunchAction(intention())
     val klass = file.declarations.single() as KtClass
@@ -210,7 +210,7 @@ class MetroMakeInjectableIntentionTest : BasePlatformTestCase() {
 
         @Inject
         class <caret>Service
-        """
+        """,
       )
     myFixture.checkPreviewAndLaunchAction(intention())
     val klass = file.declarations.filterIsInstance<KtClass>().last()
@@ -241,7 +241,7 @@ class MetroMakeInjectableIntentionTest : BasePlatformTestCase() {
       annotation class CustomInject
       typealias Wired = CustomInject
       @Wired class <caret>Service
-      """
+      """,
     )
     assertUnavailable()
   }
@@ -317,7 +317,7 @@ class MetroMakeInjectableIntentionTest : BasePlatformTestCase() {
         class <caret>Service(val value: String) {
           constructor() : this("default")
         }
-        """
+        """,
       )
     val choice = constructorChoice(file).actions.first()
     WriteCommandAction.runWriteCommandAction(project) {

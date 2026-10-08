@@ -459,7 +459,7 @@ public open class MutableBindingGraph<
           }
             ?: reportCompilerBug(
               "Found a hard cycle, but no scalar dependency exists from " +
-                "${prevReq.render(short = true)} to ${currentDep.render(short = true)}."
+                "${prevReq.render(short = true)} to ${currentDep.render(short = true)}.",
             )
         add(stack.newBindingStackEntry(contextKey, callingBinding, roots))
       }
@@ -571,15 +571,15 @@ public open class MutableBindingGraph<
                     appendCode("SuspendLazy<$deferredExample>")
                   } else {
                     append(
-                      "you can break the cycle by injecting a deferred type at one edge, e.g. "
+                      "you can break the cycle by injecting a deferred type at one edge, e.g. ",
                     )
                     appendCode("() -> $deferredExample")
                     append(" or ")
                     appendCode("Lazy<$deferredExample>")
                   }
                   append(". Only do this if you know what you're doing though!")
-                }
-              )
+                },
+              ),
             )
           },
       )
@@ -655,7 +655,7 @@ public open class MutableBindingGraph<
               DiagnosticSection.Locations(
                 header = null,
                 items = locations.map { it.toLocatedItem() },
-              )
+              ),
             )
             bindingStack.toTraceSection()?.let(::add)
           },
@@ -663,7 +663,7 @@ public open class MutableBindingGraph<
           extraNotes +
             Note.help(
               "remove or disambiguate the duplicate bindings (e.g. with distinct qualifiers), " +
-                "or use @IntoSet/@IntoMap if you intended a multibinding"
+                "or use @IntoSet/@IntoMap if you intended a multibinding",
             ),
       )
     errorReporter.report(diagnostic, bindingStack)
@@ -702,8 +702,8 @@ public open class MutableBindingGraph<
               if (hints.similarBindings.isNotEmpty() && !isAnyType) {
                 add(
                   DiagnosticSection.SimilarBindings(
-                    hints.similarBindings.sortedBy { it.key.toString() }
-                  )
+                    hints.similarBindings.sortedBy { it.key.toString() },
+                  ),
                 )
               }
             },
@@ -715,10 +715,10 @@ public open class MutableBindingGraph<
                   append("ensure ")
                   append(typeKey.toText())
                   append(
-                    " has an @Inject constructor or is provided by an @Provides or @Binds declaration visible to "
+                    " has an @Inject constructor or is provided by an @Provides or @Binds declaration visible to ",
                   )
                   append(graphName ?: "this graph", Style.EMPHASIS)
-                }
+                },
               ),
         )
       errorReporter.report(diagnostic, bindingStack)

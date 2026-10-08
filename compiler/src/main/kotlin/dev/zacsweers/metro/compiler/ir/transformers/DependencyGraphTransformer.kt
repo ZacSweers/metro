@@ -770,8 +770,8 @@ internal class DependencyGraphTransformer(
                     if (index > 0) append(", ")
                     append(key.toText())
                   }
-                }
-              )
+                },
+              ),
             )
           }
         }
@@ -802,9 +802,9 @@ internal class DependencyGraphTransformer(
                           locationContext = unknownLocationContext.description,
                           notes = unknownLocationContext.notes,
                         )
-                        .toLocatedItem()
+                        .toLocatedItem(),
                     ),
-                )
+                ),
               )
             },
           notes = notes,
@@ -925,12 +925,12 @@ internal class DependencyGraphTransformer(
                   propertyIfAccessorCompat.expectAs<IrOverridableDeclaration<*>>()
                 if (declarationToFinalize.isFakeOverride) {
                   declarationToFinalize.finalizeFakeOverride(
-                    metroGraph.thisReceiverOrFail.copyTo(this)
+                    metroGraph.thisReceiverOrFail.copyTo(this),
                   )
                   body =
                     if (returnType != pluginContext.irBuiltIns.unitType) {
                       stubExpressionBody(
-                        "Graph transform failed. If you're seeing this at runtime, it means that the Metro compiler plugin reported a compiler error but kotlinc for some reason didn't fail the build!"
+                        "Graph transform failed. If you're seeing this at runtime, it means that the Metro compiler plugin reported a compiler error but kotlinc for some reason didn't fail the build!",
                       )
                     } else {
                       pluginContext.createIrBuilder(symbol).run {
@@ -998,7 +998,7 @@ internal class DependencyGraphTransformer(
                 irCallConstructorWithSameParameters(
                   source = createFunction,
                   constructor = metroGraph.primaryConstructor!!.symbol,
-                )
+                ),
               )
             }
         }
@@ -1028,7 +1028,7 @@ internal class DependencyGraphTransformer(
                       irGetObject(factoryImpl.symbol)
                     } else {
                       irCallConstructor(factoryImpl.primaryConstructor!!.symbol, emptyList())
-                    }
+                    },
                   )
                 }
             }

@@ -208,7 +208,7 @@ internal class SyntheticGraphGenerator(
               arguments[paramIndex++] =
                 irGetField(irGet(samFunction.dispatchReceiverParameter!!), field)
             }
-          }
+          },
         )
       }
 
@@ -453,11 +453,11 @@ internal class SyntheticGraphGenerator(
                 Note.note(
                   "declarations with the same name and compatible return types must have compatible " +
                     "DI annotations too, otherwise these can lead to ambiguous/undefined behavior " +
-                    "at runtime"
+                    "at runtime",
                 ),
                 Note.help(
                   "either align these annotations if they are meant to represent the same thing or " +
-                    "rename one of the declarations to disambiguate them"
+                    "rename one of the declarations to disambiguate them",
                 ),
               ),
         )
@@ -583,7 +583,7 @@ internal class SyntheticGraphGenerator(
       summary =
         buildText {
           append(
-            "The following declarations clash with each other when merging supertypes into a generated "
+            "The following declarations clash with each other when merging supertypes into a generated ",
           )
           appendCode("$graphName")
           append(" graph impl class")

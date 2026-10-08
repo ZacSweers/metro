@@ -47,7 +47,7 @@ class MetroDynamicGraphTest : BasePlatformTestCase() {
         }
 
         val dynamicGraph = createDynamicGraph<AppGraph>(FakeBindings)
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val graph = index.graphs.single { it.name == "AppGraph" }
@@ -150,7 +150,7 @@ class MetroDynamicGraphTest : BasePlatformTestCase() {
         }
 
         val factory = createDynamicGraphFactory<AppGraph.Factory>(GenericBindings("fake"))
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val graph = index.graphs.single { it.name == "AppGraph" }
@@ -172,7 +172,7 @@ class MetroDynamicGraphTest : BasePlatformTestCase() {
         .validate(file, context)
         .requireCompleted()
         .diagnostics
-        .isEmpty()
+        .isEmpty(),
     )
   }
 
@@ -201,7 +201,7 @@ class MetroDynamicGraphTest : BasePlatformTestCase() {
         }
 
         val dynamicGraph = createDynamicGraph<AppGraph>(FakeBindings)
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val parent = index.graphs.single { it.name == "AppGraph" }
@@ -252,7 +252,7 @@ class MetroDynamicGraphTest : BasePlatformTestCase() {
         }
 
         val dynamicGraph = createDynamicGraph<AppGraph>(FakeBindings)
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val graph = index.graphs.single { it.name == "AppGraph" }
@@ -272,7 +272,7 @@ class MetroDynamicGraphTest : BasePlatformTestCase() {
         .validate(file, context)
         .requireCompleted()
         .diagnostics
-        .isEmpty()
+        .isEmpty(),
     )
   }
 
@@ -302,7 +302,7 @@ class MetroDynamicGraphTest : BasePlatformTestCase() {
 
         val dynamicGraph =
           createDynamicGraph<AppGraph>(FirstFakeBindings, SecondFakeBindings)
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val graph = index.graphs.single { it.name == "AppGraph" }
@@ -326,7 +326,7 @@ class MetroDynamicGraphTest : BasePlatformTestCase() {
 
         val metro = metroDynamicGraph<AppGraph>(FakeBindings)
         val unrelated: AppGraph = createDynamicGraph(FakeBindings)
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val graph = index.graphs.single { it.name == "AppGraph" }

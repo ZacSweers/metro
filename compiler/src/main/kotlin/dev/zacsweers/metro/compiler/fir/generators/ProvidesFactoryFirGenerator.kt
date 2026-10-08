@@ -169,7 +169,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
           markAsDeprecatedHidden(session)
           // Add the source callable info
           replaceAnnotationsSafe(
-            annotations + listOf(buildCallableMetadataAnnotation(sourceCallable))
+            annotations + listOf(buildCallableMetadataAnnotation(sourceCallable)),
           )
         }
         .symbol

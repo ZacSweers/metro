@@ -37,8 +37,8 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
             fun provideValue(): String = "Hello, world!"
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
@@ -64,8 +64,8 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
             val value: String get() = "Hello, world!"
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
@@ -93,8 +93,8 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
             }
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     val providesFactoryClass = result.ExampleGraph.providesFactoryClass(companion = true)
@@ -124,8 +124,8 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
             }
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     val providesFactoryClass = result.ExampleGraph.providesFactoryClass(companion = true)
@@ -156,8 +156,8 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
             fun provideStringValue(intValue: Int): String = "Hello, $intValue!"
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
@@ -186,8 +186,8 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
             }
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     val providesFactoryClass =
@@ -220,8 +220,8 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
             fun provideStringValue(intValue: Int, booleanValue: Boolean): String = "Hello, $intValue! $booleanValue"
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
@@ -256,8 +256,8 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
             ): String = "Hello, $intValue - $intValue2!"
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
@@ -296,8 +296,8 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
             ): String = "Hello, $intValue - $intValue2!"
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
@@ -326,7 +326,7 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
             private fun String.provideValue(): Int = length
           }
           """
-            .trimIndent()
+            .trimIndent(),
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
@@ -335,7 +335,7 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
       """
       e: ExampleGraph.kt:9:22 `@Provides` functions may not be extension functions. Use `@Binds` instead for these. See https://zacsweers.github.io/metro/latest/bindings/#binds for more information.
       """
-        .trimIndent()
+        .trimIndent(),
     )
   }
 
@@ -349,8 +349,8 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
             @Provides fun provideInt(): Int = 2
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     compile(
@@ -361,7 +361,7 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
           val int: Int
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       previousCompilationResult = otherModuleResult,
     ) {
@@ -380,8 +380,8 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
             @Provides @Named("int") fun provideInt(): Int = 2
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     compile(
@@ -393,7 +393,7 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
           val int: Int
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       previousCompilationResult = otherModuleResult,
     ) {
@@ -412,8 +412,8 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
             @Provides fun provideString(value: Int = 2): String = value.toString()
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     compile(
@@ -424,7 +424,7 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
           val string: String
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       previousCompilationResult = otherModuleResult,
     ) {
@@ -443,8 +443,8 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
             @Provides private fun provideInt(): Int = 2
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     compile(
@@ -455,7 +455,7 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
           val int: Int
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       previousCompilationResult = otherModuleResult,
     ) {
@@ -484,7 +484,7 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
             @Provides fun provideSuspendBooleanFunction(): suspend () -> Boolean = { true }
           }
           """
-            .trimIndent()
+            .trimIndent(),
         ),
         options = metroOptions.toBuilder().enableFunctionProviders(false).build(),
       )
@@ -521,7 +521,7 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
             .trimIndent(),
           extraImports =
             arrayOf("kotlin.annotation.AnnotationRetention.BINARY", "javax.inject.Qualifier"),
-        )
+        ),
       )
 
     compile(
@@ -532,7 +532,7 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
           val value: String
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       previousCompilationResult = firstCompilation,
     )
@@ -557,8 +557,8 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
           val nullableString: String?
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       assertThat(graph.callProperty<Int>("int")).isEqualTo(2)
@@ -611,7 +611,7 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
         @DependencyGraph(bindingContainers = [ExampleModule::class])
         interface ExampleGraph
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       previousCompilationResult = firstCompilation,
       options =
@@ -621,7 +621,7 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
         """
         w: Included Dagger module 'ExampleModule' declares a `subcomponents` parameter but this will be ignored by Metro in interop.
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }

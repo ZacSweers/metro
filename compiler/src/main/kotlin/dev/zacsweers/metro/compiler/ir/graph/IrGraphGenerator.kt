@@ -657,7 +657,7 @@ internal class IrGraphGenerator(
    * @return A pair of (parentGraphParam, parentGraphInstanceProperty), both null for root graphs
    */
   private fun IrClass.setupParentGraphProperty(
-    ctor: IrConstructor
+    ctor: IrConstructor,
   ): Pair<IrValueParameter?, IrProperty?> {
     val parentGraphParam =
       ctor.regularParameters.getOrNull(0)?.takeIf { it.origin == Origins.ParentGraphParam }
@@ -707,7 +707,7 @@ internal class IrGraphGenerator(
    * @return Map from ancestor graph type key to property chain for accessing it
    */
   private fun buildAncestorGraphProperties(
-    parentGraphInstanceProperty: IrProperty?
+    parentGraphInstanceProperty: IrProperty?,
   ): Map<IrTypeKey, List<IrProperty>> {
     if (parentGraphInstanceProperty == null) return emptyMap()
 
@@ -938,8 +938,8 @@ internal class IrGraphGenerator(
                   thisReceiver = thisReceiverParameter,
                   traceContextProperty = traceContextProperty,
                   shardContext = null,
-                )
-              )
+                ),
+              ),
             )
 
           // Later reads use ProviderExpressionOrigin.ProviderProperty and intentionally skip
@@ -1003,7 +1003,7 @@ internal class IrGraphGenerator(
       addAll(
         node.allParentGraphs.values.flatMap {
           (it as? GraphNode.Local)?.bindingContainers.orEmpty()
-        }
+        },
       )
     }
     allBindingContainers
@@ -1177,7 +1177,7 @@ internal class IrGraphGenerator(
    * graph-as-shard mode.
    */
   private fun IrClass.createShardFieldProperties(
-    shardResult: ShardResult
+    shardResult: ShardResult,
   ): IntObjectMap<IrProperty> =
     if (!shardResult.isGraphAsShard) {
       val result = MutableIntObjectMap<IrProperty>(shardResult.shards.size)
@@ -1537,7 +1537,7 @@ internal class IrGraphGenerator(
 
     // Helper to generate setDelegate calls for deferred properties in this shard
     fun IrBuilderWithScope.generateDeferredSetDelegateCalls(
-      thisReceiver: IrValueParameter
+      thisReceiver: IrValueParameter,
     ): List<IrStatement> = buildList {
       for ((deferredTypeKey, deferredProperty, switchingId, isSuspend) in shardDeferredProperties) {
         val binding = bindingGraph.requireBinding(deferredTypeKey)
@@ -1570,7 +1570,7 @@ internal class IrGraphGenerator(
                   applyScoping = binding.isScoped(),
                 ),
               ),
-          )
+          ),
         )
       }
     }
@@ -1952,7 +1952,7 @@ internal class IrGraphGenerator(
     .initFinal { initializerExpression() }
 
   private fun GraphNode.Local.implementOverrides(
-    expressionGeneratorFactory: GraphExpressionGenerator.Factory
+    expressionGeneratorFactory: GraphExpressionGenerator.Factory,
   ) {
     // Implement abstract getters for accessors
     for ((contextualTypeKey, function, isOptionalDep) in accessors) {
@@ -1992,7 +1992,7 @@ internal class IrGraphGenerator(
                   actualIsSuspendProvider =
                     BindingExpressionGenerator.AccessType.of(contextualTypeKey).isSuspendProvider,
                 )
-              }
+              },
             )
           }
       }
@@ -2061,7 +2061,7 @@ internal class IrGraphGenerator(
                         isOptional = true
                         if (parameters.regularParameters.size > 1) {
                           reportCompilerBug(
-                            "Unexpected multiple parameters for member injection: $contextKey"
+                            "Unexpected multiple parameters for member injection: $contextKey",
                           )
                         }
                         break
@@ -2080,7 +2080,7 @@ internal class IrGraphGenerator(
                             actualIsSuspendProvider =
                               BindingExpressionGenerator.AccessType.of(parameter.contextualTypeKey)
                                 .isSuspendProvider,
-                          )
+                          ),
                         )
                       }
                     }
@@ -2175,7 +2175,7 @@ internal class IrGraphGenerator(
                       actualIsSuspendProvider =
                         BindingExpressionGenerator.AccessType.of(contextKey).isSuspendProvider,
                     )
-                  }
+                  },
                 )
               }
           }

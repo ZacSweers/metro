@@ -51,7 +51,7 @@ internal class MetroIrPipeline(
           ?.let {
             log(
               // Trailing space intentional for terminal linkifying
-              "Metro trace written to file://${it.absolutePath} "
+              "Metro trace written to file://${it.absolutePath} ",
             )
           }
       }

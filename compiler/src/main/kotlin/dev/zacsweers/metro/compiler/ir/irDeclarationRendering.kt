@@ -322,7 +322,7 @@ private fun StringBuilder.renderForDiagnosticImpl(
         short = short,
         includeQualifier = true,
         useOriginalQualifier = true,
-      )
+      ),
     )
     if (format.isCall) {
       // Put the receiver in parens for context
@@ -443,7 +443,7 @@ internal fun IrOverridableDeclaration<*>.renderLocationDiagnostic(
  * or null when no source is available (cross-module declarations, synthetics).
  */
 internal fun IrDeclaration.toDiagnosticSpan(
-  shortDisplayPath: Boolean = MetroOptions.SystemProperties.SHORTEN_LOCATIONS
+  shortDisplayPath: Boolean = MetroOptions.SystemProperties.SHORTEN_LOCATIONS,
 ): DiagnosticSpan? {
   val location = locationOrNull() ?: return null
   if (location.line < 1 || location.column < 1) return null
@@ -459,7 +459,7 @@ internal fun IrDeclaration.toDiagnosticSpan(
 }
 
 internal fun IrDeclaration.toTypeDiagnosticSpan(
-  shortDisplayPath: Boolean = MetroOptions.SystemProperties.SHORTEN_LOCATIONS
+  shortDisplayPath: Boolean = MetroOptions.SystemProperties.SHORTEN_LOCATIONS,
 ): DiagnosticSpan? {
   val fallback = toDiagnosticSpan(shortDisplayPath)
   val sourceElement = sourceElement() as? KtPsiSourceElement ?: return fallback
@@ -471,7 +471,7 @@ internal fun IrDeclaration.toTypeDiagnosticSpan(
 }
 
 internal fun IrDeclaration.toNameDiagnosticSpan(
-  shortDisplayPath: Boolean = MetroOptions.SystemProperties.SHORTEN_LOCATIONS
+  shortDisplayPath: Boolean = MetroOptions.SystemProperties.SHORTEN_LOCATIONS,
 ): DiagnosticSpan? {
   val fallback = toDiagnosticSpan(shortDisplayPath)
   val sourceElement = sourceElement() as? KtPsiSourceElement ?: return fallback

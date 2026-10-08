@@ -397,7 +397,7 @@ internal class DependencyGraphFirGenerator(session: FirSession, compatContext: C
             for ((i, parameter) in samFunction?.valueParameterSymbols.orEmpty().withIndex()) {
               val parameterToUpdate = valueParameters[i]
               parameterToUpdate.replaceAnnotationsSafe(
-                parameter.resolvedCompilerAnnotationsWithClassIds
+                parameter.resolvedCompilerAnnotationsWithClassIds,
               )
             }
           }
@@ -451,7 +451,7 @@ internal class DependencyGraphFirGenerator(session: FirSession, compatContext: C
             for ((i, parameter) in function.valueParameterSymbols.withIndex()) {
               val parameterToUpdate = valueParameters[i]
               parameterToUpdate.replaceAnnotationsSafe(
-                parameter.resolvedCompilerAnnotationsWithClassIds
+                parameter.resolvedCompilerAnnotationsWithClassIds,
               )
             }
             // Add our marker annotation (and static annotations when generated into a
@@ -460,7 +460,7 @@ internal class DependencyGraphFirGenerator(session: FirSession, compatContext: C
               add(
                 buildSimpleAnnotation {
                   session.metroFirBuiltIns.graphFactoryInvokeFunctionMarkerClassSymbol
-                }
+                },
               )
               if (owner.isCompanion) {
                 addAll(buildStaticAnnotations(session))
@@ -501,7 +501,7 @@ internal class DependencyGraphFirGenerator(session: FirSession, compatContext: C
                     buildSimpleAnnotation {
                       session.metroFirBuiltIns.graphFactoryInvokeFunctionMarkerClassSymbol
                     } +
-                    buildStaticAnnotations(session)
+                    buildStaticAnnotations(session),
                 )
               }
           functions += generatedFunction.symbol as FirNamedFunctionSymbol
@@ -545,7 +545,7 @@ internal class DependencyGraphFirGenerator(session: FirSession, compatContext: C
 
     if (functions.isNotEmpty()) {
       log(
-        "Generated ${functions.size} for ${owner.classId}: ${functions.joinToString { it.name.asString() }}"
+        "Generated ${functions.size} for ${owner.classId}: ${functions.joinToString { it.name.asString() }}",
       )
     } else {
       log("Generated no functions for ${owner.classId}")
@@ -574,7 +574,7 @@ internal class DependencyGraphFirGenerator(session: FirSession, compatContext: C
           .filterIsInstance<FirClassSymbol<*>>()
           .onEach {
             log(
-              "Declaration factory candidate ${it.name}. Annotations are ${it.resolvedCompilerAnnotationsWithClassIds.joinToRender()}"
+              "Declaration factory candidate ${it.name}. Annotations are ${it.resolvedCompilerAnnotationsWithClassIds.joinToRender()}",
             )
           }
           .find { it.isGraphFactory(session) }

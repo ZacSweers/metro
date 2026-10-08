@@ -252,7 +252,7 @@ internal fun CompilerMessageSourceLocation.render(short: Boolean): String? {
  * is available. Respects [MetroOptions.SystemProperties.SHORTEN_LOCATIONS] by default.
  */
 internal fun IrDeclaration.renderSourceLocation(
-  short: Boolean = MetroOptions.SystemProperties.SHORTEN_LOCATIONS
+  short: Boolean = MetroOptions.SystemProperties.SHORTEN_LOCATIONS,
 ): String? = locationOrNull()?.render(short = short)
 
 /** Returns the raw [IrClass] of this [IrType] or throws. */
@@ -460,7 +460,7 @@ internal fun IrBuilderWithScope.irInvoke(
     for ((i, typeArg) in typeArgs.withIndex()) {
       if (i >= call.typeArguments.size) {
         reportCompilerBug(
-          "Invalid type arg $typeArg at index $i for callee ${callee.owner.dumpKotlinLike()}"
+          "Invalid type arg $typeArg at index $i for callee ${callee.owner.dumpKotlinLike()}",
         )
       }
       call.typeArguments[i] = typeArg
@@ -708,7 +708,7 @@ internal fun IrBuilderWithScope.parametersAsProviderArguments(
             isAssisted = parameter.isAssisted,
             isGraphInstance = parameter.isGraphInstance,
           )
-        }
+        },
     )
   }
 }
@@ -742,7 +742,7 @@ internal fun IrBuilderWithScope.parametersAsProviderArguments(
           val field =
             nameToField?.get(parameter.name)
               ?: providerFieldsByKey.getValue(
-                parameter.toCanonicalProviderKey(defaultUsesSuspendProvider)
+                parameter.toCanonicalProviderKey(defaultUsesSuspendProvider),
               )
           val providerInstance = irGetField(irGet(receiver), field)
           val contextKey =
@@ -754,7 +754,7 @@ internal fun IrBuilderWithScope.parametersAsProviderArguments(
             isAssisted = parameter.isAssisted,
             isGraphInstance = parameter.isGraphInstance,
           )
-        }
+        },
     )
   }
 }
@@ -812,7 +812,7 @@ internal fun IrBuilderWithScope.typeAsProviderArgument(
     contextKey.wrappedType.usesSuspendProvider(resolvedIsSuspendProvider)
   if (resolvedIsSuspendProvider && !requestedUsesSuspendProvider) {
     reportCompilerBug(
-      "Cannot materialize a synchronous provider from ${bindingType.dumpKotlinLike()} for context key $contextKey"
+      "Cannot materialize a synchronous provider from ${bindingType.dumpKotlinLike()} for context key $contextKey",
     )
   }
 
@@ -1154,7 +1154,7 @@ private fun maybeConvertMapKeysToJavaClass(
   }
   if (rawType.arguments.size != 2) {
     reportCompilerBug(
-      "Map type unexpectedly doesn't have two type args: ${rawType.dumpKotlinLike()}"
+      "Map type unexpectedly doesn't have two type args: ${rawType.dumpKotlinLike()}",
     )
   }
 
@@ -1191,7 +1191,7 @@ private fun convertClassMapToKClassMap(
   val kClassJavaGetter =
     context.metroSymbols.kClassJavaPropertyGetter
       ?: reportCompilerBug(
-        "KClass.java property getter not found but enableKClassClassInterop is enabled"
+        "KClass.java property getter not found but enableKClassClassInterop is enabled",
       )
 
   // Build Map.Entry<KClass<*>, V> type for the lambda parameter
@@ -1222,7 +1222,7 @@ private fun convertClassMapToKClassMap(
           typeHint = keyType,
           typeArgs =
             listOf(kclassKeyType.typeOrFail.requireSimpleType().arguments[0].typeOrNullableAny),
-        )
+        ),
       )
     }
 
@@ -1340,12 +1340,12 @@ internal fun IrExpression.suspendDoubleCheckLazy(
     val companionObject =
       symbols.suspendDoubleCheckCompanionObject
         ?: reportCompilerBug(
-          "SuspendDoubleCheck not found. Ensure the metro-runtime-coroutines dependency is on the classpath."
+          "SuspendDoubleCheck not found. Ensure the metro-runtime-coroutines dependency is on the classpath.",
         )
     val lazyFun =
       symbols.suspendDoubleCheckLazy
         ?: reportCompilerBug(
-          "SuspendDoubleCheck.lazy not found. Ensure the metro-runtime-coroutines dependency is on the classpath."
+          "SuspendDoubleCheck.lazy not found. Ensure the metro-runtime-coroutines dependency is on the classpath.",
         )
     val suspendLazyType = symbols.metroSuspendLazy.typeWith(valueType)
     irInvoke(
@@ -1363,12 +1363,12 @@ internal fun IrExpression.suspendDoubleCheck(symbols: Symbols, typeKey: IrTypeKe
     val companionObject =
       symbols.suspendDoubleCheckCompanionObject
         ?: reportCompilerBug(
-          "SuspendDoubleCheck not found. Ensure the metro-runtime-coroutines dependency is on the classpath."
+          "SuspendDoubleCheck not found. Ensure the metro-runtime-coroutines dependency is on the classpath.",
         )
     val providerFun =
       symbols.suspendDoubleCheckProvider
         ?: reportCompilerBug(
-          "SuspendDoubleCheck.provider not found. Ensure the metro-runtime-coroutines dependency is on the classpath."
+          "SuspendDoubleCheck.provider not found. Ensure the metro-runtime-coroutines dependency is on the classpath.",
         )
     val suspendProviderType = symbols.metroSuspendProvider.typeWith(typeKey.type)
     irInvoke(
@@ -1397,7 +1397,7 @@ internal fun IrClass.singleAbstractFunction(): IrSimpleFunction {
               function.kotlinFqName.asString() +
               "\n  - " +
               function.computeJvmDescriptorIsh(includeReturnType = false)
-          }
+          },
         )
       }
     }
@@ -1477,7 +1477,7 @@ internal fun IrConstructorCall.modulesArgument() =
   getAnnotationArgument(Symbols.Names.modules)?.expectAsOrNull<IrVararg>()
 
 internal fun IrConstructorCall.bindingContainerClasses(
-  includeModulesArg: Boolean
+  includeModulesArg: Boolean,
 ): Set<IrClassReference> {
   // Check both
   val argument =
@@ -1711,7 +1711,7 @@ internal fun IrType.canonicalize(
                   )
                 }
               }
-            }
+            },
           )
           // Preserve nullability
           .mergeNullability(it)
@@ -1735,7 +1735,7 @@ private fun IrSimpleType.patchMutableCollections(): IrSimpleType {
         context.irBuiltIns.mutableMapClass -> context.irBuiltIns.mapClass
         else ->
           reportCompilerBug(
-            "Unexpected multibinds collection type: ${type.render(short = false, includeAnnotations = true)}"
+            "Unexpected multibinds collection type: ${type.render(short = false, includeAnnotations = true)}",
           )
       }
     fixedType.typeWithArguments(type.requireSimpleType().arguments)
@@ -1764,7 +1764,7 @@ internal fun metroAnnotationsOf(
 internal fun IrClass.requireSimpleFunction(name: String) =
   getSimpleFunction(name)
     ?: reportCompilerBug(
-      "No function $name in class $classId. Available: ${functions.joinToString { it.name.asString() }}"
+      "No function $name in class $classId. Available: ${functions.joinToString { it.name.asString() }}",
     )
 
 internal fun IrClass.declarationMirrorFunctionOrNull(): IrSimpleFunction? {
@@ -1779,7 +1779,7 @@ internal fun IrClass.declarationMirrorFunctionOrNull(): IrSimpleFunction? {
     is IrSimpleFunction -> declaration
     else ->
       reportCompilerBug(
-        "Declaration mirror in class $classId is neither a property nor a function: $declaration"
+        "Declaration mirror in class $classId is neither a property nor a function: $declaration",
       )
   }
 }
@@ -1792,20 +1792,20 @@ internal fun IrClass.requireDeclarationMirrorFunction(): IrSimpleFunction {
 internal fun IrClassSymbol.requireSimpleFunction(name: String) =
   getSimpleFunction(name)
     ?: reportCompilerBug(
-      "No function $name in class ${owner.classId}. Available: ${functions.joinToString { it.owner.name.asString() }}"
+      "No function $name in class ${owner.classId}. Available: ${functions.joinToString { it.owner.name.asString() }}",
     )
 
 internal fun IrClass.requireNestedClass(name: Name): IrClass {
   return nestedClassOrNull(name)
     ?: reportCompilerBug(
-      "No nested class $name in $classId. Found ${nestedClasses.map { it.name }}"
+      "No nested class $name in $classId. Found ${nestedClasses.map { it.name }}",
     )
 }
 
 internal fun IrClass.requireNestedClass(origin: IrDeclarationOrigin): IrClass {
   return nestedClassOrNull(origin)
     ?: reportCompilerBug(
-      "No nested class with origin '$origin' in $classId. Found ${nestedClasses.map { it.name }}"
+      "No nested class with origin '$origin' in $classId. Found ${nestedClasses.map { it.name }}",
     )
 }
 
@@ -1823,7 +1823,7 @@ internal fun <T : IrOverridableDeclaration<*>> T.resolveOverriddenTypeIfAny(): T
 }
 
 internal fun IrOverridableDeclaration<*>.finalizeFakeOverride(
-  dispatchReceiverParameter: IrValueParameter
+  dispatchReceiverParameter: IrValueParameter,
 ) {
   check(isFakeOverride) { "Function $name is not a fake override!" }
   isFakeOverride = false
@@ -1831,7 +1831,7 @@ internal fun IrOverridableDeclaration<*>.finalizeFakeOverride(
   modality = Modality.FINAL
   if (this is IrSimpleFunction) {
     setDispatchReceiver(
-      dispatchReceiverParameter.copyTo(this, type = dispatchReceiverParameter.type)
+      dispatchReceiverParameter.copyTo(this, type = dispatchReceiverParameter.type),
     )
   } else if (this is IrProperty) {
     this.getter?.finalizeFakeOverride(dispatchReceiverParameter)
@@ -1846,7 +1846,7 @@ internal fun <S> IrOverridableDeclaration<S>.overriddenSymbolsSequence(): Sequen
 }
 
 private fun <S> IrOverridableDeclaration<S>.overriddenSymbolsSequence(
-  visited: MutableSet<S>
+  visited: MutableSet<S>,
 ): Sequence<S> where S : IrSymbol {
   return sequence {
     for (overridden in overriddenSymbols) {
@@ -1869,7 +1869,7 @@ internal fun IrFunction.stubExpressionBody(message: String = "Never called"): Ir
 
 context(context: IrMetroContext)
 internal fun IrBuilderWithScope.stubExpression(
-  message: String = "Never called"
+  message: String = "Never called",
 ): IrMemberAccessExpression<*> {
   return irInvoke(
     callee = context.metroSymbols.stdlibErrorFunction,
@@ -1932,7 +1932,7 @@ internal fun IrClass.addDeprecatedHiddenAnnotation() {
           context.metroSymbols.deprecationLevel.defaultType,
           context.metroSymbols.hiddenDeprecationLevel,
         )
-    }
+    },
   )
 }
 
@@ -2122,7 +2122,7 @@ internal val NOOP_TYPE_REMAPPER =
   }
 
 internal fun IrTypeParametersContainer.buildSubstitutionMapFor(
-  type: IrType
+  type: IrType,
 ): Map<IrTypeParameterSymbol, IrType> {
   return if (type is IrSimpleType && type.arguments.isNotEmpty()) {
     buildMap {
@@ -2212,7 +2212,7 @@ internal fun typeRemapperFor(
           put(parameter.symbol, concreteType)
         }
       }
-    }
+    },
   )
 }
 
@@ -2297,14 +2297,14 @@ internal fun IrAnnotationContainer.mapKeyAnnotation() =
     ?.let(context::createIrAnnotation)
 
 private fun IrAnnotationContainer?.annotationsAnnotatedWith(
-  annotationsToLookFor: Collection<ClassId>
+  annotationsToLookFor: Collection<ClassId>,
 ): Set<IrConstructorCall> {
   if (this == null) return emptySet()
   return annotations.annotationsAnnotatedWith(annotationsToLookFor)
 }
 
 private fun List<IrConstructorCall>?.annotationsAnnotatedWith(
-  annotationsToLookFor: Collection<ClassId>
+  annotationsToLookFor: Collection<ClassId>,
 ): Set<IrConstructorCall> {
   if (this == null) return emptySet()
   return filterToSet {
@@ -2449,7 +2449,7 @@ private fun reportSignatureCarrierParamMismatch(
       appendLine("  - create() param:          ${createParameter.typeKey}")
       appendLine()
       appendLine(
-        "This is a known bug in the Kotlin compiler, follow https://github.com/ZacSweers/metro/issues/1556"
+        "This is a known bug in the Kotlin compiler, follow https://github.com/ZacSweers/metro/issues/1556",
       )
     }
 
@@ -2507,7 +2507,7 @@ internal fun IrBuilderWithScope.instanceFactory(
 ): IrExpression {
   assert(allowPropertyGetter || !(arg is IrCall && arg.symbol.owner.isPropertyAccessor)) {
     reportCompilerBug(
-      "Metro compiler attempted to wrap a call to a property getter in an InstanceFactory. This is probably a bug because it'll likely eagerly init that getter!"
+      "Metro compiler attempted to wrap a call to a property getter in an InstanceFactory. This is probably a bug because it'll likely eagerly init that getter!",
     )
   }
 
@@ -2654,7 +2654,7 @@ internal fun IrClass.addDefaultConstructor(): IrConstructor {
 // public for test extension use
 context(context: IrPluginContext)
 public fun IrConstructor.generateDefaultConstructorBody(
-  body: IrBlockBodyBuilder.() -> Unit = {}
+  body: IrBlockBodyBuilder.() -> Unit = {},
 ): IrBody? {
   val returnType = returnType as? IrSimpleType ?: return null
   val parentClass = parent as? IrClass ?: return null
@@ -2690,12 +2690,12 @@ internal fun IrDeclarationWithVisibility.isVisibleAsInternal(file: IrFile): Bool
     return module.name.asString() == "<$KOTLIN_JS_STDLIB_NAME>"
   }
   return module.descriptor.shouldSeeInternalsOf(
-    referencedDeclarationPackageFragment.moduleDescriptor
+    referencedDeclarationPackageFragment.moduleDescriptor,
   )
 }
 
 internal fun IrDeclarationWithVisibility.isVisibleAsInternalTo(
-  declaration: IrDeclaration
+  declaration: IrDeclaration,
 ): Boolean {
   declaration.fileOrNull?.let {
     return isVisibleAsInternal(it)
@@ -2708,7 +2708,7 @@ internal fun IrDeclarationWithVisibility.isVisibleAsInternalTo(
 
   val callingDeclarationPackageFragment = declaration.getPackageFragment()
   return callingDeclarationPackageFragment.moduleDescriptor.shouldSeeInternalsOf(
-    referencedDeclarationPackageFragment.moduleDescriptor
+    referencedDeclarationPackageFragment.moduleDescriptor,
   )
 }
 
@@ -2733,7 +2733,7 @@ internal fun IrDeclarationWithVisibility.isVisibleTo(other: IrDeclarationWithVis
     return isVisibleTo(
       object : IrDeclarationWithVisibility by other {
         override var visibility: DescriptorVisibility = DescriptorVisibilities.PROTECTED
-      }
+      },
     )
   }
   if (isEffectivelyPrivate() || isEffectivelyInlineOnly()) return false
@@ -2792,17 +2792,17 @@ internal fun IrType.requireSimpleType(
         declaration?.origin == IrDeclarationOrigin.IR_EXTERNAL_JAVA_DECLARATION_STUB
     val message = buildString {
       appendLine(
-        "Encountered an unexpected error while processing type: '${render(short = false)}'"
+        "Encountered an unexpected error while processing type: '${render(short = false)}'",
       )
       if (isExternalStub) {
         appendLine(
-          "- Note: the IR compiler may be omitting required generic arguments from the render"
+          "- Note: the IR compiler may be omitting required generic arguments from the render",
         )
       }
       appendLine("- Make sure you don't have any missing dependencies or imports")
       if (isExternalStub) {
         appendLine(
-          "- This type appears to be from a library. If so, make sure the library exposes this type as a visible dependency (i.e. \"api\" dependency in Gradle)."
+          "- This type appears to be from a library. If so, make sure the library exposes this type as a visible dependency (i.e. \"api\" dependency in Gradle).",
         )
       }
     }
@@ -2818,7 +2818,7 @@ internal fun IrType.requireSimpleType(
     return this
   } else {
     reportCompilerBug(
-      "Expected $this to be an ${IrSimpleType::class.qualifiedName} but was ${this::class.qualifiedName}"
+      "Expected $this to be an ${IrSimpleType::class.qualifiedName} but was ${this::class.qualifiedName}",
     )
   }
 }
@@ -2865,7 +2865,7 @@ internal fun IrDeclaration.lookupClass(classId: ClassId): IrClassSymbol? {
 
 context(context: IrMetroContext)
 internal fun IrDeclaration.lookupFunctions(
-  callableId: CallableId
+  callableId: CallableId,
 ): Collection<IrSimpleFunctionSymbol> {
   if (
     context.options.omitRedundantMirrors &&
@@ -2927,7 +2927,7 @@ internal val IrConstructorCall.annotationClass: IrClass
 internal fun IrClass.requireStaticIshDeclarationContainer(): IrClass {
   return staticIshDeclarationContainerOrNull()
     ?: reportCompilerBug(
-      "No contain present that can hold static-ish declarations in ${classId?.asFqNameString()}!"
+      "No contain present that can hold static-ish declarations in ${classId?.asFqNameString()}!",
     )
 }
 

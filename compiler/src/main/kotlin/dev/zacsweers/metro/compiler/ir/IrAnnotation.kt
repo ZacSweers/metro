@@ -282,7 +282,7 @@ private fun StringBuilder.renderAsAnnotationArgument(
     }
     else ->
       reportCompilerBug(
-        "Unrecognized annotation argument type: $irElement (type ${irElement::class.java})"
+        "Unrecognized annotation argument type: $irElement (type ${irElement::class.java})",
       )
   }
 }

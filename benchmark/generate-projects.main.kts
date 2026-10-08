@@ -369,15 +369,15 @@ class GenerateProjectsCommand : CliktCommand() {
     echo("Modules by layer:")
 
     echo(
-      "- Core: ${coreModules.size} (${String.format("%.1f", coreModules.size.toDouble() / allModules.size * 100)}%)"
+      "- Core: ${coreModules.size} (${String.format("%.1f", coreModules.size.toDouble() / allModules.size * 100)}%)",
     )
 
     echo(
-      "- Features: ${featureModules.size} (${String.format("%.1f", featureModules.size.toDouble() / allModules.size * 100)}%)"
+      "- Features: ${featureModules.size} (${String.format("%.1f", featureModules.size.toDouble() / allModules.size * 100)}%)",
     )
 
     echo(
-      "- App: ${appModules.size} (${String.format("%.1f", appModules.size.toDouble() / allModules.size * 100)}%)"
+      "- App: ${appModules.size} (${String.format("%.1f", appModules.size.toDouble() / allModules.size * 100)}%)",
     )
 
     echo("Total contributions: ${allModules.sumOf { it.contributionsCount }}")
@@ -390,7 +390,7 @@ class GenerateProjectsCommand : CliktCommand() {
     }
     if (l3ChildrenPerL2 > 0) {
       echo(
-        "  - L3 children per L2: $l3ChildrenPerL2 (${l1Count * l2ChildrenPerL1 * l3ChildrenPerL2} total)"
+        "  - L3 children per L2: $l3ChildrenPerL2 (${l1Count * l2ChildrenPerL1 * l3ChildrenPerL2} total)",
       )
     }
     echo("  - Total: $totalSubcomponents")
@@ -1282,7 +1282,7 @@ ${if (injectOnClass) "@Inject\n" else ""}class ${className}InitializerImpl$index
         parentScopeRef = topLevelParentScopeRef,
         serviceCount = 3,
         parentServiceNames = availableDependencies,
-      )
+      ),
     )
 
     // L2
@@ -1297,7 +1297,7 @@ ${if (injectOnClass) "@Inject\n" else ""}class ${className}InitializerImpl$index
             parentScopeRef = "${className}Scope::class",
             serviceCount = 2,
             parentServiceNames = l1Services.take(2),
-          )
+          ),
         )
 
         // L3
@@ -1312,7 +1312,7 @@ ${if (injectOnClass) "@Inject\n" else ""}class ${className}InitializerImpl$index
                 parentScopeRef = "${l2Name}Scope::class",
                 serviceCount = 1,
                 parentServiceNames = l2Services.take(1),
-              )
+              ),
             )
           }
         }

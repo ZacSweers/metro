@@ -60,7 +60,7 @@ public annotation class ViewModelAssistedFactoryKey(val value: KClass<out ViewMo
 )
 @Retention(AnnotationRetention.RUNTIME)
 public annotation class ManualViewModelAssistedFactoryKey(
-  val value: KClass<out ManualViewModelAssistedFactory> = Nothing::class
+  val value: KClass<out ManualViewModelAssistedFactory> = Nothing::class,
 )
 
 /**

@@ -105,8 +105,8 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
           }
 
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     val membersInjector = result.ExampleClass.generatedMembersInjector()
@@ -197,8 +197,8 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
             }
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     val membersInjector = result.ExampleClass.generatedMembersInjector()
@@ -256,8 +256,8 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
             }
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     val membersInjector = result.ExampleClass.generatedMembersInjector()
@@ -313,8 +313,8 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
             lateinit var base2: List<String>
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     val membersInjector = result.ExampleClass.generatedMembersInjector()
@@ -373,8 +373,8 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
           abstract class ExampleClass<T> {
             @Inject lateinit var string: String
           }
-          """
-      )
+          """,
+      ),
     ) {
       val membersInjector = ExampleClass.generatedMembersInjector()
 
@@ -391,8 +391,8 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
           class ExampleClass<T, R> {
             @Inject lateinit var unknownItems: List<T>
           }
-          """
-      )
+          """,
+      ),
     ) {
       val membersInjector = ExampleClass.generatedMembersInjector()
 
@@ -426,8 +426,8 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
               return true
             }
           }
-          """
-      )
+          """,
+      ),
     ) {
       val baseMembersInjector = classLoader.loadClass("test.Base").generatedMembersInjector()
       val injectClassMembersInjector = ExampleClass.generatedMembersInjector()
@@ -488,8 +488,8 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
           class ExampleClass : Middle<String>() {
             @Inject lateinit var bools: List<Boolean>
           }
-          """
-      )
+          """,
+      ),
     ) {
       val baseMembersInjector = classLoader.loadClass("test.Base").generatedMembersInjector()
       val middleMembersInjector = classLoader.loadClass("test.Middle").generatedMembersInjector()
@@ -536,8 +536,8 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
           abstract class Base {
             @Inject lateinit var string: String
           }
-          """
-        )
+          """,
+        ),
       )
 
     compile(
@@ -558,7 +558,7 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
               return true
             }
           }
-          """
+          """,
       ),
       previousCompilationResult = otherModuleResult,
     ) {
@@ -611,8 +611,8 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
           @Inject lateinit var value: Any
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphViaFactory(3)
       val instance = ExampleClass.newInstanceStrict()
@@ -636,8 +636,8 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
 
         class ExampleClass
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val instance = ExampleClass.newInstanceStrict()
@@ -665,8 +665,8 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
           @Inject var int: Int = 2
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphViaFactory(3)
       val instance = ExampleClass.newInstanceStrict()
@@ -695,8 +695,8 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
           @Inject var int: Int = 2
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphViaFactory(3, 4L)
       val instance = graph.callProperty<Any>("exampleClass")
@@ -730,8 +730,8 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
           @Inject var int: Int = 2
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphViaFactory(3, 4L)
       val instance = graph.callProperty<Any>("exampleClass")
@@ -767,8 +767,8 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
           @Inject var int: Int = 2
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphViaFactory(3, 4L)
       val instance = graph.callProperty<Any>("exampleClass")
@@ -803,8 +803,8 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
           }
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphViaFactory(3, 4L)
       val instance = graph.callProperty<Any>("exampleClass")
@@ -838,8 +838,8 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
           }
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphViaFactory(3, 4L)
       val instance = graph.callProperty<Any>("exampleClass")
@@ -873,8 +873,8 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
           }
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphViaFactory(3, 4L)
       val instance = ExampleClass.newInstanceStrict()
@@ -909,8 +909,8 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
           }
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphViaFactory(3, 4L)
       val instance = ExampleClass.newInstanceStrict()
@@ -940,8 +940,8 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
           val int: Int = 3
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val instance = ExampleClass.newInstanceStrict()
@@ -963,7 +963,7 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
           @Inject lateinit var value: String
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
@@ -981,7 +981,7 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
                 declaration visible to ExampleGraph
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }

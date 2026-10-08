@@ -89,7 +89,7 @@ fun Class<*>.generatedMembersInjector(): Class<MembersInjector<*>> {
   val nestedClass =
     declaredClasses.singleOrNull { it.simpleName == expectedName }
       ?: error(
-        "Did not find nested class with name $expectedName in $this. Available: ${classes.joinToString { it.simpleName }}"
+        "Did not find nested class with name $expectedName in $this. Available: ${classes.joinToString { it.simpleName }}",
       )
   @Suppress("UNCHECKED_CAST")
   return nestedClass as Class<MembersInjector<*>>
@@ -125,13 +125,13 @@ fun Class<*>.providesFactoryClass(
 
   if (providerCallableName != null) {
     assertWithMessage(
-        "The name '$providerCallableName' must match a callable annotated with @Provides"
+        "The name '$providerCallableName' must match a callable annotated with @Provides",
       )
       .that(providesCallables)
       .contains(providerCallableName)
   } else {
     assertWithMessage(
-        "You must specify a providerCallableName value when there is more than one @Provides callable"
+        "You must specify a providerCallableName value when there is more than one @Provides callable",
       )
       .that(providesCallables)
       .hasSize(1)
@@ -219,7 +219,7 @@ val Class<*>.companionObjectInstanceFieldOrNull: Field?
   }
 
 fun Class<*>.staticMethods(
-  objectInstanceField: Field? = objectInstanceFieldOrNull
+  objectInstanceField: Field? = objectInstanceFieldOrNull,
 ): Sequence<StaticMethod> = sequence {
   yieldAll(declaredMethods.filter { Modifier.isStatic(it.modifiers) }.map(::StaticMethod))
 
@@ -227,7 +227,7 @@ fun Class<*>.staticMethods(
     yieldAll(
       declaredMethods
         .filter { !Modifier.isStatic(it.modifiers) }
-        .map { StaticMethod(it, objectInstanceField.get(null)) }
+        .map { StaticMethod(it, objectInstanceField.get(null)) },
     )
   }
 
@@ -341,7 +341,7 @@ val JvmCompilationResult.Parent2Graph: Class<*>
 fun Class<*>.generatedImpl(): Class<*> {
   return implOrNull()
     ?: error(
-      "Could not find nested class $this.${Symbols.Names.Impl}. Available: ${classes.joinToString { it.simpleName }}"
+      "Could not find nested class $this.${Symbols.Names.Impl}. Available: ${classes.joinToString { it.simpleName }}",
     )
 }
 
@@ -395,10 +395,10 @@ fun Any.getInstanceMethod(name: String): Method {
       "No instance method with name '$name' found in $this. Available: ${
         javaClass.methods.filterNot {
           Modifier.isStatic(
-            it.modifiers
+            it.modifiers,
           )
         }.joinToString { it.name }
-      }"
+      }",
     )
 }
 
@@ -503,7 +503,7 @@ fun CompilationResult.assertWarnings(vararg warnings: String) {
 
 fun CompilationResult.assertDiagnostics(warnings: List<String>, errors: List<String>) {
   assertDiagnostics(
-    mapOf(DiagnosticSeverity.WARNING to warnings, DiagnosticSeverity.ERROR to errors)
+    mapOf(DiagnosticSeverity.WARNING to warnings, DiagnosticSeverity.ERROR to errors),
   )
 }
 

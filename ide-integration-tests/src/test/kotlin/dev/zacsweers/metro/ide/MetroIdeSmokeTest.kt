@@ -72,7 +72,7 @@ private fun androidStudioDownloadUri(version: String, filenamePrefix: String): U
     }
 
   return URI(
-    "https://dl.google.com/android/studio/$pathType/$version/$filenamePrefix-$platformSuffix"
+    "https://dl.google.com/android/studio/$pathType/$version/$filenamePrefix-$platformSuffix",
   )
 }
 
@@ -193,7 +193,7 @@ class MetroIdeSmokeTest {
               // the installer file already exists at the expected path.
               downloadURI =
                 URI(
-                  "https://download.jetbrains.com/idea/idea-$buildNumber${IdeProductProvider.IU.installerFileExt}"
+                  "https://download.jetbrains.com/idea/idea-$buildNumber${IdeProductProvider.IU.installerFileExt}",
                 ),
               getInstaller = { StandardInstaller(IdeByLinkDownloader) },
             )
@@ -250,7 +250,7 @@ class MetroIdeSmokeTest {
         androidPrefsDir
           .resolve("analytics.settings")
           .writeText(
-            """{"userId":"00000000-0000-0000-0000-000000000000","hasOptedIn":true,"debugDisablePublishing":true,"saltSkew":-1,"lastOptinPromptVersion":"9999.9999"}"""
+            """{"userId":"00000000-0000-0000-0000-000000000000","hasOptedIn":true,"debugDisablePublishing":true,"saltSkew":-1,"lastOptinPromptVersion":"9999.9999"}""",
           )
 
         AsConsentDirs(commonDataDir, androidPrefsDir)
@@ -486,7 +486,7 @@ class MetroIdeSmokeTest {
         "Smoke test failures:\n" +
           errors.joinToString("\n") { "  - $it" } +
           "\n\nAll highlights with descriptions:\n$allHighlightsSummary" +
-          "\n\nAll inlays:\n$allInlaySummary"
+          "\n\nAll inlays:\n$allInlaySummary",
       )
     }
 
@@ -498,7 +498,7 @@ class MetroIdeSmokeTest {
     if (metroErrors.isNotEmpty()) {
       fail(
         "Metro caused ${metroErrors.size} internal error(s) during analysis:\n" +
-          metroErrors.joinToString("\n---\n") { e -> "${e.messageText}\n${e.stackTraceContent}" }
+          metroErrors.joinToString("\n---\n") { e -> "${e.messageText}\n${e.stackTraceContent}" },
       )
     }
   }

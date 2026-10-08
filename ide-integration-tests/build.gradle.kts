@@ -44,7 +44,7 @@ dependencies {
       // Source this from the first IU version in ide-versions.txt.
       // Stable entries use marketing version (e.g., 2025.3.2), resolved from releases repo.
       // Prerelease entries use build number (e.g., 261.22158.182), resolved from snapshots repo.
-      intellijVersion
+      intellijVersion,
     )
     bundledPlugin("org.jetbrains.kotlin")
     // Starter embeds platform classes, so keep 253 hosts on Starter 253. Cap newer hosts at 261
@@ -83,7 +83,7 @@ tasks.test {
       testProjectDirectory.asFileTree.matching {
         // Opening the fixture creates IDE and Gradle state inside the project directory.
         exclude("**/build/**", "**/.gradle/**", "**/.kotlin/**", "**/.idea/**")
-      }
+      },
     )
     .withPropertyName("testProjectFiles")
     .withPathSensitivity(PathSensitivity.RELATIVE)

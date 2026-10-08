@@ -91,7 +91,7 @@ internal abstract class MetroArtifactCopyTask : DefaultTask(), MetroArtifacts {
             .filter(String::isNotBlank)
             .fold(project.layout.buildDirectory.dir("tmp/metro/reporting")) { dir, segment ->
               dir.map { it.dir(segment) }
-            }
+            },
         )
         task.dependsOn(sourceCompilation.compileTaskProvider)
       }

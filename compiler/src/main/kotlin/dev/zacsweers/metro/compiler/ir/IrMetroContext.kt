@@ -133,7 +133,7 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
     name: String,
   ) {
     lookupFile?.appendText(
-      "\n${filePath.substringAfterLast(File.separatorChar)},${position.line}:${position.column},$scopeFqName,$scopeKind,$name"
+      "\n${filePath.substringAfterLast(File.separatorChar)},${position.line}:${position.column},$scopeFqName,$scopeKind,$name",
     )
   }
 
@@ -144,7 +144,7 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
   fun IrClass.dumpToMetroLog() {
     val name =
       parentDeclarationsWithSelf.filterIsInstance<IrClass>().toList().asReversed().joinToString(
-        separator = "."
+        separator = ".",
       ) {
         it.name.asString()
       }

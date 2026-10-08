@@ -243,7 +243,7 @@ internal class LibraryIndexPostProcessor(
    */
   @OptIn(KaPlatformInterface::class)
   private fun bindingSeeds(
-    dependencies: SourceClassDependencies.Builder
+    dependencies: SourceClassDependencies.Builder,
   ): List<LibraryBindingSeed> {
     val seeds = mutableListOf<LibraryBindingSeed>()
     val fileIndex = ProjectFileIndex.getInstance(project)
@@ -258,7 +258,7 @@ internal class LibraryIndexPostProcessor(
         null
       } else {
         Collections.newSetFromMap(
-          IdentityHashMap<Map<KaModule, SmartPsiElementPointer<out KtElement>>, Boolean>()
+          IdentityHashMap<Map<KaModule, SmartPsiElementPointer<out KtElement>>, Boolean>(),
         )
       }
     val scopes = HashMap<KaModule, DeclarationResolutionScope>()
@@ -405,7 +405,7 @@ private constructor(
   private val graphOwnersByConsumer: Map<ConsumerOwnershipKey, FrozenConsumerOwners>,
 ) {
   private constructor(
-    state: ConsumerOwnershipState
+    state: ConsumerOwnershipState,
   ) : this(
     state.pointersByGraphId,
     state.pointersByIncludedContainer,
@@ -419,7 +419,7 @@ private constructor(
 
   /** Returns the graph roots used to resolve an included container, with one entry per module. */
   fun includedContainerPointers(
-    consumer: ConsumerEntry
+    consumer: ConsumerEntry,
   ): List<SmartPsiElementPointer<out KtElement>>? {
     if (consumer.graphId != null) return null
     val containerKey = consumer.includedContainerKey ?: return null
@@ -516,7 +516,7 @@ private class ConsumerOwnershipBuilder(
   }
 
   private fun buildIncludedContainerPointers(
-    rootPointersByGraphId: Map<GraphDeclarationId, List<SmartPsiElementPointer<out KtElement>>>
+    rootPointersByGraphId: Map<GraphDeclarationId, List<SmartPsiElementPointer<out KtElement>>>,
   ): Map<KaTypeKey, List<SmartPsiElementPointer<out KtElement>>> {
     val pointers = linkedMapOf<KaTypeKey, MutableList<SmartPsiElementPointer<out KtElement>>>()
     val modulesByContainer = HashMap<KaTypeKey, MutableSet<KaModule>>()
@@ -624,7 +624,7 @@ private sealed interface FrozenConsumerOwners {
 /** Session-free source class groups that remain reusable when equivalent shards are rebuilt. */
 internal class SourceClassUseSites(
   private val groups:
-    Map<ClassBindingIdentity, Map<KaModule, SmartPsiElementPointer<out KtElement>>>
+    Map<ClassBindingIdentity, Map<KaModule, SmartPsiElementPointer<out KtElement>>>,
 ) {
   operator fun get(binding: KaBinding): Map<KaModule, SmartPsiElementPointer<out KtElement>>? {
     val virtualFile = binding.pointer.virtualFile ?: return null

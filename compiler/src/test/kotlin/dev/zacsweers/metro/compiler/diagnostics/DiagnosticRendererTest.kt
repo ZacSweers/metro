@@ -30,7 +30,7 @@ class DiagnosticRendererTest {
               textOf("AppGraph.repo"),
               buildText { appendType("test.RepositoryImpl") },
               buildText { appendType("test.Dependency") },
-            )
+            ),
           ),
           DiagnosticSection.BindingTrace(
             graphName = "AppGraph",
@@ -58,8 +58,8 @@ class DiagnosticRendererTest {
                   },
                 description = "same type, different qualifier",
                 location = "Bindings.kt:14:3",
-              )
-            )
+              ),
+            ),
           ),
         ),
       notes =
@@ -70,8 +70,8 @@ class DiagnosticRendererTest {
               appendType("test.Dependency")
               append(" or a @Provides function to ")
               appendType("test.AppGraph")
-            }
-          )
+            },
+          ),
         ),
     )
 
@@ -94,7 +94,7 @@ class DiagnosticRendererTest {
           help: add an @Inject constructor to Dependency or a @Provides function to AppGraph
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
         """
-          .trimIndent()
+          .trimIndent(),
       )
   }
 
@@ -121,7 +121,7 @@ class DiagnosticRendererTest {
           .replace(" - Bindings", " — Bindings")
           .replace("- @Named", "• @Named")
           .lines()
-          .map { it.trimEnd() }
+          .map { it.trimEnd() },
       )
       .inOrder()
   }
@@ -210,7 +210,7 @@ class DiagnosticRendererTest {
               +-> B -> A ~~> FakeA --+
               +----------------------+
         """
-          .trimIndent()
+          .trimIndent(),
       )
   }
 
@@ -294,7 +294,7 @@ class DiagnosticRendererTest {
                         "                                ~~~~~~",
                   ),
                 ),
-            )
+            ),
           ),
         includeDocsUrl = false,
       )
@@ -311,7 +311,7 @@ class DiagnosticRendererTest {
                 @Provides fun provideString2(): String
                                                 ~~~~~~
         """
-          .trimIndent()
+          .trimIndent(),
       )
   }
 
@@ -385,7 +385,7 @@ class DiagnosticRendererTest {
                       ),
                   ),
                 ),
-            )
+            ),
           ),
         includeDocsUrl = false,
       )
@@ -403,7 +403,7 @@ class DiagnosticRendererTest {
            │                                 ⌃⌃⌃⌃⌃⌃
            ╰─
         """
-          .trimIndent()
+          .trimIndent(),
       )
   }
 
@@ -487,7 +487,7 @@ class DiagnosticRendererTest {
                       ),
                   ),
                 ),
-            )
+            ),
           ),
         includeDocsUrl = false,
       )
@@ -522,10 +522,10 @@ class DiagnosticRendererTest {
                     key = buildText { appendType("test.Foo2") },
                     usage = "is injected at",
                     context = textOf("InjectedThing(…, foo2)"),
-                  )
+                  ),
                 ),
               continuation = buildText { appendType("test.Foo1") },
-            )
+            ),
           ),
         includeDocsUrl = false,
       )
@@ -538,7 +538,7 @@ class DiagnosticRendererTest {
               Foo2 is injected at InjectedThing(…, foo2)
               … same as for Foo1
         """
-          .trimIndent()
+          .trimIndent(),
       )
   }
 
@@ -603,7 +603,7 @@ class DiagnosticRendererTest {
           │ ╰── injected here
           ╰─
         """
-          .trimIndent()
+          .trimIndent(),
       )
 
     // Unreadable source: the frame is silently skipped.
@@ -628,8 +628,8 @@ class DiagnosticRendererTest {
               CycleNode(textOf("B")),
               CycleNode(textOf("A"), aliasEdgeToNext = true),
               CycleNode(textOf("FakeA")),
-            )
-          )
+            ),
+          ),
         ),
       includeDocsUrl = false,
     )

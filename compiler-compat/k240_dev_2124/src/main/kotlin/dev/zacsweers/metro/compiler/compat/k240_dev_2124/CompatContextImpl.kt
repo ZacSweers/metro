@@ -28,23 +28,23 @@ import org.jetbrains.kotlin.ir.types.IrType
 public class CompatContextImpl : CompatContext by DelegateType() {
   context(_: CompilerPluginRegistrar)
   override fun CompilerPluginRegistrar.ExtensionStorage.registerFirExtensionCompat(
-    extension: FirExtensionRegistrar
+    extension: FirExtensionRegistrar,
   ) {
     FirExtensionRegistrarAdapter.registerExtension(extension)
   }
 
   context(_: CompilerPluginRegistrar)
   override fun CompilerPluginRegistrar.ExtensionStorage.registerIrExtensionCompat(
-    extension: IrGenerationExtension
+    extension: IrGenerationExtension,
   ) {
     IrGenerationExtension.registerExtension(extension)
   }
 
   override fun createIrGeneratedDeclarationsRegistrar(
-    pluginContext: IrPluginContext
+    pluginContext: IrPluginContext,
   ): IrGeneratedDeclarationsRegistrarCompat {
     return IrAnnotationIrGeneratedDeclarationsRegistrarCompat(
-      pluginContext.metadataDeclarationRegistrar
+      pluginContext.metadataDeclarationRegistrar,
     )
   }
 
@@ -71,7 +71,7 @@ public class CompatContextImpl : CompatContext by DelegateType() {
 }
 
 public fun <T : FirElement> FirEvaluatorResult.unwrapOr(
-  action: (CompileTimeException) -> Unit
+  action: (CompileTimeException) -> Unit,
 ): T? {
   @Suppress("UNCHECKED_CAST")
   when (this) {

@@ -230,7 +230,7 @@ private constructor(
 
 context(context: IrMetroContext)
 internal fun List<IrValueParameter>.mapToConstructorParameters(
-  remapper: TypeRemapper = NOOP_TYPE_REMAPPER
+  remapper: TypeRemapper = NOOP_TYPE_REMAPPER,
 ): List<Parameter> {
   return map { valueParameter ->
     valueParameter.toConstructorParameter(valueParameter.kind, remapper)
@@ -256,9 +256,11 @@ internal fun IrValueParameter.toConstructorParameter(
 
   val assistedAnnotation =
     annotationsIn(context.metroSymbols.assistedAnnotations)
-      .singleOrNullUnlessMultiple({
-        reportCompilerBug("Multiple @Assisted annotations on parameter $this")
-      })
+      .singleOrNullUnlessMultiple(
+        {
+          reportCompilerBug("Multiple @Assisted annotations on parameter $this")
+        },
+      )
 
   var isProvides = false
   var isIncludes = false
@@ -416,7 +418,7 @@ internal fun IrFunction.memberInjectParameters(
           uniqueName = nameAllocator.newName(property.name.asString()).asName(),
           kind = IrParameterKind.Regular,
           typeParameterRemapper = mapper,
-        )
+        ),
       )
     } else {
       regularParameters.mapToMemberInjectParameters(
@@ -454,7 +456,7 @@ internal fun Parameter.remapTypes(remapper: TypeRemapper): Parameter =
  */
 context(context: IrMetroContext)
 internal fun Parameter.toCanonicalProviderKey(
-  defaultUsesSuspendProvider: Boolean = false
+  defaultUsesSuspendProvider: Boolean = false,
 ): IrContextualTypeKey {
   val usesSuspendProvider =
     contextualTypeKey.wrappedType.usesSuspendProvider(defaultUsesSuspendProvider)
@@ -469,7 +471,7 @@ internal fun Parameter.toCanonicalProviderKey(
  */
 context(context: IrMetroContext)
 internal fun List<Parameter>.dedupeParameters(
-  defaultUsesSuspendProvider: Boolean = false
+  defaultUsesSuspendProvider: Boolean = false,
 ): List<Parameter> {
   val seenKeys = HashSet<IrContextualTypeKey>(size)
   return buildList {

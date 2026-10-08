@@ -327,7 +327,7 @@ class KmpCommonSourcesICTests : BaseIncrementalCompilationTest(KmpTarget.JVM) {
 
                   ${buildMetroBlock()}
                   """
-                    .trimIndent()
+                    .trimIndent(),
                 )
               }
             }
@@ -362,7 +362,7 @@ class KmpCommonSourcesICTests : BaseIncrementalCompilationTest(KmpTarget.JVM) {
         listOf(
           "kotlin.build.report.output=file",
           "kotlin.jvm.enableIncrementalCompilationOfCommonSources=true",
-        )
+        ),
     ) {
     val valueSource =
       source(

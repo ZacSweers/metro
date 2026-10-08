@@ -18,10 +18,10 @@ import org.jetbrains.kotlin.name.Name
 
 public class CompatContextImpl : CompatContext by DelegateType() {
   override fun createIrGeneratedDeclarationsRegistrar(
-    pluginContext: IrPluginContext
+    pluginContext: IrPluginContext,
   ): IrGeneratedDeclarationsRegistrarCompat {
     return RegisterPropertyIrGeneratedDeclarationsRegistrarCompat(
-      pluginContext.metadataDeclarationRegistrar
+      pluginContext.metadataDeclarationRegistrar,
     )
   }
 

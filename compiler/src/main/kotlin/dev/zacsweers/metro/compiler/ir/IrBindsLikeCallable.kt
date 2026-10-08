@@ -214,7 +214,7 @@ internal fun MetroSimpleFunction.toMultibindsCallable(
 
 context(context: IrMetroContext)
 internal fun MetroSimpleFunction.toBindsOptionalOfCallable(
-  callableMetadata: IrCallableMetadata = ir.irCallableMetadata(annotations, isInterop = true)
+  callableMetadata: IrCallableMetadata = ir.irCallableMetadata(annotations, isInterop = true),
 ): BindsOptionalOfCallable {
   // Wrap this in a Java Optional
   // TODO what if we support other optionals?

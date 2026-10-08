@@ -99,7 +99,7 @@ class MetroSettingsConfigurable(private val project: Project) : BoundConfigurabl
             .bindSelected(state::assistedParameterInlays)
             .enabledIf(resolutionSelected)
             .comment(
-              "Implicitly assisted parameters, such as Circuit-provided types, that have no @Assisted annotation in source"
+              "Implicitly assisted parameters, such as Circuit-provided types, that have no @Assisted annotation in source",
             )
         }
       }
@@ -124,7 +124,7 @@ class MetroSettingsConfigurable(private val project: Project) : BoundConfigurabl
             .bindSelected(state::automaticallyValidatePinnedGraph)
             .enabledIf(automaticRefreshSelected)
             .comment(
-              "Checks the pinned graph and its children after a short pause; requires automatic graph refresh"
+              "Checks the pinned graph and its children after a short pause; requires automatic graph refresh",
             )
         }
       }
@@ -135,7 +135,7 @@ class MetroSettingsConfigurable(private val project: Project) : BoundConfigurabl
           .bindSelected(state::suppressUnusedWarnings)
           .comment(
             "Treats providers, injected classes, and contributions as used even when their only " +
-              "usages are in generated code"
+              "usages are in generated code",
           )
       }
       row {
@@ -158,7 +158,7 @@ class MetroSettingsConfigurable(private val project: Project) : BoundConfigurabl
             checkBox("Include thread activity")
               .bindSelected(state::includeThreadActivity)
               .comment(
-                "Adds thread slices and coroutine arrows to new captures; increases recording overhead"
+                "Adds thread slices and coroutine arrows to new captures; increases recording overhead",
               )
           }
           .visibleIf(debuggingSelected)
@@ -169,7 +169,7 @@ class MetroSettingsConfigurable(private val project: Project) : BoundConfigurabl
                 setter = { state.sourceScanPoolSize = it },
               )
               .comment(
-                "Maximum concurrent file, class, and metadata lookups. Also capped at one below the CPU count. Applies to the next refresh; 1 is sequential."
+                "Maximum concurrent file, class, and metadata lookups. Also capped at one below the CPU count. Applies to the next refresh; 1 is sequential.",
               )
           }
           .visibleIf(debuggingSelected)

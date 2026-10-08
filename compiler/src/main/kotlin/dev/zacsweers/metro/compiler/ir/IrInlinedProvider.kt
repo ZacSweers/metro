@@ -157,7 +157,7 @@ internal class IrInlinedProvider private constructor(private val value: Value) {
     override fun toProto(): InlinedValueProto =
       InlinedValueProto(
         enum_value =
-          EnumEntryProto(enum_class_id = enumClassId.asString(), entry_name = entryName.asString())
+          EnumEntryProto(enum_class_id = enumClassId.asString(), entry_name = entryName.asString()),
       )
 
     context(context: IrMetroContext, scope: IrBuilderWithScope)

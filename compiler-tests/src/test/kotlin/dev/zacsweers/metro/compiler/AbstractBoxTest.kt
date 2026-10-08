@@ -64,7 +64,8 @@ open class AbstractBoxTest : AbstractFirLightTreeBlackBoxCodegenTest() {
       configureIrHandlersStep {
         useHandlers(
           // Errors in compiler plugin backend should fail test without running box function.
-          { NoIrCompilationErrorsHandler.primaryConstructor!!.javaConstructor!!.newInstance(it) })
+          { NoIrCompilationErrorsHandler.primaryConstructor!!.javaConstructor!!.newInstance(it) },
+        )
       }
     }
   }

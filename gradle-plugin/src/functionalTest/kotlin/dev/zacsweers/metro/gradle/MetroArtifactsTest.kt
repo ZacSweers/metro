@@ -70,7 +70,7 @@ class MetroArtifactsTest {
               interface AppGraph
               """,
               "AppGraph",
-            )
+            ),
           )
       }
 
@@ -116,7 +116,7 @@ class MetroArtifactsTest {
               compilerOptions { put("max-generated-class-name-length", "$invalidLimit") }
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
         }
 
@@ -128,7 +128,7 @@ class MetroArtifactsTest {
               interface AppGraph
               """,
               "AppGraph",
-            )
+            ),
           )
       }
 
@@ -136,7 +136,7 @@ class MetroArtifactsTest {
     assertThat(result.output)
       .contains(
         "max-generated-class-name-length must be at least " +
-          "$MIN_GENERATED_CLASS_NAME_LENGTH but was $invalidLimit"
+          "$MIN_GENERATED_CLASS_NAME_LENGTH but was $invalidLimit",
       )
   }
 
@@ -158,7 +158,7 @@ class MetroArtifactsTest {
               interface AppGraph
               """,
               "AppGraph",
-            )
+            ),
           )
       }
 
@@ -193,7 +193,7 @@ class MetroArtifactsTest {
               generateContributionHintsInFir.set(false)
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
         }
 
@@ -205,7 +205,7 @@ class MetroArtifactsTest {
               interface AppGraph
               """,
               "AppGraph",
-            )
+            ),
           )
       }
 
@@ -236,7 +236,7 @@ class MetroArtifactsTest {
               interface AppGraph
               """,
               "AppGraph",
-            )
+            ),
           )
       }
 
@@ -287,7 +287,7 @@ class MetroArtifactsTest {
               }
               """,
               "AppGraph",
-            )
+            ),
           )
       }
 
@@ -326,7 +326,7 @@ class MetroArtifactsTest {
               }
               """,
               "AppGraph",
-            )
+            ),
           )
       }
 
@@ -377,7 +377,7 @@ class MetroArtifactsTest {
               }
               """,
               "AppGraph",
-            )
+            ),
           )
       }
 
@@ -590,7 +590,7 @@ class MetroArtifactsTest {
           ]
         }
         """
-          .trimIndent()
+          .trimIndent(),
       )
   }
 
@@ -638,7 +638,7 @@ class MetroArtifactsTest {
               }
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
         }
       }
@@ -667,7 +667,7 @@ class MetroArtifactsTest {
               bindings = emptyList(),
             )
             """
-              .trimIndent()
+              .trimIndent(),
           )
         }
       }
@@ -707,7 +707,7 @@ class MetroArtifactsTest {
               class ExampleClass(context: Context)
               """,
               "AppGraph",
-            )
+            ),
           )
       }
 
@@ -966,7 +966,7 @@ class MetroArtifactsTest {
           ]
         }
         """
-          .trimIndent()
+          .trimIndent(),
       )
 
     build(project.rootDir, "generateMainMetroGraphHtml")
@@ -1175,7 +1175,7 @@ class MetroArtifactsTest {
               interface AppGraph
               """,
               "AppGraph",
-            )
+            ),
           )
 
         override fun buildGradleProject(): GradleProject {
@@ -1203,7 +1203,7 @@ class MetroArtifactsTest {
 
                     ${buildMetroBlock()}
                   """
-                    .trimIndent()
+                    .trimIndent(),
                 )
               }
 
@@ -1233,7 +1233,7 @@ class MetroArtifactsTest {
     assertThat(jvmResult.task(":generateJvmMainMetroGraphHtml")?.outcome)
       .isEqualTo(TaskOutcome.SUCCESS)
     assertThat(
-        jvmResult.tasks.map { it.path }.filter { it.startsWith(":compile") && "Kotlin" in it }
+        jvmResult.tasks.map { it.path }.filter { it.startsWith(":compile") && "Kotlin" in it },
       )
       .containsExactly(":compileKotlinJvm")
     assertTrue(reportingDir.resolve("jvm/main").exists())
@@ -1318,7 +1318,7 @@ class MetroArtifactsTest {
 
                   ${buildMetroBlock()}
                   """
-                    .trimIndent()
+                    .trimIndent(),
                 )
               }
               withMetroSettings()
@@ -1377,7 +1377,7 @@ class MetroArtifactsTest {
               interface AppGraph
               """,
               "AppGraph",
-            )
+            ),
           )
       }
 

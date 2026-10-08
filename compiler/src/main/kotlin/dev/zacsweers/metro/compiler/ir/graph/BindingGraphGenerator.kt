@@ -213,8 +213,8 @@ internal class BindingGraphGenerator(
         add(ProviderFactoryCandidate(factory, isLocallyDeclared = false))
       }
     }
-      // Keep local provenance when the same declaration is also inherited.
-      .distinctBy { it.factory }
+    // Keep local provenance when the same declaration is also inherited.
+    .distinctBy { it.factory }
 
     // Collect binds candidates (flatten from lists).
     val bindsCallableCandidates = buildList {
@@ -226,8 +226,8 @@ internal class BindingGraphGenerator(
         add(BindsCallableCandidate(callable, isLocallyDeclared = false))
       }
     }
-      // Keep local provenance when the same declaration is also inherited.
-      .distinctBy { it.callable }
+    // Keep local provenance when the same declaration is also inherited.
+    .distinctBy { it.callable }
 
     val lowerPriorityDeclarations =
       trace("Select contribution priorities") {
@@ -237,7 +237,7 @@ internal class BindingGraphGenerator(
     val ownProviderFactoryCount = node.providerFactories.values.sumOf { it.size }
     val inheritedProviderFactoryCount = inheritedProviderFactories.size
     trace(
-      "Collect provider factories (own=$ownProviderFactoryCount, inh=$inheritedProviderFactoryCount)"
+      "Collect provider factories (own=$ownProviderFactoryCount, inh=$inheritedProviderFactoryCount)",
     ) {
       for ((providerFactory, isLocallyDeclared) in providerFactoryCandidates) {
         if (providerFactory in lowerPriorityDeclarations) {
@@ -415,7 +415,7 @@ internal class BindingGraphGenerator(
             if (regularGraph != rawType) {
               val keyType =
                 regularGraph.symbol.typeWithArguments(
-                  creatorParam.type.requireSimpleType(creatorParam.ir).arguments
+                  creatorParam.type.requireSimpleType(creatorParam.ir).arguments,
                 )
               val typeKey = IrTypeKey(keyType)
               @Suppress("RETURN_VALUE_NOT_USED") superTypeToAlias.putIfAbsent(typeKey, paramTypeKey)
@@ -685,7 +685,7 @@ internal class BindingGraphGenerator(
             if (regularGraph != parentNode.sourceGraph) {
               val keyType =
                 regularGraph.symbol.typeWithArguments(
-                  parentNode.typeKey.type.requireSimpleType().arguments
+                  parentNode.typeKey.type.requireSimpleType().arguments,
                 )
               val typeKey = IrTypeKey(keyType)
               @Suppress("RETURN_VALUE_NOT_USED") superTypeToAlias.putIfAbsent(typeKey, parentKey)
@@ -783,7 +783,7 @@ internal class BindingGraphGenerator(
 
   /** Resolves generated providers through their existing contribution-provider `@Origin`. */
   private fun ProviderFactoryCandidate.priorityCandidate(
-    priorityProcessing: IrPriorityProcessing
+    priorityProcessing: IrPriorityProcessing,
   ): PriorityCandidate? {
     val providerFactory = factory
     if (providerFactory.isDynamic || providerFactory.typeKey in node.dynamicTypeKeys) return null
@@ -823,7 +823,7 @@ internal class BindingGraphGenerator(
 
   /** Resolves generated aliases through their original contributed `@Binds` declaration. */
   private fun BindsCallableCandidate.priorityCandidate(
-    priorityProcessing: IrPriorityProcessing
+    priorityProcessing: IrPriorityProcessing,
   ): PriorityCandidate? {
     val bindsCallable = callable
     if (bindsCallable.isDynamic || bindsCallable.typeKey in node.dynamicTypeKeys) return null
@@ -972,7 +972,7 @@ internal class BindingGraphGenerator(
                 factory.realDeclaration as? IrDeclarationWithName ?: factory.function,
                 BindingReason.PRIVATE_TO_GRAPH,
                 extendedNode.typeKey,
-              )
+              ),
             )
             continue
           }
@@ -1021,7 +1021,7 @@ internal class BindingGraphGenerator(
                 callable.resolveSourceDeclaration().first,
                 BindingReason.PRIVATE_TO_GRAPH,
                 extendedNode.typeKey,
-              )
+              ),
             )
             continue
           }
@@ -1074,7 +1074,7 @@ internal class BindingGraphGenerator(
               declaringGraph = extendedNode.sourceGraph.kotlinFqName.asString(),
               declaringType = declaration.parentAsClass.kotlinFqName.asString(),
               origin = declaration.renderSourceLocation(short = true),
-            )
+            ),
           )
         }
       }

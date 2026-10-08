@@ -204,7 +204,7 @@ internal class AssistedFactoryTransformer(
             )
             val factoryTypeArguments =
               samFunction.returnType.targetTypeArguments(
-                remapper = declaration.typeParameterRemapperTo(implClass)
+                remapper = declaration.typeParameterRemapperTo(implClass),
               )
             val factoryParamType = targetType.metroFactoryType(factoryTypeArguments)
             addValueParameter(Symbols.Names.delegateFactory, factoryParamType)
@@ -322,7 +322,7 @@ internal class AssistedFactoryTransformer(
               doNotErrorOnMissing = false,
             )
               ?: reportCompilerBug(
-                "Could not find generated Metro factory ${targetType.classIdOrFail.createNestedClassId(Symbols.Names.MetroFactory)}"
+                "Could not find generated Metro factory ${targetType.classIdOrFail.createNestedClassId(Symbols.Names.MetroFactory)}",
               )
 
           val factoryTypeArguments =
@@ -450,9 +450,9 @@ internal class AssistedFactoryTransformer(
                 ?: reportCompilerBug(
                   "Could not find matching parameter for $assistedParameterKey on constructor for ${implClass.classId}.\n\nAvailable keys are\n${
                         functionParams.keys.joinToString(
-                          "\n"
+                          "\n",
                         )
-                      }"
+                      }",
                 )
             irGet(param)
           }
@@ -464,7 +464,7 @@ internal class AssistedFactoryTransformer(
               callee = generatedFactory.invokeFunctionSymbol,
               typeHint = returnType,
               args = argumentList,
-            )
+            ),
           )
         }
     }
@@ -485,7 +485,7 @@ internal class AssistedFactoryTransformer(
                 typeArgs = typeParameters.map { it.defaultType },
                 args = listOf(irGet(factoryParam)),
               ),
-            )
+            ),
           )
         }
     }

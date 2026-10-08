@@ -185,7 +185,7 @@ abstract class MetroProject(
       if (!multiplatform) return this
       return map { dep ->
         dep.copy(
-          configuration = "commonMain" + dep.configuration.replaceFirstChar { it.titlecase() }
+          configuration = "commonMain" + dep.configuration.replaceFirstChar { it.titlecase() },
         )
       }
     }
@@ -259,13 +259,13 @@ abstract class MetroProject(
         add(Repository.ofMaven("https://packages.jetbrains.team/maven/p/kt/bootstrap"))
         add(Repository.ofMaven("https://packages.jetbrains.team/maven/p/kt/dev/"))
         add(Repository.ofMaven("https://packages.jetbrains.team/maven/p/ij/intellij-dependencies/"))
-      }
+      },
     )
 
   /** Generates just the `metro { ... }` block content for use in custom build scripts. */
   fun buildMetroBlock(): String = buildString {
     appendLine(
-      "@OptIn(dev.zacsweers.metro.gradle.DelicateMetroGradleApi::class, dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi::class)"
+      "@OptIn(dev.zacsweers.metro.gradle.DelicateMetroGradleApi::class, dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi::class)",
     )
     appendLine("metro {")
     appendLine("  debug.set($debug)")
@@ -305,7 +305,7 @@ abstract class MetroProject(
           onBuildScript()
           append(multiplatformTargetsBlock())
           append(buildMetroBlock())
-        }
+        },
       )
     } else {
       plugins(GradlePlugins.Kotlin.jvm(kotlinVersion), GradlePlugins.metro)
@@ -313,7 +313,7 @@ abstract class MetroProject(
         buildString {
           onBuildScript()
           append(buildMetroBlock())
-        }
+        },
       )
     }
   }
@@ -346,7 +346,7 @@ abstract class MetroProject(
      */
     private val METRO_TESTKIT_GRADLE_PROPERTIES = buildList {
       add(
-        "org.gradle.jvmargs=-Xmx2g -Dfile.encoding=UTF-8 -XX:+HeapDumpOnOutOfMemoryError -XX:MaxMetaspaceSize=512m"
+        "org.gradle.jvmargs=-Xmx2g -Dfile.encoding=UTF-8 -XX:+HeapDumpOnOutOfMemoryError -XX:MaxMetaspaceSize=512m",
       )
       add("kotlin.daemon.jvmargs=-Xmx2g")
       add("org.gradle.parallel=true")

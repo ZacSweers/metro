@@ -41,7 +41,7 @@ class DefaultBindingICTests(target: KmpTarget) : BaseIncrementalCompilationTest(
             @DefaultBinding<BaseFactory<*>>
             interface BaseFactory<T : BaseFactory<T>> : RawFactory
             interface RawFactory
-            """
+            """,
           )
 
         private val impl =
@@ -50,7 +50,7 @@ class DefaultBindingICTests(target: KmpTarget) : BaseIncrementalCompilationTest(
             @ContributesBinding(Unit::class)
             @Inject
             class Impl : BaseFactory<Impl>
-            """
+            """,
           )
 
         private val graph =
@@ -60,7 +60,7 @@ class DefaultBindingICTests(target: KmpTarget) : BaseIncrementalCompilationTest(
             interface AppGraph {
               val base: BaseFactory<*>
             }
-            """
+            """,
           )
       }
 
@@ -113,7 +113,7 @@ class DefaultBindingICTests(target: KmpTarget) : BaseIncrementalCompilationTest(
             @DefaultBinding<BaseFactory<*>>
             interface BaseFactory<T : BaseFactory<T>> : RawFactory
             interface RawFactory
-            """
+            """,
           )
 
         private val impl =
@@ -122,7 +122,7 @@ class DefaultBindingICTests(target: KmpTarget) : BaseIncrementalCompilationTest(
             @ContributesBinding(Unit::class)
             @Inject
             class Impl : BaseFactory<Impl>
-            """
+            """,
           )
 
         private val graph =
@@ -132,7 +132,7 @@ class DefaultBindingICTests(target: KmpTarget) : BaseIncrementalCompilationTest(
             interface AppGraph {
               val base: BaseFactory<*>
             }
-            """
+            """,
           )
       }
 
@@ -173,7 +173,7 @@ class DefaultBindingICTests(target: KmpTarget) : BaseIncrementalCompilationTest(
             """
             @DefaultBinding<Base>
             interface Base
-            """
+            """,
           )
 
         private val otherInterface = source("interface Other")
@@ -184,7 +184,7 @@ class DefaultBindingICTests(target: KmpTarget) : BaseIncrementalCompilationTest(
             @ContributesBinding(Unit::class)
             @Inject
             class Impl : Base, Other
-            """
+            """,
           )
 
         private val graph =
@@ -194,7 +194,7 @@ class DefaultBindingICTests(target: KmpTarget) : BaseIncrementalCompilationTest(
             interface AppGraph {
               val base: Base
             }
-            """
+            """,
           )
       }
 
@@ -216,7 +216,7 @@ class DefaultBindingICTests(target: KmpTarget) : BaseIncrementalCompilationTest(
     val secondBuildResult = project.compileKotlinAndFail()
     assertThat(secondBuildResult.output)
       .contains(
-        "`@ContributesBinding`-annotated class @dev.zacsweers.metro.ContributesBinding doesn't declare an explicit `binding` type but has multiple supertypes. You must define an explicit bound type in this scenario."
+        "`@ContributesBinding`-annotated class @dev.zacsweers.metro.ContributesBinding doesn't declare an explicit `binding` type but has multiple supertypes. You must define an explicit bound type in this scenario.",
       )
   }
 
@@ -240,7 +240,7 @@ class DefaultBindingICTests(target: KmpTarget) : BaseIncrementalCompilationTest(
             @ContributesBinding(Unit::class, binding = binding<Base>())
             @Inject
             class Impl : Base, Other
-            """
+            """,
           )
 
         private val graph =
@@ -250,7 +250,7 @@ class DefaultBindingICTests(target: KmpTarget) : BaseIncrementalCompilationTest(
             interface AppGraph {
               val base: Base
             }
-            """
+            """,
           )
       }
 
@@ -303,7 +303,7 @@ class DefaultBindingICTests(target: KmpTarget) : BaseIncrementalCompilationTest(
             interface Factory<T> {
               fun create(): T
             }
-            """
+            """,
           )
 
         private val impl =
@@ -314,7 +314,7 @@ class DefaultBindingICTests(target: KmpTarget) : BaseIncrementalCompilationTest(
             class StringFactory : Factory<String> {
               override fun create(): String = "hello"
             }
-            """
+            """,
           )
 
         private val graph =
@@ -324,7 +324,7 @@ class DefaultBindingICTests(target: KmpTarget) : BaseIncrementalCompilationTest(
             interface AppGraph {
               val factory: Factory<*>
             }
-            """
+            """,
           )
       }
 

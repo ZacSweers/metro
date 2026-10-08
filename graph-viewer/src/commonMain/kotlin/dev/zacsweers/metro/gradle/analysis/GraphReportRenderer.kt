@@ -492,7 +492,7 @@ public class GraphReportRenderer(
                   }
                 }
               }
-            }
+            },
           )
       }
       return nodes
@@ -532,7 +532,7 @@ public class GraphReportRenderer(
                   )
                 }
               }
-            }
+            },
           )
       }
       return links
@@ -612,7 +612,7 @@ public class GraphReportRenderer(
         put(
           "nodeIds",
           json.encodeToJsonElement(
-            ownedNodes.map { nodeId(graph, it.getValue("id").jsonPrimitive.content) }
+            ownedNodes.map { nodeId(graph, it.getValue("id").jsonPrimitive.content) },
           ),
         )
         put(
@@ -620,7 +620,7 @@ public class GraphReportRenderer(
           json.encodeToJsonElement(
             ownedNodes
               .filter { it["isRootMember"]?.jsonPrimitive?.booleanOrNull == true }
-              .map { nodeId(graph, it.getValue("id").jsonPrimitive.content) }
+              .map { nodeId(graph, it.getValue("id").jsonPrimitive.content) },
           ),
         )
         put(
@@ -628,7 +628,7 @@ public class GraphReportRenderer(
           json.encodeToJsonElement(
             ownedNodes
               .filter { it["isGraphInput"]?.jsonPrimitive?.booleanOrNull == true }
-              .map { nodeId(graph, it.getValue("id").jsonPrimitive.content) }
+              .map { nodeId(graph, it.getValue("id").jsonPrimitive.content) },
           ),
         )
         put("scopes", json.encodeToJsonElement(graph.scopes))
@@ -809,7 +809,7 @@ public class GraphReportRenderer(
                 targetType = targetKey,
                 consumerKey = binding.key,
                 targetPackage = extractPackage(targetKey),
-              )
+              ),
             )
           }
         }
@@ -915,7 +915,7 @@ public class GraphReportRenderer(
             kind = "injector",
             name = injector.name,
             binding = membersInjectedRoots[targetKey],
-          )
+          ),
         )
       }
     }
@@ -1030,7 +1030,7 @@ public class GraphReportRenderer(
             "Accessor"
           } else {
             "Injector"
-          }
+          },
         ),
       )
       put("isRootMember", JsonPrimitive(true))
@@ -1055,7 +1055,7 @@ public class GraphReportRenderer(
             14
           } else {
             15
-          }
+          },
         ),
       )
       put("itemStyle", buildJsonObject { put("color", JsonPrimitive(color)) })
@@ -1063,7 +1063,7 @@ public class GraphReportRenderer(
         put(
           "rawDependencies",
           json.encodeToJsonElement(
-            listOf(DependencyMetadata(member.key, false, member.wrapperType))
+            listOf(DependencyMetadata(member.key, false, member.wrapperType)),
           ),
         )
         put("resolutionUnavailable", JsonPrimitive(member.resolvedKey == null))
@@ -1108,7 +1108,7 @@ public class GraphReportRenderer(
       put(
         "isGraphInput",
         JsonPrimitive(
-          binding.isGraphInput ?: (binding.bindingKind == "BoundInstance" && !isMainGraph)
+          binding.isGraphInput ?: (binding.bindingKind == "BoundInstance" && !isMainGraph),
         ),
       )
       put("isIncludedGraph", JsonPrimitive(binding.key in metadata.includedGraphKeys))
@@ -1235,7 +1235,7 @@ public class GraphReportRenderer(
               20
             } else {
               14
-            }
+            },
           ),
         )
         // Include assisted parameters for tooltip display
@@ -1248,7 +1248,7 @@ public class GraphReportRenderer(
                   put("name", JsonPrimitive(param.name))
                   put("type", JsonPrimitive(extractDisplayName(param.key, typeNames)))
                   put("key", JsonPrimitive(param.key))
-                }
+                },
               )
             }
           },
@@ -1313,7 +1313,7 @@ public class GraphReportRenderer(
               put("width", JsonPrimitive(2))
             },
           )
-        }
+        },
       )
 
       // Edge from default value node to actual binding (if it exists)
@@ -1331,7 +1331,7 @@ public class GraphReportRenderer(
                 put("opacity", JsonPrimitive(0.6))
               },
             )
-          }
+          },
         )
       }
     }
@@ -1431,7 +1431,7 @@ public class GraphReportRenderer(
           put("target", JsonPrimitive(member.id))
           put("edgeType", JsonPrimitive("root"))
           put("rootMembership", JsonPrimitive(true))
-        }
+        },
       )
       if (member.kind == "accessor") {
         val targetKey = member.resolvedKey
@@ -1454,7 +1454,7 @@ public class GraphReportRenderer(
               "deferrable"
             } else {
               "accessor"
-            }
+            },
           ),
         )
         put("rootKind", JsonPrimitive("accessor"))
@@ -1504,7 +1504,7 @@ public class GraphReportRenderer(
                 put("width", JsonPrimitive(2))
               },
             )
-          }
+          },
         )
       }
     }
@@ -1528,7 +1528,7 @@ public class GraphReportRenderer(
               put("width", JsonPrimitive(2))
             },
           )
-        }
+        },
       )
 
       // Edges from target to its dependencies
@@ -1561,7 +1561,7 @@ public class GraphReportRenderer(
                   }
                 },
               )
-            }
+            },
           )
         }
       }
@@ -1596,7 +1596,7 @@ public class GraphReportRenderer(
           buildJsonObject {
             put("name", JsonPrimitive(name))
             put("itemStyle", buildJsonObject { put("color", JsonPrimitive(color)) })
-          }
+          },
         )
       }
     }

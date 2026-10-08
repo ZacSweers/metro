@@ -143,7 +143,7 @@ internal class CreateGraphTransformer(
               it.hasAnnotation(Symbols.FqNames.GraphFactoryInvokeFunctionMarkerClass)
             }
               ?: reportCompilerBug(
-                "Cannot find a graph factory function for ${rawType.kotlinFqName}"
+                "Cannot find a graph factory function for ${rawType.kotlinFqName}",
               )
           // Replace it with a call directly to the create function
           withIrBuilder(expression.symbol) {

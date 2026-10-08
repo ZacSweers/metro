@@ -26,7 +26,7 @@ internal class IndexGenerationToken private constructor() {
 
 /** Collects declarations and captured PSI data for an immutable [BindingIndex]. */
 internal class BindingIndexBuilder(
-  val generationToken: IndexGenerationToken = IndexGenerationToken.create()
+  val generationToken: IndexGenerationToken = IndexGenerationToken.create(),
 ) {
   val bindings = mutableListOf<KaBinding>()
   val consumers = mutableListOf<ConsumerEntry>()
@@ -67,8 +67,8 @@ internal class BindingIndexBuilder(
         IdentityHashMap(
           checkNotNull(capturedBindingSourceIdentities) {
             "Source identities must be captured before finalization"
-          }
-        )
+          },
+        ),
       )
     val lookups =
       BindingIndexLookups.build(
@@ -216,7 +216,7 @@ private class FrozenFileResolutionScope(
 }
 
 internal fun sourcePointerIdentity(
-  pointer: SmartPsiElementPointer<*>
+  pointer: SmartPsiElementPointer<*>,
 ): BindingIndex.SourcePointerIdentity? {
   val file = pointer.virtualFile ?: return null
   val range = pointer.psiRange ?: return null

@@ -160,10 +160,10 @@ internal class GenerateProvidesContributionExtension(
         Visibilities.Public,
         Modality.OPEN,
         Visibilities.Public.toEffectiveVisibility(owner, forClass = true),
-      )
+      ),
     )
     providesFunction.replaceAnnotations(
-      listOf(buildProvidesAnnotationCall(providesFunction.symbol))
+      listOf(buildProvidesAnnotationCall(providesFunction.symbol)),
     )
 
     // Add the function to the already-built class's declarations
@@ -248,7 +248,7 @@ internal class GenerateProvidesContributionMetroExtension(private val session: F
 
   private val predicate =
     LookupPredicate.BuilderContext.annotated(
-      GenerateProvidesContributionExtension.ANNOTATION_FQ_NAME
+      GenerateProvidesContributionExtension.ANNOTATION_FQ_NAME,
     )
 
   private val annotatedClasses by lazy {
@@ -271,7 +271,7 @@ internal class GenerateProvidesContributionMetroExtension(private val session: F
     return annotatedClasses.mapNotNull { parentSymbol ->
       val contributionClassId =
         parentSymbol.classId.createNestedClassId(
-          GenerateProvidesContributionExtension.NESTED_INTERFACE_NAME
+          GenerateProvidesContributionExtension.NESTED_INTERFACE_NAME,
         )
       val metroContributionClassId =
         MetroContributions.metroContributionClassId(contributionClassId, scopeClassId)
@@ -336,7 +336,7 @@ class GenerateProvidesContributionIrExtension : IrGenerationExtension {
           }
           return super.visitSimpleFunction(declaration)
         }
-      }
+      },
     )
   }
 }

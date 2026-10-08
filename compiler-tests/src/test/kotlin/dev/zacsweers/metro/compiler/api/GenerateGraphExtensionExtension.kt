@@ -265,7 +265,7 @@ internal class GenerateGraphExtensionExtension(
         Visibilities.Public,
         Modality.ABSTRACT,
         Visibilities.Public.toEffectiveVisibility(owner, forClass = true),
-      )
+      ),
     )
 
     // Add @Provides annotation to the text parameter

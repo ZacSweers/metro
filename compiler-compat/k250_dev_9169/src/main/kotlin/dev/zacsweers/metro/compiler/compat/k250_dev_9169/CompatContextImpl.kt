@@ -10,7 +10,7 @@ import org.jetbrains.kotlin.fir.declarations.FirDeclarationStatus
 /** Adapts FIR declaration status copying to Kotlin 2.5.0-dev-9169. */
 public class CompatContextImpl : CompatContext by DelegateType() {
   override fun FirDeclarationStatus.copyWithOverrideCompat(
-    isOverride: Boolean
+    isOverride: Boolean,
   ): FirDeclarationStatus = copy(isOverride = isOverride)
 
   public class Factory : CompatContext.Factory {

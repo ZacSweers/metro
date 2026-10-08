@@ -224,7 +224,7 @@ internal class KaBindingGraph(
       val factory = assistedFactoryFor(contextKey) ?: continue
       val diagnosticStack = KaBindingStack(graph)
       diagnosticStack.push(
-        KaBindingStack.Entry.requestedAt(contextKey, consumer, graphName, sources.name(consumer))
+        KaBindingStack.Entry.requestedAt(contextKey, consumer, graphName, sources.name(consumer)),
       )
       val sourcePointer = consumer.injectedMemberPointer ?: consumer.pointer
       reportLazyAssistedFactory(factory, contextKey, null, diagnosticStack, sourcePointer)
@@ -470,7 +470,7 @@ internal class KaBindingGraph(
         contextKey = binding.contextualTypeKey,
         usage = "(scoped to '${renders.bindingScope}')",
         pointer = binding.pointer,
-      )
+      ),
     )
     report(
       incompatibleScopeDiagnostic(
@@ -552,7 +552,7 @@ internal class KaBindingGraph(
             dependency,
             requestingBinding,
             sources.location(requestingBinding),
-          )
+          ),
         )
         reportLazyAssistedFactory(
           factory,
@@ -633,7 +633,7 @@ internal class KaBindingGraph(
         title =
           textOf(
             "Metro does not support injecting Lazy<$factoryName> because " +
-              "$qualifiedFactoryName is an @AssistedFactory-annotated type."
+              "$qualifiedFactoryName is an @AssistedFactory-annotated type.",
           ),
       )
     val diagnosticStack = stack.copy()
@@ -702,7 +702,7 @@ internal class KaBindingGraph(
                 append(sources.location(binding) ?: "<unknown>")
                 append(" but is not a member of this graph. Check its scope, its container's ")
                 append("wiring, or its contribution scope.")
-              }
+              },
             )
         }
         binding.typeKey.type == typeKey.type && binding.typeKey.qualifier != typeKey.qualifier -> {

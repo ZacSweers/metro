@@ -64,8 +64,8 @@ public fun invalidAssistedBindingDiagnostic(
             append(assistedType)
             append(" is ")
             append(assistedFactory)
-          }
-        )
+          },
+        ),
       )
     }
   }

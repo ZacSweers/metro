@@ -106,7 +106,7 @@ internal class GraphHtmlRenderer(
   fun generateIndex(metadata: AggregatedGraphMetadata): String {
     val graphs =
       metadata.graphs.sortedWith(
-        compareByDescending<GraphMetadata> { it.bindings.size }.thenBy { it.graph }
+        compareByDescending<GraphMetadata> { it.bindings.size }.thenBy { it.graph },
       )
     val typeNames = typeDisplayNames(graphs.map { it.graph })
     val rows =

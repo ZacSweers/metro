@@ -200,7 +200,7 @@ internal class MetroToolWindowPanel(
           searchText = searchField.text
           treeModel.invalidateAsync()
         }
-      }
+      },
     )
     tree.addTreeSelectionListener { updateValidationStatus() }
 

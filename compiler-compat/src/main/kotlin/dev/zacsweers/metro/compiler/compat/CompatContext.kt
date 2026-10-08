@@ -125,7 +125,7 @@ public interface CompatContext {
             Available factories for: ${factories.joinToString(separator = "\n") { it.minVersion }}
             Detected version(s): ${factories.map { it.currentVersion }.distinct().joinToString(separator = "\n")}
           """
-            .trimIndent()
+            .trimIndent(),
         )
     }
 
@@ -238,7 +238,7 @@ public interface CompatContext {
       public fun loadCompilerVersionString(): String {
         return loadCompilerVersionStringOrNull()
           ?: throw AssertionError(
-            "'$COMPILER_VERSION_FILE' not found in the classpath or was blank"
+            "'$COMPILER_VERSION_FILE' not found in the classpath or was blank",
           )
       }
 
@@ -484,7 +484,7 @@ public interface CompatContext {
     message = "Effective diagnostic severity is protected in Kotlin 2.3.0 and 2.3.10",
   )
   public fun AbstractKtDiagnosticFactory.getEffectiveSeverityCompat(
-    languageVersionSettings: LanguageVersionSettings
+    languageVersionSettings: LanguageVersionSettings,
   ): Severity?
 
   @CompatApi(
@@ -548,7 +548,7 @@ public interface CompatContext {
   )
   context(_: CompilerPluginRegistrar)
   public fun CompilerPluginRegistrar.ExtensionStorage.registerFirExtensionCompat(
-    extension: FirExtensionRegistrar
+    extension: FirExtensionRegistrar,
   )
 
   @CompatApi(
@@ -558,7 +558,7 @@ public interface CompatContext {
   )
   context(_: CompilerPluginRegistrar)
   public fun CompilerPluginRegistrar.ExtensionStorage.registerIrExtensionCompat(
-    extension: IrGenerationExtension
+    extension: IrGenerationExtension,
   )
 
   @CompatApi(
@@ -567,7 +567,7 @@ public interface CompatContext {
     message = "2.4 introduced IrAnnotation for IrConstructorCall",
   )
   public fun createIrGeneratedDeclarationsRegistrar(
-    pluginContext: IrPluginContext
+    pluginContext: IrPluginContext,
   ): IrGeneratedDeclarationsRegistrarCompat
 
   @CompatApi(
@@ -674,7 +674,7 @@ public interface CompatContext {
     message = "2.4 changed to use more specific receivers",
   )
   public fun FirAnnotationContainer.getDeprecationsProviderCompat(
-    session: FirSession
+    session: FirSession,
   ): DeprecationsProvider?
 
   @CompatApi(
@@ -756,7 +756,7 @@ public interface CompatContext {
       "createEmptyExternalPackageFragment now takes IrModuleFragment instead of ModuleDescriptor",
   )
   public fun IrModuleFragment.createEmptyExternalPackageFragmentCompat(
-    packageName: String
+    packageName: String,
   ): IrPackageFragment
 
   @CompatApi(

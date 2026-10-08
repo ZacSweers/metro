@@ -121,7 +121,7 @@ internal class MetroFirBuiltIns(
 
   val graphFactoryInvokeFunctionMarkerClassSymbol by memoize {
     session.symbolProvider.getClassLikeSymbolByClassId(
-      Symbols.ClassIds.GraphFactoryInvokeFunctionMarkerClass
+      Symbols.ClassIds.GraphFactoryInvokeFunctionMarkerClass,
     ) as FirRegularClassSymbol
   }
 

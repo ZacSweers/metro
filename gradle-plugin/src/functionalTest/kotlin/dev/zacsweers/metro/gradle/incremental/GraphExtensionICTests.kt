@@ -104,7 +104,7 @@ class GraphExtensionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(
               }
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val appGraph =
@@ -116,7 +116,7 @@ class GraphExtensionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(
               fun provideString(): String = ""
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val target = source("@Inject class Target(val string: String)")
@@ -152,7 +152,7 @@ class GraphExtensionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(
               String is injected at test.Target(…, string)
               Target is requested at test.ChildGraph.target
         """
-          .trimIndent()
+          .trimIndent(),
       )
   }
 
@@ -188,7 +188,7 @@ class GraphExtensionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(
             @GraphExtension(String::class)
             interface StringGraph
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         // Second graph also using String::class scope - tests that cache hits still record lookups
@@ -203,7 +203,7 @@ class GraphExtensionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(
             @GraphExtension(String::class)
             interface StringGraph2
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val dependency =
@@ -211,7 +211,7 @@ class GraphExtensionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(
             """
             interface Dependency
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val dependencyProviderSource =
@@ -282,7 +282,7 @@ class GraphExtensionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(
             """
           @DependencyGraph(AppScope::class)
           interface AppGraph
-          """
+          """,
           )
 
         val dummy =
@@ -290,7 +290,7 @@ class GraphExtensionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(
             """
           @Inject
           class Dummy
-          """
+          """,
           )
 
         val dummyWithContributionSource =
@@ -352,7 +352,7 @@ class GraphExtensionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(
             """
       @DependencyGraph(Unit::class)
       interface AppGraph
-      """
+      """,
           )
 
         val main =
@@ -362,7 +362,7 @@ class GraphExtensionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(
                         val appGraph = createGraph<AppGraph>()
                         val featureGraph = appGraph.asContribution<FeatureGraph.ParentBindings>().featureGraphFactory.create()
                     }
-                """
+                """,
           )
 
         val featureGraph =
@@ -380,7 +380,7 @@ class GraphExtensionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(
               val featureGraphFactory: FeatureGraph.Factory
           }
       }
-      """
+      """,
           )
       }
 
@@ -440,7 +440,7 @@ class GraphExtensionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(
             """
       @DependencyGraph(Unit::class)
       interface AppGraph
-      """
+      """,
           )
 
         val main =
@@ -450,7 +450,7 @@ class GraphExtensionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(
                         val appGraph = createGraph<AppGraph>()
                         val featureGraph = appGraph.asContribution<FeatureGraph.ParentBindings>().featureGraphFactory.create()
                     }
-                """
+                """,
           )
 
         val featureGraph =
@@ -468,7 +468,7 @@ class GraphExtensionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(
               val featureGraphFactory: FeatureGraph.Factory
           }
       }
-      """
+      """,
           )
       }
 
@@ -542,7 +542,7 @@ class GraphExtensionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(
 
                         @GraphExtension(String::class)
                         interface FeatureGraph
-                    """
+                    """,
           )
 
         private val stringProvider =
@@ -565,7 +565,7 @@ class GraphExtensionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(
               fun bindAsNullable(@Named("Feature") featureString: String): String?
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val main =
@@ -581,7 +581,7 @@ class GraphExtensionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(
                 return myActivity.string
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val myActivity =
@@ -592,7 +592,7 @@ class GraphExtensionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(
               lateinit var string: String
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val myActivityInjector =
@@ -603,7 +603,7 @@ class GraphExtensionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(
               fun inject(whatever: MyActivity)
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
       }
 
@@ -703,7 +703,7 @@ class GraphExtensionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(
       fun main(): Boolean =
         createGraph<AppGraph>().childGraphFactory.create().message == "hello"
       """
-        .trimIndent()
+        .trimIndent(),
     )
 
     val secondBuildResult = project.compileKotlin(compileTask)
@@ -748,7 +748,7 @@ class GraphExtensionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(
 
                   ${buildMetroBlock()}
                   """
-                    .trimIndent()
+                    .trimIndent(),
                 )
               }
               withMetroSettings()
@@ -802,7 +802,7 @@ class GraphExtensionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(
     fun invokeAndroidMain(): Boolean {
       val classesDir =
         project.rootDir.resolve(
-          "build/intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes"
+          "build/intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes",
         )
       return URLClassLoader(arrayOf(classesDir.toURI().toURL()), this::class.java.classLoader)
         .use { classLoader ->
@@ -839,7 +839,7 @@ class GraphExtensionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(
       fun main(): Boolean =
         createGraph<AppGraph>().childGraphFactory.create().message == "hello"
       """
-        .trimIndent()
+        .trimIndent(),
     )
 
     val secondBuildResult = project.compileKotlin(compileTask)

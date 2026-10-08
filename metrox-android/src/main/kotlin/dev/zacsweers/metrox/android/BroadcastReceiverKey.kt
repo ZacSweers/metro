@@ -14,5 +14,5 @@ import kotlin.reflect.KClass
 @MapKey(implicitClassKey = true)
 @Target(AnnotationTarget.CLASS)
 public annotation class BroadcastReceiverKey(
-  val value: KClass<out BroadcastReceiver> = Nothing::class
+  val value: KClass<out BroadcastReceiver> = Nothing::class,
 )

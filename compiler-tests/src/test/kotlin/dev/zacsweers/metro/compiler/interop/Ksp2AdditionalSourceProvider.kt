@@ -88,7 +88,7 @@ class Ksp2AdditionalSourceProvider(testServices: TestServices) :
         val generateFactoriesOnly =
           if (generateFactories) {
             module.directives.singleOrZeroValue(
-              MetroDirectives.ANVIL_GENERATE_DAGGER_FACTORIES_ONLY
+              MetroDirectives.ANVIL_GENERATE_DAGGER_FACTORIES_ONLY,
             )
           } else {
             false
@@ -175,7 +175,7 @@ class Ksp2AdditionalSourceProvider(testServices: TestServices) :
           error(
             errors.joinToString(separator = "\n", prefix = "KSP processing failed:\n") {
               it.message
-            }
+            },
           )
         }
         KotlinSymbolProcessing.ExitCode.OK -> {
@@ -205,7 +205,7 @@ class Ksp2AdditionalSourceProvider(testServices: TestServices) :
         System.getProperty("ksp.testRuntimeClasspath")
           ?: error(
             "ksp.testRuntimeClasspath system property not set. " +
-              "Make sure to run tests via Gradle."
+              "Make sure to run tests via Gradle.",
           )
       classpathProperty.split(File.pathSeparator).map(::File)
     }

@@ -48,7 +48,7 @@ class ContributionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(ta
             }
             interface ContributedInterface
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val contributedInterfaces =
@@ -58,7 +58,7 @@ class ContributionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(ta
             @ContributesIntoSet(Unit::class)
             class Impl1 : ContributedInterface
             """
-              .trimIndent()
+              .trimIndent(),
           )
       }
 
@@ -100,7 +100,7 @@ class ContributionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(ta
             }
             interface ContributedInterface
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val contributedInterfaces =
@@ -114,7 +114,7 @@ class ContributionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(ta
             @ContributesIntoSet(Unit::class)
             class Impl2 : ContributedInterface
             """
-              .trimIndent()
+              .trimIndent(),
           )
       }
 
@@ -151,7 +151,7 @@ class ContributionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(ta
     val fixture =
       object :
         MetroProject(
-          metroOptions = MetroOptionOverrides(omitRedundantMirrors = omitRedundantMirrors)
+          metroOptions = MetroOptionOverrides(omitRedundantMirrors = omitRedundantMirrors),
         ) {
         override fun buildGradleProject() = multiModuleProject {
           root {
@@ -181,7 +181,7 @@ class ContributionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(ta
           source(
             """
           abstract class LoggedInScope private constructor()
-        """
+        """,
           )
 
         private val graphs =
@@ -195,7 +195,7 @@ class ContributionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(ta
               fun create(): LoggedInGraph
             }
           }
-        """
+        """,
           )
 
         private val exampleGraph =
@@ -205,7 +205,7 @@ class ContributionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(ta
             interface ExampleGraph {
               val loggedInGraphFactory: LoggedInGraph.Factory
             }
-          """
+          """,
           )
 
         val repo =
@@ -217,7 +217,7 @@ class ContributionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(ta
             interface SomeRepositoryProvider {
               val someRepository: SomeRepository
             }
-          """
+          """,
           )
 
         val repoImpl =
@@ -226,7 +226,7 @@ class ContributionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(ta
             @ContributesBinding(LoggedInScope::class)
             @Inject
             internal class SomeRepositoryImpl : SomeRepository
-          """
+          """,
           )
       }
     val project = fixture.gradleProject
@@ -242,7 +242,7 @@ class ContributionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(ta
     assertThat(output).contains("similar bindings:")
     assertThat(output)
       .contains(
-        "- SomeRepository (Contributed by 'test.SomeRepositoryImpl' but that class is internal to its"
+        "- SomeRepository (Contributed by 'test.SomeRepositoryImpl' but that class is internal to its",
       )
   }
 
@@ -260,7 +260,7 @@ class ContributionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(ta
             @DependencyGraph(Unit::class)
             interface ExampleGraph
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val contributedInterfaces =
@@ -272,7 +272,7 @@ class ContributionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(ta
             @ContributesTo(Unit::class)
             interface ContributedInterface2
             """
-              .trimIndent()
+              .trimIndent(),
           )
       }
     val project = fixture.gradleProject
@@ -329,7 +329,7 @@ class ContributionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(ta
               @Provides fun provideInt(): Int = count++
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val main =
@@ -340,7 +340,7 @@ class ContributionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(ta
               return graph.int + graph.int
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
       }
     val project = fixture.gradleProject
@@ -406,7 +406,7 @@ class ContributionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(ta
               override var count: Int = 0
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val exampleGraph =
@@ -421,7 +421,7 @@ class ContributionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(ta
               val counter: Counter
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val main =
@@ -432,7 +432,7 @@ class ContributionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(ta
               return graph.counter.count++ + graph.counter.count++
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
       }
     val project = fixture.gradleProject
@@ -490,7 +490,7 @@ class ContributionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(ta
             """
             interface UnusedScope
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val exampleClass =
@@ -500,7 +500,7 @@ class ContributionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(ta
             @SingleIn(UnusedScope::class)
             class ExampleClass
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val exampleGraph =
@@ -509,7 +509,7 @@ class ContributionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(ta
             @DependencyGraph(scope = AppScope::class)
             interface ExampleGraph
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val loggedInGraph =
@@ -528,7 +528,7 @@ class ContributionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(ta
                 }
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val main =
@@ -539,7 +539,7 @@ class ContributionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(ta
               return graph.exampleClass
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
       }
     val project = fixture.gradleProject
@@ -560,7 +560,7 @@ class ContributionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(ta
           note: LoggedInGraphImpl is contributed by 'test.LoggedInGraph' to 'test.ExampleGraph'
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#incompatiblyscopedbindings
         """
-          .trimIndent()
+          .trimIndent(),
       )
 
     project.modify(
@@ -629,7 +629,7 @@ class ContributionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(ta
 
           note: LoggedInGraphImpl is contributed by 'test.LoggedInGraph' to 'test.ExampleGraph'
         """
-          .trimIndent()
+          .trimIndent(),
       )
   }
 
@@ -646,7 +646,7 @@ class ContributionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(ta
             interface UnusedScope
             interface Foo
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val exampleClass =
@@ -656,7 +656,7 @@ class ContributionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(ta
             @ContributesBinding(UnusedScope::class)
             class ExampleClass : Foo
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val exampleGraph =
@@ -665,7 +665,7 @@ class ContributionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(ta
             @DependencyGraph(scope = AppScope::class)
             interface ExampleGraph
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val loggedInGraph =
@@ -684,7 +684,7 @@ class ContributionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(ta
                 }
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val main =
@@ -695,7 +695,7 @@ class ContributionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(ta
               return graph.childDependency
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
       }
     val project = fixture.gradleProject
@@ -716,7 +716,7 @@ class ContributionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(ta
                 visible to LoggedInGraphImpl
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
         """
-          .trimIndent()
+          .trimIndent(),
       )
 
     // Change to contribute to the scope of the root graph node -- will pass
@@ -763,7 +763,7 @@ class ContributionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(ta
           trace (in test.ExampleGraph.Impl.LoggedInGraphImpl):
               Foo is requested at test.LoggedInGraph.childDependency
         """
-          .trimIndent()
+          .trimIndent(),
       )
   }
 
@@ -791,7 +791,7 @@ class ContributionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(ta
               val bar: Bar
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val fooBar =
@@ -802,7 +802,7 @@ class ContributionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(ta
               val str: String
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val realImpl =
@@ -815,7 +815,7 @@ class ContributionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(ta
               override val str: String = "real"
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val fakeImpl =
@@ -828,7 +828,7 @@ class ContributionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(ta
               override val str: String = "fake"
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val placeholder = source("")
@@ -841,7 +841,7 @@ class ContributionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(ta
               return graph.bar.str
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
       }
     val project = fixture.gradleProject
@@ -918,7 +918,7 @@ class ContributionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(ta
             """
             class Downloader(val tag: String)
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val realProvider =
@@ -930,7 +930,7 @@ class ContributionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(ta
               @Provides fun realDownloader(): Downloader = Downloader("real")
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val fakeProviderContent =
@@ -957,7 +957,7 @@ class ContributionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(ta
               val downloader: Downloader
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val main =
@@ -1054,7 +1054,7 @@ class ContributionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(ta
               fun provideSecond(): String = "second"
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val graph =
@@ -1065,7 +1065,7 @@ class ContributionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(ta
               val values: Map<String, String>
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
       }
 

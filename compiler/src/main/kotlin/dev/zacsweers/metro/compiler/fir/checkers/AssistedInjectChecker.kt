@@ -286,7 +286,7 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
     return buildString {
       appendLine(
         "Parameter mismatch. Assisted factory and assisted inject constructor parameters must " +
-          "match (name and type) but found differences:"
+          "match (name and type) but found differences:",
       )
       appendLine("  Missing from factory:")
       for (param in missingFromFactory) {

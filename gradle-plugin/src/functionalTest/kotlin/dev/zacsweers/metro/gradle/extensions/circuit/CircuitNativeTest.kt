@@ -44,7 +44,7 @@ class CircuitNativeTest {
               enableCircuitCodegen.set(true)
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
         }
 
@@ -69,7 +69,7 @@ class CircuitNativeTest {
                     }
                   }
                   """
-                    .trimIndent()
+                    .trimIndent(),
               )
             }
           }

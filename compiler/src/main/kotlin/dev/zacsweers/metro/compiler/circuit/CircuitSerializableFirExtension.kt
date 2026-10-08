@@ -94,7 +94,7 @@ public class CircuitSerializableFirExtension(
         ) {
           visibility = Visibilities.Public
         }
-        .symbol
+        .symbol,
     )
   }
 
@@ -109,7 +109,7 @@ public class CircuitSerializableFirExtension(
   }
 
   private fun generateSerializerRegistrationClass(
-    target: CircuitSerializerRegistrationTarget
+    target: CircuitSerializerRegistrationTarget,
   ): FirClassLikeSymbol<*> {
     val registrationClass =
       createTopLevelClass(
@@ -130,7 +130,7 @@ public class CircuitSerializableFirExtension(
         listOf(
           session.buildCircuitInjectAnnotation(),
           session.buildCircuitContributesIntoSetAnnotation(target.scopeClassId),
-        )
+        ),
       )
     }
     registrationClass.markAsDeprecatedHidden(session)
@@ -150,7 +150,7 @@ public class CircuitSerializableFirExtension(
   }
 
   private fun getOrComputeTarget(
-    registrationClassId: ClassId
+    registrationClassId: ClassId,
   ): CircuitSerializerRegistrationTarget? {
     return computedTargets.getOrPut(registrationClassId) {
       val serializedType =

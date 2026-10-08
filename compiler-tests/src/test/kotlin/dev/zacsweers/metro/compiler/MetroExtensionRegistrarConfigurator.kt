@@ -59,7 +59,7 @@ import org.jetbrains.kotlin.test.services.defaultsProvider
 import org.jetbrains.kotlin.test.services.temporaryDirectoryManager
 
 fun TestConfigurationBuilder.configurePlugin(
-  compatContext: CompatContext = CompatContext.create()
+  compatContext: CompatContext = CompatContext.create(),
 ) {
   useConfigurators(
     ::SerializationFirExtensionRegistrarConfigurator,
@@ -289,10 +289,10 @@ class MetroExtensionRegistrarConfigurator(
             add(GenerateImplExtension.Factory().create(session, options, compatContext))
             add(
               GenerateProvidesContributionExtension.Factory()
-                .create(session, options, compatContext)
+                .create(session, options, compatContext),
             )
             add(
-              GenerateBindsContributionExtension.Factory().create(session, options, compatContext)
+              GenerateBindsContributionExtension.Factory().create(session, options, compatContext),
             )
             add(GenerateDependencyGraphExtension.Factory().create(session, options, compatContext))
             add(GenerateGraphExtensionExtension.Factory().create(session, options, compatContext))
@@ -320,7 +320,7 @@ class MetroExtensionRegistrarConfigurator(
                   as? MetroContributionHintExtension,
                 GenerateGraphExtensionExtension.Factory().create(session, options, compatContext)
                   as? MetroContributionHintExtension,
-              )
+              ),
             )
             if (options.enableHiltInterop) {
               HiltFirDeclarationExtension.HintFactory()
@@ -334,21 +334,21 @@ class MetroExtensionRegistrarConfigurator(
             add(GenerateImplContributionExtension.Factory().create(session, options, compatContext))
             add(
               GenerateProvidesContributionMetroExtension.Factory()
-                .create(session, options, compatContext)
+                .create(session, options, compatContext),
             )
             add(
               GenerateBindsContributionMetroExtension.Factory()
-                .create(session, options, compatContext)
+                .create(session, options, compatContext),
             )
             add(
               GenerateGraphExtensionContributionExtension.Factory()
-                .create(session, options, compatContext)
+                .create(session, options, compatContext),
             )
             if (options.enableCircuitCodegen && !options.generateClassesInIr) {
               add(CircuitContributionExtension.Factory().create(session, options, compatContext)!!)
               add(
                 CircuitSerializableContributionExtension.Factory()
-                  .create(session, options, compatContext)!!
+                  .create(session, options, compatContext)!!,
               )
             }
             if (options.enableHiltInterop) {
@@ -358,7 +358,7 @@ class MetroExtensionRegistrarConfigurator(
             }
           }
         },
-      )
+      ),
     )
     if (options.enableCircuitCodegen) {
       FirExtensionRegistrarAdapter.registerExtension(ComposeFirExtensionRegistrar())
@@ -372,8 +372,8 @@ class MetroExtensionRegistrarConfigurator(
         if (!circuitSerializerRegistrationsGeneratedInFir) {
           IrGenerationExtension.registerExtension(
             CircuitSerializableIrDeclarationGenerationExtension.create(
-              compatContext = compatContext
-            )
+              compatContext = compatContext,
+            ),
           )
         }
         if (!circuitFactoriesGeneratedInFir) {
@@ -381,7 +381,7 @@ class MetroExtensionRegistrarConfigurator(
             CircuitIrDeclarationGenerationExtension.create(
               classIds = classIds,
               compatContext = compatContext,
-            )
+            ),
           )
         }
       }
@@ -390,13 +390,13 @@ class MetroExtensionRegistrarConfigurator(
           generateClassesInIr = options.generateClassesInIr,
           classIds = classIds,
           compatContext = compatContext,
-        )
+        ),
       )
       IrGenerationExtension.registerExtension(
         CircuitSerializableIrExtension.create(
           generateClassesInIr = options.generateClassesInIr,
           compatContext = compatContext,
-        )
+        ),
       )
     }
     IrGenerationExtension.registerExtension(GenerateImplIrExtension())
@@ -416,11 +416,11 @@ class MetroExtensionRegistrarConfigurator(
         expectActualTracker = ExpectActualTracker.DoNothing,
         compatContext = compatContext,
         traceContext = traceContext,
-      )
+      ),
     )
     if (options.enableCircuitCodegen) {
       IrGenerationExtension.registerExtension(
-        ComposePluginRegistrar.createComposeIrExtension(configuration)
+        ComposePluginRegistrar.createComposeIrExtension(configuration),
       )
     }
   }

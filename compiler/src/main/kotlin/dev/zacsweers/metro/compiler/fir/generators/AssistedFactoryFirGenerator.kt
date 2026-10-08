@@ -178,11 +178,11 @@ internal class AssistedFactoryFirGenerator(session: FirSession, compatContext: C
             buildAnnotation {
               val assistedFactoryClass =
                 session.symbolProvider.getClassLikeSymbolByClassId(
-                  session.classIds.metroAssistedFactory
+                  session.classIds.metroAssistedFactory,
                 ) as FirRegularClassSymbol
               annotationTypeRef = assistedFactoryClass.defaultType().toFirResolvedTypeRef()
               argumentMapping = buildAnnotationArgumentMapping()
-            }
+            },
         )
       }
       .symbol

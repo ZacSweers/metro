@@ -65,7 +65,7 @@ internal class IrGraphExtensionGenerator(
           .overriddenSymbolsSequence()
           .firstOrNull {
             it.owner.parentAsClass.isAnnotatedWithAny(
-              metroSymbols.classIds.graphExtensionFactoryAnnotations
+              metroSymbols.classIds.graphExtensionFactoryAnnotations,
             )
           }
           ?.owner ?: contributedAccessor.ir

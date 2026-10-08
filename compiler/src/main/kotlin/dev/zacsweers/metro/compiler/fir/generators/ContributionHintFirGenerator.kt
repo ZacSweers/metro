@@ -56,7 +56,7 @@ internal class ContributionHintFirGenerator(
   private fun contributedClassSymbols(): List<FirClassSymbol<*>> {
     val contributedClasses =
       session.predicateBasedProvider.getSymbolsByPredicate(
-        session.predicates.contributesAnnotationPredicate
+        session.predicates.contributesAnnotationPredicate,
       )
 
     // Other plugins can generate contributed factories inside source graph extensions.

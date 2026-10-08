@@ -113,7 +113,7 @@ public class SuspendBindingWorklist<
 
   /** Runs the analysis and creates witness paths only when a diagnostic asks for one. */
   public fun analyzeWithPaths(
-    keys: Iterable<TypeKey>
+    keys: Iterable<TypeKey>,
   ): SuspendBindingAnalysisResult<TypeKey, ContextualTypeKey> {
     val analyzedSuspendKeys = analyze(keys)
     val snapshot =

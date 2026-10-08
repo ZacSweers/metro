@@ -28,7 +28,7 @@ class AnvilInteropTest : MetroCompilerTest() {
           @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, rank = 100)
           object LibImpl : ContributedInterface
           """
-            .trimIndent()
+            .trimIndent(),
         ),
         options = metroOptions.withAnvilInterop(),
       )
@@ -44,7 +44,7 @@ class AnvilInteropTest : MetroCompilerTest() {
           val contributedInterface: ContributedInterface
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       previousCompilationResult = previousCompilation,
       options = metroOptions.withAnvilInterop(),
@@ -67,7 +67,7 @@ class AnvilInteropTest : MetroCompilerTest() {
           @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, rank = 1)
           object LibImpl : ContributedInterface
           """
-            .trimIndent()
+            .trimIndent(),
         ),
         options = metroOptions.withAnvilInterop(),
       )
@@ -83,7 +83,7 @@ class AnvilInteropTest : MetroCompilerTest() {
           val contributedInterface: ContributedInterface
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       previousCompilationResult = libCompilation,
       options = metroOptions.withAnvilInterop(),
@@ -116,7 +116,7 @@ class AnvilInteropTest : MetroCompilerTest() {
           val contributedInterface: ContributedInterface
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       options = metroOptions.withAnvilInterop(),
     ) {
@@ -153,7 +153,7 @@ class AnvilInteropTest : MetroCompilerTest() {
         }
 
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       options = metroOptions.withAnvilInterop(),
     ) {
@@ -165,7 +165,7 @@ class AnvilInteropTest : MetroCompilerTest() {
   }
 
   @Ignore(
-    "Can enable once type arguments are saved to metadata - https://youtrack.jetbrains.com/issue/KT-76954/Some-type-arguments-are-not-saved-to-metadata-in-FIR"
+    "Can enable once type arguments are saved to metadata - https://youtrack.jetbrains.com/issue/KT-76954/Some-type-arguments-are-not-saved-to-metadata-in-FIR",
   )
   @Test
   fun `ranked binding processing supports outranked bindings using Metro's @ContributesBinding from downstream module`() {
@@ -183,8 +183,8 @@ class AnvilInteropTest : MetroCompilerTest() {
           @Inject
           class Impl1 : ContributedInterface, OtherInterface
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     compile(
@@ -200,7 +200,7 @@ class AnvilInteropTest : MetroCompilerTest() {
         }
 
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       previousCompilationResult = libCompilation,
       options = metroOptions.withAnvilInterop(),
@@ -230,7 +230,7 @@ class AnvilInteropTest : MetroCompilerTest() {
           val contributedInterface: ContributedInterface
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       options = metroOptions.withAnvilInterop(),
     ) {
@@ -259,7 +259,7 @@ class AnvilInteropTest : MetroCompilerTest() {
           val contributedInterface: ContributedInterface
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       options = metroOptions.withAnvilInterop(),
     ) {
@@ -293,7 +293,7 @@ class AnvilInteropTest : MetroCompilerTest() {
           val namedContributedInterface: ContributedInterface
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       options = metroOptions.withAnvilInterop(),
     ) {
@@ -324,7 +324,7 @@ class AnvilInteropTest : MetroCompilerTest() {
           @ThirdPartyQualifier
           annotation class CompanyFeature
           """
-            .trimIndent()
+            .trimIndent(),
         ),
         options = metroOptions.withAnvilInterop(),
       )
@@ -349,7 +349,7 @@ class AnvilInteropTest : MetroCompilerTest() {
           val qualifiedContributedInterface: ContributedInterface
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       previousCompilationResult = previousCompilation,
       options =
@@ -388,7 +388,7 @@ class AnvilInteropTest : MetroCompilerTest() {
           val contributedInterface: ContributedInterface
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       options = metroOptions.withAnvilInterop(),
     ) {
@@ -420,7 +420,7 @@ class AnvilInteropTest : MetroCompilerTest() {
           val contributedInterface: ContributedInterface
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       options = metroOptions.withAnvilInterop(),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
@@ -442,7 +442,7 @@ class AnvilInteropTest : MetroCompilerTest() {
                 @IntoSet/@IntoMap if you intended a multibinding
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#duplicatebinding
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -465,13 +465,13 @@ class AnvilInteropTest : MetroCompilerTest() {
           val contributedInterface: ContributedInterface
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       options =
         metroOptions
           .toBuilder()
           .customContributesBindingAnnotations(
-            setOf(ClassId.fromString("com/squareup/anvil/annotations/ContributesBinding"))
+            setOf(ClassId.fromString("com/squareup/anvil/annotations/ContributesBinding")),
           )
           .enableDaggerAnvilInterop(false)
           .build(),
@@ -494,7 +494,7 @@ class AnvilInteropTest : MetroCompilerTest() {
                 @IntoSet/@IntoMap if you intended a multibinding
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#duplicatebinding
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -515,7 +515,7 @@ class AnvilInteropTest : MetroCompilerTest() {
           val contributedInterface: ContributedInterface
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       options = metroOptions.withAnvilInterop(),
     )
@@ -555,7 +555,7 @@ class AnvilInteropTest : MetroCompilerTest() {
         @com.squareup.anvil.annotations.ContributesBinding(Child::class, boundType = ActivityNavigator::class)
         class BottomSheetNavigator : ActivityNavigator
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       options = metroOptions.withAnvilInterop(),
     ) {
@@ -566,10 +566,10 @@ class AnvilInteropTest : MetroCompilerTest() {
   private fun MetroOptions.withAnvilInterop(): MetroOptions {
     return toBuilder()
       .customContributesBindingAnnotations(
-        setOf(ClassId.fromString("com/squareup/anvil/annotations/ContributesBinding"))
+        setOf(ClassId.fromString("com/squareup/anvil/annotations/ContributesBinding")),
       )
       .customGraphExtensionAnnotations(
-        setOf(ClassId.fromString("com/squareup/anvil/annotations/ContributesSubcomponent"))
+        setOf(ClassId.fromString("com/squareup/anvil/annotations/ContributesSubcomponent")),
       )
       .enableDaggerAnvilInterop(true)
       .build()

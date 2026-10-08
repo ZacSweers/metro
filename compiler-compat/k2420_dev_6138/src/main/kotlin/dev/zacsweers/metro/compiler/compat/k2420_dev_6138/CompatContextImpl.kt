@@ -21,10 +21,10 @@ public class CompatContextImpl private constructor(private val delegate: Delegat
   override val supportsIrGeneratedClasses: Boolean = true
 
   override fun createIrGeneratedDeclarationsRegistrar(
-    pluginContext: IrPluginContext
+    pluginContext: IrPluginContext,
   ): IrGeneratedDeclarationsRegistrarCompat {
     return RegisterClassIrGeneratedDeclarationsRegistrarCompat(
-      pluginContext.metadataDeclarationRegistrar
+      pluginContext.metadataDeclarationRegistrar,
     )
   }
 
@@ -52,8 +52,8 @@ public class CompatContextImpl private constructor(private val delegate: Delegat
               ): String {
                 return classNameTransformer(container, declaration)
               }
-            }
-        )
+            },
+        ),
     )
   }
 

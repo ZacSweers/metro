@@ -114,7 +114,7 @@ public class CompatContextImpl : CompatContext {
   }
 
   override fun FirDeclarationStatus.copyWithOverrideCompat(
-    isOverride: Boolean
+    isOverride: Boolean,
   ): FirDeclarationStatus = copy(isOverride = isOverride)
 
   override fun createCompilerConfigurationCompat(): CompilerConfiguration {
@@ -122,7 +122,7 @@ public class CompatContextImpl : CompatContext {
   }
 
   override fun AbstractKtDiagnosticFactory.getEffectiveSeverityCompat(
-    languageVersionSettings: LanguageVersionSettings
+    languageVersionSettings: LanguageVersionSettings,
   ): Severity? {
     // Kotlin keeps this method protected on these compiler versions.
     return when (languageVersionSettings.getFlag(AnalysisFlags.warningLevels)[name]) {
@@ -160,14 +160,14 @@ public class CompatContextImpl : CompatContext {
 
   context(_: CompilerPluginRegistrar)
   override fun CompilerPluginRegistrar.ExtensionStorage.registerFirExtensionCompat(
-    extension: FirExtensionRegistrar
+    extension: FirExtensionRegistrar,
   ) {
     FirExtensionRegistrarAdapter.registerExtension(extension)
   }
 
   context(_: CompilerPluginRegistrar)
   override fun CompilerPluginRegistrar.ExtensionStorage.registerIrExtensionCompat(
-    extension: IrGenerationExtension
+    extension: IrGenerationExtension,
   ) {
     IrGenerationExtension.registerExtension(extension)
   }
@@ -292,10 +292,10 @@ public class CompatContextImpl : CompatContext {
   }
 
   override fun createIrGeneratedDeclarationsRegistrar(
-    pluginContext: IrPluginContext
+    pluginContext: IrPluginContext,
   ): IrGeneratedDeclarationsRegistrarCompat {
     return IrConstructorCallIrGeneratedDeclarationsRegistrarCompat(
-      pluginContext.metadataDeclarationRegistrar
+      pluginContext.metadataDeclarationRegistrar,
     )
   }
 
@@ -319,7 +319,7 @@ public class CompatContextImpl : CompatContext {
   }
 
   override fun IrAnnotationContainer.replaceAnnotationsCompat(
-    annotations: List<IrConstructorCall>
+    annotations: List<IrConstructorCall>,
   ) {
     (this as IrMutableAnnotationContainer).annotations = annotations
   }
@@ -339,7 +339,7 @@ public class CompatContextImpl : CompatContext {
     get() = KtFakeSourceElementKind.PluginGenerated
 
   override fun IrPluginContext.finderForSourceCompat(
-    fromFile: IrFile
+    fromFile: IrFile,
   ): CompatContext.DeclarationFinderCompat {
     return ReferenceApiDeclarationFinderCompat(this)
   }
@@ -353,7 +353,7 @@ public class CompatContextImpl : CompatContext {
   }
 
   override fun FirAnnotationContainer.getDeprecationsProviderCompat(
-    session: FirSession
+    session: FirSession,
   ): DeprecationsProvider? {
     return getDeprecationsProvider(session)
   }
@@ -403,7 +403,7 @@ public class CompatContextImpl : CompatContext {
   }
 
   override fun IrModuleFragment.createEmptyExternalPackageFragmentCompat(
-    packageName: String
+    packageName: String,
   ): IrPackageFragment {
     return createEmptyExternalPackageFragmentNative(descriptor, FqName(packageName))
   }

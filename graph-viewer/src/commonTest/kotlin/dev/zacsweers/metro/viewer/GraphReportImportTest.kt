@@ -142,7 +142,7 @@ class GraphReportImportTest {
     val parent = graph.copy(bindings = listOf(extension))
 
     assertTrue(
-      GraphReportImport(listOf(file(parent))).summary.warnings.single().contains("DetailsGraph")
+      GraphReportImport(listOf(file(parent))).summary.warnings.single().contains("DetailsGraph"),
     )
   }
 
@@ -157,7 +157,7 @@ class GraphReportImportTest {
     val imported = GraphReportImport(listOf(file(first), file(other), file(child)))
 
     assertTrue(
-      imported.summary.warnings.single().contains("AppGraph: extension report SessionGraph")
+      imported.summary.warnings.single().contains("AppGraph: extension report SessionGraph"),
     )
   }
 
@@ -282,7 +282,7 @@ class GraphReportImportTest {
     val report = graph.copy(bindings = graph.bindings + service)
     val imported =
       GraphReportImport(
-        listOf(file(report), analysisFile(report, listOf("Service", "Application")))
+        listOf(file(report), analysisFile(report, listOf("Service", "Application"))),
       )
 
     assertTrue(imported.summary.hasAnalysis)
@@ -301,7 +301,7 @@ class GraphReportImportTest {
     val error =
       assertFailsWith<IllegalArgumentException> {
         GraphReportImport(
-          listOf(file(report), analysisFile(report, listOf("Service", "Application")))
+          listOf(file(report), analysisFile(report, listOf("Service", "Application"))),
         )
       }
 
@@ -342,7 +342,7 @@ class GraphReportImportTest {
             nameHint = "application",
             dependencies = emptyList(),
             isGraphInput = true,
-          )
+          ),
         ),
     )
 

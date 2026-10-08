@@ -62,7 +62,7 @@ class SwitchingSuspendProviderTest : MetroCompilerTest() {
             fun provideMessage(value: String): Message = Message(value)
           }
           """
-            .trimIndent()
+            .trimIndent(),
         ),
         options =
           metroOptions

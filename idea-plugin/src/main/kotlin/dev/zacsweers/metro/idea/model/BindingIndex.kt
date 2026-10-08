@@ -336,7 +336,7 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
         chain.mapIndexed { index, graph ->
           checkCanceledEvery(index)
           graph.declarationId
-        }
+        },
       )
     return session.graphComposition(graphPath, module) {
       val graph = chain.first()
@@ -1690,7 +1690,7 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
   }
 
   private fun <T : KaBinding> List<T>.withoutDuplicateAssistedFactories(
-    requestedKey: KaTypeKey? = null
+    requestedKey: KaTypeKey? = null,
   ): List<T> {
     if (size < 2) return this
     if (requestedKey != null && requestedKey !in lookups.duplicatedAssistedFactoryKeys) return this

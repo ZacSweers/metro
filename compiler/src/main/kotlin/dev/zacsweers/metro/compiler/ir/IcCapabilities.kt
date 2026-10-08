@@ -27,7 +27,7 @@ internal data class IcCapabilities(
         platform.usesKlib() ||
           (platform.isJvm() &&
             pluginContext.languageVersionSettings.supportsFeature(
-              LanguageFeature.AnnotationsInMetadata
+              LanguageFeature.AnnotationsInMetadata,
             ))
       val supportsIrGeneratedClasses =
         platform.isJvm() && options.generateClassesInIr && compatContext.supportsIrGeneratedClasses
