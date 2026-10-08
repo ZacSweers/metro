@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791436152639,
+  "lastUpdate": 1791503186759,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -25144,6 +25144,62 @@ window.BENCHMARK_DATA = {
             "value": 17199.369,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -5.87%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "7b70e711~1",
+          "message": "[before] Fix Windows multiplatform sample compilation (#293",
+          "timestamp": "2026-10-08T23:04:19Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/7b70e711bde510a68556e42e61997e1fdb466d79"
+        },
+        "date": 1791503186759,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 9668.377,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "7b70e711bde510a68556e42e61997e1fdb466d79",
+          "message": "[after] Fix Windows multiplatform sample compilation (#293",
+          "timestamp": "2026-10-08T23:04:19Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/7b70e711bde510a68556e42e61997e1fdb466d79"
+        },
+        "date": 1791503186760,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 9413.106,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -2.64%"
           }
         ]
       }
