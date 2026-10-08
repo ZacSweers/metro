@@ -219,7 +219,7 @@ reflectVersion =
 dependencies {
   // Newer 2.5.0 test frameworks call Kotlin assertion helpers removed by JUnit 6.
   if (testKotlinVersion >= kotlin250Dev9169) {
-    testImplementation(enforcedPlatform("org.junit:junit-bom:5.14.4"))
+    testImplementation(enforcedPlatform("org.junit:junit-bom:6.1.3"))
   }
 
   // 2.3.0 changed the test gen APIs around into different packages
