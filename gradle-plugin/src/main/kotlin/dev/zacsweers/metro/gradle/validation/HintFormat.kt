@@ -77,7 +77,7 @@ internal class HintMatcher(scopes: Set<String>) {
           }
           return null
         }
-      }
+      },
     )
     return matches
   }
@@ -135,7 +135,7 @@ private fun readAggregatedDeps(bytecode: ByteArray): AggregatedDeps? {
           }
         }
       }
-    }
+    },
   )
   if (!found) {
     return null

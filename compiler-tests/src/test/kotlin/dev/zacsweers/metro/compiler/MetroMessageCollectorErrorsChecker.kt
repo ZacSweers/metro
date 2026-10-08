@@ -51,7 +51,7 @@ class MetroMessageCollectorErrorsChecker(testServices: TestServices) :
     val message = buildString {
       appendLine(
         "Metro reported errors through its message collector. Test goldens can't capture " +
-          "these. Report them on a declaration in the module being compiled."
+          "these. Report them on a declaration in the module being compiled.",
       )
       for (error in errors) {
         appendLine()

@@ -28,7 +28,7 @@ class VersionCompatibilityTest {
             """
           @DependencyGraph(Unit::class)
           interface AppGraph
-          """
+          """,
           )
       }
 
@@ -51,7 +51,7 @@ class VersionCompatibilityTest {
             """
           @DependencyGraph(Unit::class)
           interface AppGraph
-          """
+          """,
           )
 
         override fun StringBuilder.onBuildScript() {
@@ -79,7 +79,7 @@ class VersionCompatibilityTest {
             """
           @DependencyGraph(Unit::class)
           interface AppGraph
-          """
+          """,
           )
       }
 
@@ -102,7 +102,7 @@ class VersionCompatibilityTest {
             """
           @DependencyGraph(Unit::class)
           interface AppGraph
-          """
+          """,
           )
       }
 
@@ -124,7 +124,7 @@ class VersionCompatibilityTest {
             """
           @DependencyGraph(Unit::class)
           interface AppGraph
-          """
+          """,
           )
 
         override fun StringBuilder.onBuildScript() {
@@ -137,7 +137,7 @@ class VersionCompatibilityTest {
               }
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
         }
       }
@@ -148,7 +148,7 @@ class VersionCompatibilityTest {
     val secondBuildResult = buildAndFail(project.rootDir, "compileKotlin")
     assertThat(secondBuildResult.output)
       .contains(
-        "Compilation task 'compileKotlin' targets language version '1.9' but Metro requires"
+        "Compilation task 'compileKotlin' targets language version '1.9' but Metro requires",
       )
   }
 }

@@ -39,7 +39,7 @@ internal data class KaAnnotationSnapshot(
         short -> classId.shortClassName.asString()
         useRelativeClassNames -> classId.relativeClassName.asString()
         else -> classId.asFqNameString()
-      }
+      },
     )
     if (arguments.isNotEmpty()) {
       arguments.joinTo(this, separator = ", ", prefix = "(", postfix = ")") { (name, value) ->

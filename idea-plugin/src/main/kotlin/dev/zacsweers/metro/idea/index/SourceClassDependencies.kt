@@ -64,7 +64,7 @@ private constructor(
           }
           super.visitClassOrObject(classOrObject)
         }
-      }
+      },
     )
     return result
   }

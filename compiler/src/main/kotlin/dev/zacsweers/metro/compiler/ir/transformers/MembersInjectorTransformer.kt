@@ -408,7 +408,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
           sourceTypeParameters = declaration,
           returnTypeProvider = { typeParams ->
             metroSymbols.metroMembersInjector.typeWith(
-              declaration.symbol.typeWithParameters(typeParams)
+              declaration.symbol.typeWithParameters(typeParams),
             )
           },
           targetConstructor = ctor.symbol,
@@ -567,8 +567,8 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
           overriddenSymbols =
             listOf(
               metroSymbols.metroMembersInjector.owner.requireSimpleFunction(
-                Symbols.StringNames.INJECT_MEMBERS
-              )
+                Symbols.StringNames.INJECT_MEMBERS,
+              ),
             )
           addValueParameter(
             name = Symbols.Names.instance,
@@ -683,7 +683,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
    * Returns null if no Dagger injector is found.
    */
   private fun IrClass.tryDeriveDaggerMemberInjectParameters(
-    nameAllocator: NameAllocator
+    nameAllocator: NameAllocator,
   ): List<Parameters>? {
     val injectorClass =
       lookupClass(classIdOrFail.generatedClass("_MembersInjector"))?.owner ?: return null
@@ -852,7 +852,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
                   """
                   Could not find corresponding injected member '$memberName' in ${clazz.fqNameWhenAvailable} for inject method ${function.name}.
                 """
-                    .trimIndent()
+                    .trimIndent(),
                 )
             sourceMemberParams.regularParameters[index].typeKey.qualifier
           }
@@ -959,8 +959,8 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
         }
       }
     }
-      // Reverse it such that the supertypes are first
-      .asReversed()
+    // Reverse it such that the supertypes are first
+    .asReversed()
       .associate { it.first to it.second }
   }
 }
@@ -996,7 +996,7 @@ internal fun IrBlockBodyBuilder.addMemberInjection(
               injectorReceiver,
               parametersToFields,
               typeRemapper,
-            )
+            ),
           )
         },
     )

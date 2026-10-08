@@ -44,7 +44,7 @@ internal fun registerHiddenDependencyTasks(
       set(
         compileConfiguration
           .flatMap { it.incoming.resolutionResult.rootComponent }
-          .map { dependencyGraph(it).paths.keys }
+          .map { dependencyGraph(it).paths.keys },
       )
       finalizeValueOnRead()
     }
@@ -54,7 +54,7 @@ internal fun registerHiddenDependencyTasks(
       set(
         runtimeConfiguration
           .flatMap { it.incoming.resolutionResult.rootComponent }
-          .map(::dependencyGraph)
+          .map(::dependencyGraph),
       )
       finalizeValueOnRead()
     }
@@ -74,7 +74,7 @@ internal fun registerHiddenDependencyTasks(
               val androidVariant = isAndroid && key in runtimeGraph.get().androidComponents
               hidden && !androidVariant
             }
-          }
+          },
         )
         if (isAndroid) {
           // Android components need a specific artifact type to disambiguate AGP's runtime outputs.
@@ -90,7 +90,7 @@ internal fun registerHiddenDependencyTasks(
                 val androidVariant = key in runtimeGraph.get().androidComponents
                 hidden && androidVariant
               }
-            }
+            },
           )
         }
       }
@@ -106,7 +106,7 @@ internal fun registerHiddenDependencyTasks(
               val id = artifact.id.componentIdentifier
               MetroValidationArtifact(componentKey(id), id.displayName, artifact.file)
             }
-          }
+          },
         )
         // Keep the original file collections so Gradle sees each producer's task dependencies.
         task.runtimeFiles.from(artifacts.artifactFiles)
@@ -116,7 +116,9 @@ internal fun registerHiddenDependencyTasks(
       task.hintFormats.add(HintFormat.METRO)
       task.hintFormats.addAll(interop.includeHiltAnnotations.formatIfEnabled(HintFormat.HILT))
       task.reportFile.convention(
-        project.layout.buildDirectory.file("reports/metro/$compilationPath/hidden-dependencies.txt")
+        project.layout.buildDirectory.file(
+          "reports/metro/$compilationPath/hidden-dependencies.txt",
+        ),
       )
     }
 
@@ -128,7 +130,7 @@ internal fun registerHiddenDependencyTasks(
         } else {
           emptyList()
         }
-      }
+      },
     )
   }
 }

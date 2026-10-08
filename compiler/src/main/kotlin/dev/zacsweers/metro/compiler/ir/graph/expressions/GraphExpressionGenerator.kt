@@ -97,8 +97,8 @@ private constructor(
           thisReceiver = thisReceiver,
           traceContextProperty = traceContextProperty,
           shardContext = shardContext,
-        )
-      )
+        ),
+      ),
     ),
   ) {
 
@@ -154,7 +154,7 @@ private constructor(
     val tracerBinding =
       bindingGraph.findBinding(tracerTypeKey)
         ?: reportCompilerBug(
-          "Runtime tracing reached IR without an androidx.tracing.Tracer graph input."
+          "Runtime tracing reached IR without an androidx.tracing.Tracer graph input.",
         )
     return generateBindingCode(
       tracerBinding,
@@ -174,7 +174,7 @@ private constructor(
     with(scope) {
       if (binding is IrBinding.Absent) {
         reportCompilerBug(
-          "Absent bindings need to be checked prior to generateBindingCode(). ${binding.typeKey} missing."
+          "Absent bindings need to be checked prior to generateBindingCode(). ${binding.typeKey} missing.",
         )
       }
 
@@ -411,7 +411,7 @@ private constructor(
           val providerFactory =
             metroDeclarations.lookupProviderFactory(binding)
               ?: reportCompilerBug(
-                "No factory found for Provided binding ${binding.typeKey}. This is likely a bug in the Metro compiler, please report it to the issue tracker."
+                "No factory found for Provided binding ${binding.typeKey}. This is likely a bug in the Metro compiler, please report it to the issue tracker.",
               )
 
           if (options.enableProviderInlining) {
@@ -806,7 +806,7 @@ private constructor(
           val factoryImpl =
             extensionImpl.generatedGraphExtensionData?.factoryImpl
               ?: reportCompilerBug(
-                "Expected factory implementation to be generated for graph extension factory binding"
+                "Expected factory implementation to be generated for graph extension factory binding",
               )
 
           val constructor = factoryImpl.primaryConstructor!!
@@ -852,7 +852,7 @@ private constructor(
               val graphInstanceBindingProperty =
                 bindingPropertyContext.get(IrContextualTypeKey(ownerKey))
                   ?: reportCompilerBug(
-                    "No matching included type instance found for type $ownerKey while processing ${node.typeKey}"
+                    "No matching included type instance found for type $ownerKey while processing ${node.typeKey}",
                   )
 
               val getterContextKey = IrContextualTypeKey.from(binding.getter)
@@ -1091,7 +1091,7 @@ private constructor(
         } else {
           classFactory.targetFunctionParameters.copy(
             regularParameters =
-              classFactory.targetFunctionParameters.regularParameters + nested.memberParams
+              classFactory.targetFunctionParameters.regularParameters + nested.memberParams,
           )
         }
       val ctorArgs =
@@ -1196,7 +1196,7 @@ private constructor(
           val providerFactory =
             metroDeclarations.lookupProviderFactory(binding)
               ?: reportCompilerBug(
-                "No factory found for Provided binding ${binding.typeKey}. This is likely a bug in the Metro compiler, please report it to the issue tracker."
+                "No factory found for Provided binding ${binding.typeKey}. This is likely a bug in the Metro compiler, please report it to the issue tracker.",
               )
           targetParams = binding.parameters
           if (providerFactory.supportsDirectInvocation(node.metroGraphOrFail)) {
@@ -1223,7 +1223,7 @@ private constructor(
         }
         else ->
           reportCompilerBug(
-            "Unexpected binding kind for nested suspend factory: ${binding.javaClass.simpleName}"
+            "Unexpected binding kind for nested suspend factory: ${binding.javaClass.simpleName}",
           )
       }
 
@@ -1425,13 +1425,13 @@ private constructor(
     val ancestorContext =
       bindingPropertyContext.findAncestorContext(token.ownerGraphKey)
         ?: reportCompilerBug(
-          "Cannot resolve property access token - no binding context found for ancestor ${token.ownerGraphKey}"
+          "Cannot resolve property access token - no binding context found for ancestor ${token.ownerGraphKey}",
         )
 
     val bindingProperty =
       ancestorContext.get(token.contextKey)
         ?: reportCompilerBug(
-          "Cannot resolve property access token - property not found for ${token.contextKey} in ${token.ownerGraphKey}"
+          "Cannot resolve property access token - property not found for ${token.contextKey} in ${token.ownerGraphKey}",
         )
 
     // Get ancestor chain - use shard context's map if available, otherwise use class-level map
@@ -1494,7 +1494,7 @@ private constructor(
         val graphProperty =
           shardContext?.graphProperty
             ?: error(
-              "Shard ${shardContext?.currentShardIndex} requires graph access but has no graph property"
+              "Shard ${shardContext?.currentShardIndex} requires graph access but has no graph property",
             )
         return irGetProperty(irGet(thisReceiver), graphProperty)
       }

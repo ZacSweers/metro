@@ -68,7 +68,7 @@ class MetroIrDiagnosticsHandler(testServices: TestServices) : AbstractIrHandler(
     val goldenSuffix = if (isRichMode) "rich.ir.diag.txt" else "ir.diag.txt"
     val expectedFile =
       testDataFile.parentFile.resolve(
-        "${testDataFile.nameWithoutExtension.removeSuffix(".fir")}.$goldenSuffix"
+        "${testDataFile.nameWithoutExtension.removeSuffix(".fir")}.$goldenSuffix",
       )
     if (DiagnosticsDirectives.RENDER_IR_DIAGNOSTICS_FULL_TEXT !in directives) {
       if (DiagnosticsDirectives.RENDER_ALL_DIAGNOSTICS_FULL_TEXT !in directives) {
@@ -109,7 +109,7 @@ class MetroIrDiagnosticsHandler(testServices: TestServices) : AbstractIrHandler(
           )
         }
         .sortedWith(
-          compareBy<DiagnosticData> { it.textRanges.first().startOffset }.thenBy { it.message }
+          compareBy<DiagnosticData> { it.textRanges.first().startOffset }.thenBy { it.message },
         )
 
     return testServices.sourceFileProvider

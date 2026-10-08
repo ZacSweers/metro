@@ -83,7 +83,7 @@ internal class ResolutionSnapshotBuilder(
   private val libraryShards =
     object : LinkedHashMap<LibraryCacheKey, LibraryShard>(8, 0.75f, true) {
       override fun removeEldestEntry(
-        eldest: MutableMap.MutableEntry<LibraryCacheKey, LibraryShard>
+        eldest: MutableMap.MutableEntry<LibraryCacheKey, LibraryShard>,
       ): Boolean = size > MAX_CACHED_LIBRARY_SHARDS
     }
 
@@ -320,7 +320,7 @@ internal class ResolutionSnapshotBuilder(
       buildSet {
         addAll(discovery.files)
         addAll(pending.requested)
-      }
+      },
     )
     return sourceScanner.scan(
       previous = null,
@@ -359,7 +359,7 @@ internal class ResolutionSnapshotBuilder(
         addAll(prev.shardOrder)
         addAll(dirty)
         addAll(pending.requested)
-      }
+      },
     )
     if (dirty.isEmpty() && pending.requested.isEmpty()) {
       // Output-only compiler-option changes update inputs without touching any shard.
@@ -637,7 +637,7 @@ internal class ResolutionSnapshotBuilder(
       if (hasAliasedImport) {
         shortNames +
           file.annotationShortNamesIncludingAliases(
-            sweepAnnotationIds(file.metroIdeState().options)
+            sweepAnnotationIds(file.metroIdeState().options),
           )
       } else {
         shortNames

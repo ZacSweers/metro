@@ -635,7 +635,7 @@ internal class IrBindingGraph(
                   example.toLocatedItem(
                     preferSourceSnippet = true,
                     includeLeadingAnnotations = false,
-                  )
+                  ),
                 )
               }
               if (unusedSources.size > MAX_SUSPICIOUS_UNUSED_MULTIBINDINGS_TO_REPORT) {
@@ -645,7 +645,7 @@ internal class IrBindingGraph(
                     location = null,
                     code = null,
                     description = textOf("...and $remaining more"),
-                  )
+                  ),
                 )
               }
             }
@@ -653,8 +653,8 @@ internal class IrBindingGraph(
             val notes = buildList {
               add(
                 Note.help(
-                  "did you possibly bind them to the wrong type or contribute them to the wrong scope?"
-                )
+                  "did you possibly bind them to the wrong type or contribute them to the wrong scope?",
+                ),
               )
               similarMultibindingsNote(binding, allMultibindings)?.let(::add)
               addAll(examples.flatMap { it.notes }.distinct())
@@ -670,10 +670,10 @@ internal class IrBindingGraph(
                       append(" is used in the following child graph scope(s): ")
                       append(childScopesUsingThis.joinToString(", ") { it.asFqNameString() })
                       append(
-                        ". These bindings may need to be contributed to one of those scopes instead."
+                        ". These bindings may need to be contributed to one of those scopes instead.",
                       )
-                    }
-                  )
+                    },
+                  ),
                 )
               }
             }
@@ -872,7 +872,7 @@ internal class IrBindingGraph(
           if (index > 0) append(", ")
           append(key.toText())
         }
-      }
+      },
     )
   }
 
@@ -923,9 +923,9 @@ internal class IrBindingGraph(
         notes =
           listOf(
             Note.note(
-              "binding '${key.render(short = false, includeQualifier = true)}' is an error type and appears to be missing from the compile classpath"
-            )
-          )
+              "binding '${key.render(short = false, includeQualifier = true)}' is an error type and appears to be missing from the compile classpath",
+            ),
+          ),
       )
     }
 
@@ -936,8 +936,8 @@ internal class IrBindingGraph(
         add(
           Note.note(
             "a binding for '${key.renderForDiagnostic(short = true)}' exists in a parent graph but is marked " +
-              "@GraphPrivate and cannot be accessed from this graph"
-          )
+              "@GraphPrivate and cannot be accessed from this graph",
+          ),
         )
       }
     }
@@ -962,10 +962,10 @@ internal class IrBindingGraph(
                   "A directly-provided '${key.render(short = true, includeQualifier = false)}' binding exists, " +
                     "but direct Map bindings cannot satisfy '$requestedType' requests. " +
                     "Provider-, Lazy-, or SuspendProvider-wrapped map values (e.g., Map<K, Provider<V>>) only work with a Map " +
-                    "multibinding created with `@IntoMap` or `@Multibinds`."
+                    "multibinding created with `@IntoMap` or `@Multibinds`.",
                 ),
               items = listOf(locationDiagnostic.toLocatedItem()),
-            )
+            ),
           )
         }
       }
@@ -1016,7 +1016,7 @@ internal class IrBindingGraph(
 
         if (isNullable && similarBinding is IrBinding.ConstructorInjected) {
           append(
-            ". Constructor-injected classes cannot implicitly satisfy nullable versions. Explicitly bind this type with `@Binds` separately if you want to use it for nullable bindings"
+            ". Constructor-injected classes cannot implicitly satisfy nullable versions. Explicitly bind this type with `@Binds` separately if you want to use it for nullable bindings",
           )
         }
       }
@@ -1455,7 +1455,7 @@ internal class IrBindingGraph(
       IrBindingStack.Entry.simpleTypeRef(
         binding.contextualTypeKey,
         usage = "(scoped to '${renders.bindingScope}')",
-      )
+      ),
     )
 
     val notes = buildList {
@@ -1470,8 +1470,8 @@ internal class IrBindingGraph(
         if (sourceGraphFqName != receivingGraphFqName) {
           add(
             Note.note(
-              "${node.sourceGraph.name} is contributed by '${sourceGraphFqName}' to '${receivingGraphFqName}'"
-            )
+              "${node.sourceGraph.name} is contributed by '${sourceGraphFqName}' to '${receivingGraphFqName}'",
+            ),
           )
         }
       }
@@ -1528,7 +1528,7 @@ internal class IrBindingGraph(
             { it.second.span?.line ?: Int.MAX_VALUE },
             { it.second.span?.column ?: Int.MAX_VALUE },
             { it.second.description },
-          )
+          ),
         )
     val representative = locatedContributions.first().first as IrBinding.BindingWithAnnotations
     val mapKey =
@@ -1553,8 +1553,8 @@ internal class IrBindingGraph(
         add(
           Note.note(
             "These bindings use ${mapKeys.joinToString()} with unwrapValue = true. " +
-              "Metro uses the value inside each annotation as the map key, and those values are equal."
-          )
+              "Metro uses the value inside each annotation as the map key, and those values are equal.",
+          ),
         )
       }
     }
@@ -1599,7 +1599,7 @@ internal class IrBindingGraph(
           rawType.nestedClasses
             .firstOrNull { nestedClass ->
               nestedClass.isAnnotatedWithAny(
-                metroContext.metroSymbols.classIds.assistedFactoryAnnotations
+                metroContext.metroSymbols.classIds.assistedFactoryAnnotations,
               )
             }
             ?.let { IrTypeKey(it.defaultType) }
@@ -1666,7 +1666,7 @@ internal class IrBindingGraph(
               append(
                 ". This is a generated contribution provider for ${origin.asFqNameString()}. If that class is the " +
                   "binding you're looking for, annotate the contributing class with `@ExposeImplBinding` to expose" +
-                  " its impl type to the graph"
+                  " its impl type to the graph",
               )
             }
           }

@@ -65,23 +65,23 @@ public class CompatContextImpl private constructor(private val delegate: Delegat
 
   context(_: CompilerPluginRegistrar)
   override fun CompilerPluginRegistrar.ExtensionStorage.registerFirExtensionCompat(
-    extension: FirExtensionRegistrar
+    extension: FirExtensionRegistrar,
   ) {
     FirExtensionRegistrarAdapter.registerExtension(extension)
   }
 
   context(_: CompilerPluginRegistrar)
   override fun CompilerPluginRegistrar.ExtensionStorage.registerIrExtensionCompat(
-    extension: IrGenerationExtension
+    extension: IrGenerationExtension,
   ) {
     IrGenerationExtension.registerExtension(extension)
   }
 
   override fun createIrGeneratedDeclarationsRegistrar(
-    pluginContext: IrPluginContext
+    pluginContext: IrPluginContext,
   ): IrGeneratedDeclarationsRegistrarCompat {
     return IrAnnotationIrGeneratedDeclarationsRegistrarCompat(
-      pluginContext.metadataDeclarationRegistrar
+      pluginContext.metadataDeclarationRegistrar,
     )
   }
 
@@ -105,7 +105,7 @@ public class CompatContextImpl private constructor(private val delegate: Delegat
   }
 
   override fun IrAnnotationContainer.replaceAnnotationsCompat(
-    annotations: List<IrConstructorCall>
+    annotations: List<IrConstructorCall>,
   ) {
     (this as IrMutableAnnotationContainer).annotations = annotations.map {
       it.toKotlinIrAnnotation()
@@ -117,7 +117,7 @@ public class CompatContextImpl private constructor(private val delegate: Delegat
   }
 
   override fun IrPluginContext.finderForSourceCompat(
-    fromFile: IrFile
+    fromFile: IrFile,
   ): CompatContext.DeclarationFinderCompat {
     return finderForSource(fromFile).asCompat()
   }
@@ -148,7 +148,7 @@ public class CompatContextImpl private constructor(private val delegate: Delegat
   }
 
   override fun FirAnnotationContainer.getDeprecationsProviderCompat(
-    session: FirSession
+    session: FirSession,
   ): DeprecationsProvider? {
     if (usesLegacyDeprecationsProvider) {
       return with(delegate) {

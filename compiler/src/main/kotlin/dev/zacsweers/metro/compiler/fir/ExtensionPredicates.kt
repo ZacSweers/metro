@@ -30,7 +30,8 @@ internal class ExtensionPredicates(private val classIds: ClassIds) {
 
   internal val dependencyGraphAndFactoryPredicate =
     annotated(
-      (classIds.dependencyGraphAnnotations + classIds.dependencyGraphFactoryAnnotations).asFqNames()
+      (classIds.dependencyGraphAnnotations + classIds.dependencyGraphFactoryAnnotations)
+        .asFqNames(),
     )
 
   internal val dependencyGraphCompanionPredicate =

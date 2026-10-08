@@ -70,7 +70,7 @@ internal class HiltComponentScopeMapping(private val session: FirSession) {
   }
 
   private fun scanInRoundInstallIns(
-    typeResolverFactory: MetroFirTypeResolver.Factory
+    typeResolverFactory: MetroFirTypeResolver.Factory,
   ): List<InRoundInstallIn> {
     val symbols =
       session.predicateBasedProvider.getSymbolsByPredicate(HiltSymbols.installInPredicate)

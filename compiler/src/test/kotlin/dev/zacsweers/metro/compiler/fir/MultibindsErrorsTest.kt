@@ -20,7 +20,7 @@ class MultibindsErrorsTest : MetroCompilerTest() {
           @Provides @IntoSet @IntoMap @ClassKey(Int::class) fun provideOtherInts(): Set<Int> = emptySet()
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = COMPILATION_ERROR,
     ) {
@@ -29,7 +29,7 @@ class MultibindsErrorsTest : MetroCompilerTest() {
         e: ExampleGraph.kt:7:33 Only one of `@Multibinds`, `@ElementsIntoSet`, `@IntoMap`, or `@IntoSet` is allowed.
         e: ExampleGraph.kt:8:57 Only one of `@Multibinds`, `@ElementsIntoSet`, `@IntoMap`, or `@IntoSet` is allowed.
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -53,7 +53,7 @@ class MultibindsErrorsTest : MetroCompilerTest() {
           fun provideMapInts(): Int
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = COMPILATION_ERROR,
       options = metroOptions,
@@ -65,7 +65,7 @@ class MultibindsErrorsTest : MetroCompilerTest() {
         e: ExampleGraph.kt:9:22 Multibinding contributors cannot be overrides.
         e: ExampleGraph.kt:10:44 Multibinding contributors cannot be overrides.
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -80,7 +80,7 @@ class MultibindsErrorsTest : MetroCompilerTest() {
           @Multibinds val intsProp: Set<Int> get() = emptySet()
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = COMPILATION_ERROR,
     ) {
@@ -89,7 +89,7 @@ class MultibindsErrorsTest : MetroCompilerTest() {
         e: ExampleGraph.kt:7:27 Non-private @Multibinds declarations must be abstract and not have a function or getter body.
         e: ExampleGraph.kt:8:29 Non-private @Multibinds declarations must be abstract and not have a function or getter body.
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -104,7 +104,7 @@ class MultibindsErrorsTest : MetroCompilerTest() {
           @Multibinds @SingleIn(AppScope::class) val intsProp: Set<Int>
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = COMPILATION_ERROR,
     ) {
@@ -113,7 +113,7 @@ class MultibindsErrorsTest : MetroCompilerTest() {
         e: ExampleGraph.kt:7:15 @Multibinds declarations may not have scopes.
         e: ExampleGraph.kt:8:15 @Multibinds declarations may not have scopes.
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -128,7 +128,7 @@ class MultibindsErrorsTest : MetroCompilerTest() {
           @Multibinds @Binds @Named("qualified") val Set<Int>.intsProp: Set<Int>
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = COMPILATION_ERROR,
     ) {
@@ -136,7 +136,7 @@ class MultibindsErrorsTest : MetroCompilerTest() {
         """
         e: ExampleGraph.kt:7:55 `@Multibinds` declarations cannot also be annotated with `@Provides` or `@Binds` annotations.
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -155,7 +155,7 @@ class MultibindsErrorsTest : MetroCompilerTest() {
           @Multibinds fun okSet(): Set<String>
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = COMPILATION_ERROR,
     ) {
@@ -166,7 +166,7 @@ class MultibindsErrorsTest : MetroCompilerTest() {
         e: ExampleGraph.kt:9:36 `@Multibinds` declarations can only return a `Map` or `Set`.
         e: ExampleGraph.kt:10:36 `@Multibinds` declarations can only return a `Map` or `Set`.
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -182,7 +182,7 @@ class MultibindsErrorsTest : MetroCompilerTest() {
           @Binds @IntoMap @ClassKey(Int::class) fun Int.bindsGood(): Number
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = COMPILATION_ERROR,
     ) {
@@ -190,7 +190,7 @@ class MultibindsErrorsTest : MetroCompilerTest() {
         """
         e: ExampleGraph.kt:7:38 `@IntoSet`, `@IntoMap`, and `@ElementsIntoSet` must be used in conjunction with `@Provides` or `@Binds` annotations.
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -206,7 +206,7 @@ class MultibindsErrorsTest : MetroCompilerTest() {
           @Binds @IntoSet fun Int.bindsGood(): Number
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = COMPILATION_ERROR,
     ) {
@@ -214,7 +214,7 @@ class MultibindsErrorsTest : MetroCompilerTest() {
         """
         e: ExampleGraph.kt:7:16 `@IntoSet`, `@IntoMap`, and `@ElementsIntoSet` must be used in conjunction with `@Provides` or `@Binds` annotations.
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -230,7 +230,7 @@ class MultibindsErrorsTest : MetroCompilerTest() {
           @Binds @Named("qualified") @ElementsIntoSet fun Set<Int>.bindsGood(): Set<Int>
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = COMPILATION_ERROR,
     ) {
@@ -238,7 +238,7 @@ class MultibindsErrorsTest : MetroCompilerTest() {
         """
         e: ExampleGraph.kt:7:24 `@IntoSet`, `@IntoMap`, and `@ElementsIntoSet` must be used in conjunction with `@Provides` or `@Binds` annotations.
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -257,7 +257,7 @@ class MultibindsErrorsTest : MetroCompilerTest() {
           @Provides @ElementsIntoSet fun providesGoodCollection(): Collection<Int> = listOf(1)
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = COMPILATION_ERROR,
     ) {
@@ -266,7 +266,7 @@ class MultibindsErrorsTest : MetroCompilerTest() {
         e: ExampleGraph.kt:7:41 `@ElementsIntoSet` must return a Collection.
         e: ExampleGraph.kt:8:49 `@ElementsIntoSet` must return a Collection.
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -284,7 +284,7 @@ class MultibindsErrorsTest : MetroCompilerTest() {
           fun bad(): Int = 1
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = COMPILATION_ERROR,
     ) {
@@ -293,7 +293,7 @@ class MultibindsErrorsTest : MetroCompilerTest() {
         e: ExampleGraph.kt:7:3 Only one @MapKey should be be used on a given @IntoMap declaration.
         e: ExampleGraph.kt:8:3 Only one @MapKey should be be used on a given @IntoMap declaration.
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -309,7 +309,7 @@ class MultibindsErrorsTest : MetroCompilerTest() {
           fun bad(): Int = 1
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = COMPILATION_ERROR,
     ) {
@@ -317,7 +317,7 @@ class MultibindsErrorsTest : MetroCompilerTest() {
         """
         e: ExampleGraph.kt:7:3 `@MapKey` annotations are only allowed on `@IntoMap` declarations.
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -333,7 +333,7 @@ class MultibindsErrorsTest : MetroCompilerTest() {
           fun bad(): Int = 1
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = COMPILATION_ERROR,
     ) {
@@ -341,7 +341,7 @@ class MultibindsErrorsTest : MetroCompilerTest() {
         """
         e: ExampleGraph.kt:9:7 `@IntoMap` declarations must define a @MapKey annotation.
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -356,7 +356,7 @@ class MultibindsErrorsTest : MetroCompilerTest() {
           val strings: Map<String?, String>
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = COMPILATION_ERROR,
     ) {
@@ -364,7 +364,7 @@ class MultibindsErrorsTest : MetroCompilerTest() {
         """
         e: ExampleGraph.kt:8:16 Multibinding map keys cannot be nullable. Use a non-nullable type instead.
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -379,7 +379,7 @@ class MultibindsErrorsTest : MetroCompilerTest() {
           val strings: Map<*, String>
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = COMPILATION_ERROR,
     ) {
@@ -387,7 +387,7 @@ class MultibindsErrorsTest : MetroCompilerTest() {
         """
         e: ExampleGraph.kt:8:16 Multibinding Map keys cannot be star projections. Use a concrete type instead.
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -402,7 +402,7 @@ class MultibindsErrorsTest : MetroCompilerTest() {
           val strings: Map<String, *>
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = COMPILATION_ERROR,
     ) {
@@ -410,7 +410,7 @@ class MultibindsErrorsTest : MetroCompilerTest() {
         """
         e: ExampleGraph.kt:8:16 Multibinding Map values cannot be star projections. Use a concrete type instead.
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -425,7 +425,7 @@ class MultibindsErrorsTest : MetroCompilerTest() {
           val strings: Map<String, Provider<*>>
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = COMPILATION_ERROR,
       options =
@@ -438,7 +438,7 @@ class MultibindsErrorsTest : MetroCompilerTest() {
         """
         e: ExampleGraph.kt:8:16 Multibinding Map values cannot be star projections. Use a concrete type instead.
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -453,7 +453,7 @@ class MultibindsErrorsTest : MetroCompilerTest() {
           val strings: Set<*>
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = COMPILATION_ERROR,
     ) {
@@ -461,7 +461,7 @@ class MultibindsErrorsTest : MetroCompilerTest() {
         """
         e: ExampleGraph.kt:8:16 Multibinding Set elements cannot be star projections. Use a concrete type instead.
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }

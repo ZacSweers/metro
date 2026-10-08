@@ -29,7 +29,7 @@ class SuspendBindingValidatorTest {
             SuspendMemberInjectionMetadata(
               "'Target' member injection",
               listOf(contextKey("Source")),
-            )
+            ),
           ),
       ),
       binding(
@@ -270,7 +270,7 @@ private class ValidationFixture(
   }
 
   fun validate(
-    vararg requests: SuspendGraphRequest<StringContextualTypeKey, String>
+    vararg requests: SuspendGraphRequest<StringContextualTypeKey, String>,
   ): SuspendBindingValidationResult<
     StringTypeKey,
     StringContextualTypeKey,

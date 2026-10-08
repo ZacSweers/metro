@@ -162,7 +162,7 @@ constructor(private val project: Project, objects: ObjectFactory) {
               compileTaskProvider.configure {
                 compilerOptions {
                   freeCompilerArgs.add(
-                    "-Xklib-duplicated-unique-name-strategy=allow-all-with-warning"
+                    "-Xklib-duplicated-unique-name-strategy=allow-all-with-warning",
                   )
                 }
               }

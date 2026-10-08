@@ -364,7 +364,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     val initial = service.awaitIndex(file)
     val initialGraph = initial.graphs.single { it.name == "LibraryGraph" }
     assertTrue(
-      initial.accessorsFor(initialGraph).single().contextKey.wrappedType is WrappedType.Provider
+      initial.accessorsFor(initialGraph).single().contextKey.wrappedType is WrappedType.Provider,
     )
     val initialResult =
       validation.validate(file, initial.contextsFor(initialGraph).single()).requireCompleted()
@@ -386,7 +386,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     val updatedGraph = updated.graphs.single { it.name == "LibraryGraph" }
     assertNotSame(initial, updated)
     assertTrue(
-      updated.accessorsFor(updatedGraph).single().contextKey.wrappedType is WrappedType.Canonical
+      updated.accessorsFor(updatedGraph).single().contextKey.wrappedType is WrappedType.Canonical,
     )
     val updatedResult =
       validation.validate(file, updated.contextsFor(updatedGraph).single()).requireCompleted()
@@ -457,7 +457,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
         .service<MetroIdeProjectService>()
         .state(libraryModule)
         .options
-        .enableFunctionProviders
+        .enableFunctionProviders,
     )
     val initialAccessor = initial.accessorsFor(initialGraph).single()
     assertTrue(
@@ -824,7 +824,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     assertTrue(
       childResult.bindings.any { key, binding ->
         key.renderedType == "kotlin.String" && binding is KaBinding.BoundInstance
-      }
+      },
     )
 
     // The API module cannot see the implementation module. Project-wide source discovery must
@@ -842,7 +842,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
 
     val excludedGraph =
       checkNotNull(
-        index.graphEntryAt(appFile.declarationsIncludingNested().klass("ExcludedAppGraph"))
+        index.graphEntryAt(appFile.declarationsIncludingNested().klass("ExcludedAppGraph")),
       )
     val excludedContext = index.contextsFor(excludedGraph).single()
     val excludedResult = validation.validate(appFile, excludedContext).requireCompleted()
@@ -1429,7 +1429,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
             .requireCompleted()
         assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
         assertTrue(
-          result.bindings.any { key, _ -> key.renderedType == "libtest.LibRetargetedDependencyA" }
+          result.bindings.any { key, _ -> key.renderedType == "libtest.LibRetargetedDependencyA" },
         )
       }
 
@@ -1551,17 +1551,17 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     assertTrue(
       index.bindingsInContext(appContext).any {
         (it.pointer.element as? KtNamedDeclaration)?.name == "provideService"
-      }
+      },
     )
     assertTrue(
       index.bindingsInContext(libraryContext).none {
         (it.pointer.element as? KtNamedDeclaration)?.name == "provideService"
-      }
+      },
     )
 
     val extensionConsumer =
       index.consumerEntryAt(
-        libraryFile.declarationsIncludingNested().property("extensionService")
+        libraryFile.declarationsIncludingNested().property("extensionService"),
       )!!
     val extensionResolution = index.resolveConsumer(extensionConsumer)
     assertEquals(
@@ -1628,7 +1628,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     val appKaModule = KaModuleProvider.getModule(fixture.project, appFile, useSiteModule = null)
     val consumer =
       checkNotNull(
-        index.consumerEntryAt(libraryFile.declarationsIncludingNested().property("value"))
+        index.consumerEntryAt(libraryFile.declarationsIncludingNested().property("value")),
       )
 
     assertEquals(appKaModule, index.queryContext(dynamicContext)!!.graphModule)
@@ -1653,7 +1653,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
         .validate(appFile, dynamicContext)
         .requireCompleted()
         .diagnostics
-        .isEmpty()
+        .isEmpty(),
     )
   }
 
@@ -1722,7 +1722,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     val dynamicContext = contexts.single { it.dynamicGraph != null }
     val consumer =
       checkNotNull(
-        index.consumerEntryAt(libraryFile.declarationsIncludingNested().property("service"))
+        index.consumerEntryAt(libraryFile.declarationsIncludingNested().property("service")),
       )
 
     assertFalse(staticContext.daggerAnvilInteropEnabled)
@@ -1780,7 +1780,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     assertTrue(
       index.contributionsForScopes(graph.scopeKeys).any {
         it.pointer.element === contribution
-      }
+      },
     )
 
     val queryContext = index.queryContext(index.contextsFor(graph).single())!!
@@ -1934,7 +1934,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
       restrictedIndex.queryContext(restrictedIndex.contextsFor(unrelatedGraph).single())!!
     val unrelatedService =
       restrictedIndex.consumerEntryAt(
-        unrelatedFile.declarationsIncludingNested().property("service")
+        unrelatedFile.declarationsIncludingNested().property("service"),
       )!!
     assertEquals(
       listOf("HiddenService"),
@@ -1947,23 +1947,23 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
 
     val friendContainerService =
       restrictedIndex.consumerEntryAt(
-        friendFile.declarationsIncludingNested().property("containerService")
+        friendFile.declarationsIncludingNested().property("containerService"),
       )!!
     val unrelatedContainerService =
       restrictedIndex.consumerEntryAt(
-        unrelatedFile.declarationsIncludingNested().property("containerService")
+        unrelatedFile.declarationsIncludingNested().property("containerService"),
       )!!
     assertEquals(1, restrictedIndex.bindingsFor(friendContainerService, friendContext).size)
     assertTrue(restrictedIndex.bindingsFor(unrelatedContainerService, unrelatedContext).isEmpty())
     assertTrue(
       restrictedIndex.contributionsFor(friendContext).any {
         it.classId == hiddenContainerId
-      }
+      },
     )
     assertTrue(
       restrictedIndex.contributionsFor(unrelatedContext).none {
         it.classId == hiddenContainerId || it.classId == hiddenServiceId
-      }
+      },
     )
   }
 
@@ -2176,7 +2176,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
       assertTrue(
         result.bindings.any { key, _ ->
           key.renderedType == "lib.GenericTarget.Factory<libtest.LibClientWithDeps>"
-        }
+        },
       )
       assertTrue(result.bindings.any { key, _ -> key.renderedType == "libtest.LibClientWithDeps" })
       assertTrue(result.bindings.any { key, _ -> key.renderedType == "libtest.LibHttpClient" })
@@ -2344,7 +2344,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
           }
         val owners =
           checkNotNull(
-            ConsumerOwnershipBundle.build(index).includedContainerPointers(includedConsumer)
+            ConsumerOwnershipBundle.build(index).includedContainerPointers(includedConsumer),
           )
         assertEquals(
           setOf(appModule, bridgeModule),
@@ -2358,7 +2358,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
         for (file in listOf(appFile, bridgeFile)) {
           val graph =
             checkNotNull(
-              index.graphEntryAt(file.declarationsIncludingNested().klass("SharedGraph"))
+              index.graphEntryAt(file.declarationsIncludingNested().klass("SharedGraph")),
             )
           graphIds += graph.declarationId
           assertEquals(file.virtualFile, graph.declarationId.file)
@@ -2423,7 +2423,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
           binding is KaBinding.AssistedFactory &&
             key.renderedType ==
               "libtest.LibGenericAssistedExample.Factory<lib.Outer.Factory<libtest.LibClientWithDeps>>"
-        }
+        },
       )
       assertNestedSourceFactoryChain(result, factoryFile)
     }
@@ -2493,7 +2493,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
         index.bindings.filterIsInstance<KaBinding.AssistedFactory>().any {
           it.originClassId?.asFqNameString() == "libtest.LibGenericAssistedExample.Factory" &&
             it.pointer.virtualFile == shadowFile.virtualFile
-        }
+        },
       )
 
       val graph =
@@ -2516,7 +2516,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
           key.renderedType == sourceFactoryType &&
             binding is KaBinding.AssistedFactory &&
             binding.pointer.virtualFile == appFile.virtualFile
-        }
+        },
       )
 
       val binaryFactoryTypes = mutableSetOf<String>()
@@ -2582,11 +2582,11 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
       val index = fixture.project.service<MetroResolutionService>().awaitIndex(annotatedFile)
       val annotatedGraph =
         checkNotNull(
-          index.graphEntryAt(annotatedFile.declarationsIncludingNested().klass("SharedGraph"))
+          index.graphEntryAt(annotatedFile.declarationsIncludingNested().klass("SharedGraph")),
         )
       val ordinaryGraph =
         checkNotNull(
-          index.graphEntryAt(ordinaryFile.declarationsIncludingNested().klass("SharedGraph"))
+          index.graphEntryAt(ordinaryFile.declarationsIncludingNested().klass("SharedGraph")),
         )
       assertEquals(annotatedFile.virtualFile, annotatedGraph.declarationId.file)
       assertEquals(ordinaryFile.virtualFile, ordinaryGraph.declarationId.file)
@@ -2601,7 +2601,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
       assertTrue(
         index.bindings.filterIsInstance<KaBinding.AssistedFactory>().none {
           it.pointer.virtualFile == ordinaryFile.virtualFile
-        }
+        },
       )
 
       val ordinaryContext = index.contextsFor(ordinaryGraph).single()
@@ -2611,7 +2611,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
       )
       val ordinaryConsumer =
         checkNotNull(
-          index.consumerEntryAt(ordinaryFile.declarationsIncludingNested().property("factory"))
+          index.consumerEntryAt(ordinaryFile.declarationsIncludingNested().property("factory")),
         )
       val ordinaryResolution = index.resolveConsumer(ordinaryConsumer)
       assertEquals(
@@ -2712,13 +2712,13 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
         appResult.diagnostics.isEmpty(),
       )
       assertTrue(
-        appResult.bindings.any { key, _ -> key.renderedType == "libtest.LibClientWithDeps" }
+        appResult.bindings.any { key, _ -> key.renderedType == "libtest.LibClientWithDeps" },
       )
       assertTrue(appResult.bindings.any { key, _ -> key.renderedType == "libtest.LibHttpClient" })
 
       val bridgeGraph =
         checkNotNull(
-          index.graphEntryAt(bridgeFile.declarationsIncludingNested().klass("SharedGraph"))
+          index.graphEntryAt(bridgeFile.declarationsIncludingNested().klass("SharedGraph")),
         )
       val bridgeResult =
         validation.validate(bridgeFile, index.contextsFor(bridgeGraph).single()).requireCompleted()
@@ -2727,10 +2727,10 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
         bridgeResult.diagnostics.isEmpty(),
       )
       assertTrue(
-        bridgeResult.bindings.any { key, _ -> key.renderedType == "shared.BridgeDependency" }
+        bridgeResult.bindings.any { key, _ -> key.renderedType == "shared.BridgeDependency" },
       )
       assertFalse(
-        bridgeResult.bindings.any { key, _ -> key.renderedType == "libtest.LibClientWithDeps" }
+        bridgeResult.bindings.any { key, _ -> key.renderedType == "libtest.LibClientWithDeps" },
       )
     }
   }
@@ -2794,7 +2794,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
       assertTrue(
         result.bindings.any { key, _ ->
           key.renderedType == "libtest.LibGenericAssistedExample.Factory<kotlin.Int>"
-        }
+        },
       )
     }
   }
@@ -2966,7 +2966,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
           }
         val owners =
           checkNotNull(
-            ConsumerOwnershipBundle.build(index).includedContainerPointers(includedConsumer)
+            ConsumerOwnershipBundle.build(index).includedContainerPointers(includedConsumer),
           )
         assertEquals("Two graphs in the app module should share one owner", 2, owners.size)
         val ownerModules =
@@ -2985,7 +2985,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
             validation.validate(file, index.contextsFor(graph).single()).requireCompleted()
           assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
           assertTrue(
-            result.bindings.any { key, _ -> key.renderedType == "libtest.LibClientWithDeps" }
+            result.bindings.any { key, _ -> key.renderedType == "libtest.LibClientWithDeps" },
           )
           assertTrue(result.bindings.any { key, _ -> key.renderedType == "libtest.LibHttpClient" })
         }
@@ -3362,7 +3362,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
       assertTrue(
         refreshedLibrary.bindings.any {
           it.typeKey.renderedType == "lib.AddedLibraryService"
-        }
+        },
       )
       assertSame(refreshedApp.generationToken, refreshedLibrary.generationToken)
     } finally {

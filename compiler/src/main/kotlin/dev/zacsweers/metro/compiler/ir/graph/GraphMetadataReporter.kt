@@ -89,7 +89,7 @@ internal class GraphMetadataReporter(
                   "name",
                   JsonPrimitive(injector.metroFunction.callableId.callableName.asString()),
                 )
-              }
+              },
             )
           }
         },
@@ -112,7 +112,7 @@ internal class GraphMetadataReporter(
                 put("key", JsonPrimitive(ext.key.render(short = false, includeQualifier = true)))
                 put("name", JsonPrimitive(name.asString()))
                 put("isProperty", JsonPrimitive(property != null))
-              }
+              },
             )
           }
         },
@@ -131,7 +131,7 @@ internal class GraphMetadataReporter(
                 put("name", JsonPrimitive(name.asString()))
                 put("isProperty", JsonPrimitive(property != null))
                 put("isSAM", JsonPrimitive(ext.isFactorySAM))
-              }
+              },
             )
           }
         },
@@ -161,7 +161,7 @@ internal class GraphMetadataReporter(
           JsonArray(
             node.includedGraphNodes.keys.map {
               JsonPrimitive(it.render(short = false, includeQualifier = true))
-            }
+            },
           ),
         )
       }
@@ -387,11 +387,11 @@ internal class GraphMetadataReporter(
                   put(
                     "key",
                     JsonPrimitive(
-                      param.contextualTypeKey.render(short = false, includeQualifier = true)
+                      param.contextualTypeKey.render(short = false, includeQualifier = true),
                     ),
                   )
                   put("name", JsonPrimitive(param.name.asString()))
-                }
+                },
               )
             }
           },
@@ -429,7 +429,7 @@ internal class GraphMetadataReporter(
             if (wrapperType != null) {
               put("wrapperType", JsonPrimitive(wrapperType))
             }
-          }
+          },
         )
       }
     }
@@ -453,7 +453,7 @@ internal class GraphMetadataReporter(
       put(
         "sources",
         JsonArray(
-          sourceBindings.map { JsonPrimitive(it.render(short = false, includeQualifier = true)) }
+          sourceBindings.map { JsonPrimitive(it.render(short = false, includeQualifier = true)) },
         ),
       )
     }

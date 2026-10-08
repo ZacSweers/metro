@@ -45,8 +45,8 @@ enum class KmpTarget(val gradleTargetName: String) {
           listOf(
             entries.firstOrNull { it.gradleTargetName == raw }
               ?: error(
-                "Unknown metro.functionalTestKmpTarget=$raw. Expected one of ${entries.map { it.gradleTargetName }} or `all` or `native_host`."
-              )
+                "Unknown metro.functionalTestKmpTarget=$raw. Expected one of ${entries.map { it.gradleTargetName }} or `all` or `native_host`.",
+              ),
           )
       }
     }

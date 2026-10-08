@@ -13,7 +13,7 @@ import org.jetbrains.kotlin.psi.KtClassOrObject
 internal fun contributionPickerPreview(): IntentionPreviewInfo =
   IntentionPreviewInfo.Html(
     "<p>Choose a contribution kind and scope. Metro also asks for a bound type or map key when required. " +
-      "The final choice previews the annotation change.</p>"
+      "The final choice previews the annotation change.</p>",
   )
 
 /**

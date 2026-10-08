@@ -14,7 +14,7 @@ import kotlin.reflect.KClass
 @ContributesBinding(AppScope::class)
 @Inject
 class MetroWorkerFactory(
-  val workerProviders: Map<KClass<out ListenableWorker>, WorkerInstanceFactory<*>>
+  val workerProviders: Map<KClass<out ListenableWorker>, WorkerInstanceFactory<*>>,
 ) : WorkerFactory() {
   override fun createWorker(
     appContext: Context,

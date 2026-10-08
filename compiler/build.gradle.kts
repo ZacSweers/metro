@@ -184,7 +184,7 @@ val shadowJar =
           -dontwarn org.intellij.**
           -dontwarn org.jetbrains.**
           """
-            .trimIndent()
+            .trimIndent(),
         )
         args.add("--no-minification")
         // Extracted dependency rules and relocated signatures emit expected info diagnostics.
@@ -198,7 +198,7 @@ val shadowJar =
               .flatMap {
                 listOf("--lib", it.absolutePath)
               }
-          }
+          },
         )
       }
     }

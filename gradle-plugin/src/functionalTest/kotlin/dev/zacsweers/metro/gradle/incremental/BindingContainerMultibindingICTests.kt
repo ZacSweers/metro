@@ -47,7 +47,7 @@ class BindingContainerMultibindingICTests(target: KmpTarget) :
               val target: Target
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val bindingContainer =
@@ -59,7 +59,7 @@ class BindingContainerMultibindingICTests(target: KmpTarget) :
               fun provideStrings(): Set<String>
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val target =
@@ -68,7 +68,7 @@ class BindingContainerMultibindingICTests(target: KmpTarget) :
             @Inject
             class Target(val strings: Set<String>)
             """
-              .trimIndent()
+              .trimIndent(),
           )
       }
 
@@ -102,7 +102,7 @@ class BindingContainerMultibindingICTests(target: KmpTarget) :
               Set<String> is injected at test.Target(…, strings)
               Target is requested at test.AppGraph.target
         """
-          .trimIndent()
+          .trimIndent(),
       )
   }
 
@@ -120,7 +120,7 @@ class BindingContainerMultibindingICTests(target: KmpTarget) :
               val target: Target
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val bindingContainer =
@@ -130,7 +130,7 @@ class BindingContainerMultibindingICTests(target: KmpTarget) :
             interface MyBindingContainer {
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val target =
@@ -139,7 +139,7 @@ class BindingContainerMultibindingICTests(target: KmpTarget) :
             @Inject
             class Target(val strings: Set<String>)
             """
-              .trimIndent()
+              .trimIndent(),
           )
       }
 
@@ -162,7 +162,7 @@ class BindingContainerMultibindingICTests(target: KmpTarget) :
                 declaration visible to AppGraph
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
         """
-          .trimIndent()
+          .trimIndent(),
       )
 
     // Add the binding
@@ -197,7 +197,7 @@ class BindingContainerMultibindingICTests(target: KmpTarget) :
               val target: Target
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val bindingContainer =
@@ -209,7 +209,7 @@ class BindingContainerMultibindingICTests(target: KmpTarget) :
               fun provideStrings(): Set<String>
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val target =
@@ -218,7 +218,7 @@ class BindingContainerMultibindingICTests(target: KmpTarget) :
             @Inject
             class Target(val strings: Set<String>)
             """
-              .trimIndent()
+              .trimIndent(),
           )
       }
 
@@ -255,7 +255,7 @@ class BindingContainerMultibindingICTests(target: KmpTarget) :
               Set<String> is injected at test.Target(…, strings)
               Target is requested at test.AppGraph.target
         """
-          .trimIndent()
+          .trimIndent(),
       )
   }
 
@@ -275,7 +275,7 @@ class BindingContainerMultibindingICTests(target: KmpTarget) :
               val target: Target
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val bindingContainer =
@@ -288,7 +288,7 @@ class BindingContainerMultibindingICTests(target: KmpTarget) :
               fun provideStrings(): Set<String>
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val target =
@@ -297,7 +297,7 @@ class BindingContainerMultibindingICTests(target: KmpTarget) :
             @Inject
             class Target(@Named("expected") val strings: Set<String>)
             """
-              .trimIndent()
+              .trimIndent(),
           )
       }
 
@@ -355,7 +355,7 @@ class BindingContainerMultibindingICTests(target: KmpTarget) :
               val target: Target
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val bindingContainer =
@@ -367,7 +367,7 @@ class BindingContainerMultibindingICTests(target: KmpTarget) :
               fun provideStrings(): Set<String>
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val target =
@@ -376,7 +376,7 @@ class BindingContainerMultibindingICTests(target: KmpTarget) :
             @Inject
             class Target(val strings: Set<String>)
             """
-              .trimIndent()
+              .trimIndent(),
           )
       }
 
@@ -419,7 +419,7 @@ class BindingContainerMultibindingICTests(target: KmpTarget) :
                 empty
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#emptymultibinding
         """
-          .trimIndent()
+          .trimIndent(),
       )
   }
 
@@ -436,7 +436,7 @@ class BindingContainerMultibindingICTests(target: KmpTarget) :
                 override fun toString(): String = "AppMultibinding"
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val appModuleContent =
@@ -475,7 +475,7 @@ class BindingContainerMultibindingICTests(target: KmpTarget) :
               @Multibinds(allowEmpty = true)
               fun bindMultibinding(): Set<Multibinding>
             }
-              """
+              """,
           )
 
         val main =
@@ -485,7 +485,7 @@ class BindingContainerMultibindingICTests(target: KmpTarget) :
               val appGraph = createGraph<AppGraph>()
               return appGraph.multibindings.toString()
             }
-            """
+            """,
           )
       }
 
@@ -527,7 +527,7 @@ class BindingContainerMultibindingICTests(target: KmpTarget) :
             @Inject
             class Target(val string: String)
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val bindingContainer =
@@ -542,7 +542,7 @@ class BindingContainerMultibindingICTests(target: KmpTarget) :
               fun provideString(): String = "test"
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val changedContribution =
@@ -597,7 +597,7 @@ class BindingContainerMultibindingICTests(target: KmpTarget) :
             @Inject
             class Target(val string: String)
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val bindingContainer =
@@ -610,7 +610,7 @@ class BindingContainerMultibindingICTests(target: KmpTarget) :
               fun provideString(): String = "test"
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val removedContribution =
@@ -660,7 +660,7 @@ class BindingContainerMultibindingICTests(target: KmpTarget) :
               fun getCurrentUser(): String
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val userService =
@@ -670,7 +670,7 @@ class BindingContainerMultibindingICTests(target: KmpTarget) :
               fun doWork(): String
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val userServiceImpl =
@@ -683,7 +683,7 @@ class BindingContainerMultibindingICTests(target: KmpTarget) :
               override fun doWork() = userApi.getCurrentUser()
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val bindingContainer =
@@ -698,7 +698,7 @@ class BindingContainerMultibindingICTests(target: KmpTarget) :
               }
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val appGraph =
@@ -709,7 +709,7 @@ class BindingContainerMultibindingICTests(target: KmpTarget) :
               val userService: UserService
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         override fun sources() = listOf(appGraph)

@@ -316,7 +316,7 @@ class BindingGraphTest : TraceScope by TraceScope.noop() {
               check(allowBindingReads) { "Analysis read binding deferral" }
               return binding.isImplicitlyDeferrable
             }
-        }
+        },
       )
     }
     graph.tryPut(kept.typeKey.toBinding())
@@ -482,7 +482,7 @@ class BindingGraphTest : TraceScope by TraceScope.noop() {
                 `Lazy<B>`. Only do this if you know what you're doing though!
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#dependencycycle
         """
-          .trimIndent()
+          .trimIndent(),
       )
   }
 
@@ -599,7 +599,7 @@ class BindingGraphTest : TraceScope by TraceScope.noop() {
           "B".contextualTypeKey,
           listOf("A".contextualTypeKey),
           kind = WorkloadBindingKind.INSTANCE,
-        )
+        ),
       )
 
       val prepared = graph.prepareSeal(shrinkUnusedBindings = false)
@@ -710,7 +710,7 @@ class BindingGraphTest : TraceScope by TraceScope.noop() {
     graph.tryPut(first.toBinding(second))
     // One deferred edge puts every tail vertex in the same component as the hard cycle.
     graph.tryPut(
-      second.toBinding(first.contextualTypeKey, "() -> ${tail.last().type}".contextualTypeKey)
+      second.toBinding(first.contextualTypeKey, "() -> ${tail.last().type}".contextualTypeKey),
     )
     for ((index, key) in tail.withIndex()) {
       val dependencies =
@@ -938,7 +938,7 @@ class BindingGraphTest : TraceScope by TraceScope.noop() {
                 @IntoSet/@IntoMap if you intended a multibinding
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#duplicatebinding
         """
-          .trimIndent()
+          .trimIndent(),
       )
   }
 
@@ -965,7 +965,7 @@ class BindingGraphTest : TraceScope by TraceScope.noop() {
                 @IntoSet/@IntoMap if you intended a multibinding
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#duplicatebinding
         """
-          .trimIndent()
+          .trimIndent(),
       )
   }
 }
@@ -996,7 +996,7 @@ private val StringTypeKey.contextualTypeKey: StringContextualTypeKey
   get() = StringContextualTypeKey.create(this)
 
 private fun StringTypeKey.toBinding(
-  dependencies: List<StringContextualTypeKey> = emptyList()
+  dependencies: List<StringContextualTypeKey> = emptyList(),
 ): StringBinding {
   return StringBinding(this, dependencies)
 }
@@ -1013,7 +1013,7 @@ private fun newStringBindingGraph(
   graph: String = "AppGraph",
   computeBinding:
     (StringContextualTypeKey, ScatterMap<StringTypeKey, *>, StringBindingStack) -> Set<
-        StringBinding
+        StringBinding,
       > =
     { _, _, _ ->
       emptySet()
@@ -1029,7 +1029,7 @@ private fun newStringBindingGraph(
 @IgnorableReturnValue
 context(traceScope: TraceScope)
 private fun buildGraph(
-  body: StringGraphBuilder.() -> Unit
+  body: StringGraphBuilder.() -> Unit,
 ): Pair<StringGraph, GraphTopology<StringTypeKey>> {
   return StringGraphBuilder().apply(body).sealAndReturn()
 }
@@ -1037,7 +1037,7 @@ private fun buildGraph(
 // Helper method to create a graph with a chain of dependencies
 context(traceScope: TraceScope)
 private fun buildChainedGraph(
-  vararg nodes: String
+  vararg nodes: String,
 ): Pair<StringGraph, GraphTopology<StringTypeKey>> {
   return buildGraph {
     for (i in 0 until nodes.size - 1) {

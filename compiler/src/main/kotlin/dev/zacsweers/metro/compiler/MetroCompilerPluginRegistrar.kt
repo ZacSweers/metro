@@ -50,7 +50,7 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
             ?: run {
               System.err.println(
                 "[METRO] Skipping enabling Metro extensions in IDE. " +
-                  "Detected Kotlin version '$rawVersion' is not supported for IDE use (CLI_ONLY)."
+                  "Detected Kotlin version '$rawVersion' is not supported for IDE use (CLI_ONLY).",
               )
               return
             }
@@ -64,7 +64,7 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
     if (!enableFir) {
       // While the option is about FIR, this really also means we can't/don't enable IR
       System.err.println(
-        "[METRO] Skipping enabling Metro extensions. Detected Kotlin version: $version"
+        "[METRO] Skipping enabling Metro extensions. Detected Kotlin version: $version",
       )
       return
     }
@@ -74,7 +74,7 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
         CompatContext.create(version)
       } catch (t: Throwable) {
         System.err.println(
-          "[METRO] Skipping enabling Metro extensions, unable to create CompatContext for version $version"
+          "[METRO] Skipping enabling Metro extensions, unable to create CompatContext for version $version",
         )
         t.printStackTrace()
         return
@@ -151,7 +151,7 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
 
     with(compatContext) {
       registerFirExtensionCompat(
-        MetroFirExtensionRegistrar(classIds, options, isIde, compatContext, traceContext)
+        MetroFirExtensionRegistrar(classIds, options, isIde, compatContext, traceContext),
       )
     }
 
@@ -165,8 +165,8 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
             if (!options.generateCircuitSerializerRegistrationsInFir) {
               registerIrExtensionCompat(
                 CircuitSerializableIrDeclarationGenerationExtension.create(
-                  compatContext = compatContext
-                )
+                  compatContext = compatContext,
+                ),
               )
             }
             if (!options.generateCircuitFactoriesInFir) {
@@ -174,7 +174,7 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
                 CircuitIrDeclarationGenerationExtension.create(
                   classIds = classIds,
                   compatContext = compatContext,
-                )
+                ),
               )
             }
           }
@@ -187,13 +187,13 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
               injectAnnotations = classIds.allInjectAnnotations,
               qualifierAnnotations = classIds.qualifierAnnotations,
               compatContext = compatContext,
-            )
+            ),
           )
           registerIrExtensionCompat(
             CircuitSerializableIrExtension.create(
               generateClassesInIr = options.generateClassesInIr,
               compatContext = compatContext,
-            )
+            ),
           )
         }
         registerIrExtensionCompat(
@@ -205,7 +205,7 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
             expectActualTracker = expectActualTracker,
             compatContext = compatContext,
             traceContext = traceContext,
-          )
+          ),
         )
       }
     }

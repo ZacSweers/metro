@@ -160,7 +160,7 @@ class MetroSortTest : TraceScope by TraceScope.noop() {
         |  a (b)
         |  b (a)
         """
-          .trimMargin()
+          .trimMargin(),
       )
   }
 
@@ -176,7 +176,7 @@ class MetroSortTest : TraceScope by TraceScope.noop() {
         """
         |No element for c found for a
         """
-          .trimMargin()
+          .trimMargin(),
       )
   }
 
@@ -194,7 +194,7 @@ class MetroSortTest : TraceScope by TraceScope.noop() {
         """
         |No element for f found for e
         """
-          .trimMargin()
+          .trimMargin(),
       )
   }
 

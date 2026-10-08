@@ -115,7 +115,7 @@ private fun FirAnnotation.contributionProviderAnnotationIdentity(
     if (implicitClassId != null) {
       listOf(
         (parameters.firstOrNull()?.name?.asString() ?: "value") to
-          generatedNameIdentity("class", implicitClassId.asString())
+          generatedNameIdentity("class", implicitClassId.asString()),
       )
     } else {
       parameters.mapIndexedNotNull { index, parameter ->
@@ -188,11 +188,11 @@ private fun FirExpression.contributionProviderArgumentIdentity(session: FirSessi
 }
 
 internal fun IrAnnotation.contributionProviderAnnotationIdentity(
-  implicitClassId: ClassId? = null
+  implicitClassId: ClassId? = null,
 ): String = ir.contributionProviderAnnotationIdentity(implicitClassId)
 
 private fun IrConstructorCall.contributionProviderAnnotationIdentity(
-  implicitClassId: ClassId? = null
+  implicitClassId: ClassId? = null,
 ): String {
   val classId = symbol.owner.parentAsClass.classIdOrFail
   val parameters = symbol.owner.regularParameters
@@ -200,7 +200,7 @@ private fun IrConstructorCall.contributionProviderAnnotationIdentity(
     if (implicitClassId != null) {
       listOf(
         (parameters.firstOrNull()?.name?.asString() ?: "value") to
-          generatedNameIdentity("class", implicitClassId.asString())
+          generatedNameIdentity("class", implicitClassId.asString()),
       )
     } else {
       parameters.mapNotNull { parameter ->
@@ -228,7 +228,7 @@ private fun IrExpression.contributionProviderArgumentIdentity(): String =
               is IrSpreadElement -> element.expression.contributionProviderArgumentIdentity()
               else ->
                 reportCompilerBug(
-                  "Unsupported generated-name annotation array element: ${element::class.java.name}"
+                  "Unsupported generated-name annotation array element: ${element::class.java.name}",
                 )
             }
           }

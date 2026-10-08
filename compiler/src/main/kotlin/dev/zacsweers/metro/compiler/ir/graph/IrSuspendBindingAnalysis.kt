@@ -48,7 +48,7 @@ internal class SuspendBindingAnalysis(
   fun analyze(keys: Iterable<IrTypeKey>): Set<IrTypeKey> = worklist.analyze(keys)
 
   fun analyzeWithPaths(
-    keys: Iterable<IrTypeKey>
+    keys: Iterable<IrTypeKey>,
   ): SuspendBindingAnalysisResult<IrTypeKey, IrContextualTypeKey> = worklist.analyzeWithPaths(keys)
 
   fun isSuspend(key: IrTypeKey): Boolean = worklist.isSuspend(key)

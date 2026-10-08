@@ -209,7 +209,7 @@ internal class BindingDecisionCapture(private val node: GraphNode.Local) {
           candidates = candidates.sortedBy { it.id },
           details =
             listOf(
-              "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+              "Records the candidates reached by this lookup; later fallbacks remain unevaluated.",
             ),
         )
     }
@@ -226,7 +226,7 @@ internal class BindingDecisionCapture(private val node: GraphNode.Local) {
               .sortedBy { it.id },
           details =
             listOf(
-              "Records bindings added directly to this graph, including member-injection dependencies."
+              "Records bindings added directly to this graph, including member-injection dependencies.",
             ),
         )
     }
@@ -243,7 +243,7 @@ internal class BindingDecisionCapture(private val node: GraphNode.Local) {
         )
     }
     return result.sortedWith(
-      compareBy({ it.phase.name }, { it.request?.key }, { it.request?.declaration?.id })
+      compareBy({ it.phase.name }, { it.request?.key }, { it.request?.declaration?.id }),
     )
   }
 
@@ -275,7 +275,7 @@ internal class BindingDecisionCapture(private val node: GraphNode.Local) {
 }
 
 private fun RejectedBindingDecision.toExplanationCandidate(
-  ownerGraphIds: Map<IrTypeKey, String>
+  ownerGraphIds: Map<IrTypeKey, String>,
 ): BindingExplanationCandidate {
   val declaration = declaration?.bindingExplanationDeclaration()
   val key = key.render(short = false, includeQualifier = true)

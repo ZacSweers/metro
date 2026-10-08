@@ -33,6 +33,6 @@ internal class SuspendBindingAnalysis(findBinding: (KaTypeKey) -> KaBinding?) {
   fun analyze(keys: Iterable<KaTypeKey>): Set<KaTypeKey> = worklist.analyze(keys)
 
   fun analyzeWithPaths(
-    keys: Iterable<KaTypeKey>
+    keys: Iterable<KaTypeKey>,
   ): SuspendBindingAnalysisResult<KaTypeKey, KaContextualTypeKey> = worklist.analyzeWithPaths(keys)
 }

@@ -613,7 +613,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
         @Inject @ContributesBinding(AppScope::class)
         class ServiceImpl : Service
-        """
+        """,
       )
     val service = project.service<MetroResolutionService>()
     val initial = service.awaitIndex(file)
@@ -1105,7 +1105,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         @DependencyGraph interface AppGraph {
           val screen: Screen
         }
-        """
+        """,
       )
 
     withPausedColdManualRefresh { service, attempts, release ->
@@ -1294,7 +1294,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       sink.results("index.captureInputs").any {
         it.metadata["parent_operation_id"] == discardedAttempt &&
           it.metadata["outcome"] == "completed"
-      }
+      },
     )
     val publishedGeneration = checkNotNull(candidates.last().metadata["generation"])
     val presentation =
@@ -1308,7 +1308,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         it.name == "presentation.publication" &&
           it.metadata["attempt"] == presentation["attempt"] &&
           it.metadata["disposition"] == "published"
-      }
+      },
     )
   }
 
@@ -1634,12 +1634,12 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         interface Providers {
           @Provides fun provideAlias(): Alias = error("unused")
         }
-        """
+        """,
       )
     val service = project.service<MetroResolutionService>()
     val initial = service.awaitIndex(file)
     assertTrue(
-      initial.bindings.any { it.typeKey.type.classId?.asFqNameString() == "kotlin.String" }
+      initial.bindings.any { it.typeKey.type.classId?.asFqNameString() == "kotlin.String" },
     )
     val initialUnrelated = initial.bindings.single { it.typeKey.renderedType == "test.Unrelated" }
     val settings = MetroSettings.getInstance(project).state
@@ -1662,7 +1662,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
       val refreshed = service.presentationIndex(file)
       assertTrue(
-        refreshed.bindings.any { it.typeKey.type.classId?.asFqNameString() == "kotlin.Int" }
+        refreshed.bindings.any { it.typeKey.type.classId?.asFqNameString() == "kotlin.Int" },
       )
       assertNotSame(
         initialUnrelated,
@@ -1697,7 +1697,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       assertTrue(
         service.presentationIndex(file).bindings.any {
           it.typeKey.renderedType == "test.AddedBeforeRefresh"
-        }
+        },
       )
     } finally {
       settings.automaticallyRefreshGraphData = true
@@ -1913,7 +1913,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       assertTrue(
         service.cachedIndex(file).bindings.any {
           it.typeKey.renderedType == "test.AddedAutomatically"
-        }
+        },
       )
     } finally {
       progressUpdates.close()
@@ -2275,7 +2275,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       assertFalse(ranOnEdt.get())
       assertFalse(ranWithoutReadAccess.get())
       assertTrue(
-        updated.join().bindings.any { it.typeKey.renderedType == "test.AddedBackgroundWait" }
+        updated.join().bindings.any { it.typeKey.renderedType == "test.AddedBackgroundWait" },
       )
     } finally {
       settings.automaticallyRefreshGraphData = true
@@ -2376,7 +2376,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       assertFalse(
         service.presentationIndex(file).bindings.any {
           it.typeKey.renderedType == "test.NewIrrelevant"
-        }
+        },
       )
     } finally {
       settings.automaticallyRefreshGraphData = true
@@ -2400,7 +2400,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
           @Provides @Named("other") fun provideOther(): Payload<Text>? = null
           @Provides @Named("payload") fun provideNonNullableElement(): Box<String>? = null
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val consumer = index.consumers.single()
@@ -2434,7 +2434,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         interface Providers {
           @Provides fun provideAlias(): Alias = error("unused")
         }
-        """
+        """,
       )
     val service = project.service<MetroResolutionService>()
     assertEquals(
@@ -2466,7 +2466,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         interface Providers {
           @Provides @Named(SERVICE_NAME) fun provideAlias(): Alias = error("unused")
         }
-        """
+        """,
       )
     val service = project.service<MetroResolutionService>()
     val initial = service.awaitIndex(file)
@@ -2503,7 +2503,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         interface Providers {
           @Provides fun provideAlias(): Alias = error("unused")
         }
-        """
+        """,
       )
     val service = project.service<MetroResolutionService>()
     assertEquals(
@@ -2547,7 +2547,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         interface Providers {
           @Provides @Named(SERVICE_NAME) fun provideService(): String = "service"
         }
-        """
+        """,
       )
     val service = project.service<MetroResolutionService>()
     val initial = service.awaitIndex(file).bindings.single().typeKey.qualifier
@@ -2594,7 +2594,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         interface Providers {
           @Provides @Named(PUBLIC_NAME) fun provideService(): String = "service"
         }
-        """
+        """,
       )
     val service = project.service<MetroResolutionService>()
     val initial = service.awaitIndex(providers).bindings.single().typeKey.qualifier
@@ -2625,7 +2625,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         interface Providers {
           @Provides @Named(Constants.SERVICE_NAME) fun provideService(): String = "service"
         }
-        """
+        """,
       )
     val service = project.service<MetroResolutionService>()
     val initial = service.awaitIndex(file).bindings.single().typeKey.qualifier
@@ -2656,7 +2656,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         interface Providers {
           @Provides @Named(SERVICE_NAME) fun provideService(): String = "service"
         }
-        """
+        """,
       )
     val service = project.service<MetroResolutionService>()
     val initial = service.awaitIndex(file).bindings.single().typeKey.qualifier
@@ -2684,7 +2684,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         interface Providers {
           @Provides @Named(Constants.SERVICE_NAME) fun provideService(): String = "service"
         }
-        """
+        """,
       )
     val service = project.service<MetroResolutionService>()
     val initial = service.awaitIndex(file).bindings.single().typeKey.qualifier
@@ -2729,7 +2729,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         interface Providers {
           @Provides @Named(SERVICE_NAME) fun provideService(): String = "service"
         }
-        """
+        """,
       )
     val service = project.service<MetroResolutionService>()
     val initial =
@@ -2768,7 +2768,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         interface Providers {
           @Provides @Named(SERVICE_NAME) fun provideService(): String = "service"
         }
-        """
+        """,
       )
     val service = project.service<MetroResolutionService>()
     val original =
@@ -2778,7 +2778,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
     myFixture.openFileInEditor(mixed.virtualFile)
     myFixture.editor.caretModel.moveToOffset(
-      mixed.text.indexOf("class Marker") + "class Marker".length
+      mixed.text.indexOf("class Marker") + "class Marker".length,
     )
     myFixture.type(" { fun unrelated() = 1 }")
     PsiDocumentManager.getInstance(project).commitAllDocuments()
@@ -2802,7 +2802,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         interface Providers {
           @Provides fun provideAlias(): Alias = "service"
         }
-        """
+        """,
       )
     val service = project.service<MetroResolutionService>()
     val original =
@@ -2812,7 +2812,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
     myFixture.openFileInEditor(mixed.virtualFile)
     myFixture.editor.caretModel.moveToOffset(
-      mixed.text.indexOf("class Marker") + "class Marker".length
+      mixed.text.indexOf("class Marker") + "class Marker".length,
     )
     myFixture.type(" { fun unrelated() = 1 }")
     PsiDocumentManager.getInstance(project).commitAllDocuments()
@@ -2844,7 +2844,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         interface Providers {
           @Provides fun provideService(): String = "service"
         }
-        """
+        """,
       )
     val service = project.service<MetroResolutionService>()
     val original =
@@ -2884,7 +2884,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     val original = sharedDeclarationFingerprint(factory.createFile(source))
     val changed =
       sharedDeclarationFingerprint(
-        factory.createFile(source.replace("first.Parent", "second.Parent"))
+        factory.createFile(source.replace("first.Parent", "second.Parent")),
       )
     assertFalse(original == changed)
   }
@@ -2895,7 +2895,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     val original = sharedDeclarationFingerprint(factory.createFile(source))
     val changed =
       sharedDeclarationFingerprint(
-        factory.createFile(source.replace("first.Missing", "second.Missing"))
+        factory.createFile(source.replace("first.Missing", "second.Missing")),
       )
     assertFalse(original == changed)
   }
@@ -3079,7 +3079,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     val file = configure()
     val service = project.service<MetroResolutionService>()
     assertTrue(
-      service.awaitIndex(file).bindings.any { it.typeKey.renderedType == "test.Temporary" }
+      service.awaitIndex(file).bindings.any { it.typeKey.renderedType == "test.Temporary" },
     )
 
     myFixture.openFileInEditor(additional.virtualFile)
@@ -3091,7 +3091,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     PsiDocumentManager.getInstance(project).commitAllDocuments()
 
     assertFalse(
-      service.awaitIndex(file).bindings.any { it.typeKey.renderedType == "test.Temporary" }
+      service.awaitIndex(file).bindings.any { it.typeKey.renderedType == "test.Temporary" },
     )
   }
 
@@ -3298,7 +3298,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
           @Provides @Named("property") val propertyProvider: String get() = "property"
           @Provides val unqualifiedProvider: String get() = "plain"
         }
-        """
+        """,
       )
     val settings = MetroSettings.getInstance(project).state
     val previousResolveFromLibraries = settings.resolveFromLibraries
@@ -3348,7 +3348,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         interface AppGraph : Accessors<String>, Providers<String> {
           val unqualified: String
         }
-        """
+        """,
       )
     val settings = MetroSettings.getInstance(project).state
     val previousResolveFromLibraries = settings.resolveFromLibraries
@@ -3398,7 +3398,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         interface AppGraph {
           val unqualified: String
         }
-        """
+        """,
       )
     val settings = MetroSettings.getInstance(project).state
     val previousResolveFromLibraries = settings.resolveFromLibraries
@@ -3889,7 +3889,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       )
       assertTrue(composition.accessors.any { it.injectedMemberPointer != null })
       assertFalse(
-        index.contributions.any { it.classId?.shortClassName?.asString() == "LibHiddenGraph" }
+        index.contributions.any { it.classId?.shortClassName?.asString() == "LibHiddenGraph" },
       )
       val value =
         composition.accessors.single {
@@ -3958,7 +3958,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       assertTrue(initial.graphComposition(initialQuery).accessors.isEmpty())
       assertFalse(initial.bindings.any { it.typeKey.renderedType == "libtest.LibInterfaceClient" })
       assertFalse(
-        initial.bindings.any { it.typeKey.renderedType == "libtest.LibInterfaceDependency" }
+        initial.bindings.any { it.typeKey.renderedType == "libtest.LibInterfaceDependency" },
       )
 
       val document = checkNotNull(PsiDocumentManager.getInstance(project).getDocument(file))
@@ -3977,7 +3977,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       )
       assertTrue(updated.bindings.any { it.typeKey.renderedType == "libtest.LibInterfaceClient" })
       assertTrue(
-        updated.bindings.any { it.typeKey.renderedType == "libtest.LibInterfaceDependency" }
+        updated.bindings.any { it.typeKey.renderedType == "libtest.LibInterfaceDependency" },
       )
       val result =
         project
@@ -4852,10 +4852,10 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         updatedInner.targetConstructorDependencies.map { it.typeKey.renderedType },
       )
       assertFalse(
-        updated.bindings.any { it.typeKey.renderedType == "libtest.LibRetargetedDependencyA" }
+        updated.bindings.any { it.typeKey.renderedType == "libtest.LibRetargetedDependencyA" },
       )
       assertTrue(
-        updated.bindings.any { it.typeKey.renderedType == "libtest.LibRetargetedDependencyB" }
+        updated.bindings.any { it.typeKey.renderedType == "libtest.LibRetargetedDependencyB" },
       )
       assertTrue(updated.bindings.any { it.typeKey.renderedType == "libtest.LibClientWithDeps" })
       assertTrue(updated.bindings.any { it.typeKey.renderedType == "libtest.LibHttpClient" })
@@ -5031,10 +5031,10 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       val service = project.service<MetroResolutionService>()
       val initial = service.awaitIndex(file)
       assertTrue(
-        initial.bindings.any { it.typeKey.renderedType == "libtest.LibRetargetedDependencyA" }
+        initial.bindings.any { it.typeKey.renderedType == "libtest.LibRetargetedDependencyA" },
       )
       assertFalse(
-        initial.bindings.any { it.typeKey.renderedType == "libtest.LibRetargetedDependencyB" }
+        initial.bindings.any { it.typeKey.renderedType == "libtest.LibRetargetedDependencyB" },
       )
 
       val document = checkNotNull(PsiDocumentManager.getInstance(project).getDocument(file))
@@ -5052,10 +5052,10 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       val updated = service.awaitIndex(file)
       assertNotSame(initial, updated)
       assertFalse(
-        updated.bindings.any { it.typeKey.renderedType == "libtest.LibRetargetedDependencyA" }
+        updated.bindings.any { it.typeKey.renderedType == "libtest.LibRetargetedDependencyA" },
       )
       assertTrue(
-        updated.bindings.any { it.typeKey.renderedType == "libtest.LibRetargetedDependencyB" }
+        updated.bindings.any { it.typeKey.renderedType == "libtest.LibRetargetedDependencyB" },
       )
       assertTrue(updated.bindings.any { it.typeKey.renderedType == "libtest.LibClientWithDeps" })
     }
@@ -5086,10 +5086,10 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       val service = project.service<MetroResolutionService>()
       val initial = service.awaitIndex(file)
       assertTrue(
-        initial.bindings.any { it.typeKey.renderedType == "libtest.LibRetargetedDependencyA" }
+        initial.bindings.any { it.typeKey.renderedType == "libtest.LibRetargetedDependencyA" },
       )
       assertFalse(
-        initial.bindings.any { it.typeKey.renderedType == "libtest.LibRetargetedDependencyB" }
+        initial.bindings.any { it.typeKey.renderedType == "libtest.LibRetargetedDependencyB" },
       )
 
       val document = checkNotNull(PsiDocumentManager.getInstance(project).getDocument(file))
@@ -5107,10 +5107,10 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       val updated = service.awaitIndex(file)
       assertNotSame(initial, updated)
       assertFalse(
-        updated.bindings.any { it.typeKey.renderedType == "libtest.LibRetargetedDependencyA" }
+        updated.bindings.any { it.typeKey.renderedType == "libtest.LibRetargetedDependencyA" },
       )
       assertTrue(
-        updated.bindings.any { it.typeKey.renderedType == "libtest.LibRetargetedDependencyB" }
+        updated.bindings.any { it.typeKey.renderedType == "libtest.LibRetargetedDependencyB" },
       )
       assertTrue(updated.bindings.any { it.typeKey.renderedType == "libtest.LibClientWithDeps" })
     }
@@ -5157,7 +5157,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       val initialDependency =
         initial.bindings.single { it.typeKey.renderedType == "libtest.LibRetargetedDependencyA" }
       assertFalse(
-        initial.bindings.any { it.typeKey.renderedType == "libtest.LibRetargetedDependencyB" }
+        initial.bindings.any { it.typeKey.renderedType == "libtest.LibRetargetedDependencyB" },
       )
       assertFalse(initial.bindings.any { it.typeKey.renderedType == "libtest.LibClientWithDeps" })
 
@@ -5188,10 +5188,10 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       val updated = service.awaitIndex(file)
       assertNotSame(initial, updated)
       assertFalse(
-        updated.bindings.any { it.typeKey.renderedType == "libtest.LibRetargetedDependencyA" }
+        updated.bindings.any { it.typeKey.renderedType == "libtest.LibRetargetedDependencyA" },
       )
       assertTrue(
-        updated.bindings.any { it.typeKey.renderedType == "libtest.LibRetargetedDependencyB" }
+        updated.bindings.any { it.typeKey.renderedType == "libtest.LibRetargetedDependencyB" },
       )
       assertTrue(updated.bindings.any { it.typeKey.renderedType == "libtest.LibClientWithDeps" })
       assertTrue(updated.bindings.any { it.typeKey.renderedType == "libtest.LibHttpClient" })
@@ -5737,8 +5737,8 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         }
       assertTrue(
         contributionNames.containsAll(
-          listOf("LibServiceImpl", "LibAnalyticsImpl", "LibExplicitImpl", "LibContainedImpl")
-        )
+          listOf("LibServiceImpl", "LibAnalyticsImpl", "LibExplicitImpl", "LibContainedImpl"),
+        ),
       )
       assertFalse("LibHiddenImpl" in contributionNames)
     }
@@ -6546,7 +6546,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         interface OtherGraph : Providers {
           val otherApi: RealApi
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val declarations = file.declarationsIncludingNested()
@@ -6611,7 +6611,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       @Inject @PrioritizedBinding(AppScope::class, priority = 3) class Excluded : Service
       @DependencyGraph(AppScope::class, excludes = [Excluded::class])
       interface AppGraph { val service: Service }
-      """
+      """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val consumer = index.consumerEntryAt(file.declarationsIncludingNested().property("service"))!!
@@ -6642,7 +6642,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         @Provides fun service(): Service = Service()
         @Provides @Named("other") fun other(): Service = Service()
       }
-      """
+      """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val consumer = index.consumerEntryAt(file.declarationsIncludingNested().property("service"))!!
@@ -6671,7 +6671,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
           val service: Service
           @Provides fun provideService(): Service = Service()
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val declarations = file.declarationsIncludingNested()
@@ -6697,7 +6697,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
           val widget: Widget
           @Provides fun provideWidget(): Widget = Widget("manual")
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val consumer = index.consumerEntryAt(file.declarationsIncludingNested().property("widget"))!!
@@ -6722,7 +6722,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
           @Provides @IntoSet fun contributeName(): String = "contributed"
           @Multibinds fun declareNames(): Set<String>
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val declarations = file.declarationsIncludingNested()
@@ -6754,7 +6754,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
           @Provides @IntoSet fun contributeName(): String = "contributed"
           @Multibinds fun declareNames(): Set<String>
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val declarations = file.declarationsIncludingNested()
@@ -6776,7 +6776,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
           @Provides fun firstService(): Service = Service()
           @Provides fun secondService(): Service = Service()
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val declarations = file.declarationsIncludingNested()
@@ -6812,7 +6812,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         interface AppGraph : EntryPoint {
           val client: Client
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val declarations = file.declarationsIncludingNested()
@@ -7311,7 +7311,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         interface OtherGraph {
           @Provides fun provideOtherService(): Service = object : Service {}
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val member = index.consumerEntryAt(file.declarationsIncludingNested().property("service"))!!
@@ -7347,7 +7347,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
         @DependencyGraph
         interface OtherGraph
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val member = index.consumerEntryAt(file.declarationsIncludingNested().property("service"))!!
@@ -7382,7 +7382,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         interface NewService
 
         @Inject class Screen : BaseScreen()
-        """
+        """,
       )
     val service = project.service<MetroResolutionService>()
     val initial =
@@ -7432,7 +7432,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         interface Service
 
         @Inject class Screen : BaseScreen()
-        """
+        """,
       )
     val service = project.service<MetroResolutionService>()
     val initial =
@@ -7463,7 +7463,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
           @Endpoint(version = 1, name = "main") val service: Service
           @Provides @Endpoint fun provideService(): Service = object : Service {}
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val accessor = index.consumerEntryAt(file.declarationsIncludingNested().property("service"))!!
@@ -7499,7 +7499,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
           @Endpoint("main") val service: Service
           @Provides @Endpoint fun provideService(): Service = object : Service {}
         }
-        """
+        """,
       )
     val service = project.service<MetroResolutionService>()
     val declarations = file.declarationsIncludingNested()
@@ -7543,7 +7543,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
           @Provides @Endpoint fun provideService(): Service = object : Service {}
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val accessor = index.consumerEntryAt(file.declarationsIncludingNested().property("service"))!!
@@ -7583,7 +7583,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         interface AppGraph {
           val service: Service
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val declarations = file.declarationsIncludingNested()
@@ -7636,7 +7636,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
           val other: OtherService
           val others: Set<OtherService>
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val declarations = file.declarationsIncludingNested()
@@ -7701,7 +7701,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
           @Named("first") val first: Service
           @Named("second") val second: Service
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val declarations = file.declarationsIncludingNested()
@@ -7740,7 +7740,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
           @Provides @IntoSet fun authoredService(): Service = object : Service {}
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val declarations = file.declarationsIncludingNested()
@@ -7780,7 +7780,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         interface AppGraph {
           val services: Set<Service>
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val services = index.consumerEntryAt(file.declarationsIncludingNested().property("services"))!!
@@ -7810,7 +7810,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         interface AppGraph {
           val services: Set<Service>
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val services = index.consumerEntryAt(file.declarationsIncludingNested().property("services"))!!
@@ -7839,7 +7839,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         interface AppGraph {
           val services: Set<Service>
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val services = index.consumerEntryAt(file.declarationsIncludingNested().property("services"))!!
@@ -7866,7 +7866,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         interface AppGraph {
           val services: Set<Service>
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val services = index.consumerEntryAt(file.declarationsIncludingNested().property("services"))!!
@@ -7900,7 +7900,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         interface AppGraph {
           val child: ChildGraph
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val declarations = file.declarationsIncludingNested()
@@ -7948,7 +7948,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
           val mapped: Map<String, Service>
           val collected: Set<Service>
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val declarations = file.declarationsIncludingNested()
@@ -7996,7 +7996,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
           val service: Service
           val services: Set<Service>
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val declarations = file.declarationsIncludingNested()
@@ -8055,7 +8055,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
           val services: Set<Service>
           @Named("ignored") val implementation: HigherService
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val declarations = file.declarationsIncludingNested()
@@ -8107,7 +8107,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         interface AppGraph {
           val services: Map<String, Service>
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val accessor = index.consumerEntryAt(file.declarationsIncludingNested().property("services"))!!
@@ -8155,7 +8155,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         interface AppGraph {
           val viewModels: Map<KClass<out ViewModel>, ViewModel>
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val accessor =
@@ -8216,7 +8216,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         interface AppGraph {
           val services: Map<String, Service>
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val declarations = file.declarationsIncludingNested()
@@ -8257,7 +8257,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         interface AppGraph {
           val service: Service
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val accessor = index.consumerEntryAt(file.declarationsIncludingNested().property("service"))!!
@@ -8300,7 +8300,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         interface AppGraph {
           val service: Service
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val accessor = index.consumerEntryAt(file.declarationsIncludingNested().property("service"))!!
@@ -8335,7 +8335,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         interface AppGraph {
           val service: Service
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val declarations = file.declarationsIncludingNested()
@@ -8386,7 +8386,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         interface ParentGraph {
           val child: ChildGraph
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val declarations = file.declarationsIncludingNested()
@@ -8437,7 +8437,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         interface AppGraph {
           val service: Service
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val accessor = index.consumerEntryAt(file.declarationsIncludingNested().property("service"))!!
@@ -8471,7 +8471,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         interface AppGraph {
           val service: Service
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val accessor = index.consumerEntryAt(file.declarationsIncludingNested().property("service"))!!
@@ -8531,7 +8531,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         interface OtherGraph {
           val consumer: Consumer
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val declarations = file.declarationsIncludingNested()
@@ -8579,12 +8579,12 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     assertTrue(
       index
         .consumersFor(appBindings, contextsByGraph.getValue("AppGraph").path)
-        .contains(differentConsumer)
+        .contains(differentConsumer),
     )
     assertFalse(
       index
         .consumersFor(appBindings, contextsByGraph.getValue("OtherGraph").path)
-        .contains(differentConsumer)
+        .contains(differentConsumer),
     )
 
     val stable = resolution("stableRepo")

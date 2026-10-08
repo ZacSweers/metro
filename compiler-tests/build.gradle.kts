@@ -218,7 +218,7 @@ dependencies {
 
   // 2.3.0 changed the test gen APIs around into different packages
   "generator230CompileOnly"(
-    "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:$compilerTestFrameworkVersion"
+    "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:$compilerTestFrameworkVersion",
   )
   "generator230CompileOnly"("org.jetbrains.kotlin:kotlin-compiler:$compilerTestFrameworkVersion")
   "generator2320CompileOnly"("org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:2.3.20")
@@ -226,25 +226,25 @@ dependencies {
   // Pinned to Beta2 (not Beta1) because Beta2 dropped `diagnosticsByFilePath` for
   // `diagnosticsByFile` -- the same late-on-the-2.4.0-branch rename 2.3.21 did.
   "generator240CompileOnly"(
-    "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:2.4.0-Beta2"
+    "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:2.4.0-Beta2",
   )
   "generator240CompileOnly"("org.jetbrains.kotlin:kotlin-compiler:2.4.0-Beta2")
   // 2.4.20 dev builds renamed `commonConfigurationForJvmTest` to `setupJvmPipelineSteps`. Compile
   // this helper against the same 2.4.20 artifact set used at test runtime so its erased builder
   // receiver ABI matches the fallback artifacts.
   "generator2420CompileOnly"(
-    "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:$kotlinArtifactsVersion"
+    "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:$kotlinArtifactsVersion",
   )
   "generator2420CompileOnly"("org.jetbrains.kotlin:kotlin-compiler:$kotlinArtifactsVersion")
 
   testImplementation(sourceSets.named(generatorConfigToUse).map { it.output })
   testImplementation(
-    "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:$compilerTestFrameworkVersion"
+    "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:$compilerTestFrameworkVersion",
   )
   testImplementation("org.jetbrains.kotlin:kotlin-compiler:$kotlinArtifactsVersion")
   testImplementation("org.jetbrains.kotlin:kotlin-compose-compiler-plugin:$kotlinArtifactsVersion")
   testImplementation(
-    "org.jetbrains.kotlin:kotlin-serialization-compiler-plugin:$kotlinArtifactsVersion"
+    "org.jetbrains.kotlin:kotlin-serialization-compiler-plugin:$kotlinArtifactsVersion",
   )
 
   testImplementation(project(":compiler"))
@@ -267,7 +267,7 @@ dependencies {
   coroutinesClasspath(libs.coroutines)
   metroRuntimeKlibClasspath(project(path = ":runtime", configuration = "jsRuntimeElements"))
   metroRuntimeCoroutinesKlibClasspath(
-    project(path = ":runtime-coroutines", configuration = "jsRuntimeElements")
+    project(path = ":runtime-coroutines", configuration = "jsRuntimeElements"),
   )
   coroutinesKlibClasspath(libs.coroutines)
   runtimeTracingClasspath(project(":metro-trace"))
@@ -627,7 +627,7 @@ fun Test.setClasspathProperty(propertyName: String, classpath: FileCollection) {
     objects.newInstance<CompilerTestClasspathArgumentProvider>().apply {
       propertyNames.set(listOf(propertyName))
       this.classpath.from(classpath)
-    }
+    },
   )
 }
 
@@ -637,7 +637,7 @@ fun Test.setFilesProperty(propertyName: String, files: FileCollection) {
     objects.newInstance<CompilerTestFilesArgumentProvider>().apply {
       propertyNames.set(listOf(propertyName))
       this.files.from(files)
-    }
+    },
   )
 }
 
@@ -647,7 +647,7 @@ fun Test.setLocationProperty(propertyName: String, location: String) {
     objects.newInstance<CompilerTestLocationArgumentProvider>().apply {
       this.propertyName.set(propertyName)
       this.location.set(location)
-    }
+    },
   )
 }
 
@@ -670,14 +670,14 @@ fun Test.setLibraryProperty(
       objects.newInstance<CompilerTestFilesArgumentProvider>().apply {
         this.propertyNames.set(propertyNames)
         files.from(library)
-      }
+      },
     )
   } else {
     jvmArgumentProviders.add(
       objects.newInstance<CompilerTestClasspathArgumentProvider>().apply {
         this.propertyNames.set(propertyNames)
         classpath.from(library)
-      }
+      },
     )
   }
 }

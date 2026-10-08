@@ -120,7 +120,7 @@ internal fun generateStaticCreateFunction(
           }
         val typeRemapper =
           sourceTypeParameters.deepRemapperFor(
-            sourceTypeParameters.symbol.typeWithParameters(typeParams)
+            sourceTypeParameters.symbol.typeWithParameters(typeParams),
           )
         addParameters(
           parameters.allParameters.filterNot { it.isAssisted },
@@ -227,7 +227,7 @@ private fun transformStaticCreateFunction(
             irGetObject(factoryClass.symbol)
           } else {
             irCallConstructorWithSameParameters(createFunction, targetConstructor)
-          }
+          },
         )
       }
   }
@@ -277,7 +277,7 @@ internal fun generateStaticNewInstanceFunction(
         this.returnType = returnTypeProvider(typeParams)
         val typeRemapper =
           sourceTypeParameters.deepRemapperFor(
-            sourceTypeParameters.symbol.typeWithParameters(typeParams)
+            sourceTypeParameters.symbol.typeWithParameters(typeParams),
           )
         signatureAnnotations?.let {
           copySignatureAnnotations(factoryClass, targetFunction, it)
@@ -441,7 +441,7 @@ internal fun generateMetadataVisibleDeclarationMirror(
     // On JVM, mark as @ComptimeOnly so R8 can strip the declaration mirror from runtime jars
     if (context.pluginContext.platform.isJvm()) {
       addAnnotationCompat(
-        buildAnnotation(symbol, context.metroSymbols.comptimeOnlyAnnotationConstructor)
+        buildAnnotation(symbol, context.metroSymbols.comptimeOnlyAnnotationConstructor),
       )
     }
   }
@@ -482,7 +482,7 @@ private fun IrSimpleFunction.copySignatureAnnotations(
         // Exclude @Provides to avoid reentrant factory generation.
         it.annotationClass.classId in context.metroSymbols.classIds.providesAnnotations
       }
-      .map { it.deepCopyWithSymbols() }
+      .map { it.deepCopyWithSymbols() },
   )
 }
 
@@ -522,8 +522,8 @@ internal fun generateStubCreatorFunctions(
     sourceParameters.copy(
       regularParameters =
         sourceParameters.regularParameters.dedupeParameters(
-          defaultUsesSuspendProvider = sourceFunction.isSuspend
-        )
+          defaultUsesSuspendProvider = sourceFunction.isSuspend,
+        ),
     )
 
   // create() function, parameters are Provider-wrapped

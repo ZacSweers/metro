@@ -35,8 +35,8 @@ class InjectedClassTransformerTest : MetroCompilerTest() {
           override fun call(): String = value
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       assertCallableFactory("Hello, world!")
     }
@@ -52,8 +52,8 @@ class InjectedClassTransformerTest : MetroCompilerTest() {
         }
 
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       assertCallableFactory("Hello, world!")
     }
@@ -70,8 +70,8 @@ class InjectedClassTransformerTest : MetroCompilerTest() {
         }
 
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       assertCallableFactory("Hello, world!")
     }
@@ -88,8 +88,8 @@ class InjectedClassTransformerTest : MetroCompilerTest() {
         }
 
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val factoryClass = ExampleClass.generatedFactoryClass()
 
@@ -118,8 +118,8 @@ class InjectedClassTransformerTest : MetroCompilerTest() {
         }
 
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val factory = ExampleClass.generatedFactoryClass()
       val counter = AtomicInteger()
@@ -143,8 +143,8 @@ class InjectedClassTransformerTest : MetroCompilerTest() {
         }
 
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val factoryClass = ExampleClass.generatedFactoryClass()
       val counter = AtomicInteger()
@@ -168,8 +168,8 @@ class InjectedClassTransformerTest : MetroCompilerTest() {
         }
 
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val factoryClass = ExampleClass.generatedFactoryClass()
       val counter = AtomicInteger()
@@ -198,8 +198,8 @@ class InjectedClassTransformerTest : MetroCompilerTest() {
             override fun call(): Int = value
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     compile(
@@ -215,7 +215,7 @@ class InjectedClassTransformerTest : MetroCompilerTest() {
           }
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       previousCompilationResult = otherModuleResult,
     ) {
@@ -235,8 +235,8 @@ class InjectedClassTransformerTest : MetroCompilerTest() {
             override fun call(): Int = value
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     compile(
@@ -252,7 +252,7 @@ class InjectedClassTransformerTest : MetroCompilerTest() {
           }
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       previousCompilationResult = otherModuleResult,
     ) {
@@ -286,8 +286,8 @@ class InjectedClassTransformerTest : MetroCompilerTest() {
           val int: Int
         )
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       assertThat(graph.callProperty<Int>("int")).isEqualTo(2)
@@ -321,8 +321,8 @@ class InjectedClassTransformerTest : MetroCompilerTest() {
           val contributedInterface: ContributedInterface
         )
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
@@ -348,7 +348,7 @@ class InjectedClassTransformerTest : MetroCompilerTest() {
         @Inject
         class MyClass
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
@@ -356,7 +356,7 @@ class InjectedClassTransformerTest : MetroCompilerTest() {
         """
         e: MyClass.kt:8:1 Dagger's `@Reusable` is not supported in Metro. See https://zacsweers.github.io/metro/latest/faq#why-doesnt-metro-support-reusable for more information.
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -376,8 +376,8 @@ class InjectedClassTransformerTest : MetroCompilerTest() {
             }
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
     compile(
       source(
@@ -387,7 +387,7 @@ class InjectedClassTransformerTest : MetroCompilerTest() {
           val exampleClass: ExampleClass
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
       options = metroOptions.toBuilder().enableDaggerRuntimeInterop(true).build(),
@@ -408,7 +408,7 @@ class InjectedClassTransformerTest : MetroCompilerTest() {
                 declaration visible to ExampleGraph
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }

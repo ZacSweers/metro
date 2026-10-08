@@ -82,7 +82,7 @@ private fun FileShard.librarySignature(): SourceLibraryShardSignature {
 }
 
 private fun contributionLibrarySignature(
-  contribution: ContributionEntry
+  contribution: ContributionEntry,
 ): ContributionLibrarySignature {
   return ContributionLibrarySignature(
     contribution.scopeKeys,
@@ -117,7 +117,7 @@ private fun consumerLibrarySignature(consumer: ConsumerEntry): ConsumerLibrarySi
 }
 
 private fun extensionFactoryLibrarySignature(
-  factory: GraphExtensionFactoryAccessor
+  factory: GraphExtensionFactoryAccessor,
 ): ExtensionFactoryLibrarySignature {
   return ExtensionFactoryLibrarySignature(
     factory.factoryKey,
@@ -129,7 +129,7 @@ private fun extensionFactoryLibrarySignature(
 }
 
 private fun callableLibrarySignature(
-  callable: GraphCallableReference
+  callable: GraphCallableReference,
 ): GraphCallableLibrarySignature {
   return GraphCallableLibrarySignature(
     callable.signature,
@@ -140,7 +140,7 @@ private fun callableLibrarySignature(
 
 /** Tracks override shape and modality when source declarations replace library declarations. */
 private fun memberOverrideLibrarySignature(
-  memberOverride: GraphMemberOverride
+  memberOverride: GraphMemberOverride,
 ): GraphMemberOverrideLibrarySignature {
   return GraphMemberOverrideLibrarySignature(
     callableLibrarySignature(memberOverride.declaration),
@@ -151,7 +151,7 @@ private fun memberOverrideLibrarySignature(
 }
 
 private fun graphInterfaceLibrarySignature(
-  surface: GraphInterfaceSurface
+  surface: GraphInterfaceSurface,
 ): GraphInterfaceLibrarySignature {
   return GraphInterfaceLibrarySignature(
     contributionLibrarySignature(surface.contribution),
@@ -227,7 +227,7 @@ private fun bindingLibrarySignature(binding: KaBinding): BindingLibrarySignature
 
 /** Defaults and raw wrappers are metadata here, although contextual-key equality omits them. */
 internal fun assistedFactoryDefinitionSignature(
-  binding: KaBinding.AssistedFactory
+  binding: KaBinding.AssistedFactory,
 ): AssistedFactoryDefinitionSignature {
   return AssistedFactoryDefinitionSignature(
     binding.typeKey,
@@ -236,7 +236,7 @@ internal fun assistedFactoryDefinitionSignature(
     binding.scope,
     binding.targetTypeKey,
     (binding.targetConstructorDependencies + binding.targetMemberDependencies).map(
-      ::contextKeyLibrarySignature
+      ::contextKeyLibrarySignature,
     ),
     binding.targetConstructorDependencies.size,
     binding.memberInjectionOwnerIds,

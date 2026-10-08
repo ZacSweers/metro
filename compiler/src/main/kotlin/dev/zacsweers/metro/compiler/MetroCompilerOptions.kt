@@ -79,13 +79,13 @@ internal fun MetroOptions.validate(
   if (contributionHintsAreGeneratedInIr && kotlinVersionSupportsTopLevelFirGen(compilerVersion)) {
     onError(
       "generateContributionHintsInFir cannot be disabled when generateContributionHints is enabled " +
-        "on Kotlin $compilerVersion."
+        "on Kotlin $compilerVersion.",
     )
     valid = false
   } else if (contributionProvidersAreEnabledWithoutFirHintGen) {
     onError(
       "generateContributionProviders with generateContributionHints requires " +
-        "generateContributionHintsInFir to also be enabled."
+        "generateContributionHintsInFir to also be enabled.",
     )
     valid = false
   }
@@ -93,7 +93,7 @@ internal fun MetroOptions.validate(
   if (unusedGraphInputsSeverity.isIdeOnly) {
     onError(
       "unusedGraphInputsSeverity (set to ${unusedGraphInputsSeverity.name}) does not support IDE_WARN/IDE_ERROR " +
-        "because the underlying check only runs during IR (CLI-only). Use WARN, ERROR, or NONE instead."
+        "because the underlying check only runs during IR (CLI-only). Use WARN, ERROR, or NONE instead.",
     )
     valid = false
   }
@@ -129,7 +129,7 @@ private fun MetroOptions.validateKotlinJsIC(
     onError(
       "Kotlin/JS does not support generating top-level declarations with incremental compilation enabled. " +
         "See https://youtrack.jetbrains.com/issue/KT-82395 and https://youtrack.jetbrains.com/issue/KT-82989. " +
-        "Either disable ${jsICOptions.joinToString()} for JS targets or disable JS IC."
+        "Either disable ${jsICOptions.joinToString()} for JS targets or disable JS IC.",
     )
     return false
   }

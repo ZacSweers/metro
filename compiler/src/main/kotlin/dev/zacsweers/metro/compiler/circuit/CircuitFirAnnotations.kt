@@ -33,7 +33,7 @@ internal fun FirSession.buildCircuitInjectAnnotation(): FirAnnotation {
 }
 
 internal fun FirSession.buildCircuitContributesIntoSetAnnotation(
-  scopeClassId: ClassId
+  scopeClassId: ClassId,
 ): FirAnnotation {
   val contributesIntoSetSymbol =
     symbolProvider.getClassLikeSymbolByClassId(contributesIntoSetClassId) as? FirRegularClassSymbol

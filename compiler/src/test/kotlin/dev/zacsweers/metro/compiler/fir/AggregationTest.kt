@@ -40,8 +40,8 @@ class AggregationTest : MetroCompilerTest() {
         @DependencyGraph(scope = AppScope::class)
         interface ExampleGraph
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph
       graph.assertHasContributedSupertype("test.ContributedInterface")
@@ -57,8 +57,8 @@ class AggregationTest : MetroCompilerTest() {
           @ContributesTo(AppScope::class)
           interface ContributedInterface
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     compile(
@@ -67,7 +67,7 @@ class AggregationTest : MetroCompilerTest() {
         @DependencyGraph(scope = AppScope::class)
         interface ExampleGraph
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       previousCompilationResult = firstResult,
     ) {
@@ -92,8 +92,8 @@ class AggregationTest : MetroCompilerTest() {
           val contributedInterface: ContributedInterface
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
@@ -117,8 +117,8 @@ class AggregationTest : MetroCompilerTest() {
           val contributedInterface: ContributedInterface
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
@@ -145,8 +145,8 @@ class AggregationTest : MetroCompilerTest() {
           val contributedInterface: ContributedInterface
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
@@ -167,8 +167,8 @@ class AggregationTest : MetroCompilerTest() {
           @Inject
           class Impl : ContributedInterface
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     compile(
@@ -179,7 +179,7 @@ class AggregationTest : MetroCompilerTest() {
           val contributedInterface: ContributedInterface
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       previousCompilationResult = firstResult,
     ) {
@@ -207,8 +207,8 @@ class AggregationTest : MetroCompilerTest() {
           @Named("named") val contributedInterface: ContributedInterface
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
@@ -237,8 +237,8 @@ class AggregationTest : MetroCompilerTest() {
           val contributedInterface: ContributedInterface
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
@@ -272,8 +272,8 @@ class AggregationTest : MetroCompilerTest() {
           val anotherInterface: AnotherInterface
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
@@ -306,8 +306,8 @@ class AggregationTest : MetroCompilerTest() {
           val contributedInterface: ContributedInterface
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
@@ -335,8 +335,8 @@ class AggregationTest : MetroCompilerTest() {
           val contributedInterface: ContributedInterface<String>
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
@@ -360,8 +360,8 @@ class AggregationTest : MetroCompilerTest() {
           @Inject
           class Impl : ContributedInterface<String>
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     compile(
@@ -372,7 +372,7 @@ class AggregationTest : MetroCompilerTest() {
           @Named("named") val contributedInterface: ContributedInterface<String>
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       previousCompilationResult = firstResult,
     ) {
@@ -399,8 +399,8 @@ class AggregationTest : MetroCompilerTest() {
           val contributedInterfaces: Set<ContributedInterface>
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterfaces = graph.callProperty<Set<Any>>("contributedInterfaces")
@@ -426,8 +426,8 @@ class AggregationTest : MetroCompilerTest() {
           val contributedInterfaces: Set<ContributedInterface>
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterfaces = graph.callProperty<Set<Any>>("contributedInterfaces")
@@ -450,8 +450,8 @@ class AggregationTest : MetroCompilerTest() {
           @Inject
           class Impl : ContributedInterface
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     compile(
@@ -462,7 +462,7 @@ class AggregationTest : MetroCompilerTest() {
           val contributedInterfaces: Set<ContributedInterface>
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       previousCompilationResult = firstResult,
     ) {
@@ -492,8 +492,8 @@ class AggregationTest : MetroCompilerTest() {
           @Named("named") val contributedInterfaces: Set<ContributedInterface>
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterfaces = graph.callProperty<Set<Any>>("contributedInterfaces")
@@ -523,8 +523,8 @@ class AggregationTest : MetroCompilerTest() {
           val contributedInterfaces: Set<ContributedInterface>
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterfaces = graph.callProperty<Set<Any>>("contributedInterfaces")
@@ -555,8 +555,8 @@ class AggregationTest : MetroCompilerTest() {
           val contributedInterfaces: Set<ContributedInterface>
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterfaces = graph.callProperty<Set<Any>>("contributedInterfaces")
@@ -585,8 +585,8 @@ class AggregationTest : MetroCompilerTest() {
           val contributedInterfaces: Set<ContributedInterface<String>>
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterfaces = graph.callProperty<Set<Any>>("contributedInterfaces")
@@ -611,8 +611,8 @@ class AggregationTest : MetroCompilerTest() {
           @Inject
           class Impl : ContributedInterface<String>
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     compile(
@@ -623,7 +623,7 @@ class AggregationTest : MetroCompilerTest() {
           @Named("named") val contributedInterfaces: Set<ContributedInterface<String>>
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       previousCompilationResult = firstResult,
     ) {
@@ -652,8 +652,8 @@ class AggregationTest : MetroCompilerTest() {
           val contributedInterfaces: Map<KClass<*>, ContributedInterface>
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterfaces = graph.callProperty<Map<KClass<*>, Any>>("contributedInterfaces")
@@ -681,8 +681,8 @@ class AggregationTest : MetroCompilerTest() {
           val contributedInterfaces: Map<KClass<*>, ContributedInterface>
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterfaces = graph.callProperty<Map<KClass<*>, Any>>("contributedInterfaces")
@@ -707,8 +707,8 @@ class AggregationTest : MetroCompilerTest() {
           @Inject
           class Impl : ContributedInterface
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     compile(
@@ -719,7 +719,7 @@ class AggregationTest : MetroCompilerTest() {
           val contributedInterfaces: Map<KClass<*>, ContributedInterface>
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       previousCompilationResult = firstResult,
     ) {
@@ -751,8 +751,8 @@ class AggregationTest : MetroCompilerTest() {
           @Named("named") val contributedInterfaces: Map<KClass<*>, ContributedInterface>
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterfaces = graph.callProperty<Map<KClass<*>, Any>>("contributedInterfaces")
@@ -783,8 +783,8 @@ class AggregationTest : MetroCompilerTest() {
           val contributedInterfaces: Map<KClass<*>, ContributedInterface>
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterfaces = graph.callProperty<Map<KClass<*>, Any>>("contributedInterfaces")
@@ -816,8 +816,8 @@ class AggregationTest : MetroCompilerTest() {
           val contributedInterfaces: Map<KClass<*>, ContributedInterface>
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterfaces = graph.callProperty<Map<KClass<*>, Any>>("contributedInterfaces")
@@ -847,8 +847,8 @@ class AggregationTest : MetroCompilerTest() {
           val contributedInterfaces: Map<KClass<*>, ContributedInterface<String>>
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterfaces = graph.callProperty<Map<KClass<*>, Any>>("contributedInterfaces")
@@ -874,8 +874,8 @@ class AggregationTest : MetroCompilerTest() {
           @Inject
           class Impl : ContributedInterface<String>
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     compile(
@@ -886,7 +886,7 @@ class AggregationTest : MetroCompilerTest() {
           @Named("named") val contributedInterfaces: Map<KClass<*>, ContributedInterface<String>>
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       previousCompilationResult = firstResult,
     ) {
@@ -916,8 +916,8 @@ class AggregationTest : MetroCompilerTest() {
             fun provideValue(): String = "Hello, world!"
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     compile(
@@ -938,7 +938,7 @@ class AggregationTest : MetroCompilerTest() {
           val thirdVal: String
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       previousCompilationResult = previousCompilation,
     ) {
@@ -1005,8 +1005,8 @@ class AggregationTest : MetroCompilerTest() {
           val altVal: String
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val appGraphClass = ExampleGraph
       val appGraph = appGraphClass.generatedImpl().createGraphWithNoArgs()
@@ -1032,7 +1032,7 @@ class AggregationTest : MetroCompilerTest() {
         @DependencyGraph(scope = AppScope::class)
         interface ExampleGraph
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
@@ -1041,7 +1041,7 @@ class AggregationTest : MetroCompilerTest() {
         e: ContributedInterface.kt:7:1 Duplicate `@ContributesTo` annotations contributing to scope `AppScope`.
         e: ContributedInterface.kt:8:1 Duplicate `@ContributesTo` annotations contributing to scope `AppScope`.
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -1061,7 +1061,7 @@ class AggregationTest : MetroCompilerTest() {
         @DependencyGraph(scope = AppScope::class)
         interface ExampleGraph
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
@@ -1070,7 +1070,7 @@ class AggregationTest : MetroCompilerTest() {
         e: ContributedInterface.kt:9:1 Duplicate `@ContributesBinding` annotations contributing to scope `AppScope`.
         e: ContributedInterface.kt:10:1 Duplicate `@ContributesBinding` annotations contributing to scope `AppScope`.
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -1090,7 +1090,7 @@ class AggregationTest : MetroCompilerTest() {
         @DependencyGraph(scope = AppScope::class)
         interface ExampleGraph
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
@@ -1099,7 +1099,7 @@ class AggregationTest : MetroCompilerTest() {
         e: ContributedInterface.kt:9:1 Duplicate `@ContributesBinding` annotations contributing to scope `AppScope`.
         e: ContributedInterface.kt:10:1 Duplicate `@ContributesBinding` annotations contributing to scope `AppScope`.
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -1119,7 +1119,7 @@ class AggregationTest : MetroCompilerTest() {
         @DependencyGraph(scope = AppScope::class)
         interface ExampleGraph
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
@@ -1128,7 +1128,7 @@ class AggregationTest : MetroCompilerTest() {
         e: ContributedInterface.kt:9:1 Duplicate `@ContributesBinding` annotations contributing to scope `AppScope`.
         e: ContributedInterface.kt:10:1 Duplicate `@ContributesBinding` annotations contributing to scope `AppScope`.
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -1151,8 +1151,8 @@ class AggregationTest : MetroCompilerTest() {
           @Named("2") val contributedInterface2: ContributedInterface
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterface1 = graph.callProperty<Any>("contributedInterface1")
@@ -1183,8 +1183,8 @@ class AggregationTest : MetroCompilerTest() {
           @Named("2") val contributedInterface2: ContributedInterface
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterface1 = graph.callProperty<Any>("contributedInterface1")
@@ -1220,8 +1220,8 @@ class AggregationTest : MetroCompilerTest() {
           val contributedInterface: ContributedInterface
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
@@ -1254,8 +1254,8 @@ class AggregationTest : MetroCompilerTest() {
         @ContributesIntoSet(AppScope::class, binding<ContributedInterface>())
         @Inject class Impl : ContributedInterface, SecondInterface
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       graph.callProperty<Set<Any>>("contributedSet").also { contributedSet ->
@@ -1283,8 +1283,8 @@ class AggregationTest : MetroCompilerTest() {
           @Named("1") val contributedInterface1: ContributedInterface
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterface1 = graph.callProperty<Any>("contributedInterface1")
@@ -1310,8 +1310,8 @@ class AggregationTest : MetroCompilerTest() {
           @Named("1") val contributedInterface1: ContributedInterface
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface1")
@@ -1335,7 +1335,7 @@ class AggregationTest : MetroCompilerTest() {
         @DependencyGraph(scope = AppScope::class)
         interface ExampleGraph
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
@@ -1344,7 +1344,7 @@ class AggregationTest : MetroCompilerTest() {
         e: ContributedInterface.kt:9:1 Duplicate `@ContributesBinding` annotations contributing to scope `AppScope`.
         e: ContributedInterface.kt:10:1 Duplicate `@ContributesBinding` annotations contributing to scope `AppScope`.
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -1363,12 +1363,12 @@ class AggregationTest : MetroCompilerTest() {
         @DependencyGraph(scope = AppScope::class)
         interface ExampleGraph
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ContributedInterface.kt:9:46 Explicit bound types should not be `Nothing` or `Nothing?`."
+        "e: ContributedInterface.kt:9:46 Explicit bound types should not be `Nothing` or `Nothing?`.",
       )
     }
   }
@@ -1387,8 +1387,8 @@ class AggregationTest : MetroCompilerTest() {
         @DependencyGraph(scope = AppScope::class)
         interface ExampleGraph
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     )
   }
 
@@ -1406,12 +1406,12 @@ class AggregationTest : MetroCompilerTest() {
         @DependencyGraph(scope = AppScope::class)
         interface ExampleGraph
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ContributedInterface.kt:9:46 Class test.Impl does not implement explicit bound type kotlin.Unit"
+        "e: ContributedInterface.kt:9:46 Class test.Impl does not implement explicit bound type kotlin.Unit",
       )
     }
   }
@@ -1434,8 +1434,8 @@ class AggregationTest : MetroCompilerTest() {
           val base: BaseContributedInterface
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val base = graph.callProperty<Any>("base")
@@ -1457,13 +1457,13 @@ class AggregationTest : MetroCompilerTest() {
         @DependencyGraph(scope = AppScope::class)
         interface ExampleGraph
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
       options = metroOptions.toBuilder().contributesAsInject(false).build(),
     ) {
       assertDiagnostics(
-        "e: ContributedInterface.kt:9:1 `@ContributesBinding` is only applicable to constructor-injected classes, assisted factories, or objects. Ensure test.Impl is injectable or a bindable object."
+        "e: ContributedInterface.kt:9:1 `@ContributesBinding` is only applicable to constructor-injected classes, assisted factories, or objects. Ensure test.Impl is injectable or a bindable object.",
       )
     }
   }
@@ -1482,12 +1482,12 @@ class AggregationTest : MetroCompilerTest() {
         @DependencyGraph(scope = AppScope::class)
         interface ExampleGraph
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ContributedInterface.kt:9:1 `@ContributesBinding`-annotated class test.Impl has no supertypes to bind to."
+        "e: ContributedInterface.kt:9:1 `@ContributesBinding`-annotated class test.Impl has no supertypes to bind to.",
       )
     }
   }
@@ -1513,8 +1513,8 @@ class AggregationTest : MetroCompilerTest() {
           val contributedInterface: ContributedInterface
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     )
   }
 
@@ -1532,12 +1532,12 @@ class AggregationTest : MetroCompilerTest() {
         @DependencyGraph(scope = AppScope::class)
         interface ExampleGraph
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ContributedInterface.kt:9:46 Redundant explicit bound type test.Impl is the same as the annotated class test.Impl."
+        "e: ContributedInterface.kt:9:46 Redundant explicit bound type test.Impl is the same as the annotated class test.Impl.",
       )
     }
   }
@@ -1554,12 +1554,12 @@ class AggregationTest : MetroCompilerTest() {
         @DependencyGraph(scope = AppScope::class)
         interface ExampleGraph
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: Impl.kt:7:46 Redundant explicit bound type test.Impl is the same as the annotated class test.Impl."
+        "e: Impl.kt:7:46 Redundant explicit bound type test.Impl is the same as the annotated class test.Impl.",
       )
     }
   }
@@ -1588,8 +1588,8 @@ class AggregationTest : MetroCompilerTest() {
           val contributedInterface: ContributedInterface
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
@@ -1618,8 +1618,8 @@ class AggregationTest : MetroCompilerTest() {
           @Inject
           class Impl : ContributedInterface
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     compile(
@@ -1635,7 +1635,7 @@ class AggregationTest : MetroCompilerTest() {
           val contributedInterface: ContributedInterface
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       previousCompilationResult = previousCompilation,
     ) {
@@ -1676,8 +1676,8 @@ class AggregationTest : MetroCompilerTest() {
           val otherInterface: OtherInterface
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
@@ -1707,8 +1707,8 @@ class AggregationTest : MetroCompilerTest() {
           @Inject
           class Impl : ContributedInterface, OtherInterface
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     compile(
@@ -1724,7 +1724,7 @@ class AggregationTest : MetroCompilerTest() {
           val otherInterface: OtherInterface
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       previousCompilationResult = previousCompilation,
     ) {
@@ -1765,8 +1765,8 @@ class AggregationTest : MetroCompilerTest() {
           val otherInterface: ContributedInterface
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
@@ -1806,7 +1806,7 @@ class AggregationTest : MetroCompilerTest() {
           val otherInterface: OtherInterface
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
@@ -1824,7 +1824,7 @@ class AggregationTest : MetroCompilerTest() {
                 @Binds declaration visible to AltGraph
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -1841,7 +1841,7 @@ class AggregationTest : MetroCompilerTest() {
         @Inject
         class Impl : ContributedInterface
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
@@ -1850,7 +1850,7 @@ class AggregationTest : MetroCompilerTest() {
         e: ContributedInterface.kt:9:1 Duplicate `@ContributesIntoSet` annotations contributing to scope `AppScope`.
         e: ContributedInterface.kt:10:1 Duplicate `@ContributesIntoSet` annotations contributing to scope `AppScope`.
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -1867,7 +1867,7 @@ class AggregationTest : MetroCompilerTest() {
         @Inject
         class Impl : ContributedInterface
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
@@ -1876,7 +1876,7 @@ class AggregationTest : MetroCompilerTest() {
         e: ContributedInterface.kt:9:1 Duplicate `@ContributesIntoSet` annotations contributing to scope `AppScope`.
         e: ContributedInterface.kt:10:1 Duplicate `@ContributesIntoSet` annotations contributing to scope `AppScope`.
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -1893,7 +1893,7 @@ class AggregationTest : MetroCompilerTest() {
         @Inject
         class Impl : ContributedInterface
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
@@ -1902,7 +1902,7 @@ class AggregationTest : MetroCompilerTest() {
         e: ContributedInterface.kt:9:1 Duplicate `@ContributesIntoSet` annotations contributing to scope `AppScope`.
         e: ContributedInterface.kt:10:1 Duplicate `@ContributesIntoSet` annotations contributing to scope `AppScope`.
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -1925,8 +1925,8 @@ class AggregationTest : MetroCompilerTest() {
           @Named("2") val contributedInterfaces2: Set<ContributedInterface>
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterfaces1 = graph.callProperty<Set<Any>>("contributedInterfaces1")
@@ -1959,8 +1959,8 @@ class AggregationTest : MetroCompilerTest() {
           @Named("2") val contributedInterfaces2: Set<ContributedInterface>
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterfaces1 = graph.callProperty<Set<Any>>("contributedInterfaces1")
@@ -1991,8 +1991,8 @@ class AggregationTest : MetroCompilerTest() {
           @Named("1") val contributedInterfaces1: Set<ContributedInterface>
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterfaces1 = graph.callProperty<Set<Any>>("contributedInterfaces1")
@@ -2019,8 +2019,8 @@ class AggregationTest : MetroCompilerTest() {
           @Named("1") val contributedInterfaces1: Set<ContributedInterface>
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterfaces = graph.callProperty<Set<Any>>("contributedInterfaces1")
@@ -2042,7 +2042,7 @@ class AggregationTest : MetroCompilerTest() {
         @Inject
         class Impl : ContributedInterface
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
@@ -2051,7 +2051,7 @@ class AggregationTest : MetroCompilerTest() {
         e: ContributedInterface.kt:9:1 Duplicate `@ContributesIntoSet` annotations contributing to scope `AppScope`.
         e: ContributedInterface.kt:10:1 Duplicate `@ContributesIntoSet` annotations contributing to scope `AppScope`.
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -2067,12 +2067,12 @@ class AggregationTest : MetroCompilerTest() {
         @Inject
         class Impl : ContributedInterface
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ContributedInterface.kt:9:46 Explicit bound types should not be `Nothing` or `Nothing?`."
+        "e: ContributedInterface.kt:9:46 Explicit bound types should not be `Nothing` or `Nothing?`.",
       )
     }
   }
@@ -2088,8 +2088,8 @@ class AggregationTest : MetroCompilerTest() {
         @Inject
         class Impl : ContributedInterface
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     )
   }
 
@@ -2104,12 +2104,12 @@ class AggregationTest : MetroCompilerTest() {
         @Inject
         class Impl : ContributedInterface
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ContributedInterface.kt:9:46 Class test.Impl does not implement explicit bound type kotlin.Unit"
+        "e: ContributedInterface.kt:9:46 Class test.Impl does not implement explicit bound type kotlin.Unit",
       )
     }
   }
@@ -2132,8 +2132,8 @@ class AggregationTest : MetroCompilerTest() {
           val bases: Set<BaseContributedInterface>
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val bases = graph.callProperty<Set<Any>>("bases")
@@ -2153,13 +2153,13 @@ class AggregationTest : MetroCompilerTest() {
         @ContributesIntoSet(AppScope::class)
         class Impl : ContributedInterface
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
       options = metroOptions.toBuilder().contributesAsInject(false).build(),
     ) {
       assertDiagnostics(
-        "e: ContributedInterface.kt:9:1 `@ContributesIntoSet` is only applicable to constructor-injected classes, assisted factories, or objects. Ensure test.Impl is injectable or a bindable object."
+        "e: ContributedInterface.kt:9:1 `@ContributesIntoSet` is only applicable to constructor-injected classes, assisted factories, or objects. Ensure test.Impl is injectable or a bindable object.",
       )
     }
   }
@@ -2178,12 +2178,12 @@ class AggregationTest : MetroCompilerTest() {
         @DependencyGraph(scope = AppScope::class)
         interface ExampleGraph
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ContributedInterface.kt:9:1 `@ContributesIntoSet`-annotated class test.Impl has no supertypes to bind to."
+        "e: ContributedInterface.kt:9:1 `@ContributesIntoSet`-annotated class test.Impl has no supertypes to bind to.",
       )
     }
   }
@@ -2209,8 +2209,8 @@ class AggregationTest : MetroCompilerTest() {
           val contributedInterface: Set<ContributedInterface>
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     )
   }
 
@@ -2225,12 +2225,12 @@ class AggregationTest : MetroCompilerTest() {
         @Inject
         class Impl : ContributedInterface
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ContributedInterface.kt:9:46 Redundant explicit bound type test.Impl is the same as the annotated class test.Impl."
+        "e: ContributedInterface.kt:9:46 Redundant explicit bound type test.Impl is the same as the annotated class test.Impl.",
       )
     }
   }
@@ -2244,12 +2244,12 @@ class AggregationTest : MetroCompilerTest() {
         @Inject
         class Impl
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: Impl.kt:7:46 Redundant explicit bound type test.Impl is the same as the annotated class test.Impl."
+        "e: Impl.kt:7:46 Redundant explicit bound type test.Impl is the same as the annotated class test.Impl.",
       )
     }
   }
@@ -2267,7 +2267,7 @@ class AggregationTest : MetroCompilerTest() {
         @Inject
         class Impl : ContributedInterface
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
@@ -2276,7 +2276,7 @@ class AggregationTest : MetroCompilerTest() {
         e: ContributedInterface.kt:9:1 Duplicate `@ContributesIntoMap` annotations contributing to scope `AppScope`.
         e: ContributedInterface.kt:10:1 Duplicate `@ContributesIntoMap` annotations contributing to scope `AppScope`.
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -2293,7 +2293,7 @@ class AggregationTest : MetroCompilerTest() {
         @Inject
         class Impl : ContributedInterface
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
@@ -2302,7 +2302,7 @@ class AggregationTest : MetroCompilerTest() {
         e: ContributedInterface.kt:9:1 Duplicate `@ContributesIntoMap` annotations contributing to scope `AppScope`.
         e: ContributedInterface.kt:10:1 Duplicate `@ContributesIntoMap` annotations contributing to scope `AppScope`.
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -2319,7 +2319,7 @@ class AggregationTest : MetroCompilerTest() {
         @Inject
         class Impl : ContributedInterface
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
@@ -2328,7 +2328,7 @@ class AggregationTest : MetroCompilerTest() {
         e: ContributedInterface.kt:9:1 Duplicate `@ContributesIntoMap` annotations contributing to scope `AppScope`.
         e: ContributedInterface.kt:10:1 Duplicate `@ContributesIntoMap` annotations contributing to scope `AppScope`.
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -2351,8 +2351,8 @@ class AggregationTest : MetroCompilerTest() {
           @Named("2") val contributedInterfaces2: Map<KClass<*>, ContributedInterface>
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterfaces1 = graph.callProperty<Map<KClass<*>, Any>>("contributedInterfaces1")
@@ -2388,8 +2388,8 @@ class AggregationTest : MetroCompilerTest() {
           @Named("2") val contributedInterfaces2: Map<KClass<*>, ContributedInterface>
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterfaces1 = graph.callProperty<Map<KClass<*>, Any>>("contributedInterfaces1")
@@ -2423,8 +2423,8 @@ class AggregationTest : MetroCompilerTest() {
           @Named("1") val contributedInterfaces1: Map<KClass<*>, ContributedInterface>
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterfaces1 = graph.callProperty<Map<KClass<*>, Any>>("contributedInterfaces1")
@@ -2452,8 +2452,8 @@ class AggregationTest : MetroCompilerTest() {
           @Named("1") val contributedInterfaces1: Map<KClass<*>, ContributedInterface>
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val contributedInterfaces = graph.callProperty<Map<KClass<*>, Any>>("contributedInterfaces1")
@@ -2475,8 +2475,8 @@ class AggregationTest : MetroCompilerTest() {
         @Inject
         class Impl : ContributedInterface
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     )
   }
 
@@ -2491,12 +2491,12 @@ class AggregationTest : MetroCompilerTest() {
         @Inject
         class Impl : ContributedInterface
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ContributedInterface.kt:9:46 `@ContributesIntoMap`-annotated class @test.Impl must declare a map key but doesn't. Add one on the explicit bound type or the class."
+        "e: ContributedInterface.kt:9:46 `@ContributesIntoMap`-annotated class @test.Impl must declare a map key but doesn't. Add one on the explicit bound type or the class.",
       )
     }
   }
@@ -2512,12 +2512,12 @@ class AggregationTest : MetroCompilerTest() {
         @Inject
         class Impl : ContributedInterface
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ContributedInterface.kt:9:1 `@ContributesIntoMap`-annotated class test.Impl must declare a map key on the class or an explicit bound type but doesn't."
+        "e: ContributedInterface.kt:9:1 `@ContributesIntoMap`-annotated class test.Impl must declare a map key on the class or an explicit bound type but doesn't.",
       )
     }
   }
@@ -2535,7 +2535,7 @@ class AggregationTest : MetroCompilerTest() {
         @Inject
         class Impl : ContributedInterface
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
@@ -2544,7 +2544,7 @@ class AggregationTest : MetroCompilerTest() {
         e: ContributedInterface.kt:9:1 Duplicate `@ContributesIntoMap` annotations contributing to scope `AppScope`.
         e: ContributedInterface.kt:10:1 Duplicate `@ContributesIntoMap` annotations contributing to scope `AppScope`.
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -2561,12 +2561,12 @@ class AggregationTest : MetroCompilerTest() {
         @Inject
         class Impl : ContributedInterface
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ContributedInterface.kt:9:46 Explicit bound types should not be `Nothing` or `Nothing?`."
+        "e: ContributedInterface.kt:9:46 Explicit bound types should not be `Nothing` or `Nothing?`.",
       )
     }
   }
@@ -2583,8 +2583,8 @@ class AggregationTest : MetroCompilerTest() {
         @Inject
         class Impl : ContributedInterface
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     )
   }
 
@@ -2600,12 +2600,12 @@ class AggregationTest : MetroCompilerTest() {
         @Inject
         class Impl : ContributedInterface
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ContributedInterface.kt:9:46 Class test.Impl does not implement explicit bound type kotlin.Unit"
+        "e: ContributedInterface.kt:9:46 Class test.Impl does not implement explicit bound type kotlin.Unit",
       )
     }
   }
@@ -2628,8 +2628,8 @@ class AggregationTest : MetroCompilerTest() {
           val bases: Map<KClass<*>, BaseContributedInterface>
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val bases = graph.callProperty<Map<KClass<*>, Any>>("bases")
@@ -2650,13 +2650,13 @@ class AggregationTest : MetroCompilerTest() {
         @ContributesIntoMap(AppScope::class)
         class Impl : ContributedInterface
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
       options = metroOptions.toBuilder().contributesAsInject(false).build(),
     ) {
       assertDiagnostics(
-        "e: ContributedInterface.kt:9:1 `@ContributesIntoMap` is only applicable to constructor-injected classes, assisted factories, or objects. Ensure test.Impl is injectable or a bindable object."
+        "e: ContributedInterface.kt:9:1 `@ContributesIntoMap` is only applicable to constructor-injected classes, assisted factories, or objects. Ensure test.Impl is injectable or a bindable object.",
       )
     }
   }
@@ -2675,12 +2675,12 @@ class AggregationTest : MetroCompilerTest() {
         @DependencyGraph(scope = AppScope::class)
         interface ExampleGraph
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ContributedInterface.kt:9:1 `@ContributesIntoMap`-annotated class test.Impl has no supertypes to bind to."
+        "e: ContributedInterface.kt:9:1 `@ContributesIntoMap`-annotated class test.Impl has no supertypes to bind to.",
       )
     }
   }
@@ -2707,8 +2707,8 @@ class AggregationTest : MetroCompilerTest() {
           val contributedInterface: Map<String, ContributedInterface>
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     )
   }
 
@@ -2724,12 +2724,12 @@ class AggregationTest : MetroCompilerTest() {
         @Inject
         class Impl : ContributedInterface
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ContributedInterface.kt:9:46 Redundant explicit bound type test.Impl is the same as the annotated class test.Impl."
+        "e: ContributedInterface.kt:9:46 Redundant explicit bound type test.Impl is the same as the annotated class test.Impl.",
       )
     }
   }
@@ -2744,12 +2744,12 @@ class AggregationTest : MetroCompilerTest() {
         @Inject
         class Impl
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: Impl.kt:7:46 Redundant explicit bound type test.Impl is the same as the annotated class test.Impl."
+        "e: Impl.kt:7:46 Redundant explicit bound type test.Impl is the same as the annotated class test.Impl.",
       )
     }
   }
@@ -2767,7 +2767,7 @@ class AggregationTest : MetroCompilerTest() {
         """
         abstract class UserScope private constructor()
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       source(
         """
@@ -2777,7 +2777,7 @@ class AggregationTest : MetroCompilerTest() {
         @DependencyGraph(scope = UserScope::class)
         interface ExampleGraph
         """
-          .trimIndent()
+          .trimIndent(),
       ),
     ) {
       val graph = ExampleGraph
@@ -2796,8 +2796,8 @@ class AggregationTest : MetroCompilerTest() {
         @DependencyGraph(scope = AppScope::class, excludes = [ContributedInterface::class])
         interface ExampleGraph
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph
       assertThat(graph.allSupertypes().map { it.name }).isEmpty()
@@ -2822,8 +2822,8 @@ class AggregationTest : MetroCompilerTest() {
           val contributedInterface: ContributedInterface
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       assertNotNull(graph.callProperty("contributedInterface"))
@@ -2848,8 +2848,8 @@ class AggregationTest : MetroCompilerTest() {
           val contributedInterfaces: Set<ContributedInterface>
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       assertThat(graph.callProperty<Set<*>>("contributedInterfaces")).hasSize(1)
@@ -2876,8 +2876,8 @@ class AggregationTest : MetroCompilerTest() {
           val contributedInterfaces: Map<String, ContributedInterface>
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       assertThat(graph.callProperty<Map<String, *>>("contributedInterfaces")).hasSize(1)
@@ -2897,13 +2897,13 @@ class AggregationTest : MetroCompilerTest() {
         @DependencyGraph(scope = AppScope::class, excludes = [Impl1::class])
         interface ExampleGraph
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = KotlinCompilation.ExitCode.INTERNAL_ERROR,
     ) {
       assertThat(messages)
         .contains(
-          "Some excluded types were not matched. These can be removed from test.ExampleGraph: [test/Impl1]"
+          "Some excluded types were not matched. These can be removed from test.ExampleGraph: [test/Impl1]",
         )
     }
   }
@@ -2922,8 +2922,8 @@ class AggregationTest : MetroCompilerTest() {
         @DependencyGraph(scope = AppScope::class)
         interface ExampleGraph
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph
       graph.assertHasContributedSupertype("test.ContributedInterface2")
@@ -2948,8 +2948,8 @@ class AggregationTest : MetroCompilerTest() {
           val contributedInterface: ContributedInterface
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       assertNotNull(graph.callProperty("contributedInterface"))
@@ -2974,8 +2974,8 @@ class AggregationTest : MetroCompilerTest() {
           val contributedInterfaces: Set<ContributedInterface>
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       assertThat(graph.callProperty<Set<*>>("contributedInterfaces")).hasSize(1)
@@ -3002,8 +3002,8 @@ class AggregationTest : MetroCompilerTest() {
           val contributedInterfaces: Map<String, ContributedInterface>
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       assertThat(graph.callProperty<Map<String, *>>("contributedInterfaces")).hasSize(1)
@@ -3026,13 +3026,13 @@ class AggregationTest : MetroCompilerTest() {
         @DependencyGraph(scope = AppScope::class)
         interface ExampleGraph
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = KotlinCompilation.ExitCode.INTERNAL_ERROR,
     ) {
       assertThat(messages)
         .contains(
-          "Some replaced types were not matched. These can be removed from test.ExampleGraph: [test/Impl1]"
+          "Some replaced types were not matched. These can be removed from test.ExampleGraph: [test/Impl1]",
         )
     }
   }
@@ -3054,8 +3054,8 @@ class AggregationTest : MetroCompilerTest() {
           val contributedInterface: ContributedInterface
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       assertThat(graph.callProperty<Any>("contributedInterface"))
@@ -3088,8 +3088,8 @@ class AggregationTest : MetroCompilerTest() {
           val impl1: Impl1
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val impl2 = graph.callProperty<Any>("contributedInterface")
@@ -3114,8 +3114,8 @@ class AggregationTest : MetroCompilerTest() {
           val a: A
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val appGraph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
 
@@ -3139,8 +3139,8 @@ class AggregationTest : MetroCompilerTest() {
           val a: A
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val appGraph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
 
@@ -3163,8 +3163,8 @@ class AggregationTest : MetroCompilerTest() {
           val a: A
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val appGraph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
 
@@ -3189,8 +3189,8 @@ class AggregationTest : MetroCompilerTest() {
           val a: A
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val appGraph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
 
@@ -3215,8 +3215,8 @@ class AggregationTest : MetroCompilerTest() {
           val a: C
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val appGraph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
 
@@ -3245,8 +3245,8 @@ class AggregationTest : MetroCompilerTest() {
           val singleton: Singleton
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val appGraph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val singleton0 = appGraph.callProperty<Any>("singleton")
@@ -3293,7 +3293,7 @@ class AggregationTest : MetroCompilerTest() {
             """
               .trimIndent(),
           packageName = "common",
-        )
+        ),
       )
 
     // Module "feature" - depends on common, defines TestClass with the ServiceKey
@@ -3355,7 +3355,7 @@ class AggregationTest : MetroCompilerTest() {
           fun services(): Map<KClass<out Closeable>, Closeable>
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
       compilationBlock = {
@@ -3366,12 +3366,12 @@ class AggregationTest : MetroCompilerTest() {
       assertDiagnostics(
         buildString {
           appendLine(
-            "e: Found an @IntoMap annotation without any @MapKey annotations. This may happen if this is an external declaration that has a map key annotation that is not visible to this compilation. Please check the original source."
+            "e: Found an @IntoMap annotation without any @MapKey annotations. This may happen if this is an external declaration that has a map key annotation that is not visible to this compilation. Please check the original source.",
           )
           appendLine()
           appendLine("(context)")
           append(expectedDeclarationContext)
-        }
+        },
       )
     }
   }
@@ -3392,7 +3392,7 @@ class AggregationTest : MetroCompilerTest() {
             """
               .trimIndent(),
           packageName = "common",
-        )
+        ),
       )
 
     // Module "feature" - depends on common, defines TestClass with the ServiceKey
@@ -3457,7 +3457,7 @@ class AggregationTest : MetroCompilerTest() {
           fun services(): Map<KClass<out Closeable>, Closeable>
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
       compilationBlock = {
@@ -3468,12 +3468,12 @@ class AggregationTest : MetroCompilerTest() {
       assertDiagnostics(
         buildString {
           appendLine(
-            "e: Found an @IntoMap annotation without any @MapKey annotations. This may happen if this is an external declaration that has a map key annotation that is not visible to this compilation. Please check the original source."
+            "e: Found an @IntoMap annotation without any @MapKey annotations. This may happen if this is an external declaration that has a map key annotation that is not visible to this compilation. Please check the original source.",
           )
           appendLine()
           appendLine("(context)")
           append(expectedDeclarationContext)
-        }
+        },
       )
     }
   }
@@ -3494,7 +3494,7 @@ class AggregationTest : MetroCompilerTest() {
             """
               .trimIndent(),
           packageName = "common",
-        )
+        ),
       )
 
     // Module "feature" - depends on common, defines TestClass with the ServiceKey
@@ -3542,7 +3542,7 @@ class AggregationTest : MetroCompilerTest() {
           fun services(): Map<KClass<out Closeable>, Closeable>
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
       compilationBlock = {
@@ -3558,7 +3558,7 @@ class AggregationTest : MetroCompilerTest() {
         Encountered while processing declaration 'feature.Bindings.ProvideCloseableMetroFactory.declarationMirror' (no source location available)
         - This is Metro-generated code for 'feature.Bindings.provideCloseable(...)' (where the problem is).
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }

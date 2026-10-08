@@ -65,7 +65,7 @@ internal class BindingExplanationSources(private val project: Project) {
       dynamic.requestedTypeClassId.asFqNameString(),
       filePath(dynamic.callerFile),
       bindingExplanationId(
-        *dynamic.containerKeys.map { it.render(short = false) }.sorted().toTypedArray()
+        *dynamic.containerKeys.map { it.render(short = false) }.sorted().toTypedArray(),
       ),
     )
   }

@@ -182,7 +182,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
             if (annotations.isComposable) {
               add(buildStableAnnotation())
             }
-          }
+          },
         )
       }
       .symbol
@@ -250,7 +250,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
     }
 
     fun populateDeclaredMemberInjections(
-      session: FirSession
+      session: FirSession,
     ): Map<Name, List<MetroFirValueParameter>> {
       if (declaredInjectedMembersPopulated) return injectedMembersParamsByMemberKey
       val declared = memberInjections(session, includeSelf = true, includeAncestors = false)
@@ -297,7 +297,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
       injectedMembersParamsByMemberKey.clear()
       // Put ancestors first
       injectedMembersParamsByMemberKey.putAll(
-        memberInjections(session, includeSelf = false, includeAncestors = true)
+        memberInjections(session, includeSelf = false, includeAncestors = true),
       )
       injectedMembersParamsByMemberKey.putAll(declared)
       ancestorInjectedMembersPopulated = true
@@ -385,7 +385,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
               if (!isJava) {
                 reportCompilerBug(
                   "Unexpected non-java FIR field ${injectedMember.callableId}. Please report a " +
-                    "repro of how this field is set"
+                    "repro of how this field is set",
                 )
               }
               val isDaggerInteropEnabled =
@@ -393,7 +393,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
               if (!isDaggerInteropEnabled) {
                 error(
                   "Encountered an injected field from a Java supertype: ${injectedMember.callableId}. " +
-                    "However, Dagger interop is disabled, so Metro is unsure what todo about this field."
+                    "However, Dagger interop is disabled, so Metro is unsure what todo about this field.",
                 )
               }
               val propertyName = injectedMember.name
@@ -558,7 +558,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
 
             superType { typeParameterRefs ->
               Symbols.ClassIds.MembersInjector.constructClassLikeType(
-                arrayOf(owner.constructType(typeParameterRefs))
+                arrayOf(owner.constructType(typeParameterRefs)),
               )
             }
           }
@@ -656,7 +656,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
               buildList {
                 addAll(param.annotations)
                 metroParam.contextKey.typeKey.qualifier?.let { add(it.fir) }
-              }
+              },
             )
           }
         }
@@ -748,7 +748,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
           replaceContextParameters(contextParams)
           if (function.hasAnnotation(Symbols.ClassIds.Composable, session)) {
             replaceAnnotationsSafe(
-              listOf(buildComposableAnnotation(), buildNonRestartableAnnotation())
+              listOf(buildComposableAnnotation(), buildNonRestartableAnnotation()),
             )
           }
         }
@@ -781,7 +781,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
               {
                 val targetClassType =
                   injectedClass.classSymbol.constructType(
-                    it.mapToArray(FirTypeParameterRef::toConeType)
+                    it.mapToArray(FirTypeParameterRef::toConeType),
                   )
                 Symbols.ClassIds.MembersInjector.constructClassLikeType(arrayOf(targetClassType))
               },

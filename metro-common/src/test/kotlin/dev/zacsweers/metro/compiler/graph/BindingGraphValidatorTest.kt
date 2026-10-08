@@ -108,7 +108,7 @@ class BindingGraphValidatorTest {
           multibinding = multibinding,
           mapKey = "same-key",
           contributions = listOf(first, second),
-        )
+        ),
       )
   }
 
@@ -162,7 +162,7 @@ class BindingGraphValidatorTest {
           multibinding = multibinding,
           mapKey = null,
           contributions = listOf(first, second),
-        )
+        ),
       )
   }
 
@@ -196,7 +196,7 @@ class BindingGraphValidatorTest {
         GraphValidationIssue.InvalidAssistedInjection(
           binding = target,
           requestingBinding = null,
-        )
+        ),
       )
   }
 
@@ -216,7 +216,7 @@ class BindingGraphValidatorTest {
         GraphValidationIssue.InvalidAssistedInjection(
           binding = target,
           requestingBinding = consumer,
-        )
+        ),
       )
   }
 
@@ -254,7 +254,7 @@ private typealias StringBindingGraphValidator =
 private class ValidationCancellationException : RuntimeException()
 
 private fun StringBindingGraphValidator.validateAll(
-  binding: StringBinding
+  binding: StringBinding,
 ): List<GraphValidationIssue<StringBinding, String, String>> = buildList {
   validate(binding) { add(it) }
 }
@@ -290,7 +290,7 @@ private fun validationBinding(type: String, scope: String? = null): StringBindin
   StringBinding(StringContextualTypeKey.create(StringTypeKey(type)), scope = scope)
 
 private fun bindingsOf(
-  vararg bindings: StringBinding
+  vararg bindings: StringBinding,
 ): MutableScatterMap<StringTypeKey, StringBinding> =
   MutableScatterMap<StringTypeKey, StringBinding>().apply {
     for (binding in bindings) {

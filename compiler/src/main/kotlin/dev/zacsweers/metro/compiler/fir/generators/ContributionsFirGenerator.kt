@@ -440,7 +440,7 @@ internal class ContributionsFirGenerator(
               holderInfo.contributingClassSymbol,
               classSymbol.classId,
               scopeClassId,
-            )
+            ),
           )
         }
         for (contribution in holderInfo.bindingContributions()) {
@@ -450,7 +450,7 @@ internal class ContributionsFirGenerator(
               holderInfo.contributingClassSymbol,
               classSymbol.classId,
               scopeClassId,
-            )
+            ),
           )
         }
       }
@@ -600,9 +600,9 @@ internal class ContributionsFirGenerator(
                           buildAnnotationArgumentMapping {
                             mapping[StandardNames.DEFAULT_VALUE_PARAMETER] =
                               buildClassReference(session, contributingClassSymbol.classId)
-                          }
+                          },
                         )
-                      }
+                      },
                   )
                   added = true
                 }
@@ -618,7 +618,7 @@ internal class ContributionsFirGenerator(
                 buildAnnotationCallCopy(mapKeyFirAnnotation) {
                   source = mapKeyFirAnnotation.source?.fakeElement(pluginGeneratedSourceElementKind)
                   containingDeclarationSymbol = function.symbol
-                }
+                },
               )
             }
           }
@@ -638,7 +638,7 @@ internal class ContributionsFirGenerator(
               buildAnnotationCallCopy(it) {
                 source = it.source?.fakeElement(pluginGeneratedSourceElementKind)
                 containingDeclarationSymbol = function.symbol
-              }
+              },
             )
           }
       }
@@ -718,7 +718,7 @@ internal class ContributionsFirGenerator(
             buildAnnotationCallCopy(it) {
               source = it.source?.fakeElement(pluginGeneratedSourceElementKind)
               containingDeclarationSymbol = function.symbol
-            }
+            },
           )
         }
       // @Named qualifier for the synthetic binding
@@ -898,7 +898,7 @@ internal class ContributionsFirGenerator(
         useDirectBindingDeclarations && classSymbol.isEffectivelyPublicInRawFir()
       return if (!isSupertypeContribution && !canReadContributionDirectly) {
         mirrorClassesToGenerate.add(
-          classSymbol.classId.createNestedClassId(Symbols.Names.BindsMirrorClass)
+          classSymbol.classId.createNestedClassId(Symbols.Names.BindsMirrorClass),
         )
         setOf(Symbols.Names.BindsMirrorClass)
       } else {
@@ -973,7 +973,7 @@ internal class ContributionsFirGenerator(
       // Typealiases use their target's short name without changing the generated name of ordinary
       // source contributions.
       return MetroContributions.metroContributionNameFromSuffix(
-        resolvedScopeClassId.shortClassName.asString()
+        resolvedScopeClassId.shortClassName.asString(),
       )
     }
 
@@ -983,7 +983,7 @@ internal class ContributionsFirGenerator(
     }
 
     return reportCompilerBug(
-      "Could not get scope name for ${scopeArgument.render()} on class $contributingClassId"
+      "Could not get scope name for ${scopeArgument.render()} on class $contributingClassId",
     )
   }
 
@@ -1042,16 +1042,16 @@ internal class ContributionsFirGenerator(
                 replaceArgumentMapping(
                   buildAnnotationArgumentMapping {
                     scopeArg?.let { this.mapping[Symbols.Names.scope] = it }
-                  }
+                  },
                 )
-              }
+              },
             )
             // @Origin(<ContributingClass>::class, context = "contribution_provider")
             add(
               buildOriginAnnotation(
                 contributionHolder.contributingClassId,
                 context = Symbols.StringNames.CONTRIBUTION_PROVIDER_ORIGIN_CONTEXT,
-              )
+              ),
             )
             // @BindingContainer
             add(buildBindingContainerAnnotation())
@@ -1120,7 +1120,7 @@ internal class ContributionsFirGenerator(
       .apply {
         markAsDeprecatedHidden(session)
         replaceAnnotations(
-          annotations + metroContributionAnnotations(owner.classId, scopeArg, generateAsContainer)
+          annotations + metroContributionAnnotations(owner.classId, scopeArg, generateAsContainer),
         )
       }
       .symbol
@@ -1135,10 +1135,10 @@ internal class ContributionsFirGenerator(
       buildMetroContributionAnnotation().apply {
         if (scopeArg != null) {
           replaceArgumentMapping(
-            buildAnnotationArgumentMapping { mapping[Symbols.Names.scope] = scopeArg }
+            buildAnnotationArgumentMapping { mapping[Symbols.Names.scope] = scopeArg },
           )
         }
-      }
+      },
     )
     // Newer binding contributions are routed as @BindingContainer instead of being merged
     // into the graph as a supertype, so that graphs don't accumulate one supertype per
@@ -1185,7 +1185,7 @@ internal class ContributionsFirGenerator(
                 value = name,
                 setType = true,
               )
-          }
+          },
         )
       }
   }
@@ -1219,7 +1219,7 @@ internal class ContributionsFirGenerator(
       .apply {
         if (scopeArg != null) {
           replaceArgumentMapping(
-            buildAnnotationArgumentMapping { this.mapping[Symbols.Names.scope] = scopeArg }
+            buildAnnotationArgumentMapping { this.mapping[Symbols.Names.scope] = scopeArg },
           )
         }
       }
@@ -1247,7 +1247,7 @@ internal class ContributionsFirGenerator(
                   setType = true,
                 )
             }
-          }
+          },
         )
       }
   }

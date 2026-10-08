@@ -45,7 +45,7 @@ class SuspendProvidersConfigurationTest {
               }
               """,
               "SuspendGraph",
-            )
+            ),
           )
 
         override fun StringBuilder.onBuildScript() {

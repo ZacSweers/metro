@@ -36,7 +36,7 @@ class GraphAnalyzerTest {
         mapOf(
           metadata.graph to listOf(metadata.graph),
           "test.Value" to emptyList(),
-        )
+        ),
       )
   }
 

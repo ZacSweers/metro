@@ -40,7 +40,7 @@ internal class GraphFixture(
   ) {
     binding(
       bindingMetadata(key, kind, declaration, dependencies.map { DependencyMetadata(it, false) })
-        .copy(isScoped = scoped)
+        .copy(isScoped = scoped),
     )
   }
 
@@ -59,7 +59,7 @@ internal class GraphFixture(
   fun alias(key: String, target: String) {
     binding(
       bindingMetadata(key, kind = "Alias", dependencies = listOf(DependencyMetadata(target, false)))
-        .copy(aliasTarget = target)
+        .copy(aliasTarget = target),
     )
   }
 
@@ -91,7 +91,7 @@ internal class GraphFixture(
           declaration = declaration,
           dependencies = listOf(DependencyMetadata(ownerKey, false)),
         )
-        .copy(graphDependency = GraphDependencyMetadata(ownerKey, ownerGraph, fromParent))
+        .copy(graphDependency = GraphDependencyMetadata(ownerKey, ownerGraph, fromParent)),
     )
   }
 
@@ -107,7 +107,7 @@ internal class GraphFixture(
     isDeferrable: Boolean = false,
   ) {
     accessor(
-      AccessorMetadata(key, name = name, isProperty = isProperty, isDeferrable = isDeferrable)
+      AccessorMetadata(key, name = name, isProperty = isProperty, isDeferrable = isDeferrable),
     )
   }
 
@@ -195,7 +195,7 @@ internal fun selectedLookup(requestedKey: String, selectedKey: String): BindingE
           selectedKey,
           BindingCandidateStatus.SELECTED,
           BindingReason.SELECTED_MULTIBINDING,
-        )
+        ),
       ),
     request = BindingExplanationRequest(requestedKey),
   )

@@ -61,7 +61,7 @@ class HiltAggregatedDepsICTests :
           }
         }
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
 
@@ -88,7 +88,7 @@ class HiltAggregatedDepsICTests :
             """,
             "AppGraph",
             extraImports = arrayOf("javax.inject.Singleton"),
-          )
+          ),
         )
       }
       subproject("lib") {

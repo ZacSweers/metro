@@ -38,7 +38,7 @@ class MetroHiddenDependenciesKmpTest {
     val android = buildAndFail(project.rootDir, androidTask, *options)
     assertThat(android.task(androidTask)?.outcome).isEqualTo(TaskOutcome.FAILED)
     assertThat(
-        android.tasks.map { it.path }.filter { it.startsWith(":impl:compile") && "Android" in it }
+        android.tasks.map { it.path }.filter { it.startsWith(":impl:compile") && "Android" in it },
       )
       .isNotEmpty()
     assertThat(android.task(jvmTask)).isNull()
@@ -53,7 +53,7 @@ class MetroHiddenDependenciesKmpTest {
     bridgeScript.writeText(
       bridgeScript
         .readText()
-        .replace("implementation(project(\":impl\"))", "api(project(\":impl\"))")
+        .replace("implementation(project(\":impl\"))", "api(project(\":impl\"))"),
     )
 
     val exposed = build(project.rootDir, jvmTask, androidTask, *options)
@@ -170,7 +170,7 @@ class MetroHiddenDependenciesKmpTest {
           }
         }
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }

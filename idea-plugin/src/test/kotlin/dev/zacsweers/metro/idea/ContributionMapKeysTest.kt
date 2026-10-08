@@ -73,7 +73,7 @@ class ContributionMapKeysTest : BasePlatformTestCase() {
         val version: Long = 17L,
       )
       class Implementation : Api
-      """
+      """,
         )
         .single { it.annotationText.startsWith("@test.EntryKey") }
     assertEquals(
@@ -90,7 +90,7 @@ class ContributionMapKeysTest : BasePlatformTestCase() {
       interface Handler<T>
       @MapKey annotation class HandlerKey(val value: kotlin.reflect.KClass<out Handler<String>>)
       class Implementation : Handler<String>
-      """
+      """,
         )
         .single { it.annotationText.startsWith("@test.HandlerKey") }
     assertEquals("@test.HandlerKey(value = test.Implementation::class)", choice.annotationText)
@@ -104,7 +104,7 @@ class ContributionMapKeysTest : BasePlatformTestCase() {
       interface Handler<T>
       @MapKey annotation class HandlerKey(val value: kotlin.reflect.KClass<out Handler<String>>)
       class Implementation : Handler<Int>
-      """
+      """,
       )
     assertFalse(choices.any { it.annotationText.startsWith("@test.HandlerKey") })
   }
@@ -116,7 +116,7 @@ class ContributionMapKeysTest : BasePlatformTestCase() {
       interface Handler<T>
       @MapKey annotation class HandlerKey(val value: kotlin.reflect.KClass<out Handler<*>>)
       class Implementation
-      """
+      """,
         )
         .single { it.annotationText.startsWith("@test.HandlerKey") }
     assertEquals("@test.HandlerKey(value = test.Handler::class)", choice.annotationText)
@@ -189,7 +189,7 @@ class ContributionMapKeysTest : BasePlatformTestCase() {
         @libtest.LibMapKeyContract(implicitClassKey = true)
         annotation class ImplicitKey(val value: kotlin.reflect.KClass<*> = Nothing::class)
         class Implementation
-        """
+        """,
           )
           .single { it.classId == ClassId.fromString("test/ImplicitKey") }
       assertEquals("@test.ImplicitKey", key.annotationText)
@@ -220,7 +220,7 @@ class ContributionMapKeysTest : BasePlatformTestCase() {
         @libtest.LibMapKeyContract(implicitClassKey = true)
         annotation class MissingDefault(val value: kotlin.reflect.KClass<*>)
         class Implementation
-        """
+        """,
         )
       assertFalse(keys.any { it.classId.packageFqName.asString() == "test" })
     }
@@ -233,7 +233,7 @@ class ContributionMapKeysTest : BasePlatformTestCase() {
       object First { @MapKey annotation class Key(val value: String) }
       object Second { @MapKey annotation class Key(val value: String) }
       class Implementation
-      """
+      """,
       )
     assertContainsElements(keys.map { it.label }, "@First.Key (test)", "@Second.Key (test)")
   }
@@ -244,7 +244,7 @@ class ContributionMapKeysTest : BasePlatformTestCase() {
         """
       @MapKey annotation class EntryKey(val value: String)
       @EntryKey("existing") class Implementation
-      """
+      """,
       )
     assertEquals(
       listOf(
@@ -253,7 +253,7 @@ class ContributionMapKeysTest : BasePlatformTestCase() {
           "Use existing @EntryKey",
           "",
           emptyList(),
-        )
+        ),
       ),
       choices,
     )
@@ -274,7 +274,7 @@ class ContributionMapKeysTest : BasePlatformTestCase() {
       @MapKey @Target(AnnotationTarget.FUNCTION) annotation class FunctionOnlyKey(val value: String)
       @MapKey(implicitClassKey = true) annotation class InvalidImplicitKey(val value: String = "wrong")
       class Implementation
-      """
+      """,
       )
     assertEquals(3, choices.size)
   }

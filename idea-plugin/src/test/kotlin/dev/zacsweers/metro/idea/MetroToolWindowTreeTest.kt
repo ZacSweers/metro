@@ -159,7 +159,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
       interface AppGraph {
         val consumer: Consumer
       }
-      """
+      """,
     )
   }
 
@@ -276,7 +276,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
       interface RightParent {
         val child: ChildGraph
       }
-      """
+      """,
     )
 
     val structure = structure()
@@ -346,7 +346,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
         """
         @DependencyGraph interface AppGraph
         @DependencyGraph interface OtherGraph
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val graph = index.graphs.single { it.name == "AppGraph" }
@@ -386,7 +386,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
         val child: ChildGraph
         @Provides fun rightValue(): String = "right"
       }
-      """
+      """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val child = index.graphs.single { it.name == "ChildGraph" }
@@ -439,7 +439,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
     )
     val rightGraph = index.graphs.single { it.name == "RightGraph" }
     assertNull(
-      graphValidationPath(checkNotNull(rightGraph.classId), file.virtualFile, leftContext.path)
+      graphValidationPath(checkNotNull(rightGraph.classId), file.virtualFile, leftContext.path),
     )
   }
 
@@ -457,7 +457,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
       @DependencyGraph interface MissingGraph {
         val consumer: Consumer
       }
-      """
+      """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val offset = file.declarationsIncludingNested().parameter("value").textOffset
@@ -498,7 +498,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
           @Provides fun value(): String = "right"
         }
       }
-      """
+      """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val offset = file.declarationsIncludingNested().parameter("value").textOffset
@@ -524,7 +524,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
         @Provides fun explicitService(): Service = Service()
         @Provides @Named("other") fun qualifiedService(): Service = Service()
       }
-      """
+      """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val declarations = file.declarationsIncludingNested()
@@ -585,7 +585,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
         val value: String
         @Provides fun otherValue(): String = "other"
       }
-      """
+      """,
       )
     val service = project.service<MetroResolutionService>()
     val index = service.awaitIndex(file)
@@ -709,7 +709,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
 
       @DependencyGraph
       interface IntGraph : GenericBase<Int>
-      """
+      """,
     )
 
     val structure = structure()
@@ -875,7 +875,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
       MetroTreeNode.Summary(parent, "3 bindings"),
     )
     assertFalse(
-      MetroTreeNode.Summary(parent, "3 bindings") == MetroTreeNode.Summary(parent, "4 bindings")
+      MetroTreeNode.Summary(parent, "3 bindings") == MetroTreeNode.Summary(parent, "4 bindings"),
     )
   }
 
@@ -1004,9 +1004,9 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
               "Dependencies.kt",
               "feature/src/commonMain/kotlin/example/a/very/long/package/Dependencies.kt",
               "feature",
-            )
+            ),
           ),
-      )
+      ),
     )
     panel.setSize(240, panel.preferredSize.height)
     layoutStatusPanel(panel)
@@ -1121,7 +1121,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
     assertEquals("Metro graph data may be stale. Refresh is queued", panel.messageLabel.text)
 
     panel.show(
-      IndexBuildProgress(IndexBuildPhase.ANALYZING_DECLARATIONS, 4, 10, reused = 2, rebuilt = 1)
+      IndexBuildProgress(IndexBuildPhase.ANALYZING_DECLARATIONS, 4, 10, reused = 2, rebuilt = 1),
     )
     assertTrue(panel.isVisible)
     assertEquals(
@@ -1187,7 +1187,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
         @Provides fun value(): String = "value"
       }
       @DependencyGraph interface OtherGraph
-      """
+      """,
       )
     val service = project.service<MetroResolutionService>()
     val initial = service.awaitIndex(file)
@@ -1424,7 +1424,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
     service.awaitIndex(file)
     service.activateGraphBrowser()
     service.setAutomaticRefreshWindowForTest(
-      AutomaticRefreshWindow(idleMillis = 60_000, intervalMillis = 0, nowMillis = { 0 })
+      AutomaticRefreshWindow(idleMillis = 60_000, intervalMillis = 0, nowMillis = { 0 }),
     )
     val panel = MetroToolWindowPanel(project)
     try {
@@ -1520,7 +1520,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
       assertEquals(1, refreshButtons.size)
       assertEquals("Refresh", refreshButtons.single().presentation.text)
       assertNull(
-        com.intellij.util.ui.UIUtil.findComponentOfType(status, AbstractButton::class.java)
+        com.intellij.util.ui.UIUtil.findComponentOfType(status, AbstractButton::class.java),
       )
     } finally {
       Disposer.dispose(panel)
@@ -1661,7 +1661,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
         @Provides fun value(): String = "left"
       }
       @DependencyGraph interface RightGraph { val child: ChildGraph }
-      """
+      """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val child = index.graphs.single { it.name == "ChildGraph" }
@@ -1755,7 +1755,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
       assertTrue(
         treeNodes(panel.tree).filterIsInstance<MetroTreeNode.Graph>().all {
           it.context.dynamicGraph == null
-        }
+        },
       )
     } finally {
       Disposer.dispose(panel)
@@ -1771,7 +1771,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
       interface Missing
       @DependencyGraph interface AppGraph { val missing: Missing }
       @DependencyGraph interface OtherGraph
-      """
+      """,
       )
     val service = project.service<MetroResolutionService>()
     val initial = service.awaitIndex(file)
@@ -1828,7 +1828,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
       assertSame(original, rows.filterIsInstance<MetroTreeNode.Validation>().single().result)
       assertEquals(selectedDetails, results.diagnosticDetails.textArea.text)
       assertTrue(
-        rows.filterIsInstance<MetroTreeNode.Graph>().single().grayText.orEmpty().contains("stale")
+        rows.filterIsInstance<MetroTreeNode.Graph>().single().grayText.orEmpty().contains("stale"),
       )
       assertSame(initial, service.indexForToolWindow(module))
       assertFalse(validation.isValidationRunning(original.context.path))
@@ -1857,7 +1857,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
         @DependencyGraph interface AppGraph {
           val missing: MissingThing
         }
-        """
+        """,
       )
     val service = project.service<MetroResolutionService>()
     val initial = service.awaitIndex(file)
@@ -1935,7 +1935,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
         @DependencyGraph interface AppGraph {
           val child: ChildGraph
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val graph = index.graphs.single { it.name == "AppGraph" }
@@ -1968,7 +1968,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
         """
         @DependencyGraph interface IncompleteGraph
         @DependencyGraph interface ErroredGraph
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val contexts = index.graphs.associate { it.name to index.contextsFor(it).single() }
@@ -1980,7 +1980,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
           contexts.getValue("ErroredGraph"),
           IllegalStateException(),
         ),
-      )
+      ),
     )
     DumbModeTestUtils.runInDumbModeSynchronously(project) {
       val graphs =
@@ -2028,7 +2028,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
         """
         @DependencyGraph interface EarlierGraph
         @DependencyGraph interface LatestGraph
-        """
+        """,
       )
     project.service<MetroResolutionService>().awaitIndex(file)
     val panel = MetroToolWindowPanel(project)
@@ -2057,7 +2057,9 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
         waitForValidationResults(panel)
       } else {
         results.closeAction.actionPerformed(
-          AnActionEvent.createFromAnAction(results.closeAction, null, ActionPlaces.UNKNOWN) { null }
+          AnActionEvent.createFromAnAction(results.closeAction, null, ActionPlaces.UNKNOWN) {
+            null
+          },
         )
       }
       releaseResolution.complete(Unit)
@@ -2096,7 +2098,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
         """
         @DependencyGraph interface EarlierGraph
         @DependencyGraph interface LatestGraph
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val earlier = index.graphs.single { it.name == "EarlierGraph" }
@@ -2398,7 +2400,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
             @Provides @IntoMap @StringKey("map-key-secret")
             fun mapService(): MapService = object : MapService {}
           }
-          """
+          """,
         )
       val index = project.service<MetroResolutionService>().awaitIndex(file)
       val graph = index.graphs.single { it.name == "AppGraph" }
@@ -2521,7 +2523,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
           val child: ChildGraph
           @Provides fun rightService(): Service = object : Service {}
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val child = index.graphs.single { it.name == "ChildGraph" }
@@ -2562,13 +2564,13 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
           val contract: FactoryContract
           val childFactory: ChildGraph.Factory
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val graph = index.graphs.single { it.name == "AppGraph" }
     val report =
       checkNotNull(
-        project.service<MetroGraphDebugExporter>().report(index.contextsFor(graph).single())
+        project.service<MetroGraphDebugExporter>().report(index.contextsFor(graph).single()),
       )
     val writtenSupertypes =
       report.lineSequence().single { it.startsWith("  writtenSupertypeKeys=") }
@@ -2597,7 +2599,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
         """
         @Inject class Service
         @DependencyGraph interface AppGraph { val service: Service }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val context = index.contextsFor(index.graphs.single()).single()
@@ -2741,7 +2743,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
 
         @DependencyGraph(bindingContainers = [ApiBindings::class])
         interface AppGraph
-        """
+        """,
       )
     val structure = structure()
     val root = structure.rootElement as MetroTreeNode
@@ -2789,7 +2791,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
           @Provides fun provideApi(): Api = object : Api {}
           @Provides fun provideUnused(): Int = 3
         }
-        """
+        """,
       )
     val structure = structure()
     val root = structure.rootElement as MetroTreeNode
@@ -2830,7 +2832,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
 
         @Provides fun provideRight(): RightOnly = object : RightOnly {}
       }
-      """
+      """,
     )
     val structure = structure()
     val root = structure.rootElement as MetroTreeNode
@@ -2874,7 +2876,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
 
       @DependencyGraph(bindingContainers = [TagProviders::class])
       interface AppGraph
-      """
+      """,
     )
     val structure = structure()
     val root = structure.rootElement as MetroTreeNode
@@ -2962,7 +2964,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
         interface AppGraph {
           val missing: MissingThing
         }
-        """
+        """,
       )
     val structure = structure()
     val root = structure.rootElement as MetroTreeNode
@@ -3060,7 +3062,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
         """
         interface MissingThing
         @DependencyGraph interface AppGraph { val missing: MissingThing }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val context = index.contextsFor(index.graphs.single()).single()
@@ -3111,7 +3113,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
         """
         interface MissingThing
         @DependencyGraph interface AppGraph { val missing: MissingThing }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val context = index.contextsFor(index.graphs.single()).single()
@@ -3301,7 +3303,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
         interface AppGraph {
           val consumer: Consumer
         }
-        """
+        """,
       )
     val declarations = file.declarationsIncludingNested()
     val expectedParameters =

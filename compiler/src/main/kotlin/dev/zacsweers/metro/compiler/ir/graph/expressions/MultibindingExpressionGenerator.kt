@@ -54,7 +54,7 @@ import org.jetbrains.kotlin.ir.util.nonDispatchParameters
 import org.jetbrains.kotlin.platform.isJs
 
 internal class MultibindingExpressionGenerator(
-  private val parentGenerator: BindingExpressionGenerator<IrBinding>
+  private val parentGenerator: BindingExpressionGenerator<IrBinding>,
 ) :
   BindingExpressionGenerator<IrBinding.Multibinding>(
     parentGenerator,
@@ -190,7 +190,7 @@ internal class MultibindingExpressionGenerator(
                 provider.contextualTypeKey,
                 fieldInitKey,
                 accessType = AccessType.INSTANCE,
-              )
+              ),
             )
           irInvoke(
             callee = callee,
@@ -213,7 +213,7 @@ internal class MultibindingExpressionGenerator(
                       provider.contextualTypeKey,
                       fieldInitKey,
                       accessType = AccessType.INSTANCE,
-                    )
+                    ),
                   )
                   .also(collectionProviderInstanceVars::add)
               }
@@ -242,7 +242,7 @@ internal class MultibindingExpressionGenerator(
                         irInvoke(
                           dispatchReceiver = irGet(collectionProviderVar),
                           callee = metroSymbols.collectionSize,
-                        )
+                        ),
                       ),
                     typeHint = irBuiltIns.intType,
                   )
@@ -270,7 +270,7 @@ internal class MultibindingExpressionGenerator(
                           binding.contextualTypeKey,
                           fieldInitKey,
                           accessType = AccessType.INSTANCE,
-                        )
+                        ),
                       ),
                   )
                 }
@@ -488,7 +488,7 @@ internal class MultibindingExpressionGenerator(
         return@with with(metroSymbols.providerTypeConverter) {
           invoked.convertTo(
             IrContextualTypeKey(IrTypeKey(irBuiltIns.setClass.typeWith(elementType)))
-              .wrapInProvider()
+              .wrapInProvider(),
           )
         }
       }
@@ -519,7 +519,7 @@ internal class MultibindingExpressionGenerator(
                   provider.contextualTypeKey.wrapInProvider(providerClass),
                   accessType = AccessType.PROVIDER,
                   fieldInitKey = fieldInitKey,
-                )
+                ),
               ),
           )
         }
@@ -537,7 +537,7 @@ internal class MultibindingExpressionGenerator(
                   provider.contextualTypeKey.wrapInProvider(providerClass),
                   accessType = AccessType.PROVIDER,
                   fieldInitKey = fieldInitKey,
-                )
+                ),
               ),
           )
         }
@@ -552,7 +552,7 @@ internal class MultibindingExpressionGenerator(
         +with(metroSymbols.providerTypeConverter) {
           instance.convertTo(
             IrContextualTypeKey(IrTypeKey(irBuiltIns.setClass.typeWith(elementType)))
-              .wrapInProvider()
+              .wrapInProvider(),
           )
         }
       }
@@ -942,7 +942,7 @@ internal class MultibindingExpressionGenerator(
 
           val resultType =
             valueProviderSymbols.canonicalProviderType.typeWithArguments(
-              mapProviderType.requireSimpleType().arguments
+              mapProviderType.requireSimpleType().arguments,
             )
 
           irBlock(resultType = resultType) {

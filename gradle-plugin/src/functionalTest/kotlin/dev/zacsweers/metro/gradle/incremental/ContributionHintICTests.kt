@@ -189,7 +189,7 @@ class ContributionHintICTests :
               enableTopLevelFunctionInjection.set(true)
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
         }
 
@@ -218,7 +218,7 @@ class ContributionHintICTests :
     project.rootDir
       .resolve("src/main/kotlin/test/Message.kt")
       .writeText(
-        "package test\nimport dev.zacsweers.metro.Inject\n@Inject fun message(): String = \"after\"\n"
+        "package test\nimport dev.zacsweers.metro.Inject\n@Inject fun message(): String = \"after\"\n",
       )
 
     val secondBuild = project.compileKotlin(":compileKotlin", false, "--no-build-cache")
@@ -284,7 +284,7 @@ class ContributionHintICTests :
             @Inject
             class Target(val string: String)
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val bindingContainer =
@@ -300,7 +300,7 @@ class ContributionHintICTests :
               @Provides fun provideString(): String = "test"
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val changedContribution =
@@ -325,7 +325,7 @@ class ContributionHintICTests :
               val string: String
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         override fun StringBuilder.onBuildScript() {
@@ -339,7 +339,7 @@ class ContributionHintICTests :
               generateContributionHintsInFir.set(false)
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
         }
 

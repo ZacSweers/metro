@@ -23,7 +23,7 @@ internal fun Iterable<GraphContext>.matchingContext(pinnedPath: GraphPath): Grap
 
 /** The closest inherited entry, or the single child entry reachable from [pinnedPath]. */
 internal fun <T> Map<GraphContext, T>.matchingContextEntry(
-  pinnedPath: GraphPath
+  pinnedPath: GraphPath,
 ): Map.Entry<GraphContext, T>? {
   entries
     .asSequence()

@@ -65,7 +65,7 @@ fun irDiagnosticsForFileCompat(
   val getter =
     diagnosticsByFilePathGetter
       ?: error(
-        "Neither diagnosticsByFile nor diagnosticsByFilePath found on BaseDiagnosticsCollector"
+        "Neither diagnosticsByFile nor diagnosticsByFilePath found on BaseDiagnosticsCollector",
       )
   @Suppress("UNCHECKED_CAST")
   val byPath = getter.invoke(reporter) as Map<String?, List<KtDiagnostic>>

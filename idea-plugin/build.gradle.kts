@@ -303,7 +303,7 @@ intellijPlatform {
 
   signing {
     keyStore.set(
-      layout.file(propertyResolver.optionalStringProvider("signing.secretKeyRingFile").map(::file))
+      layout.file(propertyResolver.optionalStringProvider("signing.secretKeyRingFile").map(::file)),
     )
     keyStorePassword.set(propertyResolver.optionalStringProvider("signing.password"))
     keyStoreKeyAlias.set(propertyResolver.optionalStringProvider("signing.keyId"))
@@ -318,7 +318,7 @@ intellijPlatform {
     hidden.set(
       propertyResolver
         .optionalStringProvider("intellijPlatformPublishingHidden")
-        .map(String::toBoolean)
+        .map(String::toBoolean),
     )
   }
 
@@ -362,6 +362,6 @@ tasks.test {
         "-DmetroLibFixture.classpath=${libFixtureJar.get().archiveFile.get().asFile.absolutePath}",
         "-DmetroCompilerTestData.path=${compilerTestData.asFile.absolutePath}",
       )
-    }
+    },
   )
 }

@@ -36,7 +36,7 @@ class BindingContainerInclusionICTests(target: KmpTarget) : BaseIncrementalCompi
               val target: Target
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val bindingContainer =
@@ -53,7 +53,7 @@ class BindingContainerInclusionICTests(target: KmpTarget) : BaseIncrementalCompi
             @Inject
             class ImplA : InterfaceA
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val impl =
@@ -62,7 +62,7 @@ class BindingContainerInclusionICTests(target: KmpTarget) : BaseIncrementalCompi
             @Inject
             class ImplB : InterfaceA
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val target =
@@ -71,7 +71,7 @@ class BindingContainerInclusionICTests(target: KmpTarget) : BaseIncrementalCompi
             @Inject
             class Target(val a: InterfaceA)
             """
-              .trimIndent()
+              .trimIndent(),
           )
       }
 
@@ -112,7 +112,7 @@ class BindingContainerInclusionICTests(target: KmpTarget) : BaseIncrementalCompi
               val target: Target
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val bindingContainer =
@@ -129,7 +129,7 @@ class BindingContainerInclusionICTests(target: KmpTarget) : BaseIncrementalCompi
             @Inject
             class ImplA : InterfaceA
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val target =
@@ -138,7 +138,7 @@ class BindingContainerInclusionICTests(target: KmpTarget) : BaseIncrementalCompi
             @Inject
             class Target(val a: InterfaceA)
             """
-              .trimIndent()
+              .trimIndent(),
           )
       }
 
@@ -173,7 +173,7 @@ class BindingContainerInclusionICTests(target: KmpTarget) : BaseIncrementalCompi
               InterfaceA is injected at test.Target(…, a)
               Target is requested at test.AppGraph.target
         """
-          .trimIndent()
+          .trimIndent(),
       )
   }
 
@@ -191,7 +191,7 @@ class BindingContainerInclusionICTests(target: KmpTarget) : BaseIncrementalCompi
               val target: Target
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val parentContainer =
@@ -203,7 +203,7 @@ class BindingContainerInclusionICTests(target: KmpTarget) : BaseIncrementalCompi
               fun ImplA.bindA(): InterfaceA
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val childContainer =
@@ -215,7 +215,7 @@ class BindingContainerInclusionICTests(target: KmpTarget) : BaseIncrementalCompi
               fun ImplB.bindB(): InterfaceB
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val impls =
@@ -230,7 +230,7 @@ class BindingContainerInclusionICTests(target: KmpTarget) : BaseIncrementalCompi
             @Inject
             class ImplB : InterfaceB
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val target =
@@ -239,7 +239,7 @@ class BindingContainerInclusionICTests(target: KmpTarget) : BaseIncrementalCompi
             @Inject
             class Target(val a: InterfaceA, val b: InterfaceB)
             """
-              .trimIndent()
+              .trimIndent(),
           )
       }
 
@@ -274,7 +274,7 @@ class BindingContainerInclusionICTests(target: KmpTarget) : BaseIncrementalCompi
               InterfaceA is injected at test.Target(…, a)
               Target is requested at test.AppGraph.target
         """
-          .trimIndent()
+          .trimIndent(),
       )
   }
 
@@ -292,7 +292,7 @@ class BindingContainerInclusionICTests(target: KmpTarget) : BaseIncrementalCompi
               val target: Target
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val containerA =
@@ -304,7 +304,7 @@ class BindingContainerInclusionICTests(target: KmpTarget) : BaseIncrementalCompi
               fun ImplA.bindA(): InterfaceA
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val containerB =
@@ -316,7 +316,7 @@ class BindingContainerInclusionICTests(target: KmpTarget) : BaseIncrementalCompi
               fun ImplB.bindB(): InterfaceB
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val impls =
@@ -331,7 +331,7 @@ class BindingContainerInclusionICTests(target: KmpTarget) : BaseIncrementalCompi
             @Inject
             class ImplB : InterfaceB
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val target =
@@ -340,7 +340,7 @@ class BindingContainerInclusionICTests(target: KmpTarget) : BaseIncrementalCompi
             @Inject
             class Target(val a: InterfaceA)
             """
-              .trimIndent()
+              .trimIndent(),
           )
       }
 
@@ -391,7 +391,7 @@ class BindingContainerInclusionICTests(target: KmpTarget) : BaseIncrementalCompi
               InterfaceA is injected at test.Target(…, a)
               Target is requested at test.AppGraph.target
         """
-          .trimIndent()
+          .trimIndent(),
       )
   }
 
@@ -410,7 +410,7 @@ class BindingContainerInclusionICTests(target: KmpTarget) : BaseIncrementalCompi
               val target: Target
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val parentContainerA =
@@ -422,7 +422,7 @@ class BindingContainerInclusionICTests(target: KmpTarget) : BaseIncrementalCompi
               fun ImplA.bindA(): InterfaceA
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val parentContainerB =
@@ -434,7 +434,7 @@ class BindingContainerInclusionICTests(target: KmpTarget) : BaseIncrementalCompi
               fun ImplB.bindB(): InterfaceB
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val childContainer =
@@ -446,7 +446,7 @@ class BindingContainerInclusionICTests(target: KmpTarget) : BaseIncrementalCompi
               fun ImplC.bindC(): InterfaceC
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val impls =
@@ -465,7 +465,7 @@ class BindingContainerInclusionICTests(target: KmpTarget) : BaseIncrementalCompi
             @Inject
             class ImplC : InterfaceC
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val target =
@@ -474,7 +474,7 @@ class BindingContainerInclusionICTests(target: KmpTarget) : BaseIncrementalCompi
             @Inject
             class Target(val a: InterfaceA, val c: InterfaceC)
             """
-              .trimIndent()
+              .trimIndent(),
           )
       }
 
@@ -527,7 +527,7 @@ class BindingContainerInclusionICTests(target: KmpTarget) : BaseIncrementalCompi
               InterfaceA is injected at test.Target(…, a)
               Target is requested at test.AppGraph.target
         """
-          .trimIndent()
+          .trimIndent(),
       )
   }
 
@@ -545,7 +545,7 @@ class BindingContainerInclusionICTests(target: KmpTarget) : BaseIncrementalCompi
               val target: Target
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val containerA =
@@ -557,7 +557,7 @@ class BindingContainerInclusionICTests(target: KmpTarget) : BaseIncrementalCompi
               fun ImplA.bindA(): InterfaceA
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val containerB =
@@ -569,7 +569,7 @@ class BindingContainerInclusionICTests(target: KmpTarget) : BaseIncrementalCompi
               fun ImplB.bindB(): InterfaceB
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val containerC =
@@ -581,7 +581,7 @@ class BindingContainerInclusionICTests(target: KmpTarget) : BaseIncrementalCompi
               fun ImplC.bindC(): InterfaceC
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val impls =
@@ -600,7 +600,7 @@ class BindingContainerInclusionICTests(target: KmpTarget) : BaseIncrementalCompi
             @Inject
             class ImplC : InterfaceC
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val target =
@@ -609,7 +609,7 @@ class BindingContainerInclusionICTests(target: KmpTarget) : BaseIncrementalCompi
             @Inject
             class Target(val a: InterfaceA, val b: InterfaceB)
             """
-              .trimIndent()
+              .trimIndent(),
           )
       }
 
@@ -660,7 +660,7 @@ class BindingContainerInclusionICTests(target: KmpTarget) : BaseIncrementalCompi
               InterfaceB is injected at test.Target(…, b)
               Target is requested at test.AppGraph.target
         """
-          .trimIndent()
+          .trimIndent(),
       )
   }
 
@@ -678,7 +678,7 @@ class BindingContainerInclusionICTests(target: KmpTarget) : BaseIncrementalCompi
               val target: Target
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val containerA =
@@ -690,7 +690,7 @@ class BindingContainerInclusionICTests(target: KmpTarget) : BaseIncrementalCompi
               fun ImplA.bindA(): InterfaceA
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val containerB =
@@ -702,7 +702,7 @@ class BindingContainerInclusionICTests(target: KmpTarget) : BaseIncrementalCompi
               fun ImplB.bindB(): InterfaceB
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val containerC =
@@ -714,7 +714,7 @@ class BindingContainerInclusionICTests(target: KmpTarget) : BaseIncrementalCompi
               fun ImplC.bindC(): InterfaceC
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val impls =
@@ -733,7 +733,7 @@ class BindingContainerInclusionICTests(target: KmpTarget) : BaseIncrementalCompi
             @Inject
             class ImplC : InterfaceC
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val target =
@@ -742,7 +742,7 @@ class BindingContainerInclusionICTests(target: KmpTarget) : BaseIncrementalCompi
             @Inject
             class Target(val a: InterfaceA, val b: InterfaceB, val c: InterfaceC)
             """
-              .trimIndent()
+              .trimIndent(),
           )
       }
 
@@ -778,7 +778,7 @@ class BindingContainerInclusionICTests(target: KmpTarget) : BaseIncrementalCompi
               InterfaceC is injected at test.Target(…, c)
               Target is requested at test.AppGraph.target
         """
-          .trimIndent()
+          .trimIndent(),
       )
 
     // Add ContainerC directly to ContainerA to restore the binding via a different path

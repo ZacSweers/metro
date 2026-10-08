@@ -21,7 +21,7 @@ public class CompatContextImpl : CompatContext by DelegateType() {
   }
 
   override fun IrModuleFragment.createEmptyExternalPackageFragmentCompat(
-    packageName: String
+    packageName: String,
   ): IrPackageFragment {
     return createEmptyExternalPackageFragmentNative(this, FqName(packageName))
   }

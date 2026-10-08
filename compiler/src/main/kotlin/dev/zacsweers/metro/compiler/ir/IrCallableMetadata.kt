@@ -106,7 +106,7 @@ internal fun IrAnnotationContainer.irCallableMetadata(
   val callableMetadataAnno =
     getAnnotation(Symbols.FqNames.CallableMetadataClass)
       ?: reportCompilerBug(
-        "No @CallableMetadata found on ${this.expectAsOrNull<IrDeclarationParent>()?.kotlinFqName}"
+        "No @CallableMetadata found on ${this.expectAsOrNull<IrDeclarationParent>()?.kotlinFqName}",
       )
   return callableMetadataAnno.toIrCallableMetadata(
     signatureFunction,
@@ -156,7 +156,7 @@ internal fun IrConstructorCall.toIrCallableMetadata(
         val instanceParameter = regularParameters.firstOrNull()
         if (instanceParameter?.name != Symbols.Names.instance) {
           reportCompilerBug(
-            "Expected an instance parameter on new-instance signature carrier for $callableId"
+            "Expected an instance parameter on new-instance signature carrier for $callableId",
           )
         }
         parameters = parameters.filterNot { it === instanceParameter }

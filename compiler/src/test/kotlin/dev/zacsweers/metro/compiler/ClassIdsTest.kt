@@ -15,7 +15,7 @@ class ClassIdsTest {
           .toBuilder()
           .enableFunctionProviders(true)
           .enableSuspendProviders(false)
-          .build()
+          .build(),
       )
     assertThat(functionProvidersOnly.function0Types)
       .doesNotContain(Symbols.ClassIds.suspendFunction0)
@@ -28,7 +28,7 @@ class ClassIdsTest {
           .toBuilder()
           .enableFunctionProviders(true)
           .enableSuspendProviders(true)
-          .build()
+          .build(),
       )
     assertThat(bothEnabled.function0Types).contains(Symbols.ClassIds.suspendFunction0)
     assertThat(bothEnabled.suspendProviderTypes).contains(Symbols.ClassIds.suspendFunction0)

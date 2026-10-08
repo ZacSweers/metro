@@ -57,7 +57,7 @@ internal sealed interface IrMetroFactory {
     typeKey: IrTypeKey,
     computeArgs:
       IrBuilderWithScope.(createFunction: IrSimpleFunction, parameters: Parameters) -> List<
-          IrExpression?
+          IrExpression?,
         >,
   ): IrExpression {
     val expr =
@@ -76,7 +76,7 @@ internal sealed interface IrMetroFactory {
             type.asContextualTypeKey(null, false, false, null),
             providerType =
               typeKey.type.wrapInProvider(
-                context.metroSymbols.requireDaggerSymbols().jakartaSymbols.jakartaProvider
+                context.metroSymbols.requireDaggerSymbols().jakartaSymbols.jakartaProvider,
               ),
           )
         }
@@ -92,7 +92,7 @@ internal sealed interface IrMetroFactory {
     name: Name,
     computeArgs:
       IrBuilderWithScope.(createFunction: IrSimpleFunction, parameters: Parameters) -> List<
-          IrExpression?
+          IrExpression?,
         >,
   ): IrExpression {
     val propertyProviderName = name.asString().removeSurrounding("<get-", ">")
@@ -111,7 +111,7 @@ internal sealed interface IrMetroFactory {
     functionPredicate: (IrFunction) -> Boolean,
     computeArgs:
       IrBuilderWithScope.(targetFunction: IrSimpleFunction, parameters: Parameters) -> List<
-          IrExpression?
+          IrExpression?,
         >,
   ): IrExpression =
     with(scope) {
@@ -120,7 +120,7 @@ internal sealed interface IrMetroFactory {
       val createFunction =
         creatorClass.simpleFunctions().firstOrNull(functionPredicate)
           ?: reportCompilerBug(
-            "No matching creator function for '$expectedCreatorDescription' found in ${factoryClass.classId} with typeKey $typeKey. Available are ${creatorClass.simpleFunctions().joinToString { it.name.asString() }}"
+            "No matching creator function for '$expectedCreatorDescription' found in ${factoryClass.classId} with typeKey $typeKey. Available are ${creatorClass.simpleFunctions().joinToString { it.name.asString() }}",
           )
 
       val finalFunction =

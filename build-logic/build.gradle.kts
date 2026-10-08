@@ -11,10 +11,10 @@ dependencies {
   compileOnly(libs.kotlin.gradlePlugin)
   compileOnly(libs.android.gradlePlugin)
   implementation(
-    libs.plugins.mavenPublish.get().run { "$pluginId:$pluginId.gradle.plugin:$version" }
+    libs.plugins.mavenPublish.get().run { "$pluginId:$pluginId.gradle.plugin:$version" },
   )
   implementation(
-    libs.plugins.dependencyGuard.get().run { "$pluginId:$pluginId.gradle.plugin:$version" }
+    libs.plugins.dependencyGuard.get().run { "$pluginId:$pluginId.gradle.plugin:$version" },
   )
   implementation(libs.plugins.metalava.get().run { "$pluginId:$pluginId.gradle.plugin:$version" })
   implementation(libs.plugins.dokka.get().run { "$pluginId:$pluginId.gradle.plugin:$version" })

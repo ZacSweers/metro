@@ -381,7 +381,7 @@ private fun generateMirrorFunction(
             targetFunction.ir.propertyIfAccessorCompat
               .expectAsOrNull<IrProperty>()
               ?.name
-              ?.asString() ?: ""
+              ?.asString() ?: "",
           )
 
         // TODO these locations are bogus in generated binding functions. Report origin class

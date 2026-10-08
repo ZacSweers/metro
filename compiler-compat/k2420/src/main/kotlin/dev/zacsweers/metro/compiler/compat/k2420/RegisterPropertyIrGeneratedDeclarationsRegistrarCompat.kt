@@ -9,14 +9,14 @@ import org.jetbrains.kotlin.ir.declarations.IrProperty
 
 /** Extends the registrar compat with class and property registration. */
 internal class RegisterPropertyIrGeneratedDeclarationsRegistrarCompat(
-  delegate: IrGeneratedDeclarationsRegistrar
+  delegate: IrGeneratedDeclarationsRegistrar,
 ) : IrAnnotationIrGeneratedDeclarationsRegistrarCompat(delegate) {
   override fun registerClassAsMetadataVisible(irClass: IrClass) =
     delegate.registerClassAsMetadataVisible(
       irClass.apply {
         convertAnnotations()
         typeParameters.forEach { it.convertAnnotations() }
-      }
+      },
     )
 
   override fun registerPropertyAsMetadataVisible(irProperty: IrProperty) {

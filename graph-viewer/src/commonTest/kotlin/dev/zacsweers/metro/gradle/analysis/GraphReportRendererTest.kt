@@ -26,7 +26,7 @@ class GraphReportRendererTest {
               isScoped = false,
               nameHint = "Service",
               dependencies = emptyList(),
-            )
+            ),
           ),
       )
     val data = GraphReportRenderer().buildData(graph)
@@ -72,7 +72,7 @@ class GraphReportRendererTest {
         aggregationScopes = emptyList(),
         roots =
           RootsMetadata(
-            accessors = listOf(AccessorMetadata("Service", name = "service", isProperty = true))
+            accessors = listOf(AccessorMetadata("Service", name = "service", isProperty = true)),
           ),
         bindings =
           listOf(

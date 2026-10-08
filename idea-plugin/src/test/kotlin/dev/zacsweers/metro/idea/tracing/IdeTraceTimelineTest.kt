@@ -163,7 +163,7 @@ class IdeTraceTimelineTest : TestCase() {
           10,
           20,
           mapOf("outcome" to "published", "manualRequest" to index.toString()),
-        )
+        ),
       )
     }
     timeline.record(
@@ -175,7 +175,7 @@ class IdeTraceTimelineTest : TestCase() {
         0,
         25,
         mapOf("outcome" to "published"),
-      )
+      ),
     )
     timeline.record(
       IdeTraceInterval(
@@ -186,7 +186,7 @@ class IdeTraceTimelineTest : TestCase() {
         30,
         null,
         mapOf("stop_reason" to "completed", "partial" to "false"),
-      )
+      ),
     )
 
     val intervals = timeline.lanes().flatMap { it.intervals }
@@ -216,7 +216,7 @@ class IdeTraceTimelineTest : TestCase() {
         operation.completedPhase("source.file.item", 10, 11) {
           rejectedMetadataCalls++
           completedPhase("unexpected.child", 10, 11)
-        }
+        },
       )
       assertTrue(
         operation.completedPhase("source.file.item", 20, 80, priority = true) {
@@ -226,9 +226,9 @@ class IdeTraceTimelineTest : TestCase() {
             completedPhase("source.file.shardConstruction", 50, 60, priority = true) {
               rejectedMetadataCalls++
               completedPhase("unexpected.child", 50, 60, priority = true)
-            }
+            },
           )
-        }
+        },
       )
       now = 90
       operation.event("source.file.summary")
@@ -284,7 +284,7 @@ class IdeTraceTimelineTest : TestCase() {
         operation.completedPhase("source.file.item", 10, 80) {
           assertTrue(completedPhase("source.file.annotationScan", 20, 30))
           throw failure
-        }
+        },
       )
       assertTrue(operation.completedPhase("source.file.item", 85, 90))
       now = 100
@@ -335,7 +335,7 @@ class IdeTraceTimelineTest : TestCase() {
         110,
         null,
         mapOf("partial" to "true", "stop_reason" to "user"),
-      )
+      ),
     )
     val overview = checkNotNull(timeline.overview())
     assertEquals(10L, overview.started)

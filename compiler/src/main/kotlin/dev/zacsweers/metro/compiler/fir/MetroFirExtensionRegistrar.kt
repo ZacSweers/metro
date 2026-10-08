@@ -149,21 +149,21 @@ public class MetroFirExtensionRegistrar(
               session = session,
               compatContext = compatContext,
               expectDeclarationsOnly = true,
-            )
+            ),
           )
         }
 
         // Don't gate on isCli because this also handles top-level function gen
         add(
-          wrapNativeGenerator("FirGen - InjectedClass", true, ::InjectedClassFirGenerator)(session)
+          wrapNativeGenerator("FirGen - InjectedClass", true, ::InjectedClassFirGenerator)(session),
         )
 
         // Don't gate on isCli because these are user-visible
         if (options.generateAssistedFactories) {
           add(
             wrapNativeGenerator("FirGen - AssistedFactory", true, ::AssistedFactoryFirGenerator)(
-              session
-            )
+              session,
+            ),
           )
         }
 
@@ -177,7 +177,7 @@ public class MetroFirExtensionRegistrar(
                 options.omitRedundantMirrors,
                 externalExtensions,
               )
-            }(session)
+            }(session),
           )
         }
 
@@ -185,8 +185,8 @@ public class MetroFirExtensionRegistrar(
           if (!options.generateClassesInIr) {
             add(
               wrapNativeGenerator("FirGen - ProvidesFactory", true, ::ProvidesFactoryFirGenerator)(
-                session
-              )
+                session,
+              ),
             )
           }
 
@@ -198,7 +198,7 @@ public class MetroFirExtensionRegistrar(
                   compatContext,
                   options.omitRedundantMirrors,
                 )
-              }(session)
+              }(session),
             )
           }
 
@@ -206,15 +206,15 @@ public class MetroFirExtensionRegistrar(
             add(
               wrapNativeGenerator("FirGen - ContributionHints", true) { session, compatContext ->
                 ContributionHintFirGenerator(session, compatContext, externalHintExtensions)
-              }(session)
+              }(session),
             )
           }
         }
 
         add(
           wrapNativeGenerator("FirGen - DependencyGraph", true, ::DependencyGraphFirGenerator)(
-            session
-          )
+            session,
+          ),
         )
       }
 
@@ -321,7 +321,7 @@ private fun loadExternalDeclarationExtensions(
         // Log but don't fail compilation
         if (options.debug) {
           System.err.println(
-            "[Metro] Failed to load external FIR extension from ${factory::class}: ${e.message}"
+            "[Metro] Failed to load external FIR extension from ${factory::class}: ${e.message}",
           )
         }
         null
@@ -345,7 +345,7 @@ private fun loadExternalContributionHintExtensions(
       } catch (e: Exception) {
         if (options.debug) {
           System.err.println(
-            "[Metro] Failed to load external contribution hint extension from ${factory::class}: ${e.message}"
+            "[Metro] Failed to load external contribution hint extension from ${factory::class}: ${e.message}",
           )
         }
         null
@@ -368,7 +368,7 @@ private fun loadExternalContributionExtensions(
       } catch (e: Exception) {
         if (options.debug) {
           System.err.println(
-            "[Metro] Failed to load external contribution extension from ${factory::class}: ${e.message}"
+            "[Metro] Failed to load external contribution extension from ${factory::class}: ${e.message}",
           )
         }
         null

@@ -136,7 +136,7 @@ open class GraphAnalysisBenchmark {
   @Benchmark
   fun propagateAcrossDeferredBoundaries(blackhole: Blackhole) {
     blackhole.consume(
-      newWorklist(hasSuspendSources = true, useDeferredBoundaries = true).analyze(keys)
+      newWorklist(hasSuspendSources = true, useDeferredBoundaries = true).analyze(keys),
     )
   }
 
@@ -150,7 +150,7 @@ open class GraphAnalysisBenchmark {
     blackhole.consume(
       computeMergePlan(contributionIds, excluded = emptySet()) { id ->
         sparseReplacements[id].orEmpty()
-      }
+      },
     )
   }
 

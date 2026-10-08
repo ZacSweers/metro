@@ -113,7 +113,7 @@ internal class BindingMirrorClassFirGenerator(
 
     if (hasBindingMembers) {
       mirrorClassesToGenerate.add(
-        classSymbol.classId.createNestedClassId(Symbols.Names.BindsMirrorClass)
+        classSymbol.classId.createNestedClassId(Symbols.Names.BindsMirrorClass),
       )
       result += Symbols.Names.BindsMirrorClass
     }

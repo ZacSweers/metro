@@ -512,7 +512,7 @@ internal class MetroTreeStructure(
               .sorted()
               .joinToString()
           },
-        )
+        ),
       )
       .map { context ->
         ProgressManager.checkCanceled()
@@ -726,7 +726,7 @@ internal fun validationTreeChildren(node: MetroTreeNode.Validation): List<MetroT
       }
       is KaGraphValidationResult.InternalError -> {
         return listOf(
-          MetroTreeNode.Summary(node, "Validation failed due to an internal Metro plugin error")
+          MetroTreeNode.Summary(node, "Validation failed due to an internal Metro plugin error"),
         )
       }
       is KaGraphValidationResult.Completed -> outcome

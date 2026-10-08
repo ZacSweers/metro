@@ -31,7 +31,7 @@ class MetroContributionCandidateTest : BasePlatformTestCase() {
         constructor() : this("")
       }
       object Singleton : Api
-      """
+      """,
       )
     for (name in listOf("Implicit", "Primary", "Secondary", "Singleton")) {
       val candidate = requireNotNull(candidate(file, name)) { name }
@@ -59,7 +59,7 @@ class MetroContributionCandidateTest : BasePlatformTestCase() {
       @Inject abstract class Abstract : Api
       @Inject sealed class Sealed : Api
       @Inject object InjectedObject : Api
-      """
+      """,
       )
     for (name in
       listOf(
@@ -86,7 +86,7 @@ class MetroContributionCandidateTest : BasePlatformTestCase() {
       class ConstructorAssisted @AssistedInject constructor(@Assisted val value: String) : Api
       class AssistedParameter @Inject constructor(@Assisted val value: String) : Api
       @AssistedFactory interface Factory : Api { fun create(value: String): ClassAssisted }
-      """
+      """,
       )
     for (name in listOf("ClassAssisted", "ConstructorAssisted", "AssistedParameter", "Factory")) {
       assertNull(name, candidate(file, name))
@@ -106,7 +106,7 @@ class MetroContributionCandidateTest : BasePlatformTestCase() {
       }
       fun local() { @Inject class Local : Api }
       @Inject internal class Internal : Api
-      """
+      """,
       )
     for (name in listOf("Private", "Nested", "Protected", "Inner", "Local")) {
       assertNull(name, candidate(file, name))
@@ -122,8 +122,8 @@ class MetroContributionCandidateTest : BasePlatformTestCase() {
       interface Api<T>
       interface Marker
       @Inject class Candidate : Api<List<String?>>, Marker
-      """
-        )
+      """,
+        ),
       )
     assertEquals(
       listOf("test.Api<kotlin.collections.List<kotlin.String?>>", "test.Marker"),
@@ -140,7 +140,7 @@ class MetroContributionCandidateTest : BasePlatformTestCase() {
       @Inject class Generic<T> : Api<T>
       @Inject class Broken : Api<List<Missing>>
       @Inject class NoSupertype
-      """
+      """,
       )
     for (name in listOf("Generic", "Broken", "NoSupertype")) {
       assertNull(name, candidate(file, name))
@@ -155,8 +155,8 @@ class MetroContributionCandidateTest : BasePlatformTestCase() {
       @DefaultBinding<Api<*>> interface Api<T>
       interface Marker
       @Inject class Candidate : Api<String>, Marker
-      """
-        )
+      """,
+        ),
       )
     assertEquals("test.Api<*>", candidate.boundTypes.first().renderedType)
     assertTrue(candidate.boundTypes.first().implicit)
@@ -176,8 +176,8 @@ class MetroContributionCandidateTest : BasePlatformTestCase() {
       @DefaultBinding<First<*>> interface First<T>
       @DefaultBinding<Second<*>> interface Second<T>
       @Inject class Candidate : First<String>, Second<Int>
-      """
-        )
+      """,
+        ),
       )
     assertTrue(candidate.boundTypes.none { it.implicit })
     assertTrue(candidate.boundTypes.none { it.isDefault })
@@ -194,8 +194,8 @@ class MetroContributionCandidateTest : BasePlatformTestCase() {
       interface Api
       interface Marker
       @Blue @Inject class Candidate : Api, Marker
-      """
-        )
+      """,
+        ),
       )
     assertEquals(
       listOf("test.Api", "test.Marker"),
@@ -214,7 +214,7 @@ class MetroContributionCandidateTest : BasePlatformTestCase() {
       interface Marker
       @`is`("line\nquote\"slash\\dollar${'$'}")
       @Inject class Candidate : Api, Marker
-      """
+      """,
       )
     val before = file.text
     val candidate = requireNotNull(candidate(file, "Candidate"))
@@ -231,8 +231,8 @@ class MetroContributionCandidateTest : BasePlatformTestCase() {
       @Qualifier @Target(AnnotationTarget.TYPE) annotation class Blue
       @DefaultBinding<@Blue Api<*>> interface Api<T>
       @Inject class Candidate : Api<String>
-      """
-        )
+      """,
+        ),
       )
     val annotated = candidate.boundTypes.first()
     assertEquals("@test.Blue test.Api<*>", annotated.renderedType)
@@ -249,8 +249,8 @@ class MetroContributionCandidateTest : BasePlatformTestCase() {
       interface Api
       @SingleIn(ScopeKey::class) @StringKey("candidate")
       @Inject class Candidate : Api
-      """
-        )
+      """,
+        ),
       )
     assertEquals("test.ScopeKey", candidate.existingScope)
     assertTrue(candidate.existingMapKey)
@@ -266,7 +266,7 @@ class MetroContributionCandidateTest : BasePlatformTestCase() {
       @SingleIn(Lifetime::class) @Inject class AnnotationScope : Api
       @SingleIn(Graph::class) @Inject class GraphScope : Api
       @Lifetime @Inject class CustomScope : Api
-      """
+      """,
       )
     for (name in listOf("AnnotationScope", "GraphScope", "CustomScope")) {
       assertNull(requireNotNull(candidate(file, name)).existingScope)
@@ -281,8 +281,8 @@ class MetroContributionCandidateTest : BasePlatformTestCase() {
       abstract class `when`
       interface Api
       @SingleIn(`when`::class) @Inject class Candidate : Api
-      """
-        )
+      """,
+        ),
       )
     assertEquals("test.`when`", candidate.existingScope)
   }
@@ -295,8 +295,8 @@ class MetroContributionCandidateTest : BasePlatformTestCase() {
       class Other { private class Hidden }
       interface Api
       @SingleIn(Other.Hidden::class) @Inject class Candidate : Api
-      """
-        )
+      """,
+        ),
       )
     assertNull(candidate.existingScope)
   }
@@ -308,8 +308,8 @@ class MetroContributionCandidateTest : BasePlatformTestCase() {
           """
       @DefaultBinding<@StringKey("api") Api<*>> interface Api<T>
       @Inject class Candidate : Api<String>
-      """
-        )
+      """,
+        ),
       )
     val type = candidate.boundTypes.first()
     assertTrue(type.hasMapKey)
@@ -331,7 +331,7 @@ class MetroContributionCandidateTest : BasePlatformTestCase() {
       @ContributesIntoSet(AppScope::class) @Inject class SetElement : Api
       @ContributesIntoMap(AppScope::class) @StringKey("map") @Inject class MapElement : Api
       @CustomBinding @Inject class Custom : Api
-      """
+      """,
       )
     for (name in listOf("Binding", "SetElement", "MapElement", "Custom")) {
       assertNull(name, candidate(file, name))
@@ -347,8 +347,8 @@ class MetroContributionCandidateTest : BasePlatformTestCase() {
       typealias Make = CustomInject
       interface Api
       @Make class Candidate : Api
-      """
-      )
+      """,
+      ),
     )
   }
 

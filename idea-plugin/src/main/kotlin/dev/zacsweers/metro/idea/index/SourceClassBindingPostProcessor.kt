@@ -206,7 +206,7 @@ internal class SourceClassBindingPostProcessor(
       val owners = consumerOwnership.owningGraphPointers(consumer)
       if (owners == null) {
         add(
-          captureRequest(consumer.key, consumerOwnership.pointer(consumer), true, consumer.pointer)
+          captureRequest(consumer.key, consumerOwnership.pointer(consumer), true, consumer.pointer),
         )
       } else {
         for (owner in owners) {

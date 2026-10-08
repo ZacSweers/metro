@@ -38,7 +38,7 @@ class MetroHiddenDependenciesIncrementalTest {
                   }
                   """,
                   "AppGraph",
-                )
+                ),
               )
             }
             subproject("bridge") {
@@ -55,7 +55,7 @@ class MetroHiddenDependenciesIncrementalTest {
                   interface AddedBindings
                   """,
                   "AddedBindings",
-                )
+                ),
               )
             }
           }

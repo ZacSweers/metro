@@ -95,8 +95,8 @@ tasks.register<Sync>("prepareGraphViewer") {
   from(layout.projectDirectory.dir("graph-viewer/src/host"))
   from(
     layout.projectDirectory.dir(
-      "gradle-plugin/src/main/resources/dev/zacsweers/metro/gradle/analysis"
-    )
+      "gradle-plugin/src/main/resources/dev/zacsweers/metro/gradle/analysis",
+    ),
   ) {
     include("graph-viewer.html", "graph-viewer.css", "graph-viewer.js")
   }

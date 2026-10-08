@@ -62,7 +62,7 @@ public class CompatContextImpl : CompatContext by DelegateType() {
   override val supportsAutomaticDeclarationFinderTracking: Boolean = true
 
   override fun AbstractKtDiagnosticFactory.getEffectiveSeverityCompat(
-    languageVersionSettings: LanguageVersionSettings
+    languageVersionSettings: LanguageVersionSettings,
   ): Severity? {
     return getEffectiveSeverity(languageVersionSettings)
   }
@@ -209,7 +209,7 @@ public class CompatContextImpl : CompatContext by DelegateType() {
   }
 
   override fun IrPluginContext.finderForSourceCompat(
-    fromFile: IrFile
+    fromFile: IrFile,
   ): CompatContext.DeclarationFinderCompat {
     return ReferenceApiDeclarationFinderCompat(finderForSource(fromFile))
   }

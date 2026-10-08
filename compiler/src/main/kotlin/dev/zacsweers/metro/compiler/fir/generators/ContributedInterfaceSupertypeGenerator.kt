@@ -111,7 +111,7 @@ internal class ContributedInterfaceSupertypeGenerator(
     return allSessions
       .flatMap {
         it.predicateBasedProvider.getSymbolsByPredicate(
-          session.predicates.contributesAnnotationPredicate
+          session.predicates.contributesAnnotationPredicate,
         )
       }
       .filterIsInstance<FirRegularClassSymbol>()
@@ -651,7 +651,7 @@ internal class ContributedInterfaceSupertypeGenerator(
                 originClassId.toSymbol(session)?.expectAsOrNull<FirClassSymbol<*>>()
                   ?: return@mapNotNull null
               originClass
-            }
+            },
           )
           .flatMap { contributingType ->
             val localTypeResolver =
@@ -818,7 +818,7 @@ internal class ContributedInterfaceSupertypeGenerator(
    * would trigger Kotlin's builtin exposure diagnostic.
    */
   private fun FirClassLikeSymbol<*>.exposesNarrowerVisibilityThan(
-    declarationVisibility: Visibility
+    declarationVisibility: Visibility,
   ): Boolean {
     return (Visibilities.compare(declarationVisibility, narrowestContainerVisibility()) ?: 0) > 0
   }

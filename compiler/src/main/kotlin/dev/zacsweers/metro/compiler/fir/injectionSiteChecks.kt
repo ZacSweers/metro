@@ -44,7 +44,7 @@ import org.jetbrains.kotlin.fir.types.coneTypeOrNull
 context(context: CheckerContext, reporter: DiagnosticReporter)
 internal fun FirBasedSymbol<*>.validateBindingRef(
   annotations: MetroAnnotations<MetroFirAnnotation> =
-    metroAnnotations(context.session, setOf(MetroAnnotations.Kind.Qualifier))
+    metroAnnotations(context.session, setOf(MetroAnnotations.Kind.Qualifier)),
 ) {
   if (annotations.qualifiers.size > 1) {
     for (key in annotations.qualifiers) {
@@ -69,7 +69,7 @@ internal fun FirBasedSymbol<*>.validateBindingSource(
         MetroAnnotations.Kind.MapKey,
         MetroAnnotations.Kind.IntoMap,
       ),
-    )
+    ),
 ) {
   // Check for 1:1 `@IntoMap`+`@MapKey`
   if (annotations.mapKeys.size > 1) {

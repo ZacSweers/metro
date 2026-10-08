@@ -168,7 +168,7 @@ internal class InjectedClassTransformer(
           append("Run Metro's compiler for the upstream module")
           if (options.enableDaggerRuntimeInterop) {
             append(
-              ". If Dagger owns that upstream declaration instead, run Dagger's compiler there"
+              ". If Dagger owns that upstream declaration instead, run Dagger's compiler there",
             )
           }
           appendLine(".")
@@ -183,7 +183,7 @@ internal class InjectedClassTransformer(
           val factoryCls =
             declaration.nestedClasses.singleOrNull { it.name == factoryClassName }
               ?: reportCompilerBug(
-                "Expected nested class '$factoryClassName' not found in '${declaration.kotlinFqName}'."
+                "Expected nested class '$factoryClassName' not found in '${declaration.kotlinFqName}'.",
               )
           val signatureCarrier = metadata.signature_carrier
           val signatureFunction =
@@ -289,7 +289,7 @@ internal class InjectedClassTransformer(
           createInjectConstructorFactoryShell(declaration, isAssistedInject)
         } else {
           reportCompilerBug(
-            "No expected FIR-generated factory class found for '${declaration.kotlinFqName}'."
+            "No expected FIR-generated factory class found for '${declaration.kotlinFqName}'.",
           )
         }
 
@@ -592,7 +592,7 @@ internal class InjectedClassTransformer(
 
               else ->
                 reportCompilerBug(
-                  "Unmatched top level injected function param: $targetParam. Available: ${functionParamsByName.keys}"
+                  "Unmatched top level injected function param: $targetParam. Available: ${functionParamsByName.keys}",
                 )
             }
           }
@@ -631,7 +631,7 @@ internal class InjectedClassTransformer(
                         receiver = invokeFunction.dispatchReceiverParameter!!,
                         providerFieldsByKey = providerFieldsByKey,
                         typeRemapper = typeRemapper,
-                      )
+                      ),
                     )
                   },
               )
@@ -820,7 +820,7 @@ internal class InjectedClassTransformer(
     // Deduplicate to match the FIR-generated create() function signature
     val dedupedMerged =
       mergedParameters.copy(
-        regularParameters = mergedParameters.regularParameters.dedupeParameters()
+        regularParameters = mergedParameters.regularParameters.dedupeParameters(),
       )
 
     // Generate create()

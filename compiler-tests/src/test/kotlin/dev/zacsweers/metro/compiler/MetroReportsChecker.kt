@@ -160,7 +160,7 @@ class MetroReportsChecker(testServices: TestServices) :
       is JsonObject ->
         JsonObject(
           filterKeys { it != "origin" && it != "source" }
-            .mapValues { (_, value) -> value.withoutSourceLocations() }
+            .mapValues { (_, value) -> value.withoutSourceLocations() },
         )
       is JsonArray -> JsonArray(map { it.withoutSourceLocations() })
       else -> this

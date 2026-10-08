@@ -75,14 +75,14 @@ internal class CircuitIrGenerationSupport(
     qualifier: IrConstructorCall? = null,
   ) {
     generatedClass.addAnnotationCompat(
-      context(pluginContext) { buildAnnotation(generatedClass.symbol, injectAnnotationCtor) }
+      context(pluginContext) { buildAnnotation(generatedClass.symbol, injectAnnotationCtor) },
     )
     generatedClass.addAnnotationCompat(
       context(pluginContext) {
         buildAnnotation(generatedClass.symbol, contributesIntoSetAnnotationCtor) { annotation ->
           annotation.arguments[0] = kClassReference(scopeClass)
         }
-      }
+      },
     )
     qualifier?.let { generatedClass.addAnnotationCompat(it) }
     originClass?.let { addOriginAnnotation(generatedClass, it) }
@@ -109,7 +109,7 @@ internal class CircuitIrGenerationSupport(
               hiddenDeprecationLevel,
             )
         }
-      }
+      },
     )
   }
 
