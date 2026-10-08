@@ -1554,6 +1554,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       }
 
       @Test
+      @TestMetadata("MapKeyWithoutContributesIntoMapCanBeSuppressed.kt")
+      public void testMapKeyWithoutContributesIntoMapCanBeSuppressed() {
+        run("MapKeyWithoutContributesIntoMapCanBeSuppressed.kt");
+      }
+
+      @Test
       @TestMetadata("MemberInjectionQualifiersAreLookedUp.kt")
       public void testMemberInjectionQualifiersAreLookedUp() {
         run("MemberInjectionQualifiersAreLookedUp.kt");

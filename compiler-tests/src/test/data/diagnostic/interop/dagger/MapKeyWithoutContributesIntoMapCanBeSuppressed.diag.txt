@@ -1,0 +1,1 @@
+/MapKeyWithoutContributesIntoMapCanBeSuppressed.kt:14:1: warning: `@MapKey` is ignored because this declaration has no `@ContributesIntoMap` annotation.

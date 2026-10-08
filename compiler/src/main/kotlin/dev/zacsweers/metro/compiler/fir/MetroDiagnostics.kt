@@ -56,6 +56,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.LOCAL_CLASSES_CANNOT_BE
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MAP_KEY_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MAP_KEY_IMPLICIT_CLASS_KEY_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MAP_KEY_REDUNDANT_IMPLICIT_CLASS_KEY
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MAP_KEY_WITHOUT_CONTRIBUTES_INTO_MAP
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MAP_KEY_TYPE_PARAM_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MEMBERS_INJECT_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MEMBERS_INJECT_RETURN_TYPE_WARNING
@@ -220,6 +221,7 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val MAP_KEY_TYPE_PARAM_ERROR by error1<KtElement, String>(TYPE_PARAMETERS_LIST)
   val MAP_KEY_IMPLICIT_CLASS_KEY_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val MAP_KEY_REDUNDANT_IMPLICIT_CLASS_KEY by warning1<KtElement, String>(NAME_IDENTIFIER)
+  val MAP_KEY_WITHOUT_CONTRIBUTES_INTO_MAP by warning1<KtElement, String>(NAME_IDENTIFIER)
   val MEMBERS_INJECT_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val MEMBERS_INJECT_STATUS_ERROR by error1<KtElement, String>(MODALITY_MODIFIER)
   val MEMBERS_INJECT_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
@@ -418,6 +420,7 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
         put(MAP_KEY_TYPE_PARAM_ERROR, "{0}", STRING)
         put(MAP_KEY_IMPLICIT_CLASS_KEY_ERROR, "{0}", STRING)
         put(MAP_KEY_REDUNDANT_IMPLICIT_CLASS_KEY, "{0}", STRING)
+        put(MAP_KEY_WITHOUT_CONTRIBUTES_INTO_MAP, "{0}", STRING)
         put(PROVIDES_COULD_BE_BINDS, "{0}", STRING)
         put(SCOPED_PROVIDES_SHOULD_BE_PRIVATE_ERROR, "{0}", STRING)
         put(SCOPED_PROVIDES_SHOULD_BE_PRIVATE_WARNING, "{0}", STRING)

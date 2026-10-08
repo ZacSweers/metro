@@ -2,7 +2,7 @@
 
 interface Service
 
-<!MULTIBINDS_ERROR!>@StringKey("bare")<!>
+<!MAP_KEY_WITHOUT_CONTRIBUTES_INTO_MAP!>@StringKey("bare")<!>
 @Inject
 class BareMapKeyWithoutIntoMap : Service
 

@@ -80,7 +80,17 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
         session,
         session.classIds.allContributesAnnotationsWithContainers,
       )
-    if (!hasContributionAnnotation && classMapKey == null) return
+    if (!hasContributionAnnotation) {
+      if (classMapKey == null) {
+        return
+      }
+      reporter.reportOn(
+        classMapKey.fir.source ?: declaration.source,
+        MetroDiagnostics.MAP_KEY_WITHOUT_CONTRIBUTES_INTO_MAP,
+        "`@MapKey` is ignored because this declaration has no `@ContributesIntoMap` annotation.",
+      )
+      return
+    }
     session.trace(name = { "AggregationChecker(${declaration.classId})" }) {
       checkImpl(declaration, classMapKey)
     }
