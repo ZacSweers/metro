@@ -29,6 +29,12 @@ buildConfig {
       // Android Studio canary builds report a fake version like "2.3.255-dev-255".
       // The real version can be found by checking the IntelliJ tag for the studio build number:
       // https://github.com/JetBrains/intellij-community/blob/idea/<intellij-version>/.idea/libraries/kotlinc_kotlin_compiler_common.xml
+      .zip(
+        // Hand-maintained Beta/RC mappings. Kept separate because ide-mappings.txt is regenerated.
+        providers.fileContents(layout.projectDirectory.file("prerelease-mappings.txt")).asText
+      ) { ideMappings, prereleaseMappings ->
+        ideMappings + "\n" + prereleaseMappings
+      }
       .map { text ->
         text
           .lineSequence()

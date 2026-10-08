@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler
 
+import dev.zacsweers.metro.compiler.compat.CompilerVersionAliases
 import dev.zacsweers.metro.compiler.compat.KotlinToolingVersion
 import dev.zacsweers.metro.compiler.test.BUILD_COMPILER_VERSION
 import dev.zacsweers.metro.compiler.test.COMPILER_TOOLING_VERSION
@@ -80,7 +81,7 @@ class MetroTestConfigurator(testServices: TestServices) : MetaTestConfigurator(t
       irOnlyClassesSuite &&
         shouldSkipForCompilerVersion(
           compilerVersion = COMPILER_VERSION,
-          compilerToolingVersion = KotlinToolingVersion(COMPILER_TOOLING_VERSION),
+          compilerToolingVersion = DIRECTIVE_COMPILER_TOOLING_VERSION,
           minVersion = MIN_IR_ONLY_CLASSES_COMPILER_VERSION,
         )
     ) {
@@ -92,7 +93,7 @@ class MetroTestConfigurator(testServices: TestServices) : MetaTestConfigurator(t
     }
     return shouldSkipForCompilerVersion(
       compilerVersion = COMPILER_VERSION,
-      compilerToolingVersion = KotlinToolingVersion(COMPILER_TOOLING_VERSION),
+      compilerToolingVersion = DIRECTIVE_COMPILER_TOOLING_VERSION,
       targetVersion = directives[MetroDirectives.COMPILER_VERSION].firstOrNull(),
       minVersion = minimumVersions.maxByOrNull { toolingVersionDirective(it).first },
       maxVersion = directives[MetroDirectives.MAX_COMPILER_VERSION].firstOrNull(),
@@ -143,6 +144,19 @@ class MetroTestConfigurator(testServices: TestServices) : MetaTestConfigurator(t
 
 private val BUILD_COMPILER_TOOLING_VERSION = KotlinToolingVersion(BUILD_COMPILER_VERSION)
 private val TEST_COMPILER_TOOLING_VERSION = KotlinToolingVersion(TEST_COMPILER_VERSION)
+
+// Prereleases rank above every same-base dev build, so version directives compare the dev build a
+// prerelease maps to.
+private val DIRECTIVE_COMPILER_TOOLING_VERSION: KotlinToolingVersion = directiveCompilerVersion()
+
+private fun directiveCompilerVersion(): KotlinToolingVersion {
+  val version = KotlinToolingVersion(COMPILER_TOOLING_VERSION)
+  val aliased = CompilerVersionAliases.map(version)
+  if (aliased == null) {
+    return version
+  }
+  return aliased
+}
 
 fun RegisteredDirectivesBuilder.commonMetroTestDirectives() {
   OPT_IN.with("dev.zacsweers.metro.ExperimentalMetroApi")

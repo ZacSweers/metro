@@ -461,7 +461,10 @@ class CompatContextTest {
         "2.5.0-dev-7306" to "2.5.0-dev-6460",
         "2.5.0-dev-7307" to "2.5.0-dev-7307",
         "2.5.0-dev-10106" to "2.5.0-dev-10106",
-        "2.5.0-Beta1" to "2.5.0-dev-10106",
+        // Prerelease mappings pin each Beta to the compat module picked from its branch point.
+        "2.5.0-Beta1" to "2.5.0-dev-7307",
+        "2.5.0-Beta2" to "2.5.0-dev-10106",
+        // Unmapped prereleases fall back to the newest same-base dev factory.
         "2.5.0-Beta1-123" to "2.5.0-dev-10106",
         "2.5.0-Beta1-release-123" to "2.5.0-dev-10106",
         "2.5.0-RC" to "2.5.0-dev-10106",

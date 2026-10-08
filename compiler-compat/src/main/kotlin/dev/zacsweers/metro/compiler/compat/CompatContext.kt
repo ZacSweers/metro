@@ -114,7 +114,9 @@ public interface CompatContext {
           .toList()
 
       val currentVersion =
-        knownVersion ?: factoryDataList.firstOrNull()?.version ?: error("No factories available")
+        knownVersion
+          ?: factoryDataList.firstOrNull()?.version?.let(::applyBuiltInAliases)
+          ?: error("No factories available")
 
       val targetFactory = resolveFactoryForVersion(currentVersion, factoryDataList)
       return targetFactory
@@ -127,6 +129,18 @@ public interface CompatContext {
           """
             .trimIndent(),
         )
+    }
+
+    /**
+     * Applies built-in aliases so detected versions resolve the same way as versions passed in by
+     * the compiler plugin registrar. CLI-only versions keep their original version here.
+     */
+    private fun applyBuiltInAliases(version: KotlinToolingVersion): KotlinToolingVersion {
+      val aliased = CompilerVersionAliases.map(version)
+      if (aliased == null) {
+        return version
+      }
+      return aliased
     }
 
     private fun resolveFactoryForVersion(
