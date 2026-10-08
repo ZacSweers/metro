@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.CompanionMode
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Origins
+import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.compat.propertyIfAccessorCompat
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
@@ -598,12 +599,8 @@ internal class BindingContainerTransformer(
             signatureFunction = signatureFunction,
             annotations = reference.annotations,
             isPropertyAccessor = reference.isPropertyAccessor,
-            newInstanceName =
-              if (signatureCarrier == SignatureCarrier.CREATOR_FUNCTION) {
-                reference.name
-              } else {
-                sourceFunction.name
-              },
+            // Both signature carriers refer to the same generated helper.
+            newInstanceName = bytecodeFunction.name,
           )
         } else if (backingField != null) {
           if (useCreatorSignatureCarrier) {
@@ -1319,7 +1316,7 @@ internal class BindingContainerTransformer(
     val sourceAnnotations = sourceFunction.metroAnnotations(metroSymbols.classIds)
 
     // FIR can export an invisible factory header while its IR-generated helpers stay invisible.
-    val helperOwner =
+    val helperContainer =
       if (staticHelpers || entry.is_object) {
         stub
       } else {
@@ -1327,18 +1324,15 @@ internal class BindingContainerTransformer(
       }
 
     val hasCreateHelper =
-      helperOwner?.functions?.any {
+      helperContainer?.functions?.any {
         it.name == Symbols.Names.create && (!staticHelpers || it.isStatic)
       } == true
 
-    val propertyHelperName = entry.new_instance_name.removeSurrounding("<get-", ">")
+    val newInstanceName = entry.new_instance_name.asName()
 
     val hasNewInstanceHelper =
-      helperOwner?.functions?.any {
-        val matchesName =
-          it.name.asString() == entry.new_instance_name || it.name.asString() == propertyHelperName
-
-        matchesName && (!staticHelpers || it.isStatic)
+      helperContainer?.functions?.any {
+        it.name == newInstanceName && (!staticHelpers || it.isStatic)
       } == true
 
     if (!hasCreateHelper || !hasNewInstanceHelper) {
@@ -1358,7 +1352,7 @@ internal class BindingContainerTransformer(
         signatureCallableId = mirrorFunction.callableId,
         annotations = sourceAnnotations,
         isPropertyAccessor = entry.property_name.isNotEmpty(),
-        newInstanceName = Name.identifier(entry.new_instance_name),
+        newInstanceName = newInstanceName,
         isCompanionBlockMember = entry.is_companion_block_member,
         function = sourceFunction,
         signatureFunction = mirrorFunction,
