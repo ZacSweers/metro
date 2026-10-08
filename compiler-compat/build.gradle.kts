@@ -31,7 +31,7 @@ buildConfig {
       // https://github.com/JetBrains/intellij-community/blob/idea/<intellij-version>/.idea/libraries/kotlinc_kotlin_compiler_common.xml
       .zip(
         // Hand-maintained Beta/RC mappings. Kept separate because ide-mappings.txt is regenerated.
-        providers.fileContents(layout.projectDirectory.file("prerelease-mappings.txt")).asText
+        providers.fileContents(layout.projectDirectory.file("prerelease-mappings.txt")).asText,
       ) { ideMappings, prereleaseMappings ->
         ideMappings + "\n" + prereleaseMappings
       }
