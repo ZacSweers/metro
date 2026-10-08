@@ -68,8 +68,9 @@ internal class ContributionHintIrTransformer(
    * Links FIR-generated hints to their contributing source for incremental compilation. JVM hints
    * use the source path and retain their unique facade names. Clearing the plugin-file marker lets
    * JVM output tracking use that source as the owner. KLIB hints use unique sibling paths so
-   * Native's file caches remain distinct. The original FIR file keeps its metadata and symbols.
-   * This works around https://youtrack.jetbrains.com/issue/KT-90002.
+   * Native's file caches remain distinct. Hints for synthetic sources keep their FIR file entries.
+   * The original FIR file keeps its metadata and symbols. This works around
+   * https://youtrack.jetbrains.com/issue/KT-90002.
    */
   private fun prepareHintFile(hint: IrSimpleFunction) {
     val file = hint.file
@@ -82,13 +83,18 @@ internal class ContributionHintIrTransformer(
         contributingClass
       }
 
+    val sourcePath = Path(sourceClass.fileEntry.name)
+    if (!sourcePath.isAbsolute) {
+      return
+    }
+
     val hintFileName = Path(file.fileEntry.name).fileName.toString()
     val isJvm = pluginContext.platform.isJvm()
     val hintPath =
       if (isJvm) {
         sourceClass.fileEntry.name
       } else {
-        Path(sourceClass.fileEntry.name).parent.resolve(hintFileName).absolutePathString()
+        sourcePath.parent.resolve(hintFileName).absolutePathString()
       }
 
     file.fileEntry = NaiveSourceBasedFileEntryImpl(hintPath)

@@ -6,14 +6,18 @@ package dev.zacsweers.metro.gradle.incremental
 
 import com.autonomousapps.kit.gradle.Dependency
 import com.autonomousapps.kit.gradle.Dependency.Companion.implementation
+import com.autonomousapps.kit.gradle.Plugin
 import com.google.common.truth.Truth.assertThat
+import dev.zacsweers.metro.gradle.GradlePlugins
 import dev.zacsweers.metro.gradle.KmpTarget
 import dev.zacsweers.metro.gradle.KotlinToolingVersion
 import dev.zacsweers.metro.gradle.MetroOptionOverrides
 import dev.zacsweers.metro.gradle.MetroProject
 import dev.zacsweers.metro.gradle.classLoader
 import dev.zacsweers.metro.gradle.cleanOutputLine
+import dev.zacsweers.metro.gradle.getTestCircuitVersion
 import dev.zacsweers.metro.gradle.getTestCompilerToolingVersion
+import dev.zacsweers.metro.gradle.getTestCompilerVersion
 import dev.zacsweers.metro.gradle.getTestOmitRedundantMirrorsOverride
 import dev.zacsweers.metro.gradle.invokeMain
 import dev.zacsweers.metro.gradle.source
@@ -31,6 +35,89 @@ class ContributionICTests(target: KmpTarget) : BaseIncrementalCompilationTest(ta
     @JvmStatic
     @Parameterized.Parameters(name = "{0}")
     fun targets(): List<KmpTarget> = KmpTarget.selectedTargets()
+  }
+
+  @Test
+  fun generatedCircuitFactoriesContributeAcrossModules() {
+    val circuitVersion = getTestCircuitVersion()
+    val circuitRuntime =
+      implementation("com.slack.circuit:circuit-runtime-presenter:$circuitVersion")
+    val circuitAnnotations =
+      implementation("com.slack.circuit:circuit-codegen-annotations:$circuitVersion")
+    val composePlugin = Plugin("org.jetbrains.kotlin.plugin.compose", getTestCompilerVersion())
+    val fixture =
+      object :
+        MetroProject(
+          additionalGradleProperties =
+            listOf(
+              "kotlin.compiler.execution.strategy=daemon",
+              "kotlin.daemon.useFallbackStrategy=false",
+            ),
+        ) {
+        override fun buildGradleProject() = multiModuleProject {
+          root {
+            sources(
+              source(
+                """
+                import com.slack.circuit.runtime.presenter.Presenter
+
+                @DependencyGraph(AppScope::class)
+                interface AppGraph {
+                  val presenterFactories: Set<Presenter.Factory>
+                }
+
+                fun main(): Int = createGraph<AppGraph>().presenterFactories.size
+                """,
+                fileNameWithoutExtension = "Main",
+              ),
+            )
+            dependencies(implementation(":feature"), circuitRuntime)
+          }
+          subproject("feature") {
+            sources(
+              source(
+                """
+                import androidx.compose.runtime.Composable
+                import com.slack.circuit.codegen.annotations.CircuitInject
+                import com.slack.circuit.runtime.CircuitUiState
+                import com.slack.circuit.runtime.screen.Screen
+
+                data object TestScreen : Screen
+                data object TestState : CircuitUiState
+
+                @CircuitInject(TestScreen::class, AppScope::class)
+                @Composable
+                fun TestPresenter(): TestState = TestState
+                """,
+                fileNameWithoutExtension = "TestPresenter",
+              ),
+            )
+            plugins(GradlePlugins.Kotlin.multiplatform(), composePlugin, GradlePlugins.metro)
+            dependencies(circuitRuntime, circuitAnnotations)
+            buildScript {
+              withKotlin(
+                """
+                kotlin {
+                  ${target.gradleTargetName}()
+                }
+
+                @OptIn(dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi::class)
+                metro {
+                  enableCircuitCodegen.set(true)
+                }
+                """
+                  .trimIndent(),
+              )
+            }
+          }
+        }
+      }
+
+    val project = fixture.gradleProject
+    val result = project.compileKotlin()
+    assertThat(result.task(compileTaskFor("feature"))?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(result.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    ifJvmTarget { assertThat(project.invokeMain<Int>()).isEqualTo(1) }
   }
 
   @Test
