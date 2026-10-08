@@ -823,7 +823,8 @@ internal class BindingContainerTransformer(
         targetFunction = reference.callee?.owner,
         signatureAnnotations = reference.annotations.takeIf { useCreatorSignatureCarrier },
         sourceMetroParameters = reference.parameters,
-        sourceParameters = reference.parameters.regularParameters.map { it.asValueParameter },
+        // Context dependencies become ordinary parameters on newInstance().
+        sourceParameters = reference.parameters.nonDispatchParameters.map { it.asValueParameter },
         sourceTypeParameters = reference.parent.owner,
         returnTypeProvider = { typeParameters ->
           val sourceClass = reference.parent.owner
