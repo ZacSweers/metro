@@ -869,7 +869,7 @@ internal class BindingContainerTransformer(
         }
       }
 
-    generateCompatibilityFactoryHelpers(factoryCls)
+    generateCompatibilityBridges(factoryCls)
     return newInstanceFunction
   }
 

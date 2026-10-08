@@ -516,21 +516,21 @@ internal fun IrClass.factoryHelperDeclarationContainer(): IrClass {
 }
 
 /**
- * Adds receiverless entry points that delegate to the canonical companion helpers. Assisted
+ * Adds static functions that delegate to the generated companion functions. Assisted
  * implementations keep their binary signatures in proto metadata and skip registration.
  */
 context(context: IrMetroContext)
-internal fun generateCompatibilityFactoryHelpers(
+internal fun generateCompatibilityBridges(
   factoryClass: IrClass,
-  helperFunctions: List<IrSimpleFunction>? = null,
+  functions: List<IrSimpleFunction>? = null,
   registerAsMetadataVisible: Boolean = true,
 ) {
   if (factoryClass.isObject || !context.options.companionMode.addsStaticHelperBridges) {
     return
   }
   val companion = checkNotNull(factoryClass.companionObject())
-  val canonicalHelpers =
-    helperFunctions
+  val canonicalFunctions =
+    functions
       ?: companion.functions
         .filter {
           it.origin == Origins.FactoryCreateFunction ||
@@ -538,7 +538,7 @@ internal fun generateCompatibilityFactoryHelpers(
             it.origin == Origins.MembersInjectorStaticInjectFunction
         }
         .toList()
-  for (canonical in canonicalHelpers) {
+  for (canonical in canonicalFunctions) {
     // The block entry point owns the platform signature in compatibility mode.
     canonical.replaceAnnotationsCompat(
       canonical.annotationsCompat().filter {
@@ -556,12 +556,12 @@ internal fun generateCompatibilityFactoryHelpers(
       if (existingBridge != null) {
         existingBridge
       } else {
-        val copiedHelper = canonical.deepCopyWithSymbols(initialParent = factoryClass)
-        copiedHelper.parent = factoryClass
-        copiedDispatchReceiver = copiedHelper.dispatchReceiverParameter
-        copiedHelper.setDispatchReceiver(null)
-        factoryClass.declarations.add(copiedHelper)
-        copiedHelper
+        val copiedFunction = canonical.deepCopyWithSymbols(initialParent = factoryClass)
+        copiedFunction.parent = factoryClass
+        copiedDispatchReceiver = copiedFunction.dispatchReceiverParameter
+        copiedFunction.setDispatchReceiver(null)
+        factoryClass.declarations.add(copiedFunction)
+        copiedFunction
       }
     if (existingBridge != null) {
       // FIR supplies member-injector headers before IR copies their qualifier annotations.

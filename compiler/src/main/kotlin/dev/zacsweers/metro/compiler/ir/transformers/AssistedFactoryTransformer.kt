@@ -502,7 +502,7 @@ internal class AssistedFactoryTransformer(
           )
         }
     }
-    generateCompatibilityFactoryHelpers(
+    generateCompatibilityBridges(
       implClass,
       listOf(creatorDeclarations.createFunction),
       // Assisted implementations use their enclosing factory's proto metadata for binary stubs.

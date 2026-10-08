@@ -852,7 +852,7 @@ internal class InjectedClassTransformer(
             }
           }
       }
-    generateCompatibilityFactoryHelpers(factoryCls)
+    generateCompatibilityBridges(factoryCls)
     return newInstanceFunction
   }
 }

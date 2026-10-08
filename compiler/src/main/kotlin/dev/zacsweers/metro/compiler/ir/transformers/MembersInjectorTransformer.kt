@@ -542,7 +542,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
       }
     }
 
-    generateCompatibilityFactoryHelpers(injectorClass)
+    generateCompatibilityBridges(injectorClass)
     injectorClass.dumpToMetroLog()
 
     // Write metadata to indicate Metro generated this injector
