@@ -114,6 +114,7 @@ import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isInterface
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nonDispatchParameters
+import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.properties
 import org.jetbrains.kotlin.name.ClassId
@@ -973,6 +974,7 @@ internal class DependencyGraphTransformer(
     exitProcessing()
   }
 
+  /** Completes root graph creator bodies for the selected companion mode. */
   private fun implementCreatorFunctions(
     sourceGraph: IrClass,
     creator: GraphNode.Creator?,
@@ -992,100 +994,148 @@ internal class DependencyGraphTransformer(
       }
     val factoryCreator = creator?.expectAsOrNull<GraphNode.Creator.Factory>()
 
-    fun implementConstructorCall(owner: IrClass, name: String) {
-      owner.requireSimpleFunction(name).owner.apply {
-        if (isFakeOverride) {
-          finalizeFakeOverride(owner.thisReceiverOrFail)
-        }
-        val function = this
-        body =
-          pluginContext.createIrBuilder(symbol).run {
-            irExprBodySafe(
-              irCallConstructorWithSameParameters(function, metroGraph.primaryConstructor!!.symbol)
-            )
-          }
-      }
-    }
-
     // The hidden factory remains available in every mode for first-class factory intrinsics.
     val factoryImpl = factoryCreator?.type?.graphFactoryImplClass()
     if (factoryCreator != null && factoryImpl != null) {
-      implementConstructorCall(factoryImpl, factoryCreator.function.name.asString())
-      if (companion != null) {
-        val companionImplementsFactory =
-          factoryCreator.type.isInterface && companion.implements(factoryCreator.type.classIdOrFail)
-        if (companionImplementsFactory) {
-          implementConstructorCall(companion, factoryCreator.function.name.asString())
-        } else {
-          companion.requireSimpleFunction(Symbols.StringNames.FACTORY).owner.apply {
-            if (origin == Origins.MetroGraphFactoryCompanionGetter) {
-              body =
-                pluginContext.createIrBuilder(symbol).run {
-                  irExprBodySafe(irGetObject(factoryImpl.symbol))
-                }
-            }
-          }
-        }
-      }
+      implementGraphFactoryCreators(factoryCreator, factoryImpl, companion, metroGraph)
     } else if (companion != null) {
-      implementConstructorCall(companion, Symbols.StringNames.INVOKE)
+      implementGraphConstructorCall(
+        companion.requireSimpleFunction(Symbols.StringNames.INVOKE).owner,
+        metroGraph,
+      )
     }
 
     if (mode.requiresCompanionBlocks) {
-      val staticCreator =
-        sourceGraph.functions.single {
-          it.origin == Origins.MetroGraphCreatorsObjectInvokeDeclaration ||
-            it.origin == Origins.MetroGraphFactoryCompanionGetter
-        }
-      if (
-        factoryCreator != null &&
-          staticCreator.origin == Origins.MetroGraphCreatorsObjectInvokeDeclaration
-      ) {
-        val defaultReceiver =
-          if (mode == CompanionMode.COMPATIBILITY) {
-            checkNotNull(companion)
-          } else {
-            checkNotNull(factoryImpl)
-          }
-        copyParameterDefaultValues(
-          providerFunction = factoryCreator.function,
-          sourceMetroParameters = factoryCreator.parameters,
-          sourceParameters = factoryCreator.function.regularParameters,
-          targetParameters = staticCreator.regularParameters,
-          containerParameter = null,
-          preserveAllDefaults = true,
-          receiverExpression = {
-            pluginContext.createIrBuilder(staticCreator.symbol).irGetObject(defaultReceiver.symbol)
-          },
-        )
-      }
-      staticCreator.body =
-        pluginContext.createIrBuilder(staticCreator.symbol).run {
-          val result =
-            if (mode == CompanionMode.COMPATIBILITY) {
-              val canonicalCompanion = checkNotNull(companion)
-              val canonicalFunction =
-                canonicalCompanion.requireSimpleFunction(staticCreator.name.asString())
-              irInvoke(
-                callee = canonicalFunction,
-                dispatchReceiver = irGetObject(canonicalCompanion.symbol),
-                args = staticCreator.nonDispatchParameters.map { irGet(it) },
-                typeArgs = staticCreator.typeParameters.map { it.defaultType },
-              )
-            } else if (staticCreator.origin == Origins.MetroGraphFactoryCompanionGetter) {
-              irGetObject(checkNotNull(factoryImpl).symbol)
-            } else {
-              irCallConstructorWithSameParameters(
-                staticCreator,
-                metroGraph.primaryConstructor!!.symbol,
-              )
-            }
-          irExprBodySafe(result)
-        }
-      // Kotlin's class serializer omits FIR extension members in the static scope.
-      metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(staticCreator)
+      implementCompanionBlockCreator(
+        sourceGraph,
+        factoryCreator,
+        factoryImpl,
+        companion,
+        metroGraph,
+      )
     }
     companion?.dumpToMetroLog()
+  }
+
+  /** Completes the hidden factory and the companion's factory contract when present. */
+  private fun implementGraphFactoryCreators(
+    creator: GraphNode.Creator.Factory,
+    factoryImpl: IrClass,
+    companion: IrClass?,
+    metroGraph: IrClass,
+  ) {
+    val factoryFunctionName = creator.function.name.asString()
+    implementGraphConstructorCall(
+      factoryImpl.requireSimpleFunction(factoryFunctionName).owner,
+      metroGraph,
+    )
+    if (companion == null) {
+      return
+    }
+
+    val companionImplementsFactory =
+      creator.type.isInterface && companion.implements(creator.type.classIdOrFail)
+    if (companionImplementsFactory) {
+      implementGraphConstructorCall(
+        companion.requireSimpleFunction(factoryFunctionName).owner,
+        metroGraph,
+      )
+      return
+    }
+
+    val factoryGetter = companion.requireSimpleFunction(Symbols.StringNames.FACTORY).owner
+    // User-defined factory() bodies stay intact.
+    if (factoryGetter.origin == Origins.MetroGraphFactoryCompanionGetter) {
+      factoryGetter.body =
+        pluginContext.createIrBuilder(factoryGetter.symbol).run {
+          irExprBodySafe(irGetObject(factoryImpl.symbol))
+        }
+    }
+  }
+
+  /** Finalizes inherited factory methods before giving them a graph constructor body. */
+  private fun implementGraphConstructorCall(function: IrSimpleFunction, metroGraph: IrClass) {
+    if (function.isFakeOverride) {
+      function.finalizeFakeOverride(function.parentAsClass.thisReceiverOrFail)
+    }
+    function.body =
+      pluginContext.createIrBuilder(function.symbol).run {
+        irExprBodySafe(
+          irCallConstructorWithSameParameters(function, metroGraph.primaryConstructor!!.symbol)
+        )
+      }
+  }
+
+  /** Completes the receiverless creator declared by modes that require companion blocks. */
+  private fun implementCompanionBlockCreator(
+    sourceGraph: IrClass,
+    factoryCreator: GraphNode.Creator.Factory?,
+    factoryImpl: IrClass?,
+    companion: IrClass?,
+    metroGraph: IrClass,
+  ) {
+    val staticCreator =
+      sourceGraph.functions.single {
+        it.origin == Origins.MetroGraphCreatorsObjectInvokeDeclaration ||
+          it.origin == Origins.MetroGraphFactoryCompanionGetter
+      }
+    val constructsGraph = staticCreator.origin == Origins.MetroGraphCreatorsObjectInvokeDeclaration
+
+    if (options.companionMode == CompanionMode.COMPATIBILITY) {
+      val canonicalCompanion = checkNotNull(companion)
+      if (factoryCreator != null && constructsGraph) {
+        copyGraphCreatorDefaults(staticCreator, factoryCreator, canonicalCompanion)
+      }
+
+      // Compatibility creators delegate through the companion's factory contract.
+      val canonicalFunction =
+        canonicalCompanion.requireSimpleFunction(staticCreator.name.asString())
+      staticCreator.body =
+        pluginContext.createIrBuilder(staticCreator.symbol).run {
+          irExprBodySafe(
+            irInvoke(
+              callee = canonicalFunction,
+              dispatchReceiver = irGetObject(canonicalCompanion.symbol),
+              args = staticCreator.nonDispatchParameters.map { irGet(it) },
+              typeArgs = staticCreator.typeParameters.map { it.defaultType },
+            )
+          )
+        }
+    } else if (constructsGraph) {
+      if (factoryCreator != null) {
+        copyGraphCreatorDefaults(staticCreator, factoryCreator, checkNotNull(factoryImpl))
+      }
+      implementGraphConstructorCall(staticCreator, metroGraph)
+    } else {
+      // Abstract-class factories expose factory() and return the hidden factory singleton.
+      val hiddenFactory = checkNotNull(factoryImpl)
+      staticCreator.body =
+        pluginContext.createIrBuilder(staticCreator.symbol).run {
+          irExprBodySafe(irGetObject(hiddenFactory.symbol))
+        }
+    }
+
+    // Kotlin's class serializer omits FIR extension members in the static scope.
+    metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(staticCreator)
+  }
+
+  /** Copies factory defaults whose instance references must use the generated singleton. */
+  private fun copyGraphCreatorDefaults(
+    staticCreator: IrSimpleFunction,
+    factoryCreator: GraphNode.Creator.Factory,
+    receiver: IrClass,
+  ) {
+    copyParameterDefaultValues(
+      providerFunction = factoryCreator.function,
+      sourceMetroParameters = factoryCreator.parameters,
+      sourceParameters = factoryCreator.function.regularParameters,
+      targetParameters = staticCreator.regularParameters,
+      containerParameter = null,
+      preserveAllDefaults = true,
+      receiverExpression = {
+        pluginContext.createIrBuilder(staticCreator.symbol).irGetObject(receiver.symbol)
+      },
+    )
   }
 
   private fun IrClass.graphFactoryImplClass(): IrClass {
