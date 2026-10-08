@@ -787,10 +787,10 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
     val injectorClass =
       clazz.nestedClasses.singleOrNull { it.name == injectorClassName } ?: return emptyList()
 
-    val helperOwner = injectorClass.staticIshDeclarationContainerOrNull() ?: return emptyList()
+    val container = injectorClass.staticIshDeclarationContainerOrNull() ?: return emptyList()
 
     // Try to get create() function to determine the correct parameter order
-    val createFunction = helperOwner.requireSimpleFunction(Symbols.StringNames.CREATE).owner
+    val createFunction = container.requireSimpleFunction(Symbols.StringNames.CREATE).owner
 
     val allCreateParams = createFunction.regularParameters
 
@@ -826,7 +826,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
     // Extract parameters in the determined order
     return sortedFunctionNames.mapNotNull { functionName ->
       val injectFunction =
-        helperOwner.declarations.filterIsInstance<IrSimpleFunction>().find {
+        container.declarations.filterIsInstance<IrSimpleFunction>().find {
           it.name.asString() == functionName
         }
 
