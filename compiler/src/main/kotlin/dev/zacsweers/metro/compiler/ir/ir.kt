@@ -421,9 +421,7 @@ internal fun IrGeneratorContext.createIrBuilder(symbol: IrSymbol): DeclarationIr
 }
 
 internal fun IrBuilderWithScope.irInvoke(
-  /**
-   * If null, this will be secondarily analyzed to see if [callee] is static or a companion object
-   */
+  /** An omitted dispatch receiver is inferred when the callee declares an object receiver. */
   dispatchReceiver: IrExpression? = null,
   extensionReceiver: IrExpression? = null,
   callee: IrFunctionSymbol,
@@ -508,6 +506,57 @@ internal fun IrBuilderWithScope.irInvoke(
       }
   }
   return call
+}
+
+/**
+ * Invokes [callee] with [arguments] in [Parameters.allParameters] order.
+ *
+ * Instance dispatch receivers come first. Extension receivers precede context arguments and
+ * ordinary arguments. Object dispatch receivers are inferred and must be omitted from [arguments].
+ */
+internal fun IrBuilderWithScope.irInvoke(
+  callee: IrFunctionSymbol,
+  arguments: List<IrExpression?>,
+  typeHint: IrType? = null,
+): IrMemberAccessExpression<*> {
+  val target = callee.owner
+  val dispatchParameter = target.dispatchReceiverParameter
+  val hasObjectReceiver = dispatchParameter?.type?.rawTypeOrNull()?.isObject == true
+  val expectedCount =
+    target.parameters.size -
+      if (hasObjectReceiver) {
+        1
+      } else {
+        0
+      }
+  check(arguments.size == expectedCount) {
+    "Expected $expectedCount dependency arguments for ${target.kotlinFqName}, got ${arguments.size}"
+  }
+
+  var argumentIndex = 0
+  val dispatchReceiver =
+    if (dispatchParameter != null && !hasObjectReceiver) {
+      arguments[argumentIndex++]
+    } else {
+      null
+    }
+
+  val extensionReceiver =
+    if (target.extensionReceiverParameterCompat != null) {
+      arguments[argumentIndex++]
+    } else {
+      null
+    }
+
+  val contextEndIndex = argumentIndex + target.contextParameters.size
+  return irInvoke(
+    callee = callee,
+    dispatchReceiver = dispatchReceiver,
+    extensionReceiver = extensionReceiver,
+    contextArgs = arguments.subList(argumentIndex, contextEndIndex),
+    args = arguments.subList(contextEndIndex, arguments.size),
+    typeHint = typeHint,
+  )
 }
 
 context(context: CompatContext)

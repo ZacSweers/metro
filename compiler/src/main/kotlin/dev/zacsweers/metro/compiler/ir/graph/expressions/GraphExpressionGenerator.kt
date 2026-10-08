@@ -46,7 +46,6 @@ import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.parent
 import org.jetbrains.kotlin.ir.declarations.IrFunction
-import org.jetbrains.kotlin.ir.declarations.IrParameterKind
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
@@ -480,7 +479,11 @@ private constructor(
                 )
 
               val directExpr: IrExpression =
-                invokeSourceProvider(realFunction, args, binding.typeKey.type)
+                irInvoke(
+                  callee = realFunction.symbol,
+                  arguments = args,
+                  typeHint = binding.typeKey.type,
+                )
               directExpr
                 .letIf(accessType == AccessType.INSTANCE) {
                   maybeTraceDirectExpression(
@@ -1133,9 +1136,8 @@ private constructor(
     )
 
   /**
-   * The source callable's parameters in call order, the same decomposition
-   * [generateBindingArguments] uses to map args (dispatch receiver for non-object provides, context
-   * params, extension receiver, regular params; assisted excluded).
+   * Selects the dependencies resolved by [generateBindingArguments] and nested suspend factories.
+   * Object dispatch receivers are inferred by [irInvoke]. Assisted parameters come from the caller.
    */
   private fun callOrderedParams(targetParams: Parameters, binding: IrBinding): List<Parameter> =
     buildList {
@@ -1204,7 +1206,11 @@ private constructor(
               providerFactory.realDeclaration?.expectAsOrNull<IrFunction>()
                 ?: providerFactory.function
             buildSourceCall = { resolved ->
-              invokeSourceProvider(realFunction, resolved, binding.typeKey.type)
+              irInvoke(
+                callee = realFunction.symbol,
+                arguments = resolved,
+                typeHint = binding.typeKey.type,
+              )
             }
           } else {
             buildSourceCall = { resolved ->
@@ -1241,34 +1247,6 @@ private constructor(
         .decorateNewSuspendProvider(contextualTypeKey, binding.diagnosticTypeName)
     }
 
-  /** Splits Metro's dependency argument order into Kotlin's receiver and parameter kinds. */
-  context(scope: IrBuilderWithScope)
-  private fun invokeSourceProvider(
-    function: IrFunction,
-    arguments: List<IrExpression?>,
-    typeHint: IrType,
-  ): IrExpression {
-    val parameters = function.parameters().allParameters
-    check(parameters.size == arguments.size) {
-      "Expected ${parameters.size} dependency arguments for ${function.kotlinFqName}, got ${arguments.size}"
-    }
-    val argumentsByKind =
-      parameters
-        .zip(arguments)
-        .groupBy(
-          keySelector = { (parameter, _) -> parameter.asValueParameter.kind },
-          valueTransform = { (_, argument) -> argument },
-        )
-    return scope.irInvoke(
-      callee = function.symbol,
-      dispatchReceiver = argumentsByKind[IrParameterKind.DispatchReceiver]?.single(),
-      extensionReceiver = argumentsByKind[IrParameterKind.ExtensionReceiver]?.single(),
-      contextArgs = argumentsByKind[IrParameterKind.Context].orEmpty(),
-      args = argumentsByKind[IrParameterKind.Regular].orEmpty(),
-      typeHint = typeHint,
-    )
-  }
-
   context(scope: IrBuilderWithScope)
   private fun generateBindingArguments(
     targetParams: Parameters,
@@ -1279,17 +1257,7 @@ private constructor(
     with(scope) {
       // TODO clean all this up
       val params = function.parameters()
-      var paramsToMap = buildList {
-        if (
-          binding is IrBinding.Provided &&
-            targetParams.dispatchReceiverParameter?.type?.rawTypeOrNull()?.isObject != true
-        ) {
-          targetParams.dispatchReceiverParameter?.let(::add)
-        }
-        addAll(targetParams.contextParameters.filterNot { it.isAssisted })
-        targetParams.extensionReceiverParameter?.let(::add)
-        addAll(targetParams.regularParameters.filterNot { it.isAssisted })
-      }
+      var paramsToMap = callOrderedParams(targetParams, binding)
 
       // Handle case where function has more parameters than the binding
       // This can happen when parameters are inherited from ancestor classes
