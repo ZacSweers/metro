@@ -90,22 +90,29 @@ internal class CreateGraphTransformer(
         if (needsHiddenFactory && !rawType.isExternalParent) {
           factoryImpl = rawType.getOrCreateGraphFactoryImplClassShell()
         }
+        // Hidden factory objects remain available when graph companions are omitted.
+        if (factoryImpl?.isObject == true) {
+          return withIrBuilder(expression.symbol) { irGetObject(factoryImpl.symbol) }
+        }
+
+        val factoryCompanion =
+          companion
+            ?: reportCompilerBug(
+              "Cannot find a graph factory implementation for ${rawType.kotlinFqName}"
+            )
         if (factoryImpl != null) {
           // Replace it with a call directly to the factory creator
           return withIrBuilder(expression.symbol) {
-            if (factoryImpl.isObject) {
-              irGetObject(factoryImpl.symbol)
-            } else {
-              irInvoke(
-                callee = checkNotNull(companion).requireSimpleFunction(Symbols.StringNames.FACTORY),
-                typeArgs = type.expectAsOrNull<IrSimpleType>()?.arguments?.map { it.typeOrFail },
-              )
-            }
+            irInvoke(
+              callee = factoryCompanion.requireSimpleFunction(Symbols.StringNames.FACTORY),
+              dispatchReceiver = companionReceiver(factoryCompanion),
+              typeArgs = type.expectAsOrNull<IrSimpleType>()?.arguments?.map { it.typeOrFail },
+            )
           }
         }
 
         if (companionIsTheFactory) {
-          withIrBuilder(expression.symbol) { irGetObject(checkNotNull(companion).symbol) }
+          withIrBuilder(expression.symbol) { irGetObject(factoryCompanion.symbol) }
         } else {
           val factoryFunction =
             companionFactoryFunction
@@ -115,7 +122,7 @@ internal class CreateGraphTransformer(
           // Replace it with a call directly to the factory function
           withIrBuilder(expression.symbol) {
             irCall(callee = factoryFunction.symbol, type = type).apply {
-              dispatchReceiver = companionReceiver(checkNotNull(companion))
+              dispatchReceiver = companionReceiver(factoryCompanion)
             }
           }
         }
@@ -139,10 +146,10 @@ internal class CreateGraphTransformer(
           companion?.functions?.singleOrNull {
             it.hasAnnotation(Symbols.FqNames.GraphFactoryInvokeFunctionMarkerClass)
           }
+        val factoryFunction = staticCreator ?: companionCreator
         // A local companion delegate needs construction before its singleton is initialized.
         val initializesCompanionDelegate = companionIsTheGraph && !rawType.isExternalParent
-        val hasNoCreatorFunction = staticCreator == null && companionCreator == null
-        if (initializesCompanionDelegate || hasNoCreatorFunction) {
+        if (initializesCompanionDelegate || factoryFunction == null) {
           val graphImpl =
             if (options.generateClassesInIr) {
               rawType.getOrCreateGraphImplClassShell()
@@ -157,7 +164,6 @@ internal class CreateGraphTransformer(
             )
           }
         } else {
-          val factoryFunction = checkNotNull(staticCreator ?: companionCreator)
           withIrBuilder(expression.symbol) {
             irCall(callee = factoryFunction.symbol, type = type).apply {
               type.expectAsOrNull<IrSimpleType>()?.arguments.orEmpty().forEachIndexed {
@@ -166,7 +172,7 @@ internal class CreateGraphTransformer(
                 typeArguments[index] = argument.typeOrFail
               }
               if (factoryFunction.dispatchReceiverParameter != null) {
-                dispatchReceiver = companionReceiver(checkNotNull(companion))
+                dispatchReceiver = companionReceiver(factoryFunction.parentAsClass)
               }
             }
           }
