@@ -631,7 +631,7 @@ internal class BindingContainerTransformer(
               annotations = reference.annotations,
               isPropertyAccessor = reference.isPropertyAccessor,
               newInstanceName = reference.name,
-              isStatic = reference.isStatic,
+              isCompanionBlockMember = !reference.parent.owner.isObject && reference.isStatic,
               function = copiedSourceFunction,
               signatureFunction = signatureFunction,
             )
@@ -1359,7 +1359,7 @@ internal class BindingContainerTransformer(
         annotations = sourceAnnotations,
         isPropertyAccessor = entry.property_name.isNotEmpty(),
         newInstanceName = Name.identifier(entry.new_instance_name),
-        isStatic = sourceFunction.isStatic,
+        isCompanionBlockMember = entry.is_companion_block_member,
         function = sourceFunction,
         signatureFunction = mirrorFunction,
       )

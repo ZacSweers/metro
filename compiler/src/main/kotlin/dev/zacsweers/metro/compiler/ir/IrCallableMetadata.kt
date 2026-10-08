@@ -41,8 +41,8 @@ internal class IrCallableMetadata(
   val isPropertyAccessor: Boolean,
   /** The name for the generated newInstance function. */
   val newInstanceName: Name?,
-  /** Static providers don't acquire a container receiver during binary reconstruction. */
-  val isStatic: Boolean,
+  /** Companion-block providers don't require a source-container receiver. */
+  val isCompanionBlockMember: Boolean,
   @Poko.Skip val function: IrSimpleFunction,
   @Poko.Skip val signatureFunction: IrSimpleFunction,
 ) {
@@ -71,7 +71,7 @@ internal class IrCallableMetadata(
         annotations = annotations,
         isPropertyAccessor = isPropertyAccessor,
         newInstanceName = newInstanceName,
-        isStatic = sourceFunction.isStatic,
+        isCompanionBlockMember = !sourceFunction.parentAsClass.isObject && sourceFunction.isStatic,
         function = sourceFunction,
         signatureFunction = signatureFunction,
       )
@@ -102,7 +102,7 @@ internal fun IrAnnotationContainer.irCallableMetadata(
         sourceAnnotations ?: signatureFunction.metroAnnotations(context.metroSymbols.classIds),
       isPropertyAccessor = signatureFunction.isPropertyAccessor,
       newInstanceName = signatureFunction.name,
-      isStatic = signatureFunction.isStatic,
+      isCompanionBlockMember = false,
       function = signatureFunction,
       signatureFunction = signatureFunction,
     )
@@ -207,7 +207,7 @@ internal fun IrConstructorCall.toIrCallableMetadata(
     annotations = annotations,
     isPropertyAccessor = propertyName.isNotBlank(),
     newInstanceName = newInstanceName,
-    isStatic = function.isStatic,
+    isCompanionBlockMember = isCompanionBlockMember,
     function = function,
     signatureFunction = signatureFunction,
   )
