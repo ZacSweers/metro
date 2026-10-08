@@ -28,9 +28,7 @@ public class CompatContextImpl : CompatContext by DelegateType() {
   }
 
   public class Factory : CompatContext.Factory {
-    // The adapted FIR and IR APIs first shipped in this dev build. Prerelease mappings rely on this
-    // floor.
-    override val minVersion: String = "2.5.0-dev-9346"
+    override val minVersion: String = "2.5.0-dev-10106"
 
     override fun create(): CompatContext = CompatContextImpl()
   }

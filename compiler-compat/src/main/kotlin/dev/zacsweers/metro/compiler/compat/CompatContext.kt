@@ -347,7 +347,7 @@ public interface CompatContext {
 
   /** Copies this status with the requested override flag. */
   @CompatApi(
-    since = "2.5.0-dev-9169",
+    since = "2.5.0-dev-10106",
     reason = CompatApi.Reason.ABI_CHANGE,
     message = "FirDeclarationStatus.copy added isRichError",
   )

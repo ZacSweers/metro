@@ -43,6 +43,12 @@ val kotlin23 = KotlinToolingVersion(KotlinVersion(2, 3))
 
 val kotlin24Beta1 = KotlinToolingVersion(KotlinVersion(2, 4), "Beta1")
 
+// The test framework needs JUnit 5 starting with this build.
+val kotlin250Dev9169 = KotlinToolingVersion("2.5.0-dev-9169")
+
+// The test framework locates kotlin-scripting-common through KotlinJars starting with this build.
+val kotlin250Dev9992 = KotlinToolingVersion("2.5.0-dev-9992")
+
 // Minimum supported 2.4.20 dev build. 2.4.20 dev builds ship KT-85292:
 // `commonConfigurationForJvmTest` was renamed to `setupJvmPipelineSteps`, and the diagnostic / IR
 // dump golden file extensions lost their `.fir.` infix. Anything < this still uses the legacy
@@ -211,9 +217,9 @@ reflectVersion =
   }
 
 dependencies {
-  // The 9169 test framework calls Kotlin assertion helpers removed by JUnit 6.
-  if (testCompilerVersion == "2.5.0-dev-9169") {
-    testImplementation(enforcedPlatform("org.junit:junit-bom:6.1.3"))
+  // Newer 2.5.0 test frameworks call Kotlin assertion helpers removed by JUnit 6.
+  if (testKotlinVersion >= kotlin250Dev9169) {
+    testImplementation(enforcedPlatform("org.junit:junit-bom:5.14.4"))
   }
 
   // 2.3.0 changed the test gen APIs around into different packages
@@ -242,6 +248,10 @@ dependencies {
     "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:$compilerTestFrameworkVersion",
   )
   testImplementation("org.jetbrains.kotlin:kotlin-compiler:$kotlinArtifactsVersion")
+  if (testKotlinVersion >= kotlin250Dev9992) {
+    // KotlinJars lives here, but the test framework artifact doesn't declare it.
+    testRuntimeOnly("org.jetbrains.kotlin:kotlin-scripting-jvm:$kotlinArtifactsVersion")
+  }
   testImplementation("org.jetbrains.kotlin:kotlin-compose-compiler-plugin:$kotlinArtifactsVersion")
   testImplementation(
     "org.jetbrains.kotlin:kotlin-serialization-compiler-plugin:$kotlinArtifactsVersion",
