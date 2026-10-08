@@ -983,8 +983,7 @@ internal class DependencyGraphTransformer(
       return
     }
     val mode = options.companionMode
-    val generatesCompanionCreators =
-      mode == CompanionMode.COMPANION_OBJECT || mode == CompanionMode.COMPATIBILITY
+    val generatesCompanionCreators = mode.shouldGenerateCompanionObject()
     val companion =
       if (generatesCompanionCreators) {
         sourceGraph.companionObject()

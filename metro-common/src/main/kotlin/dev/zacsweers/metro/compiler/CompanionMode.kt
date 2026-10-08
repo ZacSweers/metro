@@ -27,6 +27,10 @@ public enum class CompanionMode {
   public val requiresCompanionBlocks: Boolean
     get() = this == COMPANION_BLOCK || this == COMPATIBILITY
 
+  /** Keeps graph creators on a companion object with their factory contracts. */
+  public fun shouldGenerateCompanionObject(): Boolean =
+    this == COMPANION_OBJECT || this == COMPATIBILITY
+
   public companion object {
     /** Accepts enum names and their hyphenated compiler-option spellings. */
     public fun parse(value: String): CompanionMode {

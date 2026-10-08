@@ -207,9 +207,7 @@ internal class DependencyGraphFirGenerator(session: FirSession, compatContext: C
     get() = session.metroFirBuiltIns.options.companionMode
 
   private val generatesCompanionCreators: Boolean
-    get() =
-      companionMode == CompanionMode.COMPANION_OBJECT ||
-        companionMode == CompanionMode.COMPATIBILITY
+    get() = companionMode.shouldGenerateCompanionObject()
 
   private val generatesBlockCreators: Boolean
     get() = companionMode.requiresCompanionBlocks
