@@ -110,7 +110,7 @@ interface AppGraph : ChildGraph.Factory {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideQualifiedString", propertyName = "", startOffset = 712, endOffset = 790, newInstanceName = "provideQualifiedString")
+  @CallableMetadata(callableName = "provideQualifiedString", propertyName = "", startOffset = 712, endOffset = 790, newInstanceName = "provideQualifiedString", isCompanionBlockMember = false)
   class ProvideQualifiedStringMetroFactory : Factory<String> {
     private /* final field */ val instance: AppGraph = instance
     companion object Companion {
@@ -158,7 +158,7 @@ interface AppGraph : ChildGraph.Factory {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideString", propertyName = "", startOffset = 661, endOffset = 708, newInstanceName = "provideString")
+  @CallableMetadata(callableName = "provideString", propertyName = "", startOffset = 661, endOffset = 708, newInstanceName = "provideString", isCompanionBlockMember = false)
   class ProvideStringMetroFactory : Factory<String> {
     private /* final field */ val instance: AppGraph = instance
     companion object Companion {
@@ -255,7 +255,7 @@ interface AppGraph : ChildGraph.Factory {
 @GraphExtension
 interface ChildGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideCount", propertyName = "", startOffset = 337, endOffset = 374, newInstanceName = "provideCount")
+  @CallableMetadata(callableName = "provideCount", propertyName = "", startOffset = 337, endOffset = 374, newInstanceName = "provideCount", isCompanionBlockMember = false)
   class ProvideCountMetroFactory : Factory<Int> {
     private /* final field */ val instance: ChildGraph = instance
     companion object Companion {

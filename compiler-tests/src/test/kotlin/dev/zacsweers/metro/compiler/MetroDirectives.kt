@@ -21,6 +21,25 @@ object MetroDirectives : SimpleDirectivesContainer() {
   // TODO eventually support multiple outputs
   val CUSTOM_TEST_DATA_PER_COMPILER_VERSION by
     directive("Generate custom test data files per compiler version")
+  val COMPANION_MODE by
+    enumDirective<CompanionMode>(
+      "Controls generated graph creators and factory/injector helpers.",
+      applicability = DirectiveApplicability.Module,
+    )
+  val COMPANION_BLOCKS by
+    valueDirective(
+      "Enable or disable companion blocks for this module when the compiler supports them.",
+      applicability = DirectiveApplicability.Module,
+    ) {
+      it.toBooleanStrict()
+    }
+  val COMPANION_EXTENSIONS by
+    valueDirective(
+      "Enable or disable companion extensions for this module when the compiler supports them.",
+      applicability = DirectiveApplicability.Module,
+    ) {
+      it.toBooleanStrict()
+    }
   val GENERATE_ASSISTED_FACTORIES by directive("Enable assisted factories generation.")
   val ENABLE_TOP_LEVEL_FUNCTION_INJECTION by directive("Enable top-level function injection.")
   val GENERATE_CONTRIBUTION_HINTS by

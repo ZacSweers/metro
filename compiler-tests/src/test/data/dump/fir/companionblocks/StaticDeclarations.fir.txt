@@ -1,0 +1,38 @@
+FILE: StaticDeclarations.kt
+    @R|dev/zacsweers/metro/Inject|() public final class Value : R|kotlin/Any| {
+        private constructor(text: R|kotlin/String|): R|Value| {
+            super<R|kotlin/Any|>()
+        }
+
+        public final val text: R|kotlin/String| = R|<local>/text|
+            public get(): R|kotlin/String|
+
+        @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) public final class MetroFactory : R|kotlin/Any| {
+        }
+
+    }
+    @R|dev/zacsweers/metro/DependencyGraph|() public abstract interface AppGraph : R|kotlin/Any| {
+        public abstract val value: R|Value|
+            public get(): R|Value|
+
+        @R|dev/zacsweers/metro/Provides|() public final static fun text(): R|kotlin/String| {
+            ^text String(OK)
+        }
+
+        @R|dev/zacsweers/metro/internal/GraphFactoryInvokeFunctionMarker|() public final static operator fun invoke(): R|AppGraph|
+
+        @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) @R|dev/zacsweers/metro/internal/CallableMetadata|(callableName = String(text), propertyName = String(), startOffset = Int(230), endOffset = Int(265), newInstanceName = String(text), isCompanionBlockMember = Boolean(true)) public final object TextMetroFactory : R|kotlin/Any| {
+            private constructor(): R|AppGraph.TextMetroFactory| {
+                super<R|kotlin/Any|>()
+            }
+
+        }
+
+        @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) @R|dev/zacsweers/metro/internal/MetroImplMarker|() public final class Impl : R|AppGraph| {
+            private constructor(): R|AppGraph.Impl| {
+                super<R|kotlin/Any|>()
+            }
+
+        }
+
+    }

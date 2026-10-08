@@ -381,6 +381,27 @@ internal class FileShardBuilder(
                 )
             }
           }
+          val providerSymbol =
+            if (dataEntries.any { it.kind == BindingData.Kind.PROVIDED }) {
+              target.symbol as? KaCallableSymbol
+            } else {
+              null
+            }
+          // Context parameters belong to both function and property providers.
+          if (providerSymbol != null) {
+            for (parameter in callableBindingView(providerSymbol).contextParameters) {
+              checkCanceled()
+              val source = parameter.symbol.psi as? KtElement ?: continue
+              addConsumer(
+                source,
+                parameter.symbol,
+                parameter.returnType,
+                originClassId = consumerOriginClassId,
+                contributionScopes = consumerContributionScopes,
+                containerId = containerId,
+              )
+            }
+          }
           // Provider function parameters are consumers themselves.
           if (target is KtNamedFunction && !target.isAnnotatedWithAny(options.bindsAnnotations)) {
             for (parameter in target.valueParameters) {
@@ -413,6 +434,10 @@ internal class FileShardBuilder(
 
   private fun KaSession.graphOwnerDependency(target: KtDeclaration): KaContextualTypeKey? {
     val callable = target as? KtCallableDeclaration ?: return null
+    val callableSymbol = callable.symbol as? KaCallableSymbol ?: return null
+    if (isStaticProvider(callableSymbol)) {
+      return null
+    }
     val container = callable.containingClassOrObject ?: return null
     if (container is KtObjectDeclaration) return null
     val symbol = container.symbol as? KaNamedClassSymbol ?: return null

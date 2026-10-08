@@ -220,6 +220,22 @@ internal fun KaSession.bindingContainerInput(
     }
   }
 
+  // Static providers consume only their written dependencies.
+  val staticMembers =
+    (containerType.symbol as? KaClassSymbol)?.staticDeclaredMemberScope?.callables.orEmpty()
+  for (symbol in staticMembers) {
+    addIncludedContainerCallable(
+      callableBindingView(symbol),
+      containerKey,
+      options,
+      pointerManager,
+      bindings,
+      consumers,
+      cacheDependencies,
+      requiresContainerInstance = false,
+    )
+  }
+
   val containerPsi = containerType.symbol.psi as? KtClassOrObject
   val companions =
     containerPsi
@@ -309,7 +325,7 @@ private fun KaSession.addIncludedContainerCallable(
       consumers,
     )
   }
-  for (parameter in callable.valueParameters) {
+  for (parameter in callable.dependencyParameters) {
     if (parameter.symbol.hasAnyAnnotation(options.assistedAnnotations)) continue
     val anchor = parameter.symbol.psi as? KtElement ?: sourceElement ?: continue
     addIncludedContainerConsumer(

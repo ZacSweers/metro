@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.generators
 
+import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.Keys
@@ -104,8 +105,9 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
       // It's a factory's companion object
       emptySet()
     } else if (classSymbol.classId in providerFactoryClassIdsToCallables) {
-      // It's a generated factory, give it a companion object if it isn't going to be an object
-      if (classSymbol.classKind.isObject) {
+      // Compatibility helpers retain the companion as their canonical implementation.
+      val hasStaticHelpers = session.metroFirBuiltIns.options.companionMode.usesStaticHelpers
+      if (classSymbol.classKind.isObject || hasStaticHelpers) {
         emptySet()
       } else {
         setOf(SpecialNames.DEFAULT_NAME_FOR_COMPANION_OBJECT)
@@ -180,15 +182,23 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
   }
 
   private fun FirCallableSymbol<*>.asProviderCallable(owner: FirClassSymbol<*>): ProviderCallable? {
-    val instanceReceiver = if (owner.classKind.isObject) null else owner.defaultType()
+    val isCompanionBlockMember = isCompanionBlockMemberCompat
+    val instanceReceiver =
+      if (owner.classKind.isObject || isCompanionBlockMember) {
+        null
+      } else {
+        owner.defaultType()
+      }
     val params =
       when (this) {
-        is FirPropertySymbol -> emptyList()
+        is FirPropertySymbol -> contextParameterSymbols.map { MetroFirValueParameter(session, it) }
         is FirNamedFunctionSymbol ->
-          this.valueParameterSymbols.map { MetroFirValueParameter(session, it) }
+          (contextParameterSymbols + valueParameterSymbols).map {
+            MetroFirValueParameter(session, it)
+          }
         else -> return null
       }
-    return ProviderCallable(owner, this, instanceReceiver, params)
+    return ProviderCallable(owner, this, instanceReceiver, params, isCompanionBlockMember)
   }
 
   private fun buildCallableMetadataAnnotation(sourceCallable: ProviderCallable): FirAnnotation {
@@ -198,7 +208,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
       annotationTypeRef = anno.defaultType().toFirResolvedTypeRef()
 
       argumentMapping = buildAnnotationArgumentMapping {
-        mapping[Name.identifier("callableName")] =
+        mapping["callableName".asName()] =
           buildLiteralExpression(
             source = null,
             kind = ConstantValueKind.String,
@@ -225,7 +235,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
           } else {
             ""
           }
-        mapping[Name.identifier("propertyName")] =
+        mapping["propertyName".asName()] =
           buildLiteralExpression(
             source = null,
             kind = ConstantValueKind.String,
@@ -235,7 +245,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
             prefix = null,
           )
 
-        mapping[Name.identifier("startOffset")] =
+        mapping["startOffset".asName()] =
           buildLiteralExpression(
             source = null,
             kind = ConstantValueKind.Int,
@@ -245,7 +255,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
             prefix = null,
           )
 
-        mapping[Name.identifier("endOffset")] =
+        mapping["endOffset".asName()] =
           buildLiteralExpression(
             source = null,
             kind = ConstantValueKind.Int,
@@ -255,11 +265,20 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
             prefix = null,
           )
 
-        mapping[Name.identifier("newInstanceName")] =
+        mapping["newInstanceName".asName()] =
           buildLiteralExpression(
             source = null,
             kind = ConstantValueKind.String,
             value = sourceCallable.newInstanceName.asString(),
+            annotations = null,
+            setType = true,
+            prefix = null,
+          )
+        mapping["isCompanionBlockMember".asName()] =
+          buildLiteralExpression(
+            source = null,
+            kind = ConstantValueKind.Boolean,
+            value = sourceCallable.isCompanionBlockMember,
             annotations = null,
             setType = true,
             prefix = null,
@@ -273,14 +292,17 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
     val symbol: FirCallableSymbol<*>,
     val instanceReceiver: ConeClassLikeType?,
     val valueParameters: List<MetroFirValueParameter>,
+    /** Source companion-block members don't need an instance receiver. */
+    val isCompanionBlockMember: Boolean,
   ) {
     val callableId = CallableId(owner.classId, symbol.name)
     val name = symbol.name
     val shouldGenerateObject by memoize {
-      instanceReceiver == null && (isProperty || valueParameters.isEmpty())
+      val hasReceiverDependency = instanceReceiver != null || symbol.receiverParameterSymbol != null
+      // Factories copy their owner's type parameters. A singleton object can't declare them.
+      val hasCopiedTypeParameters = owner.typeParameterSymbols.isNotEmpty()
+      !hasReceiverDependency && valueParameters.isEmpty() && !hasCopiedTypeParameters
     }
-    private val isProperty
-      get() = symbol is FirPropertySymbol
 
     val returnType
       get() = symbol.resolvedReturnType

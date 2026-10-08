@@ -32,6 +32,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider as wrapTypeInPr
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
+import dev.zacsweers.metro.compiler.ir.requireStaticIshDeclarationContainer
 import dev.zacsweers.metro.compiler.ir.toIrType
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.metro.compiler.letIf
@@ -55,7 +56,6 @@ import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.allParameters
-import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isObject
@@ -479,7 +479,11 @@ private constructor(
                 )
 
               val directExpr: IrExpression =
-                irInvoke(callee = realFunction.symbol, args = args, typeHint = binding.typeKey.type)
+                irInvoke(
+                  callee = realFunction.symbol,
+                  arguments = args,
+                  typeHint = binding.typeKey.type,
+                )
               directExpr
                 .letIf(accessType == AccessType.INSTANCE) {
                   maybeTraceDirectExpression(
@@ -663,8 +667,7 @@ private constructor(
                 bindingKind = bindingKind,
               )
           } else {
-            val injectorCreatorClass =
-              if (injectorClass.isObject) injectorClass else injectorClass.companionObject()!!
+            val injectorCreatorClass = injectorClass.requireStaticIshDeclarationContainer()
             val createFunction =
               injectorCreatorClass.requireSimpleFunction(Symbols.StringNames.CREATE)
             val args =
@@ -1133,9 +1136,8 @@ private constructor(
     )
 
   /**
-   * The source callable's parameters in call order, the same decomposition
-   * [generateBindingArguments] uses to map args (dispatch receiver for non-object provides, context
-   * params, extension receiver, regular params; assisted excluded).
+   * Selects the dependencies resolved by [generateBindingArguments] and nested suspend factories.
+   * Object dispatch receivers are inferred by [irInvoke]. Assisted parameters come from the caller.
    */
   private fun callOrderedParams(targetParams: Parameters, binding: IrBinding): List<Parameter> =
     buildList {
@@ -1206,7 +1208,7 @@ private constructor(
             buildSourceCall = { resolved ->
               irInvoke(
                 callee = realFunction.symbol,
-                args = resolved,
+                arguments = resolved,
                 typeHint = binding.typeKey.type,
               )
             }
@@ -1255,17 +1257,7 @@ private constructor(
     with(scope) {
       // TODO clean all this up
       val params = function.parameters()
-      var paramsToMap = buildList {
-        if (
-          binding is IrBinding.Provided &&
-            targetParams.dispatchReceiverParameter?.type?.rawTypeOrNull()?.isObject != true
-        ) {
-          targetParams.dispatchReceiverParameter?.let(::add)
-        }
-        addAll(targetParams.contextParameters.filterNot { it.isAssisted })
-        targetParams.extensionReceiverParameter?.let(::add)
-        addAll(targetParams.regularParameters.filterNot { it.isAssisted })
-      }
+      var paramsToMap = callOrderedParams(targetParams, binding)
 
       // Handle case where function has more parameters than the binding
       // This can happen when parameters are inherited from ancestor classes

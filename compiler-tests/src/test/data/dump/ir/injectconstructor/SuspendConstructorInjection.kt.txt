@@ -100,7 +100,7 @@ interface ExampleGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideDatabase", propertyName = "", startOffset = 226, endOffset = 280, newInstanceName = "provideDatabase")
+  @CallableMetadata(callableName = "provideDatabase", propertyName = "", startOffset = 226, endOffset = 280, newInstanceName = "provideDatabase", isCompanionBlockMember = false)
   class ProvideDatabaseMetroFactory : SuspendFactory<String> {
     private /* final field */ val instance: ExampleGraph = instance
     companion object Companion {
@@ -147,7 +147,7 @@ interface ExampleGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideTls", propertyName = "", startOffset = 284, endOffset = 327, newInstanceName = "provideTls")
+  @CallableMetadata(callableName = "provideTls", propertyName = "", startOffset = 284, endOffset = 327, newInstanceName = "provideTls", isCompanionBlockMember = false)
   class ProvideTlsMetroFactory : SuspendFactory<Int> {
     private /* final field */ val instance: ExampleGraph = instance
     companion object Companion {

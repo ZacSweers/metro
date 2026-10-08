@@ -44,6 +44,20 @@ message ProviderFactoryProto {
   InlinedProviderProto inlined = 7;
   // The generated function that carries the source callable's signature.
   SignatureCarrier signature_carrier = 8;
+  // Source companion-block providers have no dispatch receiver.
+  // This is independent of the generated helper mode.
+  bool is_companion_block_member = 9;
+  // The producer's mode determines the generated helper owner.
+  CompanionMode companion_mode = 10;
+}
+
+// Records the producer's companion-mode compiler option.
+enum CompanionMode {
+  COMPANION_OBJECT = 0;
+  COMPANION_BLOCK = 1;
+  // Companion helpers remain the canonical owner of compatibility bridges.
+  COMPATIBILITY = 2;
+  NONE = 3;
 }
 
 // Identifies which generated function carries the source callable's signature.
@@ -89,6 +103,8 @@ message AssistedFactoryImplProto {
 
   // The simple name of the generated impl class
   string impl_class_name = 2;
+  // The producer's mode determines the generated helper owner.
+  CompanionMode companion_mode = 3;
 }
 
 message InjectedClassProto {

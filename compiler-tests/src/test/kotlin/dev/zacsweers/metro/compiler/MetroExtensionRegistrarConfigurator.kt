@@ -49,6 +49,7 @@ import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrarAdapter
 import org.jetbrains.kotlin.incremental.components.ExpectActualTracker
 import org.jetbrains.kotlin.test.TargetBackend
+import org.jetbrains.kotlin.test.TestInfrastructureInternals
 import org.jetbrains.kotlin.test.builders.TestConfigurationBuilder
 import org.jetbrains.kotlin.test.cli.CliDirectives
 import org.jetbrains.kotlin.test.directives.model.singleOrZeroValue
@@ -58,6 +59,7 @@ import org.jetbrains.kotlin.test.services.TestServices
 import org.jetbrains.kotlin.test.services.defaultsProvider
 import org.jetbrains.kotlin.test.services.temporaryDirectoryManager
 
+@OptIn(TestInfrastructureInternals::class)
 fun TestConfigurationBuilder.configurePlugin(
   compatContext: CompatContext = CompatContext.create()
 ) {
@@ -70,6 +72,14 @@ fun TestConfigurationBuilder.configurePlugin(
 
   useDirectives(MetroDirectives, CliDirectives)
   configureTestPhaseCompat()
+  useModuleStructureTransformers(MetroCompanionFeaturesTransformer(compatContext))
+
+  // Feature names are resolved after the module directives have been parsed.
+  if (compatContext.supportsCompanionBlocks) {
+    forTestsMatching("*/companionblocks/*") {
+      defaultDirectives { MetroDirectives.COMPANION_BLOCKS.with(true) }
+    }
+  }
 
   useCustomRuntimeClasspathProviders(::MetroRuntimeClassPathProvider)
 
@@ -98,6 +108,9 @@ class MetroExtensionRegistrarConfigurator(
     val options = MetroOptions.buildOptions {
       // Set non-annotation properties (only when directive is present or value is non-default)
       enabled = MetroDirectives.DISABLE_METRO !in module.directives
+      module.directives.singleOrZeroValue(MetroDirectives.COMPANION_MODE)?.let {
+        companionMode = it
+      }
       enablePrivateProviderProperties =
         MetroDirectives.ENABLE_PRIVATE_PROVIDER_PROPERTIES in module.directives
       generateAssistedFactories = MetroDirectives.GENERATE_ASSISTED_FACTORIES in module.directives

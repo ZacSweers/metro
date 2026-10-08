@@ -285,11 +285,17 @@ jobs:
           check_name: 'Test Report - shaded compiler / Ubuntu JDK 21'
 
   js-box:
-    name: ${{ github.ref == 'refs/heads/main' && 'js box / full' || 'web / smoke' }}
+    name: js box / ${{ matrix.compiler }}
     runs-on: ubuntu-latest
     needs: [changes, generate-matrix]
     if: needs.changes.outputs.full == 'true'
     timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [default, latest]
+    env:
+      METRO_TEST_COMPILER_VERSION: ${{ matrix.compiler == 'default' && needs.generate-matrix.outputs.default_kotlin_version || needs.generate-matrix.outputs.latest_kotlin_version }}
     permissions:
       checks: write
 
@@ -304,12 +310,17 @@ jobs:
           cache-read-only: true
 
       - name: Generate tests
-        run: ./scripts/run-ci-gradle.sh :compiler-tests:generateTests --quiet ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+        if: github.ref == 'refs/heads/main' || matrix.compiler == 'default'
+        run: |
+          ./scripts/run-ci-gradle.sh :compiler-tests:generateTests --quiet \
+            "-Pmetro.testCompilerVersion=$METRO_TEST_COMPILER_VERSION" \
+            ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
 
       - name: Run JS box smoke tests
-        if: github.ref != 'refs/heads/main'
+        if: matrix.compiler == 'default'
         run: |
           ./scripts/run-ci-gradle.sh :compiler-tests:test --quiet \
+            "-Pmetro.testCompilerVersion=$METRO_TEST_COMPILER_VERSION" \
             --tests 'dev.zacsweers.metro.compiler.JsBoxTestGenerated$Inject$Assisted.testBasicAssistedInject' \
             --tests 'dev.zacsweers.metro.compiler.JsBoxTestGenerated$Multibindings.testMapProviderLazyValues' \
             --tests 'dev.zacsweers.metro.compiler.JsBoxTestGenerated$Suspend.testMixedSuspendChain' \
@@ -317,38 +328,42 @@ jobs:
             ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
 
       - name: Run Wasm contribution hint smoke tests
-        if: github.ref != 'refs/heads/main'
+        if: github.ref != 'refs/heads/main' && matrix.compiler == 'latest'
         run: |
           ./gradlew :gradle-plugin:functionalTest --quiet \
-            '-Pmetro.testCompilerVersion=${{ needs.generate-matrix.outputs.latest_kotlin_version }}' \
+            "-Pmetro.testCompilerVersion=$METRO_TEST_COMPILER_VERSION" \
             -Pmetro.functionalTestKmpTarget=wasmJs \
             --tests 'dev.zacsweers.metro.gradle.incremental.BindingContainerMultibindingICTests.contributionScopeChangeInMultiModuleProject*' \
             --tests 'dev.zacsweers.metro.gradle.incremental.GenerateContributionProvidersICTests.scopeChangeInContributionProviderTriggersDownstreamRecompilation*' \
             -Dorg.gradle.configuration-cache.read-only=true
 
+      # Main runs the full JS suites once with the latest compiler.
       - name: Run standard JS box tests
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' && matrix.compiler == 'latest'
         run: |
           ./scripts/run-ci-gradle.sh :compiler-tests:test --quiet \
+            "-Pmetro.testCompilerVersion=$METRO_TEST_COMPILER_VERSION" \
             --tests 'dev.zacsweers.metro.compiler.JsBoxTestGenerated*'
 
       - name: Run FastInit JS box tests
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' && matrix.compiler == 'latest'
         run: |
           ./scripts/run-ci-gradle.sh :compiler-tests:test --quiet \
+            "-Pmetro.testCompilerVersion=$METRO_TEST_COMPILER_VERSION" \
             --tests 'dev.zacsweers.metro.compiler.JsFastInitBoxTestGenerated*'
 
       - name: Run contribution provider JS box tests
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' && matrix.compiler == 'latest'
         run: |
           ./scripts/run-ci-gradle.sh :compiler-tests:test --quiet \
+            "-Pmetro.testCompilerVersion=$METRO_TEST_COMPILER_VERSION" \
             --tests 'dev.zacsweers.metro.compiler.JsContributionProvidersBoxTestGenerated*'
 
       - name: (Fail-only) Upload reports
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: reports-js-box
+          name: reports-js-box-${{ matrix.compiler }}
           path: |
             **/build/reports/**
 
@@ -357,11 +372,12 @@ jobs:
         if: failure()
         with:
           report_paths: '**/build/test-results/**/TEST-*.xml'
-          check_name: 'Test Report - js box'
+          check_name: 'Test Report - js box / ${{ matrix.compiler }}'
 
   # Main-only: run each non-JVM target of :gradle-plugin:functionalTest in its own runner.
   # The incremental tests parallelize across targets and test classes.
   # The `compatibility` job keeps these parameterized tests JVM-only on PR/branch runs.
+  # Latest compiler coverage includes version-gated fixtures. Baseline coverage lives in multiplatform-tests.
   kmp-functional:
     if: github.ref == 'refs/heads/main'
     name: kmp functional / ${{ matrix.target }}
@@ -377,16 +393,25 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
+      # This job also runs when change classification skips the shared generate-matrix job.
+      - name: Resolve compiler versions
+        id: compiler-versions
+        run: ./scripts/generate-ci-matrix.sh
+
       - name: Setup Gradle
         uses: ./.github/actions/setup-gradle
         with:
           encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
           cache-read-only: true
-          # These jobs restore the versioned Konan cache written by the default Kotlin core lane.
+          # These jobs restore the versioned Konan cache written by the latest compatibility lane.
           konan: true
+          kotlin-compiler-version: ${{ steps.compiler-versions.outputs.latest_kotlin_version }}
 
       - name: ':gradle-plugin:functionalTest'
-        run: ./gradlew :gradle-plugin:functionalTest --continue --quiet -Pmetro.functionalTestKmpTarget=${{ matrix.target }}
+        run: |
+          ./gradlew :gradle-plugin:functionalTest --continue --quiet \
+            '-Pmetro.testCompilerVersion=${{ steps.compiler-versions.outputs.latest_kotlin_version }}' \
+            -Pmetro.functionalTestKmpTarget=${{ matrix.target }}
 
       - name: (Fail-only) Upload reports
         if: failure()

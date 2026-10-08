@@ -95,11 +95,10 @@ internal sealed interface IrMetroFactory {
           IrExpression?
         >,
   ): IrExpression {
-    val propertyProviderName = name.asString().removeSurrounding("<get-", ">")
     return invokeCreatorExpression(
       typeKey = typeKey,
       expectedCreatorDescription = name.asString(),
-      functionPredicate = { it.name == name || it.name.asString() == propertyProviderName },
+      functionPredicate = { it.name == name },
       computeArgs = computeArgs,
     )
   }

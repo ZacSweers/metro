@@ -27,7 +27,9 @@ import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
  *
  * This works for both simple scalar values, complex expressions, instance references, and
  * back-references to other parameters. Part of supporting that is a local
- * [IrElementTransformerVoid] that remaps those references to the new parameters.
+ * [IrElementTransformerVoid] that remaps those references to the new parameters. Graph creators
+ * preserve factory defaults independently of optional-binding configuration. Their defaults can
+ * read the canonical factory through [receiverExpression].
  */
 context(context: IrMetroContext)
 internal fun copyParameterDefaultValues(
@@ -38,8 +40,12 @@ internal fun copyParameterDefaultValues(
   containerParameter: IrValueParameter?,
   wrapInProvider: Boolean = false,
   isTopLevelFunction: Boolean = false,
+  preserveAllDefaults: Boolean = false,
+  receiverExpression: (() -> IrExpression)? = null,
 ) {
-  if (sourceParameters.isEmpty()) return
+  if (sourceParameters.isEmpty()) {
+    return
+  }
   check(sourceParameters.size == targetParameters.size) {
     "Source parameters (${sourceParameters.size}) and target parameters (${targetParameters.size}) must be the same size! Function: ${sourceParameters.first().parent.kotlinFqName}\nSource: ${sourceParameters.map { "${it.name}: ${it.type}" }}\nTarget: ${targetParameters.map { "${it.name}: ${it.type}" }}"
   }
@@ -58,6 +64,9 @@ internal fun copyParameterDefaultValues(
       override fun visitGetValue(expression: IrGetValue): IrExpression {
         // Check if the expression is the instance receiver
         if (expression.symbol == providerFunction?.dispatchReceiverParameter?.symbol) {
+          receiverExpression?.let {
+            return it()
+          }
           return IrGetValueImpl(SYNTHETIC_OFFSET, SYNTHETIC_OFFSET, containerParameter!!.symbol)
         }
         val index = sourceParameters.indexOfFirst { it.symbol == expression.symbol }
@@ -86,7 +95,13 @@ internal fun copyParameterDefaultValues(
 
   for ((index, parameter) in sourceParameters.withIndex()) {
     // If we did get assisted parameters, do copy them over (i.e. top-level function injection)
-    if (isDisabled && sourceMetroParameters[parameter.name]?.isAssisted != true) continue
+    if (
+      isDisabled &&
+        !preserveAllDefaults &&
+        sourceMetroParameters[parameter.name]?.isAssisted != true
+    ) {
+      continue
+    }
     val defaultValue = parameter.defaultValue ?: continue
 
     val targetParameter = targetParameters[index]

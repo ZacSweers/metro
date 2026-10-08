@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.fir.checkers
 
 import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.compat.CompatContext
+import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
 import dev.zacsweers.metro.compiler.fir.additionalScopesArgument
@@ -14,8 +15,11 @@ import dev.zacsweers.metro.compiler.fir.callableSymbols
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
+import dev.zacsweers.metro.compiler.fir.generators.findSamFunction
+import dev.zacsweers.metro.compiler.fir.hasOrigin
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isEffectivelyOpen
+import dev.zacsweers.metro.compiler.fir.isGraphFactory
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.nestedClasses
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
@@ -32,6 +36,7 @@ import dev.zacsweers.metro.compiler.fir.validateInjectionSiteType
 import dev.zacsweers.metro.compiler.graph.SuspendDiagnosticMessages
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.metroAnnotations
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.trace
 import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.descriptors.Modality
@@ -45,8 +50,11 @@ import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.directOverriddenSymbolsSafe
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.constructors
+import org.jetbrains.kotlin.fir.declarations.processAllDeclarations
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.declarations.utils.classId
+import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
+import org.jetbrains.kotlin.fir.declarations.utils.isInterface
 import org.jetbrains.kotlin.fir.declarations.utils.isOverride
 import org.jetbrains.kotlin.fir.declarations.utils.isSuspend
 import org.jetbrains.kotlin.fir.dispatchReceiverClassLookupTagOrNull
@@ -88,6 +96,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
     declaration.source ?: return
     val session = context.session
     val classIds = session.classIds
+    checkStaticCreatorCollisions(declaration)
 
     val dependencyGraphAnnos =
       declaration.annotationsIn(session, classIds.graphLikeAnnotations).toList().ifEmpty {
@@ -623,5 +632,97 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
     matchingContext: FirExpectActualMatchingContext,
   ): Boolean {
     return with(matchingContext) { this@isFakeOverride.isFakeOverride(containingClass) }
+  }
+
+  /** Reports user statics that would share the generated graph creator's signature. */
+  context(context: CheckerContext, reporter: DiagnosticReporter, compatContext: CompatContext)
+  private fun checkStaticCreatorCollisions(graph: FirClass) {
+    val session = context.session
+    val companionMode = session.metroFirBuiltIns.options.companionMode
+    if (!companionMode.requiresCompanionBlocks) {
+      return
+    }
+
+    val nestedClasses = graph.symbol.nestedClasses()
+    val factory = nestedClasses.firstOrNull { it.isGraphFactory(session) }
+    val sam =
+      if (factory?.isInterface == true) {
+        factory.findSamFunction(session) ?: return
+      } else {
+        null
+      }
+
+    val creatorName =
+      when {
+        factory == null -> Symbols.Names.invoke
+        sam != null -> sam.name
+        else -> Symbols.Names.factory
+      }
+
+    val creatorParameters =
+      if (sam != null) {
+        val contextParameterTypes = sam.contextParameterSymbols.map { it.resolvedReturnType }
+        val valueParameterTypes = sam.valueParameterSymbols.map { it.resolvedReturnType }
+        contextParameterTypes + valueParameterTypes
+      } else {
+        emptyList()
+      }
+
+    val staticAnnotations = setOf(Symbols.ClassIds.JvmStatic, Symbols.ClassIds.JsStatic)
+
+    // The instance member scope excludes source declarations in companion blocks.
+    val candidates = mutableListOf<FirNamedFunctionSymbol>()
+    graph.processAllDeclarations(session) { symbol ->
+      if (symbol is FirNamedFunctionSymbol) {
+        candidates += symbol
+      }
+    }
+
+    for (companion in nestedClasses.filter { it.isCompanion }) {
+      val functions = companion.callableSymbols().filterIsInstance<FirNamedFunctionSymbol>()
+      for (function in functions) {
+        if (function.isAnnotatedWithAny(session, staticAnnotations)) {
+          candidates += function
+        }
+      }
+    }
+
+    for (function in candidates) {
+      val isGeneratedCreator =
+        function.hasOrigin(
+          Keys.MetroGraphCreatorsObjectInvokeDeclaration,
+          Keys.MetroGraphFactoryCompanionGetter,
+        )
+      if (isGeneratedCreator) {
+        continue
+      }
+
+      val source = function.source ?: continue
+      if (function.name != creatorName) {
+        continue
+      }
+
+      val isStatic =
+        with(compatContext) { function.isCompanionBlockMemberCompat } ||
+          function.isAnnotatedWithAny(session, staticAnnotations)
+      if (!isStatic) {
+        continue
+      }
+
+      val platformParameters = buildList {
+        addAll(function.contextParameterSymbols.map { it.resolvedReturnType })
+        function.resolvedReceiverType?.let { add(it) }
+        addAll(function.valueParameterSymbols.map { it.resolvedReturnType })
+      }
+      if (platformParameters != creatorParameters) {
+        continue
+      }
+
+      reporter.reportOn(
+        source,
+        MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
+        "Companion-block graph creator '$creatorName' conflicts with this static function. Change its signature or select a different companion-mode.",
+      )
+    }
   }
 }

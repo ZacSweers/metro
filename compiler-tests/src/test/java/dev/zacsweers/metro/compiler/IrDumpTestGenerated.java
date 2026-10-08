@@ -130,6 +130,38 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
   }
 
   @Nested
+  @TestMetadata("compiler-tests/src/test/data/dump/ir/companionblocks")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Companionblocks {
+    private void run(String fileName) {
+      runTest("compiler-tests/src/test/data/dump/ir/companionblocks/" + fileName);
+    }
+
+    @Test
+    public void testAllFilesPresentInCompanionblocks() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/companionblocks"), Pattern.compile("^(.+)\\.kt$"), null, true);
+    }
+
+    @Test
+    @TestMetadata("GraphCreators.kt")
+    public void testGraphCreators() {
+      run("GraphCreators.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphNone.kt")
+    public void testGraphNone() {
+      run("GraphNone.kt");
+    }
+
+    @Test
+    @TestMetadata("StaticHelpers.kt")
+    public void testStaticHelpers() {
+      run("StaticHelpers.kt");
+    }
+  }
+
+  @Nested
   @TestMetadata("compiler-tests/src/test/data/dump/ir/cycles")
   @TestDataPath("$PROJECT_ROOT")
   public class Cycles {

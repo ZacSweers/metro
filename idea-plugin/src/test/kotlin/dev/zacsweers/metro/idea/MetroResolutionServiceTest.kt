@@ -3331,6 +3331,76 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     }
   }
 
+  fun testInheritedProviderContextParametersPreserveConcreteDependencies() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        class Payload<T>(val value: T)
+
+        interface Providers<T> {
+          context(@Named("context") input: T)
+          @Provides
+          fun providePayload(suffix: String): Payload<Int> = error("fixture")
+
+          context(@Named("context") input: T)
+          @Provides @get:Named("property")
+          val propertyPayload: Payload<T> get() = error("fixture")
+        }
+
+        @DependencyGraph
+        interface AppGraph : Providers<Int> {
+          val payload: Payload<Int>
+          @get:Named("property") val namedPayload: Payload<Int>
+          val directValue: Long
+          @Provides @Named("context") fun input(): Int = 42
+          @Provides fun suffix(): String = "suffix"
+
+          context(@Named("context") functionInput: Int)
+          @Provides fun directFunction(): Double = 1.0
+
+          context(@Named("context") propertyInput: Int)
+          @get:Provides val directProperty: Long get() = 1L
+        }
+        """
+      )
+    val settings = MetroSettings.getInstance(project).state
+    val previousResolveFromLibraries = settings.resolveFromLibraries
+    settings.resolveFromLibraries = false
+    try {
+      val index = project.service<MetroResolutionService>().awaitIndex(file)
+      val graph = index.graphs.single { it.name == "AppGraph" }
+      val query = checkNotNull(index.queryContext(index.contextsFor(graph).single()))
+      val expected =
+        mapOf(
+          "payload" to listOf("@Named(name = \"context\") Int", "String"),
+          "namedPayload" to listOf("@Named(name = \"context\") Int"),
+          "directValue" to listOf("AppGraph", "@Named(name = \"context\") Int"),
+        )
+      for ((name, dependencies) in expected) {
+        val accessor =
+          index.accessorsFor(query).single {
+            (it.pointer.element as? KtNamedDeclaration)?.name == name
+          }
+        val bindings = index.bindingsFor(accessor, query)
+        assertEquals("Provider for $name", 1, bindings.size)
+        val provider = bindings.single()
+        assertEquals(dependencies, provider.dependencies.map { it.typeKey.render(short = true) })
+      }
+      val declarations = file.declarationsIncludingNested()
+      for (name in listOf("functionInput", "propertyInput")) {
+        val parameter = declarations.parameter(name)
+        val consumer = checkNotNull(index.consumerEntryAt(parameter))
+        assertEquals("@Named(name = \"context\") Int", consumer.key.render(short = true))
+        assertEquals(
+          listOf("input"),
+          index.bindingsFor(consumer).map { (it.pointer.element as? KtNamedDeclaration)?.name },
+        )
+      }
+    } finally {
+      settings.resolveFromLibraries = previousResolveFromLibraries
+    }
+  }
+
   fun testInheritedGetterQualifiersPreserveConcreteGraphKeys() {
     val file =
       myFixture.configureMetroFile(

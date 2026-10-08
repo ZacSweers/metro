@@ -66,7 +66,7 @@ abstract class ObserveMapUserLocationStyleUseCaseImplContributions {
   @IROnlyFactories
   @ContributesTo(scope = AccountUserScope::class)
   object ToAccountUserScope {
-    @CallableMetadata(callableName = "provideObserveMapUserLocationStyleUseCaseImplAsAlte_ad384", propertyName = "", startOffset = -1, endOffset = -1, newInstanceName = "provideObserveMapUserLocationStyleUseCaseImplAsAlte_ad384")
+    @CallableMetadata(callableName = "provideObserveMapUserLocationStyleUseCaseImplAsAlte_ad384", propertyName = "", startOffset = -1, endOffset = -1, newInstanceName = "provideObserveMapUserLocationStyleUseCaseImplAsAlte_ad384", isCompanionBlockMember = false)
     class ProvideObserveMapUserLocationStyleUseCaseImplAsAlte_ad384MetroFactory : Factory<AlternateUseCase> {
       private /* final field */ val instance: Provider<Any?> = instance
       companion object Companion {
@@ -112,7 +112,7 @@ abstract class ObserveMapUserLocationStyleUseCaseImplContributions {
 
     }
 
-    @CallableMetadata(callableName = "provideObserveMapUserLocationStyleUseCaseImplAsObse_q03fb", propertyName = "", startOffset = -1, endOffset = -1, newInstanceName = "provideObserveMapUserLocationStyleUseCaseImplAsObse_q03fb")
+    @CallableMetadata(callableName = "provideObserveMapUserLocationStyleUseCaseImplAsObse_q03fb", propertyName = "", startOffset = -1, endOffset = -1, newInstanceName = "provideObserveMapUserLocationStyleUseCaseImplAsObse_q03fb", isCompanionBlockMember = false)
     class ProvideObserveMapUserLocationStyleUseCaseImplAsObse_q03fbMetroFactory : Factory<ObserveMapUserLocationStyleUseCase> {
       private /* final field */ val instance: Provider<Any?> = instance
       companion object Companion {
@@ -158,7 +158,7 @@ abstract class ObserveMapUserLocationStyleUseCaseImplContributions {
 
     }
 
-    @CallableMetadata(callableName = "provideScopedInstanceObserveMapUserLocationStyleUse_a3557", propertyName = "", startOffset = -1, endOffset = -1, newInstanceName = "provideScopedInstanceObserveMapUserLocationStyleUse_a3557")
+    @CallableMetadata(callableName = "provideScopedInstanceObserveMapUserLocationStyleUse_a3557", propertyName = "", startOffset = -1, endOffset = -1, newInstanceName = "provideScopedInstanceObserveMapUserLocationStyleUse_a3557", isCompanionBlockMember = false)
     class ProvideScopedInstanceObserveMapUserLocationStyleUse_a3557MetroFactory : Factory<Any?> {
       private /* final field */ val config: Provider<DefaultConfig> = config
       companion object Companion {

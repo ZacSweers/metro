@@ -332,6 +332,44 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
   }
 
   @Nested
+  @TestMetadata("compiler-tests/src/test/data/diagnostic/companionblocks")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Companionblocks {
+    private void run(String fileName) {
+      runTest("compiler-tests/src/test/data/diagnostic/companionblocks/" + fileName);
+    }
+
+    @Test
+    @TestMetadata("AbstractContainerInstanceProvider.kt")
+    public void testAbstractContainerInstanceProvider() {
+      run("AbstractContainerInstanceProvider.kt");
+    }
+
+    @Test
+    public void testAllFilesPresentInCompanionblocks() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/companionblocks"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit", "_reports");
+    }
+
+    @Test
+    @TestMetadata("AnnotatedStaticCreatorCollision.kt")
+    public void testAnnotatedStaticCreatorCollision() {
+      run("AnnotatedStaticCreatorCollision.kt");
+    }
+
+    @Test
+    @TestMetadata("StaticCreatorCollision.kt")
+    public void testStaticCreatorCollision() {
+      run("StaticCreatorCollision.kt");
+    }
+
+    @Test
+    @TestMetadata("StaticCreatorCompatibilityCollision.kt")
+    public void testStaticCreatorCompatibilityCollision() {
+      run("StaticCreatorCompatibilityCollision.kt");
+    }
+  }
+
+  @Nested
   @TestMetadata("compiler-tests/src/test/data/diagnostic/createGraph")
   @TestDataPath("$PROJECT_ROOT")
   public class CreateGraph {

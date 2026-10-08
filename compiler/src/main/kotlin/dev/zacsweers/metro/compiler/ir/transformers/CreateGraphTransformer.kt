@@ -10,11 +10,13 @@ import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.createAndAddTemporaryVariable
+import dev.zacsweers.metro.compiler.ir.getOrCreateGraphFactoryImplClassShell
 import dev.zacsweers.metro.compiler.ir.getOrCreateGraphImplClassShell
 import dev.zacsweers.metro.compiler.ir.graph.IrDynamicGraphGenerator
 import dev.zacsweers.metro.compiler.ir.graph.generatedDynamicGraphData
 import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.irInvoke
+import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.metroGraphOrFail
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
@@ -39,9 +41,11 @@ import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
+import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isObject
+import org.jetbrains.kotlin.ir.util.isStatic
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.parentAsClass
@@ -75,40 +79,50 @@ internal class CreateGraphTransformer(
         // Already checked in FIR
         val rawType = type.rawType()
         val parentDeclaration = rawType.parentAsClass
-        val companion = parentDeclaration.companionObject()!!
+        val companion = parentDeclaration.companionObject()
 
-        val factoryImpl = rawType.nestedClasses.find { it.name == Symbols.Names.Impl }
+        val companionIsTheFactory = companion?.implements(rawType.classIdOrFail) == true
+        val companionFactoryFunction =
+          companion?.functions?.singleOrNull { it.name == Symbols.Names.factory }
+        var factoryImpl = rawType.nestedClasses.find { it.name == Symbols.Names.Impl }
+        val needsHiddenFactory =
+          factoryImpl == null && !companionIsTheFactory && companionFactoryFunction == null
+        if (needsHiddenFactory && !rawType.isExternalParent) {
+          factoryImpl = rawType.getOrCreateGraphFactoryImplClassShell()
+        }
+        // Hidden factory objects remain available when graph companions are omitted.
+        if (factoryImpl?.isObject == true) {
+          return withIrBuilder(expression.symbol) { irGetObject(factoryImpl.symbol) }
+        }
+
+        val factoryCompanion =
+          companion
+            ?: reportCompilerBug(
+              "Cannot find a graph factory implementation for ${rawType.kotlinFqName}"
+            )
         if (factoryImpl != null) {
           // Replace it with a call directly to the factory creator
           return withIrBuilder(expression.symbol) {
-            if (factoryImpl.isObject) {
-              irGetObject(factoryImpl.symbol)
-            } else {
-              irInvoke(
-                callee = companion.requireSimpleFunction(Symbols.StringNames.FACTORY),
-                typeArgs = type.expectAsOrNull<IrSimpleType>()?.arguments?.map { it.typeOrFail },
-              )
-            }
+            irInvoke(
+              callee = factoryCompanion.requireSimpleFunction(Symbols.StringNames.FACTORY),
+              dispatchReceiver = companionReceiver(factoryCompanion),
+              typeArgs = type.expectAsOrNull<IrSimpleType>()?.arguments?.map { it.typeOrFail },
+            )
           }
         }
 
-        val companionIsTheFactory = companion.implements(rawType.classIdOrFail)
-
         if (companionIsTheFactory) {
-          withIrBuilder(expression.symbol) { irGetObject(companion.symbol) }
+          withIrBuilder(expression.symbol) { irGetObject(factoryCompanion.symbol) }
         } else {
           val factoryFunction =
-            companion.functions.single {
-              // Note we don't filter on Origins.MetroGraphFactoryCompanionGetter, because
-              // sometimes a user may have already defined one. An FIR checker will validate that
-              // any such function is valid, so just trust it if one is found
-              it.name == Symbols.Names.factory
-            }
-
+            companionFactoryFunction
+              ?: reportCompilerBug(
+                "Cannot find a graph factory implementation for ${rawType.kotlinFqName}"
+              )
           // Replace it with a call directly to the factory function
           withIrBuilder(expression.symbol) {
             irCall(callee = factoryFunction.symbol, type = type).apply {
-              dispatchReceiver = companionReceiver(companion)
+              dispatchReceiver = companionReceiver(factoryCompanion)
             }
           }
         }
@@ -121,10 +135,21 @@ internal class CreateGraphTransformer(
         val type = expression.targetGraphType
         // Already checked in FIR
         val rawType = type.rawType()
-        val companion = rawType.companionObject()!!
-
-        val companionIsTheGraph = companion.implements(rawType.classIdOrFail)
-        if (companionIsTheGraph) {
+        val companion = rawType.companionObject()
+        val companionIsTheGraph = companion?.implements(rawType.classIdOrFail) == true
+        // Resolve the producer's declaration shape so compiler modes can differ across modules.
+        val staticCreator =
+          rawType.functions.singleOrNull {
+            it.isStatic && it.hasAnnotation(Symbols.FqNames.GraphFactoryInvokeFunctionMarkerClass)
+          }
+        val companionCreator =
+          companion?.functions?.singleOrNull {
+            it.hasAnnotation(Symbols.FqNames.GraphFactoryInvokeFunctionMarkerClass)
+          }
+        val factoryFunction = staticCreator ?: companionCreator
+        // A local companion delegate needs construction before its singleton is initialized.
+        val initializesCompanionDelegate = companionIsTheGraph && !rawType.isExternalParent
+        if (initializesCompanionDelegate || factoryFunction == null) {
           val graphImpl =
             if (options.generateClassesInIr) {
               rawType.getOrCreateGraphImplClassShell()
@@ -133,22 +158,22 @@ internal class CreateGraphTransformer(
             }
           withIrBuilder(expression.symbol) {
             irCallConstructor(
-              graphImpl.primaryConstructor!!.symbol,
+              // Metadata registrars can represent the sole hidden constructor as secondary.
+              graphImpl.constructors.single().symbol,
               type.expectAsOrNull<IrSimpleType>()?.arguments.orEmpty().map { it.typeOrFail },
             )
           }
         } else {
-          val factoryFunction =
-            companion.functions.singleOrNull {
-              it.hasAnnotation(Symbols.FqNames.GraphFactoryInvokeFunctionMarkerClass)
-            }
-              ?: reportCompilerBug(
-                "Cannot find a graph factory function for ${rawType.kotlinFqName}"
-              )
-          // Replace it with a call directly to the create function
           withIrBuilder(expression.symbol) {
             irCall(callee = factoryFunction.symbol, type = type).apply {
-              dispatchReceiver = companionReceiver(companion)
+              type.expectAsOrNull<IrSimpleType>()?.arguments.orEmpty().forEachIndexed {
+                index,
+                argument ->
+                typeArguments[index] = argument.typeOrFail
+              }
+              if (factoryFunction.dispatchReceiverParameter != null) {
+                dispatchReceiver = companionReceiver(factoryFunction.parentAsClass)
+              }
             }
           }
         }

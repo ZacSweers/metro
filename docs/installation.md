@@ -71,6 +71,48 @@ settings:
 metro-compiler = { module = "dev.zacsweers.metro:compiler", version.ref = "metro" }
 ```
 
+## Companion blocks and generated APIs
+
+Metro supports companion-block `@Provides` functions and properties with Kotlin 2.5.0-dev-6460 and later. Enable Kotlin's `-Xcompanion-blocks` option for each compilation that uses them. `-Xcompanion-blocks-and-extensions` also enables blocks.
+
+```kotlin
+@BindingContainer
+interface AppBindings {
+  companion {
+    @Provides fun endpoint(): String = "https://example.com"
+  }
+}
+```
+
+Kotlin 2.5.0-Beta1 has a JVM bytecode issue for backing fields in interface companion blocks. Use getter-only properties in interface containers on that version. Class and abstract-class containers can use backing fields.
+
+The compiler-only `companion-mode` option controls graph entry points and helpers on generated factory and member injector classes. Enabling Kotlin's blocks feature leaves Metro's default companion mode unchanged. Configure the mode through Kotlin's `freeCompilerArgs`:
+
+```kotlin
+kotlin {
+  compilerOptions {
+    freeCompilerArgs.addAll(
+      "-Xcompanion-blocks",
+      "-P",
+      "plugin:dev.zacsweers.metro.compiler:companion-mode=companion-block",
+    )
+  }
+}
+```
+
+| Mode | Generated APIs |
+|---|---|
+| `COMPANION_OBJECT` | Keeps graph companions and their factory contracts. Generated factory and injector helpers use companions. This is the default. |
+| `COMPANION_BLOCK` | Generates static graph creators and static factory and injector helpers. Omits companions used solely for those generated APIs. |
+| `COMPATIBILITY` | Keeps the companion APIs and adds static functions that delegate to them. |
+| `NONE` | Omits graph-level creator APIs. Required internal factory and injector helpers use companions. Both creation intrinsics remain available. |
+
+The dashed spellings `companion-object`, `companion-block`, `compatibility`, and `none` are also accepted. Values are case-insensitive. The block and compatibility modes require enabled companion blocks and Kotlin 2.5.0-dev-6460 or later. Singleton factory objects keep their object-based helpers in every mode because Kotlin prohibits companion blocks inside objects.
+
+Creator names follow the declared factory method. An interface factory with `fun build(...)` exposes `AppGraph.build(...)`. A factoryless graph exposes `AppGraph()`. An abstract-class factory exposes `AppGraph.factory()`.
+
+Choose the mode explicitly while migrating published graph or generated helper APIs. `compatibility` keeps explicit companion calls and companion-as-factory values available. Kotlin's companion features are experimental in Beta1. Consumers must enable the applicable Kotlin feature when accessing exposed blocks. Configure these options through `freeCompilerArgs` in each compilation that needs them.
+
 ## IDE Support
 
 The K2 Kotlin IntelliJ plugin supports running third party FIR plugins in the IDE, but this feature is hidden behind a flag. Some Metro features can take advantage of this, namely diagnostic reporting directly in the IDE and some opt-in features to see generated declarations. 

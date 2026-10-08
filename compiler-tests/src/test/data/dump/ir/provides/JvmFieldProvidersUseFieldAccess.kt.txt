@@ -41,7 +41,7 @@ abstract class AppGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "stringField", propertyName = "stringField", startOffset = 285, endOffset = 338, newInstanceName = "stringField")
+  @CallableMetadata(callableName = "stringField", propertyName = "stringField", startOffset = 285, endOffset = 338, newInstanceName = "stringField", isCompanionBlockMember = false)
   class StringFieldMetroFactory : Factory<String> {
     private /* final field */ val instance: AppGraph = instance
     companion object Companion {

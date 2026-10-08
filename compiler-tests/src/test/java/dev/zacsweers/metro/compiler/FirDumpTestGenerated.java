@@ -128,4 +128,24 @@ public class FirDumpTestGenerated extends AbstractFirDumpTest {
       run("FirHintGenerationWorks_k23x.kt");
     }
   }
+
+  @Nested
+  @TestMetadata("compiler-tests/src/test/data/dump/fir/companionblocks")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Companionblocks {
+    private void run(String fileName) {
+      runTest("compiler-tests/src/test/data/dump/fir/companionblocks/" + fileName);
+    }
+
+    @Test
+    public void testAllFilesPresentInCompanionblocks() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/fir/companionblocks"), Pattern.compile("^(.+)\\.kt$"), null, true);
+    }
+
+    @Test
+    @TestMetadata("StaticDeclarations.kt")
+    public void testStaticDeclarations() {
+      run("StaticDeclarations.kt");
+    }
+  }
 }

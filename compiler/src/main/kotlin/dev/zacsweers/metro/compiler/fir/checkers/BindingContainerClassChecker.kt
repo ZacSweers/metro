@@ -300,7 +300,8 @@ internal object BindingContainerClassChecker : FirClassChecker(MppCheckerKind.Co
       if (symbol !is FirCallableSymbol<*>) return@processAllDeclarations
       if (symbol.isAnnotatedWithAny(session, classIds.providesAnnotations)) {
 
-        if (isBindingContainer && isAbstract) {
+        val isStaticProvider = with(compatContext) { symbol.isCompanionBlockMemberCompat }
+        if (isBindingContainer && isAbstract && !isStaticProvider) {
           val type = if (declaration.isInterface) "interface" else "abstract class"
           reporter.reportOn(
             symbol.source,

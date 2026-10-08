@@ -21,6 +21,7 @@ import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.addMetadataVisibleHiddenCompanionObject
+import dev.zacsweers.metro.compiler.ir.addStaticAnnotations
 import dev.zacsweers.metro.compiler.ir.allSupertypesSequence
 import dev.zacsweers.metro.compiler.ir.annotationClass
 import dev.zacsweers.metro.compiler.ir.annotationsCompat
@@ -54,6 +55,7 @@ import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.requireStaticIshDeclarationContainer
+import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.staticIshDeclarationContainerOrNull
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
@@ -91,7 +93,6 @@ import org.jetbrains.kotlin.ir.types.typeWithParameters
 import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
-import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.copyTypeParametersFrom
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.defaultType
@@ -99,6 +100,7 @@ import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isInterface
+import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.nonDispatchParameters
@@ -295,10 +297,17 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
           }
       }
 
-    val companionObject = injectorClass.companionObject()!!
+    val helperOwner =
+      if (isExternal) {
+        // Binary injectors retain the helper owner selected by their producer.
+        injectorClass.requireStaticIshDeclarationContainer()
+      } else {
+        injectorClass.factoryHelperDeclarationContainer()
+      }
     if (
-      options.generateClassesInIr &&
-        companionObject.functions.none { it.origin == Origins.MembersInjectorStaticInjectFunction }
+      !isExternal &&
+        options.generateClassesInIr &&
+        helperOwner.functions.none { it.origin == Origins.MembersInjectorStaticInjectFunction }
     ) {
       val directMemberInjectParameters =
         declaration.getOrComputeMemberInjectParameters()[injectedClassId].orEmpty()
@@ -309,13 +318,16 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
           } else {
             params.callableId.callableName
           }
-        companionObject
+        helperOwner
           .addFunction(
             "inject${name.capitalizeUS().asString()}",
             irBuiltIns.unitType,
             origin = Origins.MembersInjectorStaticInjectFunction,
           )
           .apply {
+            if (!helperOwner.isObject) {
+              setDispatchReceiver(null)
+            }
             val copiedTypeParameters = copyTypeParametersFrom(declaration)
             val injectedType = declaration.symbol.typeWithParameters(copiedTypeParameters)
             val typeRemapper =
@@ -335,6 +347,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
               stubDefaults = false,
               typeRemapper = typeRemapper::remapType,
             )
+            addStaticAnnotations(this)
             metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(this)
           }
       }
@@ -400,10 +413,10 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
       // MembersInjector params are synthetic, so there are no source defaults to patch.
       if (
         options.generateClassesInIr &&
-          companionObject.functions.none { it.origin == Origins.FactoryCreateFunction }
+          helperOwner.functions.none { it.origin == Origins.FactoryCreateFunction }
       ) {
         generateStaticCreateFunction(
-          objectClassToGenerateIn = companionObject,
+          objectClassToGenerateIn = helperOwner,
           factoryClass = injectorClass,
           sourceTypeParameters = declaration,
           returnTypeProvider = { typeParams ->
@@ -418,15 +431,20 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
           stubDefaults = false,
         )
       } else {
-        transformStaticCreateFunction(
-          objectClassToGenerateIn = companionObject,
-          factoryClass = injectorClass,
-          targetConstructor = ctor.symbol,
-          parameters = createParameters,
-          providerFunction = null,
-          patchCreationParams = false,
-          copyQualifiers = true,
-        )
+        val createFunction =
+          transformStaticCreateFunction(
+            objectClassToGenerateIn = helperOwner,
+            factoryClass = injectorClass,
+            targetConstructor = ctor.symbol,
+            parameters = createParameters,
+            providerFunction = null,
+            patchCreationParams = false,
+            copyQualifiers = true,
+          )
+        if (!options.generateClassesInIr && createFunction.dispatchReceiverParameter == null) {
+          // Kotlin's class serializer omits FIR extension members in the static scope.
+          metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(createFunction)
+        }
       }
     }
 
@@ -475,6 +493,10 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
               irExprBodySafe(bodyExpression)
             }
         }
+        if (!options.generateClassesInIr && function.dispatchReceiverParameter == null) {
+          // Explicit registration exports FIR-generated block helpers to binary consumers.
+          metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(function)
+        }
       }
     }
 
@@ -520,6 +542,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
       }
     }
 
+    generateCompatibilityBridges(injectorClass)
     injectorClass.dumpToMetroLog()
 
     // Write metadata to indicate Metro generated this injector
@@ -577,7 +600,9 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
           )
           metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(this)
         }
-        addMetadataVisibleHiddenCompanionObject()
+        if (!options.companionMode.usesStaticHelpers) {
+          addMetadataVisibleHiddenCompanionObject()
+        }
       }
   }
 
@@ -762,10 +787,10 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
     val injectorClass =
       clazz.nestedClasses.singleOrNull { it.name == injectorClassName } ?: return emptyList()
 
-    val companionObject = injectorClass.companionObject() ?: return emptyList()
+    val container = injectorClass.staticIshDeclarationContainerOrNull() ?: return emptyList()
 
     // Try to get create() function to determine the correct parameter order
-    val createFunction = companionObject.requireSimpleFunction(Symbols.StringNames.CREATE).owner
+    val createFunction = container.requireSimpleFunction(Symbols.StringNames.CREATE).owner
 
     val allCreateParams = createFunction.regularParameters
 
@@ -801,7 +826,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
     // Extract parameters in the determined order
     return sortedFunctionNames.mapNotNull { functionName ->
       val injectFunction =
-        companionObject.declarations.filterIsInstance<IrSimpleFunction>().find {
+        container.declarations.filterIsInstance<IrSimpleFunction>().find {
           it.name.asString() == functionName
         }
 

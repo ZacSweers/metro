@@ -212,7 +212,7 @@ interface AppGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideReusedInt", propertyName = "", startOffset = 361, endOffset = 404, newInstanceName = "provideReusedInt")
+  @CallableMetadata(callableName = "provideReusedInt", propertyName = "", startOffset = 361, endOffset = 404, newInstanceName = "provideReusedInt", isCompanionBlockMember = false)
   class ProvideReusedIntMetroFactory : Factory<Int> {
     private /* final field */ val instance: AppGraph = instance
     companion object Companion {
@@ -259,7 +259,7 @@ interface AppGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideString", propertyName = "", startOffset = 279, endOffset = 357, newInstanceName = "provideString")
+  @CallableMetadata(callableName = "provideString", propertyName = "", startOffset = 279, endOffset = 357, newInstanceName = "provideString", isCompanionBlockMember = false)
   class ProvideStringMetroFactory : Factory<String> {
     private /* final field */ val instance: AppGraph = instance
     companion object Companion {

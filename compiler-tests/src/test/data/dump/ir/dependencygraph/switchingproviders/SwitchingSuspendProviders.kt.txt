@@ -518,7 +518,7 @@ interface AppGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideDirectSuspendValue", propertyName = "", startOffset = 1000, endOffset = 1130, newInstanceName = "provideDirectSuspendValue")
+  @CallableMetadata(callableName = "provideDirectSuspendValue", propertyName = "", startOffset = 1000, endOffset = 1130, newInstanceName = "provideDirectSuspendValue", isCompanionBlockMember = false)
   class ProvideDirectSuspendValueMetroFactory : SuspendFactory<DirectSuspendValue> {
     private /* final field */ val instance: AppGraph = instance
     companion object Companion {

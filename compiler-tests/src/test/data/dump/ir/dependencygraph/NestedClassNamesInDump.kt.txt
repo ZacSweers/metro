@@ -64,7 +64,7 @@ interface ExampleGraph {
 
     companion object Companion {
       @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-      @CallableMetadata(callableName = "provideString", propertyName = "", startOffset = 291, endOffset = 377, newInstanceName = "provideString")
+      @CallableMetadata(callableName = "provideString", propertyName = "", startOffset = 291, endOffset = 377, newInstanceName = "provideString", isCompanionBlockMember = false)
       object ProvideStringMetroFactory : Factory<String> {
         private constructor() /* primary */ {
           super/*Any*/()

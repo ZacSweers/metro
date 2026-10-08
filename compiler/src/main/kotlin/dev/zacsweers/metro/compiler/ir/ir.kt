@@ -173,7 +173,6 @@ import org.jetbrains.kotlin.ir.util.hasShape
 import org.jetbrains.kotlin.ir.util.isFromJava
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.isPropertyAccessor
-import org.jetbrains.kotlin.ir.util.isStatic
 import org.jetbrains.kotlin.ir.util.isTopLevelDeclaration
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
@@ -422,9 +421,7 @@ internal fun IrGeneratorContext.createIrBuilder(symbol: IrSymbol): DeclarationIr
 }
 
 internal fun IrBuilderWithScope.irInvoke(
-  /**
-   * If null, this will be secondarily analyzed to see if [callee] is static or a companion object
-   */
+  /** An omitted dispatch receiver is inferred when the callee declares an object receiver. */
   dispatchReceiver: IrExpression? = null,
   extensionReceiver: IrExpression? = null,
   callee: IrFunctionSymbol,
@@ -434,10 +431,17 @@ internal fun IrBuilderWithScope.irInvoke(
   args: List<IrExpression?> = emptyList(),
 ): IrMemberAccessExpression<*> {
   assert(callee.isBound) { "Symbol $callee expected to be bound" }
+  val target = callee.owner
+  check(dispatchReceiver == null || target.dispatchReceiverParameter != null) {
+    "Dispatch receiver supplied for receiverless function ${target.kotlinFqName}"
+  }
+  check(extensionReceiver == null || target.extensionReceiverParameterCompat != null) {
+    "Extension receiver supplied for function ${target.kotlinFqName} without an extension receiver"
+  }
   val finalReceiverExpression =
     when {
       dispatchReceiver != null -> dispatchReceiver
-      callee.owner.isStatic -> null
+      target.dispatchReceiverParameter == null -> null
       else -> {
         callee.owner.dispatchReceiverParameter?.type?.rawTypeOrNull()?.let {
           if (it.isObject) {
@@ -467,11 +471,20 @@ internal fun IrBuilderWithScope.irInvoke(
     }
   }
 
-  var argSize = args.size
-  if (finalReceiverExpression != null) argSize++
-  if (!contextArgs.isNullOrEmpty()) argSize += contextArgs.size
-  if (extensionReceiver != null) argSize++
-  check(callee.owner.parameters.size == argSize) {
+  var argSize = args.size + (contextArgs?.size ?: 0)
+  if (finalReceiverExpression != null) {
+    argSize++
+  }
+  if (extensionReceiver != null) {
+    argSize++
+  }
+  val hasExpectedReceivers =
+    (target.dispatchReceiverParameter != null) == (finalReceiverExpression != null) &&
+      (target.extensionReceiverParameterCompat != null) == (extensionReceiver != null)
+  val hasExpectedValues =
+    target.regularParameters.size == args.size &&
+      target.contextParameters.size == (contextArgs?.size ?: 0)
+  check(hasExpectedReceivers && hasExpectedValues) {
     """
       Expected ${callee.owner.parameters.size} arguments but got $argSize for function: ${callee.owner.kotlinFqName}
       Expected: ${callee.owner.allParameters.joinToKotlinLike(", ")}
@@ -480,12 +493,70 @@ internal fun IrBuilderWithScope.irInvoke(
       .trimIndent()
   }
 
-  var index = 0
-  finalReceiverExpression?.let { call.arguments[index++] = it }
-  contextArgs?.forEach { call.arguments[index++] = it }
-  extensionReceiver?.let { call.arguments[index++] = it }
-  args.forEach { call.arguments[index++] = it }
+  var regularIndex = 0
+  var contextIndex = 0
+  // Kotlin owns parameter ordering, so assign arguments using each parameter's actual kind.
+  for (parameter in target.parameters) {
+    call.arguments[parameter.indexInParameters] =
+      when (parameter.kind) {
+        IrParameterKind.DispatchReceiver -> finalReceiverExpression
+        IrParameterKind.ExtensionReceiver -> extensionReceiver
+        IrParameterKind.Context -> contextArgs!![contextIndex++]
+        IrParameterKind.Regular -> args[regularIndex++]
+      }
+  }
   return call
+}
+
+/**
+ * Invokes [callee] with [arguments] in [Parameters.allParameters] order.
+ *
+ * Instance dispatch receivers come first. Extension receivers precede context arguments and
+ * ordinary arguments. Object dispatch receivers are inferred and must be omitted from [arguments].
+ */
+internal fun IrBuilderWithScope.irInvoke(
+  callee: IrFunctionSymbol,
+  arguments: List<IrExpression?>,
+  typeHint: IrType? = null,
+): IrMemberAccessExpression<*> {
+  val target = callee.owner
+  val dispatchParameter = target.dispatchReceiverParameter
+  val hasObjectReceiver = dispatchParameter?.type?.rawTypeOrNull()?.isObject == true
+  val expectedCount =
+    target.parameters.size -
+      if (hasObjectReceiver) {
+        1
+      } else {
+        0
+      }
+  check(arguments.size == expectedCount) {
+    "Expected $expectedCount dependency arguments for ${target.kotlinFqName}, got ${arguments.size}"
+  }
+
+  var argumentIndex = 0
+  val dispatchReceiver =
+    if (dispatchParameter != null && !hasObjectReceiver) {
+      arguments[argumentIndex++]
+    } else {
+      null
+    }
+
+  val extensionReceiver =
+    if (target.extensionReceiverParameterCompat != null) {
+      arguments[argumentIndex++]
+    } else {
+      null
+    }
+
+  val contextEndIndex = argumentIndex + target.contextParameters.size
+  return irInvoke(
+    callee = callee,
+    dispatchReceiver = dispatchReceiver,
+    extensionReceiver = extensionReceiver,
+    contextArgs = arguments.subList(argumentIndex, contextEndIndex),
+    args = arguments.subList(contextEndIndex, arguments.size),
+    typeHint = typeHint,
+  )
 }
 
 context(context: CompatContext)
@@ -1300,7 +1371,11 @@ internal fun assignConstructorParamsToFields(
   }
 }
 
-internal fun IrBuilderWithScope.dispatchReceiverFor(function: IrFunction): IrExpression {
+/** Uses the callee's receiver contract to distinguish object helpers from class statics. */
+internal fun IrBuilderWithScope.dispatchReceiverFor(function: IrFunction): IrExpression? {
+  if (function.dispatchReceiverParameter == null) {
+    return null
+  }
   val parent = function.parentAsClass
   return if (parent.isObject) {
     irGetObject(parent.symbol)
@@ -1943,10 +2018,18 @@ internal fun IrClass.addMetroImplMarkerAnnotation() {
 
 /**
  * Adds `@JvmStatic` and `@JsStatic` to [function] when [MetroOptions.generateStaticAnnotations] is
- * enabled and the annotations are available on the current classpath.
+ * enabled and the annotations are available on the current classpath. Receiverless class functions
+ * already have static entry points. Compatibility delegates own their platform signatures.
  */
 context(context: IrMetroContext)
 internal fun addStaticAnnotations(function: IrFunction) {
+  val owner = function.parent as? IrClass
+  if (owner?.isCompanion == true && context.options.companionMode.addsStaticHelperBridges) {
+    return
+  }
+  if (owner != null && !owner.isObject && function.dispatchReceiverParameter == null) {
+    return
+  }
   if (!context.options.generateStaticAnnotations) return
   context.metroSymbols.jvmStaticAnnotationConstructor?.let { ctor ->
     function.addAnnotationCompat(buildAnnotation(function.symbol, ctor))
@@ -2916,14 +2999,7 @@ internal fun IrBuilderWithScope.irGetProperty(
 internal val IrConstructorCall.annotationClass: IrClass
   get() = symbol.owner.parentAsClass
 
-/**
- * Returns the container that can hold static-ish declarations.
- * - If Java -> this
- * - If Kotlin ->
- *     - If isObject -> this
- *     - Companion object -> it
- *     - else -> error
- */
+/** Requires an owner for static helpers, object members, or companion-object members. */
 internal fun IrClass.requireStaticIshDeclarationContainer(): IrClass {
   return staticIshDeclarationContainerOrNull()
     ?: reportCompilerBug(
@@ -2933,17 +3009,24 @@ internal fun IrClass.requireStaticIshDeclarationContainer(): IrClass {
 
 /**
  * Returns the container that can hold static-ish declarations.
+ *
  * - If Java -> this
  * - If Kotlin ->
  *     - If isObject -> this
  *     - Companion object -> it
+ *     - Companion-block functions on the class -> this
  *     - else null
+ *
+ * An existing companion object takes precedence over companion-block functions.
  */
 internal fun IrClass.staticIshDeclarationContainerOrNull(): IrClass? {
+  val companion = companionObject()
   return when {
     isFromJava() -> this
     kind.isObject -> this
-    else -> companionObject()
+    companion != null -> companion
+    functions.any { it.dispatchReceiverParameter == null } -> this
+    else -> null
   }
 }
 
