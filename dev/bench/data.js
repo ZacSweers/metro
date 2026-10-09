@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791503186587,
+  "lastUpdate": 1791588697311,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -25200,6 +25200,62 @@ window.BENCHMARK_DATA = {
             "value": 0.23534419444042207,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: -0.33%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "fd5d50c2~1",
+          "message": "[before] Reuse parent multibinding getters in children (#29",
+          "timestamp": "2026-10-09T22:32:08Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/fd5d50c220e4b33590cb4410d74e4a6b32f29990"
+        },
+        "date": 1791588697311,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.208452552759438,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "fd5d50c220e4b33590cb4410d74e4a6b32f29990",
+          "message": "[after] Reuse parent multibinding getters in children (#29",
+          "timestamp": "2026-10-09T22:32:08Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/fd5d50c220e4b33590cb4410d74e4a6b32f29990"
+        },
+        "date": 1791588697312,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.21289356644172236,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: +2.13%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }

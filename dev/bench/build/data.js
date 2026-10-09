@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791503186759,
+  "lastUpdate": 1791588697480,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -25200,6 +25200,62 @@ window.BENCHMARK_DATA = {
             "value": 9413.106,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -2.64%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "fd5d50c2~1",
+          "message": "[before] Reuse parent multibinding getters in children (#29",
+          "timestamp": "2026-10-09T22:32:08Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/fd5d50c220e4b33590cb4410d74e4a6b32f29990"
+        },
+        "date": 1791588697480,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19311.456,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "fd5d50c220e4b33590cb4410d74e4a6b32f29990",
+          "message": "[after] Reuse parent multibinding getters in children (#29",
+          "timestamp": "2026-10-09T22:32:08Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/fd5d50c220e4b33590cb4410d74e4a6b32f29990"
+        },
+        "date": 1791588697481,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18412.943,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -4.65%"
           }
         ]
       }
