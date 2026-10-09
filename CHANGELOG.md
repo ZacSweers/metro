@@ -12,6 +12,10 @@ Changelog
   - Also checks Hilt aggregation metadata when Hilt interop is enabled.
   - Configure scope filters with `scopes` in the experimental `metro.hiddenDependencies` DSL. Enable `checkOnCompile` in the same block to run each check automatically after its Kotlin compilation, including when compilation fails. Automatic checks are disabled by default and may become the default in a future release.
 
+### Enhancements
+
+- **[IR]** Reduce generated code in graph extensions by reusing existing parent multibinding getters when contributions and their resolved dependencies are unchanged.
+
 ### Fixes
 
 - **[FIR]** Reduce redundant lookups when discovering contributed graph extension factories.

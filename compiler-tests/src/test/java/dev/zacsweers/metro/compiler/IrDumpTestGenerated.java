@@ -705,6 +705,18 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     public void testSingletonSetFactory() {
       run("SingletonSetFactory.kt");
     }
+
+    @Test
+    @TestMetadata("UnchangedChildrenReuseParentMultibindings.kt")
+    public void testUnchangedChildrenReuseParentMultibindings() {
+      run("UnchangedChildrenReuseParentMultibindings.kt");
+    }
+
+    @Test
+    @TestMetadata("UnchangedChildrenReuseParentMultibindingsAcrossShards.kt")
+    public void testUnchangedChildrenReuseParentMultibindingsAcrossShards() {
+      run("UnchangedChildrenReuseParentMultibindingsAcrossShards.kt");
+    }
   }
 
   @Nested

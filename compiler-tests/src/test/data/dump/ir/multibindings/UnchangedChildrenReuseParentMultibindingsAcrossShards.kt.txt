@@ -1,0 +1,698 @@
+@Inject
+class FirstAdapter : Adapter {
+  val one: One
+    field = one
+    get
+
+  val two: Two
+    field = two
+    get
+
+  val three: Three
+    field = three
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<FirstAdapter> {
+    private /* final field */ val one: Provider<One> = one
+    private /* final field */ val two: Provider<Two> = two
+    private /* final field */ val three: Provider<Three> = three
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(one: Provider<One>, two: Provider<Two>, three: Provider<Three>): MetroFactory {
+        return MetroFactory(one = one, two = two, three = three)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(one: One, two: Two, three: Three): FirstAdapter {
+        return FirstAdapter(one = one, two = two, three = three)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(one: Provider<One>, two: Provider<Two>, three: Provider<Three>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(one: One, two: Two, three: Three): FirstAdapter {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): FirstAdapter {
+      return MetroFactory/* companion */.newInstance(one = <this>.#one.invoke(), two = <this>.#two.invoke(), three = <this>.#three.invoke())
+    }
+
+  }
+
+  constructor(one: One, two: Two, three: Three) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@SingleIn(scope = AppScope::class)
+@Inject
+class One {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  object MetroFactory : Factory<One> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun create(): MetroFactory {
+      return MetroFactory
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun newInstance(): One {
+      return One()
+    }
+
+    @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): One {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): One {
+      return MetroFactory.newInstance()
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@Inject
+class SecondAdapter : Adapter {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  object MetroFactory : Factory<SecondAdapter> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun create(): MetroFactory {
+      return MetroFactory
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun newInstance(): SecondAdapter {
+      return SecondAdapter()
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): SecondAdapter {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): SecondAdapter {
+      return MetroFactory.newInstance()
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@Inject
+class ThirdAdapter : Adapter {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  object MetroFactory : Factory<ThirdAdapter> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun create(): MetroFactory {
+      return MetroFactory
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun newInstance(): ThirdAdapter {
+      return ThirdAdapter()
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): ThirdAdapter {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): ThirdAdapter {
+      return MetroFactory.newInstance()
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@SingleIn(scope = AppScope::class)
+@Inject
+class Three {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  object MetroFactory : Factory<Three> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun create(): MetroFactory {
+      return MetroFactory
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun newInstance(): Three {
+      return Three()
+    }
+
+    @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): Three {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Three {
+      return MetroFactory.newInstance()
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@Inject
+class TrackingHandler : Handler {
+  val adapters: Set<Adapter>
+    field = adapters
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<TrackingHandler> {
+    private /* final field */ val adapters: Provider<Set<Adapter>> = adapters
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(adapters: Provider<Set<Adapter>>): MetroFactory {
+        return MetroFactory(adapters = adapters)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(adapters: Set<Adapter>): TrackingHandler {
+        return TrackingHandler(adapters = adapters)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(adapters: Provider<Set<Adapter>>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(adapters: Set<Adapter>): TrackingHandler {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): TrackingHandler {
+      return MetroFactory/* companion */.newInstance(adapters = <this>.#adapters.invoke())
+    }
+
+  }
+
+  constructor(adapters: Set<Adapter>) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@SingleIn(scope = AppScope::class)
+@Inject
+class Two {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  object MetroFactory : Factory<Two> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun create(): MetroFactory {
+      return MetroFactory
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun newInstance(): Two {
+      return Two()
+    }
+
+    @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): Two {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Two {
+      return MetroFactory.newInstance()
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@GraphExtension
+interface ActivityGraph {
+  abstract val handler: Handler
+    abstract get
+
+  abstract val viewModel: ViewModelGraph
+    abstract get
+
+}
+
+interface Adapter {
+}
+
+@DependencyGraph(scope = AppScope::class)
+interface AppGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @ComptimeOnly
+  abstract class BindsMirror {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @Binds
+    @IntoSet
+    @CallableMetadata(callableName = "first", propertyName = "", startOffset = 825, endOffset = 866)
+    fun first_intoset(adapter: FirstAdapter): Adapter {
+      return error(message = "Never called")
+    }
+
+    @Binds
+    @CallableMetadata(callableName = "handler", propertyName = "", startOffset = 760, endOffset = 806)
+    fun handler(handler: TrackingHandler): Handler {
+      return error(message = "Never called")
+    }
+
+    @Binds
+    @IntoSet
+    @CallableMetadata(callableName = "second", propertyName = "", startOffset = 885, endOffset = 928)
+    fun second_intoset(adapter: SecondAdapter): Adapter {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : AppGraph {
+    private val thisGraphInstance: Impl
+      field = <this>
+
+    internal val shard1: Shard1
+
+    internal val shard2: Shard2
+
+    internal val shard3: Shard3
+
+    private class Shard1 {
+      internal val oneProvider: Provider<One>
+
+      private class SwitchingProvider<T : Any?> : Provider<T> {
+        private val graph: Shard1
+
+        private val id: Int
+
+        constructor(graph: Shard1, id: Int) /* primary */ {
+          super/*Any*/()
+          <this>.#graph = graph
+          <this>.#id = id
+        }
+
+        override fun invoke(): T {
+          return { // BLOCK
+            val tmp0_id: Int = <this>.#id
+            when {
+              EQEQ(arg0 = tmp0_id, arg1 = 2) -> One() /*as T */
+              else -> throw error(message = "Unexpected SwitchingProvider id: " + tmp0_id)
+            }
+          }
+        }
+
+      }
+
+      constructor() /* primary */ {
+        super/*Any*/()
+        <this>.#oneProvider = DoubleCheck/* companion */.provider<Provider<One>, One>(delegate = SwitchingProvider<One>(graph = <this>, id = 2))
+      }
+
+    }
+
+    private class Shard2 {
+      internal val threeProvider: Provider<Three>
+
+      internal val twoProvider: Provider<Two>
+
+      private class SwitchingProvider<T : Any?> : Provider<T> {
+        private val graph: Shard2
+
+        private val id: Int
+
+        constructor(graph: Shard2, id: Int) /* primary */ {
+          super/*Any*/()
+          <this>.#graph = graph
+          <this>.#id = id
+        }
+
+        override fun invoke(): T {
+          return { // BLOCK
+            val tmp0_id: Int = <this>.#id
+            when {
+              EQEQ(arg0 = tmp0_id, arg1 = 1) -> Three() /*as T */
+              EQEQ(arg0 = tmp0_id, arg1 = 0) -> Two() /*as T */
+              else -> throw error(message = "Unexpected SwitchingProvider id: " + tmp0_id)
+            }
+          }
+        }
+
+      }
+
+      constructor() /* primary */ {
+        super/*Any*/()
+        <this>.#threeProvider = DoubleCheck/* companion */.provider<Provider<Three>, Three>(delegate = SwitchingProvider<Three>(graph = <this>, id = 1))
+        <this>.#twoProvider = DoubleCheck/* companion */.provider<Provider<Two>, Two>(delegate = SwitchingProvider<Two>(graph = <this>, id = 0))
+      }
+
+    }
+
+    private class Shard3 {
+      internal val graph: Impl
+
+      constructor(graph: Impl) /* primary */ {
+        super/*Any*/()
+      }
+
+      internal val setOfAdapter: Set<Adapter>
+        internal get(): Set<Adapter> {
+          return { // BLOCK
+            buildSet<Adapter>(capacity = 2, builderAction = local fun MutableSet<Adapter>.<anonymous>() {
+              $receiver.add(element = SecondAdapter())
+              $receiver.add(element = FirstAdapter(one = <this>.#graph.#shard1.#oneProvider.invoke(), two = <this>.#graph.#shard2.#twoProvider.invoke(), three = <this>.#graph.#shard2.#threeProvider.invoke()))
+            }
+)
+          }
+        }
+
+    }
+
+    @DependencyGraph
+    private class ActivityGraphImpl : ActivityGraph {
+      private val appGraphImpl: Impl
+        field = appGraphImpl
+
+      private val thisGraphInstance: ActivityGraphImpl
+        field = <this>
+
+      @DependencyGraph
+      private class ViewModelGraphImpl : ViewModelGraph {
+        private val activityGraphImpl: ActivityGraphImpl
+          field = activityGraphImpl
+
+        constructor(activityGraphImpl: ActivityGraphImpl) /* primary */ {
+          super/*Any*/()
+          /* <init>() */
+
+        }
+
+        override val handler: Handler
+          override get(): Handler {
+            return TrackingHandler(adapters = <this>.<get-setOfAdapter>())
+          }
+
+        private val setOfAdapter: Set<Adapter>
+          private get(): Set<Adapter> {
+            return { // BLOCK
+              buildSet<Adapter>(capacity = 3, builderAction = local fun MutableSet<Adapter>.<anonymous>() {
+                $receiver.add(element = SecondAdapter())
+                $receiver.add(element = FirstAdapter(one = <this>.#activityGraphImpl.#appGraphImpl.#shard1.#oneProvider.invoke(), two = <this>.#activityGraphImpl.#appGraphImpl.#shard2.#twoProvider.invoke(), three = <this>.#activityGraphImpl.#appGraphImpl.#shard2.#threeProvider.invoke()))
+                $receiver.add(element = ThirdAdapter())
+              }
+)
+            }
+          }
+
+      }
+
+      constructor(appGraphImpl: Impl) /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      override val handler: Handler
+        override get(): Handler {
+          return TrackingHandler(adapters = <this>.#appGraphImpl.#shard3.<get-setOfAdapter>())
+        }
+
+      override val viewModel: ViewModelGraph
+        override get(): ViewModelGraph {
+          return ViewModelGraphImpl(activityGraphImpl = <this>)
+        }
+
+    }
+
+    @DependencyGraph
+    private class SiblingGraphImpl : SiblingGraph {
+      private val appGraphImpl: Impl
+        field = appGraphImpl
+
+      constructor(appGraphImpl: Impl) /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      override val handler: Handler
+        override get(): Handler {
+          return TrackingHandler(adapters = <this>.#appGraphImpl.#shard3.<get-setOfAdapter>())
+        }
+
+    }
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+      <this>.#shard1 = Shard1()
+      <this>.#shard2 = Shard2()
+      <this>.#shard3 = Shard3(graph = <this>)
+    }
+
+    override val activity: ActivityGraph
+      override get(): ActivityGraph {
+        return ActivityGraphImpl(appGraphImpl = <this>)
+      }
+
+    override val adapters: Set<Adapter>
+      override get(): Set<Adapter> {
+        return <this>.#shard3.<get-setOfAdapter>()
+      }
+
+    override val sibling: SiblingGraph
+      override get(): SiblingGraph {
+        return SiblingGraphImpl(appGraphImpl = <this>)
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
+    operator fun invoke(): AppGraph {
+      return Impl()
+    }
+
+  }
+
+  @Binds
+  @IntoSet
+  @ComptimeOnly
+  fun first(adapter: FirstAdapter): Adapter {
+    return error(message = "Never called")
+  }
+
+  @Binds
+  @ComptimeOnly
+  fun handler(handler: TrackingHandler): Handler {
+    return error(message = "Never called")
+  }
+
+  @Binds
+  @IntoSet
+  @ComptimeOnly
+  fun second(adapter: SecondAdapter): Adapter {
+    return error(message = "Never called")
+  }
+
+  abstract val activity: ActivityGraph
+    abstract get
+
+  abstract val adapters: Set<Adapter>
+    abstract get
+
+  abstract val sibling: SiblingGraph
+    abstract get
+
+}
+
+interface Handler {
+}
+
+@GraphExtension
+interface SiblingGraph {
+  abstract val handler: Handler
+    abstract get
+
+}
+
+@GraphExtension
+interface ViewModelGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @ComptimeOnly
+  abstract class BindsMirror {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @Binds
+    @IntoSet
+    @CallableMetadata(callableName = "third", propertyName = "", startOffset = 1184, endOffset = 1225)
+    fun third_intoset(adapter: ThirdAdapter): Adapter {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Binds
+  @IntoSet
+  @ComptimeOnly
+  fun third(adapter: ThirdAdapter): Adapter {
+    return error(message = "Never called")
+  }
+
+  abstract val handler: Handler
+    abstract get
+
+}
+
