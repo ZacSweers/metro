@@ -132,19 +132,19 @@
     "reachableKeys": 6,
     "deferredKeys": 0,
     "unusedInputs": 0,
-    "providerProperties": 2,
+    "providerProperties": 0,
     "scopedProviderProperties": 0,
     "shards": 0,
     "optimizations": {
       "bindingsPrunedByShrinking": 0,
       "classConstructorDirectInvocations": 1,
       "classConstructorNewInstanceCalls": 0,
-      "providerDirectInvocations": 1,
+      "providerDirectInvocations": 0,
       "providerNewInstanceCalls": 0,
       "shardsGenerated": 0,
       "shardedSupertypes": 0,
       "shardedInitFunctions": 0,
-      "providerInlines": 1,
+      "providerInlines": 0,
       "providerInlineFallbacks": {
         "deferredAccess": 0,
         "unavailableValue": 0
