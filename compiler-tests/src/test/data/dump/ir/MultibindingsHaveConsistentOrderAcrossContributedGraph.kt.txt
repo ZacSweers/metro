@@ -152,22 +152,9 @@ interface ExampleGraph : LoggedInGraph.Factory1.MetroContributionToAppScope {
 
       }
 
-      private val setOfTask: Set<Task>
-        private get(): Set<Task> {
-          return { // BLOCK
-            buildSet<Task>(capacity = 4, builderAction = local fun MutableSet<Task>.<anonymous>() {
-              $receiver.add(element = <this>.#exampleGraphImpl.provide4())
-              $receiver.add(element = <this>.#exampleGraphImpl.provide3())
-              $receiver.add(element = TaskImpl1())
-              $receiver.add(element = TaskImpl2())
-            }
-)
-          }
-        }
-
       override val tasksFromParent: Set<Task>
         override get(): Set<Task> {
-          return <this>.<get-setOfTask>()
+          return <this>.#exampleGraphImpl.<get-setOfTask>()
         }
 
     }
