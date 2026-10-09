@@ -79,9 +79,9 @@ internal class BindingPropertyContext(
   }
 
   /**
-   * Returns true if [local] and [inherited] produce the same value. They must come from the same
-   * declaration with the same dependencies, and every dependency must match too. Parent-owned
-   * instances match only when both point at the same owner. Other scoped bindings never match.
+   * Returns true if [local] and [inherited] produce the same value. Instances owned by an ancestor
+   * match when both graphs read them from the same owner. Other bindings must come from the same
+   * declaration with the same dependencies, and every dependency must match too.
    */
   private fun sameParentBinding(
     local: IrBinding,
@@ -92,52 +92,42 @@ internal class BindingPropertyContext(
     if (local.isSuspend || inherited.isSuspend) {
       return false
     }
-    val localToken =
-      when (local) {
-        is IrBinding.GraphDependency -> local.token
-        is IrBinding.BoundInstance -> local.token
-        else -> null
-      }
-    if (localToken != null) {
-      val inheritedOwner =
-        when (inherited) {
-          is IrBinding.GraphDependency -> inherited.token?.ownerGraphKey
-          is IrBinding.BoundInstance -> inherited.token?.ownerGraphKey ?: parentContext.graphKey
-          else -> parentContext.graphKey.takeIf { inherited.isScoped() }
-        }
-      return localToken.ownerGraphKey == inheritedOwner
+    val localOwner = local.sharedInstanceOwner(graphKey)
+    val inheritedOwner = inherited.sharedInstanceOwner(parentContext.graphKey)
+    if (localOwner != null || inheritedOwner != null) {
+      return localOwner == inheritedOwner
     }
-    if (local.isScoped() || inherited.isScoped()) {
-      return false
-    }
-    val sameDeclaration =
-      when (local) {
-        is IrBinding.Multibinding ->
-          inherited is IrBinding.Multibinding && local.allowEmpty == inherited.allowEmpty
-        is IrBinding.ConstructorInjected ->
-          inherited is IrBinding.ConstructorInjected &&
-            !local.isAssisted &&
-            local.injectedMembers.isEmpty() &&
-            local.classFactory.factoryClass == inherited.classFactory.factoryClass &&
-            local.classFactory.realDeclaration == inherited.classFactory.realDeclaration
-        is IrBinding.Provided ->
-          inherited is IrBinding.Provided &&
-            local.providerFactory.realDeclaration != null &&
-            local.providerFactory.realDeclaration == inherited.providerFactory.realDeclaration &&
-            local.contextualTypeKey == inherited.contextualTypeKey
-        is IrBinding.Alias ->
-          inherited is IrBinding.Alias &&
-            local.aliasedType == inherited.aliasedType &&
-            local.bindsCallable?.function == inherited.bindsCallable?.function
-        is IrBinding.ObjectClass ->
-          inherited is IrBinding.ObjectClass && local.type == inherited.type
-        else -> false
-      }
-    if (!sameDeclaration || local.dependencies != inherited.dependencies) {
+    val source = local.sourceDeclaration()
+    val sameSource =
+      source != null && local::class == inherited::class && source == inherited.sourceDeclaration()
+    if (!sameSource || local.dependencies != inherited.dependencies) {
       return false
     }
     return local.dependencies.all { !it.hasDefault && it.typeKey in matchingDependencies }
   }
+
+  /**
+   * Returns the graph that owns this binding's shared instance, or null if each graph builds its
+   * own.
+   */
+  private fun IrBinding.sharedInstanceOwner(graphKey: IrTypeKey?): IrTypeKey? =
+    when (this) {
+      is IrBinding.GraphDependency -> token?.ownerGraphKey
+      is IrBinding.BoundInstance -> token?.ownerGraphKey ?: graphKey
+      else -> graphKey.takeIf { isScoped() }
+    }
+
+  /** Returns the declaration this binding's value comes from, or null if it can't be compared. */
+  private fun IrBinding.sourceDeclaration(): Any? =
+    when (this) {
+      is IrBinding.ConstructorInjected -> classFactory.factoryClass
+      is IrBinding.Provided -> providerFactory.factoryClass
+      is IrBinding.Alias -> bindsCallable?.function ?: aliasedType
+      is IrBinding.ObjectClass -> type
+      // Contributions are the multibinding's dependencies.
+      is IrBinding.Multibinding -> typeKey
+      else -> null
+    }
 
   /** Finds an existing parent collection helper without changing either resolved graph. */
   context(metroContext: IrMetroContext)
