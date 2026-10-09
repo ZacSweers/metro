@@ -186,7 +186,12 @@ internal class IrGraphGenerator(
 
   private val bindingPropertyContext =
     trace("Init bindingPropertyContext") {
-      BindingPropertyContext(bindingGraph, graphKey = node.typeKey, parent = parentBindingContext)
+      BindingPropertyContext(
+        bindingGraph,
+        sealResult.sortedKeys,
+        graphKey = node.typeKey,
+        parent = parentBindingContext,
+      )
     }
 
   private val graphMetadataReporter =
@@ -1111,6 +1116,7 @@ internal class IrGraphGenerator(
           extraKeeps = bindingGraph.keeps(),
           deferredTypes = sealResult.deferredTypes,
           reachableKeys = sealResult.reachableKeys,
+          reuseMultibinding = { bindingPropertyContext.reusableMultibinding(it) != null },
         )
         .collect()
     }

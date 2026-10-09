@@ -40,18 +40,119 @@ internal data class BindingProperty(
  * [BindingProperty.ownerGraphKey] to indicate which ancestor owns the property.
  *
  * @property bindingGraph The binding graph for this context
+ * @property sortedKeys This graph's keys in dependency order. Used to compare bindings with the
+ *   parent graph.
  * @property graphKey The type key of the graph this context belongs to. Used to populate
  *   [BindingProperty.ownerGraphKey] when properties are found via parent lookup.
  * @property parent Optional parent context for hierarchical lookup in extension graphs
  */
 internal class BindingPropertyContext(
   private val bindingGraph: IrBindingGraph,
+  private val sortedKeys: List<IrTypeKey>,
   private val graphKey: IrTypeKey? = null,
   private val parent: BindingPropertyContext? = null,
 ) {
   private val properties = mutableMapOf<IrContextualTypeKey, IrProperty>()
   private val shardProperties = mutableMapOf<IrContextualTypeKey, IrProperty>()
   private val shardIndices = MutableObjectIntMap<IrContextualTypeKey>()
+
+  /**
+   * Keys whose binding in this graph resolves the same way as in the parent graph, including all of
+   * its transitive dependencies.
+   */
+  private val matchingParentBindings: Set<IrTypeKey> by lazy {
+    val parentContext = parent
+    if (parentContext == null) {
+      emptySet()
+    } else {
+      buildSet {
+        // Dependencies come before their consumers, so each dependency is already decided.
+        for (key in sortedKeys) {
+          val local = bindingGraph.findBinding(key) ?: continue
+          val inherited = parentContext.bindingGraph.findBinding(key) ?: continue
+          if (sameParentBinding(local, inherited, parentContext, this)) {
+            add(key)
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Returns true if [local] and [inherited] produce the same value. They must come from the same
+   * declaration with the same dependencies, and every dependency must match too. Parent-owned
+   * instances match only when both point at the same owner. Other scoped bindings never match.
+   */
+  private fun sameParentBinding(
+    local: IrBinding,
+    inherited: IrBinding,
+    parentContext: BindingPropertyContext,
+    matchingDependencies: Set<IrTypeKey>,
+  ): Boolean {
+    if (local.isSuspend || inherited.isSuspend) {
+      return false
+    }
+    val localToken =
+      when (local) {
+        is IrBinding.GraphDependency -> local.token
+        is IrBinding.BoundInstance -> local.token
+        else -> null
+      }
+    if (localToken != null) {
+      val inheritedOwner =
+        when (inherited) {
+          is IrBinding.GraphDependency -> inherited.token?.ownerGraphKey
+          is IrBinding.BoundInstance -> inherited.token?.ownerGraphKey ?: parentContext.graphKey
+          else -> parentContext.graphKey.takeIf { inherited.isScoped() }
+        }
+      return localToken.ownerGraphKey == inheritedOwner
+    }
+    if (local.isScoped() || inherited.isScoped()) {
+      return false
+    }
+    val sameDeclaration =
+      when (local) {
+        is IrBinding.Multibinding ->
+          inherited is IrBinding.Multibinding && local.allowEmpty == inherited.allowEmpty
+        is IrBinding.ConstructorInjected ->
+          inherited is IrBinding.ConstructorInjected &&
+            !local.isAssisted &&
+            local.injectedMembers.isEmpty() &&
+            local.classFactory.factoryClass == inherited.classFactory.factoryClass &&
+            local.classFactory.realDeclaration == inherited.classFactory.realDeclaration
+        is IrBinding.Provided ->
+          inherited is IrBinding.Provided &&
+            local.providerFactory.realDeclaration != null &&
+            local.providerFactory.realDeclaration == inherited.providerFactory.realDeclaration &&
+            local.contextualTypeKey == inherited.contextualTypeKey
+        is IrBinding.Alias ->
+          inherited is IrBinding.Alias &&
+            local.aliasedType == inherited.aliasedType &&
+            local.bindsCallable?.function == inherited.bindsCallable?.function
+        is IrBinding.ObjectClass ->
+          inherited is IrBinding.ObjectClass && local.type == inherited.type
+        else -> false
+      }
+    if (!sameDeclaration || local.dependencies != inherited.dependencies) {
+      return false
+    }
+    return local.dependencies.all { !it.hasDefault && it.typeKey in matchingDependencies }
+  }
+
+  /** Finds an existing parent collection helper without changing either resolved graph. */
+  context(metroContext: IrMetroContext)
+  fun reusableMultibinding(key: IrContextualTypeKey): BindingProperty? {
+    val parentContext = parent ?: return null
+    val binding = bindingGraph.findBinding(key.typeKey)
+    if (binding !is IrBinding.Multibinding || key.hasDefault) {
+      return null
+    }
+    if (key.typeKey !in matchingParentBindings) {
+      return null
+    }
+    val property = parentContext.get(key.canonicalize()) ?: return null
+    return property.copy(ownerGraphKey = property.ownerGraphKey ?: parentContext.graphKey)
+  }
 
   /** Lazily computed map of ancestor graph keys to their contexts. */
   private val ancestorContextCache: Map<IrTypeKey, BindingPropertyContext> by lazy {
@@ -126,6 +227,10 @@ internal class BindingPropertyContext(
       localProperty(providerLookupKey)?.let {
         return it
       }
+    }
+
+    reusableMultibinding(key)?.let {
+      return it
     }
 
     // For aliases, try the aliased target
