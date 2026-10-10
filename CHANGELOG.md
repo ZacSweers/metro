@@ -49,6 +49,7 @@ Special thanks to the following contributors for contributing to this release!
 - [@agrosner](https://github.com/agrosner)
 - [@joshfriend](https://github.com/joshfriend)
 - [@kevinguitar](https://github.com/kevinguitar)
+- [@wbonnefond](https://github.com/wbonnefond)
 
 ### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
 
