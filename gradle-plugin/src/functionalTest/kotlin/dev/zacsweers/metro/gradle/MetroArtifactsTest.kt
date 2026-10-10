@@ -518,7 +518,8 @@ class MetroArtifactsTest {
                 "generateStaticAnnotations": true,
                 "enableRuntimeTracing": false,
                 "memberNamingStrategy": "DESCRIPTIVE",
-                "maxGeneratedClassNameLength": $DEFAULT_MAX_GENERATED_CLASS_NAME_LENGTH
+                "maxGeneratedClassNameLength": $DEFAULT_MAX_GENERATED_CLASS_NAME_LENGTH,
+                "diagnosticLevels": {}
               },
               "stats": {
                 "providerFactories": 1,
