@@ -25,33 +25,42 @@ import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.DeclarationCheckers
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirCallableDeclarationChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
+import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirDeclarationChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.ExpressionCheckers
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirAnnotationChecker
+import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirExpressionChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirFunctionCallChecker
 import org.jetbrains.kotlin.fir.analysis.extensions.FirAdditionalCheckersExtension
+import org.jetbrains.kotlin.fir.declarations.FirDeclaration
+import org.jetbrains.kotlin.fir.expressions.FirStatement
 
 internal class MetroFirCheckers(session: FirSession) : FirAdditionalCheckersExtension(session) {
+  private val diagnosticLevels = DiagnosticLevels.create(session)
+
   override val declarationCheckers: DeclarationCheckers =
     object : DeclarationCheckers() {
       override val classCheckers: Set<FirClassChecker>
         get() =
           setOf(
-            InjectConstructorChecker,
-            MembersInjectChecker,
-            AssistedInjectChecker,
-            AggregationChecker,
-            ContributesToBindingContainerChecker,
-            DependencyGraphCreatorChecker,
-            DependencyGraphChecker,
-            BindingContainerClassChecker,
-            MergedContributionChecker,
-            MapKeyChecker,
-            ArrayClassKeyChecker.Defaults,
-            DefaultBindingChecker,
-          )
+              InjectConstructorChecker,
+              MembersInjectChecker,
+              AssistedInjectChecker,
+              AggregationChecker,
+              ContributesToBindingContainerChecker,
+              DependencyGraphCreatorChecker,
+              DependencyGraphChecker,
+              BindingContainerClassChecker,
+              MergedContributionChecker,
+              MapKeyChecker,
+              ArrayClassKeyChecker.Defaults,
+              DefaultBindingChecker,
+            )
+            .withDiagnosticLevels()
 
       override val callableDeclarationCheckers: Set<FirCallableDeclarationChecker>
-        get() = setOf(BindingContainerCallableChecker, MultibindsChecker, FunctionInjectionChecker)
+        get() =
+          setOf(BindingContainerCallableChecker, MultibindsChecker, FunctionInjectionChecker)
+            .withDiagnosticLevels()
     }
 
   override val expressionCheckers: ExpressionCheckers =
@@ -65,9 +74,22 @@ internal class MetroFirCheckers(session: FirSession) : FirAdditionalCheckersExte
               add(InteropAnnotationChecker)
             }
           }
+            .withDiagnosticLevels()
         }
 
       override val functionCallCheckers: Set<FirFunctionCallChecker>
-        get() = setOf(CreateGraphChecker, AsContributionChecker)
+        get() = setOf(CreateGraphChecker, AsContributionChecker).withDiagnosticLevels()
     }
+
+  @JvmName("declarationCheckersWithDiagnosticLevels")
+  private fun <D : FirDeclaration> Set<FirDeclarationChecker<D>>.withDiagnosticLevels():
+    Set<FirDeclarationChecker<D>> {
+    return diagnosticLevels?.wrapDeclarationCheckers(this) ?: this
+  }
+
+  @JvmName("expressionCheckersWithDiagnosticLevels")
+  private fun <E : FirStatement> Set<FirExpressionChecker<E>>.withDiagnosticLevels():
+    Set<FirExpressionChecker<E>> {
+    return diagnosticLevels?.wrapExpressionCheckers(this) ?: this
+  }
 }
