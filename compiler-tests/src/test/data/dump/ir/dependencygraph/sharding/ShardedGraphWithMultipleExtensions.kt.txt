@@ -632,12 +632,9 @@ interface AppGraph : Feature1Graph.Factory.MetroContributionToAppScope, Feature2
       private class Shard2 {
         internal val feature1Service3Provider: Provider<Feature1Service3>
 
-        internal val graph: Feature1GraphImpl
-
         constructor(graph: Feature1GraphImpl) /* primary */ {
           super/*Any*/()
-          <this>.#graph = graph
-          <this>.#feature1Service3Provider = provider<Provider<Feature1Service3>, Feature1Service3>(delegate = create(f1s2 = <this>.#graph.#shard1.#feature1Service2Provider))
+          <this>.#feature1Service3Provider = provider<Provider<Feature1Service3>, Feature1Service3>(delegate = create(f1s2 = graph.#shard1.#feature1Service2Provider))
         }
 
       }
@@ -669,12 +666,9 @@ interface AppGraph : Feature1Graph.Factory.MetroContributionToAppScope, Feature2
       private class Shard1 {
         internal val feature2Service1Provider: Provider<Feature2Service1>
 
-        internal val graph: Feature2GraphImpl
-
         constructor(graph: Feature2GraphImpl) /* primary */ {
           super/*Any*/()
-          <this>.#graph = graph
-          <this>.#feature2Service1Provider = provider<Provider<Feature2Service1>, Feature2Service1>(delegate = create(app = <this>.#graph.#appGraphImpl.#shard1.#appService1Provider))
+          <this>.#feature2Service1Provider = provider<Provider<Feature2Service1>, Feature2Service1>(delegate = create(app = graph.#appGraphImpl.#shard1.#appService1Provider))
         }
 
       }
@@ -684,12 +678,9 @@ interface AppGraph : Feature1Graph.Factory.MetroContributionToAppScope, Feature2
 
         internal val feature2Service3Provider: Provider<Feature2Service3>
 
-        internal val graph: Feature2GraphImpl
-
         constructor(graph: Feature2GraphImpl) /* primary */ {
           super/*Any*/()
-          <this>.#graph = graph
-          <this>.#feature2Service2Provider = provider<Provider<Feature2Service2>, Feature2Service2>(delegate = create(f2s1 = <this>.#graph.#shard1.#feature2Service1Provider))
+          <this>.#feature2Service2Provider = provider<Provider<Feature2Service2>, Feature2Service2>(delegate = create(f2s1 = graph.#shard1.#feature2Service1Provider))
           <this>.#feature2Service3Provider = provider<Provider<Feature2Service3>, Feature2Service3>(delegate = create(f2s2 = <this>.#feature2Service2Provider))
         }
 

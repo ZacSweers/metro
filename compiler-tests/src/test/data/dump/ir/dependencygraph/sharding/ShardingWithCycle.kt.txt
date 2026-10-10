@@ -327,14 +327,11 @@ interface TestGraph {
 
       internal val dProvider: Provider<D>
 
-      internal val graph: Impl
-
       constructor(graph: Impl) /* primary */ {
         super/*Any*/()
-        <this>.#graph = graph
         <this>.#cProvider = DelegateFactory<C>()
         <this>.#dProvider = provider<Provider<D>, D>(delegate = create(c = <this>.#cProvider))
-        setDelegate<C>(delegateFactory = <this>.#cProvider, delegate = provider<Provider<C>, C>(delegate = create(b = <this>.#graph.#shard1.#bProvider, d = <this>.#dProvider)))
+        setDelegate<C>(delegateFactory = <this>.#cProvider, delegate = provider<Provider<C>, C>(delegate = create(b = graph.#shard1.#bProvider, d = <this>.#dProvider)))
       }
 
     }
@@ -342,12 +339,9 @@ interface TestGraph {
     private class Shard3 {
       internal val eProvider: Provider<E>
 
-      internal val graph: Impl
-
       constructor(graph: Impl) /* primary */ {
         super/*Any*/()
-        <this>.#graph = graph
-        <this>.#eProvider = provider<Provider<E>, E>(delegate = create(c = <this>.#graph.#shard2.#cProvider))
+        <this>.#eProvider = provider<Provider<E>, E>(delegate = create(c = graph.#shard2.#cProvider))
       }
 
     }

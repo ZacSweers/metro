@@ -529,12 +529,9 @@ interface AppGraph : ChildGraph.Factory.MetroContributionToAppScope {
       private class Shard1 {
         internal val childService1Provider: Provider<ChildService1>
 
-        internal val graph: ChildGraphImpl
-
         constructor(graph: ChildGraphImpl) /* primary */ {
           super/*Any*/()
-          <this>.#graph = graph
-          <this>.#childService1Provider = provider<Provider<ChildService1>, ChildService1>(delegate = create(app1 = <this>.#graph.#appGraphImpl.#shard1.#appService1Provider))
+          <this>.#childService1Provider = provider<Provider<ChildService1>, ChildService1>(delegate = create(app1 = graph.#appGraphImpl.#shard1.#appService1Provider))
         }
 
       }
@@ -542,12 +539,9 @@ interface AppGraph : ChildGraph.Factory.MetroContributionToAppScope {
       private class Shard2 {
         internal val childService2Provider: Provider<ChildService2>
 
-        internal val graph: ChildGraphImpl
-
         constructor(graph: ChildGraphImpl) /* primary */ {
           super/*Any*/()
-          <this>.#graph = graph
-          <this>.#childService2Provider = provider<Provider<ChildService2>, ChildService2>(delegate = create(child1 = <this>.#graph.#shard1.#childService1Provider))
+          <this>.#childService2Provider = provider<Provider<ChildService2>, ChildService2>(delegate = create(child1 = graph.#shard1.#childService1Provider))
         }
 
       }
@@ -555,12 +549,9 @@ interface AppGraph : ChildGraph.Factory.MetroContributionToAppScope {
       private class Shard3 {
         internal val childService3Provider: Provider<ChildService3>
 
-        internal val graph: ChildGraphImpl
-
         constructor(graph: ChildGraphImpl) /* primary */ {
           super/*Any*/()
-          <this>.#graph = graph
-          <this>.#childService3Provider = provider<Provider<ChildService3>, ChildService3>(delegate = create(child2 = <this>.#graph.#shard2.#childService2Provider))
+          <this>.#childService3Provider = provider<Provider<ChildService3>, ChildService3>(delegate = create(child2 = graph.#shard2.#childService2Provider))
         }
 
       }
@@ -577,12 +568,9 @@ interface AppGraph : ChildGraph.Factory.MetroContributionToAppScope {
         private class Shard1 {
           internal val grandchildService1Provider: Provider<GrandchildService1>
 
-          internal val graph: GrandchildGraphImpl
-
           constructor(graph: GrandchildGraphImpl) /* primary */ {
             super/*Any*/()
-            <this>.#graph = graph
-            <this>.#grandchildService1Provider = provider<Provider<GrandchildService1>, GrandchildService1>(delegate = create(app2 = <this>.#graph.#childGraphImpl.#appGraphImpl.#shard2.#appService2Provider, child3 = <this>.#graph.#childGraphImpl.#shard3.#childService3Provider))
+            <this>.#grandchildService1Provider = provider<Provider<GrandchildService1>, GrandchildService1>(delegate = create(app2 = graph.#childGraphImpl.#appGraphImpl.#shard2.#appService2Provider, child3 = graph.#childGraphImpl.#shard3.#childService3Provider))
           }
 
         }
@@ -590,12 +578,9 @@ interface AppGraph : ChildGraph.Factory.MetroContributionToAppScope {
         private class Shard2 {
           internal val grandchildService2Provider: Provider<GrandchildService2>
 
-          internal val graph: GrandchildGraphImpl
-
           constructor(graph: GrandchildGraphImpl) /* primary */ {
             super/*Any*/()
-            <this>.#graph = graph
-            <this>.#grandchildService2Provider = provider<Provider<GrandchildService2>, GrandchildService2>(delegate = create(gc1 = <this>.#graph.#shard1.#grandchildService1Provider))
+            <this>.#grandchildService2Provider = provider<Provider<GrandchildService2>, GrandchildService2>(delegate = create(gc1 = graph.#shard1.#grandchildService1Provider))
           }
 
         }

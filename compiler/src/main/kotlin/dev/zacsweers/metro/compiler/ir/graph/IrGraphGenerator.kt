@@ -50,6 +50,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.remapTypes
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
+import dev.zacsweers.metro.compiler.ir.readsField
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireSimpleType
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
@@ -96,7 +97,9 @@ import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
+import org.jetbrains.kotlin.ir.expressions.IrBlockBody
 import org.jetbrains.kotlin.ir.expressions.IrExpression
+import org.jetbrains.kotlin.ir.expressions.IrSetField
 import org.jetbrains.kotlin.ir.irAttribute
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.defaultType
@@ -1361,6 +1364,25 @@ internal class IrGraphGenerator(
         GeneratedSwitchingProviders(synchronous = null, suspending = null)
       }
 
+    // Code that runs in a nested shard's constructor reads the graph from its constructor parameter
+    // instead of the field. Field initializers only run there when they aren't chunked into
+    // separate init functions.
+    val shardGraphParam = shard.graphParam
+    val constructorExprContext =
+      if (shardExprContext != null && shardGraphParam != null) {
+        shardExprContext.withGraphValue(shardGraphParam)
+      } else {
+        shardExprContext
+      }
+    val fieldPropertyCount = shard.properties.values.count { it.property.backingField != null }
+    val fieldInitsRunInConstructor = fieldPropertyCount <= options.statementsPerInitFun
+    val fieldInitExprContext =
+      if (fieldInitsRunInConstructor) {
+        constructorExprContext
+      } else {
+        shardExprContext
+      }
+
     // Collect property initializers for this shard
     val shardPropertyInitializers = mutableListOf<Pair<IrProperty, PropertyInitializer>>()
     val shardPropertiesToTypeKeys = mutableMapOf<IrProperty, IrTypeKey>()
@@ -1370,6 +1392,7 @@ internal class IrGraphGenerator(
       collectShardPropertyInitializers(
         shard = shard,
         shardExprContext = shardExprContext,
+        fieldInitContext = fieldInitExprContext,
         expressionGeneratorFactory = expressionGeneratorFactory,
         shardPropertyInitializers = shardPropertyInitializers,
         shardPropertiesToTypeKeys = shardPropertiesToTypeKeys,
@@ -1383,7 +1406,8 @@ internal class IrGraphGenerator(
       trace("Generate shard chunking") {
         generateShardChunking(
           shard = shard,
-          shardExprContext = shardExprContext,
+          // Deferred setDelegate calls always run in the shard constructor.
+          shardExprContext = constructorExprContext,
           expressionGeneratorFactory = expressionGeneratorFactory,
           shardPropertyInitializers = shardPropertyInitializers,
           shardPropertiesToTypeKeys = shardPropertiesToTypeKeys,
@@ -1411,12 +1435,31 @@ internal class IrGraphGenerator(
         )
       }
     }
+
+    if (!shard.isGraphAsShard) {
+      shard.removeGraphPropertyIfUnread()
+    }
+  }
+
+  /**
+   * Removes a nested shard's `graph` property when nothing outside its constructor reads it. The
+   * constructor reads its parameter instead.
+   */
+  private fun Shard.removeGraphPropertyIfUnread() {
+    val property = graphProperty ?: return
+    val graphField = property.backingField ?: return
+    if (shardClass.readsField(graphField)) return
+    val constructorBody = shardClass.primaryConstructor?.body as? IrBlockBody ?: return
+    constructorBody.statements.removeAll { it is IrSetField && it.symbol == graphField.symbol }
+    shardClass.declarations.remove(property)
+    graphProperty = null
   }
 
   /** Collects property initializers for a single shard. */
   private fun collectShardPropertyInitializers(
     shard: Shard,
     shardExprContext: ShardExpressionContext?,
+    fieldInitContext: ShardExpressionContext?,
     expressionGeneratorFactory: GraphExpressionGenerator.Factory,
     shardPropertyInitializers: MutableList<Pair<IrProperty, PropertyInitializer>>,
     shardPropertiesToTypeKeys: MutableMap<IrProperty, IrTypeKey>,
@@ -1531,7 +1574,7 @@ internal class IrGraphGenerator(
           } else {
             { thisReceiver: IrValueParameter, fieldInitKey: IrTypeKey ->
               expressionGeneratorFactory
-                .create(thisReceiver, shardContext = shardExprContext)
+                .create(thisReceiver, shardContext = fieldInitContext)
                 .generateBindingCode(
                   binding,
                   contextualTypeKey = contextKey,

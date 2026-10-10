@@ -112,6 +112,7 @@ import org.jetbrains.kotlin.ir.expressions.IrConstKind
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrFunctionExpression
+import org.jetbrains.kotlin.ir.expressions.IrGetField
 import org.jetbrains.kotlin.ir.expressions.IrGetObjectValue
 import org.jetbrains.kotlin.ir.expressions.IrGetValue
 import org.jetbrains.kotlin.ir.expressions.IrMemberAccessExpression
@@ -3092,4 +3093,20 @@ internal fun IrElement.replaceValueReads(
       }
     },
   )
+}
+
+/** Returns true if anything inside this element reads [field]. */
+internal fun IrElement.readsField(field: IrField): Boolean {
+  var found = false
+  transformChildrenVoid(
+    object : IrElementTransformerVoid() {
+      override fun visitGetField(expression: IrGetField): IrExpression {
+        if (expression.symbol == field.symbol) {
+          found = true
+        }
+        return super.visitGetField(expression)
+      }
+    },
+  )
+  return found
 }

@@ -24,6 +24,7 @@ Changelog
 - **[IR]** Provider lambdas that Metro generates are SAM-converted to `Provider` directly. The inline `provider()` function they went through before added a type check and a second wrapper object at every site.
 - **[IR]** Each switching provider class numbers its bindings from zero. Shards used to switch on graph-wide IDs with gaps between them.
 - **[IR]** Switching provider branches read the graph reference into a local when more than one branch needs it.
+- **[IR]** Graph shard constructors read the graph from their constructor parameter. A shard drops its `graph` field when only its constructor used it.
 - **[IR]** Instance reads of `@Includes` graph accessors that return `Provider<T>` or `() -> T` call the accessor directly. They used to cache a converted provider in a field or wrap the accessor in a new provider lambda. `Lazy` accessors still cache their handle, so their value is computed once.
 - **[IR/interop]** Providers of absent `@BindsOptionalOf` bindings use an `InstanceFactory` that holds `Optional.empty()`. They used to generate a lambda.
 

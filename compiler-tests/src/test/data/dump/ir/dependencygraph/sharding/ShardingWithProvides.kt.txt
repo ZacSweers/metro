@@ -147,12 +147,9 @@ interface TestGraph {
     private class Shard2 {
       internal val service3Provider: Provider<Service3>
 
-      internal val graph: Impl
-
       constructor(graph: Impl) /* primary */ {
         super/*Any*/()
-        <this>.#graph = graph
-        <this>.#service3Provider = provider<Provider<Service3>, Service3>(delegate = create(s2 = <this>.#graph.#shard1.#provideService2Provider))
+        <this>.#service3Provider = provider<Provider<Service3>, Service3>(delegate = create(s2 = graph.#shard1.#provideService2Provider))
       }
 
     }

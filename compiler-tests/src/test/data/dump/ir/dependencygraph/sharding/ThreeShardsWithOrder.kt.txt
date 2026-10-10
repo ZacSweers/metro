@@ -292,13 +292,10 @@ interface TestGraph {
 
       internal val s4Provider: Provider<S4>
 
-      internal val graph: Impl
-
       constructor(graph: Impl) /* primary */ {
         super/*Any*/()
-        <this>.#graph = graph
         <this>.#s3Provider = provider<Provider<S3>, S3>(delegate = create())
-        <this>.#s4Provider = provider<Provider<S4>, S4>(delegate = create(s1 = <this>.#graph.#shard1.#s1Provider))
+        <this>.#s4Provider = provider<Provider<S4>, S4>(delegate = create(s1 = graph.#shard1.#s1Provider))
       }
 
     }
@@ -306,12 +303,9 @@ interface TestGraph {
     private class Shard3 {
       internal val s5Provider: Provider<S5>
 
-      internal val graph: Impl
-
       constructor(graph: Impl) /* primary */ {
         super/*Any*/()
-        <this>.#graph = graph
-        <this>.#s5Provider = provider<Provider<S5>, S5>(delegate = create(s4 = <this>.#graph.#shard2.#s4Provider))
+        <this>.#s5Provider = provider<Provider<S5>, S5>(delegate = create(s4 = graph.#shard2.#s4Provider))
       }
 
     }

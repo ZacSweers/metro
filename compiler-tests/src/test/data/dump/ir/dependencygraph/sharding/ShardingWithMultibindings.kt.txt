@@ -188,15 +188,12 @@ interface TestGraph {
 
       internal val collectorProvider: Provider<Collector>
 
-      internal val graph: Impl
-
       constructor(graph: Impl) /* primary */ {
         super/*Any*/()
-        <this>.#graph = graph
-        <this>.#provideService2Provider = provider<Provider<Any>, Any>(delegate = create(s2 = <this>.#graph.#shard1.#service2Provider))
+        <this>.#provideService2Provider = provider<Provider<Any>, Any>(delegate = create(s2 = graph.#shard1.#service2Provider))
         <this>.#collectorProvider = provider<Provider<Collector>, Collector>(delegate = create(services = { // BLOCK
           val tmp0_builder: SetFactory.Builder<Any> = builder<Any>(individualProviderSize = 2, collectionProviderSize = 0)
-          tmp0_builder.addProvider(individualProvider = <this>.#graph.#shard1.#provideService1Provider)
+          tmp0_builder.addProvider(individualProvider = graph.#shard1.#provideService1Provider)
           tmp0_builder.addProvider(individualProvider = <this>.#provideService2Provider)
           tmp0_builder.build()
         }))

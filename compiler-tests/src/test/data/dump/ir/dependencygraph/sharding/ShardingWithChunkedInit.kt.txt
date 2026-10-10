@@ -396,12 +396,9 @@ interface TestGraph {
 
       internal val fProvider: Provider<F>
 
-      internal val graph: Impl
-
       constructor(graph: Impl) /* primary */ {
         super/*Any*/()
-        <this>.#graph = graph
-        <this>.#eProvider = provider<Provider<E>, E>(delegate = create(d = <this>.#graph.#shard1.#dProvider))
+        <this>.#eProvider = provider<Provider<E>, E>(delegate = create(d = graph.#shard1.#dProvider))
         <this>.#fProvider = provider<Provider<F>, F>(delegate = create(e = <this>.#eProvider))
       }
 
