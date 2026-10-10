@@ -1,4 +1,4 @@
-/MapKeyRequiresContributesIntoMap.kt:6:1: warning: `@MapKey` is ignored because this declaration has no `@ContributesIntoMap` annotation.
+/MapKeyRequiresContributesIntoMap.kt:6:1: error: `@MapKey` annotations are only allowed on `@ContributesIntoMap` declarations. If another tool binds this class into a map, lower this error with the `diagnostic-level` compiler option, like `MAP_KEY_WITHOUT_CONTRIBUTES_INTO_MAP:warning`.
 
 /MapKeyRequiresContributesIntoMap.kt:10:1: error: `@MapKey` annotations are only allowed on `@ContributesIntoMap` declarations.
 

@@ -221,7 +221,7 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val MAP_KEY_TYPE_PARAM_ERROR by error1<KtElement, String>(TYPE_PARAMETERS_LIST)
   val MAP_KEY_IMPLICIT_CLASS_KEY_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val MAP_KEY_REDUNDANT_IMPLICIT_CLASS_KEY by warning1<KtElement, String>(NAME_IDENTIFIER)
-  val MAP_KEY_WITHOUT_CONTRIBUTES_INTO_MAP by warning1<KtElement, String>(NAME_IDENTIFIER)
+  val MAP_KEY_WITHOUT_CONTRIBUTES_INTO_MAP by error1<KtElement, String>(NAME_IDENTIFIER)
   val MEMBERS_INJECT_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val MEMBERS_INJECT_STATUS_ERROR by error1<KtElement, String>(MODALITY_MODIFIER)
   val MEMBERS_INJECT_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)

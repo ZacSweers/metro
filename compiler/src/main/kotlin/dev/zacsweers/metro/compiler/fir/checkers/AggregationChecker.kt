@@ -87,7 +87,9 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
       reporter.reportOn(
         classMapKey.fir.source ?: declaration.source,
         MetroDiagnostics.MAP_KEY_WITHOUT_CONTRIBUTES_INTO_MAP,
-        "`@MapKey` is ignored because this declaration has no `@ContributesIntoMap` annotation.",
+        "`@MapKey` annotations are only allowed on `@ContributesIntoMap` declarations. If " +
+          "another tool binds this class into a map, lower this error with the `diagnostic-level` " +
+          "compiler option, like `MAP_KEY_WITHOUT_CONTRIBUTES_INTO_MAP:warning`.",
       )
       return
     }

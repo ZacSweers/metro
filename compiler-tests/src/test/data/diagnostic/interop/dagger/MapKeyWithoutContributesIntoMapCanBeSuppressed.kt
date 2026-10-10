@@ -1,6 +1,7 @@
 // https://github.com/ZacSweers/metro/issues/2919
 // RENDER_DIAGNOSTICS_FULL_TEXT
 // ENABLE_DAGGER_INTEROP
+// DIAGNOSTIC_LEVEL: MAP_KEY_WITHOUT_CONTRIBUTES_INTO_MAP:warning
 
 import dagger.Binds
 import dagger.Module
