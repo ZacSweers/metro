@@ -350,7 +350,7 @@ interface TestGraph {
       constructor(graph: Impl) /* primary */ {
         super/*Any*/()
         <this>.#graph = graph
-        <this>.#provider = DoubleCheck/* companion */.provider<Provider<Config>, Config>(delegate = Config.MetroFactory/* companion */.create(example = InstanceFactory/* companion */.invoke<ProvidedExample>(value = <this>.#graph.#instance)))
+        <this>.#provider = provider<Provider<Config>, Config>(delegate = create(example = InstanceFactory/* companion */.invoke<ProvidedExample>(value = <this>.#graph.#instance)))
       }
 
     }
@@ -365,8 +365,8 @@ interface TestGraph {
       constructor(graph: Impl) /* primary */ {
         super/*Any*/()
         <this>.#graph = graph
-        <this>.#provider = DoubleCheck/* companion */.provider<Provider<Repository>, Repository>(delegate = Repository.MetroFactory/* companion */.create(config = <this>.#graph.#shard1.#provider))
-        <this>.#provider2 = DoubleCheck/* companion */.provider<Provider<Service>, Service>(delegate = Service.MetroFactory/* companion */.create(repository = <this>.#provider))
+        <this>.#provider = provider<Provider<Repository>, Repository>(delegate = create(config = <this>.#graph.#shard1.#provider))
+        <this>.#provider2 = provider<Provider<Service>, Service>(delegate = create(repository = <this>.#provider))
       }
 
     }
@@ -389,12 +389,12 @@ interface TestGraph {
 
     override val primaryWorkerFactory: PrimaryWorkerFactory
       override get(): PrimaryWorkerFactory {
-        return PrimaryWorkerFactory.Impl/* companion */.create(delegateFactory = SharedWorker.MetroFactory/* companion */.create(service = <this>.#shard2.#provider2)).invoke()
+        return create(delegateFactory = create(service = <this>.#shard2.#provider2)).invoke()
       }
 
     override val secondaryWorkerFactory: SecondaryWorkerFactory
       override get(): SecondaryWorkerFactory {
-        return SecondaryWorkerFactory.Impl/* companion */.create(delegateFactory = SharedWorker.MetroFactory/* companion */.create(service = <this>.#shard2.#provider2)).invoke()
+        return create(delegateFactory = create(service = <this>.#shard2.#provider2)).invoke()
       }
 
     override val service: Service

@@ -169,7 +169,7 @@ interface ExampleGraph {
   @MetroImplMarker
   class Impl : ExampleGraph {
     private val base1ImplProvider: Provider<Base1Impl>
-      field = DoubleCheck/* companion */.provider<Provider<Base1Impl>, Base1Impl>(delegate = Base1Impl.MetroFactory.create())
+      field = provider<Provider<Base1Impl>, Base1Impl>(delegate = create())
 
     private constructor() /* primary */ {
       super/*Any*/()

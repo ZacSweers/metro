@@ -492,13 +492,13 @@ interface AppGraph {
   @MetroImplMarker
   class Impl : AppGraph {
     private val fooImplProvider: Provider<FooImpl>
-      field = FooImpl.MetroFactory.create()
+      field = create()
 
     private val bazImplProvider: Provider<BazImpl>
-      field = BazImpl.MetroFactory.create()
+      field = create()
 
     private val mainProvider: Provider<Main>
-      field = DoubleCheck/* companion */.provider<Provider<Main>, Main>(delegate = Main.MetroFactory/* companion */.create(barA = BarA.MetroFactory/* companion */.create(foo = <this>.#fooImplProvider), barB = BarB.MetroFactory/* companion */.create(foo = <this>.#fooImplProvider), quxA = QuxA.MetroFactory/* companion */.create(baz = <this>.#bazImplProvider), quxB = QuxB.MetroFactory/* companion */.create(baz = <this>.#bazImplProvider)))
+      field = provider<Provider<Main>, Main>(delegate = create(barA = create(foo = <this>.#fooImplProvider), barB = create(foo = <this>.#fooImplProvider), quxA = create(baz = <this>.#bazImplProvider), quxB = create(baz = <this>.#bazImplProvider)))
 
     private constructor() /* primary */ {
       super/*Any*/()

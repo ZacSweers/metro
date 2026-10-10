@@ -51,13 +51,13 @@ interface AppGraph {
   @MetroImplMarker
   class Impl : AppGraph {
     private val scopedClassProvider: Provider<ScopedClass>
-      field = DoubleCheck/* companion */.provider<Provider<ScopedClass>, ScopedClass>(delegate = SwitchingProvider<ScopedClass>(graph = <this>, id = 2))
+      field = provider<Provider<ScopedClass>, ScopedClass>(delegate = SwitchingProvider<ScopedClass>(graph = <this>, id = 2))
 
     private val provideReusedIntProvider: Provider<Int>
       field = SwitchingProvider<Int>(graph = <this>, id = 1)
 
     private val provideStringProvider: Provider<String>
-      field = DoubleCheck/* companion */.provider<Provider<String>, String>(delegate = SwitchingProvider<String>(graph = <this>, id = 0))
+      field = provider<Provider<String>, String>(delegate = SwitchingProvider<String>(graph = <this>, id = 0))
 
     private class SwitchingProvider<T : Any?> : Provider<T> {
       private val graph: Impl

@@ -115,7 +115,7 @@ interface ExampleGraph : LoggedInGraph.Factory.MetroContributionToAppScope {
   @MetroImplMarker
   class Impl : ExampleGraph {
     private val dependencyProvider: Provider<Dependency>
-      field = DoubleCheck/* companion */.provider<Provider<Dependency>, Dependency>(delegate = Dependency.MetroFactory.create())
+      field = provider<Provider<Dependency>, Dependency>(delegate = create())
 
     @DependencyGraph(scope = LoggedInScope::class)
     private class LoggedInGraphImpl : LoggedInGraph {
@@ -123,7 +123,7 @@ interface ExampleGraph : LoggedInGraph.Factory.MetroContributionToAppScope {
         field = exampleGraphImpl
 
       private val childDependencyProvider: Provider<ChildDependency>
-        field = DoubleCheck/* companion */.provider<Provider<ChildDependency>, ChildDependency>(delegate = ChildDependency.MetroFactory/* companion */.create(dep = <this>.#exampleGraphImpl.#dependencyProvider))
+        field = provider<Provider<ChildDependency>, ChildDependency>(delegate = create(dep = <this>.#exampleGraphImpl.#dependencyProvider))
 
       constructor(exampleGraphImpl: Impl) /* primary */ {
         super/*Any*/()

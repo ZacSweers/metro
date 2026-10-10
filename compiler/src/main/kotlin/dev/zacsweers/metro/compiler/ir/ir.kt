@@ -111,6 +111,7 @@ import org.jetbrains.kotlin.ir.expressions.IrConstKind
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrFunctionExpression
+import org.jetbrains.kotlin.ir.expressions.IrGetObjectValue
 import org.jetbrains.kotlin.ir.expressions.IrMemberAccessExpression
 import org.jetbrains.kotlin.ir.expressions.IrStatementOrigin
 import org.jetbrains.kotlin.ir.expressions.IrVararg
@@ -434,7 +435,7 @@ internal fun IrBuilderWithScope.irInvoke(
   args: List<IrExpression?> = emptyList(),
 ): IrMemberAccessExpression<*> {
   assert(callee.isBound) { "Symbol $callee expected to be bound" }
-  val finalReceiverExpression =
+  val objectReceiverExpression =
     when {
       dispatchReceiver != null -> dispatchReceiver
       callee.owner.isStatic -> null
@@ -448,6 +449,40 @@ internal fun IrBuilderWithScope.irInvoke(
         }
       }
     }
+  // Calls to `@JvmStatic` object members can skip the object instance on JVM.
+  val staticCallee = jvmStaticCalleeOrNull(callee, objectReceiverExpression)
+  return irInvokeResolved(
+    finalReceiverExpression = if (staticCallee != null) null else objectReceiverExpression,
+    extensionReceiver = extensionReceiver,
+    callee = staticCallee ?: callee,
+    typeHint = typeHint,
+    typeArgs = typeArgs,
+    contextArgs = contextArgs,
+    args = args,
+  )
+}
+
+private fun IrBuilderWithScope.jvmStaticCalleeOrNull(
+  callee: IrFunctionSymbol,
+  receiver: IrExpression?,
+): IrFunctionSymbol? {
+  if (receiver !is IrGetObjectValue) return null
+  if (callee !is IrSimpleFunctionSymbol) return null
+  if (callee.owner.parent != receiver.symbol.owner) return null
+  val metroContext = context as? IrMetroContext ?: return null
+  val staticCallee = with(metroContext) { callee.jvmStaticOrSelf() }
+  return staticCallee.takeIf { it != callee }
+}
+
+private fun IrBuilderWithScope.irInvokeResolved(
+  finalReceiverExpression: IrExpression?,
+  extensionReceiver: IrExpression?,
+  callee: IrFunctionSymbol,
+  typeHint: IrType?,
+  typeArgs: List<IrType>?,
+  contextArgs: List<IrExpression?>?,
+  args: List<IrExpression?>,
+): IrMemberAccessExpression<*> {
 
   val call =
     when {

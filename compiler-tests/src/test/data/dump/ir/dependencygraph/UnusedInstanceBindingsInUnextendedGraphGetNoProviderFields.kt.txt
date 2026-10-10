@@ -12,7 +12,7 @@ interface AppGraph {
 
     override val int: Int
       override get(): Int {
-        return ProvideIntMetroFactory/* companion */.provideInt(instance = <this>)
+        return provideInt(instance = <this>)
       }
 
   }

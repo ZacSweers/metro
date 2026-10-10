@@ -162,7 +162,7 @@ interface CycleMapGraph {
       super/*Any*/()
       /* <init>() */
 
-      DelegateFactory/* companion */.setDelegate<Y>(delegateFactory = <this>.#yProvider, delegate = Y.MetroFactory/* companion */.create(mapOfProvidersOfX = MapProviderFactory/* companion */.singleton<String, X>(key = "X", provider = X.MetroFactory/* companion */.create(y = <this>.#yProvider)), mapOfProvidersOfY = MapProviderFactory/* companion */.singleton<String, Y>(key = "Y", provider = <this>.#yProvider)))
+      setDelegate<Y>(delegateFactory = <this>.#yProvider, delegate = create(mapOfProvidersOfX = singleton<String, X>(key = "X", provider = create(y = <this>.#yProvider)), mapOfProvidersOfY = singleton<String, Y>(key = "Y", provider = <this>.#yProvider)))
     }
 
     override fun y(): Y {

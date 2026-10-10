@@ -30,7 +30,7 @@ interface AppGraph {
 
     override val ints: Function0<Map<Int, Int>>
       override get(): Function0<Map<Int, Int>> {
-        return MapFactory/* companion */.singleton<Int, Int>(key = 1, provider = ProvideValueMetroFactory/* companion */.create(instance = <this>))
+        return singleton<Int, Int>(key = 1, provider = create(instance = <this>))
       }
 
   }

@@ -466,12 +466,12 @@ interface AppGraph {
 
     private fun init() {
       <this>.#provideDirectSuspendValueSuspendProvider = SuspendDoubleCheck/* companion */.provider<DirectSuspendValue>(delegate = SwitchingSuspendProvider<DirectSuspendValue>(graph = <this>, id = 2))
-      <this>.#deferredSuspendConsumerProvider = DoubleCheck/* companion */.provider<Provider<DeferredSuspendConsumer>, DeferredSuspendConsumer>(delegate = SwitchingProvider<DeferredSuspendConsumer>(graph = <this>, id = 1))
+      <this>.#deferredSuspendConsumerProvider = provider<Provider<DeferredSuspendConsumer>, DeferredSuspendConsumer>(delegate = SwitchingProvider<DeferredSuspendConsumer>(graph = <this>, id = 1))
     }
 
     private fun init2() {
       <this>.#sharedUnscopedSuspendValueSuspendProvider = SwitchingSuspendProvider<SharedUnscopedSuspendValue>(graph = <this>, id = 1)
-      <this>.#synchronousScopedProvider = DoubleCheck/* companion */.provider<Provider<SynchronousScoped>, SynchronousScoped>(delegate = SwitchingProvider<SynchronousScoped>(graph = <this>, id = 0))
+      <this>.#synchronousScopedProvider = provider<Provider<SynchronousScoped>, SynchronousScoped>(delegate = SwitchingProvider<SynchronousScoped>(graph = <this>, id = 0))
     }
 
     private fun init3() {

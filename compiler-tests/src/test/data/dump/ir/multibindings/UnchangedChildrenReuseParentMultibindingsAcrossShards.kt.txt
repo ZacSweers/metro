@@ -442,7 +442,7 @@ interface AppGraph {
 
       constructor() /* primary */ {
         super/*Any*/()
-        <this>.#oneProvider = DoubleCheck/* companion */.provider<Provider<One>, One>(delegate = SwitchingProvider<One>(graph = <this>, id = 0))
+        <this>.#oneProvider = provider<Provider<One>, One>(delegate = SwitchingProvider<One>(graph = <this>, id = 0))
       }
 
     }
@@ -478,8 +478,8 @@ interface AppGraph {
 
       constructor() /* primary */ {
         super/*Any*/()
-        <this>.#threeProvider = DoubleCheck/* companion */.provider<Provider<Three>, Three>(delegate = SwitchingProvider<Three>(graph = <this>, id = 1))
-        <this>.#twoProvider = DoubleCheck/* companion */.provider<Provider<Two>, Two>(delegate = SwitchingProvider<Two>(graph = <this>, id = 0))
+        <this>.#threeProvider = provider<Provider<Three>, Three>(delegate = SwitchingProvider<Three>(graph = <this>, id = 1))
+        <this>.#twoProvider = provider<Provider<Two>, Two>(delegate = SwitchingProvider<Two>(graph = <this>, id = 0))
       }
 
     }

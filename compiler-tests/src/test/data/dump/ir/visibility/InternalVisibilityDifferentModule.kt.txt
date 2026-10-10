@@ -113,12 +113,12 @@ abstract class AppGraph {
 
     override val int: Int
       override get(): Int {
-        return IntProvider.ProvideIntMetroFactory.provideInt()
+        return provideInt()
       }
 
     override val internalClass: InternalClass
       override get(): InternalClass {
-        return InternalClass.MetroFactory.newInstance()
+        return newInstance()
       }
 
   }

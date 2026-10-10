@@ -449,7 +449,7 @@ interface TestGraph {
   @MetroImplMarker
   class Impl : TestGraph {
     private val xImplProvider: Provider<XImpl>
-      field = XImpl.MetroFactory.create()
+      field = create()
 
     private constructor() /* primary */ {
       super/*Any*/()
@@ -459,20 +459,20 @@ interface TestGraph {
 
     override val mapConsumer: MapConsumer
       override get(): MapConsumer {
-        return MapConsumer(map = MapFactory/* companion */.singleton<Int, B>(key = 1, provider = B.MetroFactory/* companion */.create(x = <this>.#xImplProvider)))
+        return MapConsumer(map = singleton<Int, B>(key = 1, provider = create(x = <this>.#xImplProvider)))
       }
 
     override val providerMapConsumer: ProviderMapConsumer
       override get(): ProviderMapConsumer {
         return ProviderMapConsumer(map = buildMap<Int, Function0<C>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<C>>.<anonymous>() {
-          $receiver.put(key = 1, value = C.MetroFactory/* companion */.create(x = <this>.#xImplProvider))
+          $receiver.put(key = 1, value = create(x = <this>.#xImplProvider))
         }
 ))
       }
 
     override val setConsumer: SetConsumer
       override get(): SetConsumer {
-        return SetConsumer(set = SetFactory/* companion */.singleton<A>(provider = A.MetroFactory/* companion */.create(x = <this>.#xImplProvider)))
+        return SetConsumer(set = singleton<A>(provider = create(x = <this>.#xImplProvider)))
       }
 
   }

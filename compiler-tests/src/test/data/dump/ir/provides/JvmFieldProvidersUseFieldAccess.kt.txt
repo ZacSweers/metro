@@ -16,7 +16,7 @@ abstract class AppGraph {
 
     override val string: String
       override get(): String {
-        return StringFieldMetroFactory/* companion */.stringField(instance = <this>)
+        return stringField(instance = <this>)
       }
 
   }

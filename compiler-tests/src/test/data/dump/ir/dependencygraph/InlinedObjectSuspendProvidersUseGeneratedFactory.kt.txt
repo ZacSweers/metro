@@ -4,7 +4,7 @@ interface AppGraph {
   @MetroImplMarker
   class Impl : AppGraph {
     private val provideObjectProvider: Provider<InlinedObject>
-      field = Bindings.ProvideObjectMetroFactory.create()
+      field = create()
 
     private constructor() /* primary */ {
       super/*Any*/()

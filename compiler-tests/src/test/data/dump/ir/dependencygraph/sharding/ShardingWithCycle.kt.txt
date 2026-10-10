@@ -316,8 +316,8 @@ interface TestGraph {
 
       constructor() /* primary */ {
         super/*Any*/()
-        <this>.#aProvider = DoubleCheck/* companion */.provider<Provider<A>, A>(delegate = A.MetroFactory.create())
-        <this>.#bProvider = DoubleCheck/* companion */.provider<Provider<B>, B>(delegate = B.MetroFactory/* companion */.create(a = <this>.#aProvider))
+        <this>.#aProvider = provider<Provider<A>, A>(delegate = create())
+        <this>.#bProvider = provider<Provider<B>, B>(delegate = create(a = <this>.#aProvider))
       }
 
     }
@@ -333,8 +333,8 @@ interface TestGraph {
         super/*Any*/()
         <this>.#graph = graph
         <this>.#cProvider = DelegateFactory<C>()
-        <this>.#dProvider = DoubleCheck/* companion */.provider<Provider<D>, D>(delegate = D.MetroFactory/* companion */.create(c = <this>.#cProvider))
-        DelegateFactory/* companion */.setDelegate<C>(delegateFactory = <this>.#cProvider, delegate = DoubleCheck/* companion */.provider<Provider<C>, C>(delegate = C.MetroFactory/* companion */.create(b = <this>.#graph.#shard1.#bProvider, d = <this>.#dProvider)))
+        <this>.#dProvider = provider<Provider<D>, D>(delegate = create(c = <this>.#cProvider))
+        setDelegate<C>(delegateFactory = <this>.#cProvider, delegate = provider<Provider<C>, C>(delegate = create(b = <this>.#graph.#shard1.#bProvider, d = <this>.#dProvider)))
       }
 
     }
@@ -347,7 +347,7 @@ interface TestGraph {
       constructor(graph: Impl) /* primary */ {
         super/*Any*/()
         <this>.#graph = graph
-        <this>.#eProvider = DoubleCheck/* companion */.provider<Provider<E>, E>(delegate = E.MetroFactory/* companion */.create(c = <this>.#graph.#shard2.#cProvider))
+        <this>.#eProvider = provider<Provider<E>, E>(delegate = create(c = <this>.#graph.#shard2.#cProvider))
       }
 
     }

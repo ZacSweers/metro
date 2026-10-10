@@ -120,13 +120,13 @@ interface AppGraph {
   @MetroImplMarker
   class Impl : AppGraph {
     private val provideStringProvider: Provider<String>
-      field = DoubleCheck/* companion */.provider<Provider<String>, String>(delegate = SwitchingProvider<String>(graph = <this>, id = 2))
+      field = provider<Provider<String>, String>(delegate = SwitchingProvider<String>(graph = <this>, id = 2))
 
     private val injectableMembersInjectorProvider: Provider<MembersInjector<Injectable>>
       field = SwitchingProvider<MembersInjector<Injectable>>(graph = <this>, id = 1)
 
     private val scopedClassProvider: Provider<ScopedClass>
-      field = DoubleCheck/* companion */.provider<Provider<ScopedClass>, ScopedClass>(delegate = SwitchingProvider<ScopedClass>(graph = <this>, id = 0))
+      field = provider<Provider<ScopedClass>, ScopedClass>(delegate = SwitchingProvider<ScopedClass>(graph = <this>, id = 0))
 
     private class SwitchingProvider<T : Any?> : Provider<T> {
       private val graph: Impl
@@ -144,7 +144,7 @@ interface AppGraph {
           val tmp0_id: Int = <this>.#id
           when {
             EQEQ(arg0 = tmp0_id, arg1 = 0) -> ScopedClass(injectable = <this>.#graph.#injectableMembersInjectorProvider.invoke(), injectable2 = <this>.#graph.#injectableMembersInjectorProvider.invoke()) /*as T */
-            EQEQ(arg0 = tmp0_id, arg1 = 1) -> Injectable.MetroMembersInjector/* companion */.create(string = <this>.#graph.#provideStringProvider) /*as T */
+            EQEQ(arg0 = tmp0_id, arg1 = 1) -> create(string = <this>.#graph.#provideStringProvider) /*as T */
             EQEQ(arg0 = tmp0_id, arg1 = 2) -> <this>.#graph.provideString() /*as T */
             else -> throw error(message = "Unexpected SwitchingProvider id: " + tmp0_id)
           }

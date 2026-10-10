@@ -22,7 +22,7 @@ interface AppGraph {
   class Impl : AppGraph {
     @MultibindingElement(bindingId = "kotlin.Int_kotlin.Int", elementId = "-1823364611")
     private val provideIntProvider: Provider<Int>
-      field = ProvideIntMetroFactory/* companion */.create(instance = <this>)
+      field = create(instance = <this>)
 
     private constructor() /* primary */ {
       super/*Any*/()

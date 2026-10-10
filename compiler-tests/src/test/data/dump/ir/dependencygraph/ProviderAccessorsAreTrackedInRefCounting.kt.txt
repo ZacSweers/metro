@@ -4,10 +4,10 @@ interface AppGraph {
   @MetroImplMarker
   class Impl : AppGraph {
     private val provideIntProvider: Provider<Int>
-      field = ProvideIntMetroFactory/* companion */.create(instance = <this>)
+      field = create(instance = <this>)
 
     private val provideLongProvider: Provider<Long>
-      field = ProvideLongMetroFactory/* companion */.create(instance = <this>)
+      field = create(instance = <this>)
 
     private constructor() /* primary */ {
       super/*Any*/()
@@ -27,12 +27,12 @@ interface AppGraph {
 
     override val long1: Lazy<Long>
       override get(): Lazy<Long> {
-        return DoubleCheck/* companion */.lazy<Provider<Long>, Long>(provider = <this>.#provideLongProvider)
+        return lazy<Provider<Long>, Long>(provider = <this>.#provideLongProvider)
       }
 
     override val long2: Lazy<Long>
       override get(): Lazy<Long> {
-        return DoubleCheck/* companion */.lazy<Provider<Long>, Long>(provider = <this>.#provideLongProvider)
+        return lazy<Provider<Long>, Long>(provider = <this>.#provideLongProvider)
       }
 
   }

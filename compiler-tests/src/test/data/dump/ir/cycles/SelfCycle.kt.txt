@@ -114,7 +114,7 @@ interface SelfCycleGraph {
       super/*Any*/()
       /* <init>() */
 
-      DelegateFactory/* companion */.setDelegate<S>(delegateFactory = <this>.#sProvider, delegate = S.MetroFactory/* companion */.create(sProvider = <this>.#sProvider))
+      setDelegate<S>(delegateFactory = <this>.#sProvider, delegate = create(sProvider = <this>.#sProvider))
     }
 
     override fun s(): S {

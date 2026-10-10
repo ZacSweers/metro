@@ -32,10 +32,10 @@ interface AppGraph {
   @MetroImplMarker
   class Impl : AppGraph {
     private val provideIntProvider: Provider<Int>
-      field = ProvideIntMetroFactory/* companion */.create(instance = <this>)
+      field = create(instance = <this>)
 
     private val provideSharedDependencyProvider: Provider<SharedDependency>
-      field = ProvideSharedDependencyMetroFactory/* companion */.create(instance = <this>)
+      field = create(instance = <this>)
 
     private constructor() /* primary */ {
       super/*Any*/()
@@ -59,8 +59,8 @@ interface AppGraph {
     override val strings: Map<String, SuspendFunction0<String>>
       override get(): Map<String, SuspendFunction0<String>> {
         return buildMap<String, SuspendFunction0<String>>(capacity = 2, builderAction = local fun MutableMap<String, SuspendFunction0<String>>.<anonymous>() {
-          $receiver.put(key = "second", value = SyncSuspendProvider<String>(delegate = AppGraph.ProvideSecondMetroFactory/* companion */.create(instance = <this>, sharedDependency = <this>.#provideSharedDependencyProvider)))
-          $receiver.put(key = "first", value = SyncSuspendProvider<String>(delegate = AppGraph.ProvideFirstMetroFactory/* companion */.create(instance = <this>, sharedDependency = <this>.#provideSharedDependencyProvider)))
+          $receiver.put(key = "second", value = SyncSuspendProvider<String>(delegate = create(instance = <this>, sharedDependency = <this>.#provideSharedDependencyProvider)))
+          $receiver.put(key = "first", value = SyncSuspendProvider<String>(delegate = create(instance = <this>, sharedDependency = <this>.#provideSharedDependencyProvider)))
         }
 )
       }

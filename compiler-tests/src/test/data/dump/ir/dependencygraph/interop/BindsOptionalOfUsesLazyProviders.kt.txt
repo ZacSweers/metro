@@ -4,7 +4,7 @@ interface AppGraph {
   @MetroImplMarker
   class Impl : AppGraph {
     private val provideStringProvider: Provider<String>
-      field = DoubleCheck/* companion */.provider<Provider<String>, String>(delegate = ProvideStringMetroFactory/* companion */.create(instance = <this>))
+      field = provider<Provider<String>, String>(delegate = create(instance = <this>))
 
     private val optionalStringProvider: Provider<Optional<String>>
       field = provider<Optional<String>>(provider = local fun <anonymous>(): Optional<String> {

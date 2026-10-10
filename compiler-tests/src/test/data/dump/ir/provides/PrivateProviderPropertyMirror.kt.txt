@@ -11,7 +11,7 @@ abstract class AppGraph {
 
     override val int: Int
       override get(): Int {
-        return ProvidedIntMetroFactory/* companion */.providedInt(instance = <this>)
+        return providedInt(instance = <this>)
       }
 
   }

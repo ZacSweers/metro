@@ -154,7 +154,7 @@ interface TestGraph {
 
       constructor() /* primary */ {
         super/*Any*/()
-        <this>.#repositoryImplProvider = DoubleCheck/* companion */.provider<Provider<RepositoryImpl>, RepositoryImpl>(delegate = RepositoryImpl.MetroFactory.create())
+        <this>.#repositoryImplProvider = provider<Provider<RepositoryImpl>, RepositoryImpl>(delegate = create())
       }
 
     }
@@ -167,7 +167,7 @@ interface TestGraph {
       constructor(graph: Impl) /* primary */ {
         super/*Any*/()
         <this>.#graph = graph
-        <this>.#serviceProvider = DoubleCheck/* companion */.provider<Provider<Service>, Service>(delegate = Service.MetroFactory/* companion */.create(repo = <this>.#graph.#shard1.#repositoryImplProvider))
+        <this>.#serviceProvider = provider<Provider<Service>, Service>(delegate = create(repo = <this>.#graph.#shard1.#repositoryImplProvider))
       }
 
     }

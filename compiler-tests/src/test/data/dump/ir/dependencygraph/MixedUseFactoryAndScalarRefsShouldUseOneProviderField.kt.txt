@@ -4,7 +4,7 @@ interface AppGraph {
   @MetroImplMarker
   class Impl : AppGraph {
     private val provideStringProvider: Provider<String>
-      field = ProvideStringMetroFactory/* companion */.create(instance = <this>, int = ProvideIntMetroFactory/* companion */.create(instance = <this>))
+      field = create(instance = <this>, int = create(instance = <this>))
 
     private constructor() /* primary */ {
       super/*Any*/()

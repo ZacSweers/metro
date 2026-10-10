@@ -10,7 +10,7 @@ interface AppGraph : ChildGraph.Factory {
       field = MetroTraceContext(tracer = <this>.#tracerInstance, category = "dev.zacsweers.metro", graphName = "AppGraph", graphPath = "AppGraph")
 
     private val provideStringProvider: Provider<String>
-      field = TracedProvider<String>(traceContext = <this>.#metroTraceContext, qualifier = null, type = "String", kind = "Provided", provider = ProvideStringMetroFactory/* companion */.create(instance = <this>))
+      field = TracedProvider<String>(traceContext = <this>.#metroTraceContext, qualifier = null, type = "String", kind = "Provided", provider = create(instance = <this>))
 
     @DependencyGraph
     private class ChildGraphImpl : ChildGraph {

@@ -490,7 +490,7 @@ interface AppGraph : ChildGraph.Factory.MetroContributionToAppScope {
 
       constructor() /* primary */ {
         super/*Any*/()
-        <this>.#appService1Provider = DoubleCheck/* companion */.provider<Provider<AppService1>, AppService1>(delegate = AppService1.MetroFactory.create())
+        <this>.#appService1Provider = provider<Provider<AppService1>, AppService1>(delegate = create())
       }
 
     }
@@ -500,7 +500,7 @@ interface AppGraph : ChildGraph.Factory.MetroContributionToAppScope {
 
       constructor() /* primary */ {
         super/*Any*/()
-        <this>.#appService2Provider = DoubleCheck/* companion */.provider<Provider<AppService2>, AppService2>(delegate = AppService2.MetroFactory.create())
+        <this>.#appService2Provider = provider<Provider<AppService2>, AppService2>(delegate = create())
       }
 
     }
@@ -510,7 +510,7 @@ interface AppGraph : ChildGraph.Factory.MetroContributionToAppScope {
 
       constructor() /* primary */ {
         super/*Any*/()
-        <this>.#appService3Provider = DoubleCheck/* companion */.provider<Provider<AppService3>, AppService3>(delegate = AppService3.MetroFactory.create())
+        <this>.#appService3Provider = provider<Provider<AppService3>, AppService3>(delegate = create())
       }
 
     }
@@ -534,7 +534,7 @@ interface AppGraph : ChildGraph.Factory.MetroContributionToAppScope {
         constructor(graph: ChildGraphImpl) /* primary */ {
           super/*Any*/()
           <this>.#graph = graph
-          <this>.#childService1Provider = DoubleCheck/* companion */.provider<Provider<ChildService1>, ChildService1>(delegate = ChildService1.MetroFactory/* companion */.create(app1 = <this>.#graph.#appGraphImpl.#shard1.#appService1Provider))
+          <this>.#childService1Provider = provider<Provider<ChildService1>, ChildService1>(delegate = create(app1 = <this>.#graph.#appGraphImpl.#shard1.#appService1Provider))
         }
 
       }
@@ -547,7 +547,7 @@ interface AppGraph : ChildGraph.Factory.MetroContributionToAppScope {
         constructor(graph: ChildGraphImpl) /* primary */ {
           super/*Any*/()
           <this>.#graph = graph
-          <this>.#childService2Provider = DoubleCheck/* companion */.provider<Provider<ChildService2>, ChildService2>(delegate = ChildService2.MetroFactory/* companion */.create(child1 = <this>.#graph.#shard1.#childService1Provider))
+          <this>.#childService2Provider = provider<Provider<ChildService2>, ChildService2>(delegate = create(child1 = <this>.#graph.#shard1.#childService1Provider))
         }
 
       }
@@ -560,7 +560,7 @@ interface AppGraph : ChildGraph.Factory.MetroContributionToAppScope {
         constructor(graph: ChildGraphImpl) /* primary */ {
           super/*Any*/()
           <this>.#graph = graph
-          <this>.#childService3Provider = DoubleCheck/* companion */.provider<Provider<ChildService3>, ChildService3>(delegate = ChildService3.MetroFactory/* companion */.create(child2 = <this>.#graph.#shard2.#childService2Provider))
+          <this>.#childService3Provider = provider<Provider<ChildService3>, ChildService3>(delegate = create(child2 = <this>.#graph.#shard2.#childService2Provider))
         }
 
       }
@@ -582,7 +582,7 @@ interface AppGraph : ChildGraph.Factory.MetroContributionToAppScope {
           constructor(graph: GrandchildGraphImpl) /* primary */ {
             super/*Any*/()
             <this>.#graph = graph
-            <this>.#grandchildService1Provider = DoubleCheck/* companion */.provider<Provider<GrandchildService1>, GrandchildService1>(delegate = GrandchildService1.MetroFactory/* companion */.create(app2 = <this>.#graph.#childGraphImpl.#appGraphImpl.#shard2.#appService2Provider, child3 = <this>.#graph.#childGraphImpl.#shard3.#childService3Provider))
+            <this>.#grandchildService1Provider = provider<Provider<GrandchildService1>, GrandchildService1>(delegate = create(app2 = <this>.#graph.#childGraphImpl.#appGraphImpl.#shard2.#appService2Provider, child3 = <this>.#graph.#childGraphImpl.#shard3.#childService3Provider))
           }
 
         }
@@ -595,7 +595,7 @@ interface AppGraph : ChildGraph.Factory.MetroContributionToAppScope {
           constructor(graph: GrandchildGraphImpl) /* primary */ {
             super/*Any*/()
             <this>.#graph = graph
-            <this>.#grandchildService2Provider = DoubleCheck/* companion */.provider<Provider<GrandchildService2>, GrandchildService2>(delegate = GrandchildService2.MetroFactory/* companion */.create(gc1 = <this>.#graph.#shard1.#grandchildService1Provider))
+            <this>.#grandchildService2Provider = provider<Provider<GrandchildService2>, GrandchildService2>(delegate = create(gc1 = <this>.#graph.#shard1.#grandchildService1Provider))
           }
 
         }

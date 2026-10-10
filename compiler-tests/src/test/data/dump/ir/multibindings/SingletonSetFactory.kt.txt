@@ -29,7 +29,7 @@ interface AppGraph {
 
     override val tags: Function0<Set<String>>
       override get(): Function0<Set<String>> {
-        return SetFactory/* companion */.singleton<String>(provider = ProvideOnlyMetroFactory/* companion */.create(instance = <this>))
+        return singleton<String>(provider = create(instance = <this>))
       }
 
   }
