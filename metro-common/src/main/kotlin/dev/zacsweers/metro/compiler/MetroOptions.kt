@@ -1117,9 +1117,10 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       name = "diagnostic-level",
       defaultValue = emptyMap(),
       valueDescription =
-        "<DIAGNOSTIC_NAME>:<${MetroOptions.DiagnosticSeverity.levelNames.joinToString("|")}>",
+        "<DIAGNOSTIC_NAME>:<${MetroOptions.DiagnosticSeverity.levelNames.joinToString("|")}>[,...]",
       description =
-        "Overrides the severity of a Metro diagnostic, like `-Xwarning-level`. Can be repeated. " +
+        "Overrides the severity of Metro diagnostics, like `-Xwarning-level`. Accepts " +
+          "comma-separated entries and can be repeated. " +
           "Only diagnostics reported in FIR are supported.",
       required = false,
       allowMultipleOccurrences = true,
@@ -2261,19 +2262,23 @@ private inline fun <reified T : Any> Any.expectAs(): T {
   return this as? T ?: error("Expected $this to be of type ${T::class.qualifiedName}")
 }
 
-/** Parses a single `NAME:level` value of the `diagnostic-level` option. */
+/** Parses a `diagnostic-level` value made of comma-separated `NAME:level` entries. */
 public fun parseDiagnosticLevel(value: String): Map<String, MetroOptions.DiagnosticSeverity> {
-  val parts = value.split(":", limit = 2)
-  require(parts.size == 2 && parts[0].isNotBlank()) {
-    "Invalid diagnostic-level value '$value'. Expected <DIAGNOSTIC_NAME>:<level>."
-  }
-  val (name, levelName) = parts
-  val severity =
-    requireNotNull(MetroOptions.DiagnosticSeverity.fromLevelName(levelName)) {
-      "Invalid diagnostic level '$levelName' for $name. Available values are: " +
-        MetroOptions.DiagnosticSeverity.levelNames.joinToString()
+  val levels = LinkedHashMap<String, MetroOptions.DiagnosticSeverity>()
+  for (entry in value.split(',')) {
+    val parts = entry.trim().split(":", limit = 2)
+    require(parts.size == 2 && parts[0].isNotBlank()) {
+      "Invalid diagnostic-level value '$entry'. Expected <DIAGNOSTIC_NAME>:<level>."
     }
-  return mapOf(name to severity)
+    val (name, levelName) = parts
+    val severity =
+      requireNotNull(MetroOptions.DiagnosticSeverity.fromLevelName(levelName)) {
+        "Invalid diagnostic level '$levelName' for $name. Available values are: " +
+          MetroOptions.DiagnosticSeverity.levelNames.joinToString()
+      }
+    require(levels.put(name, severity) == null) { "diagnostic-level is duplicated for $name." }
+  }
+  return levels
 }
 
 private fun Any.diagnosticSeverity(): MetroOptions.DiagnosticSeverity {
