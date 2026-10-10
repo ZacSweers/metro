@@ -16,8 +16,9 @@ Changelog
 ### Enhancements
 
 - **[IR]** Reduce generated code in graph extensions by reusing existing parent multibinding getters when contributions and their resolved dependencies are unchanged.
-- **[IR]** Graphs without graph extensions no longer generate a private getter for a multibinding that only one site reads. That site builds the collection itself. Graphs with extensions keep these getters so their children can reuse them. Multibindings with more than 25 contributions also keep a getter so they don't crowd their reader's method. Configure that threshold with the new `multibinding-getter-threshold` compiler option.
-- **[IR]** When several accessors request the same key and return type, the first accessor holds the binding's code and the others call it. These bindings no longer need a separate private getter. With runtime tracing enabled, the accessors call a shared private getter so each one reports only its own entry point.
+- **[IR]** Graphs without graph extensions no longer generate a private getter for a multibinding that only one site reads. That site builds the collection itself. Graphs with extensions keep these getters so their children can reuse them.
+  - Multibindings with more than 25 contributions also keep a getter so they don't crowd their reader's method. You can configure that threshold with the new `multibinding-getter-threshold` compiler option.
+- **[IR]** When several accessors request the same key and return type, the first accessor holds the binding's code and the others call through to it.
 - **[IR]** Graphs no longer store themselves in a field. Code that needs the graph reads `this`, or the graph reference that a shard or switching provider already holds.
 - **[IR]** Generated code wraps instances in providers with `providerOf()`. On JVM that's one static call. `InstanceFactory.invoke()` also loaded its companion and boxed the value class.
 - **[IR]** Provider lambdas that Metro generates are SAM-converted to `Provider` directly. The inline `provider()` function they went through before added a type check and a second wrapper object at every site.
@@ -25,10 +26,10 @@ Changelog
 - **[IR]** Switching provider branches read the graph reference into a local when more than one branch needs it.
 - **[IR]** Graph shard constructors read the graph from their constructor parameter. A shard drops its `graph` field when only its constructor used it.
 - **[IR]** Instance reads of `@Includes` graph accessors that return `Provider<T>` or `() -> T` call the accessor directly. They used to cache a converted provider in a field or wrap the accessor in a new provider lambda. `Lazy` accessors still cache their handle, so their value is computed once.
-- **[IR/JVM]** Fields in generated graphs, shards, and switching providers are package-private on JVM. Each private field read from another generated class needed a synthetic accessor method, like a child graph reading its parent's providers.
-- **[IR/JVM]** Generated code calls `@JvmStatic` functions in objects and companion objects statically on JVM. This covers factory `create()` functions and `DoubleCheck.provider()`. It skips loading the companion object and keeps companion classes out of the caller's constant pool. In a 500-module benchmark this made the generated graph classes 17% smaller.
-- **[IR/JS]** On JS, converting a `Provider` to `() -> T` or `suspend () -> T` calls a small runtime helper. Each site used to generate its own wrapper lambda.
-- **[IR/interop]** Providers of absent `@BindsOptionalOf` bindings use an `InstanceFactory` that holds `Optional.empty()`. They used to generate a lambda.
+- **[IR/JVM]** Fields in generated graphs, shards, and switching providers are now package-private on JVM. This reduces synthetic accessors.
+- **[IR/JVM]** Generated code calls `@JvmStatic` functions in objects and companion objects statically on JVM. It skips loading the companion object and keeps companion classes out of the caller's constant pool. In a 500-module benchmark this made the generated graph classes 17% smaller.
+- **[IR/JS]** On JS, converting a `Provider` to `() -> T` or `suspend () -> T` now calls a small runtime helper. Each site used to generate its own wrapper lambda.
+- **[IR/interop]** Providers of absent `@BindsOptionalOf` bindings use an `InstanceFactory` that holds `Optional.empty()` instead of generating a local lambda each time.
 
 ### Fixes
 
