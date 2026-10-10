@@ -74,9 +74,9 @@ interface AppGraph {
         return { // BLOCK
           val tmp0_id: Int = <this>.#id
           when {
-            EQEQ(arg0 = tmp0_id, arg1 = 2) -> ScopedClass() /*as T */
-            EQEQ(arg0 = tmp0_id, arg1 = 1) -> <this>.#graph.provideReusedInt() /*as T */
             EQEQ(arg0 = tmp0_id, arg1 = 0) -> <this>.#graph.provideString() /*as T */
+            EQEQ(arg0 = tmp0_id, arg1 = 1) -> <this>.#graph.provideReusedInt() /*as T */
+            EQEQ(arg0 = tmp0_id, arg1 = 2) -> ScopedClass() /*as T */
             else -> throw error(message = "Unexpected SwitchingProvider id: " + tmp0_id)
           }
         }

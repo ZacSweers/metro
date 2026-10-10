@@ -1508,7 +1508,7 @@ internal class IrGraphGenerator(
                 .apply {
                   type = switchingProvider.irClass.typeWith(contextKey.typeKey.type)
                   arguments[0] = irGet(thisReceiver) // graph/shard reference
-                  arguments[1] = irInt(switchingId) // switching ID
+                  arguments[1] = irInt(switchingProvider.localId(switchingId))
                 }
                 .applyScoping()
             }
@@ -1926,7 +1926,7 @@ internal class IrGraphGenerator(
             .apply {
               type = switchingProvider.irClass.typeWith(binding.typeKey.type)
               arguments[0] = irGet(thisReceiver)
-              arguments[1] = irInt(switchingId)
+              arguments[1] = irInt(switchingProvider.localId(switchingId))
             }
         } else {
           val accessType =
