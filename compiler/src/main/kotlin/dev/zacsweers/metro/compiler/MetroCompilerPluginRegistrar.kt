@@ -131,6 +131,14 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
       return
     }
 
+    val diagnosticLevelsAreValid =
+      options.validateDiagnosticLevels(configuration) { error ->
+        messageCollector.report(CompilerMessageSeverity.ERROR, error)
+      }
+    if (!diagnosticLevelsAreValid) {
+      return
+    }
+
     // When the parallel pool isn't engaged, drop memoize() down to LazyThreadSafetyMode.NONE
     memoizeThreadSafetyMode =
       if (options.parallelThreads > 0) {

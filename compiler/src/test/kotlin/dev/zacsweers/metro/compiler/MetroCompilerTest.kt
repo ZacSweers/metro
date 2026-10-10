@@ -421,6 +421,12 @@ abstract class MetroCompilerTest {
             }
             MAX_GENERATED_CLASS_NAME_LENGTH ->
               processor.option(entry.raw.cliOption, maxGeneratedClassNameLength)
+            DIAGNOSTIC_LEVEL -> {
+              for ((name, severity) in diagnosticLevels) {
+                yield(processor.option(entry.raw.cliOption, "$name:${severity.levelName}"))
+              }
+              continue
+            }
           }
         yield(option)
       }
