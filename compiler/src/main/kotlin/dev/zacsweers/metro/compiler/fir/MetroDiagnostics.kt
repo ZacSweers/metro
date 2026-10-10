@@ -56,8 +56,8 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.LOCAL_CLASSES_CANNOT_BE
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MAP_KEY_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MAP_KEY_IMPLICIT_CLASS_KEY_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MAP_KEY_REDUNDANT_IMPLICIT_CLASS_KEY
-import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MAP_KEY_WITHOUT_CONTRIBUTES_INTO_MAP
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MAP_KEY_TYPE_PARAM_ERROR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MAP_KEY_WITHOUT_CONTRIBUTES_INTO_MAP
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MEMBERS_INJECT_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MEMBERS_INJECT_RETURN_TYPE_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MEMBERS_INJECT_STATUS_ERROR
