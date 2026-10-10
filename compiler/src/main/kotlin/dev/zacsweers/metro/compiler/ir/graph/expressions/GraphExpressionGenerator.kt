@@ -58,6 +58,7 @@ import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.allParameters
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.defaultType
+import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.isSuspend
@@ -895,6 +896,11 @@ private constructor(
                 return invokeGetter
               }
 
+              // An instance request reads the value straight out of the accessor's wrapper.
+              if (accessType == AccessType.INSTANCE) {
+                return unwrapGraphDependencySource(invokeGetter, getterContextKey)
+              }
+
               val sourceWrapper = getterContextKey.wrappedType
               val targetWrapper = contextualTypeKey.wrappedType
               val sourceIsDirectProvider =
@@ -982,6 +988,16 @@ private constructor(
           val innerIrType = innerContextKey.toIrType()
           val innerExpression =
             when (wrappedType) {
+              is WrappedType.Provider if wrappedType.providerType == Symbols.ClassIds.function0 -> {
+                // A plain function needs no conversion before it's called.
+                val function0Invoke =
+                  irBuiltIns.functionN(0).functions.single { it.name == Symbols.Names.invoke }
+                irInvoke(
+                  dispatchReceiver = expression,
+                  callee = function0Invoke.symbol,
+                  typeHint = innerIrType,
+                )
+              }
               is WrappedType.Provider -> {
                 val metroProviderKey =
                   IrContextualTypeKey(

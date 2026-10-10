@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.ir.graph
 
 import dev.zacsweers.metro.compiler.getAndAdd
+import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
@@ -545,8 +546,12 @@ internal class BindingPropertyCollector(
     val graphDependency = targetBinding as? IrBinding.GraphDependency
     val localGraphDependency = if (graphDependency?.token == null) graphDependency else null
     val canPassThrough = localGraphDependency?.canPassThrough(contextualTypeKey) == true
+    // A Lazy accessor's handle is cached so its value is computed once. A Provider accessor can be
+    // read again on each access, so it's counted like any other binding.
     val flattensDeferredGraphAccessor =
-      localGraphDependency?.contextualTypeKey?.isDeferrable == true && !canPassThrough
+      localGraphDependency?.contextualTypeKey?.isDeferrable == true &&
+        !canPassThrough &&
+        localGraphDependency.contextualTypeKey.wrappedType !is WrappedType.Provider
 
     // For map multibindings, track the contextual variant
     if (targetBinding is IrBinding.Multibinding && !targetBinding.isSet) {

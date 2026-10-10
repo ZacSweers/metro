@@ -22,6 +22,7 @@ Changelog
 - **[IR/JVM]** Generated code calls `@JvmStatic` functions in objects and companion objects statically on JVM. This covers factory `create()` functions and `DoubleCheck.provider()`. It skips loading the companion object and keeps companion classes out of the caller's constant pool. In a 500-module benchmark this made the generated graph classes 17% smaller.
 - **[IR]** Provider lambdas that Metro generates are SAM-converted to `Provider` directly. The inline `provider()` function they went through before added a type check and a second wrapper object at every site.
 - **[IR]** Each switching provider class numbers its bindings from zero. Shards used to switch on graph-wide IDs with gaps between them.
+- **[IR]** Instance reads of `@Includes` graph accessors that return `Provider<T>` or `() -> T` call the accessor directly. They used to cache a converted provider in a field or wrap the accessor in a new provider lambda. `Lazy` accessors still cache their handle, so their value is computed once.
 - **[IR/interop]** Providers of absent `@BindsOptionalOf` bindings use an `InstanceFactory` that holds `Optional.empty()`. They used to generate a lambda.
 
 ### Fixes
