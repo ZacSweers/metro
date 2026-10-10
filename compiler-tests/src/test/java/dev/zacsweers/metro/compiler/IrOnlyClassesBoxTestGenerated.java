@@ -3749,6 +3749,12 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
     }
 
     @Test
+    @TestMetadata("SingleSourceMultibindingsAreReadOnly.kt")
+    public void testSingleSourceMultibindingsAreReadOnly() {
+      run("SingleSourceMultibindingsAreReadOnly.kt");
+    }
+
+    @Test
     @TestMetadata("UnusedMultibindingsDoNotGetValidated.kt")
     public void testUnusedMultibindingsDoNotGetValidated() {
       run("UnusedMultibindingsDoNotGetValidated.kt");
