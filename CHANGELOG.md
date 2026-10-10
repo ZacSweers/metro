@@ -19,21 +19,19 @@ Changelog
 - **[IR]** Graphs without graph extensions no longer generate a private getter for a multibinding that only one site reads. That site builds the collection itself. Graphs with extensions keep these getters so their children can reuse them. Multibindings with more than 25 contributions also keep a getter so they don't crowd their reader's method. Configure that threshold with the new `multibinding-getter-threshold` compiler option.
 - **[IR]** When several accessors request the same key and return type, the first accessor holds the binding's code and the others call it. These bindings no longer need a separate private getter. With runtime tracing enabled, the accessors call a shared private getter so each one reports only its own entry point.
 - **[IR]** Graphs no longer store themselves in a field. Code that needs the graph reads `this`, or the graph reference that a shard or switching provider already holds.
-- **[IR/JVM]** Fields in generated graphs, shards, and switching providers are package-private on JVM. Each private field read from another generated class needed a synthetic accessor method, like a child graph reading its parent's providers.
-- **[IR/JVM]** Generated code calls `@JvmStatic` functions in objects and companion objects statically on JVM. This covers factory `create()` functions and `DoubleCheck.provider()`. It skips loading the companion object and keeps companion classes out of the caller's constant pool. In a 500-module benchmark this made the generated graph classes 17% smaller.
 - **[IR]** Generated code wraps instances in providers with `providerOf()`. On JVM that's one static call. `InstanceFactory.invoke()` also loaded its companion and boxed the value class.
 - **[IR]** Provider lambdas that Metro generates are SAM-converted to `Provider` directly. The inline `provider()` function they went through before added a type check and a second wrapper object at every site.
 - **[IR]** Each switching provider class numbers its bindings from zero. Shards used to switch on graph-wide IDs with gaps between them.
 - **[IR]** Switching provider branches read the graph reference into a local when more than one branch needs it.
 - **[IR]** Graph shard constructors read the graph from their constructor parameter. A shard drops its `graph` field when only its constructor used it.
 - **[IR]** Instance reads of `@Includes` graph accessors that return `Provider<T>` or `() -> T` call the accessor directly. They used to cache a converted provider in a field or wrap the accessor in a new provider lambda. `Lazy` accessors still cache their handle, so their value is computed once.
-- **[IR/interop]** Providers of absent `@BindsOptionalOf` bindings use an `InstanceFactory` that holds `Optional.empty()`. They used to generate a lambda.
+- **[IR/JVM]** Fields in generated graphs, shards, and switching providers are package-private on JVM. Each private field read from another generated class needed a synthetic accessor method, like a child graph reading its parent's providers.
+- **[IR/JVM]** Generated code calls `@JvmStatic` functions in objects and companion objects statically on JVM. This covers factory `create()` functions and `DoubleCheck.provider()`. It skips loading the companion object and keeps companion classes out of the caller's constant pool. In a 500-module benchmark this made the generated graph classes 17% smaller.
 - **[IR/JS]** On JS, converting a `Provider` to `() -> T` or `suspend () -> T` calls a small runtime helper. Each site used to generate its own wrapper lambda.
+- **[IR/interop]** Providers of absent `@BindsOptionalOf` bindings use an `InstanceFactory` that holds `Optional.empty()`. They used to generate a lambda.
 
 ### Fixes
 
-- **[IR]** Fix graphs storing an `@Includes` graph parameter in two fields when the included graph has graph extensions.
-- **[IR]** Fix runtime tracing passing a contextual type that matches the binding's type. It's now `null` as documented.
 - **[FIR]** Reduce redundant lookups when discovering contributed graph extension factories.
 - **[FIR]** Fix accessor override status on Kotlin `2.5.0-dev-10106`.
 - **[FIR/IC]** Avoid unnecessary recompilation of independent injected classes when generating contribution hints.
@@ -45,6 +43,8 @@ Changelog
 - **[IR]** Fix declaration parents for copied default argument lambdas and callable references, including references inside generated provider wrappers.
 - **[IR]** Include extension receivers in generated lambda function types, including set and map builder callbacks.
 - **[IR]** Fix IR diagnostic reporting on Kotlin `2.5.0-dev-10106`.
+- **[IR]** Fix graphs storing an `@Includes` graph parameter in two fields when the included graph has graph extensions.
+- **[IR]** Fix runtime tracing passing a contextual type that matches the binding's type. It's now `null` as documented.
 - **[IR/IC]** Fix stale graphs in incremental builds when a replacing binding container's `@ContributesTo` annotation is removed and restored.
 - **[IR/native/circuit]** Fix an `IrLinkageError` in generated `SubCircuit` UI factories on Kotlin/Native with Kotlin `2.5.0-Beta1`.
 - **[compat]** Fix Kotlin `2.5.0-Beta1` selecting a compat implementation built for newer `2.5.0` dev builds. Kotlin Beta and RC releases now map to the dev compat implementation that matches their branch point.
