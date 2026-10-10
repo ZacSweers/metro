@@ -24,6 +24,7 @@ Changelog
 
 ### Fixes
 
+- **[IR]** Fix runtime tracing passing a contextual type that matches the binding's type. It's now `null` as documented.
 - **[FIR]** Reduce redundant lookups when discovering contributed graph extension factories.
 - **[FIR]** Fix accessor override status on Kotlin `2.5.0-dev-10106`.
 - **[FIR/IC]** Avoid unnecessary recompilation of independent injected classes when generating contribution hints.
