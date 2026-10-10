@@ -162,7 +162,7 @@ interface NotReusedFactory {
       @JvmStatic
       @JsStatic
       fun create(delegateFactory: NotReused.MetroFactory): Provider<NotReusedFactory> {
-        return InstanceFactory/* companion */.invoke<NotReusedFactory>(value = Impl(delegateFactory = delegateFactory))
+        return providerOf<NotReusedFactory>(value = Impl(delegateFactory = delegateFactory))
       }
 
     }
@@ -197,7 +197,7 @@ interface ReusedFactory1 {
       @JvmStatic
       @JsStatic
       fun create(delegateFactory: Reused.MetroFactory): Provider<ReusedFactory1> {
-        return InstanceFactory/* companion */.invoke<ReusedFactory1>(value = Impl(delegateFactory = delegateFactory))
+        return providerOf<ReusedFactory1>(value = Impl(delegateFactory = delegateFactory))
       }
 
     }
@@ -232,7 +232,7 @@ interface ReusedFactory2 {
       @JvmStatic
       @JsStatic
       fun create(delegateFactory: Reused.MetroFactory): Provider<ReusedFactory2> {
-        return InstanceFactory/* companion */.invoke<ReusedFactory2>(value = Impl(delegateFactory = delegateFactory))
+        return providerOf<ReusedFactory2>(value = Impl(delegateFactory = delegateFactory))
       }
 
     }

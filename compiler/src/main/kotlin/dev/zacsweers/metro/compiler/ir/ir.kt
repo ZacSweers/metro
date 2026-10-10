@@ -2553,7 +2553,7 @@ internal fun IrClass.findInjectableConstructor(
   }
 }
 
-// InstanceFactory(...)
+// providerOf(...), or a primitive factory for primitives
 context(context: IrMetroContext)
 internal fun IrBuilderWithScope.instanceFactory(
   type: IrType,
@@ -2590,9 +2590,11 @@ internal fun IrBuilderWithScope.instanceFactory(
     }
   }
 
+  // providerOf() is a single top-level call that returns the boxed InstanceFactory. Calling
+  // InstanceFactory.invoke() directly would also load its companion and box the value class.
   return irInvoke(
-    irGetObject(context.metroSymbols.instanceFactoryCompanionObject),
-    callee = context.metroSymbols.instanceFactoryInvoke,
+    callee = context.metroSymbols.metroProviderOfFunction,
+    typeHint = type.wrapInProvider(context.metroSymbols.metroProvider),
     typeArgs = listOf(type),
     args = listOf(arg),
   )

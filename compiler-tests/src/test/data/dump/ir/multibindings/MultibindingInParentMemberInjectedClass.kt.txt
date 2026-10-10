@@ -688,8 +688,8 @@ interface AppGraph {
       override get(): MembersInjector<MyActivity> {
         return create(fragmentInjector = create(injectors = { // BLOCK
           val tmp0_builder: MapFactory.Builder<KClass<*>, Injector> = builder<KClass<*>, Injector>(size = 2)
-          tmp0_builder.put(key = AFragment::class, providerOfValue = create(memberInjector = InstanceFactory/* companion */.invoke<MembersInjector<AFragment>>(value = create(viewModelFactory = <this>.#viewModelFactoryProvider))))
-          tmp0_builder.put(key = BFragment::class, providerOfValue = create(memberInjector = InstanceFactory/* companion */.invoke<MembersInjector<BFragment>>(value = create(viewModelFactory = <this>.#viewModelFactoryProvider))))
+          tmp0_builder.put(key = AFragment::class, providerOfValue = create(memberInjector = providerOf<MembersInjector<AFragment>>(value = create(viewModelFactory = <this>.#viewModelFactoryProvider))))
+          tmp0_builder.put(key = BFragment::class, providerOfValue = create(memberInjector = providerOf<MembersInjector<BFragment>>(value = create(viewModelFactory = <this>.#viewModelFactoryProvider))))
           tmp0_builder.build()
         }))
       }

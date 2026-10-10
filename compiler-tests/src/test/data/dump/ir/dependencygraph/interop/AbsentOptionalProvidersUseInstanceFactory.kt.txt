@@ -11,7 +11,7 @@ interface AppGraph {
 
     override val stringProvider: Function0<Optional<String>>
       override get(): Function0<Optional<String>> {
-        return InstanceFactory/* companion */.invoke<Optional<String>>(value = empty<String>())
+        return providerOf<Optional<String>>(value = empty<String>())
       }
 
   }
@@ -63,3 +63,4 @@ interface Bindings {
   }
 
 }
+

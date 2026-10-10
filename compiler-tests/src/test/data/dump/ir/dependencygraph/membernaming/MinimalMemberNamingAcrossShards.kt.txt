@@ -272,7 +272,7 @@ fun interface PrimaryWorkerFactory {
       @JvmStatic
       @JsStatic
       fun create(delegateFactory: SharedWorker.MetroFactory): Provider<PrimaryWorkerFactory> {
-        return InstanceFactory/* companion */.invoke<PrimaryWorkerFactory>(value = Impl(delegateFactory = delegateFactory))
+        return providerOf<PrimaryWorkerFactory>(value = Impl(delegateFactory = delegateFactory))
       }
 
     }
@@ -307,7 +307,7 @@ fun interface SecondaryWorkerFactory {
       @JvmStatic
       @JsStatic
       fun create(delegateFactory: SharedWorker.MetroFactory): Provider<SecondaryWorkerFactory> {
-        return InstanceFactory/* companion */.invoke<SecondaryWorkerFactory>(value = Impl(delegateFactory = delegateFactory))
+        return providerOf<SecondaryWorkerFactory>(value = Impl(delegateFactory = delegateFactory))
       }
 
     }
@@ -350,7 +350,7 @@ interface TestGraph {
       constructor(graph: Impl) /* primary */ {
         super/*Any*/()
         <this>.#graph = graph
-        <this>.#provider = provider<Provider<Config>, Config>(delegate = create(example = InstanceFactory/* companion */.invoke<ProvidedExample>(value = <this>.#graph.#instance)))
+        <this>.#provider = provider<Provider<Config>, Config>(delegate = create(example = providerOf<ProvidedExample>(value = <this>.#graph.#instance)))
       }
 
     }

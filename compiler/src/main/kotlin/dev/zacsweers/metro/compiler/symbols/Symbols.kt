@@ -584,6 +584,13 @@ internal class Symbols(
       .single()
   }
 
+  /** `providerOf(value)`, which returns an already-boxed `InstanceFactory` as a `Provider`. */
+  val metroProviderOfFunction: IrSimpleFunctionSymbol by lazy {
+    builtinsFinder
+      .findFunctions(CallableId(metroRuntime.packageFqName, "providerOf".asName()))
+      .single()
+  }
+
   val providerInvoke: IrSimpleFunctionSymbol by lazy {
     metroProvider.requireSimpleFunction("invoke")
   }
