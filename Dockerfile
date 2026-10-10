@@ -1,7 +1,7 @@
 # Copyright (C) 2026 Zac Sweers
 # SPDX-License-Identifier: Apache-2.0
 
-FROM eclipse-temurin:25-jdk AS android-sdk-version
+FROM eclipse-temurin:27-jdk AS android-sdk-version
 
 COPY gradle/libs.versions.toml /tmp/libs.versions.toml
 
@@ -10,7 +10,7 @@ RUN set -eux; \
     test -n "${android_compile_sdk}"; \
     printf '%s\n' "${android_compile_sdk}" > /android-compile-sdk
 
-FROM eclipse-temurin:25-jdk
+FROM eclipse-temurin:27-jdk
 
 WORKDIR /workspace
 
