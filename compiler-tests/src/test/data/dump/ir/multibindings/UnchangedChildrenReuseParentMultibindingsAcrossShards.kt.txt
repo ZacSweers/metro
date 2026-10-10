@@ -417,6 +417,8 @@ interface AppGraph {
     private class Shard1 {
       internal val oneProvider: Provider<One>
 
+      internal val threeProvider: Provider<Three>
+
       private class SwitchingProvider<T : Any?> : Provider<T> {
         private val graph: Shard1
 
@@ -432,7 +434,8 @@ interface AppGraph {
           return { // BLOCK
             val tmp0_id: Int = <this>.#id
             when {
-              EQEQ(arg0 = tmp0_id, arg1 = 0) -> One() /*as T */
+              EQEQ(arg0 = tmp0_id, arg1 = 0) -> Three() /*as T */
+              EQEQ(arg0 = tmp0_id, arg1 = 1) -> One() /*as T */
               else -> throw error(message = "Unexpected SwitchingProvider id: " + tmp0_id)
             }
           }
@@ -442,15 +445,16 @@ interface AppGraph {
 
       constructor() /* primary */ {
         super/*Any*/()
-        <this>.#oneProvider = provider<Provider<One>, One>(delegate = SwitchingProvider<One>(graph = <this>, id = 0))
+        <this>.#oneProvider = provider<Provider<One>, One>(delegate = SwitchingProvider<One>(graph = <this>, id = 1))
+        <this>.#threeProvider = provider<Provider<Three>, Three>(delegate = SwitchingProvider<Three>(graph = <this>, id = 0))
       }
 
     }
 
     private class Shard2 {
-      internal val threeProvider: Provider<Three>
-
       internal val twoProvider: Provider<Two>
+
+      internal val graph: Impl
 
       private class SwitchingProvider<T : Any?> : Provider<T> {
         private val graph: Shard2
@@ -468,7 +472,6 @@ interface AppGraph {
             val tmp0_id: Int = <this>.#id
             when {
               EQEQ(arg0 = tmp0_id, arg1 = 0) -> Two() /*as T */
-              EQEQ(arg0 = tmp0_id, arg1 = 1) -> Three() /*as T */
               else -> throw error(message = "Unexpected SwitchingProvider id: " + tmp0_id)
             }
           }
@@ -476,11 +479,16 @@ interface AppGraph {
 
       }
 
-      constructor() /* primary */ {
+      constructor(graph: Impl) /* primary */ {
         super/*Any*/()
-        <this>.#threeProvider = provider<Provider<Three>, Three>(delegate = SwitchingProvider<Three>(graph = <this>, id = 1))
+        <this>.#graph = graph
         <this>.#twoProvider = provider<Provider<Two>, Two>(delegate = SwitchingProvider<Two>(graph = <this>, id = 0))
       }
+
+      internal val firstAdapter: FirstAdapter
+        internal get(): FirstAdapter {
+          return FirstAdapter(one = <this>.#graph.#shard1.#oneProvider.invoke(), two = <this>.#twoProvider.invoke(), three = <this>.#graph.#shard1.#threeProvider.invoke())
+        }
 
     }
 
@@ -496,10 +504,15 @@ interface AppGraph {
           return { // BLOCK
             buildSet<Adapter>(capacity = 2, builderAction = local fun MutableSet<Adapter>.<anonymous>() {
               $receiver.add(element = SecondAdapter())
-              $receiver.add(element = FirstAdapter(one = <this>.#graph.#shard1.#oneProvider.invoke(), two = <this>.#graph.#shard2.#twoProvider.invoke(), three = <this>.#graph.#shard2.#threeProvider.invoke()))
+              $receiver.add(element = <this>.#graph.#shard2.<get-firstAdapter>())
             }
 )
           }
+        }
+
+      internal val trackingHandler: TrackingHandler
+        internal get(): TrackingHandler {
+          return TrackingHandler(adapters = <this>.<get-setOfAdapter>())
         }
 
     }
@@ -525,7 +538,7 @@ interface AppGraph {
             return TrackingHandler(adapters = { // BLOCK
               buildSet<Adapter>(capacity = 3, builderAction = local fun MutableSet<Adapter>.<anonymous>() {
                 $receiver.add(element = SecondAdapter())
-                $receiver.add(element = FirstAdapter(one = <this>.#activityGraphImpl.#appGraphImpl.#shard1.#oneProvider.invoke(), two = <this>.#activityGraphImpl.#appGraphImpl.#shard2.#twoProvider.invoke(), three = <this>.#activityGraphImpl.#appGraphImpl.#shard2.#threeProvider.invoke()))
+                $receiver.add(element = <this>.#activityGraphImpl.#appGraphImpl.#shard2.<get-firstAdapter>())
                 $receiver.add(element = ThirdAdapter())
               }
 )
@@ -542,7 +555,7 @@ interface AppGraph {
 
       override val handler: Handler
         override get(): Handler {
-          return TrackingHandler(adapters = <this>.#appGraphImpl.#shard3.<get-setOfAdapter>())
+          return <this>.#appGraphImpl.#shard3.<get-trackingHandler>()
         }
 
       override val viewModel: ViewModelGraph
@@ -565,7 +578,7 @@ interface AppGraph {
 
       override val handler: Handler
         override get(): Handler {
-          return TrackingHandler(adapters = <this>.#appGraphImpl.#shard3.<get-setOfAdapter>())
+          return <this>.#appGraphImpl.#shard3.<get-trackingHandler>()
         }
 
     }
@@ -575,7 +588,7 @@ interface AppGraph {
       /* <init>() */
 
       <this>.#shard1 = Shard1()
-      <this>.#shard2 = Shard2()
+      <this>.#shard2 = Shard2(graph = <this>)
       <this>.#shard3 = Shard3(graph = <this>)
     }
 

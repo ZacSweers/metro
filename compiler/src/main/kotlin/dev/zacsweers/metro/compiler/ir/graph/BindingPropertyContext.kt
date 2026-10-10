@@ -122,20 +122,43 @@ internal class BindingPropertyContext(
       else -> null
     }
 
-  /** Finds an existing parent collection helper without changing either resolved graph. */
+  /**
+   * Finds an ancestor property this graph can reuse for [key] without changing either resolved
+   * graph.
+   *
+   * The nearest ancestor that has a binding for [key] decides. Its binding must build the same
+   * value, so its fingerprint has to match this graph's. Bindings an ancestor owns are shared
+   * through tokens instead.
+   */
   context(metroContext: IrMetroContext)
-  fun reusableMultibinding(key: IrContextualTypeKey): BindingProperty? {
-    val parentContext = parent ?: return null
-    val binding = bindingGraph.findBinding(key.typeKey)
-    if (binding !is IrBinding.Multibinding || key.hasDefault) {
+  fun reusableBinding(key: IrContextualTypeKey): BindingProperty? {
+    if (key.hasDefault) {
       return null
     }
-    val fingerprint = fingerprints[key.typeKey] ?: return null
-    if (fingerprint != parentContext.fingerprints[key.typeKey]) {
+    val fingerprint = fingerprints[key.typeKey] as? BindingFingerprint.Built ?: return null
+    val ancestor = nearestAncestorWith(key.typeKey) ?: return null
+    if (fingerprint != ancestor.fingerprints[key.typeKey]) {
       return null
     }
-    val property = parentContext.get(key.canonicalize()) ?: return null
-    return property.copy(ownerGraphKey = property.ownerGraphKey ?: parentContext.graphKey)
+    val property = ancestor.get(key.canonicalize()) ?: return null
+    return property.copy(ownerGraphKey = property.ownerGraphKey ?: ancestor.graphKey)
+  }
+
+  /**
+   * Returns the nearest ancestor whose graph has a binding for [key].
+   *
+   * This walks up one level at a time. Graph trees are shallow, so it's only a few lookups. A
+   * precomputed map from keys to ancestors would copy every ancestor's keys into each graph.
+   */
+  private fun nearestAncestorWith(key: IrTypeKey): BindingPropertyContext? {
+    var current = parent
+    while (current != null) {
+      if (key in current.bindingGraph) {
+        return current
+      }
+      current = current.parent
+    }
+    return null
   }
 
   /** Lazily computed map of ancestor graph keys to their contexts. */
@@ -213,7 +236,7 @@ internal class BindingPropertyContext(
       }
     }
 
-    reusableMultibinding(key)?.let {
+    reusableBinding(key)?.let {
       return it
     }
 

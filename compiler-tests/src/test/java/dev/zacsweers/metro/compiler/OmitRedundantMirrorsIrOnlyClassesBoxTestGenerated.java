@@ -1990,6 +1990,12 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
       }
 
       @Test
+      @TestMetadata("ChildrenShareHoistedBindings.kt")
+      public void testChildrenShareHoistedBindings() {
+        run("ChildrenShareHoistedBindings.kt");
+      }
+
+      @Test
       @TestMetadata("ChunkedExtensionInitializers.kt")
       public void testChunkedExtensionInitializers() {
         run("ChunkedExtensionInitializers.kt");
@@ -2167,6 +2173,12 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
       @TestMetadata("MultipleExtensionFactoriesAreValid.kt")
       public void testMultipleExtensionFactoriesAreValid() {
         run("MultipleExtensionFactoriesAreValid.kt");
+      }
+
+      @Test
+      @TestMetadata("NestedChildrenShareHoistedBindings.kt")
+      public void testNestedChildrenShareHoistedBindings() {
+        run("NestedChildrenShareHoistedBindings.kt");
       }
 
       @Test

@@ -15,9 +15,11 @@ Changelog
 
 ### Enhancements
 
-- **[IR]** Reduce generated code in graph extensions by reusing existing parent multibinding getters when contributions and their resolved dependencies are unchanged.
-- **[IR]** Graphs without graph extensions no longer generate a private getter for a multibinding that only one site reads. That site builds the collection itself. Graphs with extensions keep these getters so their children can reuse them.
+- **[IR]** Reduce generated code in graph extensions by reusing existing parent bindings when their contributions and resolved dependencies are unchanged.
+- **[IR]** Graphs no longer generate a private getter for a multibinding that only one site reads. That site builds the collection itself.
+  - Reads from graph extensions that reuse the multibinding count too.
   - Multibindings with more than 25 contributions also keep a getter so they don't crowd their reader's method. You can configure that threshold with the new `multibinding-getter-threshold` compiler option.
+- **[IR]** When several graph extensions build the same binding as their parent, like an unscoped class or a multibinding the parent never reads, the parent now builds it once in a shared getter and the extensions call it. Extensions at different depths share it through their nearest common ancestor.
 - **[IR]** When several accessors request the same key and return type, the first accessor holds the binding's code and the others call through to it.
 - **[IR]** Graphs no longer store themselves in a field. Code that needs the graph reads `this`, or the graph reference that a shard or switching provider already holds.
 - **[IR]** Generated code wraps instances in providers with `providerOf()`. On JVM that's one static call. `InstanceFactory.invoke()` also loaded its companion and boxed the value class.

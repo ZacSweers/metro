@@ -72,7 +72,7 @@ internal class BindingLookup(
   private val sourceGraph: IrClass,
   private val findClassFactory: (IrClass) -> ClassFactory?,
   private val findMemberInjectors: (IrClass) -> List<MemberInjectClass>,
-  private val parentContext: ParentContextReader?,
+  internal val parentContext: ParentContextReader?,
   private val bindingLookupCache: BindingLookupCache,
   private val decisionCapture: BindingDecisionCapture? = null,
 ) {

@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.ir
 import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.ir.graph.BindingPropertyCollector
 import dev.zacsweers.metro.compiler.ir.graph.GraphNode
+import dev.zacsweers.metro.compiler.ir.graph.IrBinding
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
@@ -16,12 +17,19 @@ import org.jetbrains.kotlin.ir.expressions.IrExpression
 /** Tracks one child graph's parent requests. Reads and writes stay on the main compiler thread. */
 internal class UsedKeyCollector {
   private val usedKeys = mutableSetOf<IrContextualTypeKey>()
+  private val sharedKeys = mutableSetOf<IrTypeKey>()
 
   fun record(contextKey: IrContextualTypeKey) {
     usedKeys.add(contextKey)
   }
 
+  fun recordShared(key: IrTypeKey) {
+    sharedKeys.add(key)
+  }
+
   fun keys(): Set<IrContextualTypeKey> = usedKeys.toSet()
+
+  fun sharedKeys(): Set<IrTypeKey> = sharedKeys.toSet()
 }
 
 private enum class ParentContextLookupMode {
@@ -67,6 +75,24 @@ internal interface ParentContextReader {
     scope: IrAnnotation? = null,
     requiresProviderProperty: Boolean = scope != null,
   ): ParentContext.Token?
+
+  /**
+   * Returns how many ancestor graphs in a row declare [binding] the same way, starting with the
+   * nearest parent. A binding can only be shared with that many ancestors.
+   */
+  fun sharedDepth(binding: IrBinding): Int = 0
+
+  /**
+   * Returns how many levels up the ancestor graph [graphKey] is. The nearest parent is 1. Graphs
+   * that aren't ancestors return 0.
+   */
+  fun ancestorDepth(graphKey: IrTypeKey): Int = 0
+
+  /**
+   * Records that this graph reads [key] and the nearest [depth] ancestor graphs can build it the
+   * same way. An ancestor builds it once when more than one of its child graphs records it.
+   */
+  fun markShared(key: IrTypeKey, depth: Int) {}
 }
 
 /**
@@ -88,6 +114,10 @@ internal class ParentContextSnapshot(
   private val ancestorReader: ParentContextReader? = null,
   /** Graph-private keys from parent graphs (for hinting in missing binding messages). */
   private val graphPrivateKeys: Set<IrTypeKey> = emptySet(),
+  /** The nearest parent graph's key, or null if there's no parent graph. */
+  private val parentGraphKey: IrTypeKey? = null,
+  /** Whether the nearest parent graph declares a binding the same way. */
+  private val declaresSameBinding: (IrBinding) -> Boolean = { false },
 ) {
   /** Ownership information for a key - which graph owns it and how to access it. */
   data class KeyOwnership(
@@ -222,6 +252,29 @@ internal class ParentContextSnapshot(
 
       override fun findToken(key: IrTypeKey) = this@ParentContextSnapshot.findToken(key)
 
+      override fun sharedDepth(binding: IrBinding): Int {
+        if (!declaresSameBinding(binding)) return 0
+        val depthAbove = ancestorReader?.sharedDepth(binding) ?: 0
+        return depthAbove + 1
+      }
+
+      override fun ancestorDepth(graphKey: IrTypeKey): Int {
+        if (graphKey == parentGraphKey) return 1
+        val depthAbove = ancestorReader?.ancestorDepth(graphKey) ?: 0
+        return if (depthAbove == 0) {
+          0
+        } else {
+          depthAbove + 1
+        }
+      }
+
+      override fun markShared(key: IrTypeKey, depth: Int) {
+        collector.recordShared(key)
+        if (depth > 1) {
+          ancestorReader?.markShared(key, depth - 1)
+        }
+      }
+
       override fun mark(
         key: IrTypeKey,
         scope: IrAnnotation?,
@@ -327,6 +380,7 @@ internal class ParentContext(
   private data class Level(
     val node: GraphNode,
     val isSuspend: (IrTypeKey) -> Boolean,
+    val declaresSameBinding: (IrBinding) -> Boolean,
     val deltaProvided: MutableSet<IrTypeKey> = mutableSetOf(),
     /** Tracks which contextual keys were used (preserving instance vs provider distinction) */
     val usedContextKeys: MutableSet<IrContextualTypeKey> = mutableSetOf(),
@@ -485,9 +539,13 @@ internal class ParentContext(
     return null
   }
 
-  fun pushParentGraph(node: GraphNode, isSuspend: (IrTypeKey) -> Boolean) {
+  fun pushParentGraph(
+    node: GraphNode,
+    isSuspend: (IrTypeKey) -> Boolean,
+    declaresSameBinding: (IrBinding) -> Boolean,
+  ) {
     val idx = levels.size
-    val level = Level(node, isSuspend)
+    val level = Level(node, isSuspend, declaresSameBinding)
     levels.addLast(level)
     parentScopes.addAll(node.scopes)
     _graphPrivateKeys.addAll(node.graphPrivateKeys)
@@ -610,6 +668,8 @@ internal class ParentContext(
       currentParentGraph = currentParentGraph,
       ancestorReader = parent,
       graphPrivateKeys = graphPrivateKeys(),
+      parentGraphKey = levels.lastOrNull()?.node?.typeKey,
+      declaresSameBinding = levels.lastOrNull()?.declaresSameBinding ?: { false },
     )
   }
 

@@ -218,7 +218,7 @@
     "reachableKeys": 21,
     "deferredKeys": 0,
     "unusedInputs": 0,
-    "providerProperties": 4,
+    "providerProperties": 3,
     "scopedProviderProperties": 1,
     "shards": 0,
     "optimizations": {

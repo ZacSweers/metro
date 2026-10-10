@@ -155,6 +155,8 @@ private data class ExtensionValidationTask(
   val isDirectExtension: Boolean,
   val validation: ValidationResult,
   val usedContextKeys: Set<IrContextualTypeKey>,
+  /** Bindings the child reads that this parent could build the same way. */
+  val sharedKeys: Set<IrTypeKey>,
 )
 
 @Inject
@@ -461,7 +463,11 @@ internal class DependencyGraphTransformer(
 
       // Transform the contributed graphs
       // Push the parent graph for all contributed graph processing
-      localParentContext.pushParentGraph(node, bindingGraph::isTransitivelySuspendForChild)
+      localParentContext.pushParentGraph(
+        node,
+        bindingGraph::isTransitivelySuspendForChild,
+        bindingGraph::declaresSameBindingAs,
+      )
 
       // Build each extension's implementation class before preparing its graph node.
       // This adds nested classes to the parent graph's declarations list, which must not
@@ -507,6 +513,7 @@ internal class DependencyGraphTransformer(
               isDirectExtension = key in directExtensions,
               validation = childValidationResults[index],
               usedContextKeys = collectors[index].keys(),
+              sharedKeys = collectors[index].sharedKeys(),
             )
           }
 
@@ -548,6 +555,10 @@ internal class DependencyGraphTransformer(
           for (contextKey in task.usedContextKeys) {
             bindingGraph.keep(contextKey, IrBindingStack.Entry.simpleTypeRef(contextKey))
             bindingGraph.reserveContextKey(contextKey)
+          }
+
+          for (key in task.sharedKeys) {
+            bindingGraph.reserveSharedRead(key)
           }
         }
 

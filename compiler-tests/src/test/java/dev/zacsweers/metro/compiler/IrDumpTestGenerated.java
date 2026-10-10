@@ -363,6 +363,50 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Nested
+    @TestMetadata("compiler-tests/src/test/data/dump/ir/dependencygraph/hoisting")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Hoisting {
+      private void run(String fileName) {
+        runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/hoisting/" + fileName);
+      }
+
+      @Test
+      public void testAllFilesPresentInHoisting() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/dependencygraph/hoisting"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      }
+
+      @Test
+      @TestMetadata("ChangedChildMultibindingsAreNotShared.kt")
+      public void testChangedChildMultibindingsAreNotShared() {
+        run("ChangedChildMultibindingsAreNotShared.kt");
+      }
+
+      @Test
+      @TestMetadata("ChildrenShareHoistedBinding.kt")
+      public void testChildrenShareHoistedBinding() {
+        run("ChildrenShareHoistedBinding.kt");
+      }
+
+      @Test
+      @TestMetadata("ChildrenShareHoistedMultibinding.kt")
+      public void testChildrenShareHoistedMultibinding() {
+        run("ChildrenShareHoistedMultibinding.kt");
+      }
+
+      @Test
+      @TestMetadata("NestedChildrenHoistToNearestSharedParent.kt")
+      public void testNestedChildrenHoistToNearestSharedParent() {
+        run("NestedChildrenHoistToNearestSharedParent.kt");
+      }
+
+      @Test
+      @TestMetadata("SingleChildBindingIsNotHoisted.kt")
+      public void testSingleChildBindingIsNotHoisted() {
+        run("SingleChildBindingIsNotHoisted.kt");
+      }
+    }
+
+    @Nested
     @TestMetadata("compiler-tests/src/test/data/dump/ir/dependencygraph/interop")
     @TestDataPath("$PROJECT_ROOT")
     public class Interop {

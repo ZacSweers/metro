@@ -103,6 +103,18 @@ public open class MutableBindingGraph<
    * only when this callback is present; root requests reuse their supplied entries.
    */
   private val onExistingBinding: ((ContextualTypeKey, Binding, BindingStackEntry) -> Unit)? = null,
+  /**
+   * Observes each request while the graph is populated, with the binding that satisfies it. The
+   * calling binding is null for root requests. This runs once per dependency edge.
+   */
+  private val onDependencyResolved:
+    ((callingBinding: Binding?, contextKey: ContextualTypeKey, binding: Binding) -> Unit)? =
+    null,
+  /**
+   * Observes each reachable key in sorted order after sealing. A key's dependencies come before it,
+   * unless a deferred dependency breaks a cycle.
+   */
+  private val onSortedKey: ((TypeKey) -> Unit)? = null,
 ) : BindingGraph<Type, TypeKey, ContextualTypeKey, Binding, BindingStackEntry, BindingStack> {
   // Populated by initial graph setup and prepareSeal().
   override val bindings: MutableScatterMap<TypeKey, Binding> = MutableScatterMap(256)
@@ -293,6 +305,7 @@ public open class MutableBindingGraph<
           topo.sortedKeys.forEachIndexed { i, key ->
             ensureActive()
             bindingIndices.put(key, i)
+            onSortedKey?.invoke(key)
           }
         }
 
@@ -320,11 +333,20 @@ public open class MutableBindingGraph<
             ensureActive()
             tryPut(binding, stack, binding.typeKey)
           }
+          onDependencyResolved?.let { onResolved ->
+            bindings
+              .firstOrNull { it.typeKey == contextKey.typeKey }
+              ?.let { binding ->
+                onResolved(null, contextKey, binding)
+              }
+          }
         } else if (!contextKey.hasDefault) {
           stack.withEntry(entry) { missingBindings[contextKey.typeKey] = stack.copy() }
         }
       } else {
-        onExistingBinding?.invoke(contextKey, bindings.getValue(contextKey.typeKey), entry)
+        val binding = bindings.getValue(contextKey.typeKey)
+        onExistingBinding?.invoke(contextKey, binding, entry)
+        onDependencyResolved?.invoke(null, contextKey, binding)
       }
     }
 
@@ -360,11 +382,13 @@ public open class MutableBindingGraph<
           // Fast path: existing dependencies need no lookup. Stack entries support reporting,
           // and are allocated here only for an observer. Avoid repeat loops for valid cycles.
           if (typeKey in bindings) {
+            val existing = bindings.getValue(typeKey)
             onExistingBinding?.invoke(
               depKey,
-              bindings.getValue(typeKey),
+              existing,
               stack.newBindingStackEntry(depKey, binding, roots),
             )
+            onDependencyResolved?.invoke(binding, depKey, existing)
             continue
           }
           stack.withEntry(stack.newBindingStackEntry(depKey, binding, roots)) {
@@ -375,6 +399,13 @@ public open class MutableBindingGraph<
               for (newBinding in newBindings) {
                 ensureActive()
                 bindingQueue.addLast(newBinding)
+              }
+              onDependencyResolved?.let { onResolved ->
+                newBindings
+                  .firstOrNull { it.typeKey == typeKey }
+                  ?.let { resolved ->
+                    onResolved(binding, depKey, resolved)
+                  }
               }
             } else if (depKey.hasDefault) {
               // Do nothing here, it has a default value and missing is ok

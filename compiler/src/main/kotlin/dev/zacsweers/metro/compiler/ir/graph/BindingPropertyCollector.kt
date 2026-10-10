@@ -38,15 +38,8 @@ internal class BindingPropertyCollector(
   private val deferredTypes: Set<IrTypeKey> = emptySet(),
   /** Keys that are reachable from roots, used to filter the init order. */
   private val reachableKeys: Set<IrTypeKey> = emptySet(),
-  /**
-   * Returns true for multibindings that reuse an unchanged parent getter instead of a local one.
-   */
-  private val reuseMultibinding: (IrContextualTypeKey) -> Boolean = { false },
-  /**
-   * Whether every non-empty multibinding keeps its own getter. Graphs with extensions set this so
-   * their children can reuse those getters.
-   */
-  private val keepMultibindingGetters: Boolean = false,
+  /** Returns true for bindings that reuse an unchanged parent property instead of a local one. */
+  private val reuseBinding: (IrContextualTypeKey) -> Boolean = { false },
   /** Whether accessors for the same key can call each other. Runtime tracing turns this off. */
   private val accessorsCanShareCode: Boolean = true,
 ) {
@@ -342,10 +335,10 @@ internal class BindingPropertyCollector(
     contextKey: IrContextualTypeKey,
     keysWithBackingProperties: MutableMap<IrContextualTypeKey, CollectedProperty>,
   ) {
-    if (binding is IrBinding.Multibinding && reuseMultibinding(contextKey)) {
+    if (reuseBinding(contextKey)) {
       return
     }
-    // Contributions of a reused parent multibinding are left unreferenced here.
+    // Dependencies of a reused parent binding are left unreferenced here.
     val isDeferred = binding.typeKey in deferredTypes
     if (contextKey !in nodes && !isDeferred) {
       return
@@ -406,6 +399,17 @@ internal class BindingPropertyCollector(
       val effectiveScalarRefCount =
         if (isGraphExtension) node.scalarRefCount + node.factoryRefCount else node.scalarRefCount
 
+      fun needsSharedGetter(): Boolean {
+        val isReadMoreThanOnce = effectiveScalarRefCount > 1
+        // The first accessor holds the code and the others call it.
+        val accessorHoldsCode = node.isHostedByAccessor && !isGraphExtension
+        val isSharedLocally = isReadMoreThanOnce && !accessorHoldsCode
+        // Child graphs can't call this graph's accessors, so they need a getter to reuse.
+        val isReservedByChild = graph.hasReservedKey(binding.typeKey)
+        val isShared = isSharedLocally || isReservedByChild
+        return isShared && !node.binding.isSimpleBinding()
+      }
+
       if (useField) {
         // For bound instances, the scalar instance field is created separately by IrGraphGenerator.
         // The collected FIELD here represents the cached provider wrapper, so expose it under the
@@ -424,11 +428,7 @@ internal class BindingPropertyCollector(
             propertyContextKey,
             switchingId = switchingId,
           )
-      } else if (
-        effectiveScalarRefCount > 1 &&
-          !node.binding.isSimpleBinding() &&
-          !(node.isHostedByAccessor && !isGraphExtension && !graph.hasReservedKey(binding.typeKey))
-      ) {
+      } else if (needsSharedGetter()) {
         if (binding.isSuspendInGraph) {
           // A GETTER property is a non-suspend function and can't await suspend resolutions.
           // Shared suspend bindings get a SuspendProvider<T> FIELD instead; each consumer awaits
@@ -521,9 +521,8 @@ internal class BindingPropertyCollector(
         // reader already holds the code in its own method.
         val isLarge = binding.sourceBindings.size > metroContext.options.multibindingGetterThreshold
         val keepsGetterForSize = isLarge && !node.isHostedByAccessor
-        if (
-          isShared || keepsGetterForSize || keepMultibindingGetters || graph.hasReservedKey(key)
-        ) {
+        val isReservedByChild = graph.hasReservedKey(key)
+        if (isShared || keepsGetterForSize || isReservedByChild) {
           PropertyKind.GETTER
         } else {
           null
