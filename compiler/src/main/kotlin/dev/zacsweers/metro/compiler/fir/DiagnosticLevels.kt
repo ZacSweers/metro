@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir
 
+import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.MetroOptions.DiagnosticSeverity
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import org.jetbrains.kotlin.diagnostics.DiagnosticContext
@@ -107,14 +108,18 @@ private constructor(
 
   companion object {
     /** Returns null when no diagnostic levels are configured. */
-    fun create(session: FirSession): DiagnosticLevels? {
-      val configured = session.metroFirBuiltIns.options.diagnosticLevels
+    fun create(
+      session: FirSession,
+      options: MetroOptions,
+      compatContext: CompatContext,
+    ): DiagnosticLevels? {
+      val configured = options.diagnosticLevels
       if (configured.isEmpty()) {
         return null
       }
       val isIde = session.isIde()
       val severities = configured.mapValues { (_, level) -> level.resolve(isIde).toKtSeverity() }
-      return DiagnosticLevels(severities, session.compatContext)
+      return DiagnosticLevels(severities, compatContext)
     }
 
     private fun DiagnosticSeverity.toKtSeverity(): Severity? {

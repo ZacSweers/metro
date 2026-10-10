@@ -62,7 +62,7 @@ public class MetroFirExtensionRegistrar(
 ) : FirExtensionRegistrar() {
   override fun ExtensionRegistrarContext.configurePlugin() {
     +MetroFirBuiltIns.getFactory(classIds, options, compatContext, traceContext)
-    +::MetroFirCheckers
+    +{ session: FirSession -> MetroFirCheckers(session, options, compatContext) }
     +supertypeGenerator("Supertypes - graph factory", ::GraphFactoryFirSupertypeGenerator, false)
     +supertypeGenerator(
       "Supertypes - contributed interfaces",

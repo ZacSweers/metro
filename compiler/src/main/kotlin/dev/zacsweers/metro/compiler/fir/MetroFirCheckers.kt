@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir
 
+import dev.zacsweers.metro.compiler.MetroOptions
+import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.checkers.AggregationChecker
 import dev.zacsweers.metro.compiler.fir.checkers.ArrayClassKeyChecker
 import dev.zacsweers.metro.compiler.fir.checkers.AsContributionChecker
@@ -34,8 +36,12 @@ import org.jetbrains.kotlin.fir.analysis.extensions.FirAdditionalCheckersExtensi
 import org.jetbrains.kotlin.fir.declarations.FirDeclaration
 import org.jetbrains.kotlin.fir.expressions.FirStatement
 
-internal class MetroFirCheckers(session: FirSession) : FirAdditionalCheckersExtension(session) {
-  private val diagnosticLevels = DiagnosticLevels.create(session)
+internal class MetroFirCheckers(
+  session: FirSession,
+  options: MetroOptions,
+  compatContext: CompatContext,
+) : FirAdditionalCheckersExtension(session) {
+  private val diagnosticLevels = DiagnosticLevels.create(session, options, compatContext)
 
   override val declarationCheckers: DeclarationCheckers =
     object : DeclarationCheckers() {
