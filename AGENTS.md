@@ -129,8 +129,13 @@ For Compose-heavy JS tests that exhaust the default 2g heap, use `-Pmetro.compil
 - Don't run Gradle commands with unnecessary flags like `--info`, `--no-daemon`, etc.
 - Don't cd into a module directory and run Gradle commands - use `./gradlew` instead from the directory that wrapper is in. For separate builds such as `idea-plugin/`, use the root wrapper with `-p idea-plugin`.
 
+## Git
+
+- Name branches `z/camelCaseTopic`, like `z/diagnosticLevel`. Never commit directly on `main`.
+
 ## Working Style
 
+- Don't hard-wrap prose. This covers commit messages, PR descriptions, Markdown docs, and the changelog. Write each paragraph as one line.
 - When I ask you to fix or change something, work on the EXACT file I specify. Do not edit related files, adjacent modules, or 'nearby' code unless explicitly asked. If you're unsure which file to edit, ask first.
 - NEVER explore Gradle caches, .gradle directories, or external library internals to understand dependencies. If you need to understand an external API, ask me or check official docs via WebFetch. Do not spelunk.
 - Explain your plan BEFORE making edits, especially for non-trivial changes. Do not jump straight to editing files. Wait for my approval of the approach.
