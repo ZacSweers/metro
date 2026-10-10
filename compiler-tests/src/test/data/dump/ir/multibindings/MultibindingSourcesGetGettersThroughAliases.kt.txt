@@ -139,8 +139,8 @@ interface AppGraph {
 
     }
 
-    private val setOfAny: Set<Any>
-      private get(): Set<Any> {
+    override val values: Set<Any>
+      override get(): Set<Any> {
         return { // BLOCK
           buildSet<Any>(capacity = 2, builderAction = local fun MutableSet<Any>.<anonymous>() {
             $receiver.add(element = Foo())
@@ -148,11 +148,6 @@ interface AppGraph {
           }
 )
         }
-      }
-
-    override val values: Set<Any>
-      override get(): Set<Any> {
-        return <this>.<get-setOfAny>()
       }
 
   }

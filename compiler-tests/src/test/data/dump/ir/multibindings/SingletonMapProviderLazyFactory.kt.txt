@@ -30,11 +30,6 @@ interface AppGraph {
 
     override val ints: Function0<Map<Int, Function0<Lazy<Int>>>>
       override get(): Function0<Map<Int, Function0<Lazy<Int>>>> {
-        return <this>.<get-mapOfIntToIntProvider>()
-      }
-
-    private val mapOfIntToIntProvider: Provider<Map<Int, Function0<Lazy<Int>>>>
-      private get(): Provider<Map<Int, Function0<Lazy<Int>>>> {
         return MapProviderLazyFactory/* companion */.singleton<Int, Int>(key = 1, provider = ProvideValueMetroFactory/* companion */.create(instance = <this>))
       }
 

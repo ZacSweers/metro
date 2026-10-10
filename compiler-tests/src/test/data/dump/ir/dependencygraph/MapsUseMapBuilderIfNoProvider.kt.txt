@@ -33,24 +33,14 @@ interface AppGraph {
     @Multibinds
     override val ints: Map<Int, Int>
       override get(): Map<Int, Int> {
-        return <this>.<get-mapOfIntToInt>()
-      }
-
-    override val intsWithProviders: Map<Int, Function0<Int>>
-      override get(): Map<Int, Function0<Int>> {
-        return <this>.<get-mapOfIntToInt2>()
-      }
-
-    private val mapOfIntToInt: Map<Int, Int>
-      private get(): Map<Int, Int> {
         return buildMap<Int, Int>(capacity = 1, builderAction = local fun MutableMap<Int, Int>.<anonymous>() {
           $receiver.put(key = 3, value = <this>.#provideIntProvider.invoke())
         }
 )
       }
 
-    private val mapOfIntToInt2: Map<Int, Function0<Int>>
-      private get(): Map<Int, Function0<Int>> {
+    override val intsWithProviders: Map<Int, Function0<Int>>
+      override get(): Map<Int, Function0<Int>> {
         return buildMap<Int, Function0<Int>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<Int>>.<anonymous>() {
           $receiver.put(key = 3, value = <this>.#provideIntProvider)
         }

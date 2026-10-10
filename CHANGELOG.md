@@ -16,6 +16,7 @@ Changelog
 ### Enhancements
 
 - **[IR]** Reduce generated code in graph extensions by reusing existing parent multibinding getters when contributions and their resolved dependencies are unchanged.
+- **[IR]** Graphs without graph extensions no longer generate a private getter for a multibinding that only one site reads. That site builds the collection itself. Graphs with extensions keep these getters so their children can reuse them.
 - **[IR]** Graphs no longer store themselves in a field. Code that needs the graph reads `this`, or the graph reference that a shard or switching provider already holds.
 
 ### Fixes

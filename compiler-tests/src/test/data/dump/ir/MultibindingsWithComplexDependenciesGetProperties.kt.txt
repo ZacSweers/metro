@@ -14,6 +14,11 @@ interface AppGraph {
         return <this>.<get-setOfInt>()
       }
 
+    override val ints2: Set<Int>
+      override get(): Set<Int> {
+        return <this>.<get-setOfInt>()
+      }
+
     private val setOfInt: Set<Int>
       private get(): Set<Int> {
         return setOf<Int>(element = <this>.provideInt(string = <this>.provideString()))
@@ -38,7 +43,7 @@ interface AppGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 137, endOffset = 208, newInstanceName = "provideInt")
+  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 159, endOffset = 230, newInstanceName = "provideInt")
   class ProvideIntMetroFactory : Factory<Int> {
     private /* final field */ val instance: AppGraph = instance
     private /* final field */ val string: Provider<String> = string
@@ -87,7 +92,7 @@ interface AppGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideString", propertyName = "", startOffset = 91, endOffset = 134, newInstanceName = "provideString")
+  @CallableMetadata(callableName = "provideString", propertyName = "", startOffset = 113, endOffset = 156, newInstanceName = "provideString")
   class ProvideStringMetroFactory : Factory<String> {
     private /* final field */ val instance: AppGraph = instance
     companion object Companion {
@@ -145,6 +150,9 @@ interface AppGraph {
   }
 
   abstract val ints: Set<Int>
+    abstract get
+
+  abstract val ints2: Set<Int>
     abstract get
 
 }

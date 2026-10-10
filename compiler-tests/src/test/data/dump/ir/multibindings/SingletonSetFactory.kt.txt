@@ -27,14 +27,9 @@ interface AppGraph {
 
     }
 
-    private val setOfStringProvider: Provider<Set<String>>
-      private get(): Provider<Set<String>> {
-        return SetFactory/* companion */.singleton<String>(provider = ProvideOnlyMetroFactory/* companion */.create(instance = <this>))
-      }
-
     override val tags: Function0<Set<String>>
       override get(): Function0<Set<String>> {
-        return <this>.<get-setOfStringProvider>()
+        return SetFactory/* companion */.singleton<String>(provider = ProvideOnlyMetroFactory/* companion */.create(instance = <this>))
       }
 
   }

@@ -11,11 +11,6 @@ interface AppGraph {
 
     override val ints: Set<Int>
       override get(): Set<Int> {
-        return <this>.<get-setOfInt>()
-      }
-
-    private val setOfInt: Set<Int>
-      private get(): Set<Int> {
         return { // BLOCK
           val tmp0: Set<Int> = <this>.provideInts()
           buildSet<Int>(capacity = 1.plus(other = tmp0.<get-size>()), builderAction = local fun MutableSet<Int>.<anonymous>() {

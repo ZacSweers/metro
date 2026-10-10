@@ -50,29 +50,19 @@ interface AppGraph {
 
     override val ints: Map<Int, Function0<Int>>
       override get(): Map<Int, Function0<Int>> {
-        return <this>.<get-mapOfIntToInt>()
-      }
-
-    private val mapOfIntToInt: Map<Int, Function0<Int>>
-      private get(): Map<Int, Function0<Int>> {
         return buildMap<Int, Function0<Int>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<Int>>.<anonymous>() {
           $receiver.put(key = 3, value = <this>.#provideIntProvider)
         }
 )
       }
 
-    private val mapOfStringToString: Map<String, SuspendFunction0<String>>
-      private get(): Map<String, SuspendFunction0<String>> {
+    override val strings: Map<String, SuspendFunction0<String>>
+      override get(): Map<String, SuspendFunction0<String>> {
         return buildMap<String, SuspendFunction0<String>>(capacity = 2, builderAction = local fun MutableMap<String, SuspendFunction0<String>>.<anonymous>() {
           $receiver.put(key = "second", value = SyncSuspendProvider<String>(delegate = AppGraph.ProvideSecondMetroFactory/* companion */.create(instance = <this>, sharedDependency = <this>.#provideSharedDependencyProvider)))
           $receiver.put(key = "first", value = SyncSuspendProvider<String>(delegate = AppGraph.ProvideFirstMetroFactory/* companion */.create(instance = <this>, sharedDependency = <this>.#provideSharedDependencyProvider)))
         }
 )
-      }
-
-    override val strings: Map<String, SuspendFunction0<String>>
-      override get(): Map<String, SuspendFunction0<String>> {
-        return <this>.<get-mapOfStringToString>()
       }
 
   }

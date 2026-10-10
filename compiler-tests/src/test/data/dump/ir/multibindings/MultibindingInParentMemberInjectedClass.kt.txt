@@ -671,7 +671,12 @@ interface AppGraph {
   @MetroImplMarker
   class Impl : AppGraph {
     private val viewModelFactoryProvider: Provider<ViewModelFactory>
-      field = ViewModelFactory.MetroFactory/* companion */.create(viewModels = <this>.<get-mapOfKClass___ToViewModelProvider>())
+      field = ViewModelFactory.MetroFactory/* companion */.create(viewModels = { // BLOCK
+        val tmp0_builder: MapProviderFactory.Builder<KClass<*>, ViewModel> = MapProviderFactory/* companion */.builder<KClass<*>, ViewModel>(size = 2)
+        tmp0_builder.put(key = BViewModel::class, providerOfValue = BViewModel.MetroFactory.create())
+        tmp0_builder.put(key = AViewModel::class, providerOfValue = AViewModel.MetroFactory.create())
+        tmp0_builder.build()
+      })
 
     private constructor() /* primary */ {
       super/*Any*/()
@@ -679,29 +684,14 @@ interface AppGraph {
 
     }
 
-    private val mapOfKClass___ToInjectorProvider: Provider<Map<KClass<*>, Injector>>
-      private get(): Provider<Map<KClass<*>, Injector>> {
-        return { // BLOCK
+    override val memberInjector: MembersInjector<MyActivity>
+      override get(): MembersInjector<MyActivity> {
+        return BaseActivity.MetroMembersInjector/* companion */.create(fragmentInjector = FragmentInjector.MetroFactory/* companion */.create(injectors = { // BLOCK
           val tmp0_builder: MapFactory.Builder<KClass<*>, Injector> = MapFactory/* companion */.builder<KClass<*>, Injector>(size = 2)
           tmp0_builder.put(key = AFragment::class, providerOfValue = AFragmentInjector.MetroFactory/* companion */.create(memberInjector = InstanceFactory/* companion */.invoke<MembersInjector<AFragment>>(value = AFragment.MetroMembersInjector/* companion */.create(viewModelFactory = <this>.#viewModelFactoryProvider))))
           tmp0_builder.put(key = BFragment::class, providerOfValue = BFragmentInjector.MetroFactory/* companion */.create(memberInjector = InstanceFactory/* companion */.invoke<MembersInjector<BFragment>>(value = BFragment.MetroMembersInjector/* companion */.create(viewModelFactory = <this>.#viewModelFactoryProvider))))
           tmp0_builder.build()
-        }
-      }
-
-    private val mapOfKClass___ToViewModelProvider: Provider<Map<KClass<*>, Function0<ViewModel>>>
-      private get(): Provider<Map<KClass<*>, Function0<ViewModel>>> {
-        return { // BLOCK
-          val tmp0_builder: MapProviderFactory.Builder<KClass<*>, ViewModel> = MapProviderFactory/* companion */.builder<KClass<*>, ViewModel>(size = 2)
-          tmp0_builder.put(key = BViewModel::class, providerOfValue = BViewModel.MetroFactory.create())
-          tmp0_builder.put(key = AViewModel::class, providerOfValue = AViewModel.MetroFactory.create())
-          tmp0_builder.build()
-        }
-      }
-
-    override val memberInjector: MembersInjector<MyActivity>
-      override get(): MembersInjector<MyActivity> {
-        return BaseActivity.MetroMembersInjector/* companion */.create(fragmentInjector = FragmentInjector.MetroFactory/* companion */.create(injectors = <this>.<get-mapOfKClass___ToInjectorProvider>()))
+        }))
       }
 
   }

@@ -41,6 +41,11 @@ internal class BindingPropertyCollector(
    * Returns true for multibindings that reuse an unchanged parent getter instead of a local one.
    */
   private val reuseMultibinding: (IrContextualTypeKey) -> Boolean = { false },
+  /**
+   * Whether every non-empty multibinding keeps its own getter. Graphs with extensions set this so
+   * their children can reuse those getters.
+   */
+  private val keepMultibindingGetters: Boolean = false,
 ) {
 
   data class CollectedProperty(
@@ -341,7 +346,7 @@ internal class BindingPropertyCollector(
     val isGraphExtension = binding is IrBinding.GraphExtension
 
     // Check known property type (applies to all bindings including aliases)
-    val knownPropertyType = knownPropertyType(binding)
+    val knownPropertyType = knownPropertyType(binding, node)
     if (knownPropertyType != null) {
       val isField = knownPropertyType == PropertyKind.FIELD
       // Assisted-injected types are never factories
@@ -469,7 +474,7 @@ internal class BindingPropertyCollector(
    * Returns the property type for bindings that statically require properties, or null if the
    * binding's property requirement depends on refcount.
    */
-  private fun knownPropertyType(binding: IrBinding): PropertyKind? {
+  private fun knownPropertyType(binding: IrBinding, node: Node): PropertyKind? {
     val key = binding.typeKey
 
     // Deferred types always end up in DelegateFactory fields
@@ -483,9 +488,15 @@ internal class BindingPropertyCollector(
       // Assisted factories are stateless (they just wrap the target's MetroFactory),
       // so they don't need their own cached field. The target's MetroFactory field
       // is added separately in processBindingNode when Assisted bindings are encountered.
-      // Non-empty multibindings get a getter
+      // Non-empty multibindings get a getter when more than one site reads them or a child graph
+      // may reuse them. A single reader builds the collection inline.
       is Multibinding if binding.sourceBindings.isNotEmpty() -> {
-        PropertyKind.GETTER
+        val isShared = node.factoryRefCount + node.scalarRefCount > 1
+        if (isShared || keepMultibindingGetters || graph.hasReservedKey(key)) {
+          PropertyKind.GETTER
+        } else {
+          null
+        }
       }
       // Graph extensions used by child graphs need getter properties so children can resolve
       // their property access tokens. Graph extensions are "simple" bindings (0 dependencies)

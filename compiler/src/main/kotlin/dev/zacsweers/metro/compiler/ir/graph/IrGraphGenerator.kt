@@ -1098,6 +1098,7 @@ internal class IrGraphGenerator(
           deferredTypes = sealResult.deferredTypes,
           reachableKeys = sealResult.reachableKeys,
           reuseMultibinding = { bindingPropertyContext.reusableMultibinding(it) != null },
+          keepMultibindingGetters = node.hasExtensions,
         )
         .collect()
     }

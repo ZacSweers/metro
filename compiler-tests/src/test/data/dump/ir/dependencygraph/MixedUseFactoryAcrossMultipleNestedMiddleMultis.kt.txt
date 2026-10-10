@@ -110,38 +110,20 @@ interface AppGraph {
 
     override val finalThing: FinalThing
       override get(): FinalThing {
-        return FinalThing(ints = <this>.<get-setOfIntProvider3>())
+        return FinalThing(ints = { // BLOCK
+          val tmp0_builder: SetFactory.Builder<Int> = SetFactory/* companion */.builder<Int>(individualProviderSize = 0, collectionProviderSize = 1)
+          tmp0_builder.addCollectionProvider(collectionProvider = { // BLOCK
+            val tmp1_builder: SetFactory.Builder<Int> = SetFactory/* companion */.builder<Int>(individualProviderSize = 0, collectionProviderSize = 1)
+            tmp1_builder.addCollectionProvider(collectionProvider = SetFactory/* companion */.singleton<Int>(provider = <this>.#provideIntProvider))
+            tmp1_builder.build()
+          })
+          tmp0_builder.build()
+        })
       }
 
     override val int: Int
       override get(): Int {
         return <this>.#provideIntProvider.invoke()
-      }
-
-    @Named(name = "first")
-    private val setOfIntProvider: Provider<Set<Int>>
-      private get(): Provider<Set<Int>> {
-        return SetFactory/* companion */.singleton<Int>(provider = <this>.#provideIntProvider)
-      }
-
-    @Named(name = "second")
-    private val setOfIntProvider2: Provider<Set<Int>>
-      private get(): Provider<Set<Int>> {
-        return { // BLOCK
-          val tmp0_builder: SetFactory.Builder<Int> = SetFactory/* companion */.builder<Int>(individualProviderSize = 0, collectionProviderSize = 1)
-          tmp0_builder.addCollectionProvider(collectionProvider = <this>.<get-setOfIntProvider>())
-          tmp0_builder.build()
-        }
-      }
-
-    @Named(name = "final")
-    private val setOfIntProvider3: Provider<Set<Int>>
-      private get(): Provider<Set<Int>> {
-        return { // BLOCK
-          val tmp0_builder: SetFactory.Builder<Int> = SetFactory/* companion */.builder<Int>(individualProviderSize = 0, collectionProviderSize = 1)
-          tmp0_builder.addCollectionProvider(collectionProvider = <this>.<get-setOfIntProvider2>())
-          tmp0_builder.build()
-        }
       }
 
   }

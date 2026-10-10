@@ -29,31 +29,16 @@ interface AppGraph {
 
     override val doubleSet: Set<Double>
       override get(): Set<Double> {
-        return <this>.<get-setOfDouble>()
+        return setOf<Double>(element = <this>.bindDouble(int = <this>.provideInt()))
       }
 
     override val intSet: Set<Int>
       override get(): Set<Int> {
-        return <this>.<get-setOfInt>()
+        return setOf<Int>(element = <this>.provideInt())
       }
 
     override val longSet: Set<Long>
       override get(): Set<Long> {
-        return <this>.<get-setOfLong>()
-      }
-
-    private val setOfDouble: Set<Double>
-      private get(): Set<Double> {
-        return setOf<Double>(element = <this>.bindDouble(int = <this>.provideInt()))
-      }
-
-    private val setOfInt: Set<Int>
-      private get(): Set<Int> {
-        return setOf<Int>(element = <this>.provideInt())
-      }
-
-    private val setOfLong: Set<Long>
-      private get(): Set<Long> {
         return setOf<Long>(element = <this>.bindLong(int = <this>.provideInt()))
       }
 

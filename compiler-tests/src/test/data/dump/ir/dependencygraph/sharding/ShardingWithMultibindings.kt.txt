@@ -194,18 +194,13 @@ interface TestGraph {
         super/*Any*/()
         <this>.#graph = graph
         <this>.#provideService2Provider = DoubleCheck/* companion */.provider<Provider<Any>, Any>(delegate = Module2.ProvideService2MetroFactory/* companion */.create(s2 = <this>.#graph.#shard1.#service2Provider))
-        <this>.#collectorProvider = DoubleCheck/* companion */.provider<Provider<Collector>, Collector>(delegate = Collector.MetroFactory/* companion */.create(services = <this>.<get-setOfAnyProvider>()))
+        <this>.#collectorProvider = DoubleCheck/* companion */.provider<Provider<Collector>, Collector>(delegate = Collector.MetroFactory/* companion */.create(services = { // BLOCK
+          val tmp0_builder: SetFactory.Builder<Any> = SetFactory/* companion */.builder<Any>(individualProviderSize = 2, collectionProviderSize = 0)
+          tmp0_builder.addProvider(individualProvider = <this>.#graph.#shard1.#provideService1Provider)
+          tmp0_builder.addProvider(individualProvider = <this>.#provideService2Provider)
+          tmp0_builder.build()
+        }))
       }
-
-      internal val setOfAnyProvider: Provider<Set<Any>>
-        internal get(): Provider<Set<Any>> {
-          return { // BLOCK
-            val tmp0_builder: SetFactory.Builder<Any> = SetFactory/* companion */.builder<Any>(individualProviderSize = 2, collectionProviderSize = 0)
-            tmp0_builder.addProvider(individualProvider = <this>.#graph.#shard1.#provideService1Provider)
-            tmp0_builder.addProvider(individualProvider = <this>.#provideService2Provider)
-            tmp0_builder.build()
-          }
-        }
 
     }
 

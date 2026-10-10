@@ -270,19 +270,14 @@ interface AppGraph {
 
         override val handler: Handler
           override get(): Handler {
-            return TrackingHandler(adapters = <this>.<get-setOfAdapter>())
-          }
-
-        private val setOfAdapter: Set<Adapter>
-          private get(): Set<Adapter> {
-            return { // BLOCK
+            return TrackingHandler(adapters = { // BLOCK
               buildSet<Adapter>(capacity = 3, builderAction = local fun MutableSet<Adapter>.<anonymous>() {
                 $receiver.add(element = SecondAdapter())
                 $receiver.add(element = FirstAdapter())
                 $receiver.add(element = ThirdAdapter())
               }
 )
-            }
+            })
           }
 
       }
@@ -319,12 +314,6 @@ interface AppGraph {
       @LocalOnly
       override val names: Set<String>
         override get(): Set<String> {
-          return <this>.<get-setOfString>()
-        }
-
-      @LocalOnly
-      private val setOfString: Set<String>
-        private get(): Set<String> {
           return setOf<String>(element = <this>.#appGraphImpl.localName())
         }
 

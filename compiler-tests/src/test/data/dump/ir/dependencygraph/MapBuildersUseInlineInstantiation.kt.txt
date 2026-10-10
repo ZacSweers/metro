@@ -95,27 +95,17 @@ interface AppGraph {
 
     override val intHolder: Map<Int, IntHolder>
       override get(): Map<Int, IntHolder> {
-        return <this>.<get-mapOfIntToIntHolder>()
-      }
-
-    override val ints: Map<Int, Int>
-      override get(): Map<Int, Int> {
-        return <this>.<get-mapOfIntToInt>()
-      }
-
-    private val mapOfIntToInt: Map<Int, Int>
-      private get(): Map<Int, Int> {
-        return buildMap<Int, Int>(capacity = 2, builderAction = local fun MutableMap<Int, Int>.<anonymous>() {
-          $receiver.put(key = 2, value = <this>.provideInt2())
-          $receiver.put(key = 1, value = <this>.provideInt1())
+        return buildMap<Int, IntHolder>(capacity = 1, builderAction = local fun MutableMap<Int, IntHolder>.<anonymous>() {
+          $receiver.put(key = 3, value = IntHolderImpl())
         }
 )
       }
 
-    private val mapOfIntToIntHolder: Map<Int, IntHolder>
-      private get(): Map<Int, IntHolder> {
-        return buildMap<Int, IntHolder>(capacity = 1, builderAction = local fun MutableMap<Int, IntHolder>.<anonymous>() {
-          $receiver.put(key = 3, value = IntHolderImpl())
+    override val ints: Map<Int, Int>
+      override get(): Map<Int, Int> {
+        return buildMap<Int, Int>(capacity = 2, builderAction = local fun MutableMap<Int, Int>.<anonymous>() {
+          $receiver.put(key = 2, value = <this>.provideInt2())
+          $receiver.put(key = 1, value = <this>.provideInt1())
         }
 )
       }

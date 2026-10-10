@@ -119,16 +119,11 @@ interface TestGraph1 : Bindings {
     }
 
     override fun inject(target: Target) {
-      Target.MetroMembersInjector/* companion */.injectStrings(instance = target, strings = <this>.<get-mapOfIntToString>())
-    }
-
-    private val mapOfIntToString: Map<Int, Function0<String>>
-      private get(): Map<Int, Function0<String>> {
-        return buildMap<Int, Function0<String>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<String>>.<anonymous>() {
-          $receiver.put(key = 1, value = Bindings.ProvideStringMetroFactory/* companion */.create(instance = <this>))
-        }
-)
+      Target.MetroMembersInjector/* companion */.injectStrings(instance = target, strings = buildMap<Int, Function0<String>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<String>>.<anonymous>() {
+        $receiver.put(key = 1, value = Bindings.ProvideStringMetroFactory/* companion */.create(instance = <this>))
       }
+))
+    }
 
   }
 
@@ -266,14 +261,9 @@ interface TestGraph4 : Bindings {
 
     }
 
-    private val mapOfIntToStringProvider: Provider<Map<Int, Function0<String>>>
-      private get(): Provider<Map<Int, Function0<String>>> {
-        return MapProviderFactory/* companion */.singleton<Int, String>(key = 1, provider = Bindings.ProvideStringMetroFactory/* companion */.create(instance = <this>))
-      }
-
     override val strings: Function0<Map<Int, Function0<String>>>
       override get(): Function0<Map<Int, Function0<String>>> {
-        return <this>.<get-mapOfIntToStringProvider>()
+        return MapProviderFactory/* companion */.singleton<Int, String>(key = 1, provider = Bindings.ProvideStringMetroFactory/* companion */.create(instance = <this>))
       }
 
   }
@@ -310,17 +300,12 @@ interface TestGraph5 : Bindings {
 
     }
 
-    private val mapOfIntToString: Map<Int, Function0<String>>
-      private get(): Map<Int, Function0<String>> {
+    override val strings: Map<Int, Function0<String>>
+      override get(): Map<Int, Function0<String>> {
         return buildMap<Int, Function0<String>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<String>>.<anonymous>() {
           $receiver.put(key = 1, value = Bindings.ProvideStringMetroFactory/* companion */.create(instance = <this>))
         }
 )
-      }
-
-    override val strings: Map<Int, Function0<String>>
-      override get(): Map<Int, Function0<String>> {
-        return <this>.<get-mapOfIntToString>()
       }
 
   }

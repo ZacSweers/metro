@@ -11,25 +11,6 @@ interface ExampleGraph {
 
     override val elements: Set<String>
       override get(): Set<String> {
-        return <this>.<get-setOfString>()
-      }
-
-    override val entries: Map<Int, String>
-      override get(): Map<Int, String> {
-        return <this>.<get-mapOfIntToString>()
-      }
-
-    private val mapOfIntToString: Map<Int, String>
-      private get(): Map<Int, String> {
-        return buildMap<Int, String>(capacity = 2, builderAction = local fun MutableMap<Int, String>.<anonymous>() {
-          $receiver.put(key = 1, value = <this>.firstEntry())
-          $receiver.put(key = 2, value = <this>.secondEntry())
-        }
-)
-      }
-
-    private val setOfString: Set<String>
-      private get(): Set<String> {
         return { // BLOCK
           buildSet<String>(capacity = 2, builderAction = local fun MutableSet<String>.<anonymous>() {
             $receiver.add(element = <this>.firstElement())
@@ -37,6 +18,15 @@ interface ExampleGraph {
           }
 )
         }
+      }
+
+    override val entries: Map<Int, String>
+      override get(): Map<Int, String> {
+        return buildMap<Int, String>(capacity = 2, builderAction = local fun MutableMap<Int, String>.<anonymous>() {
+          $receiver.put(key = 1, value = <this>.firstEntry())
+          $receiver.put(key = 2, value = <this>.secondEntry())
+        }
+)
       }
 
   }
