@@ -63,4 +63,18 @@ metro {
 
 The mode can also be set via the `diagnosticsRenderMode` Gradle property or the `metro.diagnosticsRenderMode` system property (which the compiler reads directly and wins over everything). Because rendering is presentation-only, the resolved mode is excluded from compilation task inputs — switching between IDE and CLI never invalidates compilation or splits build caches.
 
+## Changing diagnostic severity
+
+The `diagnostic-level` compiler option changes the severity of a Metro diagnostic by name. It works like kotlinc's [`-Xwarning-level`](https://kotlinlang.org/docs/compiler-reference.html#xwarning-level), but it can also lower errors to warnings. This is useful when another tool makes a Metro error a false positive in your build.
+
+```kotlin
+metro.compilerOptions {
+  put("diagnostic-level", "MAP_KEY_WITHOUT_CONTRIBUTES_INTO_MAP:warning")
+}
+```
+
+The available levels are `error`, `warning`, `disabled`, `ide-warning`, and `ide-error`. The IDE-only levels report in the IDE and are disabled in CLI builds. Separate multiple entries with commas, like `NAME_A:warning,NAME_B:disabled`.
+
+Only diagnostics reported in FIR are supported for now. Metro reports an error if the name is unknown or the diagnostic is reported in IR.
+
 Note that binding graph resolution currently only happens in the compiler IR backend, but maybe someday we can move this to FIR to get errors in the IDE.
