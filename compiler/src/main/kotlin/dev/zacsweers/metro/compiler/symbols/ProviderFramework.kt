@@ -210,7 +210,7 @@ internal class MetroProviderFramework(
       val valueType =
         (providerType as IrSimpleType).arguments[0].typeOrNull
           ?: reportCompilerBug(
-            "Function0 type missing type argument: ${providerType.dumpKotlinLike()}"
+            "Function0 type missing type argument: ${providerType.dumpKotlinLike()}",
           )
 
       return with(scope) {
@@ -257,7 +257,7 @@ internal class MetroProviderFramework(
                   irGet(capturedProvider),
                   callee = context.metroSymbols.providerInvoke,
                   typeHint = valueType,
-                )
+                ),
               )
             }
             .also { it.function.body?.patchDeclarationParents(it.function) }
@@ -302,7 +302,7 @@ internal class MetroProviderFramework(
                   irGet(capturedProvider),
                   callee = context.metroSymbols.suspendProviderInvoke,
                   typeHint = valueType,
-                )
+                ),
               )
             }
             .also { it.function.body?.patchDeclarationParents(it.function) }
@@ -321,13 +321,13 @@ internal class MetroProviderFramework(
    */
   context(context: IrMetroContext, scope: IrBuilderWithScope)
   private fun IrExpression.fromSuspendFunctionToSuspendProvider(
-    targetKey: IrContextualTypeKey
+    targetKey: IrContextualTypeKey,
   ): IrExpression {
     val fn = this
     val valueType =
       (fn.type as IrSimpleType).arguments[0].typeOrNull
         ?: reportCompilerBug(
-          "SuspendFunction0 type missing type argument: ${fn.type.dumpKotlinLike()}"
+          "SuspendFunction0 type missing type argument: ${fn.type.dumpKotlinLike()}",
         )
 
     return with(scope) {
@@ -401,7 +401,7 @@ internal class JavaxProviderFramework(private val symbols: JavaxSymbols) : Provi
       val valueType =
         providerType.requireSimpleType().arguments[0].typeOrNull
           ?: reportCompilerBug(
-            "Provider type missing type argument: ${providerType.dumpKotlinLike()}"
+            "Provider type missing type argument: ${providerType.dumpKotlinLike()}",
           )
 
       return irInvoke(
@@ -419,7 +419,7 @@ internal class JavaxProviderFramework(private val symbols: JavaxSymbols) : Provi
     // Javax has no Lazy concept, this should be handled by another interop
     reportCompilerBug(
       "Javax providers do not support lazy without Dagger interop enabled. " +
-        "Enable Dagger interop to use Lazy with javax.inject.Provider."
+        "Enable Dagger interop to use Lazy with javax.inject.Provider.",
     )
   }
 }
@@ -467,7 +467,7 @@ internal class JakartaProviderFramework(private val symbols: JakartaSymbols) : P
       val valueType =
         providerType.requireSimpleType().arguments[0].typeOrNull
           ?: reportCompilerBug(
-            "Provider type missing type argument: ${providerType.dumpKotlinLike()}"
+            "Provider type missing type argument: ${providerType.dumpKotlinLike()}",
           )
 
       return irInvoke(
@@ -485,7 +485,7 @@ internal class JakartaProviderFramework(private val symbols: JakartaSymbols) : P
     // Javax has no Lazy concept, this should be handled by another interop
     reportCompilerBug(
       "Jakarta providers do not support lazy without Dagger interop enabled. " +
-        "Enable Dagger interop to use Lazy with jakarta.inject.Provider."
+        "Enable Dagger interop to use Lazy with jakarta.inject.Provider.",
     )
   }
 }
@@ -556,7 +556,7 @@ internal class GuiceProviderFramework(
       val valueType =
         (providerType as IrSimpleType).arguments[0].typeOrNull
           ?: reportCompilerBug(
-            "Provider type missing type argument: ${providerType.dumpKotlinLike()}"
+            "Provider type missing type argument: ${providerType.dumpKotlinLike()}",
           )
 
       return irInvoke(
@@ -578,7 +578,7 @@ internal class GuiceProviderFramework(
       // Only support conversion to Kotlin Lazy
       if (targetClassId != kotlinLazyClassId) {
         reportCompilerBug(
-          "Guice providers only support conversion to Kotlin Lazy, not $targetClassId"
+          "Guice providers only support conversion to Kotlin Lazy, not $targetClassId",
         )
       }
 
@@ -608,7 +608,7 @@ internal class GuiceProviderFramework(
 
 /** Base class for frameworks that support delegation to javax/jakarta providers. */
 internal abstract class BaseDelegatingProviderFramework(
-  protected val delegates: List<ProviderFramework>
+  protected val delegates: List<ProviderFramework>,
 ) : ProviderFramework {
 
   /**
@@ -692,7 +692,7 @@ internal class DaggerProviderFramework(
 
     // Should not reach here for Dagger-only types
     reportCompilerBug(
-      "Unexpected conversion within Dagger framework: $sourceClassId -> $targetClassId"
+      "Unexpected conversion within Dagger framework: $sourceClassId -> $targetClassId",
     )
   }
 
@@ -733,7 +733,7 @@ internal class DaggerProviderFramework(
       val valueType =
         providerType.requireSimpleType().arguments[0].typeOrNull
           ?: reportCompilerBug(
-            "Provider type missing type argument: ${providerType.dumpKotlinLike()}"
+            "Provider type missing type argument: ${providerType.dumpKotlinLike()}",
           )
 
       val implementsJakarta =

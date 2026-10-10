@@ -33,7 +33,7 @@ import org.jetbrains.kotlin.name.StandardClassIds
 
 context(context: IrMetroContext)
 internal fun IrTypeKey.transformIfIntoMultibinding(
-  annotations: MetroAnnotations<IrAnnotation>
+  annotations: MetroAnnotations<IrAnnotation>,
 ): IrTypeKey {
   if (!annotations.isIntoMultibinding) {
     return this
@@ -44,7 +44,7 @@ internal fun IrTypeKey.transformIfIntoMultibinding(
   val declaration =
     rawSymbol.expectAsOrNull<IrSymbol>()?.owner?.expectAsOrNull<IrOverridableDeclaration<*>>()
       ?: reportCompilerBug(
-        "Expected symbol to be an IrSymbol but was ${rawSymbol::class.simpleName}"
+        "Expected symbol to be an IrSymbol but was ${rawSymbol::class.simpleName}",
       )
 
   val elementId = declaration.multibindingElementId
@@ -160,7 +160,7 @@ internal fun populateImplicitClassKey(mapKey: IrConstructorCall, implicitType: I
  */
 context(context: IrMetroContext)
 internal fun MetroAnnotations<IrAnnotation>.withPopulatedImplicitClassKey(
-  implicitType: IrType
+  implicitType: IrType,
 ): MetroAnnotations<IrAnnotation> {
   val mapKey = this.mapKey ?: return this
   if (!isImplicitClassKeySentinel(mapKey.ir)) return this
@@ -193,7 +193,7 @@ internal fun resolveImplicitClassKeyType(binding: IrBinding): IrType {
     }
     else ->
       reportCompilerBug(
-        "Implicit class keys require a class, binds, or provided binding. Found ${binding::class}."
+        "Implicit class keys require a class, binds, or provided binding. Found ${binding::class}.",
       )
   }
 }

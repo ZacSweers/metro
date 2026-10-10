@@ -166,7 +166,7 @@ internal fun Project.setMetroOptions(vararg options: Pair<String, String>) {
       listOf("enabled" to "true") + options
     }
   updateMetroOptions(
-    configuredOptions.map { (name, value) -> "plugin:$PLUGIN_ID:$name=$value" }.toTypedArray()
+    configuredOptions.map { (name, value) -> "plugin:$PLUGIN_ID:$name=$value" }.toTypedArray(),
   )
 }
 
@@ -318,14 +318,14 @@ internal fun BindingIndex.extensionContextsOf(parent: GraphContext): List<GraphC
 
 /** Selects contributions aggregated by the fixture graph's own scopes. */
 internal fun BindingIndex.contributionsFor(
-  queryContext: GraphQueryContext
+  queryContext: GraphQueryContext,
 ): List<ContributionEntry> = withResolutionSession { session ->
   session.contributionsFor(queryContext)
 }
 
 /** Selects contributions inherited through the fixture graph's ancestor scopes. */
 internal fun BindingIndex.inheritedContributionsFor(
-  queryContext: GraphQueryContext
+  queryContext: GraphQueryContext,
 ): List<ContributionEntry> = withResolutionSession { session ->
   session.inheritedContributionsFor(queryContext)
 }
@@ -369,7 +369,7 @@ internal fun Job.awaitTestCompletion() {
 
 /** Waits for a published bundle whose declaration anchors match the current PSI stamp. */
 internal fun KtFile.awaitMetroPresentation(
-  service: MetroResolutionService = project.service()
+  service: MetroResolutionService = project.service(),
 ): FilePresentationBundle {
   var result: FilePresentationBundle? = null
   object : WaitFor(30_000) {
@@ -395,7 +395,7 @@ internal fun KtFile.declarationsIncludingNested(): List<KtDeclaration> {
         declarations += dcl
         super.visitDeclaration(dcl)
       }
-    }
+    },
   )
   return declarations
 }

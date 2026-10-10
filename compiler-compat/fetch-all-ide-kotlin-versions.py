@@ -259,13 +259,15 @@ def resolve_to_dev_build(tag, kotlin_version):
     if not merge_base:
         return kotlin_version
 
-    # Find dev tags with matching base version
-    dev_tag_prefix = f"build-{ij_base}-dev-"
-    dev_tags = fetch_kotlin_tags(dev_tag_prefix)
-    if not dev_tags:
-        return kotlin_version
+    dev_build = resolve_merge_base_to_dev_build(ij_base, merge_base)
+    if dev_build:
+        return dev_build
+    return kotlin_version
 
-    # Extract and sort build numbers
+
+def find_dev_build_at_merge_base(base, merge_base):
+    """Find the highest `<base>-dev-N` build whose tag is at or before merge_base."""
+    dev_tags = fetch_kotlin_tags(f"build-{base}-dev-")
     dev_nums = []
     for t in dev_tags:
         m = re.search(r"-(\d+)$", t)
@@ -273,87 +275,39 @@ def resolve_to_dev_build(tag, kotlin_version):
             dev_nums.append(int(m.group(1)))
     dev_nums = sorted(set(dev_nums))
 
-    if not dev_nums:
-        return kotlin_version
-
     # Binary search: find the highest dev tag that is an ancestor of merge base
-    def check_tag(num):
-        tag = f"build-{ij_base}-dev-{num}"
-        status = compare_commits(tag, merge_base)
-        if status in ("identical", "ahead"):
-            return "ancestor"
-        elif status == "behind":
-            return "too_new"
-        return "error"
-
     low, high = 0, len(dev_nums) - 1
     best_num = None
-
     while low <= high:
         mid = (low + high) // 2
         num = dev_nums[mid]
-        result = check_tag(num)
-
-        if result == "ancestor":
+        status = compare_commits(f"build-{base}-dev-{num}", merge_base)
+        if status in ("identical", "ahead"):
             best_num = num
             low = mid + 1
-        elif result == "too_new":
-            high = mid - 1
         else:
             high = mid - 1
 
-    if best_num is not None:
-        return f"{ij_base}-dev-{best_num}"
+    if best_num is None:
+        return None
+    return f"{base}-dev-{best_num}"
 
-    # If no match found, try related base versions.
-    # The ij label (e.g., 2.3.20-ij253-105) might actually branch from a different
-    # version's dev track (e.g., 2.3.0-dev-9992).
-    base_parts = ij_base.split(".")
+
+def resolve_merge_base_to_dev_build(base, merge_base):
+    """Resolve a master merge-base commit to the dev build it corresponds to.
+
+    Release branches like 2.3.20-ij253-105 can branch from another version's dev track, such as
+    2.3.0-dev-9992, so X.Y.Z bases also try X.Y.0.
+    """
+    dev_build = find_dev_build_at_merge_base(base, merge_base)
+    if dev_build:
+        return dev_build
+
+    base_parts = base.split(".")
     if len(base_parts) == 3 and base_parts[2] != "0":
-        # Try X.Y.0 if the base is X.Y.Z where Z > 0
         alt_base = f"{base_parts[0]}.{base_parts[1]}.0"
-        alt_dev_tag_prefix = f"build-{alt_base}-dev-"
-        alt_dev_tags = fetch_kotlin_tags(alt_dev_tag_prefix)
-
-        if alt_dev_tags:
-            alt_dev_nums = []
-            for t in alt_dev_tags:
-                m = re.search(r"-(\d+)$", t)
-                if m:
-                    alt_dev_nums.append(int(m.group(1)))
-            alt_dev_nums = sorted(set(alt_dev_nums))
-
-            if alt_dev_nums:
-                # Binary search on alternative base
-                def check_alt_tag(num):
-                    tag = f"build-{alt_base}-dev-{num}"
-                    status = compare_commits(tag, merge_base)
-                    if status in ("identical", "ahead"):
-                        return "ancestor"
-                    elif status == "behind":
-                        return "too_new"
-                    return "error"
-
-                alt_low, alt_high = 0, len(alt_dev_nums) - 1
-                alt_best_num = None
-
-                while alt_low <= alt_high:
-                    alt_mid = (alt_low + alt_high) // 2
-                    alt_num = alt_dev_nums[alt_mid]
-                    alt_result = check_alt_tag(alt_num)
-
-                    if alt_result == "ancestor":
-                        alt_best_num = alt_num
-                        alt_low = alt_mid + 1
-                    elif alt_result == "too_new":
-                        alt_high = alt_mid - 1
-                    else:
-                        alt_high = alt_mid - 1
-
-                if alt_best_num is not None:
-                    return f"{alt_base}-dev-{alt_best_num}"
-
-    return kotlin_version
+        return find_dev_build_at_merge_base(alt_base, merge_base)
+    return None
 
 
 # ─── Fetch IDE releases ─────────────────────────────────────────────────────

@@ -48,7 +48,7 @@ internal fun IrProperty.ensureInitialized(
         }
           .apply {
             setDispatchReceiver(
-              this@ensureInitialized.parentAsClass.thisReceiverOrFail.copyTo(this)
+              this@ensureInitialized.parentAsClass.thisReceiverOrFail.copyTo(this),
             )
           }
     }

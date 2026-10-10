@@ -136,7 +136,7 @@ class MetroFilePresentationTest : BasePlatformTestCase() {
         interface OtherGraph {
           val consumer: Consumer
         }
-        """
+        """,
       )
     val service = project.service<MetroResolutionService>()
     val index = service.awaitIndex(file)
@@ -168,7 +168,7 @@ class MetroFilePresentationTest : BasePlatformTestCase() {
         }
 
         @Inject class Second
-        """
+        """,
       )
     val service = project.service<MetroResolutionService>()
     val initialIndex = service.awaitIndex(file)
@@ -267,7 +267,7 @@ class MetroFilePresentationTest : BasePlatformTestCase() {
         @Inject class Removed
 
         @Inject class Stable
-        """
+        """,
       )
     val service = project.service<MetroResolutionService>()
     val initialIndex = service.awaitIndex(file)

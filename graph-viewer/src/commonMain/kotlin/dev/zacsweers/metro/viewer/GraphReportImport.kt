@@ -264,7 +264,7 @@ public class GraphReportImport(files: List<ReportFile>) {
       if (hasConnections) {
         require(
           binding.dependencies.toSet() == expectedDependencies &&
-            binding.dependents.toSet() == expectedDependents
+            binding.dependents.toSet() == expectedDependents,
         ) {
           "Analysis dependencies do not match ${graph.graph}. Generate metadata and analysis from the same compilation."
         }

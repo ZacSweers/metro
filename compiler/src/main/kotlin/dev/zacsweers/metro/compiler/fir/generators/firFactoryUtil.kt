@@ -216,7 +216,7 @@ internal fun FirDeclarationGenerationExtension.buildFactoryCreateFunction(
   }
 
 internal fun MetroFirValueParameter.canonicalProviderClassId(
-  defaultUsesSuspendProvider: Boolean
+  defaultUsesSuspendProvider: Boolean,
 ): ClassId {
   return if (contextKey.wrappedType.usesSuspendProvider(defaultUsesSuspendProvider)) {
     Symbols.ClassIds.metroSuspendProvider

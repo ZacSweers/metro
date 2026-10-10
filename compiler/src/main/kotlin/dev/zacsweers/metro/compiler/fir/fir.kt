@@ -266,7 +266,7 @@ private fun FirAnnotation.arrayArgument(session: FirSession, name: Name, index: 
 
 /** @see [dev.zacsweers.metro.compiler.ClassIds.allRepeatableContributesAnnotationsContainers] */
 internal fun FirAnnotation.flattenRepeatedAnnotations(
-  session: FirSession
+  session: FirSession,
 ): Sequence<FirAnnotation> {
   return arrayArgument(session, StandardNames.DEFAULT_VALUE_PARAMETER, 0)
     ?.arguments
@@ -362,7 +362,7 @@ internal fun FirClassSymbol<*>.callableDeclarations(
             includeSelf = true,
             includeAncestors = false,
             yieldAncestorsFirst = yieldAncestorsFirst,
-          )
+          ),
         )
       }
     }
@@ -487,7 +487,7 @@ private fun renderAnnotationArgument(
 
       else -> {
         System.err.println(
-          "Unexpected annotation argument type: ${arg::class.java} - ${arg.render()}"
+          "Unexpected annotation argument type: ${arg::class.java} - ${arg.render()}",
         )
         null
       }
@@ -827,11 +827,11 @@ internal fun MetroFirAnnotation.mapKeyClassValueExpression(): FirGetClassCall? {
 //  fun FirExpression.extractClassFromArgument(session: FirSession): FirRegularClassSymbol?
 
 internal fun List<FirAnnotation>.scopeAnnotations(
-  session: FirSession
+  session: FirSession,
 ): Sequence<MetroFirAnnotation> = asSequence().scopeAnnotations(session)
 
 internal fun Sequence<FirAnnotation>.scopeAnnotations(
-  session: FirSession
+  session: FirSession,
 ): Sequence<MetroFirAnnotation> =
   annotationsAnnotatedWithAny(session, session.classIds.scopeAnnotations)
 
@@ -891,7 +891,7 @@ internal fun createDeprecatedHiddenAnnotation(session: FirSession): FirAnnotatio
 internal fun FirClassLikeDeclaration.markImpl(session: FirSession) {
   replaceAnnotations(
     annotations +
-      listOf(buildSimpleAnnotation { session.metroFirBuiltIns.metroImplMarkerClassSymbol })
+      listOf(buildSimpleAnnotation { session.metroFirBuiltIns.metroImplMarkerClassSymbol }),
   )
 }
 
@@ -954,7 +954,7 @@ internal fun ConeTypeProjection.stripIfLazy(session: FirSession): ConeTypeProjec
 }
 
 internal fun FirClassSymbol<*>.constructType(
-  typeParameterRefs: List<FirTypeParameterRef>
+  typeParameterRefs: List<FirTypeParameterRef>,
 ): ConeClassLikeType {
   return constructType(typeParameterRefs.mapToArray { it.symbol.toConeType() })
 }
@@ -1314,7 +1314,7 @@ internal fun FirGetClassCall.referencedClassId() =
   (argument as? FirResolvedQualifier)?.classIdCompat.usableClassIdOrNull()
 
 internal fun FirGetClassCall.resolvedArgumentConeKotlinType(
-  typeResolver: TypeResolveService
+  typeResolver: TypeResolveService,
 ): ConeKotlinType? {
   coneTypeIfResolved()?.let {
     return it
@@ -1579,7 +1579,7 @@ private class ConeIdRendererForDiagnostics : ConeIdRenderer() {
 
 context(context: CheckerContext)
 internal fun FirClassSymbol<*>.nestedClasses(
-  memberRequiredPhase: FirResolvePhase = FirResolvePhase.STATUS
+  memberRequiredPhase: FirResolvePhase = FirResolvePhase.STATUS,
 ): List<FirRegularClassSymbol> =
   nestedClasses(context.session, memberRequiredPhase = memberRequiredPhase)
 
@@ -1878,7 +1878,7 @@ internal fun FirClassSymbol<*>.resolveDefaultBindingTypeKey(session: FirSession)
 }
 
 internal fun FirClassSymbol<*>.resolveExternalDefaultBindingTypeKey(
-  session: FirSession
+  session: FirSession,
 ): FirRefTypeKey? {
   val mirrorSymbol =
     nestedClasses(session).firstOrNull { it.name == Symbols.Names.DefaultBindingMirrorClass }

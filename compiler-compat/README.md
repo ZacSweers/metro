@@ -68,6 +68,18 @@ This fetches release metadata from the JetBrains API and Google's Android Studio
 
 Requires `python3` and `gh` (GitHub CLI).
 
+### Prerelease Mappings
+
+Beta and RC releases are cut from a dev build, but they rank above every dev build of the same base version. Without a mapping, `2.5.0-Beta1` would pick the newest `2.5.0-dev-*` factory, even one that uses APIs its release branch doesn't have.
+
+`prerelease-mappings.txt` maps each Beta and RC to a dev compat module version. The script finds the dev build at the prerelease's merge-base with master in `JetBrains/kotlin`. It picks the lowest dev module at or above that build and records the branch point in a comment. That's a best guess, so test each prerelease in CI once it's published. The file is regenerated daily by the `update-ide-mappings` workflow. You can also run it locally:
+
+```bash
+./fetch-prerelease-kotlin-versions.py
+```
+
+It only checks base versions that have dev compat modules and no stable module. Requires `python3` and `gh` (GitHub CLI).
+
 ## Architecture
 
 ### Core Interface
@@ -153,7 +165,7 @@ The resolution logic handles dev builds by:
 1. First looking for dev track factories with the same base version (the same trunk lineage), comparing by build number.
 2. If none match, comparing lower-base dev factories and non-dev factories. The highest compatible minVersion wins (e.g. a `2.4.0` stable factory outranks `2.4.0-dev-2124`).
 
-Beta, RC, and stable builds first use the highest compatible non-dev factory with the same base version. If none matches, they use the newest dev factory with that base version. They fall back to an older non-dev factory only when no same-base factory is compatible. For example, `2.5.0-Beta1` uses `2.5.0-dev-6460` when the newest release factory is `2.4.20`.
+Beta, RC, and stable builds first use the highest compatible non-dev factory with the same base version. If none matches, they use the newest dev factory with that base version. They fall back to an older non-dev factory only when no same-base factory is compatible. For example, an unmapped `2.5.0-Beta1` would use the newest `2.5.0-dev-*` factory when the newest release factory is `2.4.20`. Built-in prerelease mappings pin known Betas and RCs to a dev compat module first. See [Prerelease Mappings](#prerelease-mappings).
 
 ## Development Notes
 

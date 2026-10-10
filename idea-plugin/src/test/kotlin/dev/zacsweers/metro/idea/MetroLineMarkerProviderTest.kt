@@ -185,7 +185,7 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
         checkNotNull(
           service.resolveTargets(myFixture.editor, listOf(firstPointer)) {
             firstDelivered.set(true)
-          }
+          },
         )
       val firstFinished = CompletableFuture<Unit>()
       firstJob.invokeOnCompletion { firstFinished.complete(Unit) }
@@ -196,7 +196,7 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
           service.resolveTargets(myFixture.editor, listOf(secondPointer)) { targets ->
             val name = checkNotNull((targets.single() as KtNamedDeclaration).name)
             secondDelivered.complete(name)
-          }
+          },
         )
       PlatformTestUtil.waitForFuture(secondDelivered, 30_000)
 
@@ -249,12 +249,12 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
             "older result"
           },
           onResolved = { queryDelivered.set(true) },
-        )
+        ),
       )
     try {
       PlatformTestUtil.waitForFuture(started, 30_000)
       checkNotNull(
-        service.resolveTargets(myFixture.editor, listOf(pointer)) { navigated.complete(it) }
+        service.resolveTargets(myFixture.editor, listOf(pointer)) { navigated.complete(it) },
       )
       PlatformTestUtil.waitForFuture(navigated, 30_000)
       release.complete(Unit)
@@ -324,7 +324,7 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
       interface AppGraph {
         val <caret>value: String
       }
-      """
+      """,
       )
     val action = checkNotNull(ActionManager.getInstance().getAction("Metro.GoToBinding"))
     val selectAction =
@@ -410,7 +410,7 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
         @Provides fun provideApi(): Api = object : Api {}
         @Provides fun provideTracker(): Tracker = object : Tracker {}
       }
-      """
+      """,
     )
     highlightMetroFile()
     val tooltips =
@@ -436,7 +436,7 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
       interface AppGraph : GenericBase<Dependency> {
         val text: String
       }
-      """
+      """,
     )
     highlightMetroFile()
     val tooltips =
@@ -473,7 +473,7 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
 
         @Provides fun provideBoolean(): Boolean = true
       }
-      """
+      """,
     )
     highlightMetroFile()
     val tooltips =
@@ -511,7 +511,7 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
       interface SecondGraph : GenericBase<Api> {
         val text: String
       }
-      """
+      """,
     )
     highlightMetroFile()
     val tooltips =
@@ -556,7 +556,7 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
         val text: String
         val count: Int
       }
-      """
+      """,
     )
     highlightMetroFile()
     val tooltips =
@@ -583,7 +583,7 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
         interface AppGraph {
           val missing: MissingThing
         }
-        """
+        """,
       )
     highlightMetroFile()
     fun validateIcons() =
@@ -631,7 +631,7 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
         interface AppGraph {
           val factory: Node.Factory<Int>
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val context = index.contextsFor(index.graphs.single()).single()
@@ -672,7 +672,7 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
         interface RightParent {
           val child: ChildGraph
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val child = index.graphs.single { it.name == "ChildGraph" }
@@ -731,7 +731,7 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
         val api: Api
         val analytics: Set<Analytics>
       }
-      """
+      """,
     )
     highlightMetroFile()
     val tooltips =
@@ -791,7 +791,7 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
       interface AppGraph {
         val screen: Screen
       }
-      """
+      """,
     )
     highlightMetroFile()
     val gutters = myFixture.findAllGutters()
@@ -830,7 +830,7 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
       interface OtherGraph {
         val consumer: Consumer
       }
-      """
+      """,
     )
     highlightMetroFile()
 
@@ -872,7 +872,7 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
       interface OtherGraph {
         val consumer: Consumer
       }
-      """
+      """,
       )
     highlightMetroFile()
 

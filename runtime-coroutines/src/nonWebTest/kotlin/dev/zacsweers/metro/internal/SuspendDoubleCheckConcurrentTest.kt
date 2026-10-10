@@ -36,7 +36,7 @@ class SuspendDoubleCheckConcurrentTest {
           mutex.withLock {}
           provisions.incrementAndFetch()
           Any()
-        }
+        },
       )
 
     val results = List(numCoroutines) { async(Dispatchers.Default) { provider() } }
@@ -68,7 +68,7 @@ class SuspendDoubleCheckConcurrentTest {
               throw IllegalStateException("initializer fails")
             }
             Any()
-          }
+          },
         )
 
       val results =

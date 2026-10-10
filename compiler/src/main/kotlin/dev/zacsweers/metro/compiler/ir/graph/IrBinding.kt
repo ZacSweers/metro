@@ -180,8 +180,8 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
             ?: binding.callableId.asSingleFqName().asString()
         listOf(
           Note.help(
-            "the constructor-injected binding for ${typeKey.renderForDiagnostic(short = true)} is explicitly declared with a parameter-less `@Binds` at $location"
-          )
+            "the constructor-injected binding for ${typeKey.renderForDiagnostic(short = true)} is explicitly declared with a parameter-less `@Binds` at $location",
+          ),
         )
       } ?: emptyList()
     }
@@ -353,7 +353,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
         ?.ir
         ?.expectAs<IrValueParameter>()
         ?: reportCompilerBug(
-          "No value parameter found for request $contextualTypeKey in ${providerFactory.callableId.asSingleFqName().asString()}."
+          "No value parameter found for request $contextualTypeKey in ${providerFactory.callableId.asSingleFqName().asString()}.",
         )
     }
 
@@ -833,7 +833,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
               .requireSimpleType(declaration)
               .arguments[0]
               .render(short = true)
-              .capitalizeUS()
+              .capitalizeUS(),
           )
         }
       }

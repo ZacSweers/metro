@@ -44,7 +44,7 @@ interface AnalysisReports {
       targetName: String = "",
     ): PathBasedAnalysisReports =
       PathBasedAnalysisReports(
-        projectRootDir.toPath().resolve("build/${reportPath(compilationName, targetName)}")
+        projectRootDir.toPath().resolve("build/${reportPath(compilationName, targetName)}"),
       )
   }
 }

@@ -34,7 +34,7 @@ class MetroCompilerOptionsTest {
         mapOf(
           "custom-inject" to "test/CustomInject",
           "function-inject-annotations-override" to "test/InjectFunction:test/OtherInjectFunction",
-        )
+        ),
       )
     }
 
@@ -134,7 +134,7 @@ class MetroCompilerOptionsTest {
     assertThat(validationErrors(version, options))
       .containsExactly(
         "generateContributionHintsInFir cannot be disabled when generateContributionHints is " +
-          "enabled on Kotlin $version."
+          "enabled on Kotlin $version.",
       )
   }
 
@@ -165,7 +165,7 @@ class MetroCompilerOptionsTest {
       assertThat(validationErrors(version))
         .containsExactly(
           "generateContributionHintsInFir cannot be disabled when generateContributionHints is " +
-            "enabled on Kotlin $version."
+            "enabled on Kotlin $version.",
         )
     }
   }
@@ -186,7 +186,7 @@ class MetroCompilerOptionsTest {
             version,
             generateContributionHints = false,
             generateContributionHintsInFir = false,
-          )
+          ),
         )
         .isEmpty()
     }

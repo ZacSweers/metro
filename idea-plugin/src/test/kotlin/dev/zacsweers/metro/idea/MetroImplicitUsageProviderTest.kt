@@ -63,7 +63,7 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
           @Inject fun install() {}
           @FunctionInject fun ignored() {}
         }
-        """
+        """,
       )
     val declarations = file.declarationsIncludingNested()
     val ordinary = declarations.function("ordinary")
@@ -120,7 +120,7 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
       declarations
         .klass("ConstructorAssistedInjectedService")
         .primaryConstructor!!
-        .isMetroImplicitUsage()
+        .isMetroImplicitUsage(),
     )
   }
 
@@ -496,7 +496,7 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
     assertTrue(declarations.parameter("customProvidedInstance").isMetroImplicitUsage())
     assertTrue(declarations.klass("CustomInjectedService").isMetroImplicitUsage())
     assertTrue(
-      declarations.klass("CustomInjectedService").primaryConstructor!!.isMetroImplicitUsage()
+      declarations.klass("CustomInjectedService").primaryConstructor!!.isMetroImplicitUsage(),
     )
     assertTrue(declarations.function("customFunctionInject").isMetroImplicitUsage())
     assertTrue(declarations.klass("CustomAssistedInjectedService").isMetroImplicitUsage())
@@ -508,7 +508,7 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
       declarations
         .klass("CustomConstructorAssistedInjectedService")
         .primaryConstructor!!
-        .isMetroImplicitUsage()
+        .isMetroImplicitUsage(),
     )
   }
 

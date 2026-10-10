@@ -55,7 +55,7 @@ class MetroParallelMetadataTest : BasePlatformTestCase() {
         interface OtherGraph {
           val dual: LibDual
         }
-        """
+        """,
         )
       val sequential = discover(listOf(file), parallelism = 1)
       val parallel = discover(listOf(file), parallelism = 4)
@@ -81,7 +81,7 @@ class MetroParallelMetadataTest : BasePlatformTestCase() {
       assertTrue(
         active.any { event ->
           event.workerFiles.any { it?.name == "libtest.LibChildGraph.Factory" }
-        }
+        },
       )
       assertEquals(listOf(null, null, null, null), parallel.progress.last().workerFiles)
     }
@@ -189,7 +189,7 @@ class MetroParallelMetadataTest : BasePlatformTestCase() {
         val signature = buildList {
           for (contribution in metadata.contributions.contributions) {
             add(
-              "contribution:${contribution.classId}:${contribution.scopeKeys}:${contribution.kind}"
+              "contribution:${contribution.classId}:${contribution.scopeKeys}:${contribution.kind}",
             )
           }
           for (graph in metadata.declarations.graphs) {

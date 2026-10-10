@@ -123,7 +123,7 @@ internal fun KaSession.toKaAnnotationSnapshot(annotation: KaAnnotation): KaAnnot
 }
 
 internal fun KaSession.toValueSnapshot(
-  annotationValue: KaAnnotationValue
+  annotationValue: KaAnnotationValue,
 ): KaAnnotationValueSnapshot {
   return when (annotationValue) {
     is KaAnnotationValue.ConstantValue ->
@@ -133,7 +133,7 @@ internal fun KaSession.toValueSnapshot(
     // classId may be unpopulated for binary-deserialized values; the type still carries it
     is KaAnnotationValue.ClassLiteralValue ->
       KaAnnotationValueSnapshot.KClassRef(
-        annotationValue.classId ?: (annotationValue.type as? KaClassType)?.classId
+        annotationValue.classId ?: (annotationValue.type as? KaClassType)?.classId,
       )
     is KaAnnotationValue.ArrayValue ->
       KaAnnotationValueSnapshot.Array(annotationValue.values.map { toValueSnapshot(it) })
@@ -156,7 +156,7 @@ private fun UExpression.toValueSnapshot(): KaAnnotationValueSnapshot? {
     if (target is PsiEnumConstant) {
       val owner = target.containingClass?.qualifiedName ?: return null
       return KaAnnotationValueSnapshot.EnumEntry(
-        CallableId(ClassId.topLevel(FqName(owner)), Name.identifier(target.name))
+        CallableId(ClassId.topLevel(FqName(owner)), Name.identifier(target.name)),
       )
     }
   }
@@ -181,7 +181,7 @@ private fun PsiAnnotationMemberValue.toValueSnapshot(): KaAnnotationValueSnapsho
       if (target is PsiEnumConstant) {
         val owner = target.containingClass?.qualifiedName ?: return null
         KaAnnotationValueSnapshot.EnumEntry(
-          CallableId(ClassId.topLevel(FqName(owner)), Name.identifier(target.name))
+          CallableId(ClassId.topLevel(FqName(owner)), Name.identifier(target.name)),
         )
       } else {
         val value =
@@ -199,7 +199,7 @@ private fun PsiAnnotationMemberValue.toValueSnapshot(): KaAnnotationValueSnapsho
           attribute.value?.toValueSnapshot()?.let { name to it }
         }
       KaAnnotationValueSnapshot.Nested(
-        KaAnnotationSnapshot(ClassId.topLevel(FqName(qualifiedName)), values)
+        KaAnnotationSnapshot(ClassId.topLevel(FqName(qualifiedName)), values),
       )
     }
     else -> {

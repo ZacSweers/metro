@@ -299,7 +299,7 @@ private constructor(
           PendingPsiChanges(
             files = files.associateWith { PendingFileChange(structuralChange = true) },
             directories = directories,
-          )
+          ),
         )
       },
     )
@@ -730,7 +730,7 @@ private constructor(
         pendingForceRebuildFiles += sourceSnapshot?.shardOrder.orEmpty()
       }
       snapshotBuilder.evictLibraryShards(
-        ProjectRootModificationTracker.getInstance(project).modificationCount
+        ProjectRootModificationTracker.getInstance(project).modificationCount,
       )
       notifyListeners(restartDaemon = true)
     }
@@ -752,7 +752,7 @@ private constructor(
       logger<MetroResolutionService>().warn("Metro project input reconciliation failed", failure)
       semanticRevision++
       snapshotBuilder.evictLibraryShards(
-        ProjectRootModificationTracker.getInstance(project).modificationCount
+        ProjectRootModificationTracker.getInstance(project).modificationCount,
       )
       notifyListeners(restartDaemon = false)
     }
@@ -789,7 +789,7 @@ private constructor(
       semanticRevision++
       if (!resolveFromLibraries) snapshotBuilder.clearLibraryShards()
       snapshotBuilder.evictLibraryShards(
-        ProjectRootModificationTracker.getInstance(project).modificationCount
+        ProjectRootModificationTracker.getInstance(project).modificationCount,
       )
     }
 
@@ -867,7 +867,7 @@ private constructor(
 
   /** Applies a pure state transformation and preserves disposal as a terminal state. */
   private fun updatePublishedResolution(
-    update: (PublishedResolution) -> PublishedResolution
+    update: (PublishedResolution) -> PublishedResolution,
   ): PublishedResolution? {
     val updated = publishedResolution.updateAndGet { publication ->
       if (publication.isDisposed || project.isDisposed) publication else update(publication)
@@ -2270,9 +2270,9 @@ private constructor(
                   if (sharedChange == SharedDeclarationChange.NONE) emptySet()
                   else setOf(sharedChange),
                 removedTrackedSharedDeclaration = mayHaveRemovedSharedDeclaration,
-              )
-          )
-      )
+              ),
+          ),
+      ),
     )
   }
 
@@ -3065,7 +3065,7 @@ internal suspend fun <T> retryCancelledIndexBuild(build: suspend () -> T): T {
 }
 
 private class ResolutionBuildPendingException(
-  val completion: CompletableDeferred<IndexBuildOutcome>
+  val completion: CompletableDeferred<IndexBuildOutcome>,
 ) : ProcessCanceledException() {
   override fun fillInStackTrace(): Throwable = this
 }

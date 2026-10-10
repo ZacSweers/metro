@@ -43,6 +43,12 @@ val kotlin23 = KotlinToolingVersion(KotlinVersion(2, 3))
 
 val kotlin24Beta1 = KotlinToolingVersion(KotlinVersion(2, 4), "Beta1")
 
+// The test framework needs JUnit 5 starting with this build.
+val kotlin250Dev9169 = KotlinToolingVersion("2.5.0-dev-9169")
+
+// The test framework locates kotlin-scripting-common through KotlinJars starting with this build.
+val kotlin250Dev9992 = KotlinToolingVersion("2.5.0-dev-9992")
+
 // Minimum supported 2.4.20 dev build. 2.4.20 dev builds ship KT-85292:
 // `commonConfigurationForJvmTest` was renamed to `setupJvmPipelineSteps`, and the diagnostic / IR
 // dump golden file extensions lost their `.fir.` infix. Anything < this still uses the legacy
@@ -211,14 +217,14 @@ reflectVersion =
   }
 
 dependencies {
-  // The 9169 test framework calls Kotlin assertion helpers removed by JUnit 6.
-  if (testCompilerVersion == "2.5.0-dev-9169") {
-    testImplementation(enforcedPlatform("org.junit:junit-bom:5.14.4"))
+  // Newer 2.5.0 test frameworks call Kotlin assertion helpers removed by JUnit 6.
+  if (testKotlinVersion >= kotlin250Dev9169) {
+    testImplementation(enforcedPlatform("org.junit:junit-bom:6.1.3"))
   }
 
   // 2.3.0 changed the test gen APIs around into different packages
   "generator230CompileOnly"(
-    "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:$compilerTestFrameworkVersion"
+    "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:$compilerTestFrameworkVersion",
   )
   "generator230CompileOnly"("org.jetbrains.kotlin:kotlin-compiler:$compilerTestFrameworkVersion")
   "generator2320CompileOnly"("org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:2.3.20")
@@ -226,25 +232,29 @@ dependencies {
   // Pinned to Beta2 (not Beta1) because Beta2 dropped `diagnosticsByFilePath` for
   // `diagnosticsByFile` -- the same late-on-the-2.4.0-branch rename 2.3.21 did.
   "generator240CompileOnly"(
-    "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:2.4.0-Beta2"
+    "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:2.4.0-Beta2",
   )
   "generator240CompileOnly"("org.jetbrains.kotlin:kotlin-compiler:2.4.0-Beta2")
   // 2.4.20 dev builds renamed `commonConfigurationForJvmTest` to `setupJvmPipelineSteps`. Compile
   // this helper against the same 2.4.20 artifact set used at test runtime so its erased builder
   // receiver ABI matches the fallback artifacts.
   "generator2420CompileOnly"(
-    "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:$kotlinArtifactsVersion"
+    "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:$kotlinArtifactsVersion",
   )
   "generator2420CompileOnly"("org.jetbrains.kotlin:kotlin-compiler:$kotlinArtifactsVersion")
 
   testImplementation(sourceSets.named(generatorConfigToUse).map { it.output })
   testImplementation(
-    "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:$compilerTestFrameworkVersion"
+    "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:$compilerTestFrameworkVersion",
   )
   testImplementation("org.jetbrains.kotlin:kotlin-compiler:$kotlinArtifactsVersion")
+  if (testKotlinVersion >= kotlin250Dev9992) {
+    // KotlinJars lives here, but the test framework artifact doesn't declare it.
+    testRuntimeOnly("org.jetbrains.kotlin:kotlin-scripting-jvm:$kotlinArtifactsVersion")
+  }
   testImplementation("org.jetbrains.kotlin:kotlin-compose-compiler-plugin:$kotlinArtifactsVersion")
   testImplementation(
-    "org.jetbrains.kotlin:kotlin-serialization-compiler-plugin:$kotlinArtifactsVersion"
+    "org.jetbrains.kotlin:kotlin-serialization-compiler-plugin:$kotlinArtifactsVersion",
   )
 
   testImplementation(project(":compiler"))
@@ -267,7 +277,7 @@ dependencies {
   coroutinesClasspath(libs.coroutines)
   metroRuntimeKlibClasspath(project(path = ":runtime", configuration = "jsRuntimeElements"))
   metroRuntimeCoroutinesKlibClasspath(
-    project(path = ":runtime-coroutines", configuration = "jsRuntimeElements")
+    project(path = ":runtime-coroutines", configuration = "jsRuntimeElements"),
   )
   coroutinesKlibClasspath(libs.coroutines)
   runtimeTracingClasspath(project(":metro-trace"))
@@ -627,7 +637,7 @@ fun Test.setClasspathProperty(propertyName: String, classpath: FileCollection) {
     objects.newInstance<CompilerTestClasspathArgumentProvider>().apply {
       propertyNames.set(listOf(propertyName))
       this.classpath.from(classpath)
-    }
+    },
   )
 }
 
@@ -637,7 +647,7 @@ fun Test.setFilesProperty(propertyName: String, files: FileCollection) {
     objects.newInstance<CompilerTestFilesArgumentProvider>().apply {
       propertyNames.set(listOf(propertyName))
       this.files.from(files)
-    }
+    },
   )
 }
 
@@ -647,7 +657,7 @@ fun Test.setLocationProperty(propertyName: String, location: String) {
     objects.newInstance<CompilerTestLocationArgumentProvider>().apply {
       this.propertyName.set(propertyName)
       this.location.set(location)
-    }
+    },
   )
 }
 
@@ -670,14 +680,14 @@ fun Test.setLibraryProperty(
       objects.newInstance<CompilerTestFilesArgumentProvider>().apply {
         this.propertyNames.set(propertyNames)
         files.from(library)
-      }
+      },
     )
   } else {
     jvmArgumentProviders.add(
       objects.newInstance<CompilerTestClasspathArgumentProvider>().apply {
         this.propertyNames.set(propertyNames)
         classpath.from(library)
-      }
+      },
     )
   }
 }

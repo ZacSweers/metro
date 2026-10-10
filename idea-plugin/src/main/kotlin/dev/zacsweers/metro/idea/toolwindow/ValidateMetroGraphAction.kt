@@ -81,7 +81,7 @@ internal class ValidateMetroGraphAction : AnAction(), DumbAware {
     val options = state.options
     val graphShortNames =
       ktClass.containingKtFile.annotationShortNamesIncludingAliases(
-        options.dependencyGraphAnnotations + options.graphExtensionAnnotations
+        options.dependencyGraphAnnotations + options.graphExtensionAnnotations,
       )
     val isGraph = ktClass.annotationEntries.any { it.shortName?.asString() in graphShortNames }
     return ktClass.takeIf { isGraph }

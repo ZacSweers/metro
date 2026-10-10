@@ -12,9 +12,14 @@ Changelog
   - Also checks Hilt aggregation metadata when Hilt interop is enabled.
   - Configure scope filters with `scopes` in the experimental `metro.hiddenDependencies` DSL. Enable `checkOnCompile` in the same block to run each check automatically after its Kotlin compilation, including when compilation fails. Automatic checks are disabled by default and may become the default in a future release.
 
+### Enhancements
+
+- **[IR]** Reduce generated code in graph extensions by reusing existing parent multibinding getters when contributions and their resolved dependencies are unchanged.
+
 ### Fixes
 
 - **[FIR]** Reduce redundant lookups when discovering contributed graph extension factories.
+- **[FIR]** Fix accessor override status on Kotlin `2.5.0-dev-10106`.
 - **[FIR/IC]** Avoid unnecessary recompilation of independent injected classes when generating contribution hints.
 - **[FIR/interop]** Fix duplicate class errors during caused by Hilt interop generating hints for upstream modules.
 - **[FIR/IR/interop]** Fix incremental builds not updating graphs when an upstream Hilt `@AggregatedDeps` marker changes or is removed.
@@ -23,13 +28,14 @@ Changelog
 - **[IR]** Fix `MissingRuntimeCoroutines` errors for injected top-level functions pointing at `0:0` in a generated file. They're now reported on the function.
 - **[IR]** Fix declaration parents for copied default argument lambdas and callable references, including references inside generated provider wrappers.
 - **[IR]** Include extension receivers in generated lambda function types, including set and map builder callbacks.
+- **[IR]** Fix IR diagnostic reporting on Kotlin `2.5.0-dev-10106`.
 - **[IR/IC]** Fix stale graphs in incremental builds when a replacing binding container's `@ContributesTo` annotation is removed and restored.
 - **[IR/native/circuit]** Fix an `IrLinkageError` in generated `SubCircuit` UI factories on Kotlin/Native with Kotlin `2.5.0-Beta1`.
-- **[FIR]** Fix accessor override status on Kotlin `2.5.0-dev-9169`.
+- **[compat]** Fix Kotlin `2.5.0-Beta1` selecting a compat implementation built for newer `2.5.0` dev builds. Kotlin Beta and RC releases now map to the dev compat implementation that matches their branch point.
 
 ### Changes
 
-- **[compat]** Test against Kotlin `2.5.0-dev-9169`.
+- **[compat]** Test against Kotlin `2.5.0-dev-10106`.
 - **[FIR/interop]** Report a `@MapKey` on a class with no Metro contribution annotation as a `MAP_KEY_WITHOUT_CONTRIBUTES_INTO_MAP` warning instead of an error. This helps when another library binds the class into a map, like AutoDagger's generated Hilt modules. Use `-Xwarning-level=MAP_KEY_WITHOUT_CONTRIBUTES_INTO_MAP:disabled` to silence it. A `@MapKey` on a class with a non-map Metro contribution is still an error.
 - **[FIR/IR/IC]** Enable `omit-redundant-mirrors` by default on Kotlin 2.4.0 and newer to omit generated declaration mirrors when compiler metadata and declaration finders provide the same information. It remains disabled by default on older Kotlin versions. Disable it with `compilerOptions.disable("omit-redundant-mirrors")` in the `metro` DSL.
 - **[Gradle]** `enableTopLevelFunctionInjection` is **disabled by default** for now on **all** Kotlin versions because it makes incremental builds recompile more files. If you use top-level function injection, enable it with `enableTopLevelFunctionInjection.set(true)` in the `metro` DSL. See [incremental compilation perf docs](docs/performance.md#incremental-compilation).

@@ -72,7 +72,7 @@ class MetroFindUsagesTest : BasePlatformTestCase() {
           @Provides fun provideDependency(): Dependency = Dependency()
           @Provides fun provideService(dependency: Dependency): Service = object : Service {}
         }
-        """
+        """,
       )
     val declarations = file.declarationsIncludingNested()
     val provideDependency = declarations.function("provideDependency")
@@ -175,7 +175,7 @@ class MetroFindUsagesTest : BasePlatformTestCase() {
           val service: Service
           val plugins: Set<Plugin>
         }
-        """
+        """,
       )
     val declarations = file.declarationsIncludingNested()
 
@@ -204,7 +204,7 @@ class MetroFindUsagesTest : BasePlatformTestCase() {
         interface SecondGraph {
           val service: Service
         }
-        """
+        """,
       )
     val declarations = file.declarationsIncludingNested()
     val service = declarations.klass("Service")
@@ -235,7 +235,7 @@ class MetroFindUsagesTest : BasePlatformTestCase() {
         """
         @Inject class <caret>ServiceImpl
         @Inject class Consumer(val service: ServiceImpl)
-        """
+        """,
       )
     val service = file.declarationsIncludingNested().klass("ServiceImpl")
 
@@ -352,7 +352,7 @@ class MetroFindUsagesTest : BasePlatformTestCase() {
         }
 
         fun unrelated() = Unit
-        """
+        """,
       )
     val declarations = file.declarationsIncludingNested()
     val provider = declarations.function("provideService")
@@ -369,7 +369,7 @@ class MetroFindUsagesTest : BasePlatformTestCase() {
         @DependencyGraph interface AppGraph {
           val service: Service
         }
-        """
+        """,
       )
     val service = file.declarationsIncludingNested().klass("Service")
     project.clearMetroOptions()
@@ -385,7 +385,7 @@ class MetroFindUsagesTest : BasePlatformTestCase() {
         @DependencyGraph interface AppGraph {
           val service: Service
         }
-        """
+        """,
       )
     val service = file.declarationsIncludingNested().klass("Service")
 
@@ -403,7 +403,7 @@ class MetroFindUsagesTest : BasePlatformTestCase() {
           val service: Service
           @Provides fun provideService(): Service = object : Service {}
         }
-        """
+        """,
       )
     val provider = file.declarationsIncludingNested().function("provideService")
     WriteCommandAction.runWriteCommandAction(project) { provider.delete() }
@@ -448,7 +448,7 @@ class MetroFindUsagesTest : BasePlatformTestCase() {
         @DependencyGraph interface SecondGraph {
           val secondService: Service
         }
-        """
+        """,
       )
     project.service<MetroResolutionService>().awaitIndex(file)
     return file

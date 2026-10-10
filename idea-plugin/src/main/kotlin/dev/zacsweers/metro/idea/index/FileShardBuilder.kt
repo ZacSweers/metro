@@ -169,7 +169,7 @@ internal class FileShardBuilder(
         options.providesAnnotations +
           options.bindsAnnotations +
           options.multibindsAnnotations +
-          bindsOptionalOfAnnotations(options)
+          bindsOptionalOfAnnotations(options),
       )
     val injectNames =
       annotationNames(options.allInjectAnnotations + options.topLevelFunctionInjectAnnotations)

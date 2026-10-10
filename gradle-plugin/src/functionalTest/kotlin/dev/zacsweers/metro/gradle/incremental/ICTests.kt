@@ -61,7 +61,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
           @Inject
           @ContributesBinding(Unit::class)
           class DependencyImpl : Dependency
-          """
+          """,
           )
 
         private val featureGraph =
@@ -78,7 +78,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
                   ): FeatureGraph
               }
           }
-          """
+          """,
           )
 
         val featureScreen =
@@ -95,7 +95,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
             }
 
             interface Dependency
-          """
+          """,
           )
       }
 
@@ -143,7 +143,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
                 declaration visible to FeatureGraph
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
         """
-          .trimIndent()
+          .trimIndent(),
       )
   }
 
@@ -166,7 +166,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
                 }
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val serviceProvider =
@@ -176,7 +176,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
               val dependency: String
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val target = source("@Inject class Target(val string: String)")
@@ -209,7 +209,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
               String is injected at test.Target(…, string)
               Target is requested at test.BaseGraph.target
         """
-          .trimIndent()
+          .trimIndent(),
       )
   }
 
@@ -227,7 +227,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
               val target: Target
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val stringProvider =
@@ -238,7 +238,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
               fun provideString(): String = ""
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val target = source("@Inject class Target(val string: String)")
@@ -273,7 +273,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
               String is injected at test.Target(…, string)
               Target is requested at test.AppGraph.target
         """
-          .trimIndent()
+          .trimIndent(),
       )
   }
 
@@ -291,7 +291,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
               val target: Target
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val stringProvider =
@@ -304,7 +304,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
               }
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val target = source("@Inject class Target(val string: String)")
@@ -341,7 +341,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
               String is injected at test.Target(…, string)
               Target is requested at test.AppGraph.target
         """
-          .trimIndent()
+          .trimIndent(),
       )
   }
 
@@ -360,7 +360,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
             @DependencyGraph(Unit::class)
             interface ExampleGraph
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val contributedClass =
@@ -370,7 +370,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
             @ContributesBinding(Unit::class)
             class ContributedInterfaceImpl : ContributedInterface
             """
-              .trimIndent()
+              .trimIndent(),
           )
       }
     val project = fixture.gradleProject
@@ -394,7 +394,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
     // Verify that the build failed with the expected error message
     assertThat(secondBuildResult.output)
       .contains(
-        "ContributedInterface.kt:8:11 DependencyGraph declarations may not extend declarations with narrower visibility. Contributed supertype 'test.ContributedInterfaceImpl' is internal but graph declaration 'test.ExampleGraph' is public."
+        "ContributedInterface.kt:8:11 DependencyGraph declarations may not extend declarations with narrower visibility. Contributed supertype 'test.ContributedInterfaceImpl' is internal but graph declaration 'test.ExampleGraph' is public.",
       )
   }
 
@@ -414,7 +414,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
               @Provides fun provideString(): String = "Hello, world!"
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val exampleClass =
@@ -424,7 +424,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
               @Inject lateinit var string: String
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val main =
@@ -437,7 +437,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
               return exampleClass.string
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
       }
     val project = fixture.gradleProject
@@ -506,7 +506,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
             @ContributesBinding(AppScope::class)
             class BarImpl : Bar
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val foo =
@@ -519,7 +519,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
             @ContributesBinding(AppScope::class)
             class FooImpl : Foo
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val appGraph =
@@ -528,7 +528,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
             @DependencyGraph(AppScope::class)
             interface AppGraph
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val main =
@@ -538,7 +538,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
               return createGraph<AppGraph>()
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
       }
 
@@ -601,7 +601,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
             @ContributesBinding(AppScope::class)
             class BarImpl : Bar
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val foo =
@@ -614,7 +614,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
             @ContributesBinding(AppScope::class)
             class FooImpl(int: Int) : Foo
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val appGraph =
@@ -625,7 +625,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
               @Provides fun provideInt(): Int = 0
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val main =
@@ -635,7 +635,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
               return createGraph<AppGraph>()
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
       }
 
@@ -696,7 +696,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
               val target: Target
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val provider =
@@ -711,7 +711,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
               private fun internalHelper(): String = "internal"
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val unrelatedClass =
@@ -722,7 +722,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
               fun doSomething(): String = "original"
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val target =
@@ -731,7 +731,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
             @Inject
             class Target(val string: String)
             """
-              .trimIndent()
+              .trimIndent(),
           )
       }
 
@@ -842,7 +842,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
               """
                 .trimIndent(),
               packageName = "com.example.test",
-            )
+            ),
           )
 
         override fun buildGradleProject(): GradleProject {
@@ -870,7 +870,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
 
                     ${buildMetroBlock()}
                   """
-                    .trimIndent()
+                    .trimIndent(),
                 )
               }
 
@@ -918,7 +918,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
               fun injectDemoClassMembers(target: DemoClass)
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val demoClass =
@@ -930,7 +930,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
               lateinit var injectedString: String
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val anotherInjectedClass =
@@ -943,7 +943,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
               }
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val main =
@@ -956,7 +956,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
               return demoClass.injectedString
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
       }
 
@@ -1022,7 +1022,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
               val viewModel: ConcreteViewModel
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
       }
 
@@ -1126,7 +1126,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
               @Provides fun provideString(): String = "Hello"
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val unrelated =
@@ -1136,7 +1136,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
               fun doSomething(): String = "original"
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
       }
 

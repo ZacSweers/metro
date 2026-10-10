@@ -1,4 +1,4 @@
-name: Update IDE Mappings
+name: Update Version Mappings
 
 on:
   schedule:
@@ -28,6 +28,13 @@ jobs:
           cd compiler-compat
           python fetch-all-ide-kotlin-versions.py --channels stable,rc,eap,beta,canary
 
+      - name: Fetch Kotlin prerelease versions
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd compiler-compat
+          python fetch-prerelease-kotlin-versions.py
+
       - name: Create PR
         id: create-pr
         uses: peter-evans/create-pull-request@v8
@@ -35,8 +42,10 @@ jobs:
           commit-message: Update IDE version mappings
           branch: auto/update-ide-mappings
           title: Update IDE version mappings
-          body: Automated daily update of ide-mappings.txt with latest IDE Kotlin version aliases.
-          add-paths: compiler-compat/ide-mappings.txt
+          body: Automated daily update of ide-mappings.txt and prerelease-mappings.txt with the latest IDE and Kotlin prerelease version aliases.
+          add-paths: |
+            compiler-compat/ide-mappings.txt
+            compiler-compat/prerelease-mappings.txt
           token: ${{ secrets.UPDATE_MAPPINGS_PAT }}
 
       - name: Enable auto-merge

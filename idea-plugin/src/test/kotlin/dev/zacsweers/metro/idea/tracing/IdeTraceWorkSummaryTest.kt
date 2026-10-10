@@ -363,7 +363,7 @@ class IdeTraceWorkSummaryTest : TestCase() {
             it.name == "source.file.declarationExtraction" ||
               it.name == "source.file.annotationLookup"
           }
-          .all { it.attributes["outcome"] == "canceled" }
+          .all { it.attributes["outcome"] == "canceled" },
       )
     }
   }
@@ -439,7 +439,7 @@ class IdeTraceWorkSummaryTest : TestCase() {
     assertEquals(summary["shown_items"], phase["source.file.shown_items"])
     assertEquals(summary["omitted_elapsed_ns"], phase["source.file.omitted_elapsed_ns"])
     assertTrue(
-      checkNotNull(summary["display_name"]).contains("${35 - items.size} omitted by capture limit")
+      checkNotNull(summary["display_name"]).contains("${35 - items.size} omitted by capture limit"),
     )
 
     val stages = intervals.filter {

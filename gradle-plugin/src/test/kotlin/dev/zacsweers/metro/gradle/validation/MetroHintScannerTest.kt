@@ -82,7 +82,7 @@ class MetroHintScannerTest {
         setOf(
           "classes.jar!/metro/hints/OtherKt.class",
           "libs/contributions.jar!/metro/hints/AppKt.class",
-        )
+        ),
       )
   }
 
@@ -98,10 +98,10 @@ class MetroHintScannerTest {
         findHints(
           aar,
           setOf("com/example/Scopes.App", "com/example/Scopes.LongApp"),
-        )
+        ),
       )
       .isEqualTo(
-        setOf("classes.jar!/metro/hints/AppKt.class", "classes.jar!/metro/hints/OtherKt.class")
+        setOf("classes.jar!/metro/hints/AppKt.class", "classes.jar!/metro/hints/OtherKt.class"),
       )
   }
 

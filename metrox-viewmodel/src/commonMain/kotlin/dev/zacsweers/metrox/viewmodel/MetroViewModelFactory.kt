@@ -87,7 +87,7 @@ public abstract class MetroViewModelFactory : ViewModelProvider.Factory {
   }
 
   public fun <FactoryType : ManualViewModelAssistedFactory> createManuallyAssistedFactory(
-    factoryClass: KClass<FactoryType>
+    factoryClass: KClass<FactoryType>,
   ): () -> FactoryType {
     manualAssistedFactoryProviders[factoryClass]?.let { provider ->
       @Suppress("UNCHECKED_CAST")

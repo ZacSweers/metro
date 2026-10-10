@@ -90,7 +90,7 @@ class DiagnosticRoutesTest {
       )
 
     assertThat(
-        routes.routeToRoot(routeKey("Unreachable"), createDependencyEntry = ::dependencyEntry)
+        routes.routeToRoot(routeKey("Unreachable"), createDependencyEntry = ::dependencyEntry),
       )
       .isEmpty()
   }
@@ -108,7 +108,7 @@ private fun dependencyEntry(
   )
 
 private fun sortedAdjacency(
-  vararg entries: Pair<String, Set<String>>
+  vararg entries: Pair<String, Set<String>>,
 ): Map<StringTypeKey, Set<StringTypeKey>> =
   TreeMap<StringTypeKey, Set<StringTypeKey>>().apply {
     for ((name, dependencies) in entries) {

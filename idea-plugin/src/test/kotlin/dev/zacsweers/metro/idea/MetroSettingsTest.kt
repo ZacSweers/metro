@@ -24,7 +24,7 @@ class MetroSettingsTest : TestCase() {
           addContent(
             Element("option")
               .setAttribute("name", "automaticallyRefreshGraphData")
-              .setAttribute("value", automatic.toString())
+              .setAttribute("value", automatic.toString()),
           )
         }
       val settings = MetroSettings()

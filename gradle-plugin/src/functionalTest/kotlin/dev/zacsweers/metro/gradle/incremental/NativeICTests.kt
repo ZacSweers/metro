@@ -58,7 +58,7 @@ class NativeICTests : BaseIncrementalCompilationTest(KmpTarget.NATIVE_HOST) {
                 get() = "before"
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val appGraphAndMain =

@@ -282,7 +282,7 @@ class GenerateProvidersInGraphIrExtension : IrGenerationExtension {
           }
           return super.visitSimpleFunction(declaration)
         }
-      }
+      },
     )
   }
 }

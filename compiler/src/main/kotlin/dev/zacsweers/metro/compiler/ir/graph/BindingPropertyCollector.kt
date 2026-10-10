@@ -37,6 +37,10 @@ internal class BindingPropertyCollector(
   private val deferredTypes: Set<IrTypeKey> = emptySet(),
   /** Keys that are reachable from roots, used to filter the init order. */
   private val reachableKeys: Set<IrTypeKey> = emptySet(),
+  /**
+   * Returns true for multibindings that reuse an unchanged parent getter instead of a local one.
+   */
+  private val reuseMultibinding: (IrContextualTypeKey) -> Boolean = { false },
 ) {
 
   data class CollectedProperty(
@@ -313,7 +317,14 @@ internal class BindingPropertyCollector(
     contextKey: IrContextualTypeKey,
     keysWithBackingProperties: MutableMap<IrContextualTypeKey, CollectedProperty>,
   ) {
-    // Initialize node (may already exist from markAccess)
+    if (binding is IrBinding.Multibinding && reuseMultibinding(contextKey)) {
+      return
+    }
+    // Contributions of a reused parent multibinding are left unreferenced here.
+    val isDeferred = binding.typeKey in deferredTypes
+    if (contextKey !in nodes && !isDeferred) {
+      return
+    }
     val node = nodes.getOrPut(contextKey) { Node(binding) }
 
     // Track assisted-inject target usage. Only targets used by multiple Assisted bindings

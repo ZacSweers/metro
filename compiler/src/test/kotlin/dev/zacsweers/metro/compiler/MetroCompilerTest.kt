@@ -51,7 +51,7 @@ abstract class MetroCompilerTest {
         omitRedundantMirrors =
           testOmitRedundantMirrors
             ?: kotlinVersionSupportsOmittingRedundantMirrors(
-              CompatContext.Factory.loadCompilerVersion()
+              CompatContext.Factory.loadCompilerVersion(),
             ),
       )
 
@@ -563,7 +563,7 @@ abstract class MetroCompilerTest {
       .apply {
         if (exitCode != expectedExitCode) {
           throw AssertionError(
-            "Compilation exited with $exitCode but expected ${expectedExitCode}:\n${messages}"
+            "Compilation exited with $exitCode but expected ${expectedExitCode}:\n${messages}",
           )
         }
       }

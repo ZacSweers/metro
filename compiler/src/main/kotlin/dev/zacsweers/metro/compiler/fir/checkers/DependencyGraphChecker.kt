@@ -562,7 +562,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
             MetroDiagnostics.GRAPH_CREATORS_ERROR,
             buildString {
               appendLine(
-                "Graph extension '${graphExtension.classId.asSingleFqName()}' has overlapping aggregation scopes with parent graph '${parentGraph.classId.asSingleFqName()}':"
+                "Graph extension '${graphExtension.classId.asSingleFqName()}' has overlapping aggregation scopes with parent graph '${parentGraph.classId.asSingleFqName()}':",
               )
               for (overlap in overlaps) {
                 append("- ")
@@ -581,7 +581,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
             MetroDiagnostics.GRAPH_CREATORS_ERROR,
             buildString {
               appendLine(
-                "Graph extension '${graphExtension.classId.asSingleFqName()}' has overlapping scope annotations with parent graph '${parentGraph.classId.asSingleFqName()}':"
+                "Graph extension '${graphExtension.classId.asSingleFqName()}' has overlapping scope annotations with parent graph '${parentGraph.classId.asSingleFqName()}':",
               )
               for (overlap in overlaps) {
                 append("- ")

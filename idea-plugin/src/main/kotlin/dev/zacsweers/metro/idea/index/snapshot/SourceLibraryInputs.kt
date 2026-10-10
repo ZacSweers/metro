@@ -87,7 +87,7 @@ private fun SourceAggregate.libraryInputs(
     if (sourceClassUseSites.isEmpty()) null
     else {
       Collections.newSetFromMap(
-        IdentityHashMap<Map<KaModule, SmartPsiElementPointer<out KtElement>>, Boolean>()
+        IdentityHashMap<Map<KaModule, SmartPsiElementPointer<out KtElement>>, Boolean>(),
       )
     }
 

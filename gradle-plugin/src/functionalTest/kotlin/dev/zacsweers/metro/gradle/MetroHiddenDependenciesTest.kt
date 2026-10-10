@@ -127,7 +127,7 @@ class MetroHiddenDependenciesTest {
     assertThat(result.task(":app:checkReleaseMetroHiddenDependencies")).isNull()
     assertThat(result.task(":app:checkDebugUnitTestMetroHiddenDependencies")).isNull()
     assertThat(
-        project.rootDir.resolve("app/build/reports/metro/debug/hidden-dependencies.txt").readText()
+        project.rootDir.resolve("app/build/reports/metro/debug/hidden-dependencies.txt").readText(),
       )
       .contains("project ':impl'")
   }
@@ -376,7 +376,7 @@ class MetroHiddenDependenciesTest {
             withBuildScript {
               applyAndroidDefaults(ANDROID_LIBRARY, "test.bridge")
               dependencies(
-                Dependency.implementation(":impl").copy(configuration = "debugImplementation")
+                Dependency.implementation(":impl").copy(configuration = "debugImplementation"),
               )
             }
           }
@@ -388,7 +388,7 @@ class MetroHiddenDependenciesTest {
 
                 @ContributesTo(AppScope::class)
                 interface AppBindings
-                """
+                """,
               )
             withBuildScript {
               if (jvmImplementation) {
@@ -408,7 +408,7 @@ class MetroHiddenDependenciesTest {
 
                     @ContributesTo(VisibleScope::class)
                     interface VisibleBindings
-                    """
+                    """,
                   )
                 withBuildScript { applyJvmDefaults() }
               }
@@ -448,7 +448,7 @@ class MetroHiddenDependenciesTest {
 
         ${buildMetroBlock()}
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
 
@@ -498,7 +498,7 @@ class MetroHiddenDependenciesTest {
             }
           }
           """
-            .trimIndent()
+            .trimIndent(),
         )
       }
       if (filterByGradleProperty) {
@@ -513,7 +513,7 @@ class MetroHiddenDependenciesTest {
             }
           }
           """
-            .trimIndent()
+            .trimIndent(),
         )
       }
     }
@@ -544,8 +544,8 @@ class MetroHiddenDependenciesTest {
 
             @ContributesTo(BridgeScope::class)
             interface BridgeBindings
-            """
-          )
+            """,
+          ),
         )
       }
       subproject("impl") {
@@ -562,8 +562,8 @@ class MetroHiddenDependenciesTest {
 
             @ContributesTo(Scopes.SessionScope::class)
             interface SessionBindings
-            """
-          )
+            """,
+          ),
         )
       }
       subproject("plain") { sources(source("class OrdinaryDependency")) }
@@ -603,7 +603,7 @@ class MetroHiddenDependenciesTest {
           }
         }
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
 

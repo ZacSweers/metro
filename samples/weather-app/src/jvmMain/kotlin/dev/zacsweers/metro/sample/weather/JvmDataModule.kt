@@ -25,7 +25,7 @@ interface JvmDataModule {
       return object : HttpClientEngineFactory<OkHttpConfig> {
         override fun create(block: OkHttpConfig.() -> Unit): HttpClientEngine {
           return OkHttpEngine(
-            OkHttpConfig().apply { preconfigured = okHttpClientLazy.value }.apply(block)
+            OkHttpConfig().apply { preconfigured = okHttpClientLazy.value }.apply(block),
           )
         }
       }

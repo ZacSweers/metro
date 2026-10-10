@@ -403,7 +403,7 @@ internal class GraphNodes(
           // It's a graph-like
           val node =
             bindingStack.withEntry(
-              IrBindingStack.Entry.injectedAt(graphContextKey, nonNullCreator.function)
+              IrBindingStack.Entry.injectedAt(graphContextKey, nonNullCreator.function),
             ) {
               val nodeKey =
                 if (klass.origin.isSyntheticGeneratedGraph) {
@@ -533,8 +533,8 @@ internal class GraphNodes(
                     append(e.actualQualifier, Style.ERROR)
                     append(" but overridden symbol ${e.overriddenSymbolFqName} has ")
                     append(e.expectedQualifier, Style.SUCCESS)
-                  }
-                )
+                  },
+                ),
               ),
             notes = listOf(helpNote),
           )
@@ -788,7 +788,7 @@ internal class GraphNodes(
                   val overriddenParentClass = overridden.owner.parentClassOrNull ?: continue
                   val isGraphExtensionFactory =
                     overriddenParentClass.isAnnotatedWithAny(
-                      metroSymbols.classIds.graphExtensionFactoryAnnotations
+                      metroSymbols.classIds.graphExtensionFactoryAnnotations,
                     )
 
                   if (isGraphExtensionFactory) {
@@ -803,7 +803,7 @@ internal class GraphNodes(
                   if (returnClass != null) {
                     val returnsExtensionOrExtensionFactory =
                       returnClass.isAnnotatedWithAny(
-                        metroSymbols.classIds.allGraphExtensionAndFactoryAnnotations
+                        metroSymbols.classIds.allGraphExtensionAndFactoryAnnotations,
                       )
                     if (returnsExtensionOrExtensionFactory) {
                       isGraphExtension = true
@@ -915,11 +915,11 @@ internal class GraphNodes(
                     if (
                       functionParent != null &&
                         functionParent.isAnnotatedWithAny(
-                          metroSymbols.classIds.graphExtensionAnnotations
+                          metroSymbols.classIds.graphExtensionAnnotations,
                         )
                     ) {
                       IrContextualTypeKey(
-                        IrTypeKey(functionParent.defaultType, functionParent.qualifierAnnotation())
+                        IrTypeKey(functionParent.defaultType, functionParent.qualifierAnnotation()),
                       )
                     } else {
                       IrContextualTypeKey.from(declaration)
@@ -1028,7 +1028,7 @@ internal class GraphNodes(
                   if (returnClass != null) {
                     val returnsExtension =
                       returnClass.isAnnotatedWithAny(
-                        metroSymbols.classIds.graphExtensionAnnotations
+                        metroSymbols.classIds.graphExtensionAnnotations,
                       )
                     if (returnsExtension) {
                       isGraphExtension = true
@@ -1104,7 +1104,7 @@ internal class GraphNodes(
                     if (
                       functionParent != null &&
                         functionParent.isAnnotatedWithAny(
-                          metroSymbols.classIds.graphExtensionAnnotations
+                          metroSymbols.classIds.graphExtensionAnnotations,
                         )
                     ) {
                       IrContextualTypeKey(
@@ -1193,7 +1193,7 @@ internal class GraphNodes(
             IrBindingStack.Entry.generatedExtensionAt(
               IrContextualTypeKey(graphTypeKey),
               parentGraphClass.kotlinFqName.asString(),
-            )
+            ),
           ) {
             nodeCache.getOrComputeNode(parentGraphClass, bindingStack, diagnosticTag)
           }
@@ -1399,7 +1399,7 @@ internal class GraphNodes(
               MetroDiagnostics.METRO_ERROR,
               buildString {
                 appendLine(
-                  "Graph extension '${graphNode.sourceGraph.sourceGraphIfMetroGraph.kotlinFqName}' has overlapping scope annotations with ancestor graphs':"
+                  "Graph extension '${graphNode.sourceGraph.sourceGraphIfMetroGraph.kotlinFqName}' has overlapping scope annotations with ancestor graphs':",
                 )
                 for (overlap in overlapErrors) {
                   appendLine(overlap)

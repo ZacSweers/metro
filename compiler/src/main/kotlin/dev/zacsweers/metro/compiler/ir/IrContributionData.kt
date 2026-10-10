@@ -137,7 +137,7 @@ internal class IrContributionData(
             addAll(
               findVisibleContributionClassesForScopeInHints(scope, callingDeclaration).filter {
                 it.isDirectContributedInterface(scope)
-              }
+              },
             )
           }
 
@@ -149,7 +149,7 @@ internal class IrContributionData(
                   with(metroContext) { trackClassLookup(callingDeclaration, irClass) }
                 }
               }
-            }
+            },
           )
         }
       }

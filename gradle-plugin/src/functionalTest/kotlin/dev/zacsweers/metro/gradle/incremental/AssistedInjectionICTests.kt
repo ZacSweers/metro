@@ -58,7 +58,7 @@ class AssistedInjectionICTests(target: KmpTarget) : BaseIncrementalCompilationTe
               }
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val graphAndMain =
@@ -132,7 +132,7 @@ class AssistedInjectionICTests(target: KmpTarget) : BaseIncrementalCompilationTe
               fun call(): String = message + id
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val assistedFactory =
@@ -143,7 +143,7 @@ class AssistedInjectionICTests(target: KmpTarget) : BaseIncrementalCompilationTe
               fun create(id: String): AssistedClass
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val graphAndMain =
@@ -223,7 +223,7 @@ class AssistedInjectionICTests(target: KmpTarget) : BaseIncrementalCompilationTe
               }
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val graphAndMain =
@@ -309,7 +309,7 @@ class AssistedInjectionICTests(target: KmpTarget) : BaseIncrementalCompilationTe
               fun call(): String = message + id
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val assistedFactory =
@@ -320,7 +320,7 @@ class AssistedInjectionICTests(target: KmpTarget) : BaseIncrementalCompilationTe
               fun create(id: String): AssistedClass
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val graphAndMain =
@@ -423,7 +423,7 @@ class AssistedInjectionICTests(target: KmpTarget) : BaseIncrementalCompilationTe
               }
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         // BaseFactory lives in :middle so that root's sources never reference :lib at all.
@@ -434,7 +434,7 @@ class AssistedInjectionICTests(target: KmpTarget) : BaseIncrementalCompilationTe
               fun create(id: String): Any
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val assistedModule =
@@ -457,7 +457,7 @@ class AssistedInjectionICTests(target: KmpTarget) : BaseIncrementalCompilationTe
               fun bindFactories(): Set<BaseFactory>
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val graphAndMain =
@@ -618,7 +618,7 @@ class AssistedInjectionICTests(target: KmpTarget) : BaseIncrementalCompilationTe
               }
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val graphAndMain =
@@ -711,7 +711,7 @@ class AssistedInjectionICTests(target: KmpTarget) : BaseIncrementalCompilationTe
               generateAssistedFactories.set(true)
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
         }
 
@@ -726,7 +726,7 @@ class AssistedInjectionICTests(target: KmpTarget) : BaseIncrementalCompilationTe
               fun call(): String = message + id
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         // main() is in a separate file so it is not dirty when only the graph changes.

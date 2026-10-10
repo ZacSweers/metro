@@ -48,7 +48,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
       myFixture.configureMetroFile(
         """
       @DependencyGraph interface AppGraph { val registry: NewRegistry }
-      """
+      """,
       )
     val service = project.service<MetroResolutionService>()
     val initial = service.awaitIndex(graph)
@@ -71,7 +71,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
         """
       @Inject class Box<T>(val value: T)
       @DependencyGraph interface AppGraph { val box: Box<NewRegistry> }
-      """
+      """,
       )
     val service = project.service<MetroResolutionService>()
     val initial = service.awaitIndex(graph)
@@ -93,7 +93,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
     assertTrue(
       updated.bindings.filterIsInstance<KaBinding.ConstructorInjected>().any {
         it.isObject && it.typeKey.renderedType == "test.NewRegistry"
-      }
+      },
     )
   }
 
@@ -105,7 +105,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
       ) as KtFile
     val graph =
       myFixture.configureMetroFile(
-        "@DependencyGraph interface AppGraph { val registry: NewRegistry }"
+        "@DependencyGraph interface AppGraph { val registry: NewRegistry }",
       )
     val service = project.service<MetroResolutionService>()
     service.awaitIndex(graph)
@@ -135,7 +135,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
       myFixture.addFileToProject("test/Unrelated.kt", "package test; class Unrelated") as KtFile
     val graph =
       myFixture.configureMetroFile(
-        "@DependencyGraph interface AppGraph { val registry: NewRegistry }"
+        "@DependencyGraph interface AppGraph { val registry: NewRegistry }",
       )
     val service = project.service<MetroResolutionService>()
     service.awaitIndex(graph)
@@ -158,13 +158,13 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
       """
       import test.generated.NewRegistry as Registry
       @DependencyGraph interface AppGraph { val registry: Registry }
-      """
+      """,
     )
   }
 
   fun testQualifiedClassArrivalRefreshesAnUnresolvedGraphAccessor() {
     checkQualifiedClassArrival(
-      "@DependencyGraph interface AppGraph { val registry: test.generated.NewRegistry }"
+      "@DependencyGraph interface AppGraph { val registry: test.generated.NewRegistry }",
     )
   }
 
@@ -207,7 +207,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
     // Inferred errors can hide the missing class behind another function's return type.
     val opaqueError = KaTypeSnapshot("<inferred error>", classId = null, isError = true)
     assertTrue(
-      builder.recordErrorTypes(opaqueError, graph, pointers.createSmartPsiElementPointer(graph))
+      builder.recordErrorTypes(opaqueError, graph, pointers.createSmartPsiElementPointer(graph)),
     )
     val dependencies = builder.build()
 
@@ -237,7 +237,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
         myFixture.configureMetroFile(
           """
         @DependencyGraph interface AppGraph { val registry: Registry }
-        """
+        """,
         )
       val service = project.service<MetroResolutionService>()
       val initial = service.awaitIndex(graph)
@@ -246,7 +246,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
         return index.resolveConsumer(index.consumerEntryAt(accessor)!!).uniformBindings.orEmpty()
       }
       assertTrue(
-        bindings(initial).single().let { it is KaBinding.ConstructorInjected && it.isObject }
+        bindings(initial).single().let { it is KaBinding.ConstructorInjected && it.isObject },
       )
       val documents = PsiDocumentManager.getInstance(project)
       val document = checkNotNull(documents.getDocument(registry))
@@ -264,7 +264,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
       documents.commitAllDocuments()
       val restored = service.awaitIndex(graph)
       assertTrue(
-        bindings(restored).single().let { it is KaBinding.ConstructorInjected && it.isObject }
+        bindings(restored).single().let { it is KaBinding.ConstructorInjected && it.isObject },
       )
 
       WriteCommandAction.runWriteCommandAction(project) { registry.delete() }
@@ -353,7 +353,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
 
         fun inject(target: Screen)
       }
-      """
+      """,
     )
   }
 
@@ -414,7 +414,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
         val producer: Holder<out Text>
         val consumer: Holder<in Text>
       }
-      """
+      """,
       )
     val declarations = file.declarationsIncludingNested()
     for (name in listOf("stars", "nested", "producer", "consumer")) {
@@ -462,7 +462,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
           @Binds val @receiver:Named("property") ServiceImpl.bindProperty: Service
           @Binds fun bindParameter(@Named("parameter") impl: ServiceImpl): Service
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val declarations = file.declarationsIncludingNested()
@@ -652,7 +652,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
         interface UnrelatedGraph {
           val unrelated: Long
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val declarations = file.declarationsIncludingNested()
@@ -903,7 +903,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
           @Inject fun install(memberService: Service) {}
           @FunctionInject fun ignored(ignoredService: Service) {}
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val customDeclarations = customFile.declarationsIncludingNested()
@@ -931,7 +931,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
 
         @Inject fun ordinary() {}
         @FunctionInject fun custom() {}
-        """
+        """,
       )
     val service = project.service<MetroResolutionService>()
     val declarations = file.declarationsIncludingNested()
@@ -1045,7 +1045,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
           @Provides @ElementsIntoSet
           fun provideLazies(): Set<Lazy<String>> = emptySet()
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val declarations = file.declarationsIncludingNested()
@@ -1072,7 +1072,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
           @Provides @IntoSet fun provideString(): String = "value"
           @Provides fun provideProviders(): Set<Provider<String>> = emptySet()
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val declarations = file.declarationsIncludingNested()
@@ -1100,7 +1100,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
 
           @Provides @IntoMap @StringKey("key") fun provideValue(): Int = 1
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val declarations = file.declarationsIncludingNested()

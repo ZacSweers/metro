@@ -45,7 +45,7 @@ class MetroSuspendGraphValidationTest : BasePlatformTestCase() {
 
           @Provides suspend fun provideB(a: A): B = B()
         }
-        """
+        """,
       )
 
     val diagnostic = result.diagnostics.single()
@@ -66,7 +66,7 @@ class MetroSuspendGraphValidationTest : BasePlatformTestCase() {
 
           @Provides suspend fun provideDatabase(): Database = Database()
         }
-        """
+        """,
       )
 
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
@@ -89,7 +89,7 @@ class MetroSuspendGraphValidationTest : BasePlatformTestCase() {
 
           @Provides suspend fun provideDatabase(): Database = Database()
         }
-        """
+        """,
       )
 
     assertDiagnostic(result, MetroDiagnosticId.SUSPEND_BINDING_FROM_NON_SUSPEND_ACCESSOR)
@@ -122,7 +122,7 @@ class MetroSuspendGraphValidationTest : BasePlatformTestCase() {
 
           @Provides suspend fun provideDatabase(): Database = Database()
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val child = index.graphs.single { it.name == "ChildGraph" }
@@ -148,7 +148,7 @@ class MetroSuspendGraphValidationTest : BasePlatformTestCase() {
 
           @Provides suspend fun provideDatabase(): Database = Database()
         }
-        """
+        """,
       )
 
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
@@ -171,7 +171,7 @@ class MetroSuspendGraphValidationTest : BasePlatformTestCase() {
 
           @Provides suspend fun provideDatabase(): Database = Database()
         }
-        """
+        """,
       )
 
     assertDiagnostic(result, MetroDiagnosticId.SUSPEND_BINDING_WRAPPED_IN_PROVIDER)
@@ -187,7 +187,7 @@ class MetroSuspendGraphValidationTest : BasePlatformTestCase() {
 
           @Provides @IntoSet suspend fun provideValue(): String = "value"
         }
-        """
+        """,
       )
 
     assertDiagnostic(result, MetroDiagnosticId.MULTIBINDING_OVER_SUSPEND_BINDINGS)
@@ -208,7 +208,7 @@ class MetroSuspendGraphValidationTest : BasePlatformTestCase() {
           @Provides @IntoMap @StringKey("value")
           suspend fun provideValue(): Value = Value()
         }
-        """
+        """,
       )
 
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
@@ -229,7 +229,7 @@ class MetroSuspendGraphValidationTest : BasePlatformTestCase() {
           @Provides @IntoMap @StringKey("value")
           suspend fun provideValue(): Value = Value()
         }
-        """
+        """,
       )
 
     assertDiagnostic(result, MetroDiagnosticId.MULTIBINDING_OVER_SUSPEND_BINDINGS)
@@ -251,7 +251,7 @@ class MetroSuspendGraphValidationTest : BasePlatformTestCase() {
 
           @Provides suspend fun provideDatabase(): Database = Database()
         }
-        """
+        """,
       )
 
     assertDiagnostic(result, MetroDiagnosticId.MEMBER_INJECTION_OVER_SUSPEND_BINDING)
@@ -277,7 +277,7 @@ class MetroSuspendGraphValidationTest : BasePlatformTestCase() {
 
           @Provides suspend fun provideDatabase(): Database = Database()
         }
-        """
+        """,
       )
 
     assertDiagnostic(result, MetroDiagnosticId.ASSISTED_FACTORY_SUSPEND_REQUIRED)
@@ -305,7 +305,7 @@ class MetroSuspendGraphValidationTest : BasePlatformTestCase() {
 
           @Provides suspend fun provideDatabase(): Database = Database()
         }
-        """
+        """,
       )
 
     assertDiagnostic(result, MetroDiagnosticId.MEMBER_INJECTION_OVER_SUSPEND_BINDING)
@@ -333,7 +333,7 @@ class MetroSuspendGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph {
           val dependency: Dependency
         }
-        """
+        """,
       )
 
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
@@ -358,7 +358,7 @@ class MetroSuspendGraphValidationTest : BasePlatformTestCase() {
             fun create(@Includes parent: ParentGraph): AppGraph
           }
         }
-        """
+        """,
       )
 
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
@@ -426,7 +426,7 @@ class MetroSuspendGraphValidationTest : BasePlatformTestCase() {
 
           @Provides fun provideValue(): String = "value"
         }
-        """
+        """,
       )
 
     assertDiagnostic(result, MetroDiagnosticId.MISSING_RUNTIME_COROUTINES)

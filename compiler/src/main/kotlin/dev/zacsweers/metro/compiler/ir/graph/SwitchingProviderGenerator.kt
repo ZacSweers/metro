@@ -301,7 +301,7 @@ internal class SwitchingProviderGenerator(
                 graphProperty = graphProperty,
                 idProperty = idProperty,
                 typeParam = typeParam,
-              )
+              ),
             )
           }
       }
@@ -343,7 +343,7 @@ internal class SwitchingProviderGenerator(
                 switchingProviderThisReceiver = localDispatchReceiver,
                 idProperty = idProperty,
                 typeParam = typeParam,
-              )
+              ),
             )
           }
       }
@@ -380,7 +380,7 @@ internal class SwitchingProviderGenerator(
                 graphProperty = graphProperty,
                 idProperty = idProperty,
                 typeParam = typeParam,
-              )
+              ),
             )
           }
       }

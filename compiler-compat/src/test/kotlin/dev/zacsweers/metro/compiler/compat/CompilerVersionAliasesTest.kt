@@ -71,4 +71,18 @@ class CompilerVersionAliasesTest {
     val resolved = CompilerVersionAliases.map(version, userAliases)
     assertThat(resolved).isNull()
   }
+
+  @Test
+  fun `built-in prerelease alias maps Beta to its compat module version`() {
+    val resolved = CompilerVersionAliases.map(KotlinToolingVersion("2.5.0-Beta1"))
+    assertThat(resolved).isEqualTo(KotlinToolingVersion("2.5.0-dev-7307"))
+  }
+
+  @Test
+  fun `user alias overrides built-in prerelease alias`() {
+    val version = KotlinToolingVersion("2.5.0-Beta1")
+    val userAliases = mapOf("2.5.0-Beta1" to "2.5.0-dev-6460")
+    val resolved = CompilerVersionAliases.map(version, userAliases)
+    assertThat(resolved).isEqualTo(KotlinToolingVersion("2.5.0-dev-6460"))
+  }
 }

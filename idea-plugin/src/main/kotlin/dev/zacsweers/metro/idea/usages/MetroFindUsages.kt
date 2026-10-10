@@ -115,7 +115,7 @@ internal class MetroUsageTypeCache {
           MutableMap.MutableEntry<
             MetroUsageCacheKey,
             Map<UsageDeclarationIdentity, MetroUsageRelationship>,
-          >?
+          >?,
       ): Boolean = size > MAX_USAGE_TARGETS
     }
 

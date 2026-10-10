@@ -93,7 +93,7 @@ public abstract class AnalyzeGraphTask : DefaultTask() {
           fanAnalysis = analyzer.computeFanAnalysis(topFanCount.get()),
           pathsToRoot = analyzer.computePathsToRoot(),
           bindingExplanations = graphMetadata.bindingExplanations,
-        )
+        ),
       )
     }
 
@@ -132,7 +132,7 @@ public abstract class AnalyzeGraphTask : DefaultTask() {
       val topFanIn = graph.fanAnalysis.highFanIn.firstOrNull()
       if (topFanIn != null && topFanIn.fanIn > 0) {
         logger.lifecycle(
-          "  Highest fan-in: ${topFanIn.key.substringAfterLast('.')} (${topFanIn.fanIn} dependents)"
+          "  Highest fan-in: ${topFanIn.key.substringAfterLast('.')} (${topFanIn.fanIn} dependents)",
         )
       }
     }

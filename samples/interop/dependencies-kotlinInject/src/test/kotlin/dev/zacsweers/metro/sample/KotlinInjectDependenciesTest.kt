@@ -39,7 +39,7 @@ class KotlinInjectDependenciesTest {
   fun testComponentDependingOnGraph() {
     val component =
       ComponentDependingOnGraph::class.create(
-        createGraphFactory<StringGraph.Factory>().create("Hello, world!")
+        createGraphFactory<StringGraph.Factory>().create("Hello, world!"),
       )
     assertEquals("Hello, world!", component.message)
   }

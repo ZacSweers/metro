@@ -35,7 +35,7 @@ class AsContributionErrorsTest : MetroCompilerTest() {
           }
           """
             .trimIndent(),
-      )
+      ),
     )
   }
 
@@ -67,7 +67,7 @@ class AsContributionErrorsTest : MetroCompilerTest() {
         e: graphs.kt:13:45 `asContribution` type argument 'test.AppGraph' is the same as its receiver type. This is a useless cast.
         e: graphs.kt:14:41 `asContribution` type argument 'test.AppGraph' is the same as its receiver type. This is a useless cast.
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -92,7 +92,7 @@ class AsContributionErrorsTest : MetroCompilerTest() {
           }
           """
             .trimIndent(),
-      )
+      ),
     )
   }
 
@@ -116,7 +116,7 @@ class AsContributionErrorsTest : MetroCompilerTest() {
           }
           """
             .trimIndent(),
-      )
+      ),
     )
   }
 
@@ -149,7 +149,7 @@ class AsContributionErrorsTest : MetroCompilerTest() {
         e: graphs.kt:14:45 `asContribution` type argument 'test.Base' is not a merged supertype of test.AppGraph.
         e: graphs.kt:15:42 `asContribution` type argument 'test.Base' is not a merged supertype of test.AppGraph.
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -181,7 +181,7 @@ class AsContributionErrorsTest : MetroCompilerTest() {
         e: graphs.kt:12:21 `asContribution` receiver must be annotated with a `@DependencyGraph` annotation.
         e: graphs.kt:13:44 `asContribution` receiver must be annotated with a `@DependencyGraph` annotation.
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -209,7 +209,7 @@ class AsContributionErrorsTest : MetroCompilerTest() {
           }
           """
             .trimIndent(),
-      )
+      ),
     ) {
       val exampleGraph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val unitGraphFactory = invokeMain<Any>(exampleGraph)

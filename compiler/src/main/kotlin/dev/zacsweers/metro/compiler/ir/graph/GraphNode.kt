@@ -117,7 +117,7 @@ internal sealed class GraphNode {
         it.sourceGraphIfMetroGraph == it && it.fileOrNull != null
       }
       ?: reportCompilerBug(
-        "Could not find a reportable source graph declaration for ${sourceGraph.kotlinFqName}"
+        "Could not find a reportable source graph declaration for ${sourceGraph.kotlinFqName}",
       )
   }
 

@@ -72,7 +72,7 @@ class MetroParallelLibraryResolutionTest : BasePlatformTestCase() {
           val second: LibRetargetedDependencyB,
           val duplicate: LibClientWithDeps,
         )
-        """
+        """,
         )
       val sourceIndex = project.service<MetroResolutionService>().awaitIndex(file)
       val sequential = resolveLibraries(file, sourceIndex, parallelism = 1)
@@ -90,7 +90,7 @@ class MetroParallelLibraryResolutionTest : BasePlatformTestCase() {
       assertTrue(
         workerProgress.any { event ->
           event.workerFiles.any { it?.name == "libtest.LibClientWithDeps" }
-        }
+        },
       )
       assertEquals(listOf(null, null, null, null), parallel.progress.last().workerFiles)
     }
@@ -111,7 +111,7 @@ class MetroParallelLibraryResolutionTest : BasePlatformTestCase() {
           val second: LibGrowingNode<Int>,
           val concrete: LibRetargetedDependencyB,
         )
-        """
+        """,
         )
       val sourceIndex = project.service<MetroResolutionService>().awaitIndex(file)
       val sequential = resolveLibraries(file, sourceIndex, parallelism = 1)
@@ -134,7 +134,7 @@ class MetroParallelLibraryResolutionTest : BasePlatformTestCase() {
         interface AppGraph {
           val client: LibClientWithDeps
         }
-        """
+        """,
         )
       val settings = MetroSettings.getInstance(project).state
       settings.resolveFromLibraries = true

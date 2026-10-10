@@ -2228,6 +2228,24 @@ public class BoxTestGenerated extends AbstractBoxTest {
       public void testSimpleExtension() {
         run("SimpleExtension.kt");
       }
+
+      @Test
+      @TestMetadata("UnchangedChildrenReuseParentMultibindingMaps.kt")
+      public void testUnchangedChildrenReuseParentMultibindingMaps() {
+        run("UnchangedChildrenReuseParentMultibindingMaps.kt");
+      }
+
+      @Test
+      @TestMetadata("UnchangedChildrenReuseParentMultibindings.kt")
+      public void testUnchangedChildrenReuseParentMultibindings() {
+        run("UnchangedChildrenReuseParentMultibindings.kt");
+      }
+
+      @Test
+      @TestMetadata("UnchangedMultibindingsPreserveChildConstruction.kt")
+      public void testUnchangedMultibindingsPreserveChildConstruction() {
+        run("UnchangedMultibindingsPreserveChildConstruction.kt");
+      }
     }
 
     @Nested
@@ -3245,6 +3263,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       @TestMetadata("SourceMemberInjectionTakesPrecedenceOverDaggerInjector.kt")
       public void testSourceMemberInjectionTakesPrecedenceOverDaggerInjector() {
         run("SourceMemberInjectionTakesPrecedenceOverDaggerInjector.kt");
+      }
+
+      @Test
+      @TestMetadata("UnchangedChildrenReuseParentMultibindings.kt")
+      public void testUnchangedChildrenReuseParentMultibindings() {
+        run("UnchangedChildrenReuseParentMultibindings.kt");
       }
 
       @Test
@@ -4286,6 +4310,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     @TestMetadata("TransitiveConstructorInjected.kt")
     public void testTransitiveConstructorInjected() {
       run("TransitiveConstructorInjected.kt");
+    }
+
+    @Test
+    @TestMetadata("UnchangedChildrenKeepSuspendMultibindingsLocal.kt")
+    public void testUnchangedChildrenKeepSuspendMultibindingsLocal() {
+      run("UnchangedChildrenKeepSuspendMultibindingsLocal.kt");
     }
 
     @Test

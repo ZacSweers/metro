@@ -263,7 +263,7 @@ class GraphHtmlRendererTest {
     moduleLink.assertFields("target" to owner)
     val instance = data.node(owner)
     assertThat(
-        instance.objects("inheritedBindings").map { it.objectField("binding").string("key") }
+        instance.objects("inheritedBindings").map { it.objectField("binding").string("key") },
       )
       .containsExactlyInAnyOrder(
         owner,
@@ -311,7 +311,7 @@ class GraphHtmlRendererTest {
       extensions =
         ExtensionsMetadata(
           accessors =
-            listOf(ExtensionAccessorMetadata("ChildGraph", name = "child", isProperty = true))
+            listOf(ExtensionAccessorMetadata("ChildGraph", name = "child", isProperty = true)),
         )
     }
     val childName = "AppGraph.Impl.ChildImpl"
@@ -333,7 +333,7 @@ class GraphHtmlRendererTest {
       extensions =
         ExtensionsMetadata(
           factoryAccessors =
-            listOf(ExtensionFactoryAccessorMetadata(key, name = "childFactory", isProperty = true))
+            listOf(ExtensionFactoryAccessorMetadata(key, name = "childFactory", isProperty = true)),
         )
     }
     val data = renderer.buildData(graph)
@@ -415,14 +415,14 @@ class GraphHtmlRendererTest {
     val unmatchedProducers =
       listOf(
         producer.copy(
-          roots = RootsMetadata(accessors = listOf(accessor.copy(name = "otherEndpoint")))
+          roots = RootsMetadata(accessors = listOf(accessor.copy(name = "otherEndpoint"))),
         ),
         producer.copy(
-          roots = RootsMetadata(accessors = listOf(accessor.copy(key = "OtherEndpoint")))
+          roots = RootsMetadata(accessors = listOf(accessor.copy(key = "OtherEndpoint"))),
         ),
         producer.copy(roots = RootsMetadata(accessors = listOf(accessor.copy(name = null)))),
         producer.copy(
-          roots = RootsMetadata(accessors = listOf(accessor, accessor.copy(isProperty = false)))
+          roots = RootsMetadata(accessors = listOf(accessor, accessor.copy(isProperty = false))),
         ),
         producer.copy(graph = "OtherDependencies"),
       )
@@ -430,7 +430,7 @@ class GraphHtmlRendererTest {
     val otherProducer =
       producer.copy(
         bindings =
-          listOf(bindingMetadata("Endpoint", kind = "Provided", declaration = "differentProvider"))
+          listOf(bindingMetadata("Endpoint", kind = "Provided", declaration = "differentProvider")),
       )
     reportSets.add(listOf(consumer, producer, otherProducer))
     for (reports in reportSets) {
@@ -519,7 +519,7 @@ class GraphHtmlRendererTest {
               DependencyMetadata("Service = ...", true),
               DependencyMetadata("Missing = ...", true),
             ),
-        )
+        ),
       )
       binding("Service")
     }
@@ -588,7 +588,7 @@ class GraphHtmlRendererTest {
           binding(collection)
           alias(aliasKey, targetKey)
           binding(targetKey)
-        }
+        },
       )
     val aliasNode = data.node(aliasKey)
     aliasNode.assertFields("synthetic" to true, "fullKey" to aliasKey, "aliasTarget" to targetKey)
@@ -715,7 +715,7 @@ class GraphHtmlRendererTest {
             isInherited = true,
             declaringGraph = "AppGraph",
             declaringType = "test.AppGraph",
-          )
+          ),
         )
       }
     val data = renderer.buildData(graph)
@@ -796,7 +796,7 @@ class GraphHtmlRendererTest {
           kind = "MembersInjected",
           declaration = "inject",
           dependencies = listOf(DependencyMetadata("Service", false, "MembersInjected")),
-        )
+        ),
       )
       binding("Service")
       injector("Target")
@@ -838,7 +838,7 @@ class GraphHtmlRendererTest {
           "test.Consumer",
           declaration = "test.Module.provideConsumer",
           dependencies = listOf(dependency),
-        )
+        ),
       )
       binding("test.Service")
     }
@@ -874,8 +874,8 @@ class GraphHtmlRendererTest {
   fun `nested generic names preserve their structure`() {
     assertThat(
         extractDisplayName(
-          "kotlin.collections.Map<kotlin.String, kotlin.collections.List<out test.Presenter.Factory>>"
-        )
+          "kotlin.collections.Map<kotlin.String, kotlin.collections.List<out test.Presenter.Factory>>",
+        ),
       )
       .isEqualTo("Map<String, List<out Presenter.Factory>>")
   }
@@ -888,7 +888,7 @@ class GraphHtmlRendererTest {
           binding("test.Service")
           binding("test.Presenter.Factory")
           binding("test.Screen.Factory")
-        }
+        },
       )
     assertThat(data.nodes().strings("name"))
       .containsExactlyInAnyOrder("AppGraph", "Service", "Presenter.Factory", "Screen.Factory")
@@ -910,7 +910,7 @@ class GraphHtmlRendererTest {
           for (key in keys) {
             binding(key)
           }
-        }
+        },
       )
     val typeNames = data.objectField("typeNames")
     for (key in keys) {
@@ -928,7 +928,7 @@ class GraphHtmlRendererTest {
         graph {
           binding(mapKey)
           binding(boxKey)
-        }
+        },
       )
     data.node(mapKey).assertFields("name" to "Map<first.Item, List<out second.Item>>")
     data.node(boxKey).assertFields("name" to "Box<first.Item>")
@@ -960,7 +960,7 @@ class GraphHtmlRendererTest {
           for (key in types.keys) {
             binding(key)
           }
-        }
+        },
       )
     for ((key, type) in types) {
       data.node(key).assertFields("name" to type.substringAfterLast('.'), "fullKey" to key)
@@ -982,7 +982,7 @@ class GraphHtmlRendererTest {
               "AssistedInject",
               nameHint = "Service",
               dependencies = emptyList(),
-            )
+            ),
         )
     val consumer =
       bindingMetadata(
@@ -994,7 +994,7 @@ class GraphHtmlRendererTest {
         graph {
           binding(factory)
           binding(consumer)
-        }
+        },
       )
     val default = data.nodes().single { it.isTrue("isDefaultValue") }
     val assisted = data.nodes().single { it.isTrue("isAssistedTarget") }
@@ -1095,7 +1095,7 @@ class GraphHtmlRendererTest {
     val key = "kotlin.collections.Set<Service>"
     private val accessor =
       Json.decodeFromString<AccessorMetadata>(
-        """{"key":"$key","name":"services","isProperty":true,"isInherited":true,"declaringGraph":"AppGraph","declaringType":"test.ServiceAccessors","origin":"ServiceAccessors.kt:8:3"}"""
+        """{"key":"$key","name":"services","isProperty":true,"isInherited":true,"declaringGraph":"AppGraph","declaringType":"test.ServiceAccessors","origin":"ServiceAccessors.kt:8:3"}""",
       )
     val parent = graph {
       binding(key, kind = "Multibinding")

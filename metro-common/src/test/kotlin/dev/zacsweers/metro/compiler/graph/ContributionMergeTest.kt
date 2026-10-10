@@ -271,7 +271,7 @@ class ContributionMergeTest {
   }
 
   private fun lowerPriorityContributions(
-    vararg contributions: PrioritizedContribution
+    vararg contributions: PrioritizedContribution,
   ): Set<PrioritizedContribution> =
     computeLowerPriorityContributions(
       bindings = contributions.toList(),

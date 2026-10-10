@@ -87,7 +87,7 @@ constructor(
    */
   @RequiresIdeSupport
   @DelicateMetroGradleApi(
-    "Top-level function injection is experimental and does not work yet in all cases. See the kdoc."
+    "Top-level function injection is experimental and does not work yet in all cases. See the kdoc.",
   )
   public val enableTopLevelFunctionInjection: Property<Boolean> =
     objects.booleanProperty().convention(false)
@@ -123,7 +123,7 @@ constructor(
    */
   @ExperimentalMetroGradleApi // Will eventually be the default and removed
   @DelicateMetroGradleApi(
-    "FIR contribution hint generation is experimental and does not work yet in all cases. See the kdoc."
+    "FIR contribution hint generation is experimental and does not work yet in all cases. See the kdoc.",
   )
   public val generateContributionHintsInFir: Property<Boolean> = objects.booleanProperty()
 
@@ -164,7 +164,7 @@ constructor(
    */
   @ExperimentalMetroGradleApi // This may eventually be removed
   @DelicateMetroGradleApi(
-    "Contribution hint generation does not work yet in all platforms on all Kotlin versions. See the kdoc."
+    "Contribution hint generation does not work yet in all platforms on all Kotlin versions. See the kdoc.",
   )
   public val supportedHintContributionPlatforms: SetProperty<KotlinPlatformType> =
     objects
@@ -180,7 +180,7 @@ constructor(
             // Only jvm/android work prior to Kotlin 2.3.20
             setOf(KotlinPlatformType.common, KotlinPlatformType.jvm, KotlinPlatformType.androidJvm)
           }
-        }
+        },
       )
 
   /**
@@ -305,7 +305,7 @@ constructor(
       .convention(
         compilerVersion.map {
           it >= KotlinVersions.kotlin230 && it < KotlinVersions.kotlin2320Beta2
-        }
+        },
       )
 
   /**
@@ -524,7 +524,7 @@ constructor(
    * _relative_ path from the project's **build** directory.
    */
   @DelicateMetroGradleApi(
-    "This should only be used for debugging purposes and is not intended to be always enabled."
+    "This should only be used for debugging purposes and is not intended to be always enabled.",
   )
   public val reportsDestination: DirectoryProperty =
     objects
@@ -532,7 +532,7 @@ constructor(
       .convention(
         providers.gradleProperty("metro.reportsDestination").flatMap {
           layout.buildDirectory.dir(it)
-        }
+        },
       )
 
   /**
@@ -549,7 +549,9 @@ constructor(
     objects
       .directoryProperty()
       .convention(
-        providers.gradleProperty("metro.traceDestination").flatMap { layout.buildDirectory.dir(it) }
+        providers.gradleProperty("metro.traceDestination").flatMap {
+          layout.buildDirectory.dir(it)
+        },
       )
 
   /** Configures hidden-dependency checks. */
@@ -674,7 +676,7 @@ constructor(
       includeDaggerAnnotations.set(true)
       if (!includeJavax && !includeJakarta) {
         System.err.println(
-          "At least one of metro.interop.includeDagger.includeJavax or metro.interop.includeDagger.includeJakarta should be true"
+          "At least one of metro.interop.includeDagger.includeJavax or metro.interop.includeDagger.includeJakarta should be true",
         )
       }
       if (includeJavax) {
@@ -751,7 +753,7 @@ constructor(
     return property(T::class.java).propertyNameConventionImpl(name, defaultValue) { value ->
       enumValues<T>().find { it.name.equals(value, ignoreCase = true) }
         ?: error(
-          "Value '$value' is not a valid input for metro.$name. Allowed values: ${enumValues<T>().joinToString { it.name }}"
+          "Value '$value' is not a valid input for metro.$name. Allowed values: ${enumValues<T>().joinToString { it.name }}",
         )
     }
   }
@@ -759,7 +761,7 @@ constructor(
   private fun ObjectFactory.metroProperty(name: String, defaultValue: String): Property<String> {
     return property(String::class.java)
       .convention(
-        providers.gradleProperty(name).orElse(providers.systemProperty(name)).orElse(defaultValue)
+        providers.gradleProperty(name).orElse(providers.systemProperty(name)).orElse(defaultValue),
       )
   }
 
@@ -785,7 +787,7 @@ constructor(
         .gradleProperty(propertyName)
         .orElse(providers.systemProperty(propertyName))
         .map(mapper)
-        .orElse(defaultValue)
+        .orElse(defaultValue),
     )
   }
 }

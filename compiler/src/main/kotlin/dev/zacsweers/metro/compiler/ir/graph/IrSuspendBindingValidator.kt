@@ -114,7 +114,7 @@ internal class IrSuspendBindingValidator(
             SuspendMemberInjectionMetadata(
               subject = "'${targetClassId.asFqNameString()}' member injection",
               dependencies = dependencies,
-            )
+            ),
           )
         is ConstructorInjected ->
           if (injectedMembers.isEmpty()) {
@@ -127,7 +127,7 @@ internal class IrSuspendBindingValidator(
                   parameters.nonDispatchParameters
                     .filterNot { it.isAssisted }
                     .map { it.contextualTypeKey },
-              )
+              ),
             )
           }
         else -> emptyList()
@@ -169,7 +169,7 @@ internal class IrSuspendBindingValidator(
   }
 
   private fun reportIssue(
-    issue: SuspendValidationIssue<IrTypeKey, IrContextualTypeKey, IrBinding, GraphAccessor>
+    issue: SuspendValidationIssue<IrTypeKey, IrContextualTypeKey, IrBinding, GraphAccessor>,
   ) {
     val trace = issueTrace(issue)
     val message = buildString {
@@ -184,7 +184,7 @@ internal class IrSuspendBindingValidator(
       if (issue.kind == SuspendValidationIssueKind.NON_SUSPEND_ACCESSOR) {
         val site =
           issue.site.expectAs<
-            SuspendValidationSite.GraphRequest<IrContextualTypeKey, GraphAccessor>
+            SuspendValidationSite.GraphRequest<IrContextualTypeKey, GraphAccessor>,
           >()
         val request = site.request
         val typeRender = request.contextKey.typeKey.render(short = true)
@@ -192,7 +192,7 @@ internal class IrSuspendBindingValidator(
         appendLine()
         appendLine("Either:")
         appendLine(
-          "  - Mark this accessor as `suspend fun` so it can await suspend dependencies, or"
+          "  - Mark this accessor as `suspend fun` so it can await suspend dependencies, or",
         )
         append("  - Make the return type `$deferredForm`.")
       }
@@ -201,7 +201,7 @@ internal class IrSuspendBindingValidator(
   }
 
   private fun reportCandidates(
-    issue: SuspendValidationIssue<IrTypeKey, IrContextualTypeKey, IrBinding, GraphAccessor>
+    issue: SuspendValidationIssue<IrTypeKey, IrContextualTypeKey, IrBinding, GraphAccessor>,
   ): Sequence<IrDeclaration?> {
     if (
       issue.kind == SuspendValidationIssueKind.FEATURE_DISABLED ||
@@ -270,7 +270,7 @@ internal class IrSuspendBindingValidator(
    * see which declarations stand in the way.
    */
   private fun issueTrace(
-    issue: SuspendValidationIssue<IrTypeKey, IrContextualTypeKey, IrBinding, GraphAccessor>
+    issue: SuspendValidationIssue<IrTypeKey, IrContextualTypeKey, IrBinding, GraphAccessor>,
   ): List<IrBindingStack.Entry> {
     val path = issue.path ?: return emptyList()
     val head =

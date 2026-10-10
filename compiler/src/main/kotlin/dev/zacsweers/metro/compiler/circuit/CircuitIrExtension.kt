@@ -447,7 +447,7 @@ private class CircuitIrFactoryDeclarationGenerator(
             target = target,
             origin =
               IrDeclarationOrigin.GeneratedByPlugin(
-                CircuitOrigins.FactoryClass(codegenTarget, target.factoryType)
+                CircuitOrigins.FactoryClass(codegenTarget, target.factoryType),
               ),
           )
         }
@@ -478,7 +478,7 @@ private class CircuitIrFactoryDeclarationGenerator(
         target = target,
         origin =
           IrDeclarationOrigin.GeneratedByPlugin(
-            CircuitOrigins.FactoryClass(codegenTarget, target.factoryType)
+            CircuitOrigins.FactoryClass(codegenTarget, target.factoryType),
           ),
       )
     }
@@ -525,7 +525,7 @@ private class CircuitIrFactoryDeclarationGenerator(
     // Kotlin 2.4 requires the class shell to be registered without a constructor. The constructor
     // is then added and registered separately so both declarations receive valid FIR metadata.
     generationSupport.metadataDeclarationRegistrarCompat.registerClassAsMetadataVisible(
-      factoryClass
+      factoryClass,
     )
     factoryClass
       .addConstructor {
@@ -541,7 +541,7 @@ private class CircuitIrFactoryDeclarationGenerator(
         }
         body = context(pluginContext) { this@constructor.generateDefaultConstructorBody() }
         generationSupport.metadataDeclarationRegistrarCompat.registerConstructorAsMetadataVisible(
-          this
+          this,
         )
       }
   }
@@ -716,7 +716,7 @@ private class CircuitIrFactoryTransformer(
               ),
               irElseBranch(irNull()),
             ),
-        )
+        ),
       )
     }
   }
@@ -1030,7 +1030,7 @@ private class CircuitIrFactoryTransformer(
                     returnType = stateType,
                     lambdaParamTypes = emptyList(),
                     capturedParams = allAvailableParams,
-                  )
+                  ),
                 ),
             )
           }
@@ -1132,7 +1132,7 @@ private class CircuitIrFactoryTransformer(
       content.addAnnotationCompat(
         pluginContext.createIrBuilder(content.symbol).run {
           irAnnotationCompat(composableAnnotationCtor, typeArguments = emptyList())
-        }
+        },
       )
     }
     content.body =
@@ -1182,7 +1182,7 @@ private class CircuitIrFactoryTransformer(
           addAnnotationCompat(
             pluginContext.createIrBuilder(symbol).run {
               irAnnotationCompat(composableAnnotationCtor, typeArguments = emptyList())
-            }
+            },
           )
 
           for ((paramName, paramType) in lambdaParamTypes) {

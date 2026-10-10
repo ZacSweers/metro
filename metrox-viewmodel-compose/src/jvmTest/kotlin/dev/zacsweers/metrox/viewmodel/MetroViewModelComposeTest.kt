@@ -73,7 +73,7 @@ class MetroViewModelComposeTest {
               {
                 createCount++
                 TestViewModel()
-              }
+              },
           )
       }
 
@@ -114,7 +114,7 @@ class MetroViewModelComposeTest {
                     return AssistedTestViewModel(extras[testKey] ?: "default")
                   }
                 }
-              }
+              },
           )
       }
 

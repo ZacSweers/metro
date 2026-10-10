@@ -70,7 +70,7 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
       task.dependsOn(
         target.tasks.named { candidate ->
           candidate != MetroEnvTask.AGGREGATE_NAME && candidate.endsWith("MetroEnv")
-        }
+        },
       )
     }
 
@@ -133,7 +133,7 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
                 .documentedAt(compatibilityUrl)
             }
             target.logger.warn(
-              "$label. $solution.\n$details.\nDocs: $compatibilityUrl\n($disableSolution)"
+              "$label. $solution.\n$details.\nDocs: $compatibilityUrl\n($disableSolution)",
             )
           } else {
             val label = "This build uses unrecognized Kotlin version '$compilerVersion'"
@@ -156,7 +156,7 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
                 .documentedAt(compatibilityUrl)
             }
             target.logger.warn(
-              "$label. $details.\n$solution.\nDocs: $compatibilityUrl\n($disableSolution)"
+              "$label. $details.\n$solution.\nDocs: $compatibilityUrl\n($disableSolution)",
             )
           }
         }
@@ -185,7 +185,7 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
     RequiresIdeSupport::class,
   )
   override fun applyToCompilation(
-    kotlinCompilation: KotlinCompilation<*>
+    kotlinCompilation: KotlinCompilation<*>,
   ): Provider<List<SubpluginOption>> {
     val project = kotlinCompilation.target.project
     val extension = project.extensions.getByType(MetroPluginExtension::class.java)
@@ -194,7 +194,7 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
 
     if (project.logVerbosely) {
       project.logger.lifecycle(
-        "Supported platforms for ${kotlinCompilation.platformType} are: ${extension.supportedHintContributionPlatforms.get()}"
+        "Supported platforms for ${kotlinCompilation.platformType} are: ${extension.supportedHintContributionPlatforms.get()}",
       )
     }
 
@@ -203,11 +203,11 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
       if (compilerPluginOrderSupported) {
         // Order before compose-compiler
         task.compilerOptions.freeCompilerArgs.add(
-          "-Xcompiler-plugin-order=${PLUGIN_ID}>androidx.compose.compiler.plugins.kotlin"
+          "-Xcompiler-plugin-order=${PLUGIN_ID}>androidx.compose.compiler.plugins.kotlin",
         )
         // Order Circuit's IR generation before kotlinx-serialization
         task.compilerOptions.freeCompilerArgs.add(
-          "-Xcompiler-plugin-order=${PLUGIN_ID}>org.jetbrains.kotlinx.serialization"
+          "-Xcompiler-plugin-order=${PLUGIN_ID}>org.jetbrains.kotlinx.serialization",
         )
       }
     }
@@ -319,35 +319,35 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
       task.metroCompilerArtifact.set(
         project.providers.systemProperty(COMPILER_VERSION_OVERRIDE).orElse(VERSION).map {
           "dev.zacsweers.metro:compiler:$it"
-        }
+        },
       )
       task.kotlinVersion.set(kotlinVersion.toString())
       task.kotlinCompilerVersion.set(kotlinVersion.toString())
       task.gradleVersion.set(GradleVersion.current().version)
       task.javaVersion.set(JavaVersion.current().toString())
       task.os.set(
-        "${System.getProperty("os.name")} ${System.getProperty("os.version")} (${System.getProperty("os.arch")})"
+        "${System.getProperty("os.name")} ${System.getProperty("os.version")} (${System.getProperty("os.arch")})",
       )
       task.kotlinLanguageVersion.set(
         kotlinCompilation.compileTaskProvider.flatMap { compileTask ->
           compileTask.compilerOptions.languageVersion.map { it.version }
-        }
+        },
       )
       task.kotlinApiVersion.set(
         kotlinCompilation.compileTaskProvider.flatMap { compileTask ->
           compileTask.compilerOptions.apiVersion.map { it.version }
-        }
+        },
       )
       task.freeCompilerArgs.set(
         kotlinCompilation.compileTaskProvider.flatMap { compileTask ->
           compileTask.compilerOptions.freeCompilerArgs
-        }
+        },
       )
       task.metroCompilerOptions.set(metroOptions.map { it.renderForReport() })
       task.outputFile.set(
         project.layout.buildDirectory.file(
-          "reports/metro/env/${kotlinCompilation.target.name}/${kotlinCompilation.name}.txt"
-        )
+          "reports/metro/env/${kotlinCompilation.target.name}/${kotlinCompilation.name}.txt",
+        ),
       )
     }
 
@@ -356,7 +356,7 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
       .also {
         if (project.logVerbosely) {
           project.logger.lifecycle(
-            "Metro compiler plugin options for ${kotlinCompilation.platformType}:\n${it.get().joinToString("\n") { "- " + it.key + ": " + it.value }}"
+            "Metro compiler plugin options for ${kotlinCompilation.platformType}:\n${it.get().joinToString("\n") { "- " + it.key + ": " + it.value }}",
           )
         }
       }
@@ -396,7 +396,7 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
           task.graphJsonFiles.from(
             artifactsTask
               .flatMap { it.reportsDir.dir("graph-metadata") }
-              .map { it.asFileTree.matching { it.include("*.json") } }
+              .map { it.asFileTree.matching { it.include("*.json") } },
           )
         }
       }

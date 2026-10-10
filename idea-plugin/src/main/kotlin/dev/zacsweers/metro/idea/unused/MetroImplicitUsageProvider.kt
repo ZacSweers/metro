@@ -80,7 +80,7 @@ class MetroImplicitUsageProvider : ImplicitUsageProvider {
 }
 
 internal fun PsiElement.isMetroImplicitUsage(
-  allowResolutionOnEdt: Boolean = ApplicationManager.getApplication().isUnitTestMode
+  allowResolutionOnEdt: Boolean = ApplicationManager.getApplication().isUnitTestMode,
 ): Boolean {
   if (!MetroSettings.getInstance(project).state.suppressUnusedWarnings) return false
   val declaration = ownerDeclaration() ?: return false
@@ -160,7 +160,7 @@ internal class MetroImplicitUsageCache(
   private val answersByFile =
     object : LinkedHashMap<VirtualFile, Map<ImplicitUsageDeclaration, Boolean>>(16, 0.75f, true) {
       override fun removeEldestEntry(
-        eldest: MutableMap.MutableEntry<VirtualFile, Map<ImplicitUsageDeclaration, Boolean>>?
+        eldest: MutableMap.MutableEntry<VirtualFile, Map<ImplicitUsageDeclaration, Boolean>>?,
       ): Boolean = size > MAX_CACHED_IMPLICIT_USAGE_FILES
     }
 

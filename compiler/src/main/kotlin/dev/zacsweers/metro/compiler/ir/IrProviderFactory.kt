@@ -129,7 +129,7 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
       get() =
         callableMetadata.newInstanceName
           ?: reportCompilerBug(
-            "No newInstanceName present in CallableMetadata for provider factory for $callableId"
+            "No newInstanceName present in CallableMetadata for provider factory for $callableId",
           )
 
     override val parameters by parametersLazy

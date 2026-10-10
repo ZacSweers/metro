@@ -62,7 +62,7 @@ class TopLevelInjectTest : MetroCompilerTest() {
             @Provides fun message(): String = "Hello!"
           }
           """
-            .trimIndent()
+            .trimIndent(),
         ),
         options =
           metroOptions
@@ -104,7 +104,7 @@ class TopLevelInjectTest : MetroCompilerTest() {
             val message: Message
           }
           """
-            .trimIndent()
+            .trimIndent(),
         ),
         options =
           metroOptions
@@ -143,7 +143,7 @@ class TopLevelInjectTest : MetroCompilerTest() {
             val message: Message
           }
           """
-            .trimIndent()
+            .trimIndent(),
         ),
         options =
           metroOptions
@@ -185,7 +185,7 @@ class TopLevelInjectTest : MetroCompilerTest() {
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: FunctionInjectionOverride.kt:10:5 Injected functions cannot have receiver parameters."
+        "e: FunctionInjectionOverride.kt:10:5 Injected functions cannot have receiver parameters.",
       )
     }
   }
@@ -206,8 +206,8 @@ class TopLevelInjectTest : MetroCompilerTest() {
             val app: App
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
@@ -235,8 +235,8 @@ class TopLevelInjectTest : MetroCompilerTest() {
             val app: App
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
@@ -269,8 +269,8 @@ class TopLevelInjectTest : MetroCompilerTest() {
             }
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     val graph = result.ExampleGraph.generatedImpl().createGraphViaFactory("Hello, world!")
@@ -303,8 +303,8 @@ class TopLevelInjectTest : MetroCompilerTest() {
             }
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     val graph = result.ExampleGraph.generatedImpl().createGraphViaFactory("Hello, world!")
@@ -336,8 +336,8 @@ class TopLevelInjectTest : MetroCompilerTest() {
             }
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
@@ -371,8 +371,8 @@ class TopLevelInjectTest : MetroCompilerTest() {
             }
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
@@ -410,8 +410,8 @@ class TopLevelInjectTest : MetroCompilerTest() {
             }
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
@@ -446,8 +446,8 @@ class TopLevelInjectTest : MetroCompilerTest() {
             }
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
@@ -478,8 +478,8 @@ class TopLevelInjectTest : MetroCompilerTest() {
             }
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
@@ -508,8 +508,8 @@ class TopLevelInjectTest : MetroCompilerTest() {
             @Provides val provideLong: Long get() = 3
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
@@ -541,9 +541,9 @@ class TopLevelInjectTest : MetroCompilerTest() {
                 val app: App
               }
               """
-                .trimIndent()
+                .trimIndent(),
             ),
-          )
+          ),
       )
 
     val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
@@ -592,7 +592,7 @@ class TopLevelInjectTest : MetroCompilerTest() {
                 @Provides fun provideUiComponent(): MyUiComponentClass = object : MyUiComponentClass {}
               }
               """
-                .trimIndent()
+                .trimIndent(),
             ),
           ),
         compilationBlock = { this.kotlincArguments += "-Xcontext-parameters" },
@@ -647,7 +647,7 @@ class TopLevelInjectTest : MetroCompilerTest() {
                 @Provides fun provideScope(): SharedTransitionScope = object : SharedTransitionScope {}
               }
               """
-                .trimIndent()
+                .trimIndent(),
             ),
           ),
         compilationBlock = { this.kotlincArguments += "-Xcontext-parameters" },
@@ -702,7 +702,7 @@ class TopLevelInjectTest : MetroCompilerTest() {
                 @Provides fun provideUiComponent(): MyUiComponentClass = object : MyUiComponentClass {}
               }
               """
-                .trimIndent()
+                .trimIndent(),
             ),
           ),
         compilationBlock = { this.kotlincArguments += "-Xcontext-parameters" },
@@ -751,8 +751,8 @@ class TopLevelInjectTest : MetroCompilerTest() {
             }
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()

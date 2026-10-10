@@ -34,8 +34,8 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
             MetroOptionOverrides(
               // Enable full validation for this case to ensure we pick up and store the unused B
               // binding
-              enableFullBindingGraphValidation = true
-            )
+              enableFullBindingGraphValidation = true,
+            ),
         ) {
         override fun sources() = listOf(appGraph, bindingContainer, implementations, target)
 
@@ -52,7 +52,7 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
               }
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val bindingContainer =
@@ -64,7 +64,7 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
               fun ImplA.bindA(): InterfaceA
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val implementations =
@@ -79,7 +79,7 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
             @Inject
             class ImplB : InterfaceB
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val target =
@@ -88,7 +88,7 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
             @Inject
             class Target(val a: InterfaceA)
             """
-              .trimIndent()
+              .trimIndent(),
           )
       }
 
@@ -141,7 +141,7 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
               }
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val bindingContainer =
@@ -156,7 +156,7 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
               fun ImplB.bindB(): InterfaceB
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val implementations =
@@ -171,7 +171,7 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
             @Inject
             class ImplB : InterfaceB
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val target =
@@ -180,7 +180,7 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
             @Inject
             class Target(val a: InterfaceA, val b: InterfaceB)
             """
-              .trimIndent()
+              .trimIndent(),
           )
       }
 
@@ -218,7 +218,7 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
               InterfaceB is injected at test.Target(…, b)
               Target is requested at test.AppGraph.target
         """
-          .trimIndent()
+          .trimIndent(),
       )
   }
 
@@ -241,7 +241,7 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
               }
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val bindingContainer =
@@ -253,7 +253,7 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
               fun ImplA.bindA(): InterfaceA
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val implementations =
@@ -265,7 +265,7 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
             @Inject
             class ImplA : InterfaceA, InterfaceB
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val target =
@@ -274,7 +274,7 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
             @Inject
             class Target(val a: InterfaceA)
             """
-              .trimIndent()
+              .trimIndent(),
           )
       }
 
@@ -312,7 +312,7 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
               InterfaceA is injected at test.Target(…, a)
               Target is requested at test.AppGraph.target
         """
-          .trimIndent()
+          .trimIndent(),
       )
   }
 
@@ -335,7 +335,7 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
               }
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val bindingContainer =
@@ -347,7 +347,7 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
               fun provideString(): String = "hello"
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val target =
@@ -356,7 +356,7 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
             @Inject
             class Target(val string: String)
             """
-              .trimIndent()
+              .trimIndent(),
           )
       }
 
@@ -402,7 +402,7 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
               val target: Target
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val bindingContainer =
@@ -420,7 +420,7 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
             @Inject
             class ImplA : InterfaceA
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val target =
@@ -429,7 +429,7 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
             @Inject
             class Target(val a: InterfaceA)
             """
-              .trimIndent()
+              .trimIndent(),
           )
       }
 
@@ -480,7 +480,7 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
             @DependencyGraph(Unit::class)
             interface AppGraph
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val featureGraph =
@@ -499,7 +499,7 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
               }
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val bindingContainer =
@@ -517,7 +517,7 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
             @Inject
             class ImplA : InterfaceA, InterfaceB
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val target =
@@ -526,7 +526,7 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
             @Inject
             class Target(val a: InterfaceA)
             """
-              .trimIndent()
+              .trimIndent(),
           )
       }
 
@@ -571,7 +571,7 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
               InterfaceA is injected at test.Target(…, a)
               Target is requested at test.FeatureGraph.target
         """
-          .trimIndent()
+          .trimIndent(),
       )
   }
 
@@ -594,7 +594,7 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
               }
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val bindingContainer =
@@ -616,7 +616,7 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
             @Inject
             class ImplA : InterfaceA
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val target =
@@ -625,7 +625,7 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
             @Inject
             class Target(val string: String, val a: InterfaceA)
             """
-              .trimIndent()
+              .trimIndent(),
           )
       }
 
@@ -671,7 +671,7 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
               String is injected at test.Target(…, string)
               Target is requested at test.AppGraph.target
         """
-          .trimIndent()
+          .trimIndent(),
       )
   }
 
@@ -692,7 +692,7 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
               fun provideString(): String = "default"
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val testBindingContainer =
@@ -704,7 +704,7 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
               fun provideString(): String = "test"
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val target =
@@ -713,7 +713,7 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
             @Inject
             class Target(val string: String)
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val testClass =
@@ -723,7 +723,7 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
               val testGraph = createDynamicGraph<AppGraph>(TestBindingContainer())
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
       }
 
@@ -787,7 +787,7 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
               fun provideString(): String = "default"
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val bindingContainerA =
@@ -799,7 +799,7 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
               fun provideString(): String = "A"
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val bindingContainerB =
@@ -814,7 +814,7 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
               fun provideInt(): Int = 42
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val target =
@@ -823,7 +823,7 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
             @Inject
             class Target(val string: String)
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val testClass =
@@ -833,7 +833,7 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
               val testGraph = createDynamicGraph<AppGraph>(BindingContainerA())
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
       }
 
@@ -884,7 +884,7 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
               @Provides fun provideString(): String
                                              ~~~~~~
       """
-        .trimIndent()
+        .trimIndent(),
     )
   }
 }

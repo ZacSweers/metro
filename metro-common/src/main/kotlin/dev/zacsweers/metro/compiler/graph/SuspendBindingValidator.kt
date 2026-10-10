@@ -484,7 +484,7 @@ public class SuspendBindingValidator<
   }
 
   private fun runtimeRequirement(
-    analysis: SuspendBindingAnalysisResult<TypeKey, ContextualTypeKey>
+    analysis: SuspendBindingAnalysisResult<TypeKey, ContextualTypeKey>,
   ): RuntimeRequirement {
     if (runtimeCoroutinesAlreadyRequired && runtimeCoroutinesAvailable) {
       return RuntimeRequirement(required = true, trigger = null)

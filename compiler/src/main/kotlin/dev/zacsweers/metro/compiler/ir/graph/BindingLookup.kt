@@ -360,7 +360,7 @@ internal class BindingLookup(
         // It's a map
         val keyType = mapKeyType(multibindingKeyData.mapKey)
         originalElementTypeKey.copy(
-          context.irBuiltIns.mapClass.typeWith(keyType, originalElementTypeKey.type)
+          context.irBuiltIns.mapClass.typeWith(keyType, originalElementTypeKey.type),
         )
       }
 
@@ -511,7 +511,7 @@ internal class BindingLookup(
     val wrappedType =
       typeKey.type.optionalType(declaration)
         ?: reportCompilerBug(
-          "Optional type not supported: ${typeKey.type.rawType().classIdOrFail.asSingleFqName()}"
+          "Optional type not supported: ${typeKey.type.rawType().classIdOrFail.asSingleFqName()}",
         )
 
     // Create the context key with hasDefault=true to allow absence
@@ -540,7 +540,7 @@ internal class BindingLookup(
 
   context(context: IrMetroContext)
   private fun IrClass.computeMembersInjectorBindings(
-    remapper: TypeRemapper
+    remapper: TypeRemapper,
   ): LinkedHashSet<IrBinding.MembersInjected> {
     val bindings = LinkedHashSet<IrBinding.MembersInjected>()
 
@@ -576,7 +576,7 @@ internal class BindingLookup(
           bindings += cached
         } else {
           reportCompilerBug(
-            "Found cached binding for $mappedTypeKey but wasn't a member injector! $cached"
+            "Found cached binding for $mappedTypeKey but wasn't a member injector! $cached",
           )
         }
         supertypeInjectorKeys += IrContextualTypeKey(mappedTypeKey)
@@ -776,7 +776,7 @@ internal class BindingLookup(
     }
 
   internal fun createExplicitConstructorInjectedBinding(
-    bindsCallable: BindsCallable
+    bindsCallable: BindsCallable,
   ): IrBinding.ConstructorInjected =
     context(metroContext) {
       val key = bindsCallable.typeKey
@@ -784,7 +784,7 @@ internal class BindingLookup(
       val classFactory =
         findClassFactory(irClass)
           ?: reportCompilerBug(
-            "Parameter-less @Binds target ${key.render(short = false)} was not validated before binding graph generation."
+            "Parameter-less @Binds target ${key.render(short = false)} was not validated before binding graph generation.",
           )
 
       trackFunctionCall(sourceGraph, classFactory.function)
@@ -949,7 +949,7 @@ internal class BindingLookup(
 
         val binding =
           bindingLookupCache.getOrPutConstructorInjected(
-            irClass.takeIf { remapper == NOOP_TYPE_REMAPPER }
+            irClass.takeIf { remapper == NOOP_TYPE_REMAPPER },
           ) {
             IrBinding.ConstructorInjected(
               type = irClass,
@@ -999,7 +999,7 @@ internal class BindingLookup(
         // awaited during member injection).
         val targetBinding =
           bindingLookupCache.getOrPutConstructorInjected(
-            targetClass.takeIf { targetRemapper == NOOP_TYPE_REMAPPER }
+            targetClass.takeIf { targetRemapper == NOOP_TYPE_REMAPPER },
           ) {
             IrBinding.ConstructorInjected(
               type = targetClass,
@@ -1018,7 +1018,7 @@ internal class BindingLookup(
 
         bindings +=
           bindingLookupCache.getOrPutAssistedFactory(
-            irClass.takeIf { remapper == NOOP_TYPE_REMAPPER }
+            irClass.takeIf { remapper == NOOP_TYPE_REMAPPER },
           ) {
             IrBinding.AssistedFactory(
               type = irClass,

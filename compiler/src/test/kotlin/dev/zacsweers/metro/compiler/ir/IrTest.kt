@@ -25,7 +25,7 @@ class IrTest {
     assertThat(
         shouldCheckSignatureCarrierParamMismatches(options, JvmPlatforms.defaultJvmPlatform) {
           true
-        }
+        },
       )
       .isFalse()
     assertThat(
@@ -34,11 +34,11 @@ class IrTest {
           NativePlatforms.unspecifiedNativePlatform,
         ) {
           true
-        }
+        },
       )
       .isFalse()
     assertThat(
-        shouldCheckSignatureCarrierParamMismatches(options, JsPlatforms.defaultJsPlatform) { true }
+        shouldCheckSignatureCarrierParamMismatches(options, JsPlatforms.defaultJsPlatform) { true },
       )
       .isFalse()
     assertThat(shouldCheckSignatureCarrierParamMismatches(options, WasmPlatforms.Default) { true })
@@ -56,7 +56,7 @@ class IrTest {
           NativePlatforms.unspecifiedNativePlatform,
         ) {
           false
-        }
+        },
       )
       .isTrue()
   }
@@ -68,7 +68,7 @@ class IrTest {
     assertThat(
         shouldCheckSignatureCarrierParamMismatches(options, JsPlatforms.defaultJsPlatform) {
           false
-        }
+        },
       )
       .isTrue()
   }
@@ -88,7 +88,7 @@ class IrTest {
     assertThat(
         shouldCheckSignatureCarrierParamMismatches(options, JvmPlatforms.defaultJvmPlatform) {
           true
-        }
+        },
       )
       .isTrue()
   }
@@ -100,7 +100,7 @@ class IrTest {
     assertThat(
         shouldCheckSignatureCarrierParamMismatches(options, JvmPlatforms.defaultJvmPlatform) {
           false
-        }
+        },
       )
       .isFalse()
   }

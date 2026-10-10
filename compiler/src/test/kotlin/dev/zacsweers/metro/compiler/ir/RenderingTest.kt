@@ -106,7 +106,7 @@ class RenderingTest : MetroCompilerTest() {
           test.ExampleGraph
           test.ExampleGraph.Impl
           """
-            .trimIndent()
+            .trimIndent(),
         )
     }
   }

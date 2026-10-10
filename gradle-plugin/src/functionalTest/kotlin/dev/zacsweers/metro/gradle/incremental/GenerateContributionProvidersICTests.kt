@@ -72,7 +72,7 @@ class GenerateContributionProvidersICTests(target: KmpTarget) :
               fun value(): String
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val implSource =
@@ -95,7 +95,7 @@ class GenerateContributionProvidersICTests(target: KmpTarget) :
               val base: Base
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val main =
@@ -106,7 +106,7 @@ class GenerateContributionProvidersICTests(target: KmpTarget) :
               return graph.base.value()
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
       }
 
@@ -194,7 +194,7 @@ class GenerateContributionProvidersICTests(target: KmpTarget) :
             """
             interface Base
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val impl =
@@ -204,7 +204,7 @@ class GenerateContributionProvidersICTests(target: KmpTarget) :
             @Inject
             internal class Impl : Base
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val appGraph =
@@ -215,7 +215,7 @@ class GenerateContributionProvidersICTests(target: KmpTarget) :
               val base: Base
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val main =
@@ -226,7 +226,7 @@ class GenerateContributionProvidersICTests(target: KmpTarget) :
               return graph.base::class.simpleName!!
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
       }
 
@@ -287,7 +287,7 @@ class GenerateContributionProvidersICTests(target: KmpTarget) :
             """
             interface Base
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val impl =
@@ -298,7 +298,7 @@ class GenerateContributionProvidersICTests(target: KmpTarget) :
             @Inject
             class Impl : Base
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val appGraph =
@@ -310,7 +310,7 @@ class GenerateContributionProvidersICTests(target: KmpTarget) :
               val base2: Base
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val main =
@@ -321,7 +321,7 @@ class GenerateContributionProvidersICTests(target: KmpTarget) :
               return if (graph.base1 === graph.base2) "same" else "different"
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
       }
 
@@ -367,7 +367,7 @@ class GenerateContributionProvidersICTests(target: KmpTarget) :
               fun value(): String
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val contributedInterface =
@@ -375,7 +375,7 @@ class GenerateContributionProvidersICTests(target: KmpTarget) :
             """
             interface ContributedInterface
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val moduleInterface =
@@ -385,7 +385,7 @@ class GenerateContributionProvidersICTests(target: KmpTarget) :
               @Provides fun provideTag(): String = "from-module"
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val binding =
@@ -397,7 +397,7 @@ class GenerateContributionProvidersICTests(target: KmpTarget) :
               override fun value(): String = "binding"
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val intoSet =
@@ -407,7 +407,7 @@ class GenerateContributionProvidersICTests(target: KmpTarget) :
             @Inject
             internal class IntoSet : ContributedInterface
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val intoMap =
@@ -418,7 +418,7 @@ class GenerateContributionProvidersICTests(target: KmpTarget) :
             @Inject
             internal class IntoMap : ContributedInterface
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val contributesToModule =
@@ -427,7 +427,7 @@ class GenerateContributionProvidersICTests(target: KmpTarget) :
             @ContributesTo(AppScope::class)
             interface ContributesToModule : ModuleInterface
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val appGraph =
@@ -441,7 +441,7 @@ class GenerateContributionProvidersICTests(target: KmpTarget) :
               val tag: String
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val main =
@@ -457,7 +457,7 @@ class GenerateContributionProvidersICTests(target: KmpTarget) :
               ).joinToString(",")
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
       }
 
@@ -519,7 +519,7 @@ class GenerateContributionProvidersICTests(target: KmpTarget) :
             """
             interface ViewModel<S, E>
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val baseViewModel =
@@ -528,7 +528,7 @@ class GenerateContributionProvidersICTests(target: KmpTarget) :
             @DefaultBinding<ViewModel<*, *>>
             abstract class BaseViewModel<S, E> : ViewModel<S, E>
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         private val mainViewModel =
@@ -538,7 +538,7 @@ class GenerateContributionProvidersICTests(target: KmpTarget) :
             @ContributesIntoSet(AppScope::class)
             class MainViewModel : BaseViewModel<String, Int>()
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val appGraph =
@@ -549,7 +549,7 @@ class GenerateContributionProvidersICTests(target: KmpTarget) :
               val viewModels: Set<ViewModel<*, *>>
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
 
         val main =
@@ -560,7 +560,7 @@ class GenerateContributionProvidersICTests(target: KmpTarget) :
               return graph.viewModels.size
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
       }
 

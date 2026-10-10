@@ -1033,7 +1033,7 @@ private class BetterKotlinLikeDumper(
           declaration.correspondingPropertySymbol != null -> "field "
           declaration.isFinal -> "val "
           else -> "var "
-        }
+        },
       )
       p.printWithNoIndent(declaration.name.asString() + ": ")
       declaration.type.printTypeWithNoIndent()

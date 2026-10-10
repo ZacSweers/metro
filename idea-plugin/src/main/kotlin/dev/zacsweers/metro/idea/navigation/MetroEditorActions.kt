@@ -91,7 +91,7 @@ internal class SelectInMetroAction : AnAction(), DumbAware {
             if (!revealed) {
               JBPopupFactory.getInstance()
                 .createMessage(
-                  "The requested row is unavailable. Refresh Metro graph data and try again."
+                  "The requested row is unavailable. Refresh Metro graph data and try again.",
                 )
                 .showInFocusCenter()
             }

@@ -79,7 +79,7 @@ private class AllowEmptyMultibindingFix(
 
 /** Keeps the edit limited to omitted arguments and a single literal `false` argument. */
 private fun editableAnnotation(
-  pointer: SmartPsiElementPointer<KtAnnotationEntry>
+  pointer: SmartPsiElementPointer<KtAnnotationEntry>,
 ): KtAnnotationEntry? {
   val annotation = pointer.element ?: return null
   // ModCommand requests write access when the user applies the fix.

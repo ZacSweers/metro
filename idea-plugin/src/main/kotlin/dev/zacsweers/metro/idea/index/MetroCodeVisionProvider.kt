@@ -66,7 +66,7 @@ class MetroCodeVisionProvider : DaemonBoundCodeVisionProvider {
           val presentation = bundle.declaration(dcl) ?: return
           collectFor(dcl, presentation, pinService, entries)
         }
-      }
+      },
     )
     return entries
   }

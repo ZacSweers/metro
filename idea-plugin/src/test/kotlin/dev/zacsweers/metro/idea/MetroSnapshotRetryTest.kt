@@ -144,7 +144,7 @@ class MetroSnapshotRetryTest : BasePlatformTestCase() {
         """
       typealias GraphAlias = dev.zacsweers.metro.DependencyGraph
       @GraphAlias interface AppGraph
-      """
+      """,
       )
     // Random cache-consistency checks intentionally recompute values during ordinary cache hits.
     IdempotenceChecker.disableRandomChecksUntil(testRootDisposable)
@@ -680,7 +680,7 @@ class MetroSnapshotRetryTest : BasePlatformTestCase() {
   fun testWriteDuringFinalCaptureKeepsCompletedPreparationStages() {
     val file =
       myFixture.configureMetroFile(
-        "@Inject class Example; @DependencyGraph interface AppGraph { val example: Example }"
+        "@Inject class Example; @DependencyGraph interface AppGraph { val example: Example }",
       )
     val activeCapture = CompletableFuture<Pair<Int, List<IndexBuildProgress>>>()
     val release = CountDownLatch(1)
@@ -772,7 +772,7 @@ class MetroSnapshotRetryTest : BasePlatformTestCase() {
   fun testCompletedClassResolutionIsReusedAfterCancellation() {
     val file =
       myFixture.configureMetroFile(
-        "@Inject class Example; @DependencyGraph interface AppGraph { val example: Example }"
+        "@Inject class Example; @DependencyGraph interface AppGraph { val example: Example }",
       )
     val builder = builder()
     val events = mutableListOf<IndexBuildProgress>()
@@ -818,7 +818,7 @@ class MetroSnapshotRetryTest : BasePlatformTestCase() {
   fun testSourceEditInvalidatesCompletedClassResolution() {
     val file =
       myFixture.configureMetroFile(
-        "@Inject class Example; @DependencyGraph interface AppGraph { val example: Example }"
+        "@Inject class Example; @DependencyGraph interface AppGraph { val example: Example }",
       )
     val builder = builder()
     val first = prepare(builder, file)
@@ -888,7 +888,7 @@ class MetroSnapshotRetryTest : BasePlatformTestCase() {
       "package test; import dev.zacsweers.metro.Inject; @Inject class Example",
     )
     return myFixture.configureMetroFile(
-      "@DependencyGraph interface AppGraph { val example: Example }"
+      "@DependencyGraph interface AppGraph { val example: Example }",
     )
   }
 
@@ -919,7 +919,7 @@ class MetroSnapshotRetryTest : BasePlatformTestCase() {
     publish: (IndexBuildProgress) -> Unit = {},
   ): PreparedResolutionSnapshot {
     return awaitPreparation(
-      startPreparation(builder, file, revision, resolveFromLibraries, publish = publish)
+      startPreparation(builder, file, revision, resolveFromLibraries, publish = publish),
     )
   }
 
@@ -927,7 +927,7 @@ class MetroSnapshotRetryTest : BasePlatformTestCase() {
    * Pumps EDT events while the worker uses the same suspend preparation entry point as the service.
    */
   private fun awaitPreparation(
-    preparation: CompletableFuture<Result<PreparedResolutionSnapshot>>
+    preparation: CompletableFuture<Result<PreparedResolutionSnapshot>>,
   ): PreparedResolutionSnapshot = PlatformTestUtil.waitForFuture(preparation, 30_000).getOrThrow()
 
   private fun startPreparation(
@@ -952,7 +952,7 @@ class MetroSnapshotRetryTest : BasePlatformTestCase() {
                   resolveFromLibraries,
                 ),
                 listOf(module),
-              )
+              ),
             )
           }
         suspend fun prepare(trace: IdeTraceOperation?): PreparedResolutionSnapshot =

@@ -393,7 +393,7 @@ internal class BindingContainerTransformer(
               createContributionProviderFactory(parentClass, generatedClassId, reference)
             } else {
               reportCompilerBug(
-                "No expected factory class generated for ${reference.callableId}. Report this bug with a repro case at https://github.com/zacsweers/metro/issues/new"
+                "No expected factory class generated for ${reference.callableId}. Report this bug with a repro case at https://github.com/zacsweers/metro/issues/new",
               )
             }
           }
@@ -456,7 +456,7 @@ internal class BindingContainerTransformer(
                         this.name = Symbols.Names.instance
                         this.origin = Origins.InstanceParameter
                       },
-                  )
+                  ),
                 )
               }
               addAll(reference.parameters.regularParameters)
@@ -471,8 +471,8 @@ internal class BindingContainerTransformer(
         sourceParameters.copy(
           regularParameters =
             sourceParameters.regularParameters.dedupeParameters(
-              defaultUsesSuspendProvider = defaultUsesSuspendProvider
-            )
+              defaultUsesSuspendProvider = defaultUsesSuspendProvider,
+            ),
         )
       }
 
@@ -552,7 +552,7 @@ internal class BindingContainerTransformer(
                   defaultUsesSuspendProvider = defaultUsesSuspendProvider,
                   typeRemapper = factoryTypeRemapper,
                 ),
-            )
+            ),
           )
         }
     }
@@ -1085,7 +1085,7 @@ internal class BindingContainerTransformer(
                     appendLine("not generate a provider factory for `${decl.name}`.")
                     appendLine()
                     append(
-                      "Run Dagger's compiler for the upstream module, or process that module with Metro instead."
+                      "Run Dagger's compiler for the upstream module, or process that module with Metro instead.",
                     )
                   }
                   reportCompat(
@@ -1339,7 +1339,7 @@ internal class BindingContainerTransformer(
     // TODO the if check here is if/when we move factory gen totally to IR
     if (!factoryClass.hasAnnotation(Symbols.ClassIds.ComptimeOnly)) {
       factoryClass.addAnnotationCompat(
-        buildAnnotation(factoryClass.symbol, metroSymbols.comptimeOnlyAnnotationConstructor)
+        buildAnnotation(factoryClass.symbol, metroSymbols.comptimeOnlyAnnotationConstructor),
       )
     }
   }
@@ -1425,7 +1425,7 @@ internal class BindingContainerTransformer(
                 ?.propertyIfAccessorCompat
                 ?.expectAsOrNull<IrProperty>()
                 ?.name
-                ?.asString() ?: ""
+                ?.asString() ?: "",
             )
           annotation.arguments[2] = irInt(target?.startOffset ?: startOffset)
           annotation.arguments[3] = irInt(target?.endOffset ?: endOffset)
@@ -1542,7 +1542,7 @@ private fun daggerProviderFunctionNameOf(
       declaration.getJvmNameFromAnnotation() ?: declaration.daggerProviderSourceName()
     } else {
       declaration.daggerProviderSourceName()
-    }
+    },
   )
 }
 

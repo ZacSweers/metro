@@ -114,7 +114,9 @@ public interface CompatContext {
           .toList()
 
       val currentVersion =
-        knownVersion ?: factoryDataList.firstOrNull()?.version ?: error("No factories available")
+        knownVersion
+          ?: factoryDataList.firstOrNull()?.version?.let(::applyBuiltInAliases)
+          ?: error("No factories available")
 
       val targetFactory = resolveFactoryForVersion(currentVersion, factoryDataList)
       return targetFactory
@@ -125,8 +127,20 @@ public interface CompatContext {
             Available factories for: ${factories.joinToString(separator = "\n") { it.minVersion }}
             Detected version(s): ${factories.map { it.currentVersion }.distinct().joinToString(separator = "\n")}
           """
-            .trimIndent()
+            .trimIndent(),
         )
+    }
+
+    /**
+     * Applies built-in aliases so detected versions resolve the same way as versions passed in by
+     * the compiler plugin registrar. CLI-only versions keep their original version here.
+     */
+    private fun applyBuiltInAliases(version: KotlinToolingVersion): KotlinToolingVersion {
+      val aliased = CompilerVersionAliases.map(version)
+      if (aliased == null) {
+        return version
+      }
+      return aliased
     }
 
     private fun resolveFactoryForVersion(
@@ -238,7 +252,7 @@ public interface CompatContext {
       public fun loadCompilerVersionString(): String {
         return loadCompilerVersionStringOrNull()
           ?: throw AssertionError(
-            "'$COMPILER_VERSION_FILE' not found in the classpath or was blank"
+            "'$COMPILER_VERSION_FILE' not found in the classpath or was blank",
           )
       }
 
@@ -347,7 +361,7 @@ public interface CompatContext {
 
   /** Copies this status with the requested override flag. */
   @CompatApi(
-    since = "2.5.0-dev-9169",
+    since = "2.5.0-dev-10106",
     reason = CompatApi.Reason.ABI_CHANGE,
     message = "FirDeclarationStatus.copy added isRichError",
   )
@@ -484,7 +498,7 @@ public interface CompatContext {
     message = "Effective diagnostic severity is protected in Kotlin 2.3.0 and 2.3.10",
   )
   public fun AbstractKtDiagnosticFactory.getEffectiveSeverityCompat(
-    languageVersionSettings: LanguageVersionSettings
+    languageVersionSettings: LanguageVersionSettings,
   ): Severity?
 
   @CompatApi(
@@ -548,7 +562,7 @@ public interface CompatContext {
   )
   context(_: CompilerPluginRegistrar)
   public fun CompilerPluginRegistrar.ExtensionStorage.registerFirExtensionCompat(
-    extension: FirExtensionRegistrar
+    extension: FirExtensionRegistrar,
   )
 
   @CompatApi(
@@ -558,7 +572,7 @@ public interface CompatContext {
   )
   context(_: CompilerPluginRegistrar)
   public fun CompilerPluginRegistrar.ExtensionStorage.registerIrExtensionCompat(
-    extension: IrGenerationExtension
+    extension: IrGenerationExtension,
   )
 
   @CompatApi(
@@ -567,7 +581,7 @@ public interface CompatContext {
     message = "2.4 introduced IrAnnotation for IrConstructorCall",
   )
   public fun createIrGeneratedDeclarationsRegistrar(
-    pluginContext: IrPluginContext
+    pluginContext: IrPluginContext,
   ): IrGeneratedDeclarationsRegistrarCompat
 
   @CompatApi(
@@ -674,7 +688,7 @@ public interface CompatContext {
     message = "2.4 changed to use more specific receivers",
   )
   public fun FirAnnotationContainer.getDeprecationsProviderCompat(
-    session: FirSession
+    session: FirSession,
   ): DeprecationsProvider?
 
   @CompatApi(
@@ -756,7 +770,7 @@ public interface CompatContext {
       "createEmptyExternalPackageFragment now takes IrModuleFragment instead of ModuleDescriptor",
   )
   public fun IrModuleFragment.createEmptyExternalPackageFragmentCompat(
-    packageName: String
+    packageName: String,
   ): IrPackageFragment
 
   @CompatApi(

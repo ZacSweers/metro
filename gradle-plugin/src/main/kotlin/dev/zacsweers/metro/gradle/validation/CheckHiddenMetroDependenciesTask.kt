@@ -105,7 +105,7 @@ internal abstract class CheckHiddenMetroDependenciesTask : DefaultTask() {
       throw GradleException(
         "Hidden Metro dependencies are missing from the compile classpath:\n\n" +
           report +
-          "Report: ${output.absolutePath}"
+          "Report: ${output.absolutePath}",
       )
     }
   }

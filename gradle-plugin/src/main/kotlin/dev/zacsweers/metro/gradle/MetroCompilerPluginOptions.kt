@@ -53,9 +53,9 @@ internal fun Project.metroCompilerPluginOptions(
           provider { kotlinCompilation.platformType }
             .zip(extension.supportedHintContributionPlatforms) { platformType, supportedPlatforms ->
               platformType in supportedPlatforms
-            }
+            },
         ),
-      )
+      ),
     )
     val generateContributionHintsInFir = extension.generateContributionHintsInFir.orNull
     if (generateContributionHintsInFir != null) {
@@ -63,7 +63,7 @@ internal fun Project.metroCompilerPluginOptions(
         MetroCompilerPluginOption(
           MetroOption.GENERATE_CONTRIBUTION_HINTS_IN_FIR.raw.name,
           generateContributionHintsInFir.toString(),
-        )
+        ),
       )
     }
     add(metroOption("generate-classes-in-ir", extension.generateClassesInIr))
@@ -71,7 +71,7 @@ internal fun Project.metroCompilerPluginOptions(
       metroOption(
         MetroOption.ENABLE_PRIVATE_PROVIDER_PROPERTIES,
         extension.enablePrivateProviderProperties,
-      )
+      ),
     )
     add(metroOption(MetroOption.STATEMENTS_PER_INIT_FUN, extension.statementsPerInitFun))
     add(metroOption(MetroOption.ENABLE_GRAPH_SHARDING, extension.enableGraphSharding))
@@ -86,31 +86,31 @@ internal fun Project.metroCompilerPluginOptions(
         MetroOption.DIAGNOSTICS_RENDER_MODE.raw.name,
         resolveDiagnosticsRenderMode(extension.diagnosticsRenderMode).get().name,
         isInternal = true,
-      )
+      ),
     )
     add(
       metroOption(
         MetroOption.PUBLIC_SCOPED_PROVIDER_SEVERITY,
         extension.publicScopedProviderSeverity,
-      )
+      ),
     )
     add(
       metroOption(
         MetroOption.NON_PUBLIC_CONTRIBUTION_SEVERITY,
         extension.nonPublicContributionSeverity,
-      )
+      ),
     )
     add(
       metroOption(
         MetroOption.WARN_ON_INJECT_ANNOTATION_PLACEMENT,
         extension.warnOnInjectAnnotationPlacement,
-      )
+      ),
     )
     add(
       metroOption(
         MetroOption.INTEROP_ANNOTATIONS_NAMED_ARG_SEVERITY,
         extension.interopAnnotationsNamedArgSeverity,
-      )
+      ),
     )
     add(
       metroOption(
@@ -122,13 +122,13 @@ internal fun Project.metroCompilerPluginOptions(
           }
           severity
         },
-      )
+      ),
     )
     add(
       metroOption(
         MetroOption.ENABLE_TOP_LEVEL_FUNCTION_INJECTION,
         extension.enableTopLevelFunctionInjection,
-      )
+      ),
     )
     add(metroOption(MetroOption.CONTRIBUTES_AS_INJECT, extension.contributesAsInject))
     add(metroOption(MetroOption.ENABLE_KLIB_PARAMS_CHECK, extension.enableKlibParamsCheck))
@@ -141,7 +141,7 @@ internal fun Project.metroCompilerPluginOptions(
         extension.compilerVersionAliases.map { map ->
           map.entries.joinToString(":") { "${it.key}=${it.value}" }
         },
-      )
+      ),
     )
     add(metroOption(MetroOption.ENABLE_FUNCTION_PROVIDERS, extension.enableFunctionProviders))
     add(metroOption(MetroOption.ENABLE_SUSPEND_PROVIDERS, extension.enableSuspendProviders))
@@ -150,7 +150,7 @@ internal fun Project.metroCompilerPluginOptions(
       metroOption(
         MetroOption.GENERATE_CONTRIBUTION_PROVIDERS,
         extension.generateContributionProviders,
-      )
+      ),
     )
     add(metroOption(MetroOption.ENABLE_CIRCUIT_CODEGEN, extension.enableCircuitCodegen))
     add(metroOption(MetroOption.ENABLE_RUNTIME_TRACING, extension.enableRuntimeTracing))
@@ -158,7 +158,7 @@ internal fun Project.metroCompilerPluginOptions(
       MetroCompilerPluginOption(
         MetroOption.PLUGIN_ORDER_SET.raw.name,
         orderComposePlugin.toString(),
-      )
+      ),
     )
     reportsDir.orNull
       ?.let {
@@ -184,13 +184,13 @@ internal fun Project.metroCompilerPluginOptions(
         MetroCompilerPluginOption(
           MetroOption.ENABLE_DAGGER_RUNTIME_INTEROP.raw.name,
           extension.interop.enableDaggerRuntimeInterop.getOrElse(false).toString(),
-        )
+        ),
       )
       add(
         metroOption(
           MetroOption.ENABLE_KCLASS_TO_CLASS_INTEROP,
           extension.enableKClassToClassMapKeyInterop,
-        )
+        ),
       )
     }
 
@@ -233,27 +233,27 @@ internal fun Project.metroCompilerPluginOptions(
         metroOption(
           MetroOption.INTEROP_INCLUDE_KOTLIN_INJECT_ANNOTATIONS,
           includeKotlinInjectAnnotations,
-        )
+        ),
       )
       add(metroOption(MetroOption.INTEROP_INCLUDE_ANVIL_ANNOTATIONS, includeAnvilAnnotations))
       add(
         metroOption(
           MetroOption.INTEROP_INCLUDE_KOTLIN_INJECT_ANVIL_ANNOTATIONS,
           includeKotlinInjectAnvilAnnotations,
-        )
+        ),
       )
       add(
         MetroCompilerPluginOption(
           MetroOption.ENABLE_DAGGER_ANVIL_INTEROP.raw.name,
           enableDaggerAnvilInterop.getOrElse(false).toString(),
-        )
+        ),
       )
       add(metroOption(MetroOption.INTEROP_INCLUDE_GUICE_ANNOTATIONS, includeGuiceAnnotations))
       add(
         MetroCompilerPluginOption(
           MetroOption.ENABLE_GUICE_RUNTIME_INTEROP.raw.name,
           enableGuiceRuntimeInterop.getOrElse(false).toString(),
-        )
+        ),
       )
       add(metroOption(MetroOption.INTEROP_INCLUDE_HILT_ANNOTATIONS, includeHiltAnnotations))
     }
@@ -274,7 +274,7 @@ internal fun Project.metroCompilerPluginOptions(
  */
 @OptIn(ExperimentalMetroGradleApi::class)
 private fun Project.resolveDiagnosticsRenderMode(
-  requested: Provider<DiagnosticsRenderMode>
+  requested: Provider<DiagnosticsRenderMode>,
 ): Provider<DiagnosticsRenderMode> {
   val noColor = providers.environmentVariable("NO_COLOR")
   val ideaActive = providers.systemProperty("idea.active")

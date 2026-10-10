@@ -112,7 +112,7 @@ fun source(
         appendLine()
         appendLine()
         appendLine(source.trimIndent())
-      }
+      },
     )
     .withSourceSet(sourceSet)
     .withPath(packageName, fileName)
@@ -200,7 +200,7 @@ internal fun File.resolveSafe(relative: String): File {
   return resolve(relative).apply {
     if (!exists()) {
       fail(
-        "Could not find $relative in $dir. Files are:\n${dir.walkTopDown().filter { it.isFile }.joinToString("\n")}"
+        "Could not find $relative in $dir. Files are:\n${dir.walkTopDown().filter { it.isFile }.joinToString("\n")}",
       )
     }
   }

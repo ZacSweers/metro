@@ -532,7 +532,7 @@ internal class ParentContext(
     get() =
       levels.lastOrNull()?.node?.metroGraphOrFail
         ?: reportCompilerBug(
-          "No parent graph on stack - this should only be accessed when processing extensions"
+          "No parent graph on stack - this should only be accessed when processing extensions",
         )
 
   override fun containsScope(scope: IrAnnotation): Boolean = scope in parentScopes

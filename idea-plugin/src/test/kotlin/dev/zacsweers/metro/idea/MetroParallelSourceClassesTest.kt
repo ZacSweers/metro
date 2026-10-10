@@ -59,7 +59,7 @@ class MetroParallelSourceClassesTest : BasePlatformTestCase() {
         val fourth: Holder<Fourth>
         val repeated: Holder<First>
       }
-      """
+      """,
       )
     val sequential = allowAnalysisOnEdt { processor(file).resolveInitial() }
     val progress = ConcurrentLinkedQueue<IndexBuildProgress>()
@@ -68,7 +68,7 @@ class MetroParallelSourceClassesTest : BasePlatformTestCase() {
     assertEquivalent(sequential, parallel)
     val objects = parallel.addedBindings.map { it.typeKey.renderedType }
     assertTrue(
-      objects.containsAll(listOf("test.First", "test.Second", "test.Third", "test.Fourth"))
+      objects.containsAll(listOf("test.First", "test.Second", "test.Third", "test.Fourth")),
     )
     assertEquals(
       parallel.addedBindings.size,
@@ -77,7 +77,7 @@ class MetroParallelSourceClassesTest : BasePlatformTestCase() {
     assertTrue(
       progress.any {
         it.workerFiles.any { file -> file?.name == "test.Holder" && file.path.endsWith(".kt") }
-      }
+      },
     )
     val last = progress.last()
     assertEquals(0, last.activeWorkers)
@@ -93,7 +93,7 @@ class MetroParallelSourceClassesTest : BasePlatformTestCase() {
       @Inject class First(val singleton: Singleton)
       @Inject class Second(val first: First)
       @DependencyGraph interface AppGraph { val second: Second }
-      """
+      """,
       )
     val sequential = allowAnalysisOnEdt { processor(file).resolveInitial() }
     assertEquivalent(sequential, resolve(file, 1))
