@@ -49,6 +49,7 @@ Changelog
 - **[IR/IC]** Fix stale graphs in incremental builds when a replacing binding container's `@ContributesTo` annotation is removed and restored.
 - **[IR/native/circuit]** Fix an `IrLinkageError` in generated `SubCircuit` UI factories on Kotlin/Native with Kotlin `2.5.0-Beta1`.
 - **[compat]** Fix Kotlin `2.5.0-Beta1` selecting a compat implementation built for newer `2.5.0` dev builds. Kotlin Beta and RC releases now map to the dev compat implementation that matches their branch point.
+- **[metrox-android]** Fix `MetroAppComponentFactory` crashing with a `ClassCastException` when Android starts the app with a plain `Application` for a full backup or restore.
 
 ### Changes
 
