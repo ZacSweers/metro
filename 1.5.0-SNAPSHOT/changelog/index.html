@@ -8418,6 +8418,7 @@
 <h2 id="unreleased"><strong>Unreleased</strong><a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
 <h3 id="new">New<a class="headerlink" href="#new" title="Permanent link">&para;</a></h3>
 <ul>
+<li><strong>[FIR]</strong> Add the <code>diagnostic-level</code> compiler option to change the severity of Metro diagnostics reported in FIR. It works like kotlinc&rsquo;s <code>-Xwarning-level</code> but can also lower errors and use IDE-only levels. See <a href="../docs/validation-and-error-reporting/#changing-diagnostic-severity">changing diagnostic severity</a>.</li>
 <li><strong>[FIR/IC]</strong> Add the <code>function-inject-annotations-override</code> compiler option to use dedicated annotations for top-level function injection. See <a href="../docs/injection-types/#custom-function-injection-annotations">custom function injection annotations</a>.</li>
 <li><strong>[Gradle]</strong> Add opt-in checks to find Metro contributions hidden from a graph&rsquo;s compile classpath. Run <code>checkMainMetroHiddenDependencies</code> (i.e., on CI). It writes a report and fails if it finds hidden contributions.</li>
 <li>Supports JVM and Android compilations, including JVM targets in KMP. See <a href="../docs/aggregation/#checking-for-hidden-contributions">checking for hidden contributions</a>.</li>
@@ -8448,7 +8449,7 @@
 <h3 id="changes">Changes<a class="headerlink" href="#changes" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>[compat]</strong> Test against Kotlin <code>2.5.0-dev-10106</code>.</li>
-<li><strong>[FIR/interop]</strong> Change diagnostics reported a <code>@MapKey</code> on a class with no Metro contribution annotation to a <code>MAP_KEY_WITHOUT_CONTRIBUTES_INTO_MAP</code> warning. A <code>@MapKey</code> on a class with a non-map Metro contribution is still an error.</li>
+<li><strong>[FIR/interop]</strong> Report a <code>@MapKey</code> on a class with no Metro contribution annotation as a dedicated <code>MAP_KEY_WITHOUT_CONTRIBUTES_INTO_MAP</code> error. If another tool binds the class into a map, lower it to a warning with the <code>diagnostic-level</code> compiler option.</li>
 <li><strong>[FIR/IR/IC]</strong> Enable <code>omit-redundant-mirrors</code> by default on Kotlin 2.4.0 and newer to omit generated declaration mirrors when compiler metadata and declaration finders provide the same information. It remains disabled by default on older Kotlin versions. Disable it with <code>compilerOptions.disable("omit-redundant-mirrors")</code> in the <code>metro</code> DSL.</li>
 <li><strong>[Gradle]</strong> <code>enableTopLevelFunctionInjection</code> is <strong>disabled by default</strong> for now on <strong>all</strong> Kotlin versions because it makes incremental builds recompile more files. If you use top-level function injection, enable it with <code>enableTopLevelFunctionInjection.set(true)</code> in the <code>metro</code> DSL. See <a href="../docs/performance/#incremental-compilation">incremental compilation perf docs</a>.</li>
 <li>Test Android Studio Rabbit 1 (<code>2026.2.1.8</code>).</li>

@@ -1041,6 +1041,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#changing-diagnostic-severity" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Changing diagnostic severity
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1954,6 +1965,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#changing-diagnostic-severity" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Changing diagnostic severity
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2037,6 +2059,14 @@
 <li><code>AUTO</code> (default) — resolved at configuration time. Non-empty <code>NO_COLOR</code>, <code>--console=plain</code>, and IDE-invoked builds (whose build output windows don&rsquo;t render ANSI) get <code>PLAIN</code>; other builds, including CI builds, get <code>RICH</code>.</li>
 </ul>
 <p>The mode can also be set via the <code>diagnosticsRenderMode</code> Gradle property or the <code>metro.diagnosticsRenderMode</code> system property (which the compiler reads directly and wins over everything). Because rendering is presentation-only, the resolved mode is excluded from compilation task inputs — switching between IDE and CLI never invalidates compilation or splits build caches.</p>
+<h2 id="changing-diagnostic-severity">Changing diagnostic severity<a class="headerlink" href="#changing-diagnostic-severity" title="Permanent link">&para;</a></h2>
+<p>The <code>diagnostic-level</code> compiler option changes the severity of a Metro diagnostic by name. It works like kotlinc&rsquo;s <a href="https://kotlinlang.org/docs/compiler-reference.html#xwarning-level"><code>-Xwarning-level</code></a>, but it can also lower errors to warnings. This is useful when another tool makes a Metro error a false positive in your build.</p>
+<div class="highlight"><pre><span></span><code><span class="n">metro</span><span class="p">.</span><span class="na">compilerOptions</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="n">put</span><span class="p">(</span><span class="s">"diagnostic-level"</span><span class="p">,</span><span class="w"> </span><span class="s">"MAP_KEY_WITHOUT_CONTRIBUTES_INTO_MAP:warning"</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>The available levels are <code>error</code>, <code>warning</code>, <code>disabled</code>, <code>ide-warning</code>, and <code>ide-error</code>. The IDE-only levels report in the IDE and are disabled in CLI builds. Separate multiple entries with commas, like <code>NAME_A:warning,NAME_B:disabled</code>.</p>
+<p>Only diagnostics reported in FIR are supported for now. Metro reports an error if the name is unknown or the diagnostic is reported in IR.</p>
 <p>Note that binding graph resolution currently only happens in the compiler IR backend, but maybe someday we can move this to FIR to get errors in the IDE.</p>
 
 
