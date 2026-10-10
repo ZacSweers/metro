@@ -91,6 +91,7 @@ import org.jetbrains.kotlin.ir.builders.irSetField
 import org.jetbrains.kotlin.ir.builders.irString
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
+import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
@@ -111,8 +112,10 @@ import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.properties
 import org.jetbrains.kotlin.ir.util.statements
+import org.jetbrains.kotlin.load.java.JavaDescriptorVisibilities
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.platform.jvm.isJvm
 
 internal typealias PropertyInitializer =
   IrBuilderWithScope.(thisReceiver: IrValueParameter, key: IrTypeKey) -> IrExpression
@@ -418,7 +421,34 @@ internal class IrGraphGenerator(
       }
       graphMetadataReporter.write(node, bindingGraph, sealResult, codegenStats)
     }
+    if (platform.isJvm()) {
+      graphClass.relaxPrivateFieldsForJvm()
+    }
     return bindingPropertyContext
+  }
+
+  /**
+   * Makes the private fields of this graph and its generated nested classes package-private.
+   *
+   * Shards, switching providers, and child graphs read these fields from other classes. The JVM
+   * backend would otherwise add a synthetic accessor method for every private field read that way.
+   * Other backends keep private fields because they validate Kotlin backing fields as private.
+   */
+  private fun IrClass.relaxPrivateFieldsForJvm() {
+    for (declaration in declarations) {
+      when (declaration) {
+        is IrProperty -> declaration.backingField?.relaxPrivateVisibility()
+        is IrField -> declaration.relaxPrivateVisibility()
+        is IrClass -> declaration.relaxPrivateFieldsForJvm()
+        else -> {}
+      }
+    }
+  }
+
+  private fun IrField.relaxPrivateVisibility() {
+    if (visibility == DescriptorVisibilities.PRIVATE) {
+      visibility = JavaDescriptorVisibilities.PACKAGE_VISIBILITY
+    }
   }
 
   private val suspendFactoryGenerator by lazy {

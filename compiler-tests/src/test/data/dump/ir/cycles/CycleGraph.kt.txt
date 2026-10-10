@@ -411,7 +411,7 @@ interface CycleGraph {
         field = DelegateFactory<Any>()
 
       private class FactoryImpl : ChildCycleGraph.Factory {
-        private /* final field */ val CycleGraphImpl: Impl = CycleGraphImpl
+        package /* final field */ val CycleGraphImpl: Impl = CycleGraphImpl
         constructor(CycleGraphImpl: Impl) /* primary */ {
           super/*Any*/()
           /* <init>() */
