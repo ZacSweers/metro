@@ -1487,6 +1487,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("IncludedGraphWithExtensionsIsStoredOnce.kt")
+    public void testIncludedGraphWithExtensionsIsStoredOnce() {
+      run("IncludedGraphWithExtensionsIsStoredOnce.kt");
+    }
+
+    @Test
     @TestMetadata("IncludedGraphsCanStillUseNonGraphs.kt")
     public void testIncludedGraphsCanStillUseNonGraphs() {
       run("IncludedGraphsCanStillUseNonGraphs.kt");

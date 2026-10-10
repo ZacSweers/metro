@@ -26,6 +26,7 @@ Changelog
 
 ### Fixes
 
+- **[IR]** Fix graphs storing an `@Includes` graph parameter in two fields when the included graph has graph extensions.
 - **[IR]** Fix runtime tracing passing a contextual type that matches the binding's type. It's now `null` as documented.
 - **[FIR]** Reduce redundant lookups when discovering contributed graph extension factories.
 - **[FIR]** Fix accessor override status on Kotlin `2.5.0-dev-10106`.

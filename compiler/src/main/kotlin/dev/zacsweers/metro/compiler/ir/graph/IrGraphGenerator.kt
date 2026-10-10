@@ -838,8 +838,26 @@ internal class IrGraphGenerator(
 
     bindingPropertyContext.put(contextualTypeKey, instanceProperty)
 
+    addCachedInstanceProviderProperty(
+      typeKey,
+      contextualTypeKey,
+      instanceProperty,
+      thisReceiverParameter,
+      cachedProviderContextKeys,
+    )
+  }
+
+  /** Adds a provider property wrapping [instanceProperty] if provider access to it is cached. */
+  private fun IrClass.addCachedInstanceProviderProperty(
+    typeKey: IrTypeKey,
+    contextualTypeKey: IrContextualTypeKey,
+    instanceProperty: IrProperty,
+    thisReceiverParameter: IrValueParameter,
+    cachedProviderContextKeys: Set<IrContextualTypeKey>,
+  ) {
     val providerContextKey = contextualTypeKey.wrapInProvider()
     if (providerContextKey !in cachedProviderContextKeys) return
+    if (providerContextKey in bindingPropertyContext) return
 
     val providerInitializer =
       createIrBuilder(thisReceiverParameter.symbol).run {
@@ -1010,16 +1028,14 @@ internal class IrGraphGenerator(
     }
 
     if (graphDep is GraphNode.Local && graphDep.hasExtensions) {
-      val depMetroGraph = graphDep.sourceGraph.metroGraphOrFail
-      val paramName = depMetroGraph.sourceGraphIfMetroGraph.name
-      addBoundInstanceProperty(
+      // Reuse the instance property above rather than storing the same parameter twice.
+      addCachedInstanceProviderProperty(
         param.typeKey,
-        paramName,
+        IrContextualTypeKey.create(param.typeKey),
+        graphDepProperty,
         thisReceiverParameter,
-        cachedProviderContextKeys = cachedProviderContextKeys,
-      ) { _, _ ->
-        irGet(irParam)
-      }
+        cachedProviderContextKeys,
+      )
     }
   }
 

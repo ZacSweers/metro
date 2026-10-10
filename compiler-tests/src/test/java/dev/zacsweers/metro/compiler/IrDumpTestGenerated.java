@@ -217,6 +217,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("IncludedGraphWithExtensionsIsStoredOnce.kt")
+    public void testIncludedGraphWithExtensionsIsStoredOnce() {
+      run("IncludedGraphWithExtensionsIsStoredOnce.kt");
+    }
+
+    @Test
     @TestMetadata("InitsAreChunked.kt")
     public void testInitsAreChunked() {
       run("InitsAreChunked.kt");
