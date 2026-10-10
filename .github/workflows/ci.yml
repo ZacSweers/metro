@@ -359,12 +359,12 @@ jobs:
           report_paths: '**/build/test-results/**/TEST-*.xml'
           check_name: 'Test Report - js box'
 
-  # Main-only: run each non-JVM target of :gradle-plugin:functionalTest in its own runner.
-  # The incremental tests parallelize across targets and test classes.
-  # The `compatibility` job keeps these parameterized tests JVM-only on PR/branch runs.
+  # Main runs each KMP target in its own runner. Compatibility already covers regular JVM builds.
+  # Separate compilation uses the newest supported Kotlin version and runs on every target.
   kmp-functional:
     if: github.ref == 'refs/heads/main'
-    name: kmp functional / ${{ matrix.target }}
+    needs: generate-matrix
+    name: kmp functional / ${{ matrix.target }} / separate=${{ matrix.separateCompilation }}
     runs-on: ubuntu-latest
     permissions:
       checks: write
@@ -372,6 +372,18 @@ jobs:
       fail-fast: false
       matrix:
         target: [js, wasmJs, linuxX64]
+        separateCompilation: [false]
+        include:
+          - target: jvm
+            separateCompilation: true
+          - target: js
+            separateCompilation: true
+          - target: wasmJs
+            separateCompilation: true
+          - target: linuxX64
+            separateCompilation: true
+    env:
+      TEST_KOTLIN_VERSION: ${{ matrix.separateCompilation && needs.generate-matrix.outputs.latest_kotlin_version || needs.generate-matrix.outputs.default_kotlin_version }}
 
     steps:
       - name: Checkout
@@ -382,17 +394,22 @@ jobs:
         with:
           encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
           cache-read-only: true
-          # These jobs restore the versioned Konan cache written by the default Kotlin core lane.
+          # Restore the Konan cache for the compiler selected by this matrix row.
           konan: true
+          kotlin-compiler-version: ${{ env.TEST_KOTLIN_VERSION }}
 
       - name: ':gradle-plugin:functionalTest'
-        run: ./gradlew :gradle-plugin:functionalTest --continue --quiet -Pmetro.functionalTestKmpTarget=${{ matrix.target }}
+        run: |
+          ./gradlew :gradle-plugin:functionalTest --continue --quiet \
+            "-Pmetro.testCompilerVersion=$TEST_KOTLIN_VERSION" \
+            '-Pmetro.functionalTestKmpTarget=${{ matrix.target }}' \
+            '-Pmetro.functionalTestSeparateCompilation=${{ matrix.separateCompilation }}'
 
       - name: (Fail-only) Upload reports
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: reports-kmp-functional-${{ matrix.target }}
+          name: reports-kmp-functional-${{ matrix.target }}-separate-${{ matrix.separateCompilation }}
           path: |
             **/build/reports/**
 
@@ -401,7 +418,7 @@ jobs:
         if: failure()
         with:
           report_paths: '**/build/test-results/**/TEST-*.xml'
-          check_name: 'Test Report - kmp functional / ${{ matrix.target }}'
+          check_name: 'Test Report - kmp functional / ${{ matrix.target }} / separate=${{ matrix.separateCompilation }}'
 
   samples:
     name: samples
