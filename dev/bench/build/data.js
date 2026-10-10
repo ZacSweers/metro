@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791594154111,
+  "lastUpdate": 1791604283596,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -25368,6 +25368,62 @@ window.BENCHMARK_DATA = {
             "value": 16843.485999999997,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -1.08%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "0fc210a7~1",
+          "message": "[before] Add diagnostic-level compiler option (#2941)",
+          "timestamp": "2026-10-10T02:52:07Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/0fc210a74f2acaf33d712ae2df094fe004ac0ca3"
+        },
+        "date": 1791604283596,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 16923.82,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "0fc210a74f2acaf33d712ae2df094fe004ac0ca3",
+          "message": "[after] Add diagnostic-level compiler option (#2941)",
+          "timestamp": "2026-10-10T02:52:07Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/0fc210a74f2acaf33d712ae2df094fe004ac0ca3"
+        },
+        "date": 1791604283597,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 17058.994,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +0.80%"
           }
         ]
       }
