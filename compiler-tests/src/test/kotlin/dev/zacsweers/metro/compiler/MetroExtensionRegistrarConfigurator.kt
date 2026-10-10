@@ -169,6 +169,9 @@ class MetroExtensionRegistrarConfigurator(
       module.directives.singleOrZeroValue(MetroDirectives.UNUSED_GRAPH_INPUTS_SEVERITY)?.let {
         unusedGraphInputsSeverity = it
       }
+      for (level in module.directives[MetroDirectives.DIAGNOSTIC_LEVEL]) {
+        diagnosticLevels.putAll(level)
+      }
       module.directives.singleOrZeroValue(MetroDirectives.MAX_IR_ERRORS_COUNT)?.let {
         maxIrErrorsCount = it
       }

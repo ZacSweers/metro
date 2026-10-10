@@ -95,6 +95,11 @@ object MetroDirectives : SimpleDirectivesContainer() {
     enumDirective<MetroOptions.DiagnosticSeverity>(
       "Control diagnostic severity reporting of unused graph inputs (factory parameters that are not used by the graph).",
     )
+  val DIAGNOSTIC_LEVEL by
+    valueDirective(
+      "Overrides the severity of a Metro diagnostic, like `DIAGNOSTIC_NAME:warning`. Can be repeated.",
+      parser = ::parseDiagnosticLevel,
+    )
   val CONTRIBUTES_AS_INJECT by
     directive(
       "If enabled, treats `@Contributes*` annotations (except ContributesTo) as implicit `@Inject` annotations.",

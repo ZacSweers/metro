@@ -1016,6 +1016,38 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
   }
 
   @Nested
+  @TestMetadata("compiler-tests/src/test/data/diagnostic/diagnosticLevel")
+  @TestDataPath("$PROJECT_ROOT")
+  public class DiagnosticLevel {
+    private void run(String fileName) {
+      runTest("compiler-tests/src/test/data/diagnostic/diagnosticLevel/" + fileName);
+    }
+
+    @Test
+    public void testAllFilesPresentInDiagnosticLevel() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/diagnosticLevel"), Pattern.compile("^(.+)\\.kt$"), null, true, "_reports");
+    }
+
+    @Test
+    @TestMetadata("IdeOnlyLevelIsDisabledInCli.kt")
+    public void testIdeOnlyLevelIsDisabledInCli() {
+      run("IdeOnlyLevelIsDisabledInCli.kt");
+    }
+
+    @Test
+    @TestMetadata("WarningDisabled.kt")
+    public void testWarningDisabled() {
+      run("WarningDisabled.kt");
+    }
+
+    @Test
+    @TestMetadata("WarningRaisedToError.kt")
+    public void testWarningRaisedToError() {
+      run("WarningRaisedToError.kt");
+    }
+  }
+
+  @Nested
   @TestMetadata("compiler-tests/src/test/data/diagnostic/functioninject")
   @TestDataPath("$PROJECT_ROOT")
   public class Functioninject {
