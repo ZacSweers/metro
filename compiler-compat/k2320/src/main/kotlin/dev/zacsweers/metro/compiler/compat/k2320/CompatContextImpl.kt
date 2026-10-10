@@ -16,6 +16,21 @@ import org.jetbrains.kotlin.diagnostics.AbstractKtDiagnosticFactory
 import org.jetbrains.kotlin.diagnostics.DiagnosticContext
 import org.jetbrains.kotlin.diagnostics.KtDiagnostic
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticWithoutSource
+import org.jetbrains.kotlin.diagnostics.KtLightDiagnosticWithParameters1
+import org.jetbrains.kotlin.diagnostics.KtLightDiagnosticWithParameters2
+import org.jetbrains.kotlin.diagnostics.KtLightDiagnosticWithParameters3
+import org.jetbrains.kotlin.diagnostics.KtLightDiagnosticWithParameters4
+import org.jetbrains.kotlin.diagnostics.KtLightSimpleDiagnostic
+import org.jetbrains.kotlin.diagnostics.KtOffsetsOnlyDiagnosticWithParameters1
+import org.jetbrains.kotlin.diagnostics.KtOffsetsOnlyDiagnosticWithParameters2
+import org.jetbrains.kotlin.diagnostics.KtOffsetsOnlyDiagnosticWithParameters3
+import org.jetbrains.kotlin.diagnostics.KtOffsetsOnlyDiagnosticWithParameters4
+import org.jetbrains.kotlin.diagnostics.KtOffsetsOnlySimpleDiagnostic
+import org.jetbrains.kotlin.diagnostics.KtPsiDiagnosticWithParameters1
+import org.jetbrains.kotlin.diagnostics.KtPsiDiagnosticWithParameters2
+import org.jetbrains.kotlin.diagnostics.KtPsiDiagnosticWithParameters3
+import org.jetbrains.kotlin.diagnostics.KtPsiDiagnosticWithParameters4
+import org.jetbrains.kotlin.diagnostics.KtPsiSimpleDiagnostic
 import org.jetbrains.kotlin.diagnostics.KtSourcelessDiagnosticFactory
 import org.jetbrains.kotlin.diagnostics.Severity
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
@@ -58,6 +73,28 @@ import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 
 public class CompatContextImpl : CompatContext by DelegateType() {
+  override fun KtDiagnostic.withSeverityCompat(severity: Severity): KtDiagnostic {
+    return when (this) {
+      is KtPsiSimpleDiagnostic -> copy(severity = severity)
+      is KtPsiDiagnosticWithParameters1<*> -> copy(severity = severity)
+      is KtPsiDiagnosticWithParameters2<*, *> -> copy(severity = severity)
+      is KtPsiDiagnosticWithParameters3<*, *, *> -> copy(severity = severity)
+      is KtPsiDiagnosticWithParameters4<*, *, *, *> -> copy(severity = severity)
+      is KtLightSimpleDiagnostic -> copy(severity = severity)
+      is KtLightDiagnosticWithParameters1<*> -> copy(severity = severity)
+      is KtLightDiagnosticWithParameters2<*, *> -> copy(severity = severity)
+      is KtLightDiagnosticWithParameters3<*, *, *> -> copy(severity = severity)
+      is KtLightDiagnosticWithParameters4<*, *, *, *> -> copy(severity = severity)
+      is KtOffsetsOnlySimpleDiagnostic -> copy(severity = severity)
+      is KtOffsetsOnlyDiagnosticWithParameters1<*> -> copy(severity = severity)
+      is KtOffsetsOnlyDiagnosticWithParameters2<*, *> -> copy(severity = severity)
+      is KtOffsetsOnlyDiagnosticWithParameters3<*, *, *> -> copy(severity = severity)
+      is KtOffsetsOnlyDiagnosticWithParameters4<*, *, *, *> -> copy(severity = severity)
+      is KtDiagnosticWithoutSource ->
+        KtDiagnosticWithoutSource(message, location, severity, factory, context)
+      else -> this
+    }
+  }
 
   override val supportsAutomaticDeclarationFinderTracking: Boolean = true
 

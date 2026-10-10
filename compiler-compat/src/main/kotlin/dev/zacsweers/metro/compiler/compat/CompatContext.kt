@@ -16,6 +16,7 @@ import org.jetbrains.kotlin.config.LanguageVersionSettings
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibility
 import org.jetbrains.kotlin.diagnostics.AbstractKtDiagnosticFactory
+import org.jetbrains.kotlin.diagnostics.KtDiagnostic
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactory1
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticWithoutSource
 import org.jetbrains.kotlin.diagnostics.KtSourcelessDiagnosticFactory
@@ -531,6 +532,18 @@ public interface CompatContext {
   ) {
     throw NotImplementedError("reportCompat is not implemented on this version of the compiler")
   }
+
+  /** Returns a copy of this diagnostic with the given [severity]. */
+  @CompatApi(
+    since = "2.5.0-dev-6084",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message =
+      """
+        Diagnostic classes were merged into one class per parameter count
+        https://github.com/JetBrains/kotlin/commit/933301c8ce1d
+      """,
+  )
+  public fun KtDiagnostic.withSeverityCompat(severity: Severity): KtDiagnostic
 
   @CompatApi(
     since = "2.4.0",
