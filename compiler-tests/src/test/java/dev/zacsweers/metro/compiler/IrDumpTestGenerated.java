@@ -365,6 +365,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
       }
 
       @Test
+      @TestMetadata("AbsentOptionalProvidersUseInstanceFactory.kt")
+      public void testAbsentOptionalProvidersUseInstanceFactory() {
+        run("AbsentOptionalProvidersUseInstanceFactory.kt");
+      }
+
+      @Test
       public void testAllFilesPresentInInterop() {
         KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/dependencygraph/interop"), Pattern.compile("^(.+)\\.kt$"), null, true);
       }

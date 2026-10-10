@@ -390,7 +390,9 @@ private constructor(
             .toTargetType(
               actual = AccessType.INSTANCE,
               contextualTypeKey = contextualTypeKey,
-              useInstanceFactory = false,
+              // A present value must be computed on each call, so it needs a lambda. An absent one
+              // is a constant that an InstanceFactory can hold.
+              useInstanceFactory = wrappedInstance == null,
               bindingKind = bindingKind,
             )
         }
