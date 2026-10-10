@@ -8428,6 +8428,20 @@
 <h3 id="enhancements">Enhancements<a class="headerlink" href="#enhancements" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>[IR]</strong> Reduce generated code in graph extensions by reusing existing parent multibinding getters when contributions and their resolved dependencies are unchanged.</li>
+<li><strong>[IR]</strong> Graphs without graph extensions no longer generate a private getter for a multibinding that only one site reads. That site builds the collection itself. Graphs with extensions keep these getters so their children can reuse them.</li>
+<li>Multibindings with more than 25 contributions also keep a getter so they don&rsquo;t crowd their reader&rsquo;s method. You can configure that threshold with the new <code>multibinding-getter-threshold</code> compiler option.</li>
+<li><strong>[IR]</strong> When several accessors request the same key and return type, the first accessor holds the binding&rsquo;s code and the others call through to it.</li>
+<li><strong>[IR]</strong> Graphs no longer store themselves in a field. Code that needs the graph reads <code>this</code>, or the graph reference that a shard or switching provider already holds.</li>
+<li><strong>[IR]</strong> Generated code wraps instances in providers with <code>providerOf()</code>. On JVM that&rsquo;s one static call. <code>InstanceFactory.invoke()</code> also loaded its companion and boxed the value class.</li>
+<li><strong>[IR]</strong> Provider lambdas that Metro generates are SAM-converted to <code>Provider</code> directly. The inline <code>provider()</code> function they went through before added a type check and a second wrapper object at every site.</li>
+<li><strong>[IR]</strong> Each switching provider class numbers its bindings from zero. Shards used to switch on graph-wide IDs with gaps between them.</li>
+<li><strong>[IR]</strong> Switching provider branches read the graph reference into a local when more than one branch needs it.</li>
+<li><strong>[IR]</strong> Graph shard constructors read the graph from their constructor parameter. A shard drops its <code>graph</code> field when only its constructor used it.</li>
+<li><strong>[IR]</strong> Instance reads of <code>@Includes</code> graph accessors that return <code>Provider&lt;T&gt;</code> or <code>() -&gt; T</code> call the accessor directly. They used to cache a converted provider in a field or wrap the accessor in a new provider lambda. <code>Lazy</code> accessors still cache their handle, so their value is computed once.</li>
+<li><strong>[IR/JVM]</strong> Fields in generated graphs, shards, and switching providers are now package-private on JVM. This reduces synthetic accessors.</li>
+<li><strong>[IR/JVM]</strong> Generated code calls <code>@JvmStatic</code> functions in objects and companion objects statically on JVM. This keeps companion classes out of the caller&rsquo;s constant pool. At runtime each call still goes through the companion, since the static method forwards to it. In a 500-module benchmark this made the generated graph classes 17% smaller.</li>
+<li><strong>[IR/JS]</strong> On JS, converting a <code>Provider</code> to <code>() -&gt; T</code> or <code>suspend () -&gt; T</code> now calls a small runtime helper. Each site used to generate its own wrapper lambda.</li>
+<li><strong>[IR/interop]</strong> Providers of absent <code>@BindsOptionalOf</code> bindings use an <code>InstanceFactory</code> that holds <code>Optional.empty()</code> instead of generating a local lambda each time.</li>
 </ul>
 <h3 id="fixes">Fixes<a class="headerlink" href="#fixes" title="Permanent link">&para;</a></h3>
 <ul>
@@ -8442,6 +8456,8 @@
 <li><strong>[IR]</strong> Fix declaration parents for copied default argument lambdas and callable references, including references inside generated provider wrappers.</li>
 <li><strong>[IR]</strong> Include extension receivers in generated lambda function types, including set and map builder callbacks.</li>
 <li><strong>[IR]</strong> Fix IR diagnostic reporting on Kotlin <code>2.5.0-dev-10106</code>.</li>
+<li><strong>[IR]</strong> Fix graphs storing an <code>@Includes</code> graph parameter in two fields when the included graph has graph extensions.</li>
+<li><strong>[IR]</strong> Fix runtime tracing passing a contextual type that matches the binding&rsquo;s type. It&rsquo;s now <code>null</code> as documented.</li>
 <li><strong>[IR/IC]</strong> Fix stale graphs in incremental builds when a replacing binding container&rsquo;s <code>@ContributesTo</code> annotation is removed and restored.</li>
 <li><strong>[IR/native/circuit]</strong> Fix an <code>IrLinkageError</code> in generated <code>SubCircuit</code> UI factories on Kotlin/Native with Kotlin <code>2.5.0-Beta1</code>.</li>
 <li><strong>[compat]</strong> Fix Kotlin <code>2.5.0-Beta1</code> selecting a compat implementation built for newer <code>2.5.0</code> dev builds. Kotlin Beta and RC releases now map to the dev compat implementation that matches their branch point.</li>
