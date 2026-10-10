@@ -7,6 +7,7 @@ import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.graph.parentGraphInstanceProperty
 import dev.zacsweers.metro.compiler.ir.graph.sharding.ShardExpressionContext.Companion.SWITCHING_PROVIDER_SHARD_INDEX
 import org.jetbrains.kotlin.ir.declarations.IrProperty
+import org.jetbrains.kotlin.ir.declarations.IrValueDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 
 /**
@@ -72,7 +73,26 @@ internal class ShardExpressionContext(
    * Null for SwitchingProvider in the main graph class or for non-SwitchingProvider contexts.
    */
   val parentShardIndex: Int? = null,
+  /**
+   * A local or parameter that already holds the value of [graphProperty]. When set, generated code
+   * reads it instead of loading the field again, like a shard constructor reading its `graph`
+   * parameter.
+   */
+  val graphValue: IrValueDeclaration? = null,
 ) {
+  /** Returns a copy of this context that reads the graph reference from [graphValue]. */
+  fun withGraphValue(graphValue: IrValueDeclaration): ShardExpressionContext =
+    ShardExpressionContext(
+      graphProperty = graphProperty,
+      shardThisReceiver = shardThisReceiver,
+      currentShardIndex = currentShardIndex,
+      shardFields = shardFields,
+      ancestorGraphProperties = ancestorGraphProperties,
+      shardGraphProperty = shardGraphProperty,
+      parentShardIndex = parentShardIndex,
+      graphValue = graphValue,
+    )
+
   /**
    * Whether this context is for SwitchingProvider. When true, all property access must go through
    * [graphProperty] since the dispatch receiver is the SwitchingProvider, not the graph/shard.

@@ -99,6 +99,7 @@ import org.jetbrains.kotlin.ir.declarations.IrParameterKind
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrTypeParametersContainer
+import org.jetbrains.kotlin.ir.declarations.IrValueDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.declarations.IrVariable
 import org.jetbrains.kotlin.ir.declarations.moduleDescriptor
@@ -112,6 +113,7 @@ import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrFunctionExpression
 import org.jetbrains.kotlin.ir.expressions.IrGetObjectValue
+import org.jetbrains.kotlin.ir.expressions.IrGetValue
 import org.jetbrains.kotlin.ir.expressions.IrMemberAccessExpression
 import org.jetbrains.kotlin.ir.expressions.IrStatementOrigin
 import org.jetbrains.kotlin.ir.expressions.IrTypeOperator
@@ -187,6 +189,8 @@ import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.properties
 import org.jetbrains.kotlin.ir.util.remapTypes
 import org.jetbrains.kotlin.ir.util.superClass
+import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
+import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
 import org.jetbrains.kotlin.library.KOTLIN_JS_STDLIB_NAME
 import org.jetbrains.kotlin.load.java.JavaDescriptorVisibilities
 import org.jetbrains.kotlin.name.CallableId
@@ -3056,3 +3060,36 @@ fun DescriptorVisibility.isVisibleOutside() =
   this != DescriptorVisibilities.PRIVATE &&
     this != DescriptorVisibilities.PRIVATE_TO_THIS &&
     this != DescriptorVisibilities.INVISIBLE_FAKE
+
+/** Counts how many times anything inside this element reads [value]. */
+internal fun IrElement.countValueReads(value: IrValueDeclaration): Int {
+  var count = 0
+  transformChildrenVoid(
+    object : IrElementTransformerVoid() {
+      override fun visitGetValue(expression: IrGetValue): IrExpression {
+        if (expression.symbol == value.symbol) {
+          count++
+        }
+        return super.visitGetValue(expression)
+      }
+    },
+  )
+  return count
+}
+
+/** Replaces every read of [value] inside this element with the result of [replacement]. */
+internal fun IrElement.replaceValueReads(
+  value: IrValueDeclaration,
+  replacement: () -> IrExpression,
+) {
+  transformChildrenVoid(
+    object : IrElementTransformerVoid() {
+      override fun visitGetValue(expression: IrGetValue): IrExpression {
+        if (expression.symbol == value.symbol) {
+          return replacement()
+        }
+        return super.visitGetValue(expression)
+      }
+    },
+  )
+}

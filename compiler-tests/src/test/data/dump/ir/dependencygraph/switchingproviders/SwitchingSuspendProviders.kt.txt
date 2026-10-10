@@ -427,9 +427,10 @@ interface AppGraph {
       private suspend fun invoke2(): T {
         return { // BLOCK
           val tmp0_id: Int = <this>.#id
+          val tmp1_graph: AppGraph.Impl = <this>.#graph
           when {
-            EQEQ(arg0 = tmp0_id, arg1 = 0) -> TransitiveSuspendValue(direct = <this>.#graph.#provideDirectSuspendValueSuspendProvider.invoke()) /*as T */
-            EQEQ(arg0 = tmp0_id, arg1 = 1) -> SharedUnscopedSuspendValue(direct = <this>.#graph.#provideDirectSuspendValueSuspendProvider.invoke()) /*as T */
+            EQEQ(arg0 = tmp0_id, arg1 = 0) -> TransitiveSuspendValue(direct = tmp1_graph.#provideDirectSuspendValueSuspendProvider.invoke()) /*as T */
+            EQEQ(arg0 = tmp0_id, arg1 = 1) -> SharedUnscopedSuspendValue(direct = tmp1_graph.#provideDirectSuspendValueSuspendProvider.invoke()) /*as T */
             else -> throw error(message = "Unexpected SwitchingSuspendProvider id: " + tmp0_id)
           }
         }

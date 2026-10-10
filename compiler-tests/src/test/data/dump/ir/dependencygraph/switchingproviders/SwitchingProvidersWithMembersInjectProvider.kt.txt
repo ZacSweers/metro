@@ -142,10 +142,11 @@ interface AppGraph {
       override fun invoke(): T {
         return { // BLOCK
           val tmp0_id: Int = <this>.#id
+          val tmp1_graph: AppGraph.Impl = <this>.#graph
           when {
-            EQEQ(arg0 = tmp0_id, arg1 = 0) -> ScopedClass(injectable = <this>.#graph.#injectableMembersInjectorProvider.invoke(), injectable2 = <this>.#graph.#injectableMembersInjectorProvider.invoke()) /*as T */
-            EQEQ(arg0 = tmp0_id, arg1 = 1) -> create(string = <this>.#graph.#provideStringProvider) /*as T */
-            EQEQ(arg0 = tmp0_id, arg1 = 2) -> <this>.#graph.provideString() /*as T */
+            EQEQ(arg0 = tmp0_id, arg1 = 0) -> ScopedClass(injectable = tmp1_graph.#injectableMembersInjectorProvider.invoke(), injectable2 = tmp1_graph.#injectableMembersInjectorProvider.invoke()) /*as T */
+            EQEQ(arg0 = tmp0_id, arg1 = 1) -> create(string = tmp1_graph.#provideStringProvider) /*as T */
+            EQEQ(arg0 = tmp0_id, arg1 = 2) -> tmp1_graph.provideString() /*as T */
             else -> throw error(message = "Unexpected SwitchingProvider id: " + tmp0_id)
           }
         }

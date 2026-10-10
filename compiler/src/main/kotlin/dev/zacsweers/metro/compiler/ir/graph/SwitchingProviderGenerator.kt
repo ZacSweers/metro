@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.buildBlockBody
 import dev.zacsweers.metro.compiler.ir.canonicalize
+import dev.zacsweers.metro.compiler.ir.countValueReads
 import dev.zacsweers.metro.compiler.ir.graph.expressions.BindingExpressionGenerator
 import dev.zacsweers.metro.compiler.ir.graph.expressions.GraphExpressionGenerator
 import dev.zacsweers.metro.compiler.ir.graph.sharding.ShardExpressionContext
@@ -17,6 +18,7 @@ import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irGetProperty
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.irTemporaryVariable
+import dev.zacsweers.metro.compiler.ir.replaceValueReads
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.withIrBuilder
@@ -496,6 +498,14 @@ internal class SwitchingProviderGenerator(
           )
         +idLocal
 
+        // Read `this.graph` once for all branches when several of them use it.
+        val graphLocal =
+          irTemporaryVariable(
+            value = irGetProperty(irGet(switchingProviderThisReceiver), graphProperty),
+            nameHint = Symbols.StringNames.GRAPH,
+          )
+        val branchContext = switchingProviderContext.withGraphValue(graphLocal)
+
         val branches = ArrayList<IrBranch>(bindings.size + 1)
 
         branches += bindings.map { switchingBinding ->
@@ -505,7 +515,7 @@ internal class SwitchingProviderGenerator(
               generateBindingExpression(
                 switchingBinding,
                 switchingProviderThisReceiver,
-                switchingProviderContext,
+                branchContext,
               ),
               typeParam.defaultType,
             )
@@ -517,7 +527,18 @@ internal class SwitchingProviderGenerator(
             generateUnexpectedIdExpression(irGet(idLocal)),
           )
 
-        +irWhen(typeParam.defaultType, branches)
+        val switch = irWhen(typeParam.defaultType, branches)
+        when (switch.countValueReads(graphLocal)) {
+          0 -> {}
+          // A local costs more than a single field read.
+          1 -> {
+            switch.replaceValueReads(graphLocal) {
+              irGetProperty(irGet(switchingProviderThisReceiver), graphProperty)
+            }
+          }
+          else -> +graphLocal
+        }
+        +switch
       }
     }
 

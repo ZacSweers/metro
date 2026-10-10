@@ -23,9 +23,10 @@ interface AppGraph {
       override fun invoke(): T {
         return { // BLOCK
           val tmp0_id: Int = <this>.#id
+          val tmp1_graph: AppGraph.Impl = <this>.#graph
           when {
-            EQEQ(arg0 = tmp0_id, arg1 = 0) -> of<Int>(p0 = <this>.#graph.#provideIntProvider.invoke()) /*as T */
-            EQEQ(arg0 = tmp0_id, arg1 = 1) -> <this>.#graph.provideInt() /*as T */
+            EQEQ(arg0 = tmp0_id, arg1 = 0) -> of<Int>(p0 = tmp1_graph.#provideIntProvider.invoke()) /*as T */
+            EQEQ(arg0 = tmp0_id, arg1 = 1) -> tmp1_graph.provideInt() /*as T */
             else -> throw error(message = "Unexpected SwitchingProvider id: " + tmp0_id)
           }
         }
