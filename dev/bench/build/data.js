@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791609338900,
+  "lastUpdate": 1791670209516,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -25480,6 +25480,62 @@ window.BENCHMARK_DATA = {
             "value": 12694.025,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -0.15%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "766baa36~1",
+          "message": "[before] Reuse shared getters in parent graphs (#2945)",
+          "timestamp": "2026-10-10T17:11:40-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/766baa362d27721f0932503838d2a608b1e67f74"
+        },
+        "date": 1791670209516,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 16749.91,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "766baa362d27721f0932503838d2a608b1e67f74",
+          "message": "[after] Reuse shared getters in parent graphs (#2945)",
+          "timestamp": "2026-10-10T17:11:40-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/766baa362d27721f0932503838d2a608b1e67f74"
+        },
+        "date": 1791670209517,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 16693.439,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -0.34%"
           }
         ]
       }
