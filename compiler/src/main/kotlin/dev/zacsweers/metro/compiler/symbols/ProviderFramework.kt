@@ -243,6 +243,15 @@ internal class MetroProviderFramework(
       val valueType =
         (provider.type as? IrSimpleType)?.arguments?.firstOrNull()?.typeOrNull
           ?: targetKey.immediateValueType()
+      // Prefer the runtime helper so each site is a call instead of its own closure.
+      context.metroSymbols.providerAsFunction?.let { helper ->
+        return scope.irInvoke(
+          callee = helper,
+          typeHint = targetKey.toIrType(),
+          typeArgs = listOf(valueType),
+          args = listOf(provider),
+        )
+      }
       with(scope) {
         irBlock(resultType = targetKey.toIrType()) {
           val capturedProvider = createAndAddTemporaryVariable(provider, nameHint = "provider")
@@ -286,6 +295,15 @@ internal class MetroProviderFramework(
       val valueType =
         (provider.type as? IrSimpleType)?.arguments?.firstOrNull()?.typeOrNull
           ?: targetKey.immediateValueType()
+      // Prefer the runtime helper so each site is a call instead of its own closure.
+      context.metroSymbols.suspendProviderAsFunction?.let { helper ->
+        return scope.irInvoke(
+          callee = helper,
+          typeHint = targetKey.toIrType(),
+          typeArgs = listOf(valueType),
+          args = listOf(provider),
+        )
+      }
       with(scope) {
         irBlock(resultType = targetKey.toIrType()) {
           val capturedProvider =

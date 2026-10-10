@@ -752,6 +752,22 @@ internal class Symbols(
     }
   }
 
+  /** `providerAsFunction(provider)`. Only exists in the JS runtime. */
+  val providerAsFunction: IrSimpleFunctionSymbol? by lazy {
+    builtinsFinder
+      .findFunctions(CallableId(FqNames.metroRuntimeInternalPackage, "providerAsFunction".asName()))
+      .firstOrNull()
+  }
+
+  /** `suspendProviderAsFunction(provider)`. Only exists in the JS runtime. */
+  val suspendProviderAsFunction: IrSimpleFunctionSymbol? by lazy {
+    builtinsFinder
+      .findFunctions(
+        CallableId(FqNames.metroRuntimeInternalPackage, "suspendProviderAsFunction".asName()),
+      )
+      .firstOrNull()
+  }
+
   val emptySet by lazy {
     builtinsFinder
       .findFunctions(CallableId(stdlibCollections.packageFqName, "emptySet".asName()))
