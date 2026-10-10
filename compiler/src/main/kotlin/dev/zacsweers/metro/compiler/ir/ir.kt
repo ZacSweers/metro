@@ -114,12 +114,14 @@ import org.jetbrains.kotlin.ir.expressions.IrFunctionExpression
 import org.jetbrains.kotlin.ir.expressions.IrGetObjectValue
 import org.jetbrains.kotlin.ir.expressions.IrMemberAccessExpression
 import org.jetbrains.kotlin.ir.expressions.IrStatementOrigin
+import org.jetbrains.kotlin.ir.expressions.IrTypeOperator
 import org.jetbrains.kotlin.ir.expressions.IrVararg
 import org.jetbrains.kotlin.ir.expressions.impl.IrClassReferenceImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrConstructorCallImplWithShape
 import org.jetbrains.kotlin.ir.expressions.impl.IrFunctionExpressionImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrGetEnumValueImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrInstanceInitializerCallImpl
+import org.jetbrains.kotlin.ir.expressions.impl.IrTypeOperatorCallImpl
 import org.jetbrains.kotlin.ir.overrides.isEffectivelyPrivate
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
@@ -1094,11 +1096,29 @@ private fun IrBuilderWithScope.metroProviderReturning(
     ) {
       +irReturn(value())
     }
-  return irInvoke(
-    callee = context.metroSymbols.metroProviderFunction,
-    typeHint = valueType.wrapInProvider(context.metroSymbols.metroProvider),
-    typeArgs = listOf(valueType),
-    args = listOf(lambda),
+  return irLambdaAsMetroProvider(lambda, valueType)
+}
+
+/**
+ * Converts a lambda that Metro just built into a Metro `Provider<T>`.
+ *
+ * This is a plain SAM conversion. The runtime `provider()` function also checks whether its
+ * argument is already a `Provider`, which a fresh lambda never is. Skipping it avoids inlining that
+ * check and boxing the lambda in a second wrapper object.
+ */
+context(context: IrMetroContext)
+internal fun IrBuilderWithScope.irLambdaAsMetroProvider(
+  lambda: IrExpression,
+  valueType: IrType,
+): IrExpression {
+  val providerType = valueType.wrapInProvider(context.metroSymbols.metroProvider)
+  return IrTypeOperatorCallImpl(
+    startOffset = startOffset,
+    endOffset = endOffset,
+    type = providerType,
+    operator = IrTypeOperator.SAM_CONVERSION,
+    typeOperand = providerType,
+    argument = lambda,
   )
 }
 

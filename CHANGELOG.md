@@ -20,6 +20,7 @@ Changelog
 - **[IR]** Graphs no longer store themselves in a field. Code that needs the graph reads `this`, or the graph reference that a shard or switching provider already holds.
 - **[IR/JVM]** Fields in generated graphs, shards, and switching providers are package-private on JVM. Each private field read from another generated class needed a synthetic accessor method, like a child graph reading its parent's providers.
 - **[IR/JVM]** Generated code calls `@JvmStatic` functions in objects and companion objects statically on JVM. This covers factory `create()` functions and `DoubleCheck.provider()`. It skips loading the companion object and keeps companion classes out of the caller's constant pool. In a 500-module benchmark this made the generated graph classes 17% smaller.
+- **[IR]** Provider lambdas that Metro generates are SAM-converted to `Provider` directly. The inline `provider()` function they went through before added a type check and a second wrapper object at every site.
 - **[IR]** Each switching provider class numbers its bindings from zero. Shards used to switch on graph-wide IDs with gaps between them.
 
 ### Fixes
