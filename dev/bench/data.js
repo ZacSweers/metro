@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791593503532,
+  "lastUpdate": 1791594153491,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -25312,6 +25312,62 @@ window.BENCHMARK_DATA = {
             "value": 0.2121892901791199,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: -1.66%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Ward Bonnefond",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Ward Bonnefond",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "1c8fb885~1",
+          "message": "[before] Add diagnostic warning for MapKey without Contribu",
+          "timestamp": "2026-10-09T20:05:33-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/1c8fb8859bde4d4ca17885ab2ac7406138919658"
+        },
+        "date": 1791594153491,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.22079596343569402,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Ward Bonnefond",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Ward Bonnefond",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "1c8fb8859bde4d4ca17885ab2ac7406138919658",
+          "message": "[after] Add diagnostic warning for MapKey without Contribu",
+          "timestamp": "2026-10-09T20:05:33-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/1c8fb8859bde4d4ca17885ab2ac7406138919658"
+        },
+        "date": 1791594153492,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.21297127533398438,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: -3.54%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }

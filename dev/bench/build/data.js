@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791593503722,
+  "lastUpdate": 1791594154111,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -25312,6 +25312,62 @@ window.BENCHMARK_DATA = {
             "value": 15300.789,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -2.13%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Ward Bonnefond",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Ward Bonnefond",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "1c8fb885~1",
+          "message": "[before] Add diagnostic warning for MapKey without Contribu",
+          "timestamp": "2026-10-09T20:05:33-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/1c8fb8859bde4d4ca17885ab2ac7406138919658"
+        },
+        "date": 1791594154111,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 17027.275,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Ward Bonnefond",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Ward Bonnefond",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "1c8fb8859bde4d4ca17885ab2ac7406138919658",
+          "message": "[after] Add diagnostic warning for MapKey without Contribu",
+          "timestamp": "2026-10-09T20:05:33-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/1c8fb8859bde4d4ca17885ab2ac7406138919658"
+        },
+        "date": 1791594154112,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 16843.485999999997,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -1.08%"
           }
         ]
       }
