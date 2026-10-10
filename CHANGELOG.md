@@ -27,7 +27,7 @@ Changelog
 - **[IR]** Graph shard constructors read the graph from their constructor parameter. A shard drops its `graph` field when only its constructor used it.
 - **[IR]** Instance reads of `@Includes` graph accessors that return `Provider<T>` or `() -> T` call the accessor directly. They used to cache a converted provider in a field or wrap the accessor in a new provider lambda. `Lazy` accessors still cache their handle, so their value is computed once.
 - **[IR/JVM]** Fields in generated graphs, shards, and switching providers are now package-private on JVM. This reduces synthetic accessors.
-- **[IR/JVM]** Generated code calls `@JvmStatic` functions in objects and companion objects statically on JVM. It skips loading the companion object and keeps companion classes out of the caller's constant pool. In a 500-module benchmark this made the generated graph classes 17% smaller.
+- **[IR/JVM]** Generated code calls `@JvmStatic` functions in objects and companion objects statically on JVM. This keeps companion classes out of the caller's constant pool. At runtime each call still goes through the companion, since the static method forwards to it. In a 500-module benchmark this made the generated graph classes 17% smaller.
 - **[IR/JS]** On JS, converting a `Provider` to `() -> T` or `suspend () -> T` now calls a small runtime helper. Each site used to generate its own wrapper lambda.
 - **[IR/interop]** Providers of absent `@BindsOptionalOf` bindings use an `InstanceFactory` that holds `Optional.empty()` instead of generating a local lambda each time.
 
