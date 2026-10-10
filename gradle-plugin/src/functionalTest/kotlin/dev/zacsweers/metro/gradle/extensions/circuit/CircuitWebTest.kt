@@ -43,9 +43,18 @@ class CircuitWebTest(target: KmpTarget, private val generateClassesInIr: Boolean
 
     val composePlugin = Plugin("org.jetbrains.kotlin.plugin.compose", getTestCompilerVersion())
     val circuit = implementation("com.slack.circuit:circuitx-subcircuit:${getTestCircuitVersion()}")
+    val hasSyntheticSourceCacheBug = getTestCompilerVersion() == "2.4.20-dev-6138"
+    val gradleProperties = buildList {
+      add("kotlin.build.report.output=file")
+      if (hasSyntheticSourceCacheBug) {
+        // https://youtrack.jetbrains.com/issue/KT-87217
+        // This compiler build rejects synthetic FIR filenames in its incremental caches.
+        add("kotlin.incremental.js=false")
+        add("kotlin.incremental.js.klib=false")
+      }
+    }
     val fixture =
-      object :
-        MetroProject(additionalGradleProperties = listOf("kotlin.build.report.output=file")) {
+      object : MetroProject(additionalGradleProperties = gradleProperties) {
         val uiFunctions =
           testSource(
             $$"""
@@ -210,7 +219,9 @@ class CircuitWebTest(target: KmpTarget, private val generateClassesInIr: Boolean
     assertThat(secondBuild.task(compileTask)?.outcome).isEqualTo(TaskOutcome.SUCCESS)
     assertThat(secondBuild.task(executableTask)?.outcome).isEqualTo(TaskOutcome.SUCCESS)
     val report = (reportsDir.listFiles().orEmpty().toSet() - previousReports).single()
-    assertThat(compiledSourceNames(report, compileTask)).contains("SubUis.kt")
+    if (!hasSyntheticSourceCacheBug) {
+      assertThat(compiledSourceNames(report, compileTask)).contains("SubUis.kt")
+    }
     if (target == KmpTarget.JS) {
       assertThat(secondBuild.output)
         .contains(
