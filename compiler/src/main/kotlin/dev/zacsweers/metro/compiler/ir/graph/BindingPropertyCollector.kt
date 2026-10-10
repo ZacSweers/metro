@@ -516,7 +516,14 @@ internal class BindingPropertyCollector(
       // may reuse them. A single reader builds the collection inline.
       is Multibinding if binding.sourceBindings.isNotEmpty() -> {
         val isShared = node.factoryRefCount + node.scalarRefCount > 1 && !node.isHostedByAccessor
-        if (isShared || keepMultibindingGetters || graph.hasReservedKey(key)) {
+        // A large collection gets its own getter even with one reader. Inlining it could push a
+        // reader like an init chunk or switching branch past method size limits. A lone accessor
+        // reader already holds the code in its own method.
+        val isLarge = binding.sourceBindings.size > metroContext.options.multibindingGetterThreshold
+        val keepsGetterForSize = isLarge && !node.isHostedByAccessor
+        if (
+          isShared || keepsGetterForSize || keepMultibindingGetters || graph.hasReservedKey(key)
+        ) {
           PropertyKind.GETTER
         } else {
           null

@@ -30,6 +30,10 @@ import org.jetbrains.kotlin.name.StandardClassIds
 // https://github.com/google/dagger/blob/b39cf2d0640e4b24338dd290cb1cb2e923d38cb3/dagger-compiler/main/java/dagger/internal/codegen/writing/ComponentImplementation.java#L263
 public const val DEFAULT_STATEMENTS_PER_INIT_FUN: Int = 25
 
+// Matches the default statements per init function, which is about the size where inlining a
+// builder starts to crowd its reader's method.
+public const val DEFAULT_MULTIBINDING_GETTER_THRESHOLD: Int = 25
+
 // Default is lower than Dagger's 3500 to be more aggressive with sharding since Kotlin classes
 // reach JVM limits earlier than Java ones.
 // https://github.com/google/dagger/blob/master/dagger-compiler/main/java/dagger/internal/codegen/compileroption/CompilerOptions.java#L142
@@ -336,6 +340,20 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
           " interfaces of at most this size, which is useful for graphs whose merged supertype list" +
           " exceeds the JVM's 65k class-signature byte limit. Default 0 disables chunking. Values < 2" +
           " are treated as disabled.",
+      required = false,
+      allowMultipleOccurrences = false,
+      valueMapper = { it.toInt() },
+    ),
+  ),
+  MULTIBINDING_GETTER_THRESHOLD(
+    RawMetroOption(
+      name = "multibinding-getter-threshold",
+      defaultValue = DEFAULT_MULTIBINDING_GETTER_THRESHOLD,
+      valueDescription = "<count>",
+      description =
+        "Multibindings with more contributions than this get their own private getter even when" +
+          " only one site reads them. Smaller ones are built inline at their single reader." +
+          " Default is $DEFAULT_MULTIBINDING_GETTER_THRESHOLD.",
       required = false,
       allowMultipleOccurrences = false,
       valueMapper = { it.toInt() },
@@ -1172,6 +1190,8 @@ public class MetroOptions(
   public val keysPerGraphShard: Int = MetroOption.KEYS_PER_GRAPH_SHARD.raw.defaultValue.expectAs(),
   public val mergedSupertypeChunkSize: Int =
     MetroOption.MERGED_SUPERTYPE_CHUNK_SIZE.raw.defaultValue.expectAs(),
+  public val multibindingGetterThreshold: Int =
+    MetroOption.MULTIBINDING_GETTER_THRESHOLD.raw.defaultValue.expectAs(),
   public val enableSwitchingProviders: Boolean =
     MetroOption.ENABLE_SWITCHING_PROVIDERS.raw.defaultValue.expectAs(),
   public val publicScopedProviderSeverity: DiagnosticSeverity =
@@ -1590,6 +1610,7 @@ public class MetroOptions(
     public var enableGraphSharding: Boolean = base.enableGraphSharding
     public var keysPerGraphShard: Int = base.keysPerGraphShard
     public var mergedSupertypeChunkSize: Int = base.mergedSupertypeChunkSize
+    public var multibindingGetterThreshold: Int = base.multibindingGetterThreshold
     public var enableSwitchingProviders: Boolean = base.enableSwitchingProviders
     public var publicScopedProviderSeverity: DiagnosticSeverity = base.publicScopedProviderSeverity
     public var nonPublicContributionSeverity: DiagnosticSeverity =
@@ -1938,6 +1959,7 @@ public class MetroOptions(
         MetroOption.ENABLE_GRAPH_SHARDING -> enableGraphSharding = value.expectAs()
         MetroOption.KEYS_PER_GRAPH_SHARD -> keysPerGraphShard = value.expectAs()
         MetroOption.MERGED_SUPERTYPE_CHUNK_SIZE -> mergedSupertypeChunkSize = value.expectAs()
+        MetroOption.MULTIBINDING_GETTER_THRESHOLD -> multibindingGetterThreshold = value.expectAs()
         MetroOption.ENABLE_SWITCHING_PROVIDERS -> enableSwitchingProviders = value.expectAs()
         MetroOption.PUBLIC_SCOPED_PROVIDER_SEVERITY ->
           publicScopedProviderSeverity = value.diagnosticSeverity()
@@ -2076,6 +2098,7 @@ public class MetroOptions(
         enableGraphSharding = enableGraphSharding,
         keysPerGraphShard = keysPerGraphShard,
         mergedSupertypeChunkSize = mergedSupertypeChunkSize,
+        multibindingGetterThreshold = multibindingGetterThreshold,
         enableSwitchingProviders = enableSwitchingProviders,
         publicScopedProviderSeverity = publicScopedProviderSeverity,
         nonPublicContributionSeverity = nonPublicContributionSeverity,

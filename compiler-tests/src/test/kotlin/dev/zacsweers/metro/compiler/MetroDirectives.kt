@@ -59,6 +59,12 @@ object MetroDirectives : SimpleDirectivesContainer() {
     ) {
       it.toInt()
     }
+  val MULTIBINDING_GETTER_THRESHOLD by
+    valueDirective(
+      "Multibindings with more contributions than this keep their own getter even with one reader.",
+    ) {
+      it.toInt()
+    }
   val ENABLE_SWITCHING_PROVIDERS by
     valueDirective("Enable SwitchingProviders for deferred class loading.") { it.toBoolean() }
   val ENABLE_FULL_BINDING_GRAPH_VALIDATION by

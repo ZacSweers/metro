@@ -121,6 +121,9 @@ class MetroExtensionRegistrarConfigurator(
       module.directives.singleOrZeroValue(MetroDirectives.MERGED_SUPERTYPE_CHUNK_SIZE)?.let {
         mergedSupertypeChunkSize = it
       }
+      module.directives.singleOrZeroValue(MetroDirectives.MULTIBINDING_GETTER_THRESHOLD)?.let {
+        multibindingGetterThreshold = it
+      }
       enableSwitchingProviders =
         // Weird but necessary because we may set a default in default configurations that we
         // override in the test, so just take the last one from the file

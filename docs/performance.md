@@ -317,6 +317,18 @@ metro {
 
 Default `0` disables chunking. Each chunk holds up to N contributions plus their promoted parent interfaces, so the chunk count tracks the contribution count rather than the raw supertype count. Most useful paired with `@MergeContributionsInIr` for the largest graphs.
 
+### `multibinding-getter-threshold`
+
+A multibinding that only one site reads is normally built inline at that site. Multibindings with more contributions than this threshold get their own private getter anyway. This keeps a large collection builder from crowding the method that reads it, like a graph init function or a switching provider branch. A multibinding that only an accessor reads stays in that accessor either way.
+
+```kotlin
+metro {
+  compilerOptions.put("multibinding-getter-threshold", "50")
+}
+```
+
+Default is `25`.
+
 ### Shortening generated member names
 
 For very large graphs, the descriptive declaration names Metro generates on can contribute a measurable amount of bytecode/string-table size. The `member-naming-strategy` compiler option swaps them for a smaller vocabulary.

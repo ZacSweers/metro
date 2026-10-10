@@ -630,6 +630,7 @@ Use ordinary box tests for small generated shapes and IR dump tests when generat
 | `keys-per-graph-shard`            | `2000`        | Sets the target number of bindings per shard        |
 | `enable-switching-providers`      | `false`       | Keeps ordinary binding-specific provider generation |
 | `merged-supertype-chunk-size`     | `0`           | Leaves contribution supertypes unchunked            |
+| `multibinding-getter-threshold`   | `25`          | Gives larger single-reader multibindings a getter   |
 | `generate-static-annotations`     | `true`        | Adds platform static factory entry points           |
 | `enable-provider-inlining`        | `true`        | Inlines eligible constant providers                 |
 | `generate-contribution-providers` | `false`       | Keeps the default contribution representation       |

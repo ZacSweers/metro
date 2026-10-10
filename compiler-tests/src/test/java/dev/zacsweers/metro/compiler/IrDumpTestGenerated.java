@@ -647,6 +647,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("LargeMultibindingsKeepGetters.kt")
+    public void testLargeMultibindingsKeepGetters() {
+      run("LargeMultibindingsKeepGetters.kt");
+    }
+
+    @Test
     @TestMetadata("MapProvidersParticipateInProviderRefcounting.kt")
     public void testMapProvidersParticipateInProviderRefcounting() {
       run("MapProvidersParticipateInProviderRefcounting.kt");

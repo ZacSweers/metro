@@ -16,7 +16,7 @@ Changelog
 ### Enhancements
 
 - **[IR]** Reduce generated code in graph extensions by reusing existing parent multibinding getters when contributions and their resolved dependencies are unchanged.
-- **[IR]** Graphs without graph extensions no longer generate a private getter for a multibinding that only one site reads. That site builds the collection itself. Graphs with extensions keep these getters so their children can reuse them.
+- **[IR]** Graphs without graph extensions no longer generate a private getter for a multibinding that only one site reads. That site builds the collection itself. Graphs with extensions keep these getters so their children can reuse them. Multibindings with more than 25 contributions also keep a getter so they don't crowd their reader's method. Configure that threshold with the new `multibinding-getter-threshold` compiler option.
 - **[IR]** When several accessors request the same key and return type, the first accessor holds the binding's code and the others call it. These bindings no longer need a separate private getter. With runtime tracing enabled, the accessors call a shared private getter so each one reports only its own entry point.
 - **[IR]** Graphs no longer store themselves in a field. Code that needs the graph reads `this`, or the graph reference that a shard or switching provider already holds.
 - **[IR/JVM]** Fields in generated graphs, shards, and switching providers are package-private on JVM. Each private field read from another generated class needed a synthetic accessor method, like a child graph reading its parent's providers.
