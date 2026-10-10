@@ -147,7 +147,7 @@
     "shards": 0,
     "optimizations": {
       "bindingsPrunedByShrinking": 0,
-      "classConstructorDirectInvocations": 6,
+      "classConstructorDirectInvocations": 2,
       "classConstructorNewInstanceCalls": 0,
       "providerDirectInvocations": 0,
       "providerNewInstanceCalls": 0,

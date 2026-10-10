@@ -22,7 +22,7 @@ interface AppGraph {
 
     override val int2: Function0<Int>
       override get(): Function0<Int> {
-        return <this>.#provideIntProvider
+        return <this>.<get-int1>()
       }
 
     override val long1: Lazy<Long>
@@ -32,7 +32,7 @@ interface AppGraph {
 
     override val long2: Lazy<Long>
       override get(): Lazy<Long> {
-        return lazy<Provider<Long>, Long>(provider = <this>.#provideLongProvider)
+        return <this>.<get-long1>()
       }
 
   }

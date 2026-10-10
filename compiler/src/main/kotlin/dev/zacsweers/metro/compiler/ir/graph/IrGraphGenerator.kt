@@ -1148,6 +1148,7 @@ internal class IrGraphGenerator(
           reachableKeys = sealResult.reachableKeys,
           reuseMultibinding = { bindingPropertyContext.reusableMultibinding(it) != null },
           keepMultibindingGetters = node.hasExtensions,
+          accessorsCanShareCode = !runtimeTracingAvailability.isAvailable(),
         )
         .collect()
     }
@@ -2031,6 +2032,13 @@ internal class IrGraphGenerator(
   private fun GraphNode.Local.implementOverrides(
     expressionGeneratorFactory: GraphExpressionGenerator.Factory,
   ) {
+    // When several accessors request the same key and return type, later ones call the first. That
+    // keeps the binding's code in one place without a separate private getter. Traced graphs skip
+    // this so each accessor still reports its own entry point. The return type matters because
+    // interop accessors with the same key can convert the value differently.
+    val canShareAccessors = graphClass.runtimeTraceContextProperty == null
+    val firstAccessors = mutableMapOf<Pair<IrContextualTypeKey, IrType>, IrSimpleFunction>()
+
     // Implement abstract getters for accessors
     for ((contextualTypeKey, function, isOptionalDep) in accessors) {
       val binding = bindingGraph.findBinding(contextualTypeKey.typeKey)
@@ -2049,6 +2057,22 @@ internal class IrGraphGenerator(
         if (declarationToFinalize.isFakeOverride) {
           declarationToFinalize.finalizeFakeOverride(graphClass.thisReceiverOrFail)
         }
+        val accessorKey = contextualTypeKey to irFunction.returnType
+        val firstAccessor = firstAccessors[accessorKey]
+        if (canShareAccessors && firstAccessor != null) {
+          body =
+            withIrBuilder(symbol) {
+              irExprBodySafe(
+                irInvoke(
+                  dispatchReceiver = irGet(irFunction.dispatchReceiverParameter!!),
+                  callee = firstAccessor.symbol,
+                  typeHint = irFunction.returnType,
+                ),
+              )
+            }
+          return@apply
+        }
+        firstAccessors[accessorKey] = irFunction
         body =
           withIrBuilder(symbol) {
             irExprBodySafe(

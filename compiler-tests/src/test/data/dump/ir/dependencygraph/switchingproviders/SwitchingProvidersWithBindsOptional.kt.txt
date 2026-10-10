@@ -47,7 +47,7 @@ interface AppGraph {
 
     override val int2: Function0<Optional<Int>>
       override get(): Function0<Optional<Int>> {
-        return <this>.#optionalIntProvider
+        return <this>.<get-int>()
       }
 
   }

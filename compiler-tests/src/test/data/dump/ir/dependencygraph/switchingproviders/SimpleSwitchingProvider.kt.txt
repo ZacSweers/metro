@@ -98,7 +98,7 @@ interface AppGraph {
 
     override val int2: Function0<Int>
       override get(): Function0<Int> {
-        return <this>.#provideReusedIntProvider
+        return <this>.<get-int1>()
       }
 
     override val scopedClass: ScopedClass

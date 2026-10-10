@@ -25,12 +25,12 @@ interface AppGraph {
 
     override val b: String
       override get(): String {
-        return <this>.provideA()
+        return <this>.<get-a>()
       }
 
     override val c: String
       override get(): String {
-        return <this>.provideA()
+        return <this>.<get-a>()
       }
 
   }

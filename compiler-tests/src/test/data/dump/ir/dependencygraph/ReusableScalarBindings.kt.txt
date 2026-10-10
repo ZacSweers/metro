@@ -126,17 +126,12 @@ interface AppGraph {
 
     override val reused: Reused
       override get(): Reused {
-        return <this>.<get-reused3>()
+        return Reused(nonReused = NonReused())
       }
 
     override val reused2: Reused
       override get(): Reused {
-        return <this>.<get-reused3>()
-      }
-
-    private val reused3: Reused
-      private get(): Reused {
-        return Reused(nonReused = NonReused())
+        return <this>.<get-reused>()
       }
 
   }

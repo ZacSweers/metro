@@ -24,7 +24,7 @@ interface AppGraph {
 
     override val scalarString2: String
       override get(): String {
-        return <this>.#provideStringProvider.invoke()
+        return <this>.<get-scalarString>()
       }
 
   }

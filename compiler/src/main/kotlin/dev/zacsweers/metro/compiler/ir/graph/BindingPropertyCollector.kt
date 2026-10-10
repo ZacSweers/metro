@@ -47,6 +47,8 @@ internal class BindingPropertyCollector(
    * their children can reuse those getters.
    */
   private val keepMultibindingGetters: Boolean = false,
+  /** Whether accessors for the same key can call each other. Runtime tracing turns this off. */
+  private val accessorsCanShareCode: Boolean = true,
 ) {
 
   data class CollectedProperty(
@@ -81,11 +83,21 @@ internal class BindingPropertyCollector(
    * [scalarRefCount] works the same, just for scalar references. These bindings would then need a
    * property getter for sharing.
    */
-  private data class Node(
+  private inner class Node(
     val binding: IrBinding,
     var factoryRefCount: Int = 0,
     var scalarRefCount: Int = 0,
-  )
+    /** The part of [scalarRefCount] that comes from graph accessors. */
+    var accessorScalarRefCount: Int = 0,
+  ) {
+    /**
+     * True when only graph accessors read this binding and they can share code. The first of those
+     * accessors holds the binding's code and the others call it, so no shared getter is needed.
+     */
+    val isHostedByAccessor: Boolean
+      get() =
+        accessorsCanShareCode && factoryRefCount == 0 && scalarRefCount == accessorScalarRefCount
+  }
 
   /**
    * Nodes tracked by canonical contextual type key. For regular bindings, this is effectively the
@@ -193,7 +205,14 @@ internal class BindingPropertyCollector(
     // Roots (accessors/injectors) + keeps don't get properties themselves, but they contribute to
     // factory refcounts when they require provider instances so we mark them here.
     // This includes both direct Provider/Lazy wrapping and map types with Provider values.
-    for (contextKey in (roots + extraKeeps)) {
+    for (contextKey in roots) {
+      markAccess(
+        contextKey,
+        isFactory = contextKey.requiresProviderInstance,
+        isAccessor = contextKey !in injectorRoots,
+      )
+    }
+    for (contextKey in extraKeeps) {
       markAccess(contextKey, isFactory = contextKey.requiresProviderInstance)
     }
 
@@ -405,7 +424,11 @@ internal class BindingPropertyCollector(
             propertyContextKey,
             switchingId = switchingId,
           )
-      } else if (effectiveScalarRefCount > 1 && !node.binding.isSimpleBinding()) {
+      } else if (
+        effectiveScalarRefCount > 1 &&
+          !node.binding.isSimpleBinding() &&
+          !(node.isHostedByAccessor && !isGraphExtension && !graph.hasReservedKey(binding.typeKey))
+      ) {
         if (binding.isSuspendInGraph) {
           // A GETTER property is a non-suspend function and can't await suspend resolutions.
           // Shared suspend bindings get a SuspendProvider<T> FIELD instead; each consumer awaits
@@ -492,7 +515,7 @@ internal class BindingPropertyCollector(
       // Non-empty multibindings get a getter when more than one site reads them or a child graph
       // may reuse them. A single reader builds the collection inline.
       is Multibinding if binding.sourceBindings.isNotEmpty() -> {
-        val isShared = node.factoryRefCount + node.scalarRefCount > 1
+        val isShared = node.factoryRefCount + node.scalarRefCount > 1 && !node.isHostedByAccessor
         if (isShared || keepMultibindingGetters || graph.hasReservedKey(key)) {
           PropertyKind.GETTER
         } else {
@@ -520,7 +543,11 @@ internal class BindingPropertyCollector(
    * Marks an access to a binding, tracking refcounts by canonical contextual type key. For map
    * multibindings, also records the contextual variant for later processing.
    */
-  private fun markAccess(contextualTypeKey: IrContextualTypeKey, isFactory: Boolean) {
+  private fun markAccess(
+    contextualTypeKey: IrContextualTypeKey,
+    isFactory: Boolean,
+    isAccessor: Boolean = false,
+  ) {
     val binding = graph.requireBinding(contextualTypeKey)
 
     // For aliases, resolve to the final target and mark that instead.
@@ -572,7 +599,12 @@ internal class BindingPropertyCollector(
             scalarRefCount++
           }
           isFactory -> factoryRefCount++
-          else -> scalarRefCount++
+          else -> {
+            scalarRefCount++
+            if (isAccessor) {
+              accessorScalarRefCount++
+            }
+          }
         }
       }
   }
