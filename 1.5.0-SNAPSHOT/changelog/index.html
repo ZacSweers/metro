@@ -8427,9 +8427,11 @@
 </ul>
 <h3 id="enhancements">Enhancements<a class="headerlink" href="#enhancements" title="Permanent link">&para;</a></h3>
 <ul>
-<li><strong>[IR]</strong> Reduce generated code in graph extensions by reusing existing parent multibinding getters when contributions and their resolved dependencies are unchanged.</li>
-<li><strong>[IR]</strong> Graphs without graph extensions no longer generate a private getter for a multibinding that only one site reads. That site builds the collection itself. Graphs with extensions keep these getters so their children can reuse them.</li>
+<li><strong>[IR]</strong> Reduce generated code in graph extensions by reusing existing parent bindings when their contributions and resolved dependencies are unchanged.</li>
+<li><strong>[IR]</strong> Graphs no longer generate a private getter for a multibinding that only one site reads. That site builds the collection itself.</li>
+<li>Reads from graph extensions that reuse the multibinding count too.</li>
 <li>Multibindings with more than 25 contributions also keep a getter so they don&rsquo;t crowd their reader&rsquo;s method. You can configure that threshold with the new <code>multibinding-getter-threshold</code> compiler option.</li>
+<li><strong>[IR]</strong> When several graph extensions build the same binding as their parent, like an unscoped class or a multibinding the parent never reads, the parent now builds it once in a shared getter and the extensions call it. Extensions at different depths share it through their nearest common ancestor.</li>
 <li><strong>[IR]</strong> When several accessors request the same key and return type, the first accessor holds the binding&rsquo;s code and the others call through to it.</li>
 <li><strong>[IR]</strong> Graphs no longer store themselves in a field. Code that needs the graph reads <code>this</code>, or the graph reference that a shard or switching provider already holds.</li>
 <li><strong>[IR]</strong> Generated code wraps instances in providers with <code>providerOf()</code>. On JVM that&rsquo;s one static call. <code>InstanceFactory.invoke()</code> also loaded its companion and boxed the value class.</li>
@@ -8461,6 +8463,7 @@
 <li><strong>[IR/IC]</strong> Fix stale graphs in incremental builds when a replacing binding container&rsquo;s <code>@ContributesTo</code> annotation is removed and restored.</li>
 <li><strong>[IR/native/circuit]</strong> Fix an <code>IrLinkageError</code> in generated <code>SubCircuit</code> UI factories on Kotlin/Native with Kotlin <code>2.5.0-Beta1</code>.</li>
 <li><strong>[compat]</strong> Fix Kotlin <code>2.5.0-Beta1</code> selecting a compat implementation built for newer <code>2.5.0</code> dev builds. Kotlin Beta and RC releases now map to the dev compat implementation that matches their branch point.</li>
+<li><strong>[metrox-android]</strong> Fix <code>MetroAppComponentFactory</code> crashing with a <code>ClassCastException</code> when Android starts the app with a plain <code>Application</code> for a full backup or restore.</li>
 </ul>
 <h3 id="changes">Changes<a class="headerlink" href="#changes" title="Permanent link">&para;</a></h3>
 <ul>
@@ -8475,6 +8478,7 @@
 <p>Special thanks to the following contributors for contributing to this release!</p>
 <ul>
 <li><a href="https://github.com/agrosner">@agrosner</a></li>
+<li><a href="https://github.com/barq-al-layl">@barq-al-layl</a></li>
 <li><a href="https://github.com/joshfriend">@joshfriend</a></li>
 <li><a href="https://github.com/kevinguitar">@kevinguitar</a></li>
 <li><a href="https://github.com/wbonnefond">@wbonnefond</a></li>
