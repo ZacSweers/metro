@@ -122,7 +122,7 @@
     "reachableKeys": 7,
     "deferredKeys": 0,
     "unusedInputs": 0,
-    "providerProperties": 0,
+    "providerProperties": 1,
     "scopedProviderProperties": 0,
     "shards": 0,
     "optimizations": {

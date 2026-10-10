@@ -50,6 +50,8 @@ import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrContributionData
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.ParentContext
+import dev.zacsweers.metro.compiler.ir.ParentContextReader
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.getAnnotation
 import dev.zacsweers.metro.compiler.ir.graph.reporting.BindingDecisionCapture
@@ -321,6 +323,9 @@ internal class IrBindingGraph(
     get() =
       _bindingLookup ?: reportCompilerBug("Tried to access bindingLookup after it's been cleared!")
 
+  /** The parent graph's context, or null for a root graph. */
+  private val parentReader: ParentContextReader? = bindingLookup.parentContext
+
   private val realGraph =
     IrMutableBindingGraph(
       newBindingStack = newBindingStack,
@@ -340,16 +345,20 @@ internal class IrBindingGraph(
       missingBindingDiagnosticDetails = ::missingBindingHints,
       findSuspendCycleKey = ::findSuspendCycleKey,
       onExistingBinding = decisionCapture?.let { capture -> capture::reused },
+      onDependencyResolved = if (parentReader != null) ::recordParentReadCandidate else null,
+      onSortedKey = if (parentReader != null) ::resolveSharedParentRead else null,
     )
 
-  private fun findSuspendCycleKey(
-    cycleKeys: List<IrTypeKey>,
-    bindings: ScatterMap<IrTypeKey, IrBinding>,
-  ): IrTypeKey? {
-    if (!metroContext.options.enableSuspendProviders) return null
-    val suspendKeys = SuspendBindingAnalysis(bindings::get).analyze(cycleKeys)
-    return cycleKeys.firstOrNull { it in suspendKeys }
-  }
+  /** How many ancestors in a row declare each binding the same way, cached by key. */
+  private val sharedDepths = mutableMapOf<IrTypeKey, Int>()
+
+  /** Bindings this graph reads directly that the parent might build for it. */
+  private val parentReadCandidates = mutableSetOf<IrTypeKey>()
+
+  /**
+   * Bindings at least the nearest parent could build the same way, including their dependencies.
+   */
+  private val ancestorBuilds = mutableMapOf<IrTypeKey, AncestorBuild>()
 
   // TODO hoist accessors up and visit in seal?
   private val accessors = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
@@ -361,6 +370,9 @@ internal class IrBindingGraph(
    * reachable during seal() and to inform BindingPropertyCollector about child usage.
    */
   private val reservedContextKeys = mutableSetOf<IrContextualTypeKey>()
+
+  /** How many child graphs could share this graph's binding for each key. */
+  private val sharedReadCounts = mutableMapOf<IrTypeKey, Int>()
 
   // Thin immutable view over the internal bindings
   fun bindingsSnapshot(): ScatterMap<IrTypeKey, IrBinding> = realGraph.bindings
@@ -392,6 +404,33 @@ internal class IrBindingGraph(
     }
   }
 
+  /**
+   * Returns true if this graph's declarations would give [childBinding]'s key the same binding.
+   *
+   * This only reads bindings this graph has registered. It doesn't resolve anything, so it can run
+   * before seal() without reporting errors. Dependencies need their own check.
+   */
+  fun declaresSameBindingAs(childBinding: IrBinding): Boolean {
+    val key = childBinding.typeKey
+    val registered = bindingLookup[key]
+    return when (childBinding) {
+      is IrBinding.Provided ->
+        registered is IrBinding.Provided &&
+          registered.providerFactory.factoryClass == childBinding.providerFactory.factoryClass
+      is IrBinding.Alias ->
+        registered is IrBinding.Alias && registered.aliasedType == childBinding.aliasedType
+      // Constructor-injected classes resolve the same way in any graph that doesn't override them.
+      is IrBinding.ConstructorInjected -> registered == null && !childBinding.isAssisted
+      is IrBinding.ObjectClass -> registered == null
+      is IrBinding.Multibinding ->
+        context(metroContext) {
+          bindingLookup.getAvailableMultibindings()[key]?.sourceBindings ==
+            childBinding.sourceBindings
+        }
+      else -> false
+    }
+  }
+
   fun keep(key: IrContextualTypeKey, entry: IrBindingStack.Entry) {
     recordRuntimeCoroutinesUse(key)
     extraKeeps[key] = entry
@@ -404,6 +443,21 @@ internal class IrBindingGraph(
   fun reserveContextKey(contextKey: IrContextualTypeKey) {
     recordRuntimeCoroutinesUse(contextKey)
     reservedContextKeys.add(contextKey)
+  }
+
+  /**
+   * Records that a child graph could reuse this graph's binding for [key]. If this graph builds the
+   * binding anyway, the reservation gives it a getter the child reuses. Once a second child records
+   * it, this graph keeps the binding even if it doesn't read it itself.
+   */
+  fun reserveSharedRead(key: IrTypeKey) {
+    val contextKey = IrContextualTypeKey(key)
+    reserveContextKey(contextKey)
+    val count = (sharedReadCounts[key] ?: 0) + 1
+    sharedReadCounts[key] = count
+    if (count == 2) {
+      keep(contextKey, IrBindingStack.Entry.simpleTypeRef(contextKey))
+    }
   }
 
   /** Returns all context keys reserved by child graphs. */
@@ -459,6 +513,92 @@ internal class IrBindingGraph(
   }
 
   operator fun contains(key: IrTypeKey): Boolean = key in realGraph
+
+  /**
+   * Records bindings this graph reads directly that the parent declares the same way.
+   *
+   * Reads from another such binding aren't recorded. The parent's copy of that binding does those
+   * reads instead.
+   */
+  private fun recordParentReadCandidate(
+    callingBinding: IrBinding?,
+    contextKey: IrContextualTypeKey,
+    binding: IrBinding,
+  ) {
+    if (!isWorthSharing(binding)) return
+    val callerIsShared = callingBinding != null && isWorthSharing(callingBinding)
+    if (callerIsShared) return
+    parentReadCandidates += contextKey.typeKey
+  }
+
+  /** Bindings without dependencies are cheaper to build in place. */
+  private fun isWorthSharing(binding: IrBinding): Boolean =
+    binding.dependencies.isNotEmpty() && sharedDepth(binding) > 0
+
+  private fun sharedDepth(binding: IrBinding): Int =
+    sharedDepths.getOrPut(binding.typeKey) {
+      // Scoped and parent-owned bindings are already shared through tokens.
+      val isAlreadyShared = binding.isParentOwned || binding.isScoped()
+      val canShare = !isAlreadyShared && !binding.isSuspend
+      if (canShare) {
+        parentReader!!.sharedDepth(binding)
+      } else {
+        0
+      }
+    }
+
+  /**
+   * Runs for each key in sorted order, so dependencies are resolved first. An ancestor can only
+   * build a binding if it can build every dependency too. Otherwise building it there could fail.
+   *
+   * Alias reads are reported as the binding they alias, since property collection counts them that
+   * way.
+   */
+  private fun resolveSharedParentRead(key: IrTypeKey) {
+    val binding = realGraph.bindings[key] ?: return
+    val depth = ancestorBuildDepth(binding)
+    if (depth == 0) return
+    val target =
+      if (binding is IrBinding.Alias) {
+        ancestorBuilds.getValue(binding.aliasedType).target
+      } else {
+        key
+      }
+    ancestorBuilds[key] = AncestorBuild(target, depth)
+    if (key in parentReadCandidates) {
+      parentReader!!.markShared(target, depth)
+    }
+  }
+
+  /**
+   * Returns how many ancestors in a row could build [binding], starting with the nearest parent.
+   */
+  private fun ancestorBuildDepth(binding: IrBinding): Int {
+    val token = binding.parentToken
+    if (token != null) {
+      // Only the owner and the graphs below it can reach a parent-owned binding.
+      return parentReader!!.ancestorDepth(token.ownerGraphKey)
+    }
+    val ownDepth = sharedDepth(binding)
+    if (ownDepth == 0) return 0
+    val dependencyDepth = binding.dependencies.minOfOrNull(::dependencyBuildDepth) ?: ownDepth
+    return minOf(ownDepth, dependencyDepth)
+  }
+
+  private fun dependencyBuildDepth(dependency: IrContextualTypeKey): Int {
+    if (dependency.hasDefault) return 0
+    // Dependencies sorted later, like ones that break a cycle, aren't recorded yet.
+    return ancestorBuilds[dependency.typeKey]?.depth ?: 0
+  }
+
+  private fun findSuspendCycleKey(
+    cycleKeys: List<IrTypeKey>,
+    bindings: ScatterMap<IrTypeKey, IrBinding>,
+  ): IrTypeKey? {
+    if (!metroContext.options.enableSuspendProviders) return null
+    val suspendKeys = SuspendBindingAnalysis(bindings::get).analyze(cycleKeys)
+    return cycleKeys.firstOrNull { it in suspendKeys }
+  }
 
   data class BindingGraphResult(
     val sortedKeys: List<IrTypeKey>,
@@ -1695,3 +1835,21 @@ private fun IrBinding.Provided.isFromGeneratedContributionImpl(): ClassId? {
     null
   }
 }
+
+/**
+ * A binding that ancestors up to [depth] levels could build the same way. A read of it builds
+ * [target]. That's the aliased binding for aliases and the binding itself otherwise.
+ */
+private class AncestorBuild(val target: IrTypeKey, val depth: Int)
+
+/** The token for bindings a child graph reads from an ancestor graph's instance. */
+private val IrBinding.parentToken: ParentContext.Token?
+  get() =
+    when (this) {
+      is IrBinding.GraphDependency -> token
+      is IrBinding.BoundInstance -> token
+      else -> null
+    }
+
+private val IrBinding.isParentOwned: Boolean
+  get() = parentToken != null

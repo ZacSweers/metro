@@ -290,7 +290,7 @@ interface AppGraph {
 
       override val handler: Handler
         override get(): Handler {
-          return TrackingHandler(adapters = <this>.#appGraphImpl.<get-setOfAdapter>())
+          return <this>.#appGraphImpl.<get-trackingHandler>()
         }
 
       override val viewModel: ViewModelGraph
@@ -332,7 +332,7 @@ interface AppGraph {
 
       override val handler: Handler
         override get(): Handler {
-          return TrackingHandler(adapters = <this>.#appGraphImpl.<get-setOfAdapter>())
+          return <this>.#appGraphImpl.<get-trackingHandler>()
         }
 
     }
@@ -372,6 +372,11 @@ interface AppGraph {
     override val sibling: SiblingGraph
       override get(): SiblingGraph {
         return SiblingGraphImpl(appGraphImpl = <this>)
+      }
+
+    private val trackingHandler: TrackingHandler
+      private get(): TrackingHandler {
+        return TrackingHandler(adapters = <this>.<get-setOfAdapter>())
       }
 
   }

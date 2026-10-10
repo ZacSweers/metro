@@ -1656,6 +1656,12 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
       }
 
       @Test
+      @TestMetadata("ChildrenShareHoistedBindings.kt")
+      public void testChildrenShareHoistedBindings() {
+        run("ChildrenShareHoistedBindings.kt");
+      }
+
+      @Test
       @TestMetadata("ChunkedExtensionInitializers.kt")
       public void testChunkedExtensionInitializers() {
         run("ChunkedExtensionInitializers.kt");
@@ -1833,6 +1839,12 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
       @TestMetadata("MultipleExtensionFactoriesAreValid.kt")
       public void testMultipleExtensionFactoriesAreValid() {
         run("MultipleExtensionFactoriesAreValid.kt");
+      }
+
+      @Test
+      @TestMetadata("NestedChildrenShareHoistedBindings.kt")
+      public void testNestedChildrenShareHoistedBindings() {
+        run("NestedChildrenShareHoistedBindings.kt");
       }
 
       @Test

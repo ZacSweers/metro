@@ -1,0 +1,273 @@
+@DependencyGraph
+interface AppGraph : ChildA.Factory, ChildB.Factory {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : AppGraph {
+    @DependencyGraph
+    private class ChildAImpl : ChildA {
+      private val appGraphImpl: Impl
+        field = appGraphImpl
+
+      constructor(appGraphImpl: Impl) /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      override val strings: Set<String>
+        override get(): Set<String> {
+          return <this>.#appGraphImpl.<get-setOfString>()
+        }
+
+    }
+
+    @DependencyGraph
+    private class ChildBImpl : ChildB {
+      private val appGraphImpl: Impl
+        field = appGraphImpl
+
+      constructor(appGraphImpl: Impl) /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      override val strings: Set<String>
+        override get(): Set<String> {
+          return <this>.#appGraphImpl.<get-setOfString>()
+        }
+
+    }
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override fun createChildA(): ChildA {
+      return ChildAImpl(appGraphImpl = <this>)
+    }
+
+    override fun createChildB(): ChildB {
+      return ChildBImpl(appGraphImpl = <this>)
+    }
+
+    private val setOfString: Set<String>
+      private get(): Set<String> {
+        return { // BLOCK
+          buildSet<String>(capacity = 2, builderAction = local fun MutableSet<String>.<anonymous>() {
+            $receiver.add(element = <this>.provideTwo(int = <this>.provideInt()))
+            $receiver.add(element = <this>.provideOne(int = <this>.provideInt()))
+          }
+)
+        }
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
+    operator fun invoke(): AppGraph {
+      return Impl()
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 499, endOffset = 534, newInstanceName = "provideInt")
+  class ProvideIntMetroFactory : Factory<Int> {
+    private /* final field */ val instance: AppGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(instance: AppGraph): ProvideIntMetroFactory {
+        return ProvideIntMetroFactory(instance = instance)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun provideInt(instance: AppGraph): Int {
+        return instance.provideInt()
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(instance: AppGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): Int {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Int {
+      return ProvideIntMetroFactory/* companion */.provideInt(instance = <this>.#instance)
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideOne", propertyName = "", startOffset = 538, endOffset = 601, newInstanceName = "provideOne")
+  class ProvideOneMetroFactory : Factory<String> {
+    private /* final field */ val instance: AppGraph = instance
+    private /* final field */ val int2: Provider<Int> = int
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(instance: AppGraph, int: Provider<Int>): ProvideOneMetroFactory {
+        return ProvideOneMetroFactory(instance = instance, int = int)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun provideOne(instance: AppGraph, int: Int): String {
+        return instance.provideOne(int = int)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(instance: AppGraph, int: Provider<Int>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @IntoSet
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(int: Int): String {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): String {
+      return ProvideOneMetroFactory/* companion */.provideOne(instance = <this>.#instance, int = <this>.#int2.invoke())
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideTwo", propertyName = "", startOffset = 605, endOffset = 668, newInstanceName = "provideTwo")
+  class ProvideTwoMetroFactory : Factory<String> {
+    private /* final field */ val instance: AppGraph = instance
+    private /* final field */ val int2: Provider<Int> = int
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(instance: AppGraph, int: Provider<Int>): ProvideTwoMetroFactory {
+        return ProvideTwoMetroFactory(instance = instance, int = int)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun provideTwo(instance: AppGraph, int: Int): String {
+        return instance.provideTwo(int = int)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(instance: AppGraph, int: Provider<Int>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @IntoSet
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(int: Int): String {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): String {
+      return ProvideTwoMetroFactory/* companion */.provideTwo(instance = <this>.#instance, int = <this>.#int2.invoke())
+    }
+
+  }
+
+  @Provides
+  fun provideInt(): Int {
+    return 3
+  }
+
+  @Provides
+  @IntoSet
+  fun provideOne(int: Int): String {
+    return "one" + int
+  }
+
+  @Provides
+  @IntoSet
+  fun provideTwo(int: Int): String {
+    return "two" + int
+  }
+
+}
+
+@GraphExtension
+interface ChildA {
+  @GraphExtension.Factory
+  interface Factory {
+    abstract fun createChildA(): ChildA
+
+  }
+
+  abstract val strings: Set<String>
+    abstract get
+
+}
+
+@GraphExtension
+interface ChildB {
+  @GraphExtension.Factory
+  interface Factory {
+    abstract fun createChildB(): ChildB
+
+  }
+
+  abstract val strings: Set<String>
+    abstract get
+
+}
