@@ -21,9 +21,6 @@ interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
-    private val thisGraphInstance: Impl
-      field = <this>
-
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
@@ -47,17 +44,17 @@ interface AppGraph {
 
     private val setOfDouble: Set<Double>
       private get(): Set<Double> {
-        return setOf<Double>(element = <this>.#thisGraphInstance.bindDouble(int = <this>.#thisGraphInstance.provideInt()))
+        return setOf<Double>(element = <this>.bindDouble(int = <this>.provideInt()))
       }
 
     private val setOfInt: Set<Int>
       private get(): Set<Int> {
-        return setOf<Int>(element = <this>.#thisGraphInstance.provideInt())
+        return setOf<Int>(element = <this>.provideInt())
       }
 
     private val setOfLong: Set<Long>
       private get(): Set<Long> {
-        return setOf<Long>(element = <this>.#thisGraphInstance.bindLong(int = <this>.#thisGraphInstance.provideInt()))
+        return setOf<Long>(element = <this>.bindLong(int = <this>.provideInt()))
       }
 
   }

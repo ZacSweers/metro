@@ -3,9 +3,6 @@ interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
-    private val thisGraphInstance: Impl
-      field = <this>
-
     private val provideIntProvider: Provider<Int>
       field = DoubleCheck/* companion */.provider<Provider<Int>, Int>(delegate = SwitchingProvider<Int>(graph = <this>, id = 1))
 
@@ -27,7 +24,7 @@ interface AppGraph {
         return { // BLOCK
           val tmp0_id: Int = <this>.#id
           when {
-            EQEQ(arg0 = tmp0_id, arg1 = 1) -> <this>.#graph.#thisGraphInstance.provideInt() /*as T */
+            EQEQ(arg0 = tmp0_id, arg1 = 1) -> <this>.#graph.provideInt() /*as T */
             EQEQ(arg0 = tmp0_id, arg1 = 0) -> of<Int>(p0 = <this>.#graph.#provideIntProvider.invoke()) /*as T */
             else -> throw error(message = "Unexpected SwitchingProvider id: " + tmp0_id)
           }

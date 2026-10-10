@@ -87,9 +87,6 @@ interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
-    private val thisGraphInstance: Impl
-      field = <this>
-
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
@@ -109,8 +106,8 @@ interface AppGraph {
     private val mapOfIntToInt: Map<Int, Int>
       private get(): Map<Int, Int> {
         return buildMap<Int, Int>(capacity = 2, builderAction = local fun MutableMap<Int, Int>.<anonymous>() {
-          $receiver.put(key = 2, value = <this>.#thisGraphInstance.provideInt2())
-          $receiver.put(key = 1, value = <this>.#thisGraphInstance.provideInt1())
+          $receiver.put(key = 2, value = <this>.provideInt2())
+          $receiver.put(key = 1, value = <this>.provideInt1())
         }
 )
       }

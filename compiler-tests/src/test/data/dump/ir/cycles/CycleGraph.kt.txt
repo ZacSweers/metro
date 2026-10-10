@@ -381,9 +381,6 @@ interface CycleGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : CycleGraph {
-    private val thisGraphInstance: Impl
-      field = <this>
-
     private val cProvider: Provider<C>
       field = DelegateFactory<C>()
 
@@ -452,7 +449,7 @@ interface CycleGraph {
       /* <init>() */
 
       DelegateFactory/* companion */.setDelegate<C>(delegateFactory = <this>.#cProvider, delegate = C.MetroFactory/* companion */.create(aProvider = <this>.#aProvider))
-      DelegateFactory/* companion */.setDelegate<Any>(delegateFactory = <this>.#provideObjectWithCycleProvider, delegate = ProvideObjectWithCycleMetroFactory/* companion */.create(instance = <this>.#thisGraphInstance, obj = <this>.#provideObjectWithCycleProvider))
+      DelegateFactory/* companion */.setDelegate<Any>(delegateFactory = <this>.#provideObjectWithCycleProvider, delegate = ProvideObjectWithCycleMetroFactory/* companion */.create(instance = <this>, obj = <this>.#provideObjectWithCycleProvider))
     }
 
     override fun a(): A {
@@ -464,7 +461,7 @@ interface CycleGraph {
     }
 
     override fun childCycleGraph(): ChildCycleGraph.Factory {
-      return CycleGraph.Impl.ChildCycleGraphImpl.FactoryImpl(CycleGraphImpl = <this>.#thisGraphInstance)
+      return CycleGraph.Impl.ChildCycleGraphImpl.FactoryImpl(CycleGraphImpl = <this>)
     }
 
     override val objWithCycle: Any

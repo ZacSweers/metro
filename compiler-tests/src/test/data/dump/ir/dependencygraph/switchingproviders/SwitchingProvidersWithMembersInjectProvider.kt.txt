@@ -119,9 +119,6 @@ interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
-    private val thisGraphInstance: Impl
-      field = <this>
-
     private val provideStringProvider: Provider<String>
       field = DoubleCheck/* companion */.provider<Provider<String>, String>(delegate = SwitchingProvider<String>(graph = <this>, id = 2))
 
@@ -146,7 +143,7 @@ interface AppGraph {
         return { // BLOCK
           val tmp0_id: Int = <this>.#id
           when {
-            EQEQ(arg0 = tmp0_id, arg1 = 2) -> <this>.#graph.#thisGraphInstance.provideString() /*as T */
+            EQEQ(arg0 = tmp0_id, arg1 = 2) -> <this>.#graph.provideString() /*as T */
             EQEQ(arg0 = tmp0_id, arg1 = 1) -> Injectable.MetroMembersInjector/* companion */.create(string = <this>.#graph.#provideStringProvider) /*as T */
             EQEQ(arg0 = tmp0_id, arg1 = 0) -> ScopedClass(injectable = <this>.#graph.#injectableMembersInjectorProvider.invoke(), injectable2 = <this>.#graph.#injectableMembersInjectorProvider.invoke()) /*as T */
             else -> throw error(message = "Unexpected SwitchingProvider id: " + tmp0_id)

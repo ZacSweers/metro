@@ -447,11 +447,8 @@ interface TestGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : TestGraph {
-    private val thisGraphInstance: Impl
-      field = <this>
-
     private val provideBaseProvider: Provider<Base>
-      field = ProvideBaseMetroFactory/* companion */.create(instance = <this>.#thisGraphInstance)
+      field = ProvideBaseMetroFactory/* companion */.create(instance = <this>)
 
     private val setConsumerAProvider: Provider<SetConsumerA>
       field = SetConsumerA.MetroFactory/* companion */.create(set = <this>.<get-setOfIntProvider>())
@@ -474,8 +471,8 @@ interface TestGraph {
       private get(): Provider<Set<Int>> {
         return { // BLOCK
           val tmp0_builder: SetFactory.Builder<Int> = SetFactory/* companion */.builder<Int>(individualProviderSize = 2, collectionProviderSize = 0)
-          tmp0_builder.addProvider(individualProvider = ProvideInt2MetroFactory/* companion */.create(instance = <this>.#thisGraphInstance, base = <this>.#provideBaseProvider))
-          tmp0_builder.addProvider(individualProvider = ProvideInt1MetroFactory/* companion */.create(instance = <this>.#thisGraphInstance, base = <this>.#provideBaseProvider))
+          tmp0_builder.addProvider(individualProvider = ProvideInt2MetroFactory/* companion */.create(instance = <this>, base = <this>.#provideBaseProvider))
+          tmp0_builder.addProvider(individualProvider = ProvideInt1MetroFactory/* companion */.create(instance = <this>, base = <this>.#provideBaseProvider))
           tmp0_builder.build()
         }
       }

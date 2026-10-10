@@ -22,9 +22,6 @@ interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
-    private val thisGraphInstance: Impl
-      field = <this>
-
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
@@ -38,7 +35,7 @@ interface AppGraph {
 
     private val mapOfIntToIntProvider: Provider<Map<Int, Int>>
       private get(): Provider<Map<Int, Int>> {
-        return MapFactory/* companion */.singleton<Int, Int>(key = 1, provider = ProvideValueMetroFactory/* companion */.create(instance = <this>.#thisGraphInstance))
+        return MapFactory/* companion */.singleton<Int, Int>(key = 1, provider = ProvideValueMetroFactory/* companion */.create(instance = <this>))
       }
 
   }

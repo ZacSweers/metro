@@ -5,9 +5,6 @@ interface AppGraph : ChildGraph.Factory.MetroContributionToAppScope {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
-    private val thisGraphInstance: Impl
-      field = <this>
-
     @DependencyGraph(scope = String::class)
     private class ChildGraphImpl : ChildGraph {
       private val appGraphImpl: Impl

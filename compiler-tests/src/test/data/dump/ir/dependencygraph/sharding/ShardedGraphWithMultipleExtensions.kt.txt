@@ -568,9 +568,6 @@ interface AppGraph : Feature1Graph.Factory.MetroContributionToAppScope, Feature2
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
-    private val thisGraphInstance: Impl
-      field = <this>
-
     internal val shard1: Shard1
 
     internal val shard2: Shard2
@@ -752,12 +749,12 @@ interface AppGraph : Feature1Graph.Factory.MetroContributionToAppScope, Feature2
 
     override val feature1Factory: Feature1Graph.Factory
       override get(): Feature1Graph.Factory {
-        return <this>.#thisGraphInstance
+        return <this>
       }
 
     override val feature2Factory: Feature2Graph.Factory
       override get(): Feature2Graph.Factory {
-        return <this>.#thisGraphInstance
+        return <this>
       }
 
   }

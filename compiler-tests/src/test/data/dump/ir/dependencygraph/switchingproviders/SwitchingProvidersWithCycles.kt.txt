@@ -3,9 +3,6 @@ interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
-    private val thisGraphInstance: Impl
-      field = <this>
-
     private val provideIntProvider: Provider<Int>
       field = SwitchingProvider<Int>(graph = <this>, id = 3)
 
@@ -30,9 +27,9 @@ interface AppGraph {
         return { // BLOCK
           val tmp0_id: Int = <this>.#id
           when {
-            EQEQ(arg0 = tmp0_id, arg1 = 3) -> <this>.#graph.#thisGraphInstance.provideInt() /*as T */
-            EQEQ(arg0 = tmp0_id, arg1 = 2) -> <this>.#graph.#thisGraphInstance.provideString(int = <this>.#graph.#provideIntProvider.invoke(), long = DoubleCheck/* companion */.lazy<Provider<Long>, Long>(provider = <this>.#graph.#provideLongProvider)) /*as T */
-            EQEQ(arg0 = tmp0_id, arg1 = 1) -> <this>.#graph.#thisGraphInstance.provideLong(string = <this>.#graph.#provideStringProvider.invoke()) /*as T */
+            EQEQ(arg0 = tmp0_id, arg1 = 3) -> <this>.#graph.provideInt() /*as T */
+            EQEQ(arg0 = tmp0_id, arg1 = 2) -> <this>.#graph.provideString(int = <this>.#graph.#provideIntProvider.invoke(), long = DoubleCheck/* companion */.lazy<Provider<Long>, Long>(provider = <this>.#graph.#provideLongProvider)) /*as T */
+            EQEQ(arg0 = tmp0_id, arg1 = 1) -> <this>.#graph.provideLong(string = <this>.#graph.#provideStringProvider.invoke()) /*as T */
             else -> throw error(message = "Unexpected SwitchingProvider id: " + tmp0_id)
           }
         }

@@ -16,6 +16,7 @@ Changelog
 ### Enhancements
 
 - **[IR]** Reduce generated code in graph extensions by reusing existing parent multibinding getters when contributions and their resolved dependencies are unchanged.
+- **[IR]** Graphs no longer store themselves in a field. Code that needs the graph reads `this`, or the graph reference that a shard or switching provider already holds.
 
 ### Fixes
 

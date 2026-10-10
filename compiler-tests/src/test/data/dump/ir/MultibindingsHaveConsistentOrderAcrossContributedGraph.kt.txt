@@ -138,9 +138,6 @@ interface ExampleGraph : LoggedInGraph.Factory1.MetroContributionToAppScope {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : ExampleGraph {
-    private val thisGraphInstance: Impl
-      field = <this>
-
     @DependencyGraph(scope = Unit::class)
     private class LoggedInGraphImpl : LoggedInGraph {
       private val exampleGraphImpl: Impl
@@ -173,8 +170,8 @@ interface ExampleGraph : LoggedInGraph.Factory1.MetroContributionToAppScope {
       private get(): Set<Task> {
         return { // BLOCK
           buildSet<Task>(capacity = 4, builderAction = local fun MutableSet<Task>.<anonymous>() {
-            $receiver.add(element = <this>.#thisGraphInstance.provide4())
-            $receiver.add(element = <this>.#thisGraphInstance.provide3())
+            $receiver.add(element = <this>.provide4())
+            $receiver.add(element = <this>.provide3())
             $receiver.add(element = TaskImpl1())
             $receiver.add(element = TaskImpl2())
           }

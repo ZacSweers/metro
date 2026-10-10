@@ -3,9 +3,6 @@ interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
-    private val thisGraphInstance: Impl
-      field = <this>
-
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
@@ -20,9 +17,9 @@ interface AppGraph {
     private val setOfInt: Set<Int>
       private get(): Set<Int> {
         return { // BLOCK
-          val tmp0: Set<Int> = <this>.#thisGraphInstance.provideInts()
+          val tmp0: Set<Int> = <this>.provideInts()
           buildSet<Int>(capacity = 1.plus(other = tmp0.<get-size>()), builderAction = local fun MutableSet<Int>.<anonymous>() {
-            $receiver.add(element = <this>.#thisGraphInstance.provide4())
+            $receiver.add(element = <this>.provide4())
             $receiver.addAll(elements = tmp0)
           }
 )

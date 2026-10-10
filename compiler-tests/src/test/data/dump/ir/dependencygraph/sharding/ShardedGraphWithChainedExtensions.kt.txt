@@ -479,9 +479,6 @@ interface AppGraph : ChildGraph.Factory.MetroContributionToAppScope {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
-    private val thisGraphInstance: Impl
-      field = <this>
-
     internal val shard1: Shard1
 
     internal val shard2: Shard2
@@ -522,9 +519,6 @@ interface AppGraph : ChildGraph.Factory.MetroContributionToAppScope {
     private class ChildGraphImpl : ChildGraph, GrandchildGraph.Factory.MetroContributionToChildScope {
       private val appGraphImpl: Impl
         field = appGraphImpl
-
-      private val thisGraphInstance: ChildGraphImpl
-        field = <this>
 
       internal val shard1: Shard1
 
@@ -641,7 +635,7 @@ interface AppGraph : ChildGraph.Factory.MetroContributionToAppScope {
 
       override val grandchildFactory: GrandchildGraph.Factory
         override get(): GrandchildGraph.Factory {
-          return <this>.#thisGraphInstance
+          return <this>
         }
 
     }
@@ -676,7 +670,7 @@ interface AppGraph : ChildGraph.Factory.MetroContributionToAppScope {
 
     override val childFactory: ChildGraph.Factory
       override get(): ChildGraph.Factory {
-        return <this>.#thisGraphInstance
+        return <this>
       }
 
   }

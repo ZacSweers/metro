@@ -367,9 +367,6 @@ interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
-    private val thisGraphInstance: Impl
-      field = <this>
-
     private val provideDirectSuspendValueSuspendProvider: SuspendProvider<DirectSuspendValue>
 
     private val deferredSuspendConsumerProvider: Provider<DeferredSuspendConsumer>
@@ -442,7 +439,7 @@ interface AppGraph {
         return { // BLOCK
           val tmp0_id: Int = <this>.#id
           when {
-            EQEQ(arg0 = tmp0_id, arg1 = 2) -> <this>.#graph.#thisGraphInstance.provideDirectSuspendValue() /*as T */
+            EQEQ(arg0 = tmp0_id, arg1 = 2) -> <this>.#graph.provideDirectSuspendValue() /*as T */
             else -> throw error(message = "Unexpected SwitchingSuspendProvider id: " + tmp0_id)
           }
         }
@@ -586,3 +583,4 @@ interface AppGraph {
     abstract get
 
 }
+

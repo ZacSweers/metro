@@ -252,16 +252,10 @@ interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
-    private val thisGraphInstance: Impl
-      field = <this>
-
     @DependencyGraph
     private class ActivityGraphImpl : ActivityGraph {
       private val appGraphImpl: Impl
         field = appGraphImpl
-
-      private val thisGraphInstance: ActivityGraphImpl
-        field = <this>
 
       @DependencyGraph
       private class ViewModelGraphImpl : ViewModelGraph {

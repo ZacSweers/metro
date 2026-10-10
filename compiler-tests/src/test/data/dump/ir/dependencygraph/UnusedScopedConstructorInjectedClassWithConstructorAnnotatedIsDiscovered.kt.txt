@@ -114,9 +114,6 @@ interface ExampleGraph : LoggedInGraph.Factory.MetroContributionToAppScope {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : ExampleGraph {
-    private val thisGraphInstance: Impl
-      field = <this>
-
     private val dependencyProvider: Provider<Dependency>
       field = DoubleCheck/* companion */.provider<Provider<Dependency>, Dependency>(delegate = Dependency.MetroFactory.create())
 

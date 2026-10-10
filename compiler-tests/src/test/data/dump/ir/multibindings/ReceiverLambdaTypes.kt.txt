@@ -3,9 +3,6 @@ interface ExampleGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : ExampleGraph {
-    private val thisGraphInstance: Impl
-      field = <this>
-
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
@@ -25,8 +22,8 @@ interface ExampleGraph {
     private val mapOfIntToString: Map<Int, String>
       private get(): Map<Int, String> {
         return buildMap<Int, String>(capacity = 2, builderAction = local fun MutableMap<Int, String>.<anonymous>() {
-          $receiver.put(key = 1, value = <this>.#thisGraphInstance.firstEntry())
-          $receiver.put(key = 2, value = <this>.#thisGraphInstance.secondEntry())
+          $receiver.put(key = 1, value = <this>.firstEntry())
+          $receiver.put(key = 2, value = <this>.secondEntry())
         }
 )
       }
@@ -35,8 +32,8 @@ interface ExampleGraph {
       private get(): Set<String> {
         return { // BLOCK
           buildSet<String>(capacity = 2, builderAction = local fun MutableSet<String>.<anonymous>() {
-            $receiver.add(element = <this>.#thisGraphInstance.firstElement())
-            $receiver.add(element = <this>.#thisGraphInstance.secondElement())
+            $receiver.add(element = <this>.firstElement())
+            $receiver.add(element = <this>.secondElement())
           }
 )
         }

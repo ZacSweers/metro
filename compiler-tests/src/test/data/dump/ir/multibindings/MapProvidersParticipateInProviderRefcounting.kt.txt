@@ -31,14 +31,11 @@ interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
-    private val thisGraphInstance: Impl
-      field = <this>
-
     private val provideIntProvider: Provider<Int>
-      field = ProvideIntMetroFactory/* companion */.create(instance = <this>.#thisGraphInstance)
+      field = ProvideIntMetroFactory/* companion */.create(instance = <this>)
 
     private val provideSharedDependencyProvider: Provider<SharedDependency>
-      field = ProvideSharedDependencyMetroFactory/* companion */.create(instance = <this>.#thisGraphInstance)
+      field = ProvideSharedDependencyMetroFactory/* companion */.create(instance = <this>)
 
     private constructor() /* primary */ {
       super/*Any*/()
@@ -67,8 +64,8 @@ interface AppGraph {
     private val mapOfStringToString: Map<String, SuspendFunction0<String>>
       private get(): Map<String, SuspendFunction0<String>> {
         return buildMap<String, SuspendFunction0<String>>(capacity = 2, builderAction = local fun MutableMap<String, SuspendFunction0<String>>.<anonymous>() {
-          $receiver.put(key = "second", value = SyncSuspendProvider<String>(delegate = AppGraph.ProvideSecondMetroFactory/* companion */.create(instance = <this>.#thisGraphInstance, sharedDependency = <this>.#provideSharedDependencyProvider)))
-          $receiver.put(key = "first", value = SyncSuspendProvider<String>(delegate = AppGraph.ProvideFirstMetroFactory/* companion */.create(instance = <this>.#thisGraphInstance, sharedDependency = <this>.#provideSharedDependencyProvider)))
+          $receiver.put(key = "second", value = SyncSuspendProvider<String>(delegate = AppGraph.ProvideSecondMetroFactory/* companion */.create(instance = <this>, sharedDependency = <this>.#provideSharedDependencyProvider)))
+          $receiver.put(key = "first", value = SyncSuspendProvider<String>(delegate = AppGraph.ProvideFirstMetroFactory/* companion */.create(instance = <this>, sharedDependency = <this>.#provideSharedDependencyProvider)))
         }
 )
       }

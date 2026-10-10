@@ -326,11 +326,8 @@ interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
-    private val thisGraphInstance: Impl
-      field = <this>
-
     private val internalHeaderProvider: Provider<InternalHeader>
-      field = InternalHeader.MetroFactory/* companion */.create(key = ProvideStringMetroFactory/* companion */.create(instance = <this>.#thisGraphInstance))
+      field = InternalHeader.MetroFactory/* companion */.create(key = ProvideStringMetroFactory/* companion */.create(instance = <this>))
 
     private val commonAppHeadersInterceptorProvider: Provider<CommonAppHeadersInterceptor>
       field = DelegateFactory<CommonAppHeadersInterceptor>()
@@ -357,8 +354,8 @@ interface AppGraph {
       private get(): Provider<Set<Pair<String, String>>> {
         return { // BLOCK
           val tmp0_builder: SetFactory.Builder<Pair<String, String>> = SetFactory/* companion */.builder<Pair<String, String>>(individualProviderSize = 1, collectionProviderSize = 1)
-          tmp0_builder.addProvider(individualProvider = ProvideInternalHeaderMetroFactory/* companion */.create(instance = <this>.#thisGraphInstance, header = <this>.#internalHeaderProvider))
-          tmp0_builder.addCollectionProvider(collectionProvider = ProvideOtherHeadersMetroFactory/* companion */.create(instance = <this>.#thisGraphInstance))
+          tmp0_builder.addProvider(individualProvider = ProvideInternalHeaderMetroFactory/* companion */.create(instance = <this>, header = <this>.#internalHeaderProvider))
+          tmp0_builder.addCollectionProvider(collectionProvider = ProvideOtherHeadersMetroFactory/* companion */.create(instance = <this>))
           tmp0_builder.build()
         }
       }
@@ -367,7 +364,7 @@ interface AppGraph {
       private get(): Provider<Set<Pair<String, String>>> {
         return { // BLOCK
           val tmp0_builder: SetFactory.Builder<Pair<String, String>> = SetFactory/* companion */.builder<Pair<String, String>>(individualProviderSize = 0, collectionProviderSize = 1)
-          tmp0_builder.addCollectionProvider(collectionProvider = ProvideHeadersMetroFactory/* companion */.create(instance = <this>.#thisGraphInstance, otherHeaders = <this>.<get-setOfPair_String__String_Provider>()))
+          tmp0_builder.addCollectionProvider(collectionProvider = ProvideHeadersMetroFactory/* companion */.create(instance = <this>, otherHeaders = <this>.<get-setOfPair_String__String_Provider>()))
           tmp0_builder.build()
         }
       }

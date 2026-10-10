@@ -50,9 +50,6 @@ interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
-    private val thisGraphInstance: Impl
-      field = <this>
-
     internal val shard1: Shard1
 
     internal val shard2: Shard2
@@ -112,7 +109,7 @@ interface AppGraph {
           return { // BLOCK
             val tmp0_id: Int = <this>.#id
             when {
-              EQEQ(arg0 = tmp0_id, arg1 = 1) -> <this>.#graph.#graph.#thisGraphInstance.provideReusedInt() /*as T */
+              EQEQ(arg0 = tmp0_id, arg1 = 1) -> <this>.#graph.#graph.provideReusedInt() /*as T */
               else -> throw error(message = "Unexpected SwitchingProvider id: " + tmp0_id)
             }
           }
@@ -148,7 +145,7 @@ interface AppGraph {
           return { // BLOCK
             val tmp0_id: Int = <this>.#id
             when {
-              EQEQ(arg0 = tmp0_id, arg1 = 0) -> <this>.#graph.#graph.#thisGraphInstance.provideString() /*as T */
+              EQEQ(arg0 = tmp0_id, arg1 = 0) -> <this>.#graph.#graph.provideString() /*as T */
               else -> throw error(message = "Unexpected SwitchingProvider id: " + tmp0_id)
             }
           }

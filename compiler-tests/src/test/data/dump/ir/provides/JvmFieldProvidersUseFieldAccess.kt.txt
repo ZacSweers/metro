@@ -8,9 +8,6 @@ abstract class AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
-    private val thisGraphInstance: Impl
-      field = <this>
-
     private constructor() /* primary */ {
       super/*AppGraph*/()
       /* <init>() */
@@ -19,7 +16,7 @@ abstract class AppGraph {
 
     override val string: String
       override get(): String {
-        return StringFieldMetroFactory/* companion */.stringField(instance = <this>.#thisGraphInstance)
+        return StringFieldMetroFactory/* companion */.stringField(instance = <this>)
       }
 
   }

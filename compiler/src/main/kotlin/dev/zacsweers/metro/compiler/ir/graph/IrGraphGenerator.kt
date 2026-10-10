@@ -1032,29 +1032,13 @@ internal class IrGraphGenerator(
   }
 
   /**
-   * Sets up this graph's self-binding property.
+   * Sets up a provider property for this graph's self-binding if a child graph reserved one.
    *
-   * Creates a property that allows the graph to provide itself as a dependency, along with a
-   * provider wrapper if reserved by child graphs.
+   * Scalar self-binding requests don't need a property. They read the graph receiver directly.
    */
   private fun IrClass.setupThisGraphProperty(thisReceiverParameter: IrValueParameter) {
     // Don't add it if it's not used
     if (node.typeKey !in sealResult.reachableKeys) return
-
-    val thisGraphProperty =
-      addSimpleInstanceProperty(
-        propertyNameAllocator.allocateName(memberNamer, MemberNamer.Kind.INSTANCE) {
-          "thisGraphInstance"
-        },
-        node.typeKey,
-        // Use the concrete Impl type (thisReceiverParameter.type) for the backing field rather than
-        // the graph's interface type for Wasm: https://github.com/ZacSweers/metro/issues/2181
-        fieldType = thisReceiverParameter.type,
-      ) {
-        irGet(thisReceiverParameter)
-      }
-
-    bindingPropertyContext.put(IrContextualTypeKey(node.typeKey), thisGraphProperty)
 
     // Expose the graph as a provider property if it's used or reserved
     val thisGraphProviderType = metroSymbols.metroProvider.typeWith(node.typeKey.type)
@@ -1067,10 +1051,7 @@ internal class IrGraphGenerator(
     if (bindingGraph.isContextKeyReserved(thisGraphProviderContextKey)) {
       val providerInitializer =
         createIrBuilder(thisReceiverParameter.symbol).run {
-          instanceFactory(
-            node.typeKey.type,
-            irGetProperty(irGet(thisReceiverParameter), thisGraphProperty),
-          )
+          instanceFactory(node.typeKey.type, irGet(thisReceiverParameter))
         }
       val property =
         createBindingProperty(
