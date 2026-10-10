@@ -8431,6 +8431,7 @@
 <h3 id="fixes">Fixes<a class="headerlink" href="#fixes" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>[FIR]</strong> Reduce redundant lookups when discovering contributed graph extension factories.</li>
+<li><strong>[FIR]</strong> Fix accessor override status on Kotlin <code>2.5.0-dev-10106</code>.</li>
 <li><strong>[FIR/IC]</strong> Avoid unnecessary recompilation of independent injected classes when generating contribution hints.</li>
 <li><strong>[FIR/interop]</strong> Fix duplicate class errors during caused by Hilt interop generating hints for upstream modules.</li>
 <li><strong>[FIR/IR/interop]</strong> Fix incremental builds not updating graphs when an upstream Hilt <code>@AggregatedDeps</code> marker changes or is removed.</li>
@@ -8439,15 +8440,15 @@
 <li><strong>[IR]</strong> Fix <code>MissingRuntimeCoroutines</code> errors for injected top-level functions pointing at <code>0:0</code> in a generated file. They&rsquo;re now reported on the function.</li>
 <li><strong>[IR]</strong> Fix declaration parents for copied default argument lambdas and callable references, including references inside generated provider wrappers.</li>
 <li><strong>[IR]</strong> Include extension receivers in generated lambda function types, including set and map builder callbacks.</li>
+<li><strong>[IR]</strong> Fix IR diagnostic reporting on Kotlin <code>2.5.0-dev-10106</code>.</li>
 <li><strong>[IR/IC]</strong> Fix stale graphs in incremental builds when a replacing binding container&rsquo;s <code>@ContributesTo</code> annotation is removed and restored.</li>
 <li><strong>[IR/native/circuit]</strong> Fix an <code>IrLinkageError</code> in generated <code>SubCircuit</code> UI factories on Kotlin/Native with Kotlin <code>2.5.0-Beta1</code>.</li>
-<li><strong>[FIR]</strong> Fix accessor override status on Kotlin <code>2.5.0-dev-10106</code>.</li>
-<li><strong>[IR]</strong> Fix IR diagnostic reporting on Kotlin <code>2.5.0-dev-10106</code>.</li>
 <li><strong>[compat]</strong> Fix Kotlin <code>2.5.0-Beta1</code> selecting a compat implementation built for newer <code>2.5.0</code> dev builds. Kotlin Beta and RC releases now map to the dev compat implementation that matches their branch point.</li>
 </ul>
 <h3 id="changes">Changes<a class="headerlink" href="#changes" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>[compat]</strong> Test against Kotlin <code>2.5.0-dev-10106</code>.</li>
+<li><strong>[FIR/interop]</strong> Change diagnostics reported a <code>@MapKey</code> on a class with no Metro contribution annotation to a <code>MAP_KEY_WITHOUT_CONTRIBUTES_INTO_MAP</code> warning. A <code>@MapKey</code> on a class with a non-map Metro contribution is still an error.</li>
 <li><strong>[FIR/IR/IC]</strong> Enable <code>omit-redundant-mirrors</code> by default on Kotlin 2.4.0 and newer to omit generated declaration mirrors when compiler metadata and declaration finders provide the same information. It remains disabled by default on older Kotlin versions. Disable it with <code>compilerOptions.disable("omit-redundant-mirrors")</code> in the <code>metro</code> DSL.</li>
 <li><strong>[Gradle]</strong> <code>enableTopLevelFunctionInjection</code> is <strong>disabled by default</strong> for now on <strong>all</strong> Kotlin versions because it makes incremental builds recompile more files. If you use top-level function injection, enable it with <code>enableTopLevelFunctionInjection.set(true)</code> in the <code>metro</code> DSL. See <a href="../docs/performance/#incremental-compilation">incremental compilation perf docs</a>.</li>
 <li>Test Android Studio Rabbit 1 (<code>2026.2.1.8</code>).</li>
@@ -8459,6 +8460,7 @@
 <li><a href="https://github.com/agrosner">@agrosner</a></li>
 <li><a href="https://github.com/joshfriend">@joshfriend</a></li>
 <li><a href="https://github.com/kevinguitar">@kevinguitar</a></li>
+<li><a href="https://github.com/wbonnefond">@wbonnefond</a></li>
 </ul>
 <h3 id="consider-sponsoring-metros-development"><a href="https://www.zacsweers.dev/sponsoring-metro/">Consider sponsoring Metro&rsquo;s development</a><a class="headerlink" href="#consider-sponsoring-metros-development" title="Permanent link">&para;</a></h3>
 <h2 id="145">1.4.5<a class="headerlink" href="#145" title="Permanent link">&para;</a></h2>
