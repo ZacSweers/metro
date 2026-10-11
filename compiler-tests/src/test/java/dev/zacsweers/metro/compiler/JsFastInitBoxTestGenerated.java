@@ -2600,6 +2600,32 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
   }
 
   @Nested
+  @TestMetadata("compiler-tests/src/test/data/box/lifecycle")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Lifecycle {
+    private void run(String fileName) {
+      runTest("compiler-tests/src/test/data/box/lifecycle/" + fileName);
+    }
+
+    @Test
+    public void testAllFilesPresentInLifecycle() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/lifecycle"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
+    }
+
+    @Test
+    @TestMetadata("GraphExtensionsCloseWithParent.kt")
+    public void testGraphExtensionsCloseWithParent() {
+      run("GraphExtensionsCloseWithParent.kt");
+    }
+
+    @Test
+    @TestMetadata("InitAndCloseCallbacks.kt")
+    public void testInitAndCloseCallbacks() {
+      run("InitAndCloseCallbacks.kt");
+    }
+  }
+
+  @Nested
   @TestMetadata("compiler-tests/src/test/data/box/member")
   @TestDataPath("$PROJECT_ROOT")
   public class Member {

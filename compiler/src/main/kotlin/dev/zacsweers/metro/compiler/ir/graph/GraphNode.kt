@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.ir.graph
 
 import dev.zacsweers.metro.compiler.BitField
 import dev.zacsweers.metro.compiler.Origins
+import dev.zacsweers.metro.compiler.graph.GraphCloseKind
 import dev.zacsweers.metro.compiler.graph.explanation.BindingExplanationCandidate
 import dev.zacsweers.metro.compiler.ir.BindsCallable
 import dev.zacsweers.metro.compiler.ir.BindsOptionalOfCallable
@@ -206,6 +207,7 @@ internal sealed class GraphNode {
     var proto: DependencyGraphProto? = null,
     /** Actual contribution removals retained for this graph's optional report. */
     val contributionDecisions: List<BindingExplanationCandidate> = emptyList(),
+    val lifecycle: GraphLifecycleInfo = GraphLifecycleInfo.NONE,
   ) : GraphNode() {
     val hasExtensions = graphExtensions.isNotEmpty()
 
@@ -245,6 +247,35 @@ internal sealed class GraphNode {
       override val parameters: Parameters,
       override val bindingContainersParameterIndices: BitField,
     ) : Creator()
+  }
+}
+
+/** A graph's lifecycle callbacks and the `close()` function Metro implements for it. */
+internal data class GraphLifecycleInfo(
+  /** Null when the graph doesn't implement `CloseableGraph` or `SuspendCloseableGraph`. */
+  val closeKind: GraphCloseKind?,
+  /** The `close()` fake override on the graph implementation, when the graph is closeable. */
+  val closeFunction: IrSimpleFunction?,
+  val callbacks: List<LifecycleCallback>,
+) {
+  val isCloseable: Boolean
+    get() = closeKind != null
+
+  val parameters: List<LifecycleCallbackParameter>
+    get() = callbacks.flatMap { it.parameters }
+
+  /** Whether anything here needs suspend provider support. */
+  fun usesSuspend(): Boolean {
+    if (closeKind == GraphCloseKind.SUSPEND) return true
+    return callbacks.any { callback ->
+      val requestsSuspendWrapper =
+        callback.parameters.any { it.contextKey.wrappedType.containsSuspendWrapper() }
+      callback.function.ir.isSuspend || requestsSuspendWrapper
+    }
+  }
+
+  companion object {
+    val NONE = GraphLifecycleInfo(closeKind = null, closeFunction = null, callbacks = emptyList())
   }
 }
 

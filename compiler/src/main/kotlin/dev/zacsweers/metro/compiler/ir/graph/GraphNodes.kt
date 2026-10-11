@@ -24,6 +24,8 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.getOrInit
 import dev.zacsweers.metro.compiler.getValue
+import dev.zacsweers.metro.compiler.graph.GraphCloseKind
+import dev.zacsweers.metro.compiler.graph.GraphLifecyclePhase
 import dev.zacsweers.metro.compiler.graph.toTraceSection
 import dev.zacsweers.metro.compiler.graph.withEntry
 import dev.zacsweers.metro.compiler.ir.BindsCallable
@@ -216,6 +218,9 @@ internal class GraphNodes(
     private var parentGraph: GraphNode? = null
     private val graphExtensions = mutableMapOf<IrTypeKey, MutableList<GraphExtensionAccessor>>()
     private val injectors = mutableListOf<InjectorFunction>()
+    private val lifecycleCallbacks = mutableListOf<LifecycleCallback>()
+    private var lifecycleCloseKind: GraphCloseKind? = null
+    private var lifecycleCloseFunction: IrSimpleFunction? = null
     private val includedGraphNodes = mutableMapOf<IrTypeKey, GraphNode>()
     private val graphTypeKey = IrTypeKey(graphDeclaration.typeWith())
     private val sourceGraphTypeKey = IrTypeKey(graphDeclaration.sourceGraphIfMetroGraph.typeWith())
@@ -758,9 +763,19 @@ internal class GraphNodes(
 
           when (declaration) {
             is IrSimpleFunction -> {
-              // Could be an injector, accessor, or graph extension
+              val closeKind = declaration.closeableGraphCloseKind()
+              if (closeKind != null) {
+                // Metro implements close() for closeable graphs. It isn't an accessor.
+                lifecycleCloseKind = closeKind
+                lifecycleCloseFunction = declaration
+                checkCloseIsNotImplemented(declaration)
+                continue
+              }
+
+              // Could be an injector, accessor, graph extension, or lifecycle callback
               var isGraphExtension = false
               var isOptionalBinding = annotations.isOptionalBinding
+              var lifecyclePhase = annotations.lifecyclePhase()
               var hasDefaultImplementation = false
               var qualifierMismatchData: Triple<IrAnnotation?, IrAnnotation?, IrSimpleFunction>? =
                 null
@@ -772,13 +787,20 @@ internal class GraphNodes(
               for (overridden in declaration.overriddenSymbolsSequence()) {
                 if (canDeferToDefaultImpl) {
                   if (overridden.owner.modality == Modality.OPEN || overridden.owner.body != null) {
+                    val defaultImplementationAnnotations =
+                      metroAnnotationsOf(
+                        overridden.owner,
+                        EnumSet.of(
+                          MetroAnnotations.Kind.OptionalBinding,
+                          MetroAnnotations.Kind.OnGraphInit,
+                          MetroAnnotations.Kind.OnGraphClose,
+                        ),
+                      )
                     if (!isOptionalBinding) {
-                      isOptionalBinding =
-                        metroAnnotationsOf(
-                            overridden.owner,
-                            EnumSet.of(MetroAnnotations.Kind.OptionalBinding),
-                          )
-                          .isOptionalBinding
+                      isOptionalBinding = defaultImplementationAnnotations.isOptionalBinding
+                    }
+                    if (lifecyclePhase == null) {
+                      lifecyclePhase = defaultImplementationAnnotations.lifecyclePhase()
                     }
                     hasDefaultImplementation = true
                     break
@@ -842,6 +864,11 @@ internal class GraphNodes(
                     }
                   }
                 }
+              }
+
+              if (lifecyclePhase != null) {
+                lifecycleCallbacks += lifecycleCallback(declaration, annotations, lifecyclePhase)
+                continue
               }
 
               if (hasDefaultImplementation && !isOptionalBinding) continue
@@ -1371,6 +1398,12 @@ internal class GraphNodes(
             annotationDeclaredBindingContainers = annotationDeclaredBindingContainers,
             dynamicTypeKeys = dynamicTypeKeys,
             contributionDecisions = contributionDecisions,
+            lifecycle =
+              GraphLifecycleInfo(
+                closeKind = lifecycleCloseKind,
+                closeFunction = lifecycleCloseFunction,
+                callbacks = lifecycleCallbacks.toList(),
+              ),
             typeKey = graphTypeKey,
             graphPrivateKeys = graphPrivateKeys,
             publishedBindsKeys =
@@ -1420,6 +1453,57 @@ internal class GraphNodes(
 
         graphNode
       }
+    }
+
+    /** Returns how this graph closes when [this] is its `close()`, or null otherwise. */
+    private fun IrSimpleFunction.closeableGraphCloseKind(): GraphCloseKind? {
+      if (name != Symbols.Names.close || regularParameters.isNotEmpty()) return null
+      for (overridden in overriddenSymbolsSequence()) {
+        if (overridden == metroSymbols.closeableGraphClose) return GraphCloseKind.SYNC
+        if (overridden == metroSymbols.suspendCloseableGraphClose) return GraphCloseKind.SUSPEND
+      }
+      return null
+    }
+
+    /**
+     * Reports an inherited `close()` implementation. FIR reports these for graphs it can see, but
+     * contributions merged in IR can bring one in too.
+     */
+    private fun checkCloseIsNotImplemented(close: IrSimpleFunction) {
+      val implementation =
+        close.overriddenSymbolsSequence().firstOrNull {
+          it.owner.modality == Modality.OPEN || it.owner.body != null
+        } ?: return
+      val graphName = graphDeclaration.sourceGraphIfMetroGraph.name.asString()
+      reportCompat(
+        sequenceOf(implementation.owner, graphDeclaration.sourceGraphIfMetroGraph),
+        MetroDiagnostics.GRAPH_LIFECYCLE_ERROR,
+        "'$graphName' inherits an implementation of close() from " +
+          "'${implementation.owner.parentAsClass.name}'. Metro generates close() for closeable " +
+          "graphs, so move that cleanup into an @OnGraphClose callback.",
+      )
+      hasErrors = true
+    }
+
+    private fun lifecycleCallback(
+      declaration: IrSimpleFunction,
+      annotations: MetroAnnotations<IrAnnotation>,
+      phase: GraphLifecyclePhase,
+    ): LifecycleCallback {
+      val metroFunction = metroFunctionOf(declaration, annotations)
+      return LifecycleCallback(
+        phase = phase,
+        function = metroFunction,
+        parameters =
+          declaration.regularParameters.map { parameter ->
+            LifecycleCallbackParameter(
+              contextKey = IrContextualTypeKey.from(parameter),
+              metroFunction = metroFunction,
+              parameter = parameter,
+              phase = phase,
+            )
+          },
+      )
     }
 
     private fun buildExternalGraphOrBindingContainer(): GraphNode {
@@ -1562,5 +1646,13 @@ private fun computePublishedBindsKeys(
         add(callable.typeKey)
       }
     }
+  }
+}
+
+private fun MetroAnnotations<*>.lifecyclePhase(): GraphLifecyclePhase? {
+  return when {
+    isOnGraphInit -> GraphLifecyclePhase.INIT
+    isOnGraphClose -> GraphLifecyclePhase.CLOSE
+    else -> null
   }
 }

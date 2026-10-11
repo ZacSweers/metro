@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.ir
 import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.types.isUnit
 import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.name.CallableId
 
@@ -26,8 +27,10 @@ internal class MetroSimpleFunction(
 
 internal val MetroSimpleFunction.isAccessorCandidate: Boolean
   get() {
+    // Unit functions, like a closeable graph's close() or a lifecycle callback, aren't accessors.
     return ir.visibility.isVisibleOutside() &&
       ir.regularParameters.isEmpty() &&
+      !ir.returnType.isUnit() &&
       !annotations.isBinds &&
       !annotations.isProvides &&
       !annotations.isMultibinds

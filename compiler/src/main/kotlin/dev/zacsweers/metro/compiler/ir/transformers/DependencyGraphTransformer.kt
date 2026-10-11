@@ -18,8 +18,10 @@ import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
+import dev.zacsweers.metro.compiler.graph.GraphExtensionCreationSite
 import dev.zacsweers.metro.compiler.graph.LocationDiagnostic
 import dev.zacsweers.metro.compiler.graph.toText
+import dev.zacsweers.metro.compiler.graph.validateGraphExtensionCreation
 import dev.zacsweers.metro.compiler.ir.IrBindingContainerResolver
 import dev.zacsweers.metro.compiler.ir.IrBoundTypeResolver
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
@@ -47,6 +49,7 @@ import dev.zacsweers.metro.compiler.ir.graph.BindingGraphGenerator
 import dev.zacsweers.metro.compiler.ir.graph.BindingLookupCache
 import dev.zacsweers.metro.compiler.ir.graph.BindingPropertyContext
 import dev.zacsweers.metro.compiler.ir.graph.ChildGraphScopeInfo
+import dev.zacsweers.metro.compiler.ir.graph.GraphExtensionAccessor
 import dev.zacsweers.metro.compiler.ir.graph.GraphNode
 import dev.zacsweers.metro.compiler.ir.graph.GraphNodes
 import dev.zacsweers.metro.compiler.ir.graph.IrBinding
@@ -56,6 +59,12 @@ import dev.zacsweers.metro.compiler.ir.graph.IrGraphExtensionGenerator
 import dev.zacsweers.metro.compiler.ir.graph.IrGraphGenerator
 import dev.zacsweers.metro.compiler.ir.graph.expressions.BindingExpressionDecorator
 import dev.zacsweers.metro.compiler.ir.graph.generatedGraphExtensionData
+import dev.zacsweers.metro.compiler.ir.graph.irCreateAndInitGraph
+import dev.zacsweers.metro.compiler.ir.graph.lifecycleGraphName
+import dev.zacsweers.metro.compiler.ir.graph.lifecycleInitSuspends
+import dev.zacsweers.metro.compiler.ir.graph.originalDeclarationIfOverride
+import dev.zacsweers.metro.compiler.ir.graph.reportGraphLifecycleIssue
+import dev.zacsweers.metro.compiler.ir.graph.suspendGraphInitFunction
 import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.irCallConstructorWithSameParameters
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
@@ -65,6 +74,7 @@ import dev.zacsweers.metro.compiler.ir.metroDumpKotlinLike
 import dev.zacsweers.metro.compiler.ir.metroGraphOrFail
 import dev.zacsweers.metro.compiler.ir.nestedClassOrNull
 import dev.zacsweers.metro.compiler.ir.padForConsole
+import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.render
@@ -72,6 +82,8 @@ import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireNestedClass
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.resolveOverriddenTypeIfAny
+import dev.zacsweers.metro.compiler.ir.singleAbstractFunction
+import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
 import dev.zacsweers.metro.compiler.ir.stubExpressionBody
 import dev.zacsweers.metro.compiler.ir.supportsTracing
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
@@ -96,6 +108,7 @@ import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
@@ -560,6 +573,16 @@ internal class DependencyGraphTransformer(
           for (key in task.sharedKeys) {
             bindingGraph.reserveSharedRead(key)
           }
+
+          val lifecycleIssues =
+            validateExtensionLifecycle(
+              node,
+              task.validation,
+              node.graphExtensions[task.contributedGraphKey].orEmpty(),
+            )
+          if (lifecycleIssues) {
+            hasErrors = true
+          }
         }
 
         // Pop the parent graph after all contributed graphs are processed
@@ -667,6 +690,10 @@ internal class DependencyGraphTransformer(
           // Return early with errors - caller will handle
           return@PreparedGraphValidation validationResult
         }
+
+        // Parents read this when they generate code that creates this graph.
+        node.metroGraphOrFail.lifecycleInitSuspends =
+          bindingGraph.lifecycleValidation?.initSuspendReason != null
 
         // Mark bindings from enclosing parents to ensure they're generated there
         // Only applicable in graph extensions
@@ -909,6 +936,11 @@ internal class DependencyGraphTransformer(
           }
         val bindingPropertyContext = generator.generate()
 
+        // A root graph whose init suspends runs it from its factory functions.
+        metroGraph.suspendGraphInitFunction?.let { initFunction ->
+          implementCreatorFunctions(node.sourceGraph, node.creator, metroGraph, initFunction)
+        }
+
         // Generate child graphs with this graph's binding context as their parent
         for (childResult in validationResult.childValidationResults) {
           generateDependencyGraph(childResult, parentBindingContext = bindingPropertyContext)
@@ -929,6 +961,7 @@ internal class DependencyGraphTransformer(
             .plus(node.injectors.map { it.metroFunction.ir })
             .plus(node.bindsCallables.values.flatten().map { it.callableMetadata.function })
             .plus(node.graphExtensions.flatMap { it.value }.map { it.accessor.ir })
+            .plus(listOfNotNull(node.lifecycle.closeFunction))
             .filterNot { it.isExternalParent }
             .forEach { function ->
               with(function) {
@@ -974,6 +1007,59 @@ internal class DependencyGraphTransformer(
     }
   }
 
+  /**
+   * Checks how [parent] creates the graph extension in [child]. Returns true if it reported an
+   * error.
+   */
+  private fun validateExtensionLifecycle(
+    parent: GraphNode.Local,
+    child: ValidationResult,
+    accessors: List<GraphExtensionAccessor>,
+  ): Boolean {
+    val childLifecycle = child.node.lifecycle
+    val initSuspendReason = child.bindingGraph.lifecycleValidation?.initSuspendReason
+    if (initSuspendReason == null && childLifecycle.closeKind == null) return false
+    val sites =
+      accessors.map<GraphExtensionAccessor, GraphExtensionCreationSite<IrDeclaration>> { accessor ->
+        val function = accessor.accessor.ir
+        if (accessor.isFactory) {
+          // An accessor that returns the factory. The factory's function creates the extension.
+          val factoryFunction = function.returnType.rawType().singleAbstractFunction()
+          GraphExtensionCreationSite(
+            name = factoryFunction.name.asString(),
+            isFactory = true,
+            isSuspend = factoryFunction.isSuspend,
+            source = factoryFunction,
+          )
+        } else {
+          val declaration =
+            function.propertyIfAccessorCompat
+              .expectAs<IrDeclarationWithName>()
+              .originalDeclarationIfOverride()
+              .expectAs<IrDeclarationWithName>()
+          GraphExtensionCreationSite(
+            name = declaration.name.asString(),
+            isFactory = accessor.isFactorySAM,
+            isSuspend = function.isSuspend,
+            source = declaration,
+          )
+        }
+      }
+    val issues =
+      validateGraphExtensionCreation<IrTypeKey, IrContextualTypeKey, IrDeclaration>(
+        parentName = parent.lifecycleGraphName,
+        parentCloseKind = parent.lifecycle.closeKind,
+        extensionName = child.node.lifecycleGraphName,
+        extensionCloseKind = childLifecycle.closeKind,
+        extensionInitSuspendReason = initSuspendReason?.description,
+        sites = sites,
+      )
+    for (issue in issues) {
+      reportGraphLifecycleIssue(issue, fallback = parent.sourceGraph.sourceGraphIfMetroGraph)
+    }
+    return issues.isNotEmpty()
+  }
+
   private fun reportRuntimeTracingUnavailableOnce(metroGraph: IrClass) {
     val reason = runtimeTracingAvailability.unavailableReason ?: return
     if (!options.enableRuntimeTracing || !platform.supportsTracing()) return
@@ -988,6 +1074,7 @@ internal class DependencyGraphTransformer(
     sourceGraph: IrClass,
     creator: GraphNode.Creator?,
     metroGraph: IrClass,
+    initFunction: IrSimpleFunction? = null,
   ) {
     // NOTE: may not have a companion object if this graph is a contributed graph, which has no
     // static creators
@@ -1006,9 +1093,12 @@ internal class DependencyGraphTransformer(
           body =
             pluginContext.createIrBuilder(symbol).run {
               irExprBodySafe(
-                irCallConstructorWithSameParameters(
-                  source = createFunction,
-                  constructor = metroGraph.primaryConstructor!!.symbol,
+                irCreateAndInitGraph(
+                  irCallConstructorWithSameParameters(
+                    source = createFunction,
+                    constructor = metroGraph.primaryConstructor!!.symbol,
+                  ),
+                  initFunction,
                 ),
               )
             }

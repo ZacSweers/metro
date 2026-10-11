@@ -229,6 +229,7 @@ internal class Symbols(
 
   object Names {
     val Assisted = StringNames.ASSISTED.asName()
+    val close = "close".asName()
     val Binds = "Binds".asName()
     val BindsMirrorClass = "BindsMirror".asName()
     val DefaultBinding = "DefaultBinding".asName()
@@ -664,6 +665,14 @@ internal class Symbols(
 
   val suspendCloseableGraph: IrClassSymbol by lazy {
     builtinsFinder.findClass(MetroClassIds.suspendCloseableGraph)!!
+  }
+
+  val closeableGraphClose: IrSimpleFunctionSymbol by lazy {
+    closeableGraph.requireSimpleFunction("close")
+  }
+
+  val suspendCloseableGraphClose: IrSimpleFunctionSymbol by lazy {
+    suspendCloseableGraph.requireSimpleFunction("close")
   }
 
   private val graphLifecycle: IrClassSymbol by lazy {

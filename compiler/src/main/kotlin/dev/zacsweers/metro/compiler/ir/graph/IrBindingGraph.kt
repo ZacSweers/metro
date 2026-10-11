@@ -29,12 +29,15 @@ import dev.zacsweers.metro.compiler.graph.DiagnosticRoutes
 import dev.zacsweers.metro.compiler.graph.ErrorReporter
 import dev.zacsweers.metro.compiler.graph.GraphAdjacency
 import dev.zacsweers.metro.compiler.graph.GraphAnalysis
+import dev.zacsweers.metro.compiler.graph.GraphCloseKind
 import dev.zacsweers.metro.compiler.graph.GraphTopology
 import dev.zacsweers.metro.compiler.graph.GraphValidationIssue
 import dev.zacsweers.metro.compiler.graph.MissingBindingHints
 import dev.zacsweers.metro.compiler.graph.MultibindingKind
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
 import dev.zacsweers.metro.compiler.graph.PreparedGraphSeal
+import dev.zacsweers.metro.compiler.graph.SuspendBindingAnalysisResult
+import dev.zacsweers.metro.compiler.graph.SuspendBindingPath
 import dev.zacsweers.metro.compiler.graph.SuspendDiagnosticMessages
 import dev.zacsweers.metro.compiler.graph.disambiguateIncompatibleScopes
 import dev.zacsweers.metro.compiler.graph.duplicateMapKeysDiagnostic
@@ -86,6 +89,7 @@ import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.trace
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactory1
+import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.expressions.IrClassReference
@@ -177,6 +181,14 @@ internal class IrBindingGraph(
 
   /** Caches this graph's suspend bindings for child lookups on the main compiler thread. */
   private var parentSuspendBindingAnalysis: SuspendBindingAnalysis? = null
+
+  /** Witness paths from the last suspend validation, used to explain lifecycle suspension. */
+  private var suspendPathAnalysis: SuspendBindingAnalysisResult<IrTypeKey, IrContextualTypeKey>? =
+    null
+
+  /** This graph's lifecycle validation, available once it's sealed without errors. */
+  internal var lifecycleValidation: IrGraphLifecycleResult? = null
+    private set
 
   /** Returns true if the binding for [typeKey] transitively requires a suspend context. */
   internal fun isTransitivelySuspend(typeKey: IrTypeKey): Boolean =
@@ -364,6 +376,7 @@ internal class IrBindingGraph(
   private val accessors = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
   private val inheritedAccessorRoots = mutableListOf<GraphAccessor>()
   private val injectors = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
+  private val lifecycleRoots = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
   private val extraKeeps = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
   /**
    * Context keys that child graphs need from this parent. Used to ensure these bindings are
@@ -393,6 +406,11 @@ internal class IrBindingGraph(
   fun addInjector(key: IrContextualTypeKey, entry: IrBindingStack.Entry) {
     recordRuntimeCoroutinesUse(key)
     injectors.putGraphRoot(key, entry)
+  }
+
+  fun addLifecycleRoot(root: LifecycleCallbackParameter, entry: IrBindingStack.Entry) {
+    recordRuntimeCoroutinesUse(root.contextKey)
+    lifecycleRoots.putGraphRoot(root.contextKey, entry)
   }
 
   fun addBinding(key: IrTypeKey, binding: IrBinding, bindingStack: IrBindingStack) {
@@ -650,6 +668,9 @@ internal class IrBindingGraph(
     val prepared =
       trace("prepare graph seal") {
         val roots = buildMap {
+          // Accessors and injectors replace callback parameters with the same key, so their
+          // entries start any traces.
+          putAll(lifecycleRoots)
           putAll(accessors)
           putAll(injectors)
         }
@@ -1046,7 +1067,7 @@ internal class IrBindingGraph(
   private fun functionProviderMigrationHintForMissing(key: IrTypeKey): String? {
     if (!metroContext.options.enableFunctionProviders) return null
     val functionRawType =
-      sequenceOf(accessors, injectors, extraKeeps)
+      sequenceOf(accessors, injectors, lifecycleRoots, extraKeeps)
         .flatMap { it.keys.asSequence() }
         .firstOrNull { ctx ->
           val rawClassId = ctx.rawType?.rawTypeOrNull()?.classId
@@ -1427,11 +1448,66 @@ internal class IrBindingGraph(
           hasDisabledSuspendProviderUse = true
         }
       }
-      if (hasDisabledSuspendProviderUse) reportSuspendProvidersNotEnabled()
+      if (node.lifecycle.usesSuspend()) {
+        hasDisabledSuspendProviderUse = true
+      }
+      if (hasDisabledSuspendProviderUse) {
+        reportSuspendProvidersNotEnabled()
+        return
+      }
+    } else if (hasDirectSuspendBinding) {
+      validateSuspendBindings(bindings, roots, adjacency)
+    }
+    if (node.lifecycle.closeKind == GraphCloseKind.SUSPEND) {
+      requiresRuntimeCoroutines = true
+    }
+    validateLifecycle(bindings)
+  }
+
+  private fun validateLifecycle(bindings: ScatterMap<IrTypeKey, IrBinding>) {
+    val lifecycle = node.lifecycle
+    if (lifecycle.callbacks.isEmpty() && !lifecycle.isCloseable) return
+    val nonCallbackRootKeys = buildSet {
+      accessors.keys.mapTo(this) { it.typeKey }
+      injectors.keys.mapTo(this) { it.typeKey }
+      extraKeeps.keys.mapTo(this) { it.typeKey }
+    }
+    lifecycleValidation =
+      IrGraphLifecycleValidator(
+          metroContext = metroContext,
+          node = node,
+          bindings = bindings,
+          nonCallbackRootKeys = nonCallbackRootKeys,
+          suspendPath = ::lifecycleSuspendPath,
+          report = ::reportLifecycleDiagnostic,
+        )
+        .validate()
+  }
+
+  private fun lifecycleSuspendPath(
+    contextKey: IrContextualTypeKey,
+  ): SuspendBindingPath<IrTypeKey, IrContextualTypeKey>? {
+    if (!dependencyRequiresSuspend(contextKey)) return null
+    return suspendPathAnalysis?.pathFrom(contextKey.typeKey) { it.typeKey }
+      ?: SuspendBindingPath(contextKey.typeKey, emptyList(), contextKey.typeKey, false)
+  }
+
+  private fun reportLifecycleDiagnostic(diagnostic: MetroDiagnostic, anchor: IrElement) {
+    if (diagnostic.severity == MetroSeverity.ERROR) {
+      hasErrors = true
+    }
+    if (anchor is IrDeclaration) {
+      pendingDiagnostics += PendingDiagnostic.Structured(diagnostic.id.factory, anchor, diagnostic)
       return
     }
-    if (hasDirectSuspendBinding) {
-      validateSuspendBindings(bindings, roots, adjacency)
+    // Dynamic graphs anchor on their creation call, which isn't a declaration.
+    with(metroContext) {
+      diagnosticReporter.reportAt(
+        anchor,
+        node.metroGraphOrFail.file,
+        diagnostic.id.factory,
+        render(diagnostic).padForConsole(),
+      )
     }
   }
 
@@ -1490,17 +1566,18 @@ internal class IrBindingGraph(
     roots: Map<IrContextualTypeKey, IrBindingStack.Entry>,
     adjacency: GraphAdjacency<IrTypeKey>,
   ) {
-    val validation =
+    val validator =
       IrSuspendBindingValidator(
-          metroContext = metroContext,
-          node = node,
-          bindings = bindings,
-          roots = roots,
-          adjacency = adjacency,
-          runtimeCoroutinesAlreadyRequired = requiresRuntimeCoroutines,
-          report = { candidates, message, factory -> reportError(candidates, message, factory) },
-        )
-        .validate()
+        metroContext = metroContext,
+        node = node,
+        bindings = bindings,
+        roots = roots,
+        adjacency = adjacency,
+        runtimeCoroutinesAlreadyRequired = requiresRuntimeCoroutines,
+        report = { candidates, message, factory -> reportError(candidates, message, factory) },
+      )
+    val validation = validator.validate()
+    suspendPathAnalysis = validator.pathAnalysis
     transitivelySuspendKeys = validation.suspendKeys
     requiresRuntimeCoroutines = validation.requiresRuntimeCoroutines
   }
