@@ -70,11 +70,11 @@ class DeferredBindingMinimizationTest : DynamicJvmBoxTest() {
       appendLine("fun box(): String {")
       appendLine("  val graph = createGraph<PriorityCycleGraph>()")
       appendLine(
-        "  assertIs<dev.zacsweers.metro.internal.DelegateFactory<*>>(graph.factoryProvider)"
+        "  assertIs<dev.zacsweers.metro.internal.DelegateFactory<*>>(graph.factoryProvider)",
       )
       appendLine("  assertIs<dev.zacsweers.metro.internal.DelegateFactory<*>>(graph.aProvider)")
       appendLine(
-        "  assertFalse(graph.bProvider is dev.zacsweers.metro.internal.DelegateFactory<*>)"
+        "  assertFalse(graph.bProvider is dev.zacsweers.metro.internal.DelegateFactory<*>)",
       )
       appendLine("  val created = graph.factoryProvider().create(\"priority\")")
       appendLine("  assertEquals(\"priority\", created.name)")

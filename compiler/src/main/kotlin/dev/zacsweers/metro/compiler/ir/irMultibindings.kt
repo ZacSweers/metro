@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.graph.computeMultibindingId
 import dev.zacsweers.metro.compiler.graph.createMapBindingId
+import dev.zacsweers.metro.compiler.ir.graph.IrBinding
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.Objects
@@ -25,13 +26,14 @@ import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
+import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.name.StandardClassIds
 
 context(context: IrMetroContext)
 internal fun IrTypeKey.transformIfIntoMultibinding(
-  annotations: MetroAnnotations<IrAnnotation>
+  annotations: MetroAnnotations<IrAnnotation>,
 ): IrTypeKey {
   if (!annotations.isIntoMultibinding) {
     return this
@@ -42,7 +44,7 @@ internal fun IrTypeKey.transformIfIntoMultibinding(
   val declaration =
     rawSymbol.expectAsOrNull<IrSymbol>()?.owner?.expectAsOrNull<IrOverridableDeclaration<*>>()
       ?: reportCompilerBug(
-        "Expected symbol to be an IrSymbol but was ${rawSymbol::class.simpleName}"
+        "Expected symbol to be an IrSymbol but was ${rawSymbol::class.simpleName}",
       )
 
   val elementId = declaration.multibindingElementId
@@ -158,13 +160,42 @@ internal fun populateImplicitClassKey(mapKey: IrConstructorCall, implicitType: I
  */
 context(context: IrMetroContext)
 internal fun MetroAnnotations<IrAnnotation>.withPopulatedImplicitClassKey(
-  implicitType: IrType
+  implicitType: IrType,
 ): MetroAnnotations<IrAnnotation> {
   val mapKey = this.mapKey ?: return this
   if (!isImplicitClassKeySentinel(mapKey.ir)) return this
   val copied = mapKey.ir.deepCopyWithSymbols()
   populateImplicitClassKey(copied, implicitType)
   return copy(mapKey = IrAnnotation(copied))
+}
+
+/**
+ * Resolves the implicit class type for a binding with an implicit class key. For injected class
+ * bindings, this is the class itself. For provided/binds bindings, this is the input parameter type
+ * (which should already be populated during contribution code gen for contributions). Validation
+ * and map generation must resolve the same class.
+ */
+internal fun resolveImplicitClassKeyType(binding: IrBinding): IrType {
+  return when (binding) {
+    is IrBinding.ConstructorInjected -> binding.type.defaultType
+    is IrBinding.ObjectClass -> binding.type.defaultType
+    is IrBinding.Alias -> binding.aliasedType.type.rawType().defaultType
+    is IrBinding.Provided -> {
+      // For @Binds, the implicit type is the single value parameter type.
+      val function = binding.providerFactory.function
+      val parameterType =
+        function.extensionReceiverParameterCompat?.type
+          ?: function.regularParameters.firstOrNull()?.type
+      if (parameterType == null) {
+        reportCompilerBug("Cannot resolve implicit class key type for Provided binding $binding")
+      }
+      parameterType.rawType().defaultType
+    }
+    else ->
+      reportCompilerBug(
+        "Implicit class keys require a class, binds, or provided binding. Found ${binding::class}.",
+      )
+  }
 }
 
 context(context: IrMetroContext)

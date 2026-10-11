@@ -3,11 +3,8 @@ interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
-    private val thisGraphInstance: Impl
-      field = <this>
-
     private val provideStringProvider: Provider<String>
-      field = ProvideStringMetroFactory/* companion */.create(instance = <this>.#thisGraphInstance, int = ProvideIntMetroFactory/* companion */.create(instance = <this>.#thisGraphInstance))
+      field = create(instance = <this>, int = create(instance = <this>))
 
     private constructor() /* primary */ {
       super/*Any*/()
@@ -27,7 +24,7 @@ interface AppGraph {
 
     override val scalarString2: String
       override get(): String {
-        return <this>.#provideStringProvider.invoke()
+        return <this>.<get-scalarString>()
       }
 
   }

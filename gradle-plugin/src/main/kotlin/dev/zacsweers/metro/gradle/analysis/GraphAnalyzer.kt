@@ -38,6 +38,7 @@ public class GraphAnalyzer(private val bindingGraph: BindingGraph) {
     )
   }
 
+  /** Finds the longest eager dependency paths, keeping up to [maxPaths] examples. */
   public fun findLongestPaths(maxPaths: Int = 5): LongestPathResult {
     val vs = eagerGraph.nodes()
     if (vs.isEmpty()) {
@@ -123,7 +124,7 @@ public class GraphAnalyzer(private val bindingGraph: BindingGraph) {
    */
   public fun computePathsToRoot(): PathsToRootResult {
     val graphRoot = bindingGraph.graphRoot
-    if (graphRoot == null || eagerGraph.nodes().isEmpty()) {
+    if (graphRoot == null || graphRoot !in eagerGraph.nodes()) {
       return PathsToRootResult("", emptyMap())
     }
 

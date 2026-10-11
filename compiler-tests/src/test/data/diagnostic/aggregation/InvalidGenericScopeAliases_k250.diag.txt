@@ -1,0 +1,5 @@
+/InvalidGenericScopeAliases_k250.kt:7:31: error: Unresolved reference 'MissingOuter'.
+
+/InvalidGenericScopeAliases_k250.kt:13:40: error: Unresolved reference 'MissingType'.
+
+/InvalidGenericScopeAliases_k250.kt:18:28: error: Recursive type alias in expansion.

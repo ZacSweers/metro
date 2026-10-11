@@ -3,17 +3,14 @@ interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
-    private val thisGraphInstance: Impl
-      field = <this>
-
     private val provideStringProvider: Provider<String>
-      field = DoubleCheck/* companion */.provider<Provider<String>, String>(delegate = ProvideStringMetroFactory/* companion */.create(instance = <this>.#thisGraphInstance))
+      field = provider<Provider<String>, String>(delegate = create(instance = <this>))
 
     private val optionalStringProvider: Provider<Optional<String>>
-      field = provider<Optional<String>>(provider = local fun <anonymous>(): Optional<String> {
+      field = local fun <anonymous>(): Optional<String> {
         return of<String>(p0 = <this>.#provideStringProvider.invoke())
       }
-)
+ /*-> Provider<Optional<String>> */
 
     private constructor() /* primary */ {
       super/*Any*/()
@@ -23,10 +20,10 @@ interface AppGraph {
 
     override val intProvider: Function0<Optional<Int>>
       override get(): Function0<Optional<Int>> {
-        return provider<Optional<Int>>(provider = local fun <anonymous>(): Optional<Int> {
-          return of<Int>(p0 = <this>.#thisGraphInstance.provideInt())
+        return local fun <anonymous>(): Optional<Int> {
+          return of<Int>(p0 = <this>.provideInt())
         }
-)
+ /*-> Provider<Optional<Int>> */
       }
 
     override val string: Optional<String>

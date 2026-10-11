@@ -1,10 +1,10 @@
 /module_main_DisabledResultsInMissingBindingMultiModule.kt:19:11: error: [Metro/MissingBinding] No binding found for Long?
 
-  AppGraph.int -> Int -> Long?
+  Base.int -> Int -> Long?
 
   trace (in AppGraph):
       Long? is injected at Base.provideInt(…, long)
-      Int is requested at AppGraph.int
+      Int is requested at Base.int
 
   help: ensure Long? has an @Inject constructor or is provided by an @Provides or @Binds declaration
         visible to AppGraph

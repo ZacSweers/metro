@@ -116,8 +116,8 @@ internal class Parameters(
           param.copy(
             contextualTypeKey =
               param.contextualTypeKey.withIrTypeKey(
-                param.contextualTypeKey.typeKey.copy(qualifier = qualifier)
-              )
+                param.contextualTypeKey.typeKey.copy(qualifier = qualifier),
+              ),
           )
         },
       contextParameters = contextParameters,

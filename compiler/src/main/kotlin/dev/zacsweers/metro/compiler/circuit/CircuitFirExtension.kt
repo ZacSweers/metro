@@ -530,7 +530,7 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
   internal companion object {
     fun findCircuitInjectSymbols(session: FirSession): List<FirBasedSymbol<*>> {
       return session.predicateBasedProvider.getSymbolsByPredicate(
-        CircuitSymbols.circuitInjectPredicate
+        CircuitSymbols.circuitInjectPredicate,
       )
     }
 
@@ -555,7 +555,7 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
 
   /** Gets or lazily computes and caches the factory target for a class-based factory. */
   private fun getOrComputeClassTarget(
-    annotatedClass: AnnotatedCircuitClass
+    annotatedClass: AnnotatedCircuitClass,
   ): CircuitFactoryTarget? {
     val classSymbol = annotatedClass.symbol
     val codegenTarget = annotatedClass.target
@@ -758,7 +758,7 @@ internal class CircuitFactoryTarget(
    * `@Inject`-annotated constructor (or class-level `@Inject`).
    */
   fun resolveConstructorParams(
-    session: FirSession
+    session: FirSession,
   ): Pair<List<FirValueParameterSymbol>, FirFunctionSymbol<*>?> {
     val classSymbol = classSymbol ?: return emptyList<FirValueParameterSymbol>() to null
     val injectConstructor = classSymbol.findInjectLikeConstructors(session, true).firstOrNull()

@@ -26,6 +26,30 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
   }
 
   @Test
+  @TestMetadata("ArrayClassKeyArguments.kt")
+  public void testArrayClassKeyArguments() {
+    run("ArrayClassKeyArguments.kt");
+  }
+
+  @Test
+  @TestMetadata("ArrayClassKeyDefaults.kt")
+  public void testArrayClassKeyDefaults() {
+    run("ArrayClassKeyDefaults.kt");
+  }
+
+  @Test
+  @TestMetadata("ArrayClassKeyDirectLiterals.kt")
+  public void testArrayClassKeyDirectLiterals() {
+    run("ArrayClassKeyDirectLiterals.kt");
+  }
+
+  @Test
+  @TestMetadata("ArrayClassKeyScopeDefaults.kt")
+  public void testArrayClassKeyScopeDefaults() {
+    run("ArrayClassKeyScopeDefaults.kt");
+  }
+
+  @Test
   @TestMetadata("ConflictingAnnotationRoles.kt")
   public void testConflictingAnnotationRoles() {
     run("ConflictingAnnotationRoles.kt");
@@ -78,6 +102,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     @TestMetadata("ContributesToBindingContainerInterop.kt")
     public void testContributesToBindingContainerInterop() {
       run("ContributesToBindingContainerInterop.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributesToMultibindsAccessor.kt")
+    public void testContributesToMultibindsAccessor() {
+      run("ContributesToMultibindsAccessor.kt");
     }
 
     @Test
@@ -150,6 +180,18 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     @TestMetadata("InternalHintsAreNotVisibleWithoutFriends.kt")
     public void testInternalHintsAreNotVisibleWithoutFriends() {
       run("InternalHintsAreNotVisibleWithoutFriends.kt");
+    }
+
+    @Test
+    @TestMetadata("InvalidGenericScopeAliases.kt")
+    public void testInvalidGenericScopeAliases() {
+      run("InvalidGenericScopeAliases.kt");
+    }
+
+    @Test
+    @TestMetadata("InvalidGenericScopeAliases_k250.kt")
+    public void testInvalidGenericScopeAliases_k250() {
+      run("InvalidGenericScopeAliases_k250.kt");
     }
 
     @Test
@@ -621,6 +663,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("MissingBindingForAccessorFromUpstreamModule.kt")
+    public void testMissingBindingForAccessorFromUpstreamModule() {
+      run("MissingBindingForAccessorFromUpstreamModule.kt");
+    }
+
+    @Test
     @TestMetadata("MissingBindingHintsShouldReportInternalOnlyIfInternal.kt")
     public void testMissingBindingHintsShouldReportInternalOnlyIfInternal() {
       run("MissingBindingHintsShouldReportInternalOnlyIfInternal.kt");
@@ -932,6 +980,18 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       public void testRequiredAnnotationResultsInMissingBindings() {
         run("RequiredAnnotationResultsInMissingBindings.kt");
       }
+
+      @Test
+      @TestMetadata("RequiredConstructorDependencyWinsOptionalDependency.kt")
+      public void testRequiredConstructorDependencyWinsOptionalDependency() {
+        run("RequiredConstructorDependencyWinsOptionalDependency.kt");
+      }
+
+      @Test
+      @TestMetadata("RequiredProviderDependencyWinsOptionalDependency.kt")
+      public void testRequiredProviderDependencyWinsOptionalDependency() {
+        run("RequiredProviderDependencyWinsOptionalDependency.kt");
+      }
     }
 
     @Nested
@@ -952,6 +1012,38 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       public void testShardingThresholdNotReachedWarning() {
         run("ShardingThresholdNotReachedWarning.kt");
       }
+    }
+  }
+
+  @Nested
+  @TestMetadata("compiler-tests/src/test/data/diagnostic/diagnosticLevel")
+  @TestDataPath("$PROJECT_ROOT")
+  public class DiagnosticLevel {
+    private void run(String fileName) {
+      runTest("compiler-tests/src/test/data/diagnostic/diagnosticLevel/" + fileName);
+    }
+
+    @Test
+    public void testAllFilesPresentInDiagnosticLevel() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/diagnosticLevel"), Pattern.compile("^(.+)\\.kt$"), null, true, "_reports");
+    }
+
+    @Test
+    @TestMetadata("IdeOnlyLevelIsDisabledInCli.kt")
+    public void testIdeOnlyLevelIsDisabledInCli() {
+      run("IdeOnlyLevelIsDisabledInCli.kt");
+    }
+
+    @Test
+    @TestMetadata("WarningDisabled.kt")
+    public void testWarningDisabled() {
+      run("WarningDisabled.kt");
+    }
+
+    @Test
+    @TestMetadata("WarningRaisedToError.kt")
+    public void testWarningRaisedToError() {
+      run("WarningRaisedToError.kt");
     }
   }
 
@@ -1464,6 +1556,18 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       }
 
       @Test
+      @TestMetadata("ArrayClassKeyArgumentsInterop.kt")
+      public void testArrayClassKeyArgumentsInterop() {
+        run("ArrayClassKeyArgumentsInterop.kt");
+      }
+
+      @Test
+      @TestMetadata("ArrayClassKeyHiltScopes.kt")
+      public void testArrayClassKeyHiltScopes() {
+        run("ArrayClassKeyHiltScopes.kt");
+      }
+
+      @Test
       @TestMetadata("BindsOptionalOfDiagnostics.kt")
       public void testBindsOptionalOfDiagnostics() {
         run("BindsOptionalOfDiagnostics.kt");
@@ -1479,6 +1583,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       @TestMetadata("DoNotSuggestMovingInjectAnnotationToClassWhenUsingJavaxOrJakartaInject.kt")
       public void testDoNotSuggestMovingInjectAnnotationToClassWhenUsingJavaxOrJakartaInject() {
         run("DoNotSuggestMovingInjectAnnotationToClassWhenUsingJavaxOrJakartaInject.kt");
+      }
+
+      @Test
+      @TestMetadata("MapKeyWithoutContributesIntoMapCanBeSuppressed.kt")
+      public void testMapKeyWithoutContributesIntoMapCanBeSuppressed() {
+        run("MapKeyWithoutContributesIntoMapCanBeSuppressed.kt");
       }
 
       @Test
@@ -1503,6 +1613,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       @TestMetadata("PositionalAnnotationArgsWarning.kt")
       public void testPositionalAnnotationArgsWarning() {
         run("PositionalAnnotationArgsWarning.kt");
+      }
+
+      @Test
+      @TestMetadata("SuppressedWarningInExternalModule.kt")
+      public void testSuppressedWarningInExternalModule() {
+        run("SuppressedWarningInExternalModule.kt");
       }
 
       @Test
@@ -1536,6 +1652,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     @TestMetadata("DaggerLazyClassKeyIsUnsupported.kt")
     public void testDaggerLazyClassKeyIsUnsupported() {
       run("DaggerLazyClassKeyIsUnsupported.kt");
+    }
+
+    @Test
+    @TestMetadata("DuplicateEffectiveMapKeys.kt")
+    public void testDuplicateEffectiveMapKeys() {
+      run("DuplicateEffectiveMapKeys.kt");
     }
 
     @Test
@@ -1914,6 +2036,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     @TestMetadata("AssistedFactorySuspendMemberDep.kt")
     public void testAssistedFactorySuspendMemberDep() {
       run("AssistedFactorySuspendMemberDep.kt");
+    }
+
+    @Test
+    @TestMetadata("AssistedFactorySuspendMultibindings.kt")
+    public void testAssistedFactorySuspendMultibindings() {
+      run("AssistedFactorySuspendMultibindings.kt");
     }
 
     @Test

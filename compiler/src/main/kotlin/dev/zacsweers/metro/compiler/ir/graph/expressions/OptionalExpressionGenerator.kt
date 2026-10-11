@@ -100,6 +100,6 @@ internal fun IrType.optionalType(declaration: IrDeclaration?): IrType? {
 }
 
 internal enum class OptionalKind(val classId: ClassId) {
-  JAVA(Symbols.ClassIds.JavaOptional)
+  JAVA(Symbols.ClassIds.JavaOptional),
   // Other types would go here
 }

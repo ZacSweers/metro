@@ -78,7 +78,7 @@ internal fun GraphPath.presentableName(): String {
       append(
         parents.joinToString(" > ") {
           it.classId?.shortClassName?.asString() ?: "<unknown>"
-        }
+        },
       )
     }
     dynamicGraphId?.let {

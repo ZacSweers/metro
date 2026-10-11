@@ -41,6 +41,8 @@ package dev.zacsweers.metro
  *
  * A given set or map multibinding can be declared any number of times without error. Metro
  * implements these declarations to return the declared multibinding.
+ *
+ * @property allowEmpty Whether the declared multibinding may be empty (i.e., no contributed bindings).
  */
 @MustBeDocumented
 @Target(AnnotationTarget.FUNCTION, AnnotationTarget.PROPERTY, AnnotationTarget.PROPERTY_GETTER)

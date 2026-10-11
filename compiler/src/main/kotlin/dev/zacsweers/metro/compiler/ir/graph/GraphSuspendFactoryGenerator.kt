@@ -337,7 +337,7 @@ internal class GraphSuspendFactoryGenerator(
                 val samParam =
                   samParamsByKey[param.assistedParameterKey]
                     ?: reportCompilerBug(
-                      "Could not find matching assisted parameter for ${param.assistedParameterKey} on ${implClass.name}"
+                      "Could not find matching assisted parameter for ${param.assistedParameterKey} on ${implClass.name}",
                     )
                 irGet(samParam)
               } else {
@@ -370,7 +370,7 @@ internal class GraphSuspendFactoryGenerator(
                             parameters = params,
                             receiver = localDispatchReceiver,
                             parametersToFields = fieldsByParam,
-                          )
+                          ),
                         )
                       },
                   )

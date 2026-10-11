@@ -771,7 +771,7 @@ internal object BindingContainerCallableChecker :
   }
 
   private fun FirCallableDeclaration.isParameterlessBinds(
-    annotations: MetroAnnotations<MetroFirAnnotation>
+    annotations: MetroAnnotations<MetroFirAnnotation>,
   ): Boolean {
     if (!annotations.isBinds) return false
     if (receiverParameter != null) return false

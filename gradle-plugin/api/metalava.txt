@@ -28,7 +28,7 @@ package dev.zacsweers.metro.gradle {
   @kotlin.RequiresOptIn(level=kotlin.RequiresOptIn.Level.WARNING, message="This is an experimental API and may change or be removed in the future. Make sure you fully read and understand documentation of the declaration that is marked as a delicate API.") @kotlin.annotation.MustBeDocumented @kotlin.annotation.Retention(kotlin.annotation.AnnotationRetention.BINARY) public @interface ExperimentalMetroGradleApi {
   }
 
-  @kotlin.DslMarker public @interface MetroExtensionMarker {
+  @java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy.RUNTIME) @kotlin.DslMarker public @interface MetroExtensionMarker {
   }
 
   public final class MetroGradleSubplugin implements org.jetbrains.kotlin.gradle.plugin.KotlinCompilerPluginSupportPlugin {
@@ -225,7 +225,6 @@ package dev.zacsweers.metro.gradle.artifacts {
     property @org.gradle.api.tasks.InputFiles @org.gradle.api.tasks.PathSensitive(org.gradle.api.tasks.PathSensitivity.RELATIVE) public abstract org.gradle.api.file.ConfigurableFileCollection graphJsonFiles;
     property @org.gradle.api.tasks.OutputFile public abstract org.gradle.api.file.RegularFileProperty outputFile;
     property @org.gradle.api.tasks.Input public abstract org.gradle.api.provider.Property<java.lang.String> projectPath;
-    field public static final String NAME = "generateMetroGraphMetadata";
   }
 
   public interface MetroArtifacts {

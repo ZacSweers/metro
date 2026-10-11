@@ -94,7 +94,7 @@ class MetroGraphInspectionTest : BasePlatformTestCase() {
     module.withMetroLibFixtureLibrary {
       val file =
         myFixture.configureMetroFile(
-          "@DependencyGraph interface AppGraph { val child: libtest.LibDirectChildGraph }"
+          "@DependencyGraph interface AppGraph { val child: libtest.LibDirectChildGraph }",
         )
       val index = project.service<MetroResolutionService>().awaitIndex(file)
       val parent = index.graphs.single { it.name == "AppGraph" }
@@ -171,7 +171,7 @@ class MetroGraphInspectionTest : BasePlatformTestCase() {
         @Provides fun first(): String = "first"
         @Provides fun second(): String = "second"
       }
-      """
+      """,
       )
     validate(file)
     assertEquals(setOf("first", "second"), inspect(file).map { it.psiElement.text }.toSet())
@@ -203,7 +203,7 @@ class MetroGraphInspectionTest : BasePlatformTestCase() {
       interface Accessors { val value: String }
       @DependencyGraph interface FirstGraph : Accessors
       @DependencyGraph interface SecondGraph : Accessors
-      """
+      """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val service = project.service<MetroGraphValidationService>()

@@ -28,18 +28,18 @@ internal object DiagnosticsDocGenerator {
     appendLine()
     appendLine(
       "Reference for Metro's common graph-validation diagnostics: the messages reported with " +
-        "`[Metro/...]` IDs while validating dependency graphs."
+        "`[Metro/...]` IDs while validating dependency graphs.",
     )
     appendLine()
     appendLine(
       "This is not an exhaustive list of everything Metro reports. Many finer-grained declaration " +
         "checks, such as annotation misuse and visibility errors, are reported directly in the " +
-        "frontend or IDE without an ID."
+        "frontend or IDE without an ID.",
     )
     appendLine()
     appendLine(
       "Diagnostics rendering is controlled by the `diagnosticsRenderMode` Gradle option: `AUTO`, " +
-        "`PLAIN`, or `RICH`."
+        "`PLAIN`, or `RICH`.",
     )
     appendLine()
     appendLine("| Diagnostic | Summary |")
@@ -72,7 +72,7 @@ internal object DiagnosticsDocGenerator {
       val current = if (target.exists()) target.readText() else ""
       if (current != content) {
         System.err.println(
-          "$target is out of date. Run ./gradlew :compiler:generateDiagnosticsDocs to regenerate."
+          "$target is out of date. Run ./gradlew :compiler:generateDiagnosticsDocs to regenerate.",
         )
         exitProcess(1)
       }

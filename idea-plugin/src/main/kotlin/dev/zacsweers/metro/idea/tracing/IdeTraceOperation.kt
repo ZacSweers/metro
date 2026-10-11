@@ -171,7 +171,7 @@ internal constructor(
             timestamp,
             null,
             metadataSnapshot(),
-          )
+          ),
         )
       }
     }

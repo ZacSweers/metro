@@ -18,12 +18,12 @@ class InjectConstructorErrorsTest : MetroCompilerTest() {
         @Inject
         class ExampleClass @Inject constructor(private val value: String)
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ExampleClass.kt:7:20 You should annotate either a class XOR constructor with `@Inject` but not both."
+        "e: ExampleClass.kt:7:20 You should annotate either a class XOR constructor with `@Inject` but not both.",
       )
     }
   }
@@ -35,11 +35,11 @@ class InjectConstructorErrorsTest : MetroCompilerTest() {
         """
         class ExampleClass @Inject constructor()
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       assertDiagnostics(
-        "w: ExampleClass.kt:6:20 There is only one @Inject-annotated constructor. Consider moving the annotation to the class instead."
+        "w: ExampleClass.kt:6:20 There is only one @Inject-annotated constructor. Consider moving the annotation to the class instead.",
       )
     }
   }
@@ -51,7 +51,7 @@ class InjectConstructorErrorsTest : MetroCompilerTest() {
         """
         class ExampleClass @Inject constructor()
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       options = metroOptions.toBuilder().warnOnInjectAnnotationPlacement(false).build(),
     ) {
@@ -68,8 +68,8 @@ class InjectConstructorErrorsTest : MetroCompilerTest() {
           @Inject constructor() : this(0)
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       assertNoWarningsOrErrors()
     }
@@ -84,7 +84,7 @@ class InjectConstructorErrorsTest : MetroCompilerTest() {
           @Inject constructor(value: String) : this()
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
@@ -93,7 +93,7 @@ class InjectConstructorErrorsTest : MetroCompilerTest() {
         e: ExampleClass.kt:6:20 Only one `@Inject` constructor is allowed.
         e: ExampleClass.kt:7:3 Only one `@Inject` constructor is allowed.
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -134,7 +134,7 @@ class InjectConstructorErrorsTest : MetroCompilerTest() {
         e: OnlyClasses.kt:16:11 Only classes can be annotated with @Inject or have @Inject-annotated constructors.
         e: OnlyClasses.kt:19:18 Only classes can be annotated with @Inject or have @Inject-annotated constructors.
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -167,7 +167,7 @@ class InjectConstructorErrorsTest : MetroCompilerTest() {
         e: FinalClasses.kt:10:1 Only final and open classes be annotated with @Inject or have @Inject-annotated constructors.
         e: FinalClasses.kt:13:1 Only final and open classes be annotated with @Inject or have @Inject-annotated constructors.
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -182,12 +182,12 @@ class InjectConstructorErrorsTest : MetroCompilerTest() {
           class ExampleClass
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ExampleClass.kt:8:9 Local classes cannot be annotated with @Inject or have @Inject-annotated constructors."
+        "e: ExampleClass.kt:8:9 Local classes cannot be annotated with @Inject or have @Inject-annotated constructors.",
       )
     }
   }
@@ -222,7 +222,7 @@ class InjectConstructorErrorsTest : MetroCompilerTest() {
         e: VisibleClasses.kt:7:1 Injected classes must be public or internal.
         e: VisibleClasses.kt:11:3 Injected classes must be public or internal.
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -240,12 +240,12 @@ class InjectConstructorErrorsTest : MetroCompilerTest() {
           }
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ExampleClass.kt:10:13 `@AssistedFactory` functions cannot have type parameters."
+        "e: ExampleClass.kt:10:13 `@AssistedFactory` functions cannot have type parameters.",
       )
     }
   }

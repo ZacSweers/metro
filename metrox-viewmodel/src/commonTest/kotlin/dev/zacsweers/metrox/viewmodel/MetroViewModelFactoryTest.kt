@@ -112,7 +112,7 @@ class MetroViewModelFactoryTest {
               {
                 invocationCount++
                 TestViewModel()
-              }
+              },
           )
       }
 

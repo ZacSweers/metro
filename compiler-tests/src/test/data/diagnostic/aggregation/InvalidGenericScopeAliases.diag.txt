@@ -1,0 +1,9 @@
+/InvalidGenericScopeAliases.kt:6:31: error: Unresolved reference 'MissingOuter'.
+
+/InvalidGenericScopeAliases.kt:8:16: error: Annotation argument must be a compile-time constant.
+
+/InvalidGenericScopeAliases.kt:12:40: error: Unresolved reference 'MissingType'.
+
+/InvalidGenericScopeAliases.kt:17:28: error: Recursive type alias in expansion.
+
+/InvalidGenericScopeAliases.kt:19:16: error: Annotation argument must be a compile-time constant.

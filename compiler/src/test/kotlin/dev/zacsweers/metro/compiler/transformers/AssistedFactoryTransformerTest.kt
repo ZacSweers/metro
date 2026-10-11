@@ -37,8 +37,8 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
           fun create(count: Int): ExampleClass
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val exampleClassFactory =
         ExampleClass.generatedFactoryClassAssisted().invokeCreate(provider { "Hello, " })
@@ -70,12 +70,12 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
           }
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ExampleClass.kt:13:13 @AssistedFactory declarations must have exactly one abstract function but found none."
+        "e: ExampleClass.kt:13:13 @AssistedFactory declarations must have exactly one abstract function but found none.",
       )
     }
   }
@@ -100,12 +100,12 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
           interface Factory : ParentFactory
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ExampleClass.kt:18:13 @AssistedFactory declarations must have exactly one abstract function but found none."
+        "e: ExampleClass.kt:18:13 @AssistedFactory declarations must have exactly one abstract function but found none.",
       )
     }
   }
@@ -124,7 +124,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
           }
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = COMPILATION_ERROR,
     ) {
@@ -132,7 +132,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
         """
         e: ExampleClass.kt:11:9 Assisted factory function 'create' is missing parameters for @Assisted constructor parameters: count: Int
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -152,7 +152,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
           }
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = COMPILATION_ERROR,
     ) {
@@ -160,7 +160,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
         """
         e: ExampleClass.kt:12:9 Assisted factory function 'create' is missing parameters for @Assisted constructor parameters: message: String
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -179,7 +179,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
           }
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = COMPILATION_ERROR,
     ) {
@@ -193,7 +193,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
 
           help: `count` parameter appears in both but has different types
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -213,7 +213,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
           }
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = COMPILATION_ERROR,
     ) {
@@ -225,7 +225,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
           Missing from constructor:
             - notcount: Int
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -245,7 +245,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
           }
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = COMPILATION_ERROR,
     ) {
@@ -259,7 +259,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
 
           help: `count` parameter appears in both but has different types
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -290,7 +290,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
         @Inject
         class Consumer(val exampleClass: ExampleClass)
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = COMPILATION_ERROR,
     ) {
@@ -302,7 +302,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
           note: it looks like the @AssistedFactory for ExampleClass is ExampleClassFactory
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#invalidbinding
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -333,7 +333,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
 
         class Consumer(val exampleClass: ExampleClass)
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = COMPILATION_ERROR,
     ) {
@@ -345,7 +345,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
           note: it looks like the @AssistedFactory for ExampleClass is ExampleClassFactory
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#invalidbinding
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -377,7 +377,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
           @Inject lateinit var exampleClass: ExampleClass
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = COMPILATION_ERROR,
     ) {
@@ -390,7 +390,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
           note: it looks like the @AssistedFactory for ExampleClass is ExampleClassFactory
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#invalidbinding
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -418,7 +418,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
           @Provides val string: String get() = "Hello, world!"
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = COMPILATION_ERROR,
     ) {
@@ -430,7 +430,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
           note: it looks like the @AssistedFactory for ExampleClass is ExampleClassFactory
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#invalidbinding
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -460,7 +460,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
           @Provides val string: String get() = "Hello, world!"
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = COMPILATION_ERROR,
     ) {
@@ -472,7 +472,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
           note: it looks like the @AssistedFactory for ExampleClass is ExampleClassFactory
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#invalidbinding
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }

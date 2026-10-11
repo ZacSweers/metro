@@ -1,0 +1,1 @@
+/WarningRaisedToError.kt:5:30: error: There is only one @Inject-annotated constructor. Consider moving the annotation to the class instead.

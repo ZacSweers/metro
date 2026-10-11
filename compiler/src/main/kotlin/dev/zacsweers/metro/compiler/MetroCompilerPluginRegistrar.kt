@@ -24,18 +24,6 @@ import org.jetbrains.kotlin.incremental.components.ExpectActualTracker
 
 public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
 
-  private companion object {
-    val isIde by lazy {
-      try {
-        // Try to look up an IntelliJ-only class
-        Class.forName("org.jetbrains.kotlin.analysis.low.level.api.fir.sessions.LLFirSession")
-        true
-      } catch (_: ClassNotFoundException) {
-        false
-      }
-    }
-  }
-
   public override val pluginId: String = PLUGIN_ID
 
   override val supportsK2: Boolean
@@ -62,11 +50,13 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
             ?: run {
               System.err.println(
                 "[METRO] Skipping enabling Metro extensions in IDE. " +
-                  "Detected Kotlin version '$rawVersion' is not supported for IDE use (CLI_ONLY)."
+                  "Detected Kotlin version '$rawVersion' is not supported for IDE use (CLI_ONLY).",
               )
               return
             }
         }
+
+    val isIde = configuration.isIdeMode(version)
 
     val options = MetroOptions.load(configuration, version, isIde)
     val enableFir = version != null || (isIde && options.forceEnableFirInIde)
@@ -74,7 +64,7 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
     if (!enableFir) {
       // While the option is about FIR, this really also means we can't/don't enable IR
       System.err.println(
-        "[METRO] Skipping enabling Metro extensions. Detected Kotlin version: $version"
+        "[METRO] Skipping enabling Metro extensions. Detected Kotlin version: $version",
       )
       return
     }
@@ -84,7 +74,7 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
         CompatContext.create(version)
       } catch (t: Throwable) {
         System.err.println(
-          "[METRO] Skipping enabling Metro extensions, unable to create CompatContext for version $version"
+          "[METRO] Skipping enabling Metro extensions, unable to create CompatContext for version $version",
         )
         t.printStackTrace()
         return
@@ -141,6 +131,14 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
       return
     }
 
+    val diagnosticLevelsAreValid =
+      options.validateDiagnosticLevels(configuration) { error ->
+        messageCollector.report(CompilerMessageSeverity.ERROR, error)
+      }
+    if (!diagnosticLevelsAreValid) {
+      return
+    }
+
     // When the parallel pool isn't engaged, drop memoize() down to LazyThreadSafetyMode.NONE
     memoizeThreadSafetyMode =
       if (options.parallelThreads > 0) {
@@ -161,7 +159,7 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
 
     with(compatContext) {
       registerFirExtensionCompat(
-        MetroFirExtensionRegistrar(classIds, options, isIde, compatContext, traceContext)
+        MetroFirExtensionRegistrar(classIds, options, isIde, compatContext, traceContext),
       )
     }
 
@@ -175,8 +173,8 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
             if (!options.generateCircuitSerializerRegistrationsInFir) {
               registerIrExtensionCompat(
                 CircuitSerializableIrDeclarationGenerationExtension.create(
-                  compatContext = compatContext
-                )
+                  compatContext = compatContext,
+                ),
               )
             }
             if (!options.generateCircuitFactoriesInFir) {
@@ -184,7 +182,7 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
                 CircuitIrDeclarationGenerationExtension.create(
                   classIds = classIds,
                   compatContext = compatContext,
-                )
+                ),
               )
             }
           }
@@ -197,13 +195,13 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
               injectAnnotations = classIds.allInjectAnnotations,
               qualifierAnnotations = classIds.qualifierAnnotations,
               compatContext = compatContext,
-            )
+            ),
           )
           registerIrExtensionCompat(
             CircuitSerializableIrExtension.create(
               generateClassesInIr = options.generateClassesInIr,
               compatContext = compatContext,
-            )
+            ),
           )
         }
         registerIrExtensionCompat(
@@ -215,7 +213,7 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
             expectActualTracker = expectActualTracker,
             compatContext = compatContext,
             traceContext = traceContext,
-          )
+          ),
         )
       }
     }

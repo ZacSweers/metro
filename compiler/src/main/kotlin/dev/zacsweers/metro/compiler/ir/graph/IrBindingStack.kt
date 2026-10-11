@@ -24,6 +24,7 @@ import dev.zacsweers.metro.compiler.symbols.DaggerSymbols
 import dev.zacsweers.metro.compiler.withoutLineBreaks
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
+import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrProperty
@@ -105,11 +106,8 @@ internal interface IrBindingStack :
         val declaration =
           if (accessor is IrSimpleFunction) {
             val rawDeclaration = accessor.correspondingPropertySymbol?.owner ?: accessor
-            if (rawDeclaration.isFakeOverride) {
-              rawDeclaration.resolveOverriddenTypeIfAny()
-            } else {
-              rawDeclaration
-            }
+            // Inherited accessors resolve to the type that declares them.
+            rawDeclaration.originalDeclarationIfOverride().expectAs<IrDeclarationWithName>()
           } else {
             accessor
           }
@@ -370,8 +368,21 @@ internal fun Appendable.appendBindingStackEntries(
   }
 }
 
-internal val IrBindingStack.lastEntryOrGraph
-  get() = entries.firstOrNull()?.declaration?.takeUnless { it.fileOrNull == null }
+/**
+ * The original declaration of the most recent entry, or null if it can't be reported in this
+ * compilation. Declarations from other modules have no file here. Callers report on the graph in
+ * that case.
+ */
+internal val IrBindingStack.lastEntryOrGraph: IrDeclaration?
+  get() {
+    val declaration = entries.firstOrNull()?.declaration ?: return null
+    // A fake override on the graph has a file even when the declaration it inherits doesn't.
+    val original = declaration.originalDeclarationIfOverride()
+    if (original.fileOrNull == null) {
+      return null
+    }
+    return original
+  }
 
 internal class IrBindingStackImpl(override val graph: IrClass, private val logger: MetroLogger) :
   IrBindingStack {
@@ -534,7 +545,7 @@ internal fun bindingStackEntryForDependency(
       Entry.injectedAt(
         contextKey,
         originConstructor ?: callingBinding.providerFactory.function,
-        callingBinding.parameterFor(targetKey),
+        callingBinding.parameterFor(contextKey),
         displayTypeKey = targetKey,
         isSignatureFunction = false,
       )

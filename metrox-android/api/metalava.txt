@@ -1,19 +1,19 @@
 // Signature format: 4.0
 package dev.zacsweers.metrox.android {
 
-  @dev.zacsweers.metro.MapKey(implicitClassKey=true) @kotlin.annotation.Target(allowedTargets=kotlin.annotation.AnnotationTarget.CLASS) public @interface ActivityKey {
+  @dev.zacsweers.metro.MapKey(implicitClassKey=true) @java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy.RUNTIME) @kotlin.annotation.Target(allowedTargets=kotlin.annotation.AnnotationTarget.CLASS) public @interface ActivityKey {
     ctor @KotlinOnly public ActivityKey(optional kotlin.reflect.KClass<? extends android.app.Activity> value);
     method @InaccessibleFromKotlin public abstract Class<? extends android.app.Activity> value() default Nothing::class;
     property public abstract kotlin.reflect.KClass<? extends android.app.Activity> value;
   }
 
-  @dev.zacsweers.metro.MapKey(implicitClassKey=true) @kotlin.annotation.Target(allowedTargets=kotlin.annotation.AnnotationTarget.CLASS) public @interface BroadcastReceiverKey {
+  @dev.zacsweers.metro.MapKey(implicitClassKey=true) @java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy.RUNTIME) @kotlin.annotation.Target(allowedTargets=kotlin.annotation.AnnotationTarget.CLASS) public @interface BroadcastReceiverKey {
     ctor @KotlinOnly public BroadcastReceiverKey(optional kotlin.reflect.KClass<? extends android.content.BroadcastReceiver> value);
     method @InaccessibleFromKotlin public abstract Class<? extends android.content.BroadcastReceiver> value() default Nothing::class;
     property public abstract kotlin.reflect.KClass<? extends android.content.BroadcastReceiver> value;
   }
 
-  @dev.zacsweers.metro.MapKey(implicitClassKey=true) @kotlin.annotation.Target(allowedTargets=kotlin.annotation.AnnotationTarget.CLASS) public @interface ContentProviderKey {
+  @dev.zacsweers.metro.MapKey(implicitClassKey=true) @java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy.RUNTIME) @kotlin.annotation.Target(allowedTargets=kotlin.annotation.AnnotationTarget.CLASS) public @interface ContentProviderKey {
     ctor @KotlinOnly public ContentProviderKey(optional kotlin.reflect.KClass<? extends android.content.ContentProvider> value);
     method @InaccessibleFromKotlin public abstract Class<? extends android.content.ContentProvider> value() default Nothing::class;
     property public abstract kotlin.reflect.KClass<? extends android.content.ContentProvider> value;
@@ -44,7 +44,7 @@ package dev.zacsweers.metrox.android {
     property public abstract dev.zacsweers.metrox.android.MetroAppComponentProviders appComponentProviders;
   }
 
-  @dev.zacsweers.metro.MapKey(implicitClassKey=true) @kotlin.annotation.Target(allowedTargets=kotlin.annotation.AnnotationTarget.CLASS) public @interface ServiceKey {
+  @dev.zacsweers.metro.MapKey(implicitClassKey=true) @java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy.RUNTIME) @kotlin.annotation.Target(allowedTargets=kotlin.annotation.AnnotationTarget.CLASS) public @interface ServiceKey {
     ctor @KotlinOnly public ServiceKey(optional kotlin.reflect.KClass<? extends android.app.Service> value);
     method @InaccessibleFromKotlin public abstract Class<? extends android.app.Service> value() default Nothing::class;
     property public abstract kotlin.reflect.KClass<? extends android.app.Service> value;

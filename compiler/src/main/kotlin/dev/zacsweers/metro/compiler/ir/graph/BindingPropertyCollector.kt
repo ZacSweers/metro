@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.ir.graph
 
 import dev.zacsweers.metro.compiler.getAndAdd
+import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
@@ -37,6 +38,10 @@ internal class BindingPropertyCollector(
   private val deferredTypes: Set<IrTypeKey> = emptySet(),
   /** Keys that are reachable from roots, used to filter the init order. */
   private val reachableKeys: Set<IrTypeKey> = emptySet(),
+  /** Returns true for bindings that reuse an unchanged parent property instead of a local one. */
+  private val reuseBinding: (IrContextualTypeKey) -> Boolean = { false },
+  /** Whether accessors for the same key can call each other. Runtime tracing turns this off. */
+  private val accessorsCanShareCode: Boolean = true,
 ) {
 
   data class CollectedProperty(
@@ -71,11 +76,21 @@ internal class BindingPropertyCollector(
    * [scalarRefCount] works the same, just for scalar references. These bindings would then need a
    * property getter for sharing.
    */
-  private data class Node(
+  private inner class Node(
     val binding: IrBinding,
     var factoryRefCount: Int = 0,
     var scalarRefCount: Int = 0,
-  )
+    /** The part of [scalarRefCount] that comes from graph accessors. */
+    var accessorScalarRefCount: Int = 0,
+  ) {
+    /**
+     * True when only graph accessors read this binding and they can share code. The first of those
+     * accessors holds the binding's code and the others call it, so no shared getter is needed.
+     */
+    val isHostedByAccessor: Boolean
+      get() =
+        accessorsCanShareCode && factoryRefCount == 0 && scalarRefCount == accessorScalarRefCount
+  }
 
   /**
    * Nodes tracked by canonical contextual type key. For regular bindings, this is effectively the
@@ -183,7 +198,14 @@ internal class BindingPropertyCollector(
     // Roots (accessors/injectors) + keeps don't get properties themselves, but they contribute to
     // factory refcounts when they require provider instances so we mark them here.
     // This includes both direct Provider/Lazy wrapping and map types with Provider values.
-    for (contextKey in (roots + extraKeeps)) {
+    for (contextKey in roots) {
+      markAccess(
+        contextKey,
+        isFactory = contextKey.requiresProviderInstance,
+        isAccessor = contextKey !in injectorRoots,
+      )
+    }
+    for (contextKey in extraKeeps) {
       markAccess(contextKey, isFactory = contextKey.requiresProviderInstance)
     }
 
@@ -313,7 +335,14 @@ internal class BindingPropertyCollector(
     contextKey: IrContextualTypeKey,
     keysWithBackingProperties: MutableMap<IrContextualTypeKey, CollectedProperty>,
   ) {
-    // Initialize node (may already exist from markAccess)
+    if (reuseBinding(contextKey)) {
+      return
+    }
+    // Dependencies of a reused parent binding are left unreferenced here.
+    val isDeferred = binding.typeKey in deferredTypes
+    if (contextKey !in nodes && !isDeferred) {
+      return
+    }
     val node = nodes.getOrPut(contextKey) { Node(binding) }
 
     // Track assisted-inject target usage. Only targets used by multiple Assisted bindings
@@ -330,7 +359,7 @@ internal class BindingPropertyCollector(
     val isGraphExtension = binding is IrBinding.GraphExtension
 
     // Check known property type (applies to all bindings including aliases)
-    val knownPropertyType = knownPropertyType(binding)
+    val knownPropertyType = knownPropertyType(binding, node)
     if (knownPropertyType != null) {
       val isField = knownPropertyType == PropertyKind.FIELD
       // Assisted-injected types are never factories
@@ -370,6 +399,17 @@ internal class BindingPropertyCollector(
       val effectiveScalarRefCount =
         if (isGraphExtension) node.scalarRefCount + node.factoryRefCount else node.scalarRefCount
 
+      fun needsSharedGetter(): Boolean {
+        val isReadMoreThanOnce = effectiveScalarRefCount > 1
+        // The first accessor holds the code and the others call it.
+        val accessorHoldsCode = node.isHostedByAccessor && !isGraphExtension
+        val isSharedLocally = isReadMoreThanOnce && !accessorHoldsCode
+        // Child graphs can't call this graph's accessors, so they need a getter to reuse.
+        val isReservedByChild = graph.hasReservedKey(binding.typeKey)
+        val isShared = isSharedLocally || isReservedByChild
+        return isShared && !node.binding.isSimpleBinding()
+      }
+
       if (useField) {
         // For bound instances, the scalar instance field is created separately by IrGraphGenerator.
         // The collected FIELD here represents the cached provider wrapper, so expose it under the
@@ -388,7 +428,7 @@ internal class BindingPropertyCollector(
             propertyContextKey,
             switchingId = switchingId,
           )
-      } else if (effectiveScalarRefCount > 1 && !node.binding.isSimpleBinding()) {
+      } else if (needsSharedGetter()) {
         if (binding.isSuspendInGraph) {
           // A GETTER property is a non-suspend function and can't await suspend resolutions.
           // Shared suspend bindings get a SuspendProvider<T> FIELD instead; each consumer awaits
@@ -458,7 +498,7 @@ internal class BindingPropertyCollector(
    * Returns the property type for bindings that statically require properties, or null if the
    * binding's property requirement depends on refcount.
    */
-  private fun knownPropertyType(binding: IrBinding): PropertyKind? {
+  private fun knownPropertyType(binding: IrBinding, node: Node): PropertyKind? {
     val key = binding.typeKey
 
     // Deferred types always end up in DelegateFactory fields
@@ -472,9 +512,21 @@ internal class BindingPropertyCollector(
       // Assisted factories are stateless (they just wrap the target's MetroFactory),
       // so they don't need their own cached field. The target's MetroFactory field
       // is added separately in processBindingNode when Assisted bindings are encountered.
-      // Non-empty multibindings get a getter
+      // Non-empty multibindings get a getter when more than one site reads them or a child graph
+      // may reuse them. A single reader builds the collection inline.
       is Multibinding if binding.sourceBindings.isNotEmpty() -> {
-        PropertyKind.GETTER
+        val isShared = node.factoryRefCount + node.scalarRefCount > 1 && !node.isHostedByAccessor
+        // A large collection gets its own getter even with one reader. Inlining it could push a
+        // reader like an init chunk or switching branch past method size limits. A lone accessor
+        // reader already holds the code in its own method.
+        val isLarge = binding.sourceBindings.size > metroContext.options.multibindingGetterThreshold
+        val keepsGetterForSize = isLarge && !node.isHostedByAccessor
+        val isReservedByChild = graph.hasReservedKey(key)
+        if (isShared || keepsGetterForSize || isReservedByChild) {
+          PropertyKind.GETTER
+        } else {
+          null
+        }
       }
       // Graph extensions used by child graphs need getter properties so children can resolve
       // their property access tokens. Graph extensions are "simple" bindings (0 dependencies)
@@ -497,7 +549,11 @@ internal class BindingPropertyCollector(
    * Marks an access to a binding, tracking refcounts by canonical contextual type key. For map
    * multibindings, also records the contextual variant for later processing.
    */
-  private fun markAccess(contextualTypeKey: IrContextualTypeKey, isFactory: Boolean) {
+  private fun markAccess(
+    contextualTypeKey: IrContextualTypeKey,
+    isFactory: Boolean,
+    isAccessor: Boolean = false,
+  ) {
     val binding = graph.requireBinding(contextualTypeKey)
 
     // For aliases, resolve to the final target and mark that instead.
@@ -523,8 +579,12 @@ internal class BindingPropertyCollector(
     val graphDependency = targetBinding as? IrBinding.GraphDependency
     val localGraphDependency = if (graphDependency?.token == null) graphDependency else null
     val canPassThrough = localGraphDependency?.canPassThrough(contextualTypeKey) == true
+    // A Lazy accessor's handle is cached so its value is computed once. A Provider accessor can be
+    // read again on each access, so it's counted like any other binding.
     val flattensDeferredGraphAccessor =
-      localGraphDependency?.contextualTypeKey?.isDeferrable == true && !canPassThrough
+      localGraphDependency?.contextualTypeKey?.isDeferrable == true &&
+        !canPassThrough &&
+        localGraphDependency.contextualTypeKey.wrappedType !is WrappedType.Provider
 
     // For map multibindings, track the contextual variant
     if (targetBinding is IrBinding.Multibinding && !targetBinding.isSet) {
@@ -545,7 +605,12 @@ internal class BindingPropertyCollector(
             scalarRefCount++
           }
           isFactory -> factoryRefCount++
-          else -> scalarRefCount++
+          else -> {
+            scalarRefCount++
+            if (isAccessor) {
+              accessorScalarRefCount++
+            }
+          }
         }
       }
   }

@@ -47,7 +47,7 @@ interface ServiceA
 @SingleIn(VisualizationScope::class)
 class ServiceAImpl(
   // This creates a valid cycle: A -> B -> () -> A
-  val serviceB: ServiceB
+  val serviceB: ServiceB,
 ) : ServiceA
 
 interface ServiceB
@@ -55,7 +55,7 @@ interface ServiceB
 @Inject
 class ServiceBImpl(
   // Lazy breaks the cycle
-  val serviceA: Lazy<ServiceA>
+  val serviceA: Lazy<ServiceA>,
 ) : ServiceB
 
 // --- Assisted injection ---

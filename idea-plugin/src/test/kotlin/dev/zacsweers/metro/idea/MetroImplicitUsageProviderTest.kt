@@ -49,6 +49,53 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
     module.addMetroRuntimeLibrary()
   }
 
+  fun testFunctionInjectionOverrideAppliesOnlyToEnabledTopLevelFunctions() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        annotation class FunctionInject
+
+        @Inject fun ordinary() {}
+        @FunctionInject fun custom() {}
+        @Provides fun provided(): String = "value"
+
+        class Consumer {
+          @Inject fun install() {}
+          @FunctionInject fun ignored() {}
+        }
+        """,
+      )
+    val declarations = file.declarationsIncludingNested()
+    val ordinary = declarations.function("ordinary")
+    val custom = declarations.function("custom")
+    val install = declarations.function("install")
+    val ignored = declarations.function("ignored")
+
+    project.setMetroOptions("function-inject-annotations-override" to "test/FunctionInject")
+    assertTrue(ordinary.isMetroImplicitUsage())
+    assertFalse(custom.isMetroImplicitUsage())
+    assertTrue(install.isMetroImplicitUsage())
+    assertFalse(ignored.isMetroImplicitUsage())
+
+    project.setMetroOptions(
+      "enable-top-level-function-injection" to "true",
+      "function-inject-annotations-override" to "test/FunctionInject",
+    )
+    assertFalse(ordinary.isMetroImplicitUsage())
+    assertTrue(custom.isMetroImplicitUsage())
+    assertTrue(install.isMetroImplicitUsage())
+    assertFalse(ignored.isMetroImplicitUsage())
+    assertTrue(declarations.function("provided").isMetroImplicitUsage())
+
+    project.setMetroOptions(
+      "enable-top-level-function-injection" to "true",
+      "function-inject-annotations-override" to "",
+    )
+    assertFalse(ordinary.isMetroImplicitUsage())
+    assertFalse(custom.isMetroImplicitUsage())
+    assertTrue(install.isMetroImplicitUsage())
+  }
+
   fun testMarksMetroDeclarationsAsImplicitlyUsed() {
     val declarations = kotlinFileDeclarations()
 
@@ -73,7 +120,7 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
       declarations
         .klass("ConstructorAssistedInjectedService")
         .primaryConstructor!!
-        .isMetroImplicitUsage()
+        .isMetroImplicitUsage(),
     )
   }
 
@@ -449,7 +496,7 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
     assertTrue(declarations.parameter("customProvidedInstance").isMetroImplicitUsage())
     assertTrue(declarations.klass("CustomInjectedService").isMetroImplicitUsage())
     assertTrue(
-      declarations.klass("CustomInjectedService").primaryConstructor!!.isMetroImplicitUsage()
+      declarations.klass("CustomInjectedService").primaryConstructor!!.isMetroImplicitUsage(),
     )
     assertTrue(declarations.function("customFunctionInject").isMetroImplicitUsage())
     assertTrue(declarations.klass("CustomAssistedInjectedService").isMetroImplicitUsage())
@@ -461,7 +508,7 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
       declarations
         .klass("CustomConstructorAssistedInjectedService")
         .primaryConstructor!!
-        .isMetroImplicitUsage()
+        .isMetroImplicitUsage(),
     )
   }
 

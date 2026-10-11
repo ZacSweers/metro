@@ -495,7 +495,7 @@ internal class Symbols(
 
   private val providerOfLazy: IrClassSymbol by lazy {
     builtinsFinder.findClass(
-      ClassId(metroRuntimeInternal.packageFqName, "ProviderOfLazy".asName())
+      ClassId(metroRuntimeInternal.packageFqName, "ProviderOfLazy".asName()),
     )!!
   }
   val providerOfLazyCompanionObject by lazy { providerOfLazy.owner.companionObject()!!.symbol }
@@ -584,6 +584,13 @@ internal class Symbols(
       .single()
   }
 
+  /** `providerOf(value)`, which returns an already-boxed `InstanceFactory` as a `Provider`. */
+  val metroProviderOfFunction: IrSimpleFunctionSymbol by lazy {
+    builtinsFinder
+      .findFunctions(CallableId(metroRuntime.packageFqName, "providerOf".asName()))
+      .single()
+  }
+
   val providerInvoke: IrSimpleFunctionSymbol by lazy {
     metroProvider.requireSimpleFunction("invoke")
   }
@@ -620,7 +627,7 @@ internal class Symbols(
 
   private val suspendDoubleCheck: IrClassSymbol? by lazy {
     builtinsFinder.findClass(
-      ClassId(metroRuntimeInternal.packageFqName, "SuspendDoubleCheck".asName())
+      ClassId(metroRuntimeInternal.packageFqName, "SuspendDoubleCheck".asName()),
     )
   }
   val suspendDoubleCheckCompanionObject by lazy {
@@ -636,7 +643,7 @@ internal class Symbols(
 
   private val metroDelegateFactory: IrClassSymbol by lazy {
     builtinsFinder.findClass(
-      ClassId(metroRuntimeInternal.packageFqName, "DelegateFactory".asName())
+      ClassId(metroRuntimeInternal.packageFqName, "DelegateFactory".asName()),
     )!!
   }
 
@@ -654,7 +661,7 @@ internal class Symbols(
 
   private val metroSuspendDelegateFactory: IrClassSymbol by lazy {
     builtinsFinder.findClass(
-      ClassId(metroRuntimeInternal.packageFqName, "SuspendDelegateFactory".asName())
+      ClassId(metroRuntimeInternal.packageFqName, "SuspendDelegateFactory".asName()),
     )!!
   }
 
@@ -676,7 +683,7 @@ internal class Symbols(
 
   val metroMembersInjectors: IrClassSymbol by lazy {
     builtinsFinder.findClass(
-      ClassId(metroRuntimeInternal.packageFqName, "MembersInjectors".asName())
+      ClassId(metroRuntimeInternal.packageFqName, "MembersInjectors".asName()),
     )!!
   }
 
@@ -690,7 +697,7 @@ internal class Symbols(
 
   val metroSuspendFactory: IrClassSymbol by lazy {
     builtinsFinder.findClass(
-      ClassId(metroRuntimeInternal.packageFqName, "SuspendFactory".asName())
+      ClassId(metroRuntimeInternal.packageFqName, "SuspendFactory".asName()),
     )!!
   }
 
@@ -702,7 +709,7 @@ internal class Symbols(
 
   val graphFactoryInvokeFunctionMarkerClass: IrClassSymbol by lazy {
     builtinsFinder.findClass(
-      ClassId(metroRuntime.packageFqName, "GraphFactoryInvokeFunctionMarker".asName())
+      ClassId(metroRuntime.packageFqName, "GraphFactoryInvokeFunctionMarker".asName()),
     )!!
   }
 
@@ -743,6 +750,22 @@ internal class Symbols(
     builtinsFinder.findFunctions(CallableId(stdlib.packageFqName, "checkNotNull".asName())).single {
       it.owner.parameters.size == 2
     }
+  }
+
+  /** `providerAsFunction(provider)`. Only exists in the JS runtime. */
+  val providerAsFunction: IrSimpleFunctionSymbol? by lazy {
+    builtinsFinder
+      .findFunctions(CallableId(FqNames.metroRuntimeInternalPackage, "providerAsFunction".asName()))
+      .firstOrNull()
+  }
+
+  /** `suspendProviderAsFunction(provider)`. Only exists in the JS runtime. */
+  val suspendProviderAsFunction: IrSimpleFunctionSymbol? by lazy {
+    builtinsFinder
+      .findFunctions(
+        CallableId(FqNames.metroRuntimeInternalPackage, "suspendProviderAsFunction".asName()),
+      )
+      .firstOrNull()
   }
 
   val emptySet by lazy {

@@ -84,7 +84,7 @@ interface ExampleGraph {
 
     override val int: Int
       override get(): Int {
-        return InternalModule.ProvideIntMetroFactory/* companion */.provideInt(instance = <this>.#internalModuleInstance)
+        return provideInt(instance = <this>.#internalModuleInstance)
       }
 
   }

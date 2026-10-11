@@ -74,7 +74,7 @@ interface AppGraph {
     @ElementsIntoSet
     @Named(name = "second")
     @CallableMetadata(callableName = "bindFirstAsSecond", propertyName = "", startOffset = 367, endOffset = 432)
-    fun bindFirstAsSecond1587700901_elementsintoset(@Named(name = "first") second: Set<Int>): Set<Int> {
+    fun bindFirstAsSecond1164059783_elementsintoset(@Named(name = "first") second: Set<Int>): Set<Int> {
       return error(message = "Never called")
     }
 
@@ -82,7 +82,7 @@ interface AppGraph {
     @IntoSet
     @Named(name = "first")
     @CallableMetadata(callableName = "bindIntAsFirstSet", propertyName = "", startOffset = 279, endOffset = 315)
-    fun bindIntAsFirstSet2591421153_intoset(int: Int): Int {
+    fun bindIntAsFirstSet2214616523_intoset(int: Int): Int {
       return error(message = "Never called")
     }
 
@@ -90,7 +90,7 @@ interface AppGraph {
     @ElementsIntoSet
     @Named(name = "final")
     @CallableMetadata(callableName = "bindSecondAsFinal", propertyName = "", startOffset = 483, endOffset = 549)
-    fun bindSecondAsFinal2591416743_elementsintoset(@Named(name = "second") second: Set<Int>): Set<Int> {
+    fun bindSecondAsFinal2214479813_elementsintoset(@Named(name = "second") second: Set<Int>): Set<Int> {
       return error(message = "Never called")
     }
 
@@ -99,11 +99,8 @@ interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
-    private val thisGraphInstance: Impl
-      field = <this>
-
     private val provideIntProvider: Provider<Int>
-      field = ProvideIntMetroFactory/* companion */.create(instance = <this>.#thisGraphInstance)
+      field = create(instance = <this>)
 
     private constructor() /* primary */ {
       super/*Any*/()
@@ -113,38 +110,20 @@ interface AppGraph {
 
     override val finalThing: FinalThing
       override get(): FinalThing {
-        return FinalThing(ints = <this>.<get-setOfIntProvider3>())
+        return FinalThing(ints = { // BLOCK
+          val tmp0_builder: SetFactory.Builder<Int> = builder<Int>(individualProviderSize = 0, collectionProviderSize = 1)
+          tmp0_builder.addCollectionProvider(collectionProvider = { // BLOCK
+            val tmp1_builder: SetFactory.Builder<Int> = builder<Int>(individualProviderSize = 0, collectionProviderSize = 1)
+            tmp1_builder.addCollectionProvider(collectionProvider = singleton<Int>(provider = <this>.#provideIntProvider))
+            tmp1_builder.build()
+          })
+          tmp0_builder.build()
+        })
       }
 
     override val int: Int
       override get(): Int {
         return <this>.#provideIntProvider.invoke()
-      }
-
-    @Named(name = "first")
-    private val setOfIntProvider: Provider<Set<Int>>
-      private get(): Provider<Set<Int>> {
-        return SetFactory/* companion */.singleton<Int>(provider = <this>.#provideIntProvider)
-      }
-
-    @Named(name = "second")
-    private val setOfIntProvider2: Provider<Set<Int>>
-      private get(): Provider<Set<Int>> {
-        return { // BLOCK
-          val tmp0_builder: SetFactory.Builder<Int> = SetFactory/* companion */.builder<Int>(individualProviderSize = 0, collectionProviderSize = 1)
-          tmp0_builder.addCollectionProvider(collectionProvider = <this>.<get-setOfIntProvider>())
-          tmp0_builder.build()
-        }
-      }
-
-    @Named(name = "final")
-    private val setOfIntProvider3: Provider<Set<Int>>
-      private get(): Provider<Set<Int>> {
-        return { // BLOCK
-          val tmp0_builder: SetFactory.Builder<Int> = SetFactory/* companion */.builder<Int>(individualProviderSize = 0, collectionProviderSize = 1)
-          tmp0_builder.addCollectionProvider(collectionProvider = <this>.<get-setOfIntProvider2>())
-          tmp0_builder.build()
-        }
       }
 
   }

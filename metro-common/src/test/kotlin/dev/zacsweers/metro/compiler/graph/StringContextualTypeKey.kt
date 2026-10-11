@@ -28,7 +28,7 @@ private constructor(
         } else {
           type
         }
-      }
+      },
     )
     if (hasDefault) {
       append(" = ...")

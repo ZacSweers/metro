@@ -186,7 +186,7 @@ class IdeTraceRecorderTest : TestCase() {
               entered.complete(Unit)
               finishRefresh.await()
             }
-          }
+          },
         )
         creating.await()
         assertEquals(IdeTraceState.STARTING, recorder.state.value)
@@ -531,7 +531,7 @@ class IdeTraceRecorderTest : TestCase() {
   }
 
   private fun withRecorder(
-    block: suspend CoroutineScope.(IdeTraceRecorder, RecordingIdeTraceSink) -> Unit
+    block: suspend CoroutineScope.(IdeTraceRecorder, RecordingIdeTraceSink) -> Unit,
   ) = runBlocking {
     val owner = SupervisorJob()
     val sink = RecordingIdeTraceSink()

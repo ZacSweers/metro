@@ -11,7 +11,7 @@ interface AppGraph {
 
     @Multibinds
     @CallableMetadata(callableName = "<get-ints>", propertyName = "ints", startOffset = 83, endOffset = 106)
-    fun ints_property4205198935(): Map<Int, Int> {
+    fun ints_property3898158243(): Map<Int, Int> {
       return error(message = "Never called")
     }
 
@@ -20,12 +20,9 @@ interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
-    private val thisGraphInstance: Impl
-      field = <this>
-
     @MultibindingElement(bindingId = "kotlin.Int_kotlin.Int", elementId = "-1823364611")
     private val provideIntProvider: Provider<Int>
-      field = ProvideIntMetroFactory/* companion */.create(instance = <this>.#thisGraphInstance)
+      field = create(instance = <this>)
 
     private constructor() /* primary */ {
       super/*Any*/()
@@ -36,24 +33,14 @@ interface AppGraph {
     @Multibinds
     override val ints: Map<Int, Int>
       override get(): Map<Int, Int> {
-        return <this>.<get-mapOfIntToInt>()
-      }
-
-    override val intsWithProviders: Map<Int, Function0<Int>>
-      override get(): Map<Int, Function0<Int>> {
-        return <this>.<get-mapOfIntToInt2>()
-      }
-
-    private val mapOfIntToInt: Map<Int, Int>
-      private get(): Map<Int, Int> {
         return buildMap<Int, Int>(capacity = 1, builderAction = local fun MutableMap<Int, Int>.<anonymous>() {
           $receiver.put(key = 3, value = <this>.#provideIntProvider.invoke())
         }
 )
       }
 
-    private val mapOfIntToInt2: Map<Int, Function0<Int>>
-      private get(): Map<Int, Function0<Int>> {
+    override val intsWithProviders: Map<Int, Function0<Int>>
+      override get(): Map<Int, Function0<Int>> {
         return buildMap<Int, Function0<Int>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<Int>>.<anonymous>() {
           $receiver.put(key = 3, value = <this>.#provideIntProvider)
         }

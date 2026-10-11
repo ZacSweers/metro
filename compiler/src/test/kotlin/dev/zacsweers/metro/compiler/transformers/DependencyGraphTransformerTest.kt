@@ -54,8 +54,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         }
 
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphViaFactory("Hello, world!")
 
@@ -86,7 +86,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         }
 
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
@@ -101,7 +101,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
                 declaration visible to ExampleGraph
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -119,7 +119,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         }
 
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
@@ -134,7 +134,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
                 @Binds declaration visible to ExampleGraph
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -152,7 +152,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         }
 
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
@@ -167,7 +167,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
                 @Binds declaration visible to ExampleGraph
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -184,7 +184,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         }
 
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
@@ -199,7 +199,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
                 declaration visible to ExampleGraph
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -217,7 +217,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         }
 
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
@@ -232,7 +232,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
                 @Binds declaration visible to ExampleGraph
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -252,7 +252,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         class ExampleClass(private val text: String)
 
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
@@ -270,7 +270,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
                 declaration visible to ExampleGraph
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -290,7 +290,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         class ExampleClass(@Named("hello") private val text: String)
 
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
@@ -308,7 +308,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
                 @Binds declaration visible to ExampleGraph
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -347,8 +347,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           @Inject
           class ExampleClass(@Named("hello") private val text: String)
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
@@ -383,7 +383,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           abstract class UserScope private constructor()
           @Scope annotation class Singleton
           """
-            .trimIndent()
+            .trimIndent(),
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
@@ -399,7 +399,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
         docs: https://zacsweers.github.io/metro/latest/diagnostics/#incompatiblyscopedbindings
       """
-        .trimIndent()
+        .trimIndent(),
     )
   }
 
@@ -422,8 +422,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           }
 
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
@@ -452,8 +452,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           }
 
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
@@ -480,13 +480,13 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           }
 
           """
-            .trimIndent()
+            .trimIndent(),
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
 
     result.assertDiagnostics(
-      "e: ExampleGraph.kt:11:16 Do not override `@Provides` declarations. Consider using `@ContributesTo.replaces`, `@ContributesBinding.replaces`, and `@DependencyGraph.excludes` instead."
+      "e: ExampleGraph.kt:11:16 Do not override `@Provides` declarations. Consider using `@ContributesTo.replaces`, `@ContributesBinding.replaces`, and `@DependencyGraph.excludes` instead.",
     )
   }
 
@@ -509,8 +509,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         }
 
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     )
   }
 
@@ -538,8 +538,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         }
 
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
 
@@ -580,8 +580,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         }
 
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
 
@@ -608,7 +608,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         }
 
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
@@ -622,7 +622,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#incompatiblyscopedbindings
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -645,7 +645,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         }
 
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
@@ -663,7 +663,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
                 declaration visible to ExampleGraph
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -686,8 +686,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           fun provideValue(): String = "Hello, world!"
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       assertThat(graph.callProperty<String>("value")).isEqualTo("Hello, world!")
@@ -721,7 +721,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         """
           .trimIndent(),
         extraImports = arrayOf("java.nio.file.FileSystem", "java.nio.file.FileSystems"),
-      )
+      ),
     )
   }
 
@@ -746,8 +746,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         }
 
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     )
   }
 
@@ -766,7 +766,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         }
 
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
@@ -786,7 +786,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
                 `Lazy<Int>`. Only do this if you know what you're doing though!
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#dependencycycle
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -818,7 +818,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         }
 
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
@@ -842,7 +842,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
                 `Lazy<Double>`. Only do this if you know what you're doing though!
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#dependencycycle
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -868,13 +868,13 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           }
 
           """
-            .trimIndent()
+            .trimIndent(),
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
 
     result.assertDiagnostics(
-      "e: ExampleGraph.kt:7:28 Dependency graphs cannot have constructor parameters. Use @DependencyGraph.Factory instead."
+      "e: ExampleGraph.kt:7:28 Dependency graphs cannot have constructor parameters. Use @DependencyGraph.Factory instead.",
     )
   }
 
@@ -898,7 +898,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             }
           }
           """
-            .trimIndent()
+            .trimIndent(),
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
@@ -907,7 +907,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       """
       e: CharSequenceGraph.kt:16:33 DependencyGraph.Factory declarations cannot have their target graph type as parameters.
       """
-        .trimIndent()
+        .trimIndent(),
     )
   }
 
@@ -1001,7 +1001,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         e: ExampleGraph.kt:64:20 @DependencyGraph.Factory declarations should be non-sealed abstract classes or interfaces.
         e: ExampleGraph.kt:72:16 @DependencyGraph.Factory declarations should be non-sealed abstract classes or interfaces.
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -1024,12 +1024,12 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           }
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: GraphWithAbstractClass.kt:11:20 @DependencyGraph.Factory declarations cannot be local classes."
+        "e: GraphWithAbstractClass.kt:11:20 @DependencyGraph.Factory declarations cannot be local classes.",
       )
     }
   }
@@ -1095,7 +1095,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       e: graphs.kt:36:3 @DependencyGraph.Factory declarations must be public or internal.
       e: graphs.kt:44:3 @DependencyGraph.Factory declarations must be public or internal.
       """
-        .trimIndent()
+        .trimIndent(),
     )
   }
 
@@ -1114,7 +1114,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           }
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
@@ -1122,7 +1122,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         """
         e: ExampleGraph.kt:9:13 @DependencyGraph.Factory declarations must have exactly one abstract function but found none.
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -1141,7 +1141,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           }
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
@@ -1150,7 +1150,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         e: ExampleGraph.kt:10:9 @DependencyGraph.Factory declarations must have exactly one abstract function but found 2.
         e: ExampleGraph.kt:11:9 @DependencyGraph.Factory declarations must have exactly one abstract function but found 2.
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -1174,7 +1174,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           interface Factory : BaseFactory2<ExampleGraph>
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
@@ -1182,7 +1182,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         """
         e: BaseFactory1.kt:17:13 @DependencyGraph.Factory declarations must have exactly one abstract function but found 2.
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -1203,13 +1203,13 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             }
           }
           """
-            .trimIndent()
+            .trimIndent(),
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
 
     result.assertDiagnostics(
-      "e: ExampleGraph.kt:12:48 DependencyGraph.Factory abstract function parameters must be unique."
+      "e: ExampleGraph.kt:12:48 DependencyGraph.Factory abstract function parameters must be unique.",
     )
   }
 
@@ -1237,7 +1237,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           }
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
@@ -1245,7 +1245,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         """
         e: ExampleGraph.kt:12:56 DependencyGraph.Factory abstract function parameters must be unique.
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -1270,8 +1270,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           companion object
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val instance = ExampleGraph.companionObjectInstance.callFunction<Any>("invoke", 3)
       assertThat(instance).isNotNull()
@@ -1295,8 +1295,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             }
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     compile(
@@ -1304,7 +1304,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         """
         fun main(int: Int) = IntGraph(int)
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       metroEnabled = false,
       previousCompilationResult = firstResult,
@@ -1334,8 +1334,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             }
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     compile(
@@ -1355,7 +1355,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           }
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       previousCompilationResult = firstResult,
     ) {
@@ -1380,8 +1380,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             fun provideString(): String = "Hello, world!"
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
     val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
 
@@ -1408,8 +1408,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             @Multibinds val strings: Set<String>
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
     val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
 
@@ -1432,8 +1432,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             fun provideString(): String = "Hello, world!"
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
     val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
 
@@ -1451,7 +1451,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           @Multibinds val strings: Set<String>
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
@@ -1463,7 +1463,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
                 empty
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#emptymultibinding
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -1482,7 +1482,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           fun provideCharSequence(): CharSequence = "Hello, world!"
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
@@ -1495,7 +1495,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           note: similar multibindings: Set<CharSequence>
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#emptymultibinding
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -1515,7 +1515,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           fun provideCharSequence(): CharSequence = "Hello, world!"
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
@@ -1528,7 +1528,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           note: similar multibindings: Map<String, CharSequence>
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#emptymultibinding
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -1544,8 +1544,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             @Multibinds(allowEmpty = true) val strings: Set<String>
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
     val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
 
@@ -1573,8 +1573,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             override fun call(): Set<String> = strings
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
     val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
 
@@ -1603,8 +1603,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             override fun call(): Set<String> = strings
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
     val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
 
@@ -1653,8 +1653,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             }
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
     val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
 
@@ -1686,8 +1686,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           val multibindingConsumer: MultibindingConsumer
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       assertThat(exitCode).isEqualTo(ExitCode.OK)
       val exampleGraph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
@@ -1695,7 +1695,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           exampleGraph
             .callProperty<Any>("multibindingConsumer")
             .callProperty<Set<Any>>("contributions")
-            .map { it.javaClass.canonicalName }
+            .map { it.javaClass.canonicalName },
         )
         .isEqualTo(listOf("test.Impl1"))
     }
@@ -1725,8 +1725,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           val multibindingConsumer: MultibindingConsumer
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       assertThat(exitCode).isEqualTo(ExitCode.OK)
       val exampleGraph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
@@ -1734,7 +1734,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           exampleGraph
             .callProperty<Any>("multibindingConsumer")
             .callProperty<Set<Any>>("contributions")
-            .map { it.javaClass.canonicalName }
+            .map { it.javaClass.canonicalName },
         )
         .isEqualTo(listOf("test.Impl1"))
     }
@@ -1754,8 +1754,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           @get:Provides val countProvider: Int = 3
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val count = graph.callProperty<Int>("count")
@@ -1778,8 +1778,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         @Inject
         class ExampleClass
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       assertNotNull(graph.callProperty<Any>("exampleClass"))
@@ -1808,8 +1808,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         @Inject
         class LoggedInClass
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       assertNotNull(graph.callProperty<Any>("appClass"))
@@ -1833,8 +1833,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         @Inject
         class ExampleClass(ints: Set<@JvmSuppressWildcards Int>)
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       assertNotNull(graph.callProperty<Any>("exampleClass"))
@@ -1868,8 +1868,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           val multi: Set<MultiboundType>
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       assertNotNull(graph.callProperty<Any>("multi"))
@@ -1891,7 +1891,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
         class ExampleClass
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
@@ -1911,7 +1911,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
                 @IntoSet/@IntoMap if you intended a multibinding
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#duplicatebinding
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -1933,7 +1933,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         class Impl1 : ExampleClass
         @Inject class Impl2 : ExampleClass
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
@@ -1953,7 +1953,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
                 @IntoSet/@IntoMap if you intended a multibinding
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#duplicatebinding
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -1975,7 +1975,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         @Inject class Impl1 : ExampleClass
         @Inject class Impl2 : ExampleClass
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
@@ -1995,7 +1995,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
                 @IntoSet/@IntoMap if you intended a multibinding
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#duplicatebinding
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -2020,7 +2020,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         @Inject
         class Impl2 : ExampleClass
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
@@ -2040,7 +2040,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
                 @IntoSet/@IntoMap if you intended a multibinding
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#duplicatebinding
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -2063,7 +2063,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           """
             .trimIndent(),
           packageName = "other",
-        )
+        ),
       )
 
     compile(
@@ -2098,7 +2098,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
                 @IntoSet/@IntoMap if you intended a multibinding
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#duplicatebinding
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -2117,7 +2117,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           """
             .trimIndent(),
           packageName = "other",
-        )
+        ),
       )
 
     compile(
@@ -2160,7 +2160,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
                 @IntoSet/@IntoMap if you intended a multibinding
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#duplicatebinding
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -2189,8 +2189,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           @Binds val Impl1.bind: ContributedInterface
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
 
@@ -2221,8 +2221,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           @DependencyGraph
           interface ExampleGraph
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     compile(
@@ -2230,7 +2230,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         """
         fun main() = createGraph<ExampleGraph>()
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       previousCompilationResult = firstCompilation,
     ) {
@@ -2255,8 +2255,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             }
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     compile(
@@ -2264,7 +2264,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         """
         fun main() = createGraphFactory<ExampleGraph.Factory>().createGraph()
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       previousCompilationResult = firstCompilation,
     ) {
@@ -2286,7 +2286,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           @Provides @Named("qualified") fun provideInt(): Int = 0
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
@@ -2304,7 +2304,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
                 visible to ExampleGraph
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -2321,7 +2321,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           @Provides fun provideInt(): Int = 0
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
@@ -2339,7 +2339,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
                 @Binds declaration visible to ExampleGraph
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -2356,7 +2356,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           @Provides @IntoSet fun provideInt(): Int = 0
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
@@ -2374,7 +2374,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
                 visible to ExampleGraph
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -2391,7 +2391,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           @Provides @IntoMap @StringKey("hello") fun provideInt(): Int = 0
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
@@ -2409,7 +2409,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
                 visible to ExampleGraph
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -2426,7 +2426,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           @Provides fun provideInt(): Int = 0
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
@@ -2444,7 +2444,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
                 declaration visible to ExampleGraph
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -2461,7 +2461,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           @Provides fun provideNumber(): Number = 0
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
@@ -2479,7 +2479,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
                 visible to ExampleGraph
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -2498,7 +2498,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           @Provides @IntoSet fun provideIntIntoSet(): Int = 0
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
@@ -2518,7 +2518,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
                 visible to ExampleGraph
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -2537,8 +2537,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           @Provides @IntoMap @IntKey(2) fun provideInt2(): Int = 2
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val ints = graph.callProperty<Map<Int, Int>>("ints")
@@ -2560,8 +2560,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           @Provides @IntoMap @IntKey(2) fun provideInt2(): Int = 2
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val ints = graph.callProperty<Map<Int, () -> Int>>("ints")
@@ -2584,8 +2584,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           val providerOfInts: () -> Map<Int, Int>
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val intsProvider = graph.callProperty<Map<Int, () -> Int>>("intsProvider")
@@ -2612,8 +2612,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           @Provides @IntoMap @IntKey(2) fun provideInt2(): Int = 2
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val ints = graph.callProperty<Map<Int, () -> Lazy<Int>>>("ints")
@@ -2640,8 +2640,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
         @Inject class ExampleClass(val ints: Map<Int, () -> Int>)
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val exampleClass = graph.callProperty<Any>("exampleClass")
@@ -2679,8 +2679,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
         @Inject class ExampleClass(val ints: Map<Int, () -> IntHolder>)
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val exampleClass = graph.callProperty<Any>("exampleClass")
@@ -2711,8 +2711,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             }
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     compile(
@@ -2732,7 +2732,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           fun provideMessage(base: Base): String = base.toString()
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       previousCompilationResult = first,
     )
@@ -2762,8 +2762,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
                 fun create(@Includes parent: NumberProviders): ExampleGraph
               }
             }
-        """
-      )
+        """,
+      ),
     ) {
       val numberProviders = classLoader.loadClass("test.NumberProviders").newInstanceStrict()
       val exampleGraph = ExampleGraph.generatedImpl().createGraphViaFactory(numberProviders)
@@ -2791,8 +2791,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
                 input: CharSequence = "Not found: " + intValue,
               ): String = input.toString()
             }
-        """
-      )
+        """,
+      ),
     )
   }
 
@@ -2817,8 +2817,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
               @Binds @IntoMap @StringKey("Y") val Y.y: Y
             }
-        """
-      )
+        """,
+      ),
     )
   }
 
@@ -2834,7 +2834,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           @Multibinds val stringsAndInts: Map<String, Int>
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
@@ -2856,7 +2856,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
                 empty
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#emptymultibinding
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -2881,8 +2881,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
         @Inject class Bar
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val foo = graph.callFunction<Any>("foo")
@@ -2911,8 +2911,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
         @Inject class Dependency
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     )
   }
 
@@ -2933,8 +2933,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           @Named("qualified") @Provides fun provideString(): String = "hello"
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     )
   }
 
@@ -2955,7 +2955,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           @Named("qualified") @Provides fun provideString(): String = "hello"
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
@@ -2974,7 +2974,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           help: match the qualifier annotations on overrides with their overridden declarations
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#qualifieroverridemismatch
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -2994,7 +2994,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
         @DependencyGraph interface AppGraph : Parent1, Parent2
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
@@ -3009,7 +3009,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           help: match the qualifier annotations on overrides with their overridden declarations
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#qualifieroverridemismatch
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -3029,7 +3029,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
         @DependencyGraph interface AppGraph : Parent1, Parent2
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
@@ -3044,7 +3044,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           help: match the qualifier annotations on overrides with their overridden declarations
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#qualifieroverridemismatch
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -3068,7 +3068,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
         @DependencyGraph interface AppGraph : Parent1, Parent2
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
@@ -3083,7 +3083,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           help: match the qualifier annotations on overrides with their overridden declarations
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#qualifieroverridemismatch
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -3103,7 +3103,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
         @DependencyGraph interface AppGraph : Parent
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
@@ -3111,7 +3111,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         """
         e: Thing.kt:14:28 Injector function test.AppGraph.Impl.injectThing must return Unit. Or, if it's not an injector, remove its parameter.
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }

@@ -185,7 +185,7 @@ abstract class MetroProject(
       if (!multiplatform) return this
       return map { dep ->
         dep.copy(
-          configuration = "commonMain" + dep.configuration.replaceFirstChar { it.titlecase() }
+          configuration = "commonMain" + dep.configuration.replaceFirstChar { it.titlecase() },
         )
       }
     }
@@ -259,13 +259,13 @@ abstract class MetroProject(
         add(Repository.ofMaven("https://packages.jetbrains.team/maven/p/kt/bootstrap"))
         add(Repository.ofMaven("https://packages.jetbrains.team/maven/p/kt/dev/"))
         add(Repository.ofMaven("https://packages.jetbrains.team/maven/p/ij/intellij-dependencies/"))
-      }
+      },
     )
 
   /** Generates just the `metro { ... }` block content for use in custom build scripts. */
   fun buildMetroBlock(): String = buildString {
     appendLine(
-      "@OptIn(dev.zacsweers.metro.gradle.DelicateMetroGradleApi::class, dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi::class)"
+      "@OptIn(dev.zacsweers.metro.gradle.DelicateMetroGradleApi::class, dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi::class)",
     )
     appendLine("metro {")
     appendLine("  debug.set($debug)")
@@ -305,7 +305,7 @@ abstract class MetroProject(
           onBuildScript()
           append(multiplatformTargetsBlock())
           append(buildMetroBlock())
-        }
+        },
       )
     } else {
       plugins(GradlePlugins.Kotlin.jvm(kotlinVersion), GradlePlugins.metro)
@@ -313,7 +313,7 @@ abstract class MetroProject(
         buildString {
           onBuildScript()
           append(buildMetroBlock())
-        }
+        },
       )
     }
   }
@@ -333,23 +333,33 @@ abstract class MetroProject(
   }
 
   private companion object {
+    // The Gradle test task forwards these opt-in CI experiments to each generated fixture.
+    private val testkitConfigurationCache =
+      System.getProperty("metro.testkitConfigurationCache")?.toBooleanStrict()
+    private val testkitConfigurationCacheReadOnly =
+      System.getProperty("metro.testkitConfigurationCacheReadOnly", "true").toBooleanStrict()
+
     /**
      * Extra gradle.properties entries layered onto every generated TestKit project via
      * [RootProject.Builder.gradleProperties]. Order matters: these are appended after the
      * testkit-support defaults, so duplicate keys here take precedence.
      */
-    private val METRO_TESTKIT_GRADLE_PROPERTIES =
-      listOf(
+    private val METRO_TESTKIT_GRADLE_PROPERTIES = buildList {
+      add(
         "org.gradle.jvmargs=-Xmx2g -Dfile.encoding=UTF-8 -XX:+HeapDumpOnOutOfMemoryError -XX:MaxMetaspaceSize=512m",
-        "kotlin.daemon.jvmargs=-Xmx2g",
-        "org.gradle.parallel=true",
-        "org.gradle.workers.max=4",
-        "systemProp.org.gradle.configuration-cache.read-only=true",
-        // Allow producing klibs for non-host Kotlin/Native targets without that host present.
-        "kotlin.native.enableKlibsCrossCompilation=true",
-        // Silently skip targets the host can't compile rather than failing the build. Scoped to
-        // generated TestKit fixtures only — the root project keeps strict target resolution.
-        "kotlin.native.ignoreDisabledTargets=true",
       )
+      add("kotlin.daemon.jvmargs=-Xmx2g")
+      add("org.gradle.parallel=true")
+      add("org.gradle.workers.max=4")
+      add("org.gradle.configuration-cache.read-only=$testkitConfigurationCacheReadOnly")
+      if (testkitConfigurationCache != null) {
+        add("org.gradle.configuration-cache=$testkitConfigurationCache")
+      }
+      // Allow producing klibs for non-host Kotlin/Native targets without that host present.
+      add("kotlin.native.enableKlibsCrossCompilation=true")
+      // Silently skip targets the host cannot compile in generated TestKit fixtures.
+      // The root project keeps strict target resolution.
+      add("kotlin.native.ignoreDisabledTargets=true")
+    }
   }
 }

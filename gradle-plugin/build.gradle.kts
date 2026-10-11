@@ -77,10 +77,24 @@ gradlePlugin {
   }
 }
 
-kotlin.compilerOptions.optIn.add("dev.zacsweers.metro.gradle.DelicateMetroGradleApi")
+tasks.processResources {
+  from(rootProject.isolated.projectDirectory.file("design/pluginIcon_dark.svg")) {
+    into("dev/zacsweers/metro/gradle/analysis")
+  }
+}
+
+kotlin.compilerOptions.optIn.addAll(
+  "dev.zacsweers.metro.graph.ExperimentalMetroGraphApi",
+  "dev.zacsweers.metro.gradle.DelicateMetroGradleApi",
+  "kotlinx.serialization.ExperimentalSerializationApi",
+)
+
+tasks.compileTestKotlin {
+  compilerOptions.optIn.add("dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi")
+}
 
 /**
- * We shade guava and graph-support to avoid conflicts with other Gradle plugins that may use
+ * We shade guava, graph-support, and ASM to avoid conflicts with other Gradle plugins that may use
  * different versions.
  */
 val embedded = configurations.dependencyScope("embedded")
@@ -114,6 +128,7 @@ val shadowJar =
     relocate("com.google.errorprone", "dev.zacsweers.metro.gradle.shaded.com.google.errorprone")
     relocate("com.google.j2objc", "dev.zacsweers.metro.gradle.shaded.com.google.j2objc")
     relocate("com.autonomousapps", "dev.zacsweers.metro.gradle.shaded.com.autonomousapps")
+    relocate("org.objectweb.asm", "dev.zacsweers.metro.gradle.shaded.org.objectweb.asm")
   }
 
 for (c in arrayOf("apiElements", "runtimeElements")) {
@@ -126,21 +141,27 @@ tasks.withType<AndroidLintAnalysisTask>().configureEach { dependsOn(shadowJar) }
 tasks.withType<LintModelWriterTask>().configureEach { dependsOn(shadowJar) }
 
 dependencies {
+  api(project(":graphs"))
+  implementation(project(":graph-viewer"))
   compileOnly(libs.kotlin.gradlePlugin)
   compileOnly(libs.kotlin.gradlePlugin.api)
   compileOnly(libs.kotlin.stdlib)
   implementation(project(":metro-common"))
   implementation(libs.kotlinx.serialization.json)
+  implementation(libs.okio)
 
   add(embedded.name, libs.graphSupport)
   add(embedded.name, libs.guava)
+  add(embedded.name, libs.asm)
 
   lintChecks(libs.androidx.lint.gradle)
 
+  testImplementation(libs.assertk)
   testImplementation(libs.junit)
   testImplementation(libs.truth)
   testImplementation(libs.kotlin.stdlib)
   testImplementation(libs.kotlin.test)
+  testImplementation(libs.okioFakeFileSystem)
 
   functionalTestImplementation(libs.junit)
   functionalTestImplementation(libs.truth)
@@ -184,6 +205,27 @@ fun androidHomeOrNull(): File? {
 val functionalTestKmpTarget = providers.gradleProperty("metro.functionalTestKmpTarget").orNull
 val testOmitRedundantMirrors = providers.gradleProperty("metro.testOmitRedundantMirrors").orNull
 
+// These controls let CI experiments tune concurrency and fixture caching independently.
+val functionalTestMaxParallelForks =
+  providers
+    .gradleProperty("metro.functionalTestMaxParallelForks")
+    .map { value ->
+      val forks = value.toIntOrNull()
+      require(forks != null && forks > 0) {
+        "metro.functionalTestMaxParallelForks must be a positive integer: $value"
+      }
+      forks
+    }
+    .orElse(Runtime.getRuntime().availableProcessors() * 2)
+// An unset value preserves the generated fixture's existing configuration-cache mode.
+val testkitConfigurationCache =
+  providers.gradleProperty("metro.testkitConfigurationCache").map(String::toBooleanStrict)
+val testkitConfigurationCacheReadOnly =
+  providers
+    .gradleProperty("metro.testkitConfigurationCacheReadOnly")
+    .map(String::toBooleanStrict)
+    .orElse(true)
+
 tasks.withType<Test>().configureEach {
   maxParallelForks = Runtime.getRuntime().availableProcessors() * 2
   systemProperty(
@@ -200,6 +242,12 @@ tasks.withType<Test>().configureEach {
   androidHomeOrNull()?.let { systemProperty("metro.androidHome", it.absolutePath) }
   functionalTestKmpTarget?.let { systemProperty("metro.functionalTestKmpTarget", it) }
   testOmitRedundantMirrors?.let { systemProperty("metro.testOmitRedundantMirrors", it) }
+}
+
+tasks.named<Test>("functionalTest") {
+  maxParallelForks = functionalTestMaxParallelForks.get()
+  testkitConfigurationCache.orNull?.let { systemProperty("metro.testkitConfigurationCache", it) }
+  systemProperty("metro.testkitConfigurationCacheReadOnly", testkitConfigurationCacheReadOnly.get())
 }
 
 tasks

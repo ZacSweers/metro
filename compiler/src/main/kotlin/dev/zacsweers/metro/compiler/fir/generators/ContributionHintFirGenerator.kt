@@ -41,8 +41,11 @@ import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 
 /**
- * Generates hint marker functions for during FIR. This handles both scoped `@Inject` classes and
- * classes with contributing annotations.
+ * Generates hint marker functions in FIR for classes with contributing annotations.
+ *
+ * Kotlin recompiles the file of every symbol a lookup predicate query returns on every incremental
+ * build. That's how it keeps FIR-generated hints up to date (KT-75864). Only query for classes that
+ * actually get hints.
  */
 internal class ContributionHintFirGenerator(
   session: FirSession,
@@ -51,20 +54,12 @@ internal class ContributionHintFirGenerator(
 ) : FirDeclarationGenerationExtension(session), CompatContext by compatContext {
 
   private fun contributedClassSymbols(): List<FirClassSymbol<*>> {
-    val injectedClasses =
-      session.predicateBasedProvider.getSymbolsByPredicate(
-        session.predicates.injectAnnotationPredicate
-      )
     val contributedClasses =
       session.predicateBasedProvider.getSymbolsByPredicate(
-        session.predicates.contributesAnnotationPredicate
+        session.predicates.contributesAnnotationPredicate,
       )
 
-    val graphExtensionFactories =
-      session.predicateBasedProvider.getSymbolsByPredicate(
-        session.predicates.graphExtensionFactoryPredicate
-      )
-
+    // Other plugins can generate contributed factories inside source graph extensions.
     val nestedGraphExtensionFactories =
       session.predicateBasedProvider
         .getSymbolsByPredicate(session.predicates.graphExtensionPredicate)
@@ -79,17 +74,10 @@ internal class ContributionHintFirGenerator(
           nestedClass.annotationsIn(session, session.classIds.allContributesAnnotations).any()
         }
 
-    return sequenceOf(
-        injectedClasses,
-        contributedClasses,
-        graphExtensionFactories,
-        nestedGraphExtensionFactories,
-      )
-      .flatten()
+    return (contributedClasses + nestedGraphExtensionFactories)
       .filterIsInstance<FirClassSymbol<*>>()
       .filterNot { it.visibility == Visibilities.Private }
       .distinct()
-      .toList()
   }
 
   private val typeResolverFactory by lazy { MetroFirTypeResolver.Factory(session) }
@@ -176,7 +164,6 @@ internal class ContributionHintFirGenerator(
 
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
     register(session.predicates.contributesAnnotationPredicate)
-    register(session.predicates.injectAnnotationPredicate)
     register(session.predicates.graphExtensionPredicate)
     register(session.predicates.graphExtensionFactoryPredicate)
     for (extension in externalHintExtensions) {

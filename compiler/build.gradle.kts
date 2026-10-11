@@ -45,6 +45,8 @@ poko {
   firIdeMode.set(PokoFirIdeMode.NONE)
 }
 
+kotlin.compilerOptions.optIn.add("dev.zacsweers.metro.graph.ExperimentalMetroGraphApi")
+
 // Extract the bootstrap compiler JAR from the buildscript classpath
 val bootstrapVersion = extra.properties["METRO_BOOTSTRAP_VERSION"]?.toString()!!
 val bootstrapJar =
@@ -85,6 +87,10 @@ buildConfig {
 
 tasks.test {
   maxParallelForks = Runtime.getRuntime().availableProcessors() * 2
+  if (providers.gradleProperty("metro.ciCompilerTestsPreparedFile").isPresent) {
+    // CI waits for generated suites before starting either compiler test task.
+    dependsOn(":compiler-tests:prepareCiCompilerTests")
+  }
   systemProperty("metro.buildDir", project.layout.buildDirectory.asFile.get().absolutePath)
   systemProperty("metro.diagnosticsRenderMode", "PLAIN")
   providers.gradleProperty("metro.testOmitRedundantMirrors").orNull?.let {
@@ -178,7 +184,7 @@ val shadowJar =
           -dontwarn org.intellij.**
           -dontwarn org.jetbrains.**
           """
-            .trimIndent()
+            .trimIndent(),
         )
         args.add("--no-minification")
         // Extracted dependency rules and relocated signatures emit expected info diagnostics.
@@ -192,7 +198,7 @@ val shadowJar =
               .flatMap {
                 listOf("--lib", it.absolutePath)
               }
-          }
+          },
         )
       }
     }
@@ -308,8 +314,8 @@ dependencies {
   // Cover for https://github.com/tschuchortdev/kotlin-compile-testing/issues/274
   testImplementation(libs.kotlin.aptEmbeddable)
   if (testCompilerVersion.startsWith("2.4")) {
-    testImplementation("dev.zacsweers.kctfork:core:0.13.0")
-    testImplementation("dev.zacsweers.kctfork:ksp:0.13.0")
+    testImplementation("dev.zacsweers.kctfork:core:0.14.0")
+    testImplementation("dev.zacsweers.kctfork:ksp:0.14.0")
   } else {
     testImplementation(libs.kct)
     testImplementation(libs.kct.ksp)

@@ -151,7 +151,7 @@ Context-dependent implementation inlays use the graph context pinned in the Metr
 
 ### Metro Tool Window
 
-Open `View > Tool Windows > Metro`, then click **Load** to browse every graph context in the
+Open `View > Tool Windows > Metro`, then click **Refresh** to browse every graph context in the
 project. The status indicator shows loading progress or waits for IDE indexing before graphs become
 available. Graph extensions with different parent chains appear as separate rows.
 
@@ -188,9 +188,27 @@ project and type identifiers, so review the file before sharing it.
 Select **Enable debugging options** in the **Debugging/Experimental** section under
 `Settings > Tools > Metro` to show the tracing controls. Debugging options are disabled by default.
 
-Right-click **Refresh** in the Metro tool window and select **Refresh with tracing**. Recording starts
-before the refresh is submitted, follows that request through retries and index publication, then
-saves after admitted work finishes. Later editor requests can happen after capture completion.
+**Analysis pool size** in that section controls concurrent source-file, class, and dependency
+metadata reads. It defaults to 1 and accepts values from 1 to 8. The effective size is also capped
+at one below the CPU count so other IDE work keeps a thread. Changes apply to the next refresh;
+disabling debugging options uses one worker while preserving the saved pool size.
+
+The tool window shows each worker's current file, class, or metadata hint below the progress bar,
+with its requesting module and location. Hover over a row to see the full location. Rows update
+while work waits for IDE read access or retries after an edit. Class and metadata discovery show
+completed counts with an indeterminate bar because resolving one item can discover more work.
+Library class resolution has its own phase after metadata discovery.
+
+Lookups have individual read-retry boundaries. Completed results survive an unrelated write that
+interrupts another lookup; changed dependency stamps invalidate the combined snapshot. Results
+merge in discovery order so parallel completion cannot change duplicate selection or expansion
+limits. Traces retain request details and record `workers.limit` and `workers.peak` for class and
+metadata phases, and `files.workers` and `files.peakWorkers` for source-file scanning.
+
+Select **More > Refresh with tracing** in the Metro tool window, or right-click **Refresh** and choose
+**Refresh with tracing**. Recording starts before the refresh is submitted, follows that request
+through retries and index publication, then saves after admitted work finishes. Later editor requests
+can happen after capture completion.
 A 10-minute safety deadline ends admission and marks the capture as partial if the refresh is still
 running.
 
@@ -199,7 +217,7 @@ For other operations, use **Start Metro Performance Trace**, reproduce the issue
 the existing caches and refresh policy. Stopping tracing or disabling debugging options ends
 admission and lets admitted operations finish. The refresh continues independently.
 
-The tool window shows **Tracing Metro refresh…** or **Tracing Metro work…** during recording,
+The tool window shows **Tracing enabled…** during recording,
 **Finishing traced work…** while admitted operations drain, and **Saving Metro performance trace…**
 during file output. Traces are saved locally in the IDE log directory and open in
 [Perfetto](https://ui.perfetto.dev). Trace metadata can contain project, module, file, and class names.
@@ -223,13 +241,17 @@ The slowest files include annotation lookup, declaration extraction, dynamic-gra
 construction. Class requests separate analysis setup, symbol lookup, source checks, qualifier/options
 lookup, cache access, binding construction, and dependency expansion. Stage totals include all measured
 items and appear on phase and module summaries. Detailed stage intervals are limited to 64 per retained
-item; the item's metadata reports any omitted intervals. The logical timeline retains at most 20,000 events, with
-space reserved for slow-item details, enclosing phases, and summaries. Item summaries distinguish bars
-omitted by the capture limit from omitted stage detail. **Trace summary** reports omitted events.
+item; the item's metadata reports any omitted intervals. The detail timeline retains at most 20,000
+events, with space reserved for slow-item details, enclosing phases, and summaries. A separate bounded
+reserve keeps up to 1,024 enclosing and completion records after detail saturation. Item summaries
+distinguish bars omitted by the capture limit from omitted stage detail. **Trace summary** reports
+omitted events.
 
 Durations measure wall time, including suspension. `read_elapsed_ns` measures time inside read-action
 callbacks; it includes canceled attempts and can include Kotlin analysis waits. Item bars
 also report `canceled_read_elapsed_ns` and `outside_read_ns`. Parent durations include their children.
+Summary durations add time across all items. Concurrent file workers overlap, so summed item, read,
+and stage times can exceed the enclosing phase's elapsed time. Stage totals also include nested stages.
 Use `debug.operation`, `debug.operation_id`, and `debug.parent_operation_id` for SQL analysis; display
 names include human-readable subjects. Duration bars carry final timing and outcome metadata.
 
@@ -357,6 +379,18 @@ To use a locally installed IDE:
 ```shell
 ./gradlew -p idea-plugin runLocalIde "-PintellijPlatformTesting.idePath=/Applications/Android Studio.app"
 ```
+
+To open a consumer project with an IDE heap configured before startup, use the
+[local runner](../scripts/run-local-ide.sh):
+
+```shell
+scripts/run-local-ide.sh --ide-path "/Applications/Android Studio.app" --project /path/to/consumer --heap 8g
+```
+
+The runner builds and installs the checkout's plugin in its sandbox. It defaults to an 8g IDE heap.
+Use `--repo /path/to/metro` to run another checkout. Complete onboarding, Gradle sync, and indexing
+before measuring refreshes. The [local IDE testing skill](../.agents/skills/test-metro-ide-locally/SKILL.md)
+covers matched performance captures and process-targeted UI automation.
 
 Compile the plugin:
 

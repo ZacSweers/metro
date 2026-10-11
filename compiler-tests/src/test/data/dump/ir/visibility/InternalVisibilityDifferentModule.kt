@@ -1,5 +1,7 @@
 // Test direct invocation checks for internal members in different module
 // Internal bindings from another module should not support direct invocation
+// Keep provider bodies visible to exercise the cross-module factory access checks.
+// ENABLE_PROVIDER_INLINING: false
 
 // MODULE: lib
 @Inject class InternalClass internal constructor()

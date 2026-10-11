@@ -51,7 +51,8 @@ internal fun BindingIndex.selectBindingsForKey(
     registered = registered@{
         if (indexedTier == BindingTier.EXPLICIT) {
           val explicit = candidates.filter { it.selectionTier(unqualified) == BindingTier.EXPLICIT }
-          return@registered KaBindingSelection(BindingTier.EXPLICIT, explicit)
+          val nearest = nearestExplicitBindings(explicit, plan)
+          return@registered KaBindingSelection(BindingTier.EXPLICIT, nearest)
         }
         val generated = plan.generatedBindings.forKey(typeKey) ?: return@registered null
         KaBindingSelection(BindingTier.GENERATED_GRAPH, listOf(generated))
@@ -87,6 +88,43 @@ internal fun BindingIndex.selectBindingsForKey(
         KaBindingSelection(BindingTier.IMPLICIT, implicit)
       },
   )
+}
+
+/**
+ * Keeps explicit declarations from the closest graph that owns this key. All bindings at that graph
+ * survive so validation can report duplicates.
+ */
+private fun BindingIndex.nearestExplicitBindings(
+  candidates: List<KaBinding>,
+  plan: BindingIndex.GraphQueryPlan,
+): List<KaBinding> {
+  val chain = plan.structure.queryContext.graphContext.chain
+  if (candidates.size < 2 || chain.size < 2) {
+    return candidates
+  }
+
+  // Included dependency accessors retain the compiler's duplicate checks against inherited
+  // bindings.
+  val allDirectDeclarations = candidates.all {
+    when (it) {
+      is KaBinding.Provided,
+      is KaBinding.Alias -> true
+      is KaBinding.BoundInstance -> !it.isGraphInput && !it.isBindingContainerInput
+      else -> false
+    }
+  }
+  if (!allDirectDeclarations) {
+    return candidates
+  }
+
+  for ((graphIndex, graph) in chain.withIndex()) {
+    checkCanceledEvery(graphIndex)
+    val owned = candidates.filter { isBindingOwnedByGraph(it, graph, plan) }
+    if (owned.isNotEmpty()) {
+      return owned
+    }
+  }
+  return candidates
 }
 
 private fun KaBinding.selectionTier(unqualified: Boolean): BindingTier {

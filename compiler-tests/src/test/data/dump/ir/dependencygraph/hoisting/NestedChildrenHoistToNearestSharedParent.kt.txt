@@ -1,0 +1,825 @@
+@SingleIn(scope = AppScope::class)
+@Inject
+class AppSingleton {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  object MetroFactory : Factory<AppSingleton> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun create(): MetroFactory {
+      return MetroFactory
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun newInstance(): AppSingleton {
+      return AppSingleton()
+    }
+
+    @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): AppSingleton {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): AppSingleton {
+      return MetroFactory.newInstance()
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@Inject
+class Dependency {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  object MetroFactory : Factory<Dependency> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun create(): MetroFactory {
+      return MetroFactory
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun newInstance(): Dependency {
+      return Dependency()
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): Dependency {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Dependency {
+      return MetroFactory.newInstance()
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@Inject
+class SharedByAll {
+  val dependency: Dependency
+    field = dependency
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<SharedByAll> {
+    private /* final field */ val dependency: Provider<Dependency> = dependency
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(dependency: Provider<Dependency>): MetroFactory {
+        return MetroFactory(dependency = dependency)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(dependency: Dependency): SharedByAll {
+        return SharedByAll(dependency = dependency)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(dependency: Provider<Dependency>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(dependency: Dependency): SharedByAll {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): SharedByAll {
+      return MetroFactory/* companion */.newInstance(dependency = <this>.#dependency.invoke())
+    }
+
+  }
+
+  constructor(dependency: Dependency) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@Inject
+class SharedByCAndE {
+  val singleton: AppSingleton
+    field = singleton
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<SharedByCAndE> {
+    private /* final field */ val singleton: Provider<AppSingleton> = singleton
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(singleton: Provider<AppSingleton>): MetroFactory {
+        return MetroFactory(singleton = singleton)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(singleton: AppSingleton): SharedByCAndE {
+        return SharedByCAndE(singleton = singleton)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(singleton: Provider<AppSingleton>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(singleton: AppSingleton): SharedByCAndE {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): SharedByCAndE {
+      return MetroFactory/* companion */.newInstance(singleton = <this>.#singleton.invoke())
+    }
+
+  }
+
+  constructor(singleton: AppSingleton) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@Inject
+class SharedByGrandchildren {
+  val dependency: Dependency
+    field = dependency
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<SharedByGrandchildren> {
+    private /* final field */ val dependency: Provider<Dependency> = dependency
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(dependency: Provider<Dependency>): MetroFactory {
+        return MetroFactory(dependency = dependency)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(dependency: Dependency): SharedByGrandchildren {
+        return SharedByGrandchildren(dependency = dependency)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(dependency: Provider<Dependency>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(dependency: Dependency): SharedByGrandchildren {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): SharedByGrandchildren {
+      return MetroFactory/* companion */.newInstance(dependency = <this>.#dependency.invoke())
+    }
+
+  }
+
+  constructor(dependency: Dependency) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@DependencyGraph(scope = AppScope::class)
+interface AppGraph : Child.Factory, ChildE.Factory {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : AppGraph {
+    private val appSingletonProvider: Provider<AppSingleton>
+      field = provider<Provider<AppSingleton>, AppSingleton>(delegate = create())
+
+    @DependencyGraph
+    private class ChildEImpl : ChildE {
+      private val appGraphImpl: Impl
+        field = appGraphImpl
+
+      constructor(appGraphImpl: Impl) /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      override val longs: Set<Long>
+        override get(): Set<Long> {
+          return setOf<Long>(element = <this>.#appGraphImpl.provideAppLong())
+        }
+
+      override val sharedByAll: SharedByAll
+        override get(): SharedByAll {
+          return <this>.#appGraphImpl.<get-sharedByAll>()
+        }
+
+      override val sharedByCAndE: SharedByCAndE
+        override get(): SharedByCAndE {
+          return <this>.#appGraphImpl.<get-sharedByCAndE>()
+        }
+
+      override val strings: Set<String>
+        override get(): Set<String> {
+          return <this>.#appGraphImpl.<get-setOfString>()
+        }
+
+    }
+
+    @DependencyGraph
+    private class ChildImpl : Child {
+      private val appGraphImpl: Impl
+        field = appGraphImpl
+
+      @DependencyGraph
+      private class GrandchildCImpl : GrandchildC {
+        private val childImpl: ChildImpl
+          field = childImpl
+
+        constructor(childImpl: ChildImpl) /* primary */ {
+          super/*Any*/()
+          /* <init>() */
+
+        }
+
+        override val longs: Set<Long>
+          override get(): Set<Long> {
+            return <this>.#childImpl.<get-setOfLong>()
+          }
+
+        override val sharedByAll: SharedByAll
+          override get(): SharedByAll {
+            return <this>.#childImpl.#appGraphImpl.<get-sharedByAll>()
+          }
+
+        override val sharedByCAndE: SharedByCAndE
+          override get(): SharedByCAndE {
+            return <this>.#childImpl.#appGraphImpl.<get-sharedByCAndE>()
+          }
+
+        override val sharedByGrandchildren: SharedByGrandchildren
+          override get(): SharedByGrandchildren {
+            return <this>.#childImpl.<get-sharedByGrandchildren>()
+          }
+
+        override val strings: Set<String>
+          override get(): Set<String> {
+            return <this>.#childImpl.#appGraphImpl.<get-setOfString>()
+          }
+
+      }
+
+      @DependencyGraph
+      private class GrandchildDImpl : GrandchildD {
+        private val childImpl: ChildImpl
+          field = childImpl
+
+        constructor(childImpl: ChildImpl) /* primary */ {
+          super/*Any*/()
+          /* <init>() */
+
+        }
+
+        override val longs: Set<Long>
+          override get(): Set<Long> {
+            return <this>.#childImpl.<get-setOfLong>()
+          }
+
+        override val sharedByAll: SharedByAll
+          override get(): SharedByAll {
+            return <this>.#childImpl.#appGraphImpl.<get-sharedByAll>()
+          }
+
+        override val sharedByGrandchildren: SharedByGrandchildren
+          override get(): SharedByGrandchildren {
+            return <this>.#childImpl.<get-sharedByGrandchildren>()
+          }
+
+        override val strings: Set<String>
+          override get(): Set<String> {
+            return <this>.#childImpl.#appGraphImpl.<get-setOfString>()
+          }
+
+      }
+
+      constructor(appGraphImpl: Impl) /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      override fun createGrandchildC(): GrandchildC {
+        return GrandchildCImpl(childImpl = <this>)
+      }
+
+      override fun createGrandchildD(): GrandchildD {
+        return GrandchildDImpl(childImpl = <this>)
+      }
+
+      private val setOfLong: Set<Long>
+        private get(): Set<Long> {
+          return { // BLOCK
+            buildSet<Long>(capacity = 2, builderAction = local fun MutableSet<Long>.<anonymous>() {
+              $receiver.add(element = <this>.provideChildLong())
+              $receiver.add(element = <this>.#appGraphImpl.provideAppLong())
+            }
+)
+          }
+        }
+
+      private val sharedByGrandchildren: SharedByGrandchildren
+        private get(): SharedByGrandchildren {
+          return SharedByGrandchildren(dependency = Dependency())
+        }
+
+    }
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override fun createChild(): Child {
+      return ChildImpl(appGraphImpl = <this>)
+    }
+
+    override fun createChildE(): ChildE {
+      return ChildEImpl(appGraphImpl = <this>)
+    }
+
+    private val setOfString: Set<String>
+      private get(): Set<String> {
+        return { // BLOCK
+          buildSet<String>(capacity = 2, builderAction = local fun MutableSet<String>.<anonymous>() {
+            $receiver.add(element = <this>.provideTwo(int = <this>.provideInt()))
+            $receiver.add(element = <this>.provideOne(int = <this>.provideInt()))
+          }
+)
+        }
+      }
+
+    private val sharedByAll: SharedByAll
+      private get(): SharedByAll {
+        return SharedByAll(dependency = Dependency())
+      }
+
+    private val sharedByCAndE: SharedByCAndE
+      private get(): SharedByCAndE {
+        return SharedByCAndE(singleton = <this>.#appSingletonProvider.invoke())
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
+    operator fun invoke(): AppGraph {
+      return Impl()
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideAppLong", propertyName = "", startOffset = 1980, endOffset = 2030, newInstanceName = "provideAppLong")
+  class ProvideAppLongMetroFactory : Factory<Long> {
+    private /* final field */ val instance: AppGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(instance: AppGraph): ProvideAppLongMetroFactory {
+        return ProvideAppLongMetroFactory(instance = instance)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun provideAppLong(instance: AppGraph): Long {
+        return instance.provideAppLong()
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(instance: AppGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @IntoSet
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): Long {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Long {
+      return ProvideAppLongMetroFactory/* companion */.provideAppLong(instance = <this>.#instance)
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 1807, endOffset = 1842, newInstanceName = "provideInt")
+  class ProvideIntMetroFactory : Factory<Int> {
+    private /* final field */ val instance: AppGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(instance: AppGraph): ProvideIntMetroFactory {
+        return ProvideIntMetroFactory(instance = instance)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun provideInt(instance: AppGraph): Int {
+        return instance.provideInt()
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(instance: AppGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): Int {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Int {
+      return ProvideIntMetroFactory/* companion */.provideInt(instance = <this>.#instance)
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideOne", propertyName = "", startOffset = 1846, endOffset = 1909, newInstanceName = "provideOne")
+  class ProvideOneMetroFactory : Factory<String> {
+    private /* final field */ val instance: AppGraph = instance
+    private /* final field */ val int2: Provider<Int> = int
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(instance: AppGraph, int: Provider<Int>): ProvideOneMetroFactory {
+        return ProvideOneMetroFactory(instance = instance, int = int)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun provideOne(instance: AppGraph, int: Int): String {
+        return instance.provideOne(int = int)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(instance: AppGraph, int: Provider<Int>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @IntoSet
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(int: Int): String {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): String {
+      return ProvideOneMetroFactory/* companion */.provideOne(instance = <this>.#instance, int = <this>.#int2.invoke())
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideTwo", propertyName = "", startOffset = 1913, endOffset = 1976, newInstanceName = "provideTwo")
+  class ProvideTwoMetroFactory : Factory<String> {
+    private /* final field */ val instance: AppGraph = instance
+    private /* final field */ val int2: Provider<Int> = int
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(instance: AppGraph, int: Provider<Int>): ProvideTwoMetroFactory {
+        return ProvideTwoMetroFactory(instance = instance, int = int)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun provideTwo(instance: AppGraph, int: Int): String {
+        return instance.provideTwo(int = int)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(instance: AppGraph, int: Provider<Int>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @IntoSet
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(int: Int): String {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): String {
+      return ProvideTwoMetroFactory/* companion */.provideTwo(instance = <this>.#instance, int = <this>.#int2.invoke())
+    }
+
+  }
+
+  @Provides
+  @IntoSet
+  fun provideAppLong(): Long {
+    return 1L
+  }
+
+  @Provides
+  fun provideInt(): Int {
+    return 3
+  }
+
+  @Provides
+  @IntoSet
+  fun provideOne(int: Int): String {
+    return "one" + int
+  }
+
+  @Provides
+  @IntoSet
+  fun provideTwo(int: Int): String {
+    return "two" + int
+  }
+
+}
+
+@GraphExtension
+interface Child : GrandchildC.Factory, GrandchildD.Factory {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideChildLong", propertyName = "", startOffset = 1342, endOffset = 1394, newInstanceName = "provideChildLong")
+  class ProvideChildLongMetroFactory : Factory<Long> {
+    private /* final field */ val instance: Child = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(instance: Child): ProvideChildLongMetroFactory {
+        return ProvideChildLongMetroFactory(instance = instance)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun provideChildLong(instance: Child): Long {
+        return instance.provideChildLong()
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(instance: Child) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @IntoSet
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): Long {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Long {
+      return ProvideChildLongMetroFactory/* companion */.provideChildLong(instance = <this>.#instance)
+    }
+
+  }
+
+  @GraphExtension.Factory
+  interface Factory {
+    abstract fun createChild(): Child
+
+  }
+
+  @Provides
+  @IntoSet
+  fun provideChildLong(): Long {
+    return 2L
+  }
+
+}
+
+@GraphExtension
+interface ChildE {
+  @GraphExtension.Factory
+  interface Factory {
+    abstract fun createChildE(): ChildE
+
+  }
+
+  abstract val longs: Set<Long>
+    abstract get
+
+  abstract val sharedByAll: SharedByAll
+    abstract get
+
+  abstract val sharedByCAndE: SharedByCAndE
+    abstract get
+
+  abstract val strings: Set<String>
+    abstract get
+
+}
+
+@GraphExtension
+interface GrandchildC {
+  @GraphExtension.Factory
+  interface Factory {
+    abstract fun createGrandchildC(): GrandchildC
+
+  }
+
+  abstract val longs: Set<Long>
+    abstract get
+
+  abstract val sharedByAll: SharedByAll
+    abstract get
+
+  abstract val sharedByCAndE: SharedByCAndE
+    abstract get
+
+  abstract val sharedByGrandchildren: SharedByGrandchildren
+    abstract get
+
+  abstract val strings: Set<String>
+    abstract get
+
+}
+
+@GraphExtension
+interface GrandchildD {
+  @GraphExtension.Factory
+  interface Factory {
+    abstract fun createGrandchildD(): GrandchildD
+
+  }
+
+  abstract val longs: Set<Long>
+    abstract get
+
+  abstract val sharedByAll: SharedByAll
+    abstract get
+
+  abstract val sharedByGrandchildren: SharedByGrandchildren
+    abstract get
+
+  abstract val strings: Set<String>
+    abstract get
+
+}
+

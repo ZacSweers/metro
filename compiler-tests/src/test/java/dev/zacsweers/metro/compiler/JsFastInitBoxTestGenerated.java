@@ -129,6 +129,12 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("ContributesToGenericTypeAliasScope.kt")
+    public void testContributesToGenericTypeAliasScope() {
+      run("ContributesToGenericTypeAliasScope.kt");
+    }
+
+    @Test
     @TestMetadata("ContributesToTypeAliasScope.kt")
     public void testContributesToTypeAliasScope() {
       run("ContributesToTypeAliasScope.kt");
@@ -243,6 +249,18 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("ExcludedInterfaceReplacements.kt")
+    public void testExcludedInterfaceReplacements() {
+      run("ExcludedInterfaceReplacements.kt");
+    }
+
+    @Test
+    @TestMetadata("ExcludedInterfaceReplacementsAcrossModules.kt")
+    public void testExcludedInterfaceReplacementsAcrossModules() {
+      run("ExcludedInterfaceReplacementsAcrossModules.kt");
+    }
+
+    @Test
     @TestMetadata("ExcludesWithOrigin.kt")
     public void testExcludesWithOrigin() {
       run("ExcludesWithOrigin.kt");
@@ -258,6 +276,12 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
     @TestMetadata("ExcludesWithOriginInExtension.kt")
     public void testExcludesWithOriginInExtension() {
       run("ExcludesWithOriginInExtension.kt");
+    }
+
+    @Test
+    @TestMetadata("GenericArrayScopeAliases.kt")
+    public void testGenericArrayScopeAliases() {
+      run("GenericArrayScopeAliases.kt");
     }
 
     @Test
@@ -381,6 +405,18 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("ScopeSpecificContributionReplacements.kt")
+    public void testScopeSpecificContributionReplacements() {
+      run("ScopeSpecificContributionReplacements.kt");
+    }
+
+    @Test
+    @TestMetadata("ScopeSpecificContributionReplacementsAcrossModules.kt")
+    public void testScopeSpecificContributionReplacementsAcrossModules() {
+      run("ScopeSpecificContributionReplacementsAcrossModules.kt");
+    }
+
+    @Test
     @TestMetadata("ScopedContributedBindingCanBeAccessedFromChildWithClassHintsEnabled.kt")
     public void testScopedContributedBindingCanBeAccessedFromChildWithClassHintsEnabled() {
       run("ScopedContributedBindingCanBeAccessedFromChildWithClassHintsEnabled.kt");
@@ -472,6 +508,12 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
       }
 
       @Test
+      @TestMetadata("generatedFactories.kt")
+      public void testGeneratedFactories() {
+        run("generatedFactories.kt");
+      }
+
+      @Test
       @TestMetadata("implTypeNotDirectlyAccessible.kt")
       public void testImplTypeNotDirectlyAccessible() {
         run("implTypeNotDirectlyAccessible.kt");
@@ -511,6 +553,12 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
       @TestMetadata("intoSet.kt")
       public void testIntoSet() {
         run("intoSet.kt");
+      }
+
+      @Test
+      @TestMetadata("memberInjectionAcrossModules.kt")
+      public void testMemberInjectionAcrossModules() {
+        run("memberInjectionAcrossModules.kt");
       }
 
       @Test
@@ -607,9 +655,21 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("GeneratedContributionsAcrossScopes.kt")
+    public void testGeneratedContributionsAcrossScopes() {
+      run("GeneratedContributionsAcrossScopes.kt");
+    }
+
+    @Test
     @TestMetadata("GeneratedDependencyGraph.kt")
     public void testGeneratedDependencyGraph() {
       run("GeneratedDependencyGraph.kt");
+    }
+
+    @Test
+    @TestMetadata("GeneratedFactoryInSourceGraphAcrossModules.kt")
+    public void testGeneratedFactoryInSourceGraphAcrossModules() {
+      run("GeneratedFactoryInSourceGraphAcrossModules.kt");
     }
 
     @Test
@@ -740,6 +800,18 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
     @TestMetadata("MultibindsOnlyInContainer.kt")
     public void testMultibindsOnlyInContainer() {
       run("MultibindsOnlyInContainer.kt");
+    }
+
+    @Test
+    @TestMetadata("NestedBindingContainersRespectScopes.kt")
+    public void testNestedBindingContainersRespectScopes() {
+      run("NestedBindingContainersRespectScopes.kt");
+    }
+
+    @Test
+    @TestMetadata("NestedBindingContainersRespectScopesAcrossModules.kt")
+    public void testNestedBindingContainersRespectScopesAcrossModules() {
+      run("NestedBindingContainersRespectScopesAcrossModules.kt");
     }
 
     @Test
@@ -1009,6 +1081,18 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("ArrayClassQualifiers.kt")
+    public void testArrayClassQualifiers() {
+      run("ArrayClassQualifiers.kt");
+    }
+
+    @Test
+    @TestMetadata("ArrayClassQualifiersJs.kt")
+    public void testArrayClassQualifiersJs() {
+      run("ArrayClassQualifiersJs.kt");
+    }
+
+    @Test
     @TestMetadata("ContributedAccessorsCanBeLazy.kt")
     public void testContributedAccessorsCanBeLazy() {
       run("ContributedAccessorsCanBeLazy.kt");
@@ -1066,6 +1150,12 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
     @TestMetadata("GraphsCanHaveExistingImplClases.kt")
     public void testGraphsCanHaveExistingImplClases() {
       run("GraphsCanHaveExistingImplClases.kt");
+    }
+
+    @Test
+    @TestMetadata("IncludedGraphWithExtensionsIsStoredOnce.kt")
+    public void testIncludedGraphWithExtensionsIsStoredOnce() {
+      run("IncludedGraphWithExtensionsIsStoredOnce.kt");
     }
 
     @Test
@@ -1237,6 +1327,42 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("QualifierArrayDefaultsAcrossModules.kt")
+    public void testQualifierArrayDefaultsAcrossModules() {
+      run("QualifierArrayDefaultsAcrossModules.kt");
+    }
+
+    @Test
+    @TestMetadata("QualifierDefaultsAcrossModules.kt")
+    public void testQualifierDefaultsAcrossModules() {
+      run("QualifierDefaultsAcrossModules.kt");
+    }
+
+    @Test
+    @TestMetadata("QualifierDefaultsFromSource.kt")
+    public void testQualifierDefaultsFromSource() {
+      run("QualifierDefaultsFromSource.kt");
+    }
+
+    @Test
+    @TestMetadata("QualifierExplicitValuesAcrossModules.kt")
+    public void testQualifierExplicitValuesAcrossModules() {
+      run("QualifierExplicitValuesAcrossModules.kt");
+    }
+
+    @Test
+    @TestMetadata("QualifierHashCollisions.kt")
+    public void testQualifierHashCollisions() {
+      run("QualifierHashCollisions.kt");
+    }
+
+    @Test
+    @TestMetadata("QualifierOmittedDefaultsAcrossModules.kt")
+    public void testQualifierOmittedDefaultsAcrossModules() {
+      run("QualifierOmittedDefaultsAcrossModules.kt");
+    }
+
+    @Test
     @TestMetadata("QualifiersWithEnumsWork.kt")
     public void testQualifiersWithEnumsWork() {
       run("QualifiersWithEnumsWork.kt");
@@ -1316,9 +1442,33 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
       }
 
       @Test
+      @TestMetadata("GenericBindingContainerAliasSpecializations.kt")
+      public void testGenericBindingContainerAliasSpecializations() {
+        run("GenericBindingContainerAliasSpecializations.kt");
+      }
+
+      @Test
+      @TestMetadata("GenericBindingContainerAliasSpecializationsAcrossModules.kt")
+      public void testGenericBindingContainerAliasSpecializationsAcrossModules() {
+        run("GenericBindingContainerAliasSpecializationsAcrossModules.kt");
+      }
+
+      @Test
       @TestMetadata("GenericBindingContainerBackwardRef.kt")
       public void testGenericBindingContainerBackwardRef() {
         run("GenericBindingContainerBackwardRef.kt");
+      }
+
+      @Test
+      @TestMetadata("GenericBindingContainerBinds.kt")
+      public void testGenericBindingContainerBinds() {
+        run("GenericBindingContainerBinds.kt");
+      }
+
+      @Test
+      @TestMetadata("GenericBindingContainerBindsAcrossModules.kt")
+      public void testGenericBindingContainerBindsAcrossModules() {
+        run("GenericBindingContainerBindsAcrossModules.kt");
       }
 
       @Test
@@ -1506,6 +1656,12 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
       }
 
       @Test
+      @TestMetadata("ChildrenShareHoistedBindings.kt")
+      public void testChildrenShareHoistedBindings() {
+        run("ChildrenShareHoistedBindings.kt");
+      }
+
+      @Test
       @TestMetadata("ChunkedExtensionInitializers.kt")
       public void testChunkedExtensionInitializers() {
         run("ChunkedExtensionInitializers.kt");
@@ -1686,6 +1842,12 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
       }
 
       @Test
+      @TestMetadata("NestedChildrenShareHoistedBindings.kt")
+      public void testNestedChildrenShareHoistedBindings() {
+        run("NestedChildrenShareHoistedBindings.kt");
+      }
+
+      @Test
       @TestMetadata("OverloadedFactoryFunctions.kt")
       public void testOverloadedFactoryFunctions() {
         run("OverloadedFactoryFunctions.kt");
@@ -1749,6 +1911,24 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
       @TestMetadata("SimpleExtension.kt")
       public void testSimpleExtension() {
         run("SimpleExtension.kt");
+      }
+
+      @Test
+      @TestMetadata("UnchangedChildrenReuseParentMultibindingMaps.kt")
+      public void testUnchangedChildrenReuseParentMultibindingMaps() {
+        run("UnchangedChildrenReuseParentMultibindingMaps.kt");
+      }
+
+      @Test
+      @TestMetadata("UnchangedChildrenReuseParentMultibindings.kt")
+      public void testUnchangedChildrenReuseParentMultibindings() {
+        run("UnchangedChildrenReuseParentMultibindings.kt");
+      }
+
+      @Test
+      @TestMetadata("UnchangedMultibindingsPreserveChildConstruction.kt")
+      public void testUnchangedMultibindingsPreserveChildConstruction() {
+        run("UnchangedMultibindingsPreserveChildConstruction.kt");
       }
     }
 
@@ -2014,6 +2194,12 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
     @Test
     public void testAllFilesPresentInInject() {
       KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/inject"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
+    }
+
+    @Test
+    @TestMetadata("CopiedCallableDefaults.kt")
+    public void testCopiedCallableDefaults() {
+      run("CopiedCallableDefaults.kt");
     }
 
     @Test
@@ -2310,9 +2496,21 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
       }
 
       @Test
+      @TestMetadata("GenericMemberInjectionAcrossModules.kt")
+      public void testGenericMemberInjectionAcrossModules() {
+        run("GenericMemberInjectionAcrossModules.kt");
+      }
+
+      @Test
       @TestMetadata("GenericMemberInjectionFromGraph.kt")
       public void testGenericMemberInjectionFromGraph() {
         run("GenericMemberInjectionFromGraph.kt");
+      }
+
+      @Test
+      @TestMetadata("GenericMemberInjectionSameModule.kt")
+      public void testGenericMemberInjectionSameModule() {
+        run("GenericMemberInjectionSameModule.kt");
       }
 
       @Test
@@ -2349,6 +2547,12 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
       @TestMetadata("InjectingSubclassWithNoMembersButParentsDo.kt")
       public void testInjectingSubclassWithNoMembersButParentsDo() {
         run("InjectingSubclassWithNoMembersButParentsDo.kt");
+      }
+
+      @Test
+      @TestMetadata("LayeredGenericDiamond.kt")
+      public void testLayeredGenericDiamond() {
+        run("LayeredGenericDiamond.kt");
       }
 
       @Test
@@ -2481,6 +2685,18 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("MethodAndFieldInjectionKeepDependencyOrder.kt")
+    public void testMethodAndFieldInjectionKeepDependencyOrder() {
+      run("MethodAndFieldInjectionKeepDependencyOrder.kt");
+    }
+
+    @Test
+    @TestMetadata("MethodBeforeFieldInjectionWithoutInterop.kt")
+    public void testMethodBeforeFieldInjectionWithoutInterop() {
+      run("MethodBeforeFieldInjectionWithoutInterop.kt");
+    }
+
+    @Test
     @TestMetadata("ScopedInjectIntoBaseMember.kt")
     public void testScopedInjectIntoBaseMember() {
       run("ScopedInjectIntoBaseMember.kt");
@@ -2597,9 +2813,21 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("SingleSourceMultibindingsAreReadOnly.kt")
+    public void testSingleSourceMultibindingsAreReadOnly() {
+      run("SingleSourceMultibindingsAreReadOnly.kt");
+    }
+
+    @Test
     @TestMetadata("UnusedMultibindingsDoNotGetValidated.kt")
     public void testUnusedMultibindingsDoNotGetValidated() {
       run("UnusedMultibindingsDoNotGetValidated.kt");
+    }
+
+    @Test
+    @TestMetadata("WrappedMapKeyValuesStayDistinct.kt")
+    public void testWrappedMapKeyValuesStayDistinct() {
+      run("WrappedMapKeyValuesStayDistinct.kt");
     }
   }
 
@@ -2716,6 +2944,12 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
     @TestMetadata("InlinedProvidersWithNonPublicValues.kt")
     public void testInlinedProvidersWithNonPublicValues() {
       run("InlinedProvidersWithNonPublicValues.kt");
+    }
+
+    @Test
+    @TestMetadata("InlinedProvidesAcrossModulesBytecodeCheck.kt")
+    public void testInlinedProvidesAcrossModulesBytecodeCheck() {
+      run("InlinedProvidesAcrossModulesBytecodeCheck.kt");
     }
 
     @Test
@@ -3152,6 +3386,12 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
     @TestMetadata("TransitiveConstructorInjected.kt")
     public void testTransitiveConstructorInjected() {
       run("TransitiveConstructorInjected.kt");
+    }
+
+    @Test
+    @TestMetadata("UnchangedChildrenKeepSuspendMultibindingsLocal.kt")
+    public void testUnchangedChildrenKeepSuspendMultibindingsLocal() {
+      run("UnchangedChildrenKeepSuspendMultibindingsLocal.kt");
     }
 
     @Test

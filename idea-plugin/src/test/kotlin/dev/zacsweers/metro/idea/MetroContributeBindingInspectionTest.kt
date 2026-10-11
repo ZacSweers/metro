@@ -52,7 +52,7 @@ class MetroContributeBindingInspectionTest : BasePlatformTestCase() {
     val selectedScope = scopes.actions().single { it.familyName == "test.AppScope" }
     assertTrue(
       checkNotNull(myFixture.getIntentionPreviewText(selectedScope.asIntention()))
-        .contains("@ContributesBinding(AppScope::class)")
+        .contains("@ContributesBinding(AppScope::class)"),
     )
     assertEquals(before, file.text)
     val command = choose(scopes, "test.AppScope")
@@ -72,7 +72,7 @@ class MetroContributeBindingInspectionTest : BasePlatformTestCase() {
       interface Service
       abstract class AccountUserScope
       @DependencyGraph(AccountUserScope::class) interface AccountGraph
-    """
+    """,
       )
     val before = file.text
     val kinds = start(file) as ModChooseAction
@@ -107,7 +107,7 @@ class MetroContributeBindingInspectionTest : BasePlatformTestCase() {
     assertTrue(
       file.text,
       file.text.contains(
-        "@ContributesIntoSet(AppScope::class, binding = binding<Service<String>>())"
+        "@ContributesIntoSet(AppScope::class, binding = binding<Service<String>>())",
       ),
     )
   }
@@ -169,7 +169,7 @@ class MetroContributeBindingInspectionTest : BasePlatformTestCase() {
     assertTrue(
       template.fields().filterIsInstance<ModStartTemplate.ExpressionField>().any {
         it.varName() == "mapKey_value"
-      }
+      },
     )
     execute(command)
     assertTrue(file.text, file.text.contains("@ContributesIntoMap(AppScope::class)"))
@@ -211,7 +211,7 @@ class MetroContributeBindingInspectionTest : BasePlatformTestCase() {
     assertTrue(
       template.fields().filterIsInstance<ModStartTemplate.ExpressionField>().any {
         it.varName() == "scope"
-      }
+      },
     )
   }
 
@@ -258,7 +258,7 @@ class MetroContributeBindingInspectionTest : BasePlatformTestCase() {
       @Scope annotation class CustomScope
       @DependencyGraph(CustomScope::class) interface SuspiciousGraph
       @DependencyGraph(AppGraph::class) interface GraphScopeGraph
-    """
+    """,
       )
     val scopes = choose(start(file), "ContributesBinding") as ModChooseAction
     val labels = scopes.actions().map { it.familyName }
@@ -333,7 +333,7 @@ class MetroContributeBindingInspectionTest : BasePlatformTestCase() {
     abstract class AppScope private constructor()
     @DependencyGraph(AppScope::class) interface AppGraph
     $declaration
-  """
+  """,
     )
 
   private fun implementation(file: KtFile): KtClassOrObject =

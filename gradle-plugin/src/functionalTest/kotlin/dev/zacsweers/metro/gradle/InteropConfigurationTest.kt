@@ -34,7 +34,7 @@ class InteropConfigurationTest {
               }
               """,
               "TestInterop",
-            )
+            ),
           )
 
         override fun StringBuilder.onBuildScript() {
@@ -47,7 +47,7 @@ class InteropConfigurationTest {
               }
             }
             """
-              .trimIndent()
+              .trimIndent(),
           )
         }
       }

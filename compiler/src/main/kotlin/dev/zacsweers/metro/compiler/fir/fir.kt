@@ -84,7 +84,9 @@ import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension.TypeR
 import org.jetbrains.kotlin.fir.extensions.NestedClassGenerationContext
 import org.jetbrains.kotlin.fir.extensions.QualifierPartBuilder
 import org.jetbrains.kotlin.fir.java.FirCliSession
+import org.jetbrains.kotlin.fir.lookupTracker
 import org.jetbrains.kotlin.fir.moduleData
+import org.jetbrains.kotlin.fir.recordFqNameLookup
 import org.jetbrains.kotlin.fir.references.impl.FirSimpleNamedReference
 import org.jetbrains.kotlin.fir.references.toResolvedCallableSymbol
 import org.jetbrains.kotlin.fir.render
@@ -146,6 +148,7 @@ import org.jetbrains.kotlin.fir.types.type
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.ClassIdBasedLocality
+import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.StandardClassIds
 import org.jetbrains.kotlin.platform.TargetPlatform
@@ -263,7 +266,7 @@ private fun FirAnnotation.arrayArgument(session: FirSession, name: Name, index: 
 
 /** @see [dev.zacsweers.metro.compiler.ClassIds.allRepeatableContributesAnnotationsContainers] */
 internal fun FirAnnotation.flattenRepeatedAnnotations(
-  session: FirSession
+  session: FirSession,
 ): Sequence<FirAnnotation> {
   return arrayArgument(session, StandardNames.DEFAULT_VALUE_PARAMETER, 0)
     ?.arguments
@@ -359,7 +362,7 @@ internal fun FirClassSymbol<*>.callableDeclarations(
             includeSelf = true,
             includeAncestors = false,
             yieldAncestorsFirst = yieldAncestorsFirst,
-          )
+          ),
         )
       }
     }
@@ -484,7 +487,7 @@ private fun renderAnnotationArgument(
 
       else -> {
         System.err.println(
-          "Unexpected annotation argument type: ${arg::class.java} - ${arg.render()}"
+          "Unexpected annotation argument type: ${arg::class.java} - ${arg.render()}",
         )
         null
       }
@@ -824,11 +827,11 @@ internal fun MetroFirAnnotation.mapKeyClassValueExpression(): FirGetClassCall? {
 //  fun FirExpression.extractClassFromArgument(session: FirSession): FirRegularClassSymbol?
 
 internal fun List<FirAnnotation>.scopeAnnotations(
-  session: FirSession
+  session: FirSession,
 ): Sequence<MetroFirAnnotation> = asSequence().scopeAnnotations(session)
 
 internal fun Sequence<FirAnnotation>.scopeAnnotations(
-  session: FirSession
+  session: FirSession,
 ): Sequence<MetroFirAnnotation> =
   annotationsAnnotatedWithAny(session, session.classIds.scopeAnnotations)
 
@@ -888,7 +891,7 @@ internal fun createDeprecatedHiddenAnnotation(session: FirSession): FirAnnotatio
 internal fun FirClassLikeDeclaration.markImpl(session: FirSession) {
   replaceAnnotations(
     annotations +
-      listOf(buildSimpleAnnotation { session.metroFirBuiltIns.metroImplMarkerClassSymbol })
+      listOf(buildSimpleAnnotation { session.metroFirBuiltIns.metroImplMarkerClassSymbol }),
   )
 }
 
@@ -951,7 +954,7 @@ internal fun ConeTypeProjection.stripIfLazy(session: FirSession): ConeTypeProjec
 }
 
 internal fun FirClassSymbol<*>.constructType(
-  typeParameterRefs: List<FirTypeParameterRef>
+  typeParameterRefs: List<FirTypeParameterRef>,
 ): ConeClassLikeType {
   return constructType(typeParameterRefs.mapToArray { it.symbol.toConeType() })
 }
@@ -1147,7 +1150,18 @@ private fun FirTypeAliasSymbol.expandedClassId(session: FirSession): ClassId? {
   }
 
   val typeResolver = session.metroFirBuiltIns.typeAliasResolverFactory.create(this) ?: return null
-  return typeResolver.resolveType(expandedTypeRef).classId.usableClassIdOrNull()
+  val userTypeRef = expandedTypeRef as? FirUserTypeRef ?: return null
+  val source = userTypeRef.source ?: return null
+  // Contribution discovery runs before generic arguments have resolved. Class identity only needs
+  // the qualifier names, and kotlinc supports resolving bare types at this phase. Use a fresh ref
+  // so normal type resolution still validates the original arguments later.
+  val classifierTypeRef =
+    typeRefFromQualifierParts(userTypeRef.isMarkedNullable, source) {
+      for (qualifier in userTypeRef.qualifier) {
+        part(qualifier.name)
+      }
+    }
+  return typeResolver.resolveType(classifierTypeRef).classId.usableClassIdOrNull()
 }
 
 private fun ClassId?.usableClassIdOrNull(): ClassId? {
@@ -1300,7 +1314,7 @@ internal fun FirGetClassCall.referencedClassId() =
   (argument as? FirResolvedQualifier)?.classIdCompat.usableClassIdOrNull()
 
 internal fun FirGetClassCall.resolvedArgumentConeKotlinType(
-  typeResolver: TypeResolveService
+  typeResolver: TypeResolveService,
 ): ConeKotlinType? {
   coneTypeIfResolved()?.let {
     return it
@@ -1313,7 +1327,7 @@ internal fun FirGetClassCall.coneTypeIfResolved(): ConeKotlinType? {
   return when (val arg = argument) {
     // I'm not really sure why these sometimes come down as different types but shrug
     is FirClassReferenceExpression if (isResolved) -> arg.classTypeRef.coneTypeOrNull
-    is FirResolvedQualifier if (isResolved) -> arg.resolvedType
+    is FirResolvedQualifier if (isResolved) -> getTargetType()
     else -> null
   }
 }
@@ -1565,7 +1579,7 @@ private class ConeIdRendererForDiagnostics : ConeIdRenderer() {
 
 context(context: CheckerContext)
 internal fun FirClassSymbol<*>.nestedClasses(
-  memberRequiredPhase: FirResolvePhase = FirResolvePhase.STATUS
+  memberRequiredPhase: FirResolvePhase = FirResolvePhase.STATUS,
 ): List<FirRegularClassSymbol> =
   nestedClasses(context.session, memberRequiredPhase = memberRequiredPhase)
 
@@ -1864,7 +1878,7 @@ internal fun FirClassSymbol<*>.resolveDefaultBindingTypeKey(session: FirSession)
 }
 
 internal fun FirClassSymbol<*>.resolveExternalDefaultBindingTypeKey(
-  session: FirSession
+  session: FirSession,
 ): FirRefTypeKey? {
   val mirrorSymbol =
     nestedClasses(session).firstOrNull { it.name == Symbols.Names.DefaultBindingMirrorClass }
@@ -1937,3 +1951,13 @@ internal fun ClassId?.isIntrinsicType(session: FirSession): Boolean {
 
 internal fun FirSession.shouldCheckRuntimeTracingGraphInputs(): Boolean =
   metroFirBuiltIns.options.enableRuntimeTracing
+
+/**
+ * Records an incremental compilation lookup of [fqName] from [source]. A change to [fqName] then
+ * recompiles the file that holds [source].
+ */
+internal fun FirSession.trackFqNameLookup(fqName: FqName, source: KtSourceElement?) {
+  // The declaration's source stands in for its file's source. The file path lookup is cached
+  // internally.
+  lookupTracker?.recordFqNameLookup(fqName, source, source)
+}

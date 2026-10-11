@@ -14,6 +14,7 @@ import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.FqName
 
 /**
  * Contributes Hilt modules and entry points to IR-only graph merging.
@@ -111,6 +112,11 @@ public class HiltIrContributionExtension(
     }
 
     return result
+  }
+
+  override fun lookupFqNames(scope: ClassId): Collection<FqName> {
+    val bridge = bridge ?: return emptyList()
+    return bridge.scanner.markerFqNames(scope, bridge.componentScopes)
   }
 
   private fun findClass(classId: ClassId, callingDeclaration: IrDeclaration): IrClass? {

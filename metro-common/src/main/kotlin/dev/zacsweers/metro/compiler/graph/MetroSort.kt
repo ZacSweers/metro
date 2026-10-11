@@ -229,13 +229,12 @@ public fun <V : Comparable<V>> metroSort(
  *       no-op.
  * 2. If there are no candidates, the cycle has no soft edges -> return empty (caller treats this as
  *    a hard cycle).
- * 3. Try each candidate **alone**, in priority order. The first one whose deferral makes the SCC
- *    acyclic wins. Single-vertex deferral is the common case (one `Provider<T>` typically breaks a
- *    2-cycle).
- * 4. If no individual candidate works, try **all candidates together**. Some interleaved cycles
- *    need multiple soft cuts. If this fails, return empty because the available deferrable edges
- *    aren't enough to break the cycle.
- * 5. Remove candidates in reverse priority order while the remaining graph stays acyclic. This
+ * 3. Try the first candidate alone. Return it if its deferral makes the SCC acyclic. This preserves
+ *    the common case where one `Provider<T>` breaks a cycle.
+ * 4. If the only candidate failed, return empty. Otherwise, try all candidates together. Return
+ *    empty if a cycle remains because no combination of deferrals can break it.
+ * 5. Try the remaining candidates alone in priority order. The first successful candidate wins.
+ * 6. Remove candidates in reverse priority order while the remaining graph stays acyclic. This
  *    keeps preferred candidates and ensures that every remaining candidate is necessary.
  *
  * Candidate priority: implicitly deferrable vertices (e.g. `@AssistedFactory`s, which the user
@@ -310,27 +309,42 @@ private fun <V : Comparable<V>> findMinimalDeferralSet(
   sortedCandidates.sortWith { left, right ->
     ensureActive()
     val implicitPriority = (!isImplicitlyDeferrable(left)).compareTo(!isImplicitlyDeferrable(right))
-    if (implicitPriority != 0) implicitPriority else left.compareTo(right)
-  }
-
-  // Try each candidate
-  sortedCandidates.forEachCancellable(ensureActive) { candidate ->
-    if (cycleChecker.isAcyclicWith(setOf(candidate))) {
-      return setOf(candidate)
+    if (implicitPriority != 0) {
+      implicitPriority
+    } else {
+      left.compareTo(right)
     }
   }
 
-  // If no single candidate works, first check whether all candidates can break the cycle.
-  if (!cycleChecker.isAcyclicWith(potentialCandidates)) {
-    // No combination of deferrable edges can break the cycle
+  val preferredDeferral = setOf(sortedCandidates.first())
+  if (cycleChecker.isAcyclicWith(preferredDeferral)) {
+    return preferredDeferral
+  }
+  if (sortedCandidates.size == 1) {
     return emptySet()
   }
 
+  // A cycle that survives every available deferral makes further candidate checks unnecessary.
+  if (!cycleChecker.isAcyclicWith(potentialCandidates)) {
+    return emptySet()
+  }
+
+  for (index in 1..sortedCandidates.lastIndex) {
+    ensureActive()
+    val deferral = setOf(sortedCandidates[index])
+    if (cycleChecker.isAcyclicWith(deferral)) {
+      return deferral
+    }
+  }
+
+  // The full candidate set is already known to keep the graph acyclic.
   // Try removing less preferred bindings first.
   for (index in sortedCandidates.lastIndex downTo 0) {
     ensureActive()
     // Every single candidate was already tested, so two remaining candidates are both necessary.
-    if (potentialCandidates.size == 2) break
+    if (potentialCandidates.size == 2) {
+      break
+    }
 
     val candidate = sortedCandidates[index]
     potentialCandidates.remove(candidate)

@@ -24,6 +24,8 @@ import kotlin.reflect.KClass
  * whose type is `KClass<out Something>`.
  *
  * This map key supports [MapKey.implicitClassKey].
+ *
+ * @property value The map key. Defaults to the annotated class when omitted.
  */
 @MustBeDocumented
 @Target(

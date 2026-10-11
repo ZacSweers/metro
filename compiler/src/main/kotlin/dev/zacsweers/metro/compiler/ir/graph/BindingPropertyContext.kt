@@ -8,6 +8,8 @@ import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.asCanonicalProviderKey
 import dev.zacsweers.metro.compiler.ir.canonicalize
+import java.util.Objects
+import kotlin.reflect.KClass
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 
 /**
@@ -40,18 +42,124 @@ internal data class BindingProperty(
  * [BindingProperty.ownerGraphKey] to indicate which ancestor owns the property.
  *
  * @property bindingGraph The binding graph for this context
+ * @property sortedKeys This graph's keys in dependency order. Used to compare bindings with the
+ *   parent graph.
  * @property graphKey The type key of the graph this context belongs to. Used to populate
  *   [BindingProperty.ownerGraphKey] when properties are found via parent lookup.
  * @property parent Optional parent context for hierarchical lookup in extension graphs
  */
 internal class BindingPropertyContext(
   private val bindingGraph: IrBindingGraph,
+  private val sortedKeys: List<IrTypeKey>,
   private val graphKey: IrTypeKey? = null,
   private val parent: BindingPropertyContext? = null,
 ) {
   private val properties = mutableMapOf<IrContextualTypeKey, IrProperty>()
   private val shardProperties = mutableMapOf<IrContextualTypeKey, IrProperty>()
   private val shardIndices = MutableObjectIntMap<IrContextualTypeKey>()
+
+  /**
+   * Fingerprints of this graph's bindings, keyed by type key. Bindings that can't be compared with
+   * another graph's are left out.
+   */
+  private val fingerprints: Map<IrTypeKey, BindingFingerprint> by lazy {
+    buildMap {
+      // Dependencies come before their consumers, so their fingerprints already exist.
+      for (key in sortedKeys) {
+        val binding = bindingGraph.findBinding(key) ?: continue
+        fingerprint(binding, this)?.let { put(key, it) }
+      }
+    }
+  }
+
+  private fun fingerprint(
+    binding: IrBinding,
+    known: Map<IrTypeKey, BindingFingerprint>,
+  ): BindingFingerprint? {
+    if (binding.isSuspend) {
+      return null
+    }
+    val owner = binding.sharedInstanceOwner(graphKey)
+    if (owner != null) {
+      return BindingFingerprint.Shared(owner)
+    }
+    val source = binding.sourceDeclaration() ?: return null
+    val dependencyFingerprints =
+      binding.dependencies.map { dependency ->
+        if (dependency.hasDefault) {
+          return null
+        }
+        known[dependency.typeKey] ?: return null
+      }
+    return BindingFingerprint.Built(
+      kind = binding::class,
+      source = source,
+      dependencies = binding.dependencies,
+      dependencyFingerprints = dependencyFingerprints,
+    )
+  }
+
+  /**
+   * Returns the graph that owns this binding's shared instance, or null if each graph builds its
+   * own.
+   */
+  private fun IrBinding.sharedInstanceOwner(graphKey: IrTypeKey?): IrTypeKey? =
+    when (this) {
+      is IrBinding.GraphDependency -> token?.ownerGraphKey
+      is IrBinding.BoundInstance -> token?.ownerGraphKey ?: graphKey
+      else -> graphKey.takeIf { isScoped() }
+    }
+
+  /** Returns the declaration this binding's value comes from, or null if it can't be compared. */
+  private fun IrBinding.sourceDeclaration(): Any? =
+    when (this) {
+      is IrBinding.ConstructorInjected -> classFactory.factoryClass
+      is IrBinding.Provided -> providerFactory.factoryClass
+      is IrBinding.Alias -> bindsCallable?.function ?: aliasedType
+      is IrBinding.ObjectClass -> type
+      // Contributions are the multibinding's dependencies.
+      is IrBinding.Multibinding -> typeKey
+      else -> null
+    }
+
+  /**
+   * Finds an ancestor property this graph can reuse for [key] without changing either resolved
+   * graph.
+   *
+   * The nearest ancestor that has a binding for [key] decides. Its binding must build the same
+   * value, so its fingerprint has to match this graph's. Bindings an ancestor owns are shared
+   * through tokens instead.
+   */
+  context(metroContext: IrMetroContext)
+  fun reusableBinding(key: IrContextualTypeKey): BindingProperty? {
+    if (key.hasDefault) {
+      return null
+    }
+    val fingerprint = fingerprints[key.typeKey] as? BindingFingerprint.Built ?: return null
+    val ancestor = nearestAncestorWith(key.typeKey) ?: return null
+    if (fingerprint != ancestor.fingerprints[key.typeKey]) {
+      return null
+    }
+    val property = ancestor.get(key.canonicalize()) ?: return null
+    return property.copy(ownerGraphKey = property.ownerGraphKey ?: ancestor.graphKey)
+  }
+
+  /**
+   * Returns the nearest ancestor whose graph has a binding for [key].
+   *
+   * This walks up one level at a time. Graph trees are shallow, so it's only a few lookups. A
+   * precomputed map from keys to ancestors would copy every ancestor's keys into each graph.
+   */
+  private fun nearestAncestorWith(key: IrTypeKey): BindingPropertyContext? {
+    var current = parent
+    while (current != null) {
+      if (key in current.bindingGraph) {
+        return current
+      }
+      current = current.parent
+    }
+    return null
+  }
 
   /** Lazily computed map of ancestor graph keys to their contexts. */
   private val ancestorContextCache: Map<IrTypeKey, BindingPropertyContext> by lazy {
@@ -128,6 +236,10 @@ internal class BindingPropertyContext(
       }
     }
 
+    reusableBinding(key)?.let {
+      return it
+    }
+
     // For aliases, try the aliased target
     bindingGraph.findBinding(key.typeKey)?.let {
       if (it is IrBinding.Alias) {
@@ -157,4 +269,36 @@ internal class BindingPropertyContext(
 
   context(metroContext: IrMetroContext)
   operator fun contains(key: IrContextualTypeKey): Boolean = get(key) != null
+}
+
+/** How a binding's value is produced, including everything it depends on. */
+private sealed interface BindingFingerprint {
+  /** An instance owned by [owner] and shared with its descendants. */
+  data class Shared(val owner: IrTypeKey) : BindingFingerprint
+
+  /** A value each graph builds from [source] and the given dependencies. */
+  class Built(
+    val kind: KClass<out IrBinding>,
+    val source: Any,
+    val dependencies: List<IrContextualTypeKey>,
+    val dependencyFingerprints: List<BindingFingerprint>,
+  ) : BindingFingerprint {
+    // Fingerprints nest, so compare cached hashes first to keep mismatches cheap.
+    private val hash = Objects.hash(kind, source, dependencies, dependencyFingerprints)
+
+    override fun hashCode(): Int = hash
+
+    override fun equals(other: Any?): Boolean {
+      if (this === other) {
+        return true
+      }
+      if (other !is Built || hash != other.hash) {
+        return false
+      }
+      return kind == other.kind &&
+        source == other.source &&
+        dependencies == other.dependencies &&
+        dependencyFingerprints == other.dependencyFingerprints
+    }
+  }
 }

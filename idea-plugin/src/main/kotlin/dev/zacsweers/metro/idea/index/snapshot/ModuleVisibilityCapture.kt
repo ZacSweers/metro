@@ -32,7 +32,7 @@ internal class ModuleVisibilityCapture(private val project: Project) {
   private val topologies =
     object : LinkedHashMap<ModuleVisibilityKey, ModuleVisibilityTopology>(4, 0.75f, true) {
       override fun removeEldestEntry(
-        eldest: MutableMap.MutableEntry<ModuleVisibilityKey, ModuleVisibilityTopology>
+        eldest: MutableMap.MutableEntry<ModuleVisibilityKey, ModuleVisibilityTopology>,
       ): Boolean = size > MAX_TOPOLOGIES
     }
 

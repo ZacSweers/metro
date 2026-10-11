@@ -294,7 +294,7 @@ internal class CompilerContractReader(
               // Titles can embed annotation renders, so strip argument-name spelling differences
               // inside those spans only.
               title = normalizeTitle(titleLines.joinToString(" ")),
-            )
+            ),
           )
         }
       }

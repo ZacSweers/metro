@@ -31,8 +31,8 @@ class NullableBindingsTest : MetroCompilerTest() {
           fun provideNullableInt(): Int? = 1
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       assertThat(graph.callProperty<Int>("int")).isEqualTo(0)
@@ -54,7 +54,7 @@ class NullableBindingsTest : MetroCompilerTest() {
           fun provideInt(): Int = 0
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
@@ -72,7 +72,7 @@ class NullableBindingsTest : MetroCompilerTest() {
                 visible to ExampleGraph
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -91,7 +91,7 @@ class NullableBindingsTest : MetroCompilerTest() {
           fun provideNullableInt(): Int? = 1
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
@@ -109,7 +109,7 @@ class NullableBindingsTest : MetroCompilerTest() {
                 visible to ExampleGraph
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -127,7 +127,7 @@ class NullableBindingsTest : MetroCompilerTest() {
           class Foo(val input: Int?)
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
@@ -145,7 +145,7 @@ class NullableBindingsTest : MetroCompilerTest() {
                 visible to ExampleGraph
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -167,8 +167,8 @@ class NullableBindingsTest : MetroCompilerTest() {
           fun provideNullableString(): String? = "hello"
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val foo = graph.callProperty<Any>("foo")
@@ -195,8 +195,8 @@ class NullableBindingsTest : MetroCompilerTest() {
           fun provideNullableString(): String? = "test"
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val foo = graph.callProperty<Any>("foo")
@@ -232,8 +232,8 @@ class NullableBindingsTest : MetroCompilerTest() {
           fun provideInt3(): Int = 3
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val ints = graph.callProperty<Set<Int>>("ints")
@@ -259,7 +259,7 @@ class NullableBindingsTest : MetroCompilerTest() {
           fun provideInt(): Int = 3
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
@@ -272,7 +272,7 @@ class NullableBindingsTest : MetroCompilerTest() {
           note: similar multibindings: Set<Int>
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#emptymultibinding
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -308,8 +308,8 @@ class NullableBindingsTest : MetroCompilerTest() {
           fun provideInt3(): Int = 3
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val ints = graph.callProperty<Map<Int, Int>>("ints")
@@ -350,8 +350,8 @@ class NullableBindingsTest : MetroCompilerTest() {
           fun provideInt3(): Int = 3
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val ints = graph.callProperty<Map<Int, () -> Int>>("ints")
@@ -377,7 +377,7 @@ class NullableBindingsTest : MetroCompilerTest() {
           fun provideInt(): Int = 3
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
@@ -390,7 +390,7 @@ class NullableBindingsTest : MetroCompilerTest() {
           note: similar multibindings: Set<Int>
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#emptymultibinding
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -412,8 +412,8 @@ class NullableBindingsTest : MetroCompilerTest() {
           val Int.bindAsNullable: Int?
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       assertThat(graph.callProperty<Int>("int")).isEqualTo(1)
@@ -438,7 +438,7 @@ class NullableBindingsTest : MetroCompilerTest() {
           val Int?.bindAsNullable: Int
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
@@ -446,7 +446,7 @@ class NullableBindingsTest : MetroCompilerTest() {
         """
         e: ExampleGraph.kt:15:12 Binds receiver type `kotlin.Int?` is not a subtype of bound type `kotlin.Int`.
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }

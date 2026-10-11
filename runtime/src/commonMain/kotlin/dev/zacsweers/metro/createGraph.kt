@@ -53,7 +53,7 @@ public inline fun <reified T : Any> createGraph(): T {
  *   valid graph on its own.
  */
 public inline fun <reified T : Any> createDynamicGraph(
-  @Suppress("unused") vararg containers: Any
+  @Suppress("unused") vararg containers: Any,
 ): T {
   throw UnsupportedOperationException("Implemented by the compiler")
 }
@@ -107,7 +107,7 @@ public inline fun <reified T : Any> createGraphFactory(): T {
  *   valid graph on its own.
  */
 public inline fun <reified T : Any> createDynamicGraphFactory(
-  @Suppress("unused") vararg containers: Any
+  @Suppress("unused") vararg containers: Any,
 ): T {
   throw UnsupportedOperationException("Implemented by the compiler")
 }

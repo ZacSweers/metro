@@ -526,7 +526,7 @@ internal fun FirBasedSymbol<*>.metroAnnotations(
 @OptIn(SymbolInternals::class)
 context(checkerContext: CheckerContext)
 internal fun FirBasedSymbol<*>.metroAnnotations(
-  kinds: Set<Kind> = MetroAnnotations.ALL_KINDS
+  kinds: Set<Kind> = MetroAnnotations.ALL_KINDS,
 ): MetroAnnotations<MetroFirAnnotation> {
   val session = checkerContext.session
   // Only cache the full-kinds resolution; partial-kind requests bypass the cache because the
@@ -782,7 +782,7 @@ internal fun <T> expectNullAndSet(type: String, current: T?, value: T): T {
 /** Returns a list of annotations for copying to mirror functions. */
 context(context: IrMetroContext)
 internal fun MetroAnnotations<IrAnnotation>.mirrorIrConstructorCalls(
-  symbol: IrSymbol
+  symbol: IrSymbol,
 ): List<IrConstructorCall> {
   return buildList {
     if (isProvides) {

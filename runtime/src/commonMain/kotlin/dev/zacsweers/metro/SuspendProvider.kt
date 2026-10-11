@@ -8,6 +8,7 @@ import kotlin.jvm.JvmInline
 /** Produces values of type [T] in a suspend context. */
 @ExperimentalMetroCoroutinesApi
 public expect fun interface SuspendProvider<T> {
+  /** Returns an instance of [T]. */
   public suspend operator fun invoke(): T
 }
 
@@ -39,7 +40,7 @@ public fun <T> suspendProviderOf(value: T): SuspendProvider<T> = SuspendInstance
 /** Returns a provider that applies [transform] to this provider's value. */
 @ExperimentalMetroCoroutinesApi
 public inline fun <T, R> SuspendProvider<T>.map(
-  crossinline transform: suspend (T) -> R
+  crossinline transform: suspend (T) -> R,
 ): SuspendProvider<R> = SuspendProvider { transform(invoke()) }
 
 /**
@@ -48,7 +49,7 @@ public inline fun <T, R> SuspendProvider<T>.map(
  */
 @ExperimentalMetroCoroutinesApi
 public inline fun <T, R> SuspendProvider<T>.flatMap(
-  crossinline transform: suspend (T) -> SuspendProvider<R>
+  crossinline transform: suspend (T) -> SuspendProvider<R>,
 ): SuspendProvider<R> = SuspendProvider { transform(invoke()).invoke() }
 
 /**

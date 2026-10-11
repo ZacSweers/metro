@@ -8,6 +8,8 @@ import kotlin.reflect.KClass
 
 /**
  * A [MapKey] annotation for binding [ContentProviders][ContentProvider] into a multibinding map.
+ *
+ * @property value The provider class used as the key. Defaults to the annotated class when omitted.
  */
 @MapKey(implicitClassKey = true)
 @Target(AnnotationTarget.CLASS)

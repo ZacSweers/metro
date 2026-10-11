@@ -75,6 +75,65 @@ class BindingGraphTest : TraceScope by TraceScope.noop() {
   }
 
   @Test
+  fun `required dependencies survive optional misses in either order`() {
+    val missingType = "Missing".typeKey
+    val optional = StringContextualTypeKey.create(missingType, hasDefault = true)
+    val required = missingType.contextualTypeKey
+    // Class lookups can return transient absence without adding a graph node.
+    val absent =
+      object :
+        BaseBinding<String, StringTypeKey, StringContextualTypeKey> by missingType.toBinding() {
+        override val isTransient = true
+      }
+
+    for (dependencies in listOf(listOf(optional, required), listOf(required, optional))) {
+      val validationRequests = mutableListOf<StringContextualTypeKey>()
+      val graph =
+        MutableBindingGraph<
+          String,
+          StringTypeKey,
+          StringContextualTypeKey,
+          BaseBinding<String, StringTypeKey, StringContextualTypeKey>,
+          StringBindingStack.Entry,
+          StringBindingStack,
+        >(
+          newBindingStack = { StringBindingStack("AppGraph") },
+          newBindingStackEntry = { contextKey, _, _ ->
+            validationRequests += contextKey
+            StringBindingStack.Entry(contextKey)
+          },
+          computeBindings = { _, _, _ -> setOf(absent) },
+        )
+      graph.tryPut("Consumer".typeKey.toBinding(dependencies), StringBindingStack("AppGraph"))
+
+      val failure =
+        assertFailsWith<IllegalStateException> {
+          val prepared =
+            graph.prepareSeal(
+              shrinkUnusedBindings = false,
+              onPopulated = { validationRequests.clear() },
+            )
+          prepared.finish(prepared.analyze())
+        }
+
+      assertThat(failure).hasMessageThat().contains("[Metro/MissingBinding]")
+      assertThat(validationRequests.single()).isSameInstanceAs(required)
+    }
+  }
+
+  @Test
+  fun `dependencies with defaults can all remain absent`() {
+    val optional = StringContextualTypeKey.create("Missing".typeKey, hasDefault = true)
+    val graph = newStringBindingGraph()
+    graph.tryPut("Consumer".typeKey.toBinding(optional, optional))
+
+    val prepared = graph.prepareSeal(shrinkUnusedBindings = false)
+    val result = prepared.finish(prepared.analyze())
+
+    assertThat(result.sortedKeys).containsExactly("Consumer".typeKey)
+  }
+
+  @Test
   fun `new graph roots use one map write without a lookup`() {
     val key = StringContextualTypeKey.create(StringTypeKey("Root"))
     val entry = StringBindingStack.Entry(key)
@@ -146,7 +205,8 @@ class BindingGraphTest : TraceScope by TraceScope.noop() {
       graph.tryPut(rootBinding, StringBindingStack("AppGraph"))
       graph.tryPut(sharedBinding, StringBindingStack("AppGraph"))
 
-      graph.seal(roots = mapOf(rootKey to rootEntry))
+      val prepared = graph.prepareSeal(roots = mapOf(rootKey to rootEntry))
+      prepared.finish(prepared.analyze())
 
       assertThat(computed).containsExactlyElementsIn(providerOrder).inOrder()
       assertThat(observed).hasSize(3)
@@ -197,7 +257,8 @@ class BindingGraphTest : TraceScope by TraceScope.noop() {
     graph.tryPut(rootKey.typeKey.toBinding(sharedRequest), StringBindingStack("AppGraph"))
     graph.tryPut(sharedRequest.typeKey.toBinding(), StringBindingStack("AppGraph"))
 
-    graph.seal(roots = mapOf(rootKey to rootEntry))
+    val prepared = graph.prepareSeal(roots = mapOf(rootKey to rootEntry))
+    prepared.finish(prepared.analyze())
 
     assertThat(computed).isEqualTo(0)
     assertThat(createdEntries).isEqualTo(0)
@@ -233,18 +294,123 @@ class BindingGraphTest : TraceScope by TraceScope.noop() {
   }
 
   @Test
+  fun `prepared analysis uses captured bindings and defers callbacks until finish`() {
+    val events = mutableListOf<String>()
+    var allowBindingReads = true
+    val graph = newStringBindingGraph()
+    val a = "A".contextualTypeKey
+    val b = "B".contextualTypeKey
+    val kept = "Kept".contextualTypeKey
+    for (binding in
+      listOf(a.typeKey.toBinding(b), b.typeKey.toBinding("() -> A".contextualTypeKey))) {
+      graph.tryPut(
+        object : BaseBinding<String, StringTypeKey, StringContextualTypeKey> by binding {
+          override val dependencies: List<StringContextualTypeKey>
+            get() {
+              check(allowBindingReads) { "Analysis read binding dependencies" }
+              return binding.dependencies
+            }
+
+          override val isImplicitlyDeferrable: Boolean
+            get() {
+              check(allowBindingReads) { "Analysis read binding deferral" }
+              return binding.isImplicitlyDeferrable
+            }
+        },
+      )
+    }
+    graph.tryPut(kept.typeKey.toBinding())
+    graph.tryPut("Unused".typeKey.toBinding())
+    val prepared =
+      graph.prepareSeal(
+        roots = mapOf(a to StringBindingStack.Entry(a)),
+        keep = mapOf(kept to StringBindingStack.Entry(kept)),
+        onPopulated = { events += "populated" },
+        onSortedCycle = { cycle ->
+          events += "cycle"
+          assertThat(cycle).containsExactly(a.typeKey, b.typeKey)
+        },
+        validateBindings = { _, _, _, adjacency ->
+          events += "validated"
+          assertThat(adjacency.forward.keys).containsExactly(a.typeKey, b.typeKey, kept.typeKey)
+        },
+      )
+    assertThat(graph.sealed).isTrue()
+    assertThat(events).containsExactly("populated")
+
+    allowBindingReads = false
+    val analysis = prepared.analyze()
+    assertThat(events).containsExactly("populated")
+
+    allowBindingReads = true
+    val topology = prepared.finish(analysis)
+    assertThat(events).containsExactly("populated", "cycle", "validated").inOrder()
+    assertThat(topology.reachableKeys).containsExactly(a.typeKey, b.typeKey, kept.typeKey)
+    assertThat(topology.deferredTypes).containsExactly(b.typeKey)
+    with(graph) { assertThat(a.typeKey.dependsOn(b.typeKey)).isTrue() }
+  }
+
+  @Test
+  fun `prepared hard cycles are classified and reported only during finish`() {
+    var suspendChecks = 0
+    val graph =
+      MutableBindingGraph<
+        String,
+        StringTypeKey,
+        StringContextualTypeKey,
+        StringBinding,
+        StringBindingStack.Entry,
+        StringBindingStack,
+      >(
+        newBindingStack = { StringBindingStack("AppGraph") },
+        newBindingStackEntry = { contextKey, _, _ -> StringBindingStack.Entry(contextKey) },
+        findSuspendCycleKey = { _, _ ->
+          suspendChecks++
+          null
+        },
+      )
+    graph.tryPut("A".typeKey.toBinding("B".typeKey), StringBindingStack("AppGraph"))
+    graph.tryPut("B".typeKey.toBinding("A".typeKey), StringBindingStack("AppGraph"))
+    val prepared = graph.prepareSeal(shrinkUnusedBindings = false)
+
+    val analysis = prepared.analyze()
+    assertThat(suspendChecks).isEqualTo(0)
+
+    val failure = assertFailsWith<IllegalStateException> { prepared.finish(analysis) }
+    assertThat(suspendChecks).isEqualTo(1)
+    assertThat(failure).hasMessageThat().contains("[Metro/DependencyCycle]")
+  }
+
+  @Test
+  fun `preparation reports missing bindings before analysis`() {
+    val graph = newStringBindingGraph()
+    graph.tryPut("Consumer".typeKey.toBinding("Missing".typeKey))
+
+    val failure =
+      assertFailsWith<IllegalStateException> {
+        graph.prepareSeal(shrinkUnusedBindings = false)
+      }
+
+    assertThat(failure).hasMessageThat().contains("[Metro/MissingBinding]")
+  }
+
+  @Test
   fun `seal checks for cancellation`() {
     val graph = newStringBindingGraph()
     repeat(300) { index -> graph.tryPut("Binding$index".typeKey.toBinding()) }
     var checks = 0
 
     assertFailsWith<BindingGraphCancellationException> {
-      graph.seal(
-        shrinkUnusedBindings = false,
-        ensureActive = {
-          if (++checks == 2) throw BindingGraphCancellationException()
-        },
-      )
+      val prepared =
+        graph.prepareSeal(
+          shrinkUnusedBindings = false,
+          ensureActive = {
+            if (++checks == 2) {
+              throw BindingGraphCancellationException()
+            }
+          },
+        )
+      prepared.finish(prepared.analyze())
     }
     assertThat(checks).isEqualTo(2)
   }
@@ -293,7 +459,8 @@ class BindingGraphTest : TraceScope by TraceScope.noop() {
 
     val exception =
       assertFailsWith<IllegalStateException> {
-        val _ = bindingGraph.seal(shrinkUnusedBindings = false)
+        val prepared = bindingGraph.prepareSeal(shrinkUnusedBindings = false)
+        val _ = prepared.finish(prepared.analyze())
       }
     assertThat(exception)
       .hasMessageThat()
@@ -315,8 +482,160 @@ class BindingGraphTest : TraceScope by TraceScope.noop() {
                 `Lazy<B>`. Only do this if you know what you're doing though!
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#dependencycycle
         """
-          .trimIndent()
+          .trimIndent(),
       )
+  }
+
+  @Test
+  fun `preparation scans eager sources once`() {
+    val targetKeys = List(64) { "Element$it".contextualTypeKey }
+    val dependencies = CountingDependencyList(targetKeys)
+    val graph = newStringBindingGraph()
+    graph.tryPut("Aggregate".typeKey.toBinding(dependencies))
+    for (target in targetKeys) {
+      graph.tryPut(target.typeKey.toBinding("() -> Aggregate".contextualTypeKey))
+    }
+
+    val prepared =
+      graph.prepareSeal(
+        shrinkUnusedBindings = false,
+        onPopulated = { dependencies.reads = 0 },
+      )
+    val result = prepared.finish(prepared.analyze())
+
+    assertThat(result.deferredTypes).containsExactlyElementsIn(targetKeys.map { it.typeKey })
+    // Adjacency captures edge kinds in the same pass over the original dependencies.
+    assertThat(dependencies.reads).isEqualTo(targetKeys.size)
+  }
+
+  @Test
+  fun `preparation scans wrapped sources twice and analysis reads only the snapshot`() {
+    val targets = List(64) { "Element$it".typeKey }
+    val dependencies = CountingDependencyList(targets.map { "() -> ${it.type}".contextualTypeKey })
+    val graph = newStringBindingGraph()
+    graph.tryPut("Aggregate".typeKey.toBinding(dependencies))
+    for (target in targets) {
+      graph.tryPut(target.toBinding("Aggregate".typeKey))
+    }
+    val prepared =
+      graph.prepareSeal(
+        shrinkUnusedBindings = false,
+        onPopulated = { dependencies.reads = 0 },
+      )
+
+    // Wrapped sources need a second pass to remove targets with eager parallel requests.
+    assertThat(dependencies.reads).isEqualTo(targets.size * 2)
+    dependencies.reads = 0
+    val topology = prepared.finish(prepared.analyze())
+
+    assertThat(topology.deferredTypes).containsExactly("Aggregate".typeKey)
+    assertThat(dependencies.reads).isEqualTo(0)
+  }
+
+  @Test
+  fun `prepared analysis classifies high fan-out edges in linear work`() {
+    fun analysisChecks(targetCount: Int): Int {
+      val targetKeys = List(targetCount) { "Element$it".contextualTypeKey }
+      val graph = newStringBindingGraph()
+      graph.tryPut("Aggregate".typeKey.toBinding(targetKeys))
+      for (target in targetKeys) {
+        graph.tryPut(target.typeKey.toBinding("Return".typeKey))
+      }
+      graph.tryPut("Return".typeKey.toBinding("() -> Aggregate".contextualTypeKey))
+      var analyzing = false
+      var checks = 0
+      val prepared =
+        graph.prepareSeal(
+          shrinkUnusedBindings = false,
+          ensureActive = {
+            if (analyzing) {
+              checks++
+            }
+          },
+        )
+
+      analyzing = true
+      val analysis = prepared.analyze()
+      analyzing = false
+      val topology = prepared.finish(analysis)
+      assertThat(topology.deferredTypes).containsExactly("Return".typeKey)
+      return checks
+    }
+
+    // A single deferred return edge keeps the cycle search linear as the source fan-out grows.
+    val smaller = analysisChecks(128)
+    val larger = analysisChecks(256)
+    assertThat(larger).isLessThan(smaller * 3)
+  }
+
+  @Test
+  fun `eager parallel requests keep cycles hard in either order`() {
+    val eager = "B".contextualTypeKey
+    val deferred = "() -> B".contextualTypeKey
+    for (dependencies in listOf(listOf(eager, deferred), listOf(deferred, eager))) {
+      val graph = newStringBindingGraph()
+      graph.tryPut("A".typeKey.toBinding(dependencies))
+      graph.tryPut("B".typeKey.toBinding("A".contextualTypeKey))
+
+      val failure =
+        assertFailsWith<IllegalStateException> {
+          val prepared = graph.prepareSeal(shrinkUnusedBindings = false)
+          prepared.finish(prepared.analyze())
+        }
+
+      assertThat(failure).hasMessageThat().contains("[Metro/DependencyCycle]")
+    }
+  }
+
+  @Test
+  fun `implicit deferral permits eager parallel requests in either order`() {
+    val eager = "B".contextualTypeKey
+    val deferred = "() -> B".contextualTypeKey
+    for (dependencies in listOf(listOf(eager, deferred), listOf(deferred, eager))) {
+      val graph = newStringBindingGraph()
+      graph.tryPut("A".typeKey.toBinding(dependencies))
+      graph.tryPut(
+        StringBinding(
+          "B".contextualTypeKey,
+          listOf("A".contextualTypeKey),
+          kind = WorkloadBindingKind.INSTANCE,
+        ),
+      )
+
+      val prepared = graph.prepareSeal(shrinkUnusedBindings = false)
+      val result = prepared.finish(prepared.analyze())
+
+      assertThat(result.deferredTypes).containsExactly("A".typeKey)
+    }
+  }
+
+  @Test
+  fun `prepared cycle analysis observes cancellation`() {
+    val targetKeys = List(64) { "Element$it".contextualTypeKey }
+    val dependencies = CountingDependencyList(targetKeys)
+    val graph = newStringBindingGraph()
+    graph.tryPut("Aggregate".typeKey.toBinding(dependencies))
+    for (target in targetKeys) {
+      graph.tryPut(target.typeKey.toBinding("() -> Aggregate".contextualTypeKey))
+    }
+    var analyzing = false
+    var checks = 0
+    val prepared =
+      graph.prepareSeal(
+        shrinkUnusedBindings = false,
+        ensureActive = {
+          if (analyzing && ++checks == 8) {
+            throw BindingGraphCancellationException()
+          }
+        },
+      )
+    dependencies.reads = 0
+    analyzing = true
+
+    assertFailsWith<BindingGraphCancellationException> { prepared.analyze() }
+
+    assertThat(checks).isEqualTo(8)
+    assertThat(dependencies.reads).isEqualTo(0)
   }
 
   @Test
@@ -343,7 +662,8 @@ class BindingGraphTest : TraceScope by TraceScope.noop() {
 
     val exception =
       assertFailsWith<IllegalStateException> {
-        val _ = bindingGraph.seal(shrinkUnusedBindings = false)
+        val prepared = bindingGraph.prepareSeal(shrinkUnusedBindings = false)
+        val _ = prepared.finish(prepared.analyze())
       }
 
     val message = exception.message!!
@@ -365,6 +685,57 @@ class BindingGraphTest : TraceScope by TraceScope.noop() {
   }
 
   @Test
+  fun hardCycleSearchScalesWithSparseTailEdges() {
+    val smaller = hardCycleAnalysisChecks(tailSize = 128, dense = false)
+    val larger = hardCycleAnalysisChecks(tailSize = 256, dense = false)
+
+    assertTrue(larger < smaller * 3, "Analysis checks grew from $smaller to $larger")
+  }
+
+  @Test
+  fun hardCycleSearchScalesWithDenseTailEdges() {
+    val smaller = hardCycleAnalysisChecks(tailSize = 128, dense = true)
+    val larger = hardCycleAnalysisChecks(tailSize = 256, dense = true)
+
+    // Doubling this tail adds about four times as many edges.
+    assertTrue(larger < smaller * 6, "Analysis checks grew from $smaller to $larger")
+  }
+
+  /** Builds eager paths into a hard cycle and counts work during prepared analysis. */
+  private fun hardCycleAnalysisChecks(tailSize: Int, dense: Boolean): Int {
+    val graph = newStringBindingGraph()
+    val first = "C0".typeKey
+    val second = "C1".typeKey
+    val tail = List(tailSize) { "Tail${it.toString().padStart(4, '0')}".typeKey }
+    graph.tryPut(first.toBinding(second))
+    // One deferred edge puts every tail vertex in the same component as the hard cycle.
+    graph.tryPut(
+      second.toBinding(first.contextualTypeKey, "() -> ${tail.last().type}".contextualTypeKey),
+    )
+    for ((index, key) in tail.withIndex()) {
+      val dependencies =
+        if (dense) {
+          listOf(first) + tail.take(index)
+        } else if (index == 0) {
+          listOf(first)
+        } else {
+          listOf(tail[index - 1])
+        }
+      graph.tryPut(key.toBinding(dependencies.map { it.contextualTypeKey }))
+    }
+
+    var checks = 0
+    val prepared = graph.prepareSeal(shrinkUnusedBindings = false, ensureActive = { checks++ })
+    checks = 0
+    val analysis = prepared.analyze()
+    val analysisChecks = checks
+    assertThat(analysis.hardCycle).containsExactly(first, second)
+    val failure = assertFailsWith<IllegalStateException> { prepared.finish(analysis) }
+    assertThat(failure).hasMessageThat().contains("[Metro/DependencyCycle]")
+    return analysisChecks
+  }
+
+  @Test
   fun `TypeKey dependsOn returns true for dependent keys`() {
     val a = "A".typeKey
     val b = "B".typeKey
@@ -374,7 +745,8 @@ class BindingGraphTest : TraceScope by TraceScope.noop() {
 
     bindingGraph.tryPut(aBinding)
     bindingGraph.tryPut(bBinding)
-    val _ = bindingGraph.seal(shrinkUnusedBindings = false)
+    val prepared = bindingGraph.prepareSeal(shrinkUnusedBindings = false)
+    val _ = prepared.finish(prepared.analyze())
 
     with(bindingGraph) {
       assertThat(a.dependsOn(b)).isTrue()
@@ -395,7 +767,8 @@ class BindingGraphTest : TraceScope by TraceScope.noop() {
     bindingGraph.tryPut(aBinding)
     bindingGraph.tryPut(bBinding)
     bindingGraph.tryPut(bindingC)
-    val _ = bindingGraph.seal(shrinkUnusedBindings = false)
+    val prepared = bindingGraph.prepareSeal(shrinkUnusedBindings = false)
+    val _ = prepared.finish(prepared.analyze())
 
     with(bindingGraph) {
       // Direct dependency
@@ -565,7 +938,7 @@ class BindingGraphTest : TraceScope by TraceScope.noop() {
                 @IntoSet/@IntoMap if you intended a multibinding
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#duplicatebinding
         """
-          .trimIndent()
+          .trimIndent(),
       )
   }
 
@@ -592,12 +965,26 @@ class BindingGraphTest : TraceScope by TraceScope.noop() {
                 @IntoSet/@IntoMap if you intended a multibinding
           docs: https://zacsweers.github.io/metro/latest/diagnostics/#duplicatebinding
         """
-          .trimIndent()
+          .trimIndent(),
       )
   }
 }
 
 private class BindingGraphCancellationException : RuntimeException()
+
+/** Counts element reads so graph tests can bound dependency scans. */
+private class CountingDependencyList(private val dependencies: List<StringContextualTypeKey>) :
+  AbstractList<StringContextualTypeKey>() {
+  var reads = 0
+
+  override val size: Int
+    get() = dependencies.size
+
+  override fun get(index: Int): StringContextualTypeKey {
+    reads++
+    return dependencies[index]
+  }
+}
 
 private val String.typeKey: StringTypeKey
   get() = contextualTypeKey.typeKey
@@ -609,7 +996,7 @@ private val StringTypeKey.contextualTypeKey: StringContextualTypeKey
   get() = StringContextualTypeKey.create(this)
 
 private fun StringTypeKey.toBinding(
-  dependencies: List<StringContextualTypeKey> = emptyList()
+  dependencies: List<StringContextualTypeKey> = emptyList(),
 ): StringBinding {
   return StringBinding(this, dependencies)
 }
@@ -626,7 +1013,7 @@ private fun newStringBindingGraph(
   graph: String = "AppGraph",
   computeBinding:
     (StringContextualTypeKey, ScatterMap<StringTypeKey, *>, StringBindingStack) -> Set<
-        StringBinding
+        StringBinding,
       > =
     { _, _, _ ->
       emptySet()
@@ -642,7 +1029,7 @@ private fun newStringBindingGraph(
 @IgnorableReturnValue
 context(traceScope: TraceScope)
 private fun buildGraph(
-  body: StringGraphBuilder.() -> Unit
+  body: StringGraphBuilder.() -> Unit,
 ): Pair<StringGraph, GraphTopology<StringTypeKey>> {
   return StringGraphBuilder().apply(body).sealAndReturn()
 }
@@ -650,7 +1037,7 @@ private fun buildGraph(
 // Helper method to create a graph with a chain of dependencies
 context(traceScope: TraceScope)
 private fun buildChainedGraph(
-  vararg nodes: String
+  vararg nodes: String,
 ): Pair<StringGraph, GraphTopology<StringTypeKey>> {
   return buildGraph {
     for (i in 0 until nodes.size - 1) {
@@ -730,6 +1117,7 @@ internal class StringGraphBuilder {
 
   context(traceScope: TraceScope)
   fun sealAndReturn(): Pair<StringGraph, GraphTopology<StringTypeKey>> {
-    return graph to graph.seal(shrinkUnusedBindings = false)
+    val prepared = graph.prepareSeal(shrinkUnusedBindings = false)
+    return graph to prepared.finish(prepared.analyze())
   }
 }

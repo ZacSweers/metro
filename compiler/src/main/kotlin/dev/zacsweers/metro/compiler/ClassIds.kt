@@ -24,6 +24,8 @@ public class ClassIds(private val options: MetroOptions = MetroOptions()) {
 
   internal val injectAnnotations = options.injectAnnotations
 
+  internal val topLevelFunctionInjectAnnotations = options.topLevelFunctionInjectAnnotations
+
   internal val allInjectAnnotations = options.allInjectAnnotations
 
   internal val qualifierAnnotations = options.qualifierAnnotations

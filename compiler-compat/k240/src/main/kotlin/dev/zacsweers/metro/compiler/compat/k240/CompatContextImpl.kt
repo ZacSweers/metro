@@ -53,7 +53,10 @@ import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 
-public class CompatContextImpl : CompatContext by DelegateType() {
+public class CompatContextImpl private constructor(private val delegate: DelegateType) :
+  CompatContext by delegate {
+  public constructor() : this(DelegateType())
+
   override val supportsAnnotationArgumentInvalidation: Boolean = true
 
   override fun createCompilerConfigurationCompat(): CompilerConfiguration {
@@ -62,23 +65,23 @@ public class CompatContextImpl : CompatContext by DelegateType() {
 
   context(_: CompilerPluginRegistrar)
   override fun CompilerPluginRegistrar.ExtensionStorage.registerFirExtensionCompat(
-    extension: FirExtensionRegistrar
+    extension: FirExtensionRegistrar,
   ) {
     FirExtensionRegistrarAdapter.registerExtension(extension)
   }
 
   context(_: CompilerPluginRegistrar)
   override fun CompilerPluginRegistrar.ExtensionStorage.registerIrExtensionCompat(
-    extension: IrGenerationExtension
+    extension: IrGenerationExtension,
   ) {
     IrGenerationExtension.registerExtension(extension)
   }
 
   override fun createIrGeneratedDeclarationsRegistrar(
-    pluginContext: IrPluginContext
+    pluginContext: IrPluginContext,
   ): IrGeneratedDeclarationsRegistrarCompat {
     return IrAnnotationIrGeneratedDeclarationsRegistrarCompat(
-      pluginContext.metadataDeclarationRegistrar
+      pluginContext.metadataDeclarationRegistrar,
     )
   }
 
@@ -102,7 +105,7 @@ public class CompatContextImpl : CompatContext by DelegateType() {
   }
 
   override fun IrAnnotationContainer.replaceAnnotationsCompat(
-    annotations: List<IrConstructorCall>
+    annotations: List<IrConstructorCall>,
   ) {
     (this as IrMutableAnnotationContainer).annotations = annotations.map {
       it.toKotlinIrAnnotation()
@@ -114,7 +117,7 @@ public class CompatContextImpl : CompatContext by DelegateType() {
   }
 
   override fun IrPluginContext.finderForSourceCompat(
-    fromFile: IrFile
+    fromFile: IrFile,
   ): CompatContext.DeclarationFinderCompat {
     return finderForSource(fromFile).asCompat()
   }
@@ -145,8 +148,13 @@ public class CompatContextImpl : CompatContext by DelegateType() {
   }
 
   override fun FirAnnotationContainer.getDeprecationsProviderCompat(
-    session: FirSession
+    session: FirSession,
   ): DeprecationsProvider? {
+    if (usesLegacyDeprecationsProvider) {
+      return with(delegate) {
+        this@getDeprecationsProviderCompat.getDeprecationsProviderCompat(session)
+      }
+    }
     return when (this) {
       is FirCallableDeclaration -> getDeprecationsProvider(session)
       is FirClassLikeDeclaration -> getDeprecationsProvider(session)
@@ -179,6 +187,28 @@ public class CompatContextImpl : CompatContext by DelegateType() {
     override val minVersion: String = "2.4.0"
 
     override fun create(): CompatContext = CompatContextImpl()
+  }
+}
+
+// Android Studio Quail exposes the older annotation-container overload. It shares its reported
+// Kotlin version with newer Studio builds. Cache the API check and use the existing older adapter
+// when that overload is present. Generation then makes ordinary calls with that compiler's
+// semantics.
+private val usesLegacyDeprecationsProvider: Boolean by lazy {
+  try {
+    Class.forName(
+        "org.jetbrains.kotlin.fir.declarations.DeprecationUtilsKt",
+        false,
+        FirAnnotationContainer::class.java.classLoader,
+      )
+      .getMethod(
+        "getDeprecationsProvider",
+        FirAnnotationContainer::class.java,
+        FirSession::class.java,
+      )
+    true
+  } catch (_: NoSuchMethodException) {
+    false
   }
 }
 

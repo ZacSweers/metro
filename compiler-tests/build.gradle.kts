@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 @file:OptIn(ExperimentalWasmDsl::class)
 
+import org.gradle.process.CommandLineArgumentProvider
+import org.gradle.work.DisableCachingByDefault
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinUsages
@@ -40,6 +42,12 @@ val testKotlinVersion = KotlinToolingVersion(testCompilerVersion)
 val kotlin23 = KotlinToolingVersion(KotlinVersion(2, 3))
 
 val kotlin24Beta1 = KotlinToolingVersion(KotlinVersion(2, 4), "Beta1")
+
+// The test framework needs JUnit 5 starting with this build.
+val kotlin250Dev9169 = KotlinToolingVersion("2.5.0-dev-9169")
+
+// The test framework locates kotlin-scripting-common through KotlinJars starting with this build.
+val kotlin250Dev9992 = KotlinToolingVersion("2.5.0-dev-9992")
 
 // Minimum supported 2.4.20 dev build. 2.4.20 dev builds ship KT-85292:
 // `commonConfigurationForJvmTest` was renamed to `setupJvmPipelineSteps`, and the diagnostic / IR
@@ -209,9 +217,14 @@ reflectVersion =
   }
 
 dependencies {
+  // Newer 2.5.0 test frameworks call Kotlin assertion helpers removed by JUnit 6.
+  if (testKotlinVersion >= kotlin250Dev9169) {
+    testImplementation(enforcedPlatform("org.junit:junit-bom:6.1.3"))
+  }
+
   // 2.3.0 changed the test gen APIs around into different packages
   "generator230CompileOnly"(
-    "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:$compilerTestFrameworkVersion"
+    "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:$compilerTestFrameworkVersion",
   )
   "generator230CompileOnly"("org.jetbrains.kotlin:kotlin-compiler:$compilerTestFrameworkVersion")
   "generator2320CompileOnly"("org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:2.3.20")
@@ -219,25 +232,29 @@ dependencies {
   // Pinned to Beta2 (not Beta1) because Beta2 dropped `diagnosticsByFilePath` for
   // `diagnosticsByFile` -- the same late-on-the-2.4.0-branch rename 2.3.21 did.
   "generator240CompileOnly"(
-    "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:2.4.0-Beta2"
+    "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:2.4.0-Beta2",
   )
   "generator240CompileOnly"("org.jetbrains.kotlin:kotlin-compiler:2.4.0-Beta2")
   // 2.4.20 dev builds renamed `commonConfigurationForJvmTest` to `setupJvmPipelineSteps`. Compile
   // this helper against the same 2.4.20 artifact set used at test runtime so its erased builder
   // receiver ABI matches the fallback artifacts.
   "generator2420CompileOnly"(
-    "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:$kotlinArtifactsVersion"
+    "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:$kotlinArtifactsVersion",
   )
   "generator2420CompileOnly"("org.jetbrains.kotlin:kotlin-compiler:$kotlinArtifactsVersion")
 
   testImplementation(sourceSets.named(generatorConfigToUse).map { it.output })
   testImplementation(
-    "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:$compilerTestFrameworkVersion"
+    "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:$compilerTestFrameworkVersion",
   )
   testImplementation("org.jetbrains.kotlin:kotlin-compiler:$kotlinArtifactsVersion")
+  if (testKotlinVersion >= kotlin250Dev9992) {
+    // KotlinJars lives here, but the test framework artifact doesn't declare it.
+    testRuntimeOnly("org.jetbrains.kotlin:kotlin-scripting-jvm:$kotlinArtifactsVersion")
+  }
   testImplementation("org.jetbrains.kotlin:kotlin-compose-compiler-plugin:$kotlinArtifactsVersion")
   testImplementation(
-    "org.jetbrains.kotlin:kotlin-serialization-compiler-plugin:$kotlinArtifactsVersion"
+    "org.jetbrains.kotlin:kotlin-serialization-compiler-plugin:$kotlinArtifactsVersion",
   )
 
   testImplementation(project(":compiler"))
@@ -260,7 +277,7 @@ dependencies {
   coroutinesClasspath(libs.coroutines)
   metroRuntimeKlibClasspath(project(path = ":runtime", configuration = "jsRuntimeElements"))
   metroRuntimeCoroutinesKlibClasspath(
-    project(path = ":runtime-coroutines", configuration = "jsRuntimeElements")
+    project(path = ":runtime-coroutines", configuration = "jsRuntimeElements"),
   )
   coroutinesKlibClasspath(libs.coroutines)
   runtimeTracingClasspath(project(":metro-trace"))
@@ -350,15 +367,47 @@ val generateTests =
     jvmArgs("-Xss1m")
   }
 
+/**
+ * Records successful suite generation so CI can run functional tests after a compiler test failure.
+ */
+@DisableCachingByDefault(because = "CI records preparation separately for each invocation.")
+abstract class PrepareCiCompilerTests : DefaultTask() {
+  @get:OutputFile abstract val preparedFile: RegularFileProperty
+
+  @TaskAction
+  fun markPrepared() {
+    val file = preparedFile.get().asFile
+    file.parentFile.mkdirs()
+    file.writeText("prepared\n")
+  }
+}
+
 // Preserve explicit generation: ordinary test runs use the checked-in suites. When generation is
 // requested in the same invocation, compile the updated Java sources before running tests.
 tasks.named<JavaCompile>("compileTestJava") { mustRunAfter(generateTests) }
+
+// CI uses this marker to distinguish generation failures from later test failures.
+val ciCompilerTestsPreparedFile = providers.gradleProperty("metro.ciCompilerTestsPreparedFile")
+
+if (ciCompilerTestsPreparedFile.isPresent) {
+  val prepareCiCompilerTests =
+    tasks.register<PrepareCiCompilerTests>("prepareCiCompilerTests") {
+      dependsOn(generateTests)
+      preparedFile.set(layout.file(ciCompilerTestsPreparedFile.map(::File)))
+      outputs.upToDateWhen { false }
+    }
+  tasks.named<JavaCompile>("compileTestJava") { dependsOn(prepareCiCompilerTests) }
+}
 
 val largeTestMode = providers.gradleProperty("metro.enableLargeTests").isPresent
 
 // Heap tuning must not change test selection. Large-test mode still selects only stress tests.
 val compilerTestHeapSize =
   providers.gradleProperty("metro.compilerTestHeapSize").orElse(if (largeTestMode) "5g" else "2g")
+
+// CI experiments can opt into additional compiler-test JVMs.
+val compilerTestMaxParallelForks =
+  providers.gradleProperty("metro.compilerTestMaxParallelForks").map(String::toInt).orElse(1)
 
 val excludeJsBoxTests = providers.gradleProperty("metro.excludeJsBoxTests").isPresent
 val testOmitRedundantMirrors = providers.gradleProperty("metro.testOmitRedundantMirrors").orNull
@@ -374,8 +423,27 @@ if (excludeJsBoxTests) {
 }
 
 tasks.withType<Test> {
-  outputs.upToDateWhen { false }
+  val updateTestData = providers.gradleProperty("updateTestData").isPresent
+  val debugCompilerTests = providers.gradleProperty("metro.debugCompilerTests").isPresent
+  // Golden updates and debugging need a fresh test JVM on every invocation.
+  outputs.upToDateWhen { !updateTestData && !debugCompilerTests && !debug }
+  outputs.doNotCacheIf("Golden updates or compiler debugging requested") {
+    updateTestData || debugCompilerTests || debug
+  }
+
+  // FULL_JDK tests and KSP use the selected test JDK during compilation.
+  inputs.property("testJavaRuntimeVersion", javaLauncher.map { it.metadata.javaRuntimeVersion })
+  inputs.property("testJvmVersion", javaLauncher.map { it.metadata.jvmVersion })
+  inputs.property("testJavaVendor", javaLauncher.map { it.metadata.vendor })
+  inputs.property("operatingSystem", providers.systemProperty("os.name"))
+  inputs.property("architecture", providers.systemProperty("os.arch"))
+  inputs.property("ci", environment["CI"]?.toString().orEmpty())
+  // The JVM reads these options directly from its environment.
+  for (variable in listOf("JAVA_TOOL_OPTIONS", "JDK_JAVA_OPTIONS", "_JAVA_OPTIONS")) {
+    inputs.property(variable, environment[variable]?.toString().orEmpty())
+  }
   dependsOn(runtimeTracingClasspath)
+  maxParallelForks = compilerTestMaxParallelForks.get()
 
   // Inspo from https://youtrack.jetbrains.com/issue/KT-83440
   minHeapSize = "512m"
@@ -403,7 +471,6 @@ tasks.withType<Test> {
   dependsOn(circuitRuntimeClasspath)
   dependsOn(circuitRuntimeKlibClasspath)
   dependsOn(jsKlibClasspath)
-  dependsOn(wasmKlibClasspath)
   inputs
     .dir(layout.projectDirectory.dir("src/test/data"))
     .withPropertyName("testData")
@@ -411,7 +478,7 @@ tasks.withType<Test> {
 
   workingDir = rootDir
 
-  if (providers.gradleProperty("metro.debugCompilerTests").isPresent) {
+  if (debugCompilerTests) {
     testLogging {
       showStandardStreams = true
       showStackTraces = true
@@ -468,18 +535,31 @@ tasks.withType<Test> {
   )
   setLibraryProperty("kotlin-stdlib-js", jsKlibClasspath)
   setLibraryProperty("kotlin-test-js", jsKlibClasspath)
-  setLibraryProperty("kotlin-stdlib-wasm-js", wasmKlibClasspath)
-  setLibraryProperty("kotlin-stdlib-wasm-wasi", wasmKlibClasspath)
-  setLibraryProperty("kotlin-test-wasm-js", wasmKlibClasspath)
-  setLibraryProperty("kotlin-test-wasm-wasi", wasmKlibClasspath)
   setLibraryProperty("kotlin-common-stdlib", testRuntimeClasspath)
   setLibraryProperty("kotlin-stdlib-web", testRuntimeClasspath)
 
-  val d8EnvSpec = project.the<D8EnvSpec>()
-  dependsOn(d8EnvSpec.run { project.d8SetupTaskProvider })
-  systemProperty("javascript.engine.path.V8", d8EnvSpec.executable.get())
-  systemProperty("javascript.engine.path.repl", layout.projectDirectory.file("repl.js").asFile)
-  systemProperty(
+  // JS diagnostics compile against the JS KLIBs configured above.
+  // Keep Wasm library paths and D8 setup with JS box execution.
+  if (!excludeJsBoxTests) {
+    dependsOn(wasmKlibClasspath)
+    setLibraryProperty("kotlin-stdlib-wasm-js", wasmKlibClasspath)
+    setLibraryProperty("kotlin-stdlib-wasm-wasi", wasmKlibClasspath)
+    setLibraryProperty("kotlin-test-wasm-js", wasmKlibClasspath)
+    setLibraryProperty("kotlin-test-wasm-wasi", wasmKlibClasspath)
+
+    val d8EnvSpec = project.the<D8EnvSpec>()
+    val d8Setup = d8EnvSpec.run { project.d8SetupTaskProvider }
+    dependsOn(d8Setup)
+    // D8 can load support files from its installation directory.
+    inputs
+      .files(d8Setup)
+      .withPropertyName("d8Distribution")
+      .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.property("d8ExecutableName", d8EnvSpec.executable.map { File(it).name })
+    setLocationProperty("javascript.engine.path.V8", d8EnvSpec.executable.get())
+  }
+  setFilesProperty("javascript.engine.path.repl", files(layout.projectDirectory.file("repl.js")))
+  setLocationProperty(
     "kotlin.js.test.root.out.dir",
     layout.buildDirectory.dir("js-test-output").get().asFile.absolutePath,
   )
@@ -488,48 +568,131 @@ tasks.withType<Test> {
   testOmitRedundantMirrors?.let { systemProperty("metro.testOmitRedundantMirrors", it) }
 
   // Regenerate golden files in place: ./gradlew :compiler-tests:test -PupdateTestData=true
-  if (providers.gradleProperty("updateTestData").isPresent) {
+  if (updateTestData) {
     systemProperty("kotlin.test.update.test.data", "true")
   }
 
-  systemProperty("metroRuntime.classpath", metroRuntimeClasspath.asPath)
-  systemProperty("metroRuntimeCoroutines.classpath", metroRuntimeCoroutinesClasspath.asPath)
-  systemProperty("metroRuntime.klibClasspath", metroRuntimeKlibClasspath.asPath)
-  systemProperty(
+  setClasspathProperty("metroRuntime.classpath", metroRuntimeClasspath)
+  setClasspathProperty("metroRuntimeCoroutines.classpath", metroRuntimeCoroutinesClasspath)
+  setFilesProperty("metroRuntime.klibClasspath", metroRuntimeKlibClasspath)
+  setFilesProperty(
     "metroRuntimeCoroutines.klibClasspath",
-    metroRuntimeCoroutinesKlibClasspath.asPath,
+    metroRuntimeCoroutinesKlibClasspath,
   )
-  systemProperty("coroutines.classpath", coroutinesClasspath.asPath)
-  systemProperty("coroutines.klibClasspath", coroutinesKlibClasspath.asPath)
-  systemProperty("runtimeTracing.classpath", runtimeTracingClasspath.asPath)
-  systemProperty("anvilRuntime.classpath", anvilRuntimeClasspath.asPath)
-  systemProperty("kiAnvilRuntime.classpath", kiAnvilRuntimeClasspath.asPath)
-  systemProperty("daggerRuntime.classpath", daggerRuntimeClasspath.asPath)
-  systemProperty("daggerInterop.classpath", daggerInteropClasspath.asPath)
-  systemProperty("hiltCore.classpath", hiltCoreClasspath.asPath)
-  systemProperty("guice.classpath", guiceClasspath.asPath)
-  systemProperty("javaxInterop.classpath", javaxInteropClasspath.asPath)
-  systemProperty("jakartaInterop.classpath", jakartaInteropClasspath.asPath)
-  systemProperty("circuit.classpath", circuitRuntimeClasspath.asPath)
-  systemProperty("circuit.klibClasspath", circuitRuntimeKlibClasspath.asPath)
-  systemProperty("ksp.testRuntimeClasspath", configurations.testRuntimeClasspath.get().asPath)
+  setClasspathProperty("coroutines.classpath", coroutinesClasspath)
+  setFilesProperty("coroutines.klibClasspath", coroutinesKlibClasspath)
+  setClasspathProperty("runtimeTracing.classpath", runtimeTracingClasspath)
+  setClasspathProperty("anvilRuntime.classpath", anvilRuntimeClasspath)
+  setClasspathProperty("kiAnvilRuntime.classpath", kiAnvilRuntimeClasspath)
+  setClasspathProperty("daggerRuntime.classpath", daggerRuntimeClasspath)
+  setClasspathProperty("daggerInterop.classpath", daggerInteropClasspath)
+  setClasspathProperty("hiltCore.classpath", hiltCoreClasspath)
+  setClasspathProperty("guice.classpath", guiceClasspath)
+  setClasspathProperty("javaxInterop.classpath", javaxInteropClasspath)
+  setClasspathProperty("jakartaInterop.classpath", jakartaInteropClasspath)
+  setClasspathProperty("circuit.classpath", circuitRuntimeClasspath)
+  setFilesProperty("circuit.klibClasspath", circuitRuntimeKlibClasspath)
+  setClasspathProperty("ksp.testRuntimeClasspath", testRuntimeClasspath)
 
   // Properties required to run the internal test framework.
   systemProperty("idea.ignore.disabled.plugins", "true")
-  systemProperty("idea.home.path", rootDir)
+  // The framework locates the tracked test data through this home path.
+  setLocationProperty("idea.home.path", rootDir.absolutePath)
 }
 
+/** Tracks JVM library contents while constructing absolute paths for the test process. */
+abstract class CompilerTestClasspathArgumentProvider : CommandLineArgumentProvider {
+  @get:Input abstract val propertyNames: ListProperty<String>
+  @get:Classpath abstract val classpath: ConfigurableFileCollection
+
+  override fun asArguments(): Iterable<String> =
+    propertyNames.get().map { "-D$it=${classpath.asPath}" }
+}
+
+/** Tracks KLIB and script bytes, including their names and argument order. */
+abstract class CompilerTestFilesArgumentProvider : CommandLineArgumentProvider {
+  @get:Input abstract val propertyNames: ListProperty<String>
+  @get:InputFiles
+  @get:PathSensitive(PathSensitivity.RELATIVE)
+  abstract val files: ConfigurableFileCollection
+
+  @get:Input
+  val fileNames: List<String>
+    get() = files.map { it.name }
+
+  override fun asArguments(): Iterable<String> = propertyNames.get().map { "-D$it=${files.asPath}" }
+}
+
+/** Passes output locations and paths whose contents are already tracked separately. */
+abstract class CompilerTestLocationArgumentProvider : CommandLineArgumentProvider {
+  @get:Input abstract val propertyName: Property<String>
+  @get:Internal abstract val location: Property<String>
+
+  override fun asArguments(): Iterable<String> = listOf("-D${propertyName.get()}=${location.get()}")
+}
+
+/** Adds content-tracked JVM libraries without putting checkout paths in the cache key. */
+fun Test.setClasspathProperty(propertyName: String, classpath: FileCollection) {
+  jvmArgumentProviders.add(
+    objects.newInstance<CompilerTestClasspathArgumentProvider>().apply {
+      propertyNames.set(listOf(propertyName))
+      this.classpath.from(classpath)
+    },
+  )
+}
+
+/** Adds content-tracked KLIBs or scripts in the order used by the test framework. */
+fun Test.setFilesProperty(propertyName: String, files: FileCollection) {
+  jvmArgumentProviders.add(
+    objects.newInstance<CompilerTestFilesArgumentProvider>().apply {
+      propertyNames.set(listOf(propertyName))
+      this.files.from(files)
+    },
+  )
+}
+
+/** Callers must track input contents separately when a location points to an input. */
+fun Test.setLocationProperty(propertyName: String, location: String) {
+  jvmArgumentProviders.add(
+    objects.newInstance<CompilerTestLocationArgumentProvider>().apply {
+      this.propertyName.set(propertyName)
+      this.location.set(location)
+    },
+  )
+}
+
+/** Supplies the framework's aliases for one selected Kotlin library. */
 fun Test.setLibraryProperty(
   extraPropName: String,
   jarName: String,
   configuration: Configuration,
 ) {
   val regex = """$jarName-\d.*""".toRegex()
-  val path = configuration.files.find { regex.matches(it.name) }?.absolutePath ?: return
-  systemProperty("org.jetbrains.kotlin.test.$jarName", path)
-  if (extraPropName.isNotEmpty()) systemProperty(extraPropName, path)
+  val library = configuration.files.find { regex.matches(it.name) } ?: return
+  val propertyNames = buildList {
+    add("org.jetbrains.kotlin.test.$jarName")
+    if (extraPropName.isNotEmpty()) {
+      add(extraPropName)
+    }
+  }
+  if (library.extension == "klib") {
+    jvmArgumentProviders.add(
+      objects.newInstance<CompilerTestFilesArgumentProvider>().apply {
+        this.propertyNames.set(propertyNames)
+        files.from(library)
+      },
+    )
+  } else {
+    jvmArgumentProviders.add(
+      objects.newInstance<CompilerTestClasspathArgumentProvider>().apply {
+        this.propertyNames.set(propertyNames)
+        classpath.from(library)
+      },
+    )
+  }
 }
 
+/** Uses the framework's standard property name for a Kotlin library. */
 fun Test.setLibraryProperty(
   jarName: String,
   configuration: Configuration,

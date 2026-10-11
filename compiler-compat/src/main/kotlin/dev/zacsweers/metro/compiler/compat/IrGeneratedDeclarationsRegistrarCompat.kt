@@ -15,7 +15,7 @@ import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
  */
 public interface IrGeneratedDeclarationsRegistrarCompat {
   public fun getMetadataVisibleAnnotationsForElement(
-    declaration: IrDeclaration
+    declaration: IrDeclaration,
   ): MutableList<IrConstructorCall>
 
   public fun addMetadataVisibleAnnotationsToElement(

@@ -172,12 +172,24 @@ jobs:
 
             // If there are new versions, add a notification comment
             if (newVersions.length > 0) {
-              const newVersionList = newVersions.map(v => `- \`${v}\``).join('\n');
+              const repositories = [
+                { name: 'Bootstrap', url: BOOTSTRAP_URL, entries: bootstrapEntries },
+                { name: 'IntelliJ Dependencies', url: INTELLIJ_URL, entries: [...intellijDevEntries, ...intellijIjCapped] }
+              ];
+              const newVersionSections = [];
+              for (const { name, url, entries } of repositories) {
+                const newEntries = entries.filter(e => newVersions.includes(e.version));
+                if (newEntries.length === 0) {
+                  continue;
+                }
+                const versionList = newEntries.map(e => `- \`${e.version}\``).join('\n');
+                newVersionSections.push(`### [${name}](${url})\n\n${versionList}`);
+              }
               const commentBody = [
                 NOTIFICATION_MARKER,
                 `## New Kotlin Version${newVersions.length > 1 ? 's' : ''} Detected!`,
                 '',
-                newVersionList,
+                newVersionSections.join('\n\n'),
                 '',
                 '_This comment will be automatically removed on the next check._'
               ].join('\n');

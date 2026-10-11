@@ -24,6 +24,7 @@ kotlin {
   compilerOptions {
     freeCompilerArgs.addAll("-Xreturn-value-checker=full", "-Xcontext-parameters")
     optIn.add("kotlin.contracts.ExperimentalContracts")
+    optIn.add("dev.zacsweers.metro.graph.ExperimentalMetroGraphApi")
   }
 }
 
@@ -34,6 +35,7 @@ project.afterEvaluate {
 }
 
 dependencies {
+  api(project(":graphs"))
   compileOnly(libs.kotlin.compiler)
   compileOnly(libs.kotlin.stdlib)
   compileOnly(libs.poko.annotations)
@@ -57,7 +59,7 @@ dependencies {
   jmh(libs.poko.annotations)
 }
 
-// Reuse the unit tests' graph models and seeded workload without pulling in their test suites.
+// Reuse the unit tests' graph models and workloads without pulling in their test suites.
 val graphBenchmarkFixtures =
   fileTree("src/test/kotlin") {
     include("**/StringTypeKey.kt")
@@ -66,6 +68,7 @@ val graphBenchmarkFixtures =
     include("**/StringBindingStack.kt")
     include("**/StringGraph.kt")
     include("**/GraphWorkload.kt")
+    include("**/CycleGraphWorkload.kt")
   }
 
 tasks.named<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>("compileJmhKotlin") {

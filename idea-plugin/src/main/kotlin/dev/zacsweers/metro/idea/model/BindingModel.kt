@@ -171,8 +171,8 @@ internal class KaGraphDeclaration(
   val extensionFactories: List<GraphExtensionFactoryAccessor> = emptyList(),
   /** Scope-matched candidates; visibility and removal are selected for each concrete graph path. */
   val contributedInterfaces: List<GraphInterfaceContribution> = emptyList(),
-  /** Concrete members from the written graph hierarchy that satisfy inherited abstract requests. */
-  val defaultImplementations: List<GraphDefaultImplementation> = emptyList(),
+  /** Written member overrides that determine which inherited graph requests remain active. */
+  val memberOverrides: List<GraphMemberOverride> = emptyList(),
 ) {
   val sourceIdentity: BindingIndex.SourcePointerIdentity? = sourcePointerIdentity(pointer)
   val declarationId: GraphDeclarationId = GraphDeclarationId(classId, pointer.virtualFile)
@@ -204,7 +204,7 @@ internal class KaGraphDeclaration(
       supertypeDeclarations = supertypeDeclarations,
       extensionFactories = extensionFactories,
       contributedInterfaces = interfaces,
-      defaultImplementations = defaultImplementations,
+      memberOverrides = memberOverrides,
     )
   }
 }
@@ -294,11 +294,12 @@ internal class GraphCallableReference(
   val sourceIdentity: BindingIndex.SourcePointerIdentity? = sourcePointerIdentity(pointer)
 }
 
-/** A concrete graph member and the real declarations that it overrides. */
-internal class GraphDefaultImplementation(
+/** A graph member and its overridden declarations. Abstract members keep their own requests. */
+internal class GraphMemberOverride(
   val declaration: GraphCallableReference,
   val overriddenDeclarations: List<GraphCallableReference>,
   val isOptional: Boolean,
+  val isAbstract: Boolean,
 )
 
 /** A real graph accessor whose result is an extension factory. */
@@ -321,7 +322,7 @@ internal class GraphInterfaceContribution(
   val bindings: List<KaBinding>,
   val consumers: List<ConsumerEntry>,
   val injectedMemberOwnerIds: Set<ClassId>,
-  val defaultImplementations: List<GraphDefaultImplementation> = emptyList(),
+  val memberOverrides: List<GraphMemberOverride> = emptyList(),
 )
 
 /** The effective interface surface of one graph in a concrete parent path and root module. */
@@ -430,6 +431,8 @@ internal class ContributionEntry(
   override val replaces: Set<ClassId> = emptySet(),
   /** Excluding this child graph also excludes its contributed nested factory. */
   val graphExtension: GraphReference? = null,
+  /** Origin-chain aliases used for exclusions and replacements, preserving declaration identity. */
+  val originClassIds: Set<ClassId> = emptySet(),
 ) : MergeContribution {
   val sourceIdentity: BindingIndex.SourcePointerIdentity? = sourcePointerIdentity(pointer)
 
@@ -437,6 +440,14 @@ internal class ContributionEntry(
     get() = classId
 
   val declarationId: GraphReference? = classId?.let { GraphReference(it, pointer.virtualFile) }
+
+  /** Matches the direct, origin, and nested exclusions supplied to the shared merge plan. */
+  fun isExcludedFrom(excludes: Set<ClassId>): Boolean {
+    return classId in excludes ||
+      originClassIds.any(excludes::contains) ||
+      classId?.outerClassId in excludes ||
+      graphExtension?.classId in excludes
+  }
 
   enum class Kind {
     OTHER,

@@ -47,10 +47,14 @@ val tagsGeneratorCheckerHandler: Constructor<AnalysisHandler<FirOutputArtifact>>
 
 val tagsGeneratorCheckerAfterAnalysis: Constructor<AfterAnalysisChecker>? = null
 
+// Kotlin 2.5 renamed the final backend phase to CODEGEN.
+val backendTestPhase: TestPhase =
+  TestPhase.entries.first { it.name == "BACKEND" || it.name == "CODEGEN" }
+
 fun TestConfigurationBuilder.useIrDumpFailureSuppressorsCompat() {
   useFailureSuppressors(
     ::BlackBoxCodegenSuppressor,
-    ::PhasedPipelineChecker.bind(TestPhase.BACKEND),
+    ::PhasedPipelineChecker.bind(backendTestPhase),
   )
 }
 
@@ -60,11 +64,11 @@ fun TestConfigurationBuilder.usePhasedPipelineFailureSuppressorCompat() {
 
 fun RegisteredDirectivesBuilder.firIdenticalCompat() = Unit
 
-abstract class MetroReportsCheckerCompat(testServices: TestServices) :
+abstract class MetroAfterAnalysisCheckerCompat(testServices: TestServices) :
   AfterAnalysisChecker(testServices) {
   final override fun check(thereWereFailures: Boolean) {
-    checkMetroReports(thereWereFailures)
+    checkAfterAnalysis(thereWereFailures)
   }
 
-  abstract fun checkMetroReports(thereWereFailures: Boolean)
+  abstract fun checkAfterAnalysis(thereWereFailures: Boolean)
 }

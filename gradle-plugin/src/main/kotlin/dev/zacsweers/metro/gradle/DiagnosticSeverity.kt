@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.gradle
 
+/** Controls whether a Metro diagnostic is reported and whether it fails compilation. */
 public enum class DiagnosticSeverity {
   /** Emits no diagnostics/does not check. */
   NONE,
@@ -30,9 +31,11 @@ public enum class DiagnosticSeverity {
    */
   IDE_ERROR;
 
+  /** Whether this severity enables the diagnostic in at least one compiler environment. */
   public val isEnabled: Boolean
     get() = this != NONE
 
+  /** Whether this severity reports diagnostics only during IDE analysis. */
   public val isIdeOnly: Boolean
     get() = this == IDE_ERROR || this == IDE_WARN
 }

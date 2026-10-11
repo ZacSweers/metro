@@ -50,6 +50,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import org.jetbrains.kotlin.psi.KtDeclaration
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtParameter
 import org.jetbrains.kotlin.psi.KtProperty
@@ -297,7 +298,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph {
           val consumer: Consumer
         }
-        """
+        """,
       )
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
     val topology = result.topology!!
@@ -305,7 +306,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     assertTrue(topology.deferredTypes.isEmpty())
     // The multibinding node participates in the sealed bindings
     assertTrue(
-      result.bindings.any { key, _ -> key.renderedType.startsWith("kotlin.collections.Set") }
+      result.bindings.any { key, _ -> key.renderedType.startsWith("kotlin.collections.Set") },
     )
   }
 
@@ -331,14 +332,14 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
             fun create(@Includes bar: Bar): AppGraph
           }
         }
-        """
+        """,
       )
 
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
     assertTrue(
       result.bindings.any { key, binding ->
         key.renderedType == "test.Bar" && binding is KaBinding.BoundInstance && binding.isGraphInput
-      }
+      },
     )
   }
 
@@ -367,7 +368,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
             fun create(@Includes parentDependency: ExternalDependency): AppGraph
           }
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val parent = index.graphs.single { it.name == "AppGraph" }
@@ -384,7 +385,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         key.renderedType == "test.ExternalDependency" &&
           binding is KaBinding.BoundInstance &&
           (binding.pointer.element as? KtParameter)?.name == "childDependency"
-      }
+      },
     )
   }
 
@@ -399,7 +400,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph {
           val missing: MissingThing
         }
-        """
+        """,
       )
     val diagnostic = result.diagnostics.single()
     assertEquals(MetroDiagnosticId.MISSING_BINDING, diagnostic.id)
@@ -419,7 +420,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph {
           @OptionalBinding val httpClient: HttpClient? get() = null
         }
-        """
+        """,
       )
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
   }
@@ -436,7 +437,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
           @OptionalBinding fun optionalHttpClient(): HttpClient = error("unused")
           val requiredHttpClient: HttpClient
         }
-        """
+        """,
       )
 
     val diagnostic = result.diagnostics.single()
@@ -456,7 +457,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph {
           val a: A
         }
-        """
+        """,
       )
     assertEquals(
       listOf(MetroDiagnosticId.DEPENDENCY_CYCLE),
@@ -477,7 +478,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph {
           val a: A
         }
-        """
+        """,
       )
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
     assertTrue(result.topology!!.deferredTypes.isNotEmpty())
@@ -512,7 +513,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph {
           val service: Optional<Service>
         }
-        """
+        """,
       )
     assertTrue(result.diagnostics.toString(), result.diagnostics.isEmpty())
   }
@@ -589,7 +590,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph {
           val url: String
         }
-        """
+        """,
       )
     assertEquals(listOf(MetroDiagnosticId.DUPLICATE_BINDING), result.diagnostics.map { it.id })
     val diagnostic = result.diagnostics.single()
@@ -661,6 +662,294 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     assertEquals(result.graph.declarationId, childBinding.ownerGraphId)
   }
 
+  /** The account graph owns the loader requested through its descendant's ViewModel map. */
+  fun testGrandchildUsesNearestAncestorContributedProvides() {
+    module.addKotlinStdlibLibrary()
+    val file =
+      myFixture.configureMetroFile(
+        """
+        import kotlin.reflect.KClass
+
+        abstract class AccountScope
+        abstract class ViewModelScope
+        interface ImageLoader
+        class RealImageLoader : ImageLoader
+        interface ViewModel
+
+        @ContributesTo(AppScope::class)
+        interface AppImageLoaderModule {
+          @Provides @SingleIn(AppScope::class)
+          fun appImageLoader(): ImageLoader = RealImageLoader()
+        }
+
+        @ContributesTo(AccountScope::class)
+        interface AccountImageLoaderModule {
+          @Provides @SingleIn(AccountScope::class)
+          fun accountImageLoader(): ImageLoader = RealImageLoader()
+        }
+
+        @ContributesIntoMap(ViewModelScope::class)
+        @ClassKey
+        @Inject class AvatarCropperViewModel(val imageLoader: ImageLoader) : ViewModel
+
+        @GraphExtension(ViewModelScope::class)
+        interface ViewModelGraph {
+          val viewModels: Map<KClass<*>, ViewModel>
+        }
+
+        @GraphExtension(AccountScope::class)
+        interface AccountGraph {
+          val viewModels: ViewModelGraph
+        }
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val account: AccountGraph
+        }
+        """,
+      )
+
+    val binding =
+      assertNearestAncestorSelection(
+        file,
+        "imageLoader",
+        file.declarationsIncludingNested().function("accountImageLoader"),
+      )
+    assertTrue(binding is KaBinding.Provided)
+  }
+
+  /** A contributed alias keeps its account scope when a descendant requests the shared API. */
+  fun testGrandchildUsesNearestAncestorContributedBinding() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        abstract class AccountScope
+        abstract class ViewModelScope
+        interface FileServiceApi
+
+        @ContributesBinding(AppScope::class)
+        @SingleIn(AppScope::class)
+        @Inject class AppFileServiceApi : FileServiceApi
+
+        @ContributesBinding(AccountScope::class)
+        @SingleIn(AccountScope::class)
+        @Inject class AccountFileServiceApi : FileServiceApi
+
+        @Inject class FileViewModel(val files: FileServiceApi)
+
+        @GraphExtension(ViewModelScope::class)
+        interface ViewModelGraph {
+          val viewModel: FileViewModel
+        }
+
+        @GraphExtension(AccountScope::class)
+        interface AccountGraph {
+          val viewModels: ViewModelGraph
+        }
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val account: AccountGraph
+        }
+        """,
+      )
+
+    val binding =
+      assertNearestAncestorSelection(
+        file,
+        "files",
+        file.declarationsIncludingNested().klass("AccountFileServiceApi"),
+      )
+    assertTrue(binding is KaBinding.Alias)
+    assertEquals(
+      "test.AccountFileServiceApi",
+      (binding as KaBinding.Alias).consumedKey?.typeKey?.renderedType,
+    )
+  }
+
+  /** The closest graph's bindings take precedence even without a scoped lifetime. */
+  fun testGrandchildUsesNearestAncestorUnscopedAlias() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface ImageLoader
+        class AppImageLoader : ImageLoader
+        @Inject class AccountImageLoader : ImageLoader
+        @Inject class ViewModel(val imageLoader: ImageLoader)
+
+        @GraphExtension
+        interface ViewModelGraph {
+          val viewModel: ViewModel
+        }
+
+        @GraphExtension
+        interface AccountGraph {
+          val viewModels: ViewModelGraph
+
+          @Binds fun accountImageLoader(loader: AccountImageLoader): ImageLoader
+        }
+
+        @DependencyGraph
+        interface AppGraph {
+          val account: AccountGraph
+
+          @Provides fun appImageLoader(): ImageLoader = AppImageLoader()
+        }
+        """,
+      )
+
+    val binding =
+      assertNearestAncestorSelection(
+        file,
+        "imageLoader",
+        file.declarationsIncludingNested().function("accountImageLoader"),
+        isScoped = false,
+      )
+    assertTrue(binding is KaBinding.Alias)
+    assertEquals(
+      "test.AccountImageLoader",
+      (binding as KaBinding.Alias).consumedKey?.typeKey?.renderedType,
+    )
+  }
+
+  /** Refresh and validation must select the same binding and retain its account graph owner. */
+  private fun assertNearestAncestorSelection(
+    file: KtFile,
+    parameterName: String,
+    expectedDeclaration: KtDeclaration,
+    isScoped: Boolean = true,
+  ): KaBinding {
+    val index = refreshedIndex(file)
+    val leaf = index.graphs.single { it.name == "ViewModelGraph" }
+    val context = index.contextsFor(leaf).single()
+    val queryContext = checkNotNull(index.queryContext(context))
+    val consumer =
+      checkNotNull(
+        index.consumerEntryAt(file.declarationsIncludingNested().parameter(parameterName)),
+      )
+    val selected = index.bindingsFor(consumer, queryContext)
+    assertEquals(1, selected.size)
+    assertSame(expectedDeclaration, selected.single().pointer.element)
+
+    val app = index.graphs.single { it.name == "AppGraph" }
+    val results =
+      project.service<MetroGraphValidationService>().validateWithExtensions(file, app).map {
+        it.requireCompleted()
+      }
+    assertEquals(
+      listOf("ViewModelGraph", "AccountGraph", "AppGraph"),
+      results.map { it.graph.name },
+    )
+    for (result in results) {
+      assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    }
+    val leafBinding = checkNotNull(results.first().bindings[consumer.key])
+    if (isScoped) {
+      assertTrue(leafBinding is KaBinding.GraphDependency)
+      leafBinding as KaBinding.GraphDependency
+      assertTrue(leafBinding.isParentScoped)
+      assertEquals("test.AccountGraph", leafBinding.ownerKey.renderedType)
+      val accountBinding = checkNotNull(results[1].bindings[consumer.key])
+      assertSame(expectedDeclaration, accountBinding.pointer.element)
+      return accountBinding
+    }
+    assertSame(expectedDeclaration, leafBinding.pointer.element)
+    assertEquals(results[1].graph.classId, leafBinding.containerId)
+    return leafBinding
+  }
+
+  /** Ancestor precedence preserves conflicts between providers owned by the same graph. */
+  fun testNearestAncestorDuplicateProvidesAreReported() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        abstract class AccountScope
+        abstract class ViewModelScope
+        class ImageLoader
+
+        @GraphExtension(ViewModelScope::class)
+        interface ViewModelGraph {
+          val imageLoader: ImageLoader
+        }
+
+        @GraphExtension(AccountScope::class)
+        interface AccountGraph {
+          val viewModels: ViewModelGraph
+
+          @Provides @SingleIn(AccountScope::class)
+          fun firstAccountLoader(): ImageLoader = ImageLoader()
+
+          @Provides @SingleIn(AccountScope::class)
+          fun secondAccountLoader(): ImageLoader = ImageLoader()
+        }
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val account: AccountGraph
+
+          @Provides @SingleIn(AppScope::class)
+          fun appLoader(): ImageLoader = ImageLoader()
+        }
+        """,
+      )
+    val index = refreshedIndex(file)
+    val declarations = file.declarationsIncludingNested()
+    val consumer = checkNotNull(index.consumerEntryAt(declarations.property("imageLoader")))
+    val leaf = index.graphs.single { it.name == "ViewModelGraph" }
+    val context = index.contextsFor(leaf).single()
+    val selected = index.bindingsFor(consumer, checkNotNull(index.queryContext(context)))
+    val expectedDeclarations =
+      setOf(
+        declarations.function("firstAccountLoader"),
+        declarations.function("secondAccountLoader"),
+      )
+    assertEquals(expectedDeclarations, selected.map { it.pointer.element }.toSet())
+
+    val result =
+      project.service<MetroGraphValidationService>().validate(file, context).requireCompleted()
+    val diagnostic = result.diagnostics.single()
+    assertEquals(MetroDiagnosticId.DUPLICATE_BINDING, diagnostic.id)
+    assertEquals(expectedDeclarations, diagnostic.related.map { it.pointer.element }.toSet())
+  }
+
+  /** Included dependency accessors participate in duplicate checks with ancestor providers. */
+  fun testChildIncludedAccessorStillConflictsWithParentProvides() {
+    val result =
+      validate(
+        """
+        class ImageLoader
+
+        interface ExternalDependency {
+          val imageLoader: ImageLoader
+        }
+
+        @GraphExtension
+        interface ChildGraph {
+          val imageLoader: ImageLoader
+
+          @GraphExtension.Factory
+          interface Factory {
+            fun create(@Includes dependency: ExternalDependency): ChildGraph
+          }
+        }
+
+        @DependencyGraph
+        interface AppGraph {
+          val child: ChildGraph.Factory
+
+          @Provides fun appImageLoader(): ImageLoader = ImageLoader()
+        }
+        """,
+        graphName = "ChildGraph",
+      )
+
+    val diagnostic = result.diagnostics.single()
+    assertEquals(MetroDiagnosticId.DUPLICATE_BINDING, diagnostic.id)
+    assertEquals(2, diagnostic.related.size)
+    assertEquals(1, diagnostic.related.filterIsInstance<KaBinding.GraphDependency>().size)
+    assertEquals(1, diagnostic.related.filterIsInstance<KaBinding.Provided>().size)
+  }
+
   fun testDifferentInheritedGenericProvidersInOneGraphRemainDuplicates() {
     val result =
       validate(
@@ -679,7 +968,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
 
           @Provides fun provideInt(): Int = 1
         }
-        """
+        """,
       )
 
     assertEquals(listOf(MetroDiagnosticId.DUPLICATE_BINDING), result.diagnostics.map { it.id })
@@ -702,7 +991,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph {
           val services: Set<Service>
         }
-        """
+        """,
       )
 
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
@@ -745,7 +1034,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
           val mapped: Map<String, Service>
           val collected: Set<Service>
         }
-        """
+        """,
       )
 
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
@@ -781,7 +1070,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
           val service: Service
           val services: Set<Service>
         }
-        """
+        """,
       )
 
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
@@ -803,7 +1092,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph {
           val handlers: Map<String, Service>
         }
-        """
+        """,
       )
     assertEquals(listOf(MetroDiagnosticId.DUPLICATE_MAP_KEYS), result.diagnostics.map { it.id })
     val diagnostic = result.diagnostics.single()
@@ -840,7 +1129,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph {
           val services: Map<String, Service>
         }
-        """
+        """,
       )
 
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
@@ -876,7 +1165,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph {
           val services: Map<String, Service>
         }
-        """
+        """,
       )
 
     assertEquals(listOf(MetroDiagnosticId.DUPLICATE_MAP_KEYS), result.diagnostics.map { it.id })
@@ -924,7 +1213,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph {
           val services: Set<Service>
         }
-        """
+        """,
       )
     assertEquals(listOf(MetroDiagnosticId.EMPTY_MULTIBINDING), result.diagnostics.map { it.id })
   }
@@ -944,7 +1233,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph {
           val services: Set<Service>
         }
-        """
+        """,
       )
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
   }
@@ -972,7 +1261,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph {
           val services: Set<Service>
         }
-        """
+        """,
       )
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
   }
@@ -1021,7 +1310,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
           val present: Optional<PresentService>
           val missing: Optional<MissingService>
         }
-        """
+        """,
       )
 
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
@@ -1043,7 +1332,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph {
           val api: Api
         }
-        """
+        """,
       )
     val diagnostic = result.diagnostics.single()
     assertEquals(MetroDiagnosticId.INCOMPATIBLY_SCOPED_BINDINGS, diagnostic.id)
@@ -1066,7 +1355,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph {
           val widget: Widget
         }
-        """
+        """,
       )
     val diagnostic = result.diagnostics.single()
     assertEquals(MetroDiagnosticId.INVALID_BINDING, diagnostic.id)
@@ -1095,7 +1384,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph {
           val screen: Screen
         }
-        """
+        """,
       )
     val diagnostic = result.diagnostics.single()
     assertEquals(MetroDiagnosticId.INVALID_BINDING, diagnostic.id)
@@ -1122,7 +1411,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
 
           fun functionFactory(): Lazy<Widget.Factory>
         }
-        """
+        """,
       )
 
     assertEquals(
@@ -1132,7 +1421,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     assertTrue(
       result.diagnostics.all {
         "does not support injecting Lazy<Factory>" in it.render()
-      }
+      },
     )
     assertEquals(2, result.diagnostics.map { it.stack.first().pointer }.distinct().size)
   }
@@ -1156,7 +1445,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph {
           val consumer: Consumer
         }
-        """
+        """,
       )
 
     val diagnostic = result.diagnostics.single()
@@ -1185,7 +1474,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph {
           val consumer: Consumer
         }
-        """
+        """,
       )
 
     assertEquals(MetroDiagnosticId.INVALID_BINDING, result.diagnostics.first().id)
@@ -1214,7 +1503,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph {
           val consumer: Consumer
         }
-        """
+        """,
       )
 
     val diagnostics = result.diagnostics.filter { it.id == MetroDiagnosticId.INVALID_BINDING }
@@ -1241,7 +1530,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
           }
         }
         """
-          .trimIndent()
+          .trimIndent(),
       )
       repeat(consumerCount) { number ->
         appendLine("@Inject class Consumer$number(val factory: Lazy<Widget.Factory>)")
@@ -1308,7 +1597,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
 
           @Provides fun provideText(factory: Lazy<Widget.Factory>): String = "ready"
         }
-        """
+        """,
       )
 
     assertEquals(listOf(MetroDiagnosticId.INVALID_BINDING), result.diagnostics.map { it.id })
@@ -1334,7 +1623,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
           @Provides
           fun provideText(first: Lazy<Widget.Factory>, second: Lazy<Widget.Factory>): String = "ready"
         }
-        """
+        """,
       )
 
     val diagnostics = result.diagnostics.filter { it.id == MetroDiagnosticId.INVALID_BINDING }
@@ -1369,7 +1658,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph {
           val consumer: Consumer
         }
-        """
+        """,
       )
 
     assertEquals(listOf(MetroDiagnosticId.INVALID_BINDING), result.diagnostics.map { it.id })
@@ -1399,7 +1688,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
 
           fun inject(consumer: Consumer)
         }
-        """
+        """,
       )
 
     assertEquals(listOf(MetroDiagnosticId.INVALID_BINDING), result.diagnostics.map { it.id })
@@ -1426,7 +1715,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph {
           fun inject(target: Target)
         }
-        """
+        """,
       )
 
     assertEquals(listOf(MetroDiagnosticId.INVALID_BINDING), result.diagnostics.map { it.id })
@@ -1458,7 +1747,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph {
           fun inject(target: Target)
         }
-        """
+        """,
       )
 
     val diagnostics = result.diagnostics.filter { it.id == MetroDiagnosticId.INVALID_BINDING }
@@ -1496,7 +1785,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph {
           fun inject(target: Target)
         }
-        """
+        """,
       )
 
     val diagnostics = result.diagnostics.filter { it.id == MetroDiagnosticId.INVALID_BINDING }
@@ -1526,7 +1815,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph {
           val factory: Widget.Factory<Int>
         }
-        """
+        """,
       )
 
     assertEquals(listOf(MetroDiagnosticId.INVALID_BINDING), result.diagnostics.map { it.id })
@@ -1555,7 +1844,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph {
           @Chosen val factory: Lazy<Widget.Factory>
         }
-        """
+        """,
       )
 
     assertEquals(MetroDiagnosticId.INVALID_BINDING, result.diagnostics.first().id)
@@ -1586,7 +1875,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
 
           @Provides @Chosen fun provideFactory(): Widget.Factory = error("unused")
         }
-        """
+        """,
       )
 
     assertEquals(listOf(MetroDiagnosticId.INVALID_BINDING), result.diagnostics.map { it.id })
@@ -1618,7 +1907,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
           @Provides @Chosen
           fun provideFactory(): WidgetFactory = error("unused")
         }
-        """
+        """,
       )
 
     assertEquals(listOf(MetroDiagnosticId.INVALID_BINDING), result.diagnostics.map { it.id })
@@ -1641,7 +1930,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
 
             @Provides fun provideInt(): Int = 1
           }
-          """
+          """,
         )
 
       assertEquals(listOf(MetroDiagnosticId.INVALID_BINDING), result.diagnostics.map { it.id })
@@ -1664,7 +1953,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
 
             @Provides fun provideInt(): Int = 1
           }
-          """
+          """,
         )
 
       assertEquals(MetroDiagnosticId.INVALID_BINDING, result.diagnostics.first().id)
@@ -1690,7 +1979,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph {
           val consumer: Consumer
         }
-        """
+        """,
       )
 
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
@@ -1713,7 +2002,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph {
           val screen: Screen
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val declarations = file.declarationsIncludingNested()
@@ -1753,7 +2042,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
           @Provides
           fun provideWidget(factory: WidgetFactory): Widget = factory.create("default")
         }
-        """
+        """,
       )
     val diagnostic = result.diagnostics.single()
     assertEquals(MetroDiagnosticId.INVALID_BINDING, diagnostic.id)
@@ -1776,7 +2065,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
           @Provides
           fun provideThing(): Thing = Thing()
         }
-        """
+        """,
       )
     assertTrue(result.diagnostics.toString(), result.diagnostics.isEmpty())
   }
@@ -1837,7 +2126,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
           @Provides
           fun provideConsumer(factory: ChildGraph.Factory): Consumer = Consumer(factory)
         }
-        """
+        """,
       )
 
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
@@ -1891,7 +2180,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
           @Provides
           fun explicitFactory(): ChildGraph.Factory = error("unused")
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val parent = index.graphs.single { it.name == "AppGraph" }
@@ -1913,7 +2202,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
       assertTrue(
         result.bindings.any { key, binding ->
           key.renderedType == "test.AppGraph" && binding is KaBinding.GraphInstance
-        }
+        },
       )
     }
 
@@ -1964,7 +2253,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph {
           val child: ChildGraph
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val parent = index.graphs.single { it.name == "AppGraph" }
@@ -2005,6 +2294,180 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     }
   }
 
+  /** A child can collect a class whose instance belongs to its parent scope. */
+  fun testChildContributedSetElementUsesAncestorScope() {
+    assertChildContributionScope()
+  }
+
+  /** The map entry stays in the child while its exposed implementation belongs to the parent. */
+  fun testChildContributedMapElementUsesAncestorScope() {
+    assertChildContributionScope(isMap = true)
+  }
+
+  /** A child provider can supply an implementation whose constructor belongs to a parent scope. */
+  fun testChildContributedAliasUsesExplicitImplementationProvider() {
+    assertChildContributionScope(provideImplementationLocally = true)
+  }
+
+  /** A generated set provider must use a scope supported by the graph that aggregates it. */
+  fun testChildGeneratedSetElementWithAncestorScopeStaysLocal() {
+    assertChildContributionScope(exposeImplementation = false)
+  }
+
+  /** A generated map provider must use a scope supported by the graph that aggregates it. */
+  fun testChildGeneratedMapElementWithAncestorScopeStaysLocal() {
+    assertChildContributionScope(isMap = true, exposeImplementation = false)
+  }
+
+  /** Checks the lifetime of class contributions aggregated by a child graph. */
+  private fun assertChildContributionScope(
+    isMap: Boolean = false,
+    exposeImplementation: Boolean = true,
+    provideImplementationLocally: Boolean = false,
+  ) {
+    module.addKotlinStdlibLibrary()
+    project.setMetroOptions("generate-contribution-providers" to "true")
+    val implementationExposure =
+      if (exposeImplementation) {
+        "@ExposeImplBinding"
+      } else {
+        ""
+      }
+    val contribution =
+      if (isMap) {
+        "@ContributesIntoMap(ConversationViewModelScope::class) @StringKey(\"decoration\")"
+      } else {
+        "@ContributesIntoSet(ConversationViewModelScope::class)"
+      }
+    val collectionType =
+      if (isMap) {
+        "Map<String, Decoration>"
+      } else {
+        "Set<Decoration>"
+      }
+    val localProvider =
+      if (provideImplementationLocally) {
+        "@Provides fun decoration(): DecorationImpl = DecorationImpl()"
+      } else {
+        ""
+      }
+    val file =
+      myFixture.configureMetroFile(
+        """
+        abstract class ConversationScope
+        abstract class ConversationViewModelScope
+        interface Decoration
+
+        $contribution
+        $implementationExposure
+        @SingleIn(ConversationScope::class)
+        @Inject class DecorationImpl : Decoration
+
+        @GraphExtension(ConversationViewModelScope::class)
+        interface ConversationViewModelGraph {
+          val decorations: $collectionType
+
+          $localProvider
+        }
+
+        @DependencyGraph(ConversationScope::class)
+        interface ConversationGraph {
+          val viewModel: ConversationViewModelGraph
+        }
+        """,
+      )
+    val index = refreshedIndex(file)
+    val parent = index.graphs.single { it.name == "ConversationGraph" }
+    val results =
+      project.service<MetroGraphValidationService>().validateWithExtensions(file, parent).map {
+        it.requireCompleted()
+      }
+    assertEquals(2, results.size)
+    val childResult = results.first()
+    val parentResult = results.last()
+    if (!exposeImplementation) {
+      assertEquals(
+        listOf(MetroDiagnosticId.INCOMPATIBLY_SCOPED_BINDINGS),
+        childResult.diagnostics.map { it.id },
+      )
+      assertTrue(parentResult.diagnostics.toString(), parentResult.diagnostics.isEmpty())
+      return
+    }
+    for (result in results) {
+      assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    }
+    val collection =
+      childResult.bindings.asMap().values.filterIsInstance<KaBinding.Multibinding>().single()
+    val elementKey = collection.sourceBindings.single()
+    val childElement = childResult.bindings[elementKey] as KaBinding.Alias
+    assertTrue(childElement.isClassContribution)
+    assertNull(childElement.scope)
+    val implementationKey = checkNotNull(childElement.consumedKey).typeKey
+    if (provideImplementationLocally) {
+      val childImplementation = childResult.bindings[implementationKey] as KaBinding.Provided
+      assertNull(childImplementation.scope)
+      assertSame(
+        file.declarationsIncludingNested().function("decoration"),
+        childImplementation.pointer.element,
+      )
+      assertTrue(childResult.parentReservations.isEmpty())
+      assertNull(parentResult.bindings[implementationKey])
+      assertNull(parentResult.bindings[elementKey])
+      return
+    }
+    val childImplementation = childResult.bindings[implementationKey] as KaBinding.GraphDependency
+    assertTrue(childImplementation.isParentScoped)
+    assertEquals("test.ConversationGraph", childImplementation.ownerKey.renderedType)
+    assertEquals(setOf(implementationKey), childResult.parentReservations.keys)
+    assertNull(parentResult.bindings[elementKey])
+    val parentImplementation = checkNotNull(parentResult.bindings[implementationKey])
+    val implementation = file.declarationsIncludingNested().klass("DecorationImpl")
+    assertSame(implementation, parentImplementation.pointer.element)
+    assertTrue(parentImplementation is KaBinding.ConstructorInjected)
+    assertTrue(parentImplementation.scope in parentResult.graph.scopingAnnotations)
+    if (isMap) {
+      val sourceAlias =
+        index.bindingEntriesAt(implementation).filterIsInstance<KaBinding.Alias>().single()
+      assertNotNull(childElement.mapKeyValue)
+      assertEquals(sourceAlias.mapKeyValue, childElement.mapKeyValue)
+    }
+  }
+
+  /** A provider authored in a child contribution must use a scope supported by the child. */
+  fun testChildContributedModuleProviderWithAncestorScopeStaysLocal() {
+    project.setMetroOptions("generate-contribution-providers" to "true")
+    val result =
+      validate(
+        """
+        abstract class ConversationScope
+        abstract class ConversationViewModelScope
+        interface Decoration
+
+        @ContributesTo(ConversationViewModelScope::class)
+        interface DecorationModule {
+          @Provides @IntoSet @SingleIn(ConversationScope::class)
+          fun decoration(): Decoration = object : Decoration {}
+        }
+
+        @GraphExtension(ConversationViewModelScope::class)
+        interface ConversationViewModelGraph {
+          val decorations: Set<Decoration>
+        }
+
+        @DependencyGraph(ConversationScope::class)
+        interface ConversationGraph {
+          val viewModel: ConversationViewModelGraph
+        }
+        """,
+        graphName = "ConversationViewModelGraph",
+      )
+
+    assertEquals(
+      listOf(MetroDiagnosticId.INCOMPATIBLY_SCOPED_BINDINGS),
+      result.diagnostics.map { it.id },
+    )
+  }
+
   fun testSharedMapCollectionViewsReuseSyntheticElements() {
     module.addKotlinStdlibLibrary()
     val result =
@@ -2019,7 +2482,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
 
           @Provides @IntoMap @StringKey("only") fun value(): Value = Value()
         }
-        """
+        """,
       )
 
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
@@ -2122,7 +2585,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
 
           $parentFactory
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val parent = index.graphs.single { it.name == "AppGraph" }
@@ -2325,7 +2788,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     assertTrue(
       result.bindings.any { key, binding ->
         key.renderedType == "kotlin.String" && !binding.isGraphPrivate
-      }
+      },
     )
   }
 
@@ -2370,7 +2833,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
           $privateContribution
           $publicContribution
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val parent = index.graphs.single { it.name == "AppGraph" }
@@ -2428,7 +2891,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     assertTrue(
       result.bindings.any { key, binding ->
         key.renderedType == "kotlin.CharSequence" && binding is KaBinding.GraphDependency
-      }
+      },
     )
     assertFalse(result.bindings.any { key, _ -> key.renderedType == "kotlin.String" })
   }
@@ -2488,7 +2951,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     assertTrue(
       result.bindings.any { key, binding ->
         key.renderedType == "kotlin.CharSequence" && binding is KaBinding.GraphDependency
-      }
+      },
     )
     assertFalse(result.bindings.any { key, _ -> key.renderedType == "kotlin.String" })
   }
@@ -2545,7 +3008,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
 
           @Provides fun provideRight(): RightOnly = object : RightOnly {}
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val child = index.graphs.single { it.name == "ChildGraph" }
@@ -2598,7 +3061,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph {
           val needsGraph: NeedsGraph
         }
-        """
+        """,
       )
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
   }
@@ -2648,7 +3111,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph {
           val child: ChildGraph
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val appGraph = index.graphs.single { it.name == "AppGraph" }
@@ -2685,7 +3148,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface RightGraph {
           val child: ChildGraph
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val childGraph = index.graphs.single { it.name == "ChildGraph" }
@@ -2718,7 +3181,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph {
           val repo: Repo
         }
-        """
+        """,
       )
     // Replaces drops RealRepo's contributed Repo binding, but RealRepo itself stays injectable
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
@@ -2743,7 +3206,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph {
           val repo: Repo
         }
-        """
+        """,
       )
 
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
@@ -2770,7 +3233,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph {
           @Chosen val page: Page<*>
         }
-        """
+        """,
       )
 
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
@@ -2800,7 +3263,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph {
           val implementation: ServiceImpl
         }
-        """
+        """,
       )
 
     assertEquals(listOf(MetroDiagnosticId.MISSING_BINDING), result.diagnostics.map { it.id })
@@ -2832,7 +3295,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph {
           val service: Service
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val graph = index.graphs.single()
@@ -2877,7 +3340,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
 
           @Provides suspend fun provideMember(): SuspendMember = SuspendMember()
         }
-        """
+        """,
       )
 
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
@@ -2900,7 +3363,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph {
           val service: Service
         }
-        """
+        """,
       )
 
     assertEquals(listOf(MetroDiagnosticId.MISSING_BINDING), result.diagnostics.map { it.id })
@@ -2933,7 +3396,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph {
           val service: Service
         }
-        """
+        """,
       )
 
     assertEquals(listOf(MetroDiagnosticId.MISSING_BINDING), result.diagnostics.map { it.id })
@@ -2959,7 +3422,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
           val service: Service
           val implementation: ServiceImpl
         }
-        """
+        """,
       )
 
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
@@ -2982,7 +3445,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
           val service: Service
           val implementation: ServiceImpl
         }
-        """
+        """,
       )
 
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
@@ -3015,7 +3478,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph {
           val service: Service
         }
-        """
+        """,
       )
 
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
@@ -3054,7 +3517,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph {
           val service: Service
         }
-        """
+        """,
       )
 
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
@@ -3090,7 +3553,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph {
           val service: Service
         }
-        """
+        """,
       )
 
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
@@ -3123,7 +3586,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph {
           val factory: PublicFactory
         }
-        """
+        """,
       )
 
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
@@ -3163,7 +3626,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
 
             @Provides fun provideInt(): Int = 1
           }
-          """
+          """,
         )
       val index = project.service<MetroResolutionService>().awaitIndex(file)
       // The concrete factory is reached through the contribution's Alias binding, not a source
@@ -3181,7 +3644,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
       assertTrue(
         result.bindings.any { key, binding ->
           key.renderedType == "test.PublicFactory<kotlin.Int>" && binding is KaBinding.Alias
-        }
+        },
       )
       val factoryTypes =
         result.bindings.asMap().values.filterIsInstance<KaBinding.AssistedFactory>().map {
@@ -3213,7 +3676,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph {
           val api: Api
         }
-        """
+        """,
       )
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
   }
@@ -3234,7 +3697,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph : BaseGraph {
           val json: Json
         }
-        """
+        """,
       )
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
     // Both the graph's own accessor and the supertype's accessor resolve to the supertype provider
@@ -3253,7 +3716,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
 
         @DependencyGraph
         interface AppGraph : BaseGraph<Service>
-        """
+        """,
       )
 
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
@@ -3275,7 +3738,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
 
         @DependencyGraph
         interface IntGraph : GenericBase<Int>
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val service = project.service<MetroGraphValidationService>()
@@ -3323,7 +3786,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
 
           @Provides fun provideBoolean(): Boolean = true
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val validation = project.service<MetroGraphValidationService>()
@@ -3374,7 +3837,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph : GenericBase<RealService> {
           val service: Service
         }
-        """
+        """,
       )
 
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
@@ -3396,7 +3859,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph : GenericBase<RealService> {
           val service: Service
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val graph = index.graphs.single { it.name == "AppGraph" }
@@ -3462,7 +3925,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
           @Provides fun provideInt(): Int = 1
           @Provides fun provideString(): String = "ready"
         }
-        """
+        """,
       )
 
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
@@ -3509,7 +3972,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
 
           @Provides fun provideInt(): Int = 1
         }
-        """
+        """,
       )
     PsiDocumentManager.getInstance(project).commitAllDocuments()
     val index = project.service<MetroResolutionService>().awaitIndex(graph)
@@ -3522,7 +3985,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
 
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
     assertTrue(
-      result.bindings.any { key, _ -> key.renderedType == "test.Example.Factory<kotlin.Int>" }
+      result.bindings.any { key, _ -> key.renderedType == "test.Example.Factory<kotlin.Int>" },
     )
     assertTrue(result.bindings.any { key, _ -> key.renderedType == "kotlin.Int" })
   }
@@ -3549,15 +4012,15 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
           @Provides fun provideInt(): Int = 1
           @Provides fun provideString(): String = "ready"
         }
-        """
+        """,
       )
 
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
     assertTrue(
-      result.bindings.any { key, _ -> key.renderedType == "test.Example.Factory<kotlin.Int>" }
+      result.bindings.any { key, _ -> key.renderedType == "test.Example.Factory<kotlin.Int>" },
     )
     assertTrue(
-      result.bindings.any { key, _ -> key.renderedType == "test.Example.Factory<kotlin.String>" }
+      result.bindings.any { key, _ -> key.renderedType == "test.Example.Factory<kotlin.String>" },
     )
   }
 
@@ -3580,7 +4043,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
 
           @Provides fun provideText(): String = "ready"
         }
-        """
+        """,
       )
 
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
@@ -3597,7 +4060,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
       }
       @Inject class Box<T : Any>(val value: T) : Base<T>()
       @DependencyGraph interface AppGraph { val box: Box<Payload> }
-      """
+      """,
       )
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
     val box =
@@ -3622,7 +4085,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         val box: Box<List<*>>
         @Provides fun values(): List<*> = emptyList<Any>()
       }
-      """
+      """,
       )
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
     val box =
@@ -3641,11 +4104,11 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         import libtest.LibRegistry
         @Inject class Box<T>(val value: T)
         @DependencyGraph interface AppGraph { val box: Box<LibRegistry> }
-        """
+        """,
         )
       assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
       assertTrue(
-        result.bindings.asMap().values.any { it is KaBinding.ConstructorInjected && it.isObject }
+        result.bindings.asMap().values.any { it is KaBinding.ConstructorInjected && it.isObject },
       )
     }
   }
@@ -3656,7 +4119,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
       validateWithoutLibraryResolution(
         """
       @DependencyGraph interface AppGraph { val registry: Registry }
-      """
+      """,
       )
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
     val binding =
@@ -3671,7 +4134,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         """
       @Inject class Client
       @DependencyGraph interface AppGraph { val client: Client? }
-      """
+      """,
       )
     assertTrue(result.diagnostics.any { it.id == MetroDiagnosticId.MISSING_BINDING })
   }
@@ -3683,7 +4146,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         """
       @Inject class Growing<T>(val next: Growing<List<T>>)
       @DependencyGraph interface AppGraph { val node: Growing<Int> }
-      """
+      """,
       )
     assertTrue(result.javaClass.simpleName, result is KaGraphValidationResult.Incomplete)
   }
@@ -3698,7 +4161,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         @DependencyGraph(AppScope::class) interface AppGraph {
           val client: LibClientWithDeps?
         }
-        """
+        """,
         )
       assertTrue(result.diagnostics.any { it.id == MetroDiagnosticId.MISSING_BINDING })
     }
@@ -3715,7 +4178,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
           val client: LibClientWithDeps?
           @Provides fun client(): LibClientWithDeps? = null
         }
-        """
+        """,
         )
       assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
     }
@@ -3729,7 +4192,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         import libtest.LibRegistry
 
         @DependencyGraph interface AppGraph { val registry: LibRegistry }
-        """
+        """,
         )
       assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
       val objectBinding =
@@ -3751,7 +4214,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         @DependencyGraph interface AppGraph {
           val node: LibGrowingNode<Int>
         }
-        """
+        """,
         )
 
       assertTrue(result.javaClass.simpleName, result is KaGraphValidationResult.Incomplete)
@@ -3773,7 +4236,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
 
           @Provides fun terminal(): LibGrowingNode<List<List<Int>>> = error("unused")
         }
-        """
+        """,
         )
 
       assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
@@ -3799,7 +4262,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph {
           val factory: Node.Factory<Int>
         }
-        """
+        """,
       )
 
     assertTrue(result.javaClass.simpleName, result is KaGraphValidationResult.Incomplete)
@@ -3824,7 +4287,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph {
           val factory: Node.Factory<Int>
         }
-        """
+        """,
       )
 
     assertTrue(result.javaClass.simpleName, result is KaGraphValidationResult.Incomplete)
@@ -3855,7 +4318,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
           interface AppGraph {
             val factory: Node.Factory<Int>
           }
-          """
+          """,
         )
 
       assertTrue(result.javaClass.simpleName, result is KaGraphValidationResult.Incomplete)
@@ -3884,7 +4347,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
           @Provides
           fun terminalFactory(): Node.Factory<List<List<List<Int>>>> = error("unused")
         }
-        """
+        """,
       )
 
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
@@ -3902,7 +4365,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     assertTrue(
       result.bindings.any { key, binding ->
         key.renderedType == terminalType && binding is KaBinding.Provided
-      }
+      },
     )
   }
 
@@ -3926,7 +4389,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph {
           val factory: Node.Factory<Int>
         }
-        """
+        """,
       )
 
     // A default only permits an absent binding. The implicit factory exists, so a truncated
@@ -3958,7 +4421,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph {
           val child: ChildGraph
         }
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val parent = index.graphs.single { it.name == "AppGraph" }
@@ -4000,7 +4463,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph {
           val factory: Node.Factory<Int>
         }
-        """
+        """,
       )
 
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
@@ -4030,7 +4493,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph {
           val factory: Node.Factory<Int, String>
         }
-        """
+        """,
       )
 
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
@@ -4083,7 +4546,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
 
           @Provides @Chosen fun provideInt(): Int = 1
         }
-        """
+        """,
       )
 
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
@@ -4125,7 +4588,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph {
           val factory: Left.Factory<Int>
         }
-        """
+        """,
       )
 
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
@@ -4176,7 +4639,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
             fun create(@Includes bindings: FactoryBindings<Int, String, Boolean>): AppGraph
           }
         }
-        """
+        """,
       )
 
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
@@ -4219,14 +4682,14 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
 
           @Provides fun provideInt(): Int = 1
         }
-        """
+        """,
       )
 
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
     assertTrue(
       result.bindings.any { key, _ ->
         key.renderedType == "test.Widget.Factory<kotlin.Int>"
-      }
+      },
     )
   }
 
@@ -4252,7 +4715,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
 
           @Provides @Endpoint suspend fun provideInt(): Int = 1
         }
-        """
+        """,
       )
 
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
@@ -4283,7 +4746,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
 
           @Provides fun provideString(): String = "ready"
         }
-        """
+        """,
       )
 
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
@@ -4320,7 +4783,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
           val replacement: Int
         }
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
     PsiDocumentManager.getInstance(project).commitAllDocuments()
@@ -4370,7 +4833,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
 
           @DependencyGraph
           interface AppGraph : LibBaseGraph
-          """
+          """,
         )
       assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
       assertTrue(result.topology!!.sortedKeys.any { it.renderedType == "libtest.LibJson" })
@@ -4388,7 +4851,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
           interface AppGraph {
             val factory: LibAssistedWidgetFactory
           }
-          """
+          """,
         )
 
       assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
@@ -4419,7 +4882,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
             @Provides fun provideInt(): Int = 1
             @Provides fun provideString(): String = "ready"
           }
-          """
+          """,
         )
 
       assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
@@ -4448,7 +4911,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
 
             @Provides @LibEndpoint("primary") fun provideInt(): Int = 1
           }
-          """
+          """,
         )
 
       assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
@@ -4474,7 +4937,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
 
             @Provides suspend fun provideInt(): Int = 1
           }
-          """
+          """,
         )
 
       assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
@@ -4510,7 +4973,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
           interface AppGraph {
             val factory: Example.Factory<LibClientWithDeps>
           }
-          """
+          """,
         )
 
       assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
@@ -4530,7 +4993,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
           interface AppGraph {
             val service: LibTransitiveService
           }
-          """
+          """,
         )
 
       assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
@@ -4550,7 +5013,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
       interface AppGraph {
         val value: NeedsMissing
       }
-      """
+      """,
       )
     val index = refreshedIndex(file)
     val graph = index.graphs.single()
@@ -4603,7 +5066,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         @Provides fun first(): String = "first"
         @Provides fun second(): String = "second"
       }
-      """
+      """,
       )
     val index = refreshedIndex(file)
     val context = index.contextsFor(index.graphs.single()).single()
@@ -4634,7 +5097,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         """
         @DependencyGraph
         interface AppGraph
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val graph = index.graphs.single()
@@ -4656,7 +5119,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
       interface AppGraph {
         val value: NeedsMissing
       }
-      """
+      """,
       )
     val index = refreshedIndex(file)
     val context = index.contextsFor(index.graphs.single()).single()
@@ -4732,7 +5195,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         @Provides fun first(): String = "first"
         @Provides fun second(): String = "second"
       }
-      """
+      """,
       )
     val index = refreshedIndex(file)
     val graph = index.graphs.single { it.name == "AppGraph" }
@@ -5001,7 +5464,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph {
           val child: ChildGraph
         }
-        """
+        """,
       )
     val index = refreshedIndex(file)
     val graph = index.graphs.single { it.name == "AppGraph" }
@@ -5070,7 +5533,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         """
         @DependencyGraph
         interface AppGraph
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val graph = index.graphs.single()
@@ -5142,7 +5605,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         """
         @DependencyGraph
         interface AppGraph
-        """
+        """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val graph = index.graphs.single()

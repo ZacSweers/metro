@@ -11,7 +11,7 @@ import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 
 @JvmInline
 internal value class IrConstructorCallIrGeneratedDeclarationsRegistrarCompat(
-  private val delegate: IrGeneratedDeclarationsRegistrar
+  private val delegate: IrGeneratedDeclarationsRegistrar,
 ) : IrGeneratedDeclarationsRegistrarCompat {
   override fun getMetadataVisibleAnnotationsForElement(declaration: IrDeclaration) =
     mutableListOf<IrConstructorCall>()

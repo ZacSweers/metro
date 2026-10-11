@@ -169,7 +169,7 @@ interface ExampleGraph {
   @MetroImplMarker
   class Impl : ExampleGraph {
     private val base1ImplProvider: Provider<Base1Impl>
-      field = DoubleCheck/* companion */.provider<Provider<Base1Impl>, Base1Impl>(delegate = Base1Impl.MetroFactory.create())
+      field = provider<Provider<Base1Impl>, Base1Impl>(delegate = create())
 
     private constructor() /* primary */ {
       super/*Any*/()
@@ -179,7 +179,7 @@ interface ExampleGraph {
 
     override val cacheHolders: Set<Base2>
       override get(): Set<Base2> {
-        return <this>.<get-setOfBase2>()
+        return setOf<Base2>(element = <this>.#base1ImplProvider.invoke())
       }
 
     override val composerPrefs: Base1
@@ -189,16 +189,6 @@ interface ExampleGraph {
 
     override val prewarms: Set<Base3>
       override get(): Set<Base3> {
-        return <this>.<get-setOfBase3>()
-      }
-
-    private val setOfBase2: Set<Base2>
-      private get(): Set<Base2> {
-        return setOf<Base2>(element = <this>.#base1ImplProvider.invoke())
-      }
-
-    private val setOfBase3: Set<Base3>
-      private get(): Set<Base3> {
         return setOf<Base3>(element = <this>.#base1ImplProvider.invoke())
       }
 

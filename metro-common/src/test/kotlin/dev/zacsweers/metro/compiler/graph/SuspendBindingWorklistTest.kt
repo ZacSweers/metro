@@ -226,7 +226,7 @@ class SuspendBindingWorklistTest {
       AnalysisFixture(
         checkCanceled = {
           if (rootsVisited == 8) throw AnalysisCancellationException()
-        }
+        },
       )
     val roots = sequence {
       repeat(300) { index ->
@@ -249,7 +249,7 @@ class SuspendBindingWorklistTest {
       AnalysisFixture(
         checkCanceled = {
           if (fixture.lookupCount("Node8") > 0) throw AnalysisCancellationException()
-        }
+        },
       )
     fixture.put(*List(300) { index -> binding("Node$index", "Node${index + 1}") }.toTypedArray())
 
@@ -266,7 +266,7 @@ class SuspendBindingWorklistTest {
       AnalysisFixture(
         checkCanceled = {
           if (fixture.lookupCount("Dependency8") > 0) throw AnalysisCancellationException()
-        }
+        },
       )
     val dependencies = List(300) { "Dependency$it" }
     fixture.put(binding("Root", *dependencies.toTypedArray()))
@@ -285,7 +285,7 @@ class SuspendBindingWorklistTest {
       AnalysisFixture(
         checkCanceled = {
           if (fixture.passThroughCheckCount > 0) throw AnalysisCancellationException()
-        }
+        },
       )
     val consumers = List(300) { binding("Consumer$it", "Missing") }
     fixture.put(*consumers.toTypedArray())
@@ -399,7 +399,7 @@ class SuspendBindingWorklistTest {
     )
     val result =
       fixture.analysis.analyzeWithPaths(
-        keys("SecondSource", "FirstSource", "SecondRoot", "FirstRoot")
+        keys("SecondSource", "FirstSource", "SecondRoot", "FirstRoot"),
       )
 
     val firstPath = checkNotNull(result.pathFrom(key("FirstRoot")) { it.typeKey })

@@ -272,7 +272,7 @@ fun interface PrimaryWorkerFactory {
       @JvmStatic
       @JsStatic
       fun create(delegateFactory: SharedWorker.MetroFactory): Provider<PrimaryWorkerFactory> {
-        return InstanceFactory/* companion */.invoke<PrimaryWorkerFactory>(value = Impl(delegateFactory = delegateFactory))
+        return providerOf<PrimaryWorkerFactory>(value = Impl(delegateFactory = delegateFactory))
       }
 
     }
@@ -307,7 +307,7 @@ fun interface SecondaryWorkerFactory {
       @JvmStatic
       @JsStatic
       fun create(delegateFactory: SharedWorker.MetroFactory): Provider<SecondaryWorkerFactory> {
-        return InstanceFactory/* companion */.invoke<SecondaryWorkerFactory>(value = Impl(delegateFactory = delegateFactory))
+        return providerOf<SecondaryWorkerFactory>(value = Impl(delegateFactory = delegateFactory))
       }
 
     }
@@ -345,12 +345,9 @@ interface TestGraph {
     private class Shard1 {
       internal val provider: Provider<Config>
 
-      internal val graph: Impl
-
       constructor(graph: Impl) /* primary */ {
         super/*Any*/()
-        <this>.#graph = graph
-        <this>.#provider = DoubleCheck/* companion */.provider<Provider<Config>, Config>(delegate = Config.MetroFactory/* companion */.create(example = InstanceFactory/* companion */.invoke<ProvidedExample>(value = <this>.#graph.#instance)))
+        <this>.#provider = provider<Provider<Config>, Config>(delegate = create(example = providerOf<ProvidedExample>(value = graph.#instance)))
       }
 
     }
@@ -360,13 +357,10 @@ interface TestGraph {
 
       internal val provider2: Provider<Service>
 
-      internal val graph: Impl
-
       constructor(graph: Impl) /* primary */ {
         super/*Any*/()
-        <this>.#graph = graph
-        <this>.#provider = DoubleCheck/* companion */.provider<Provider<Repository>, Repository>(delegate = Repository.MetroFactory/* companion */.create(config = <this>.#graph.#shard1.#provider))
-        <this>.#provider2 = DoubleCheck/* companion */.provider<Provider<Service>, Service>(delegate = Service.MetroFactory/* companion */.create(repository = <this>.#provider))
+        <this>.#provider = provider<Provider<Repository>, Repository>(delegate = create(config = graph.#shard1.#provider))
+        <this>.#provider2 = provider<Provider<Service>, Service>(delegate = create(repository = <this>.#provider))
       }
 
     }
@@ -389,12 +383,12 @@ interface TestGraph {
 
     override val primaryWorkerFactory: PrimaryWorkerFactory
       override get(): PrimaryWorkerFactory {
-        return PrimaryWorkerFactory.Impl/* companion */.create(delegateFactory = SharedWorker.MetroFactory/* companion */.create(service = <this>.#shard2.#provider2)).invoke()
+        return create(delegateFactory = create(service = <this>.#shard2.#provider2)).invoke()
       }
 
     override val secondaryWorkerFactory: SecondaryWorkerFactory
       override get(): SecondaryWorkerFactory {
-        return SecondaryWorkerFactory.Impl/* companion */.create(delegateFactory = SharedWorker.MetroFactory/* companion */.create(service = <this>.#shard2.#provider2)).invoke()
+        return create(delegateFactory = create(service = <this>.#shard2.#provider2)).invoke()
       }
 
     override val service: Service

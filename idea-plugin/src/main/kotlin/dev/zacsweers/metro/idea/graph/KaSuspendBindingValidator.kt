@@ -114,13 +114,13 @@ internal class KaSuspendBindingValidator(
                 SuspendMemberInjectionMetadata(
                   subject = "'$typeName' member injection",
                   dependencies = binding.memberDependencies,
-                )
+                ),
               )
               add(
                 SuspendMemberInjectionMetadata(
                   subject = "'$typeName' has @Inject members and",
                   dependencies = binding.constructorDependencies,
-                )
+                ),
               )
             }
           }
@@ -132,7 +132,7 @@ internal class KaSuspendBindingValidator(
               SuspendMemberInjectionMetadata(
                 subject = "'${binding.implementationName ?: "assisted target"}' member injection",
                 dependencies = binding.targetMemberDependencies,
-              )
+              ),
             )
           }
         else -> emptyList()
@@ -167,7 +167,7 @@ internal class KaSuspendBindingValidator(
   }
 
   private fun issueStack(
-    issue: SuspendValidationIssue<KaTypeKey, KaContextualTypeKey, KaBinding, ConsumerEntry>
+    issue: SuspendValidationIssue<KaTypeKey, KaContextualTypeKey, KaBinding, ConsumerEntry>,
   ): KaBindingStack {
     val stack = KaBindingStack(graph)
     val path = issue.path
@@ -197,7 +197,7 @@ internal class KaSuspendBindingValidator(
       val binding = bindings[edge.consumerKey] ?: break
       stack.push(
         KaBindingStack.Entry.injectedAt(edge.dependency, binding, sources.location(binding))
-          .withTrailingComment(NEEDS_SUSPEND_SUPPORT)
+          .withTrailingComment(NEEDS_SUSPEND_SUPPORT),
       )
     }
     if (path.sourceIsSuspend) {

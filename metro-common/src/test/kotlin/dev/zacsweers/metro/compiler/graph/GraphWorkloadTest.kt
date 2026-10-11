@@ -65,7 +65,8 @@ class GraphWorkloadTest : TraceScope by TraceScope.noop() {
       assertThat(lazyKey in graph).isFalse()
     }
 
-    val topology = graph.seal(roots = workload.roots, shrinkUnusedBindings = true)
+    val prepared = graph.prepareSeal(roots = workload.roots, shrinkUnusedBindings = true)
+    val topology = prepared.finish(prepared.analyze())
 
     assertThat(discovered).containsExactlyElementsIn(workload.lazyBindingsByKey.keys)
     assertThat(topology.reachableKeys).containsExactlyElementsIn(workload.reachableKeys)
@@ -76,8 +77,12 @@ class GraphWorkloadTest : TraceScope by TraceScope.noop() {
   @Test
   fun `unreachable bindings are retained only when shrinking is disabled`() {
     val workload = GraphWorkload.generate(GraphWorkloadSpec(size = 100))
-    val pruned = workload.newGraph().seal(roots = workload.roots, shrinkUnusedBindings = true)
-    val complete = workload.newGraph().seal(roots = workload.roots, shrinkUnusedBindings = false)
+    val prunedSeal =
+      workload.newGraph().prepareSeal(roots = workload.roots, shrinkUnusedBindings = true)
+    val pruned = prunedSeal.finish(prunedSeal.analyze())
+    val completeSeal =
+      workload.newGraph().prepareSeal(roots = workload.roots, shrinkUnusedBindings = false)
+    val complete = completeSeal.finish(completeSeal.analyze())
 
     assertThat(pruned.sortedKeys).containsNoneIn(workload.unreachableKeys)
     assertThat(complete.sortedKeys).containsAtLeastElementsIn(workload.unreachableKeys)

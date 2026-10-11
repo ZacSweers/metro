@@ -35,7 +35,7 @@ interface AppGraph {
 
     override val longProvider2: Function0<Long>
       override get(): Function0<Long> {
-        return <this>.#longInstanceProvider
+        return <this>.<get-longProvider>()
       }
 
   }

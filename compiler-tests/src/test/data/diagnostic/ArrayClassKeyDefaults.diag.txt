@@ -1,0 +1,11 @@
+/ArrayClassKeyDefaults.kt:11:25: warning: kotlinc can read `Strings::class` as `String::class` when reading annotations from another module. This can make distinct qualifier values, map keys, or scopes match. Use a dedicated non-array key class.
+
+/ArrayClassKeyDefaults.kt:16:25: warning: kotlinc can read `IntMatrix::class` as `IntArray::class` when reading annotations from another module. This can make distinct qualifier values, map keys, or scopes match. Use a dedicated non-array key class.
+
+/ArrayClassKeyDefaults.kt:21:51: warning: kotlinc can read `Strings::class` as `String::class` when reading annotations from another module. This can make distinct qualifier values, map keys, or scopes match. Use a dedicated non-array key class.
+
+/ArrayClassKeyDefaults.kt:37:1: warning: kotlinc can read `Strings::class` as `String::class` when reading annotations from another module. This can make distinct qualifier values, map keys, or scopes match. Use a dedicated non-array key class.
+
+/ArrayClassKeyDefaults.kt:45:31: warning: kotlinc can read `Strings::class` as `String::class` when reading annotations from another module. This can make distinct qualifier values, map keys, or scopes match. Use a dedicated non-array key class.
+
+/ArrayClassKeyDefaults.kt:65:1: warning: kotlinc can read `Strings::class` as `String::class` when reading annotations from another module. This can make distinct qualifier values, map keys, or scopes match. Use a dedicated non-array key class.

@@ -1,0 +1,632 @@
+@Inject
+class IntsConsumer {
+  val ints: Set<Int>
+    field = ints
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<IntsConsumer> {
+    private /* final field */ val ints: Provider<Set<Int>> = ints
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(ints: Provider<Set<Int>>): MetroFactory {
+        return MetroFactory(ints = ints)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(ints: Set<Int>): IntsConsumer {
+        return IntsConsumer(ints = ints)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(ints: Provider<Set<Int>>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(ints: Set<Int>): IntsConsumer {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): IntsConsumer {
+      return MetroFactory/* companion */.newInstance(ints = <this>.#ints.invoke())
+    }
+
+  }
+
+  constructor(ints: Set<Int>) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@Inject
+class StringsConsumer {
+  val strings: Set<String>
+    field = strings
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<StringsConsumer> {
+    private /* final field */ val strings: Provider<Set<String>> = strings
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(strings: Provider<Set<String>>): MetroFactory {
+        return MetroFactory(strings = strings)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(strings: Set<String>): StringsConsumer {
+        return StringsConsumer(strings = strings)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(strings: Provider<Set<String>>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(strings: Set<String>): StringsConsumer {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): StringsConsumer {
+      return MetroFactory/* companion */.newInstance(strings = <this>.#strings.invoke())
+    }
+
+  }
+
+  constructor(strings: Set<String>) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@DependencyGraph
+interface AppGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : AppGraph {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override val intsConsumer: IntsConsumer
+      override get(): IntsConsumer {
+        return IntsConsumer(ints = <this>.<get-setOfInt>())
+      }
+
+    override val longs: Set<Long>
+      override get(): Set<Long> {
+        return { // BLOCK
+          buildSet<Long>(capacity = 3, builderAction = local fun MutableSet<Long>.<anonymous>() {
+            $receiver.add(element = <this>.provideLong1())
+            $receiver.add(element = <this>.provideLong2())
+            $receiver.add(element = <this>.provideLong3())
+          }
+)
+        }
+      }
+
+    private val setOfInt: Set<Int>
+      private get(): Set<Int> {
+        return { // BLOCK
+          buildSet<Int>(capacity = 3, builderAction = local fun MutableSet<Int>.<anonymous>() {
+            $receiver.add(element = <this>.provideInt3())
+            $receiver.add(element = <this>.provideInt2())
+            $receiver.add(element = <this>.provideInt1())
+          }
+)
+        }
+      }
+
+    override val stringsConsumer: StringsConsumer
+      override get(): StringsConsumer {
+        return StringsConsumer(strings = { // BLOCK
+          buildSet<String>(capacity = 2, builderAction = local fun MutableSet<String>.<anonymous>() {
+            $receiver.add(element = <this>.provideString1())
+            $receiver.add(element = <this>.provideString2())
+          }
+)
+        })
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
+    operator fun invoke(): AppGraph {
+      return Impl()
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideInt1", propertyName = "", startOffset = 372, endOffset = 417, newInstanceName = "provideInt1")
+  class ProvideInt1MetroFactory : Factory<Int> {
+    private /* final field */ val instance: AppGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(instance: AppGraph): ProvideInt1MetroFactory {
+        return ProvideInt1MetroFactory(instance = instance)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun provideInt1(instance: AppGraph): Int {
+        return instance.provideInt1()
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(instance: AppGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @IntoSet
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): Int {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Int {
+      return ProvideInt1MetroFactory/* companion */.provideInt1(instance = <this>.#instance)
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideInt2", propertyName = "", startOffset = 420, endOffset = 465, newInstanceName = "provideInt2")
+  class ProvideInt2MetroFactory : Factory<Int> {
+    private /* final field */ val instance: AppGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(instance: AppGraph): ProvideInt2MetroFactory {
+        return ProvideInt2MetroFactory(instance = instance)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun provideInt2(instance: AppGraph): Int {
+        return instance.provideInt2()
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(instance: AppGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @IntoSet
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): Int {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Int {
+      return ProvideInt2MetroFactory/* companion */.provideInt2(instance = <this>.#instance)
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideInt3", propertyName = "", startOffset = 468, endOffset = 513, newInstanceName = "provideInt3")
+  class ProvideInt3MetroFactory : Factory<Int> {
+    private /* final field */ val instance: AppGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(instance: AppGraph): ProvideInt3MetroFactory {
+        return ProvideInt3MetroFactory(instance = instance)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun provideInt3(instance: AppGraph): Int {
+        return instance.provideInt3()
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(instance: AppGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @IntoSet
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): Int {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Int {
+      return ProvideInt3MetroFactory/* companion */.provideInt3(instance = <this>.#instance)
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideLong1", propertyName = "", startOffset = 517, endOffset = 565, newInstanceName = "provideLong1")
+  class ProvideLong1MetroFactory : Factory<Long> {
+    private /* final field */ val instance: AppGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(instance: AppGraph): ProvideLong1MetroFactory {
+        return ProvideLong1MetroFactory(instance = instance)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun provideLong1(instance: AppGraph): Long {
+        return instance.provideLong1()
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(instance: AppGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @IntoSet
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): Long {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Long {
+      return ProvideLong1MetroFactory/* companion */.provideLong1(instance = <this>.#instance)
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideLong2", propertyName = "", startOffset = 568, endOffset = 616, newInstanceName = "provideLong2")
+  class ProvideLong2MetroFactory : Factory<Long> {
+    private /* final field */ val instance: AppGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(instance: AppGraph): ProvideLong2MetroFactory {
+        return ProvideLong2MetroFactory(instance = instance)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun provideLong2(instance: AppGraph): Long {
+        return instance.provideLong2()
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(instance: AppGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @IntoSet
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): Long {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Long {
+      return ProvideLong2MetroFactory/* companion */.provideLong2(instance = <this>.#instance)
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideLong3", propertyName = "", startOffset = 619, endOffset = 667, newInstanceName = "provideLong3")
+  class ProvideLong3MetroFactory : Factory<Long> {
+    private /* final field */ val instance: AppGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(instance: AppGraph): ProvideLong3MetroFactory {
+        return ProvideLong3MetroFactory(instance = instance)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun provideLong3(instance: AppGraph): Long {
+        return instance.provideLong3()
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(instance: AppGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @IntoSet
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): Long {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Long {
+      return ProvideLong3MetroFactory/* companion */.provideLong3(instance = <this>.#instance)
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideString1", propertyName = "", startOffset = 671, endOffset = 724, newInstanceName = "provideString1")
+  class ProvideString1MetroFactory : Factory<String> {
+    private /* final field */ val instance: AppGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(instance: AppGraph): ProvideString1MetroFactory {
+        return ProvideString1MetroFactory(instance = instance)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun provideString1(instance: AppGraph): String {
+        return instance.provideString1()
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(instance: AppGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @IntoSet
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): String {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): String {
+      return ProvideString1MetroFactory/* companion */.provideString1(instance = <this>.#instance)
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideString2", propertyName = "", startOffset = 727, endOffset = 780, newInstanceName = "provideString2")
+  class ProvideString2MetroFactory : Factory<String> {
+    private /* final field */ val instance: AppGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(instance: AppGraph): ProvideString2MetroFactory {
+        return ProvideString2MetroFactory(instance = instance)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun provideString2(instance: AppGraph): String {
+        return instance.provideString2()
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(instance: AppGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @IntoSet
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): String {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): String {
+      return ProvideString2MetroFactory/* companion */.provideString2(instance = <this>.#instance)
+    }
+
+  }
+
+  @Provides
+  @IntoSet
+  fun provideInt1(): Int {
+    return 1
+  }
+
+  @Provides
+  @IntoSet
+  fun provideInt2(): Int {
+    return 2
+  }
+
+  @Provides
+  @IntoSet
+  fun provideInt3(): Int {
+    return 3
+  }
+
+  @Provides
+  @IntoSet
+  fun provideLong1(): Long {
+    return 1L
+  }
+
+  @Provides
+  @IntoSet
+  fun provideLong2(): Long {
+    return 2L
+  }
+
+  @Provides
+  @IntoSet
+  fun provideLong3(): Long {
+    return 3L
+  }
+
+  @Provides
+  @IntoSet
+  fun provideString1(): String {
+    return "1"
+  }
+
+  @Provides
+  @IntoSet
+  fun provideString2(): String {
+    return "2"
+  }
+
+  abstract val intsConsumer: IntsConsumer
+    abstract get
+
+  abstract val longs: Set<Long>
+    abstract get
+
+  abstract val stringsConsumer: StringsConsumer
+    abstract get
+
+}
+

@@ -3,8 +3,14 @@
 package dev.zacsweers.metro.compiler
 
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
 import java.util.concurrent.ForkJoinPool
+import java.util.concurrent.TimeUnit.MILLISECONDS
+import java.util.concurrent.TimeUnit.SECONDS
+import java.util.concurrent.TimeoutException
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 import org.junit.After
 import org.junit.Before
@@ -59,11 +65,12 @@ class ParallelMapTest {
     val threadsUsed = ConcurrentHashMap.newKeySet<Thread>()
     val input = (1..20).toList()
 
-    input.parallelMap(pool) {
-      threadsUsed.add(Thread.currentThread())
-      Thread.sleep(50)
-      it
-    }
+    val _ =
+      input.parallelMap(pool) {
+        threadsUsed.add(Thread.currentThread())
+        Thread.sleep(50)
+        it
+      }
 
     assertTrue(threadsUsed.size > 1, "Expected multiple threads, got ${threadsUsed.size}")
   }
@@ -84,15 +91,61 @@ class ParallelMapTest {
   fun `transform exceptions propagate`() {
     val input = listOf(1, 2, 3, 4, 5)
     try {
-      input.parallelMap(pool) {
-        if (it == 3) throw IllegalStateException("boom")
-        it
-      }
+      val _ =
+        input.parallelMap(pool) {
+          if (it == 3) {
+            throw IllegalStateException("boom")
+          }
+          it
+        }
       throw AssertionError("Expected exception")
     } catch (e: Exception) {
       val cause = if (e.cause is IllegalStateException) e.cause!! else e
       assertTrue(cause is IllegalStateException)
       assertEquals("boom", cause.message)
+    }
+  }
+
+  @Test
+  fun `failures wait for remaining work and retain later failures`() {
+    val caller = Executors.newSingleThreadExecutor()
+    val secondStarted = CountDownLatch(1)
+    val firstFailed = CountDownLatch(1)
+    val finishSecond = CountDownLatch(1)
+    val secondFinished = CountDownLatch(1)
+    val firstFailure = IllegalStateException("first task failed")
+    val secondFailure = AssertionError("second task failed")
+    try {
+      val result =
+        caller.submit<IllegalStateException> {
+          assertFailsWith<IllegalStateException> {
+            listOf(1, 2).parallelMap(pool) { item ->
+              if (item == 1) {
+                assertTrue(secondStarted.await(5, SECONDS))
+                firstFailed.countDown()
+                throw firstFailure
+              }
+              secondStarted.countDown()
+              assertTrue(finishSecond.await(5, SECONDS))
+              secondFinished.countDown()
+              throw secondFailure
+            }
+          }
+        }
+
+      assertTrue(firstFailed.await(5, SECONDS))
+      // Hold the second task open while checking that the caller is still waiting.
+      assertFailsWith<TimeoutException> { result.get(100, MILLISECONDS) }
+      finishSecond.countDown()
+
+      val failure = result.get(5, SECONDS)
+      assertEquals(0L, secondFinished.count)
+      assertTrue(failure === firstFailure || failure.cause === firstFailure)
+      val suppressed = failure.suppressed.single()
+      assertTrue(suppressed === secondFailure || suppressed.cause === secondFailure)
+    } finally {
+      finishSecond.countDown()
+      caller.shutdownNow()
     }
   }
 
@@ -116,11 +169,12 @@ class ParallelMapTest {
     val processedBy = ConcurrentHashMap<Int, String>()
     val input = (1..40).toList()
 
-    input.parallelMap(pool) {
-      processedBy[it] = Thread.currentThread().name
-      Thread.sleep(5)
-      it
-    }
+    val _ =
+      input.parallelMap(pool) {
+        processedBy[it] = Thread.currentThread().name
+        Thread.sleep(5)
+        it
+      }
 
     // Every item should have been processed
     assertEquals(input.toSet(), processedBy.keys)

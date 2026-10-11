@@ -86,7 +86,7 @@ internal fun KaSession.contributionMapKeyChoices(
           if (builtInIndex >= 0) builtInIndex else Int.MAX_VALUE
         },
         { (classId, _) -> classId.asFqNameString() },
-      )
+      ),
     )
   return sortedChoices.map { it.second }
 }
@@ -151,7 +151,7 @@ private fun KaSession.mapKeyCandidateIds(
           }
           super.visitTypeAlias(typeAlias)
         }
-      }
+      },
     )
   }
 

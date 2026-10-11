@@ -72,7 +72,7 @@ class MetroFirDiagnosticsHandler(testServices: TestServices) : FirAnalysisHandle
     val testDataFile = testServices.moduleStructure.originalTestDataFiles.first()
     val expectedFile =
       testDataFile.parentFile.resolve(
-        "${testDataFile.nameWithoutExtension.removeSuffix(".fir")}.diag.txt"
+        "${testDataFile.nameWithoutExtension.removeSuffix(".fir")}.diag.txt",
       )
     if (DiagnosticsDirectives.RENDER_DIAGNOSTICS_FULL_TEXT !in directives) {
       if (DiagnosticsDirectives.RENDER_ALL_DIAGNOSTICS_FULL_TEXT !in directives) {
@@ -113,7 +113,7 @@ class MetroFirDiagnosticsHandler(testServices: TestServices) : FirAnalysisHandle
           )
         }
         .sortedWith(
-          compareBy<DiagnosticData> { it.textRanges.first().startOffset }.thenBy { it.message }
+          compareBy<DiagnosticData> { it.textRanges.first().startOffset }.thenBy { it.message },
         )
 
     return testServices.sourceFileProvider

@@ -132,7 +132,7 @@ class MetroMultibindsQuickFixTest : BasePlatformTestCase() {
       }
       @DependencyGraph(bindingContainers = [First::class, Second::class])
       interface AppGraph { val values: Set<String> }
-      """
+      """,
       )
     assertNoEditTarget(validate(file))
     assertEmpty(myFixture.filterAvailableIntentions(FIX_NAME))
@@ -145,7 +145,7 @@ class MetroMultibindsQuickFixTest : BasePlatformTestCase() {
           """
         @DependencyGraph(bindingContainers = [libtest.LibMultibindsDeclarations::class])
         interface AppGraph { val <caret>values: Set<String> }
-        """
+        """,
         )
       assertNoEditTarget(validate(file))
       assertEmpty(myFixture.filterAvailableIntentions(FIX_NAME))
@@ -208,7 +208,7 @@ class MetroMultibindsQuickFixTest : BasePlatformTestCase() {
     }
     @DependencyGraph(bindingContainers = [Declarations::class])
     interface AppGraph { val values: Set<String> }
-    """
+    """,
     )
 
   private fun validate(file: KtFile): KaGraphValidationResult.Completed {

@@ -34,10 +34,10 @@ import dev.zacsweers.metro.compiler.ir.originContextOrNull
 import dev.zacsweers.metro.compiler.ir.originOrNull
 import dev.zacsweers.metro.compiler.ir.overriddenSymbolsSequence
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
-import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
+import dev.zacsweers.metro.compiler.ir.renderSourceLocation
 import dev.zacsweers.metro.compiler.ir.requireSimpleType
 import dev.zacsweers.metro.compiler.ir.scopeOrNull
 import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
@@ -50,9 +50,9 @@ import dev.zacsweers.metro.compiler.tracing.trace
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
-import org.jetbrains.kotlin.ir.irAttribute
 import org.jetbrains.kotlin.ir.types.typeWithArguments
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
+import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.name.ClassId
@@ -213,8 +213,8 @@ internal class BindingGraphGenerator(
         add(ProviderFactoryCandidate(factory, isLocallyDeclared = false))
       }
     }
-      // Keep local provenance when the same declaration is also inherited.
-      .distinctBy { it.factory }
+    // Keep local provenance when the same declaration is also inherited.
+    .distinctBy { it.factory }
 
     // Collect binds candidates (flatten from lists).
     val bindsCallableCandidates = buildList {
@@ -226,8 +226,8 @@ internal class BindingGraphGenerator(
         add(BindsCallableCandidate(callable, isLocallyDeclared = false))
       }
     }
-      // Keep local provenance when the same declaration is also inherited.
-      .distinctBy { it.callable }
+    // Keep local provenance when the same declaration is also inherited.
+    .distinctBy { it.callable }
 
     val lowerPriorityDeclarations =
       trace("Select contribution priorities") {
@@ -237,7 +237,7 @@ internal class BindingGraphGenerator(
     val ownProviderFactoryCount = node.providerFactories.values.sumOf { it.size }
     val inheritedProviderFactoryCount = inheritedProviderFactories.size
     trace(
-      "Collect provider factories (own=$ownProviderFactoryCount, inh=$inheritedProviderFactoryCount)"
+      "Collect provider factories (own=$ownProviderFactoryCount, inh=$inheritedProviderFactoryCount)",
     ) {
       for ((providerFactory, isLocallyDeclared) in providerFactoryCandidates) {
         if (providerFactory in lowerPriorityDeclarations) {
@@ -289,18 +289,8 @@ internal class BindingGraphGenerator(
           }
         }
 
-        val contextKey = IrContextualTypeKey(targetTypeKey)
-
-        // Use cached binding if available, otherwise create and cache
-        val binding =
-          providerFactory.factoryClass.cachedProvidedBinding
-            ?: IrBinding.Provided(
-                providerFactory = providerFactory,
-                contextualTypeKey = contextKey,
-                parameters = providerFactory.parameters,
-                annotations = providerFactory.annotations,
-              )
-              .also { providerFactory.factoryClass.cachedProvidedBinding = it }
+        // Generic factory views share an IR class and own bindings with different parameter types.
+        val binding = providerFactory.providedBinding
 
         // Add the binding to the lookup (duplicates tracked as lists)
         putBinding(binding.typeKey, isLocallyDeclared = isLocallyDeclared, binding)
@@ -375,19 +365,7 @@ internal class BindingGraphGenerator(
               bindingLookup.createExplicitConstructorInjectedBinding(bindsCallable)
             }
           } else {
-            val signatureFunction = bindsCallable.callableMetadata.signatureFunction
-            // Use cached binding if available, otherwise create and cache
-            signatureFunction.cachedAliasBinding
-              ?: trace("Resolve binds alias binding") {
-                val parameters = bindsCallable.function.parameters()
-                IrBinding.Alias(
-                    typeKey = targetTypeKey,
-                    aliasedType = source,
-                    bindsCallable = bindsCallable,
-                    parameters = parameters,
-                  )
-                  .also { signatureFunction.cachedAliasBinding = it }
-              }
+            trace("Resolve binds alias binding") { bindsCallable.aliasBinding }
           }
 
         // Add the binding to the lookup (duplicates tracked as lists)
@@ -437,7 +415,7 @@ internal class BindingGraphGenerator(
             if (regularGraph != rawType) {
               val keyType =
                 regularGraph.symbol.typeWithArguments(
-                  creatorParam.type.requireSimpleType(creatorParam.ir).arguments
+                  creatorParam.type.requireSimpleType(creatorParam.ir).arguments,
                 )
               val typeKey = IrTypeKey(keyType)
               @Suppress("RETURN_VALUE_NOT_USED") superTypeToAlias.putIfAbsent(typeKey, paramTypeKey)
@@ -563,19 +541,20 @@ internal class BindingGraphGenerator(
         addAll(inheritedData.multibindingAccessors)
       }
 
-      for ((contextualTypeKey, getter, _) in accessorsToAdd) {
+      for (accessor in accessorsToAdd) {
+        val (contextualTypeKey, getter, _) = accessor
         val multibinds = getter.annotations.multibinds
         val isMultibindingDeclaration = multibinds != null
 
         if (isMultibindingDeclaration) {
           graph.addAccessor(
-            contextualTypeKey,
+            accessor,
             IrBindingStack.Entry.requestedAt(contextualTypeKey, getter.ir),
           )
           registerMultibindsDeclaration(contextualTypeKey, getter.ir, multibinds)
         } else {
           graph.addAccessor(
-            contextualTypeKey,
+            accessor,
             IrBindingStack.Entry.requestedAt(contextualTypeKey, getter.ir),
           )
         }
@@ -706,7 +685,7 @@ internal class BindingGraphGenerator(
             if (regularGraph != parentNode.sourceGraph) {
               val keyType =
                 regularGraph.symbol.typeWithArguments(
-                  parentNode.typeKey.type.requireSimpleType().arguments
+                  parentNode.typeKey.type.requireSimpleType().arguments,
                 )
               val typeKey = IrTypeKey(keyType)
               @Suppress("RETURN_VALUE_NOT_USED") superTypeToAlias.putIfAbsent(typeKey, parentKey)
@@ -804,7 +783,7 @@ internal class BindingGraphGenerator(
 
   /** Resolves generated providers through their existing contribution-provider `@Origin`. */
   private fun ProviderFactoryCandidate.priorityCandidate(
-    priorityProcessing: IrPriorityProcessing
+    priorityProcessing: IrPriorityProcessing,
   ): PriorityCandidate? {
     val providerFactory = factory
     if (providerFactory.isDynamic || providerFactory.typeKey in node.dynamicTypeKeys) return null
@@ -844,7 +823,7 @@ internal class BindingGraphGenerator(
 
   /** Resolves generated aliases through their original contributed `@Binds` declaration. */
   private fun BindsCallableCandidate.priorityCandidate(
-    priorityProcessing: IrPriorityProcessing
+    priorityProcessing: IrPriorityProcessing,
   ): PriorityCandidate? {
     val bindsCallable = callable
     if (bindsCallable.isDynamic || bindsCallable.typeKey in node.dynamicTypeKeys) return null
@@ -993,7 +972,7 @@ internal class BindingGraphGenerator(
                 factory.realDeclaration as? IrDeclarationWithName ?: factory.function,
                 BindingReason.PRIVATE_TO_GRAPH,
                 extendedNode.typeKey,
-              )
+              ),
             )
             continue
           }
@@ -1042,7 +1021,7 @@ internal class BindingGraphGenerator(
                 callable.resolveSourceDeclaration().first,
                 BindingReason.PRIVATE_TO_GRAPH,
                 extendedNode.typeKey,
-              )
+              ),
             )
             continue
           }
@@ -1087,7 +1066,16 @@ internal class BindingGraphGenerator(
       for (accessor in extendedNode.accessors) {
         if (accessor.contextKey.typeKey in extendedNode.graphPrivateKeys) continue
         if (accessor.metroFunction.annotations.isMultibinds) {
-          multibindingAccessors.add(accessor)
+          val function = accessor.metroFunction.ir
+          val property = function.correspondingPropertySymbol?.owner
+          val declaration = (property ?: function).originalDeclarationIfOverride()
+          multibindingAccessors.add(
+            accessor.copy(
+              declaringGraph = extendedNode.sourceGraph.kotlinFqName.asString(),
+              declaringType = declaration.parentAsClass.kotlinFqName.asString(),
+              origin = declaration.renderSourceLocation(short = true),
+            ),
+          )
         }
       }
     }
@@ -1206,11 +1194,3 @@ private data class InheritedGraphData(
   val supertypeAliases: Map<IrTypeKey, IrTypeKey>,
   val multibindingAccessors: List<GraphAccessor>,
 )
-
-/** Cached [IrBinding.Alias] binding for this binds callable's mirror function. */
-internal var IrSimpleFunction.cachedAliasBinding: IrBinding.Alias? by
-  irAttribute(copyByDefault = false)
-
-/** Cached [IrBinding.Provided] binding for this provider factory class. */
-internal var IrClass.cachedProvidedBinding: IrBinding.Provided? by
-  irAttribute(copyByDefault = false)

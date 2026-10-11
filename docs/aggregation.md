@@ -34,6 +34,51 @@ interface TestNetworkProviders {
 }
 ```
 
+## Checking for hidden contributions
+
+A graph can miss contributions when an upstream project's `implementation` dependencies are hidden from its compile classpath. The Metro Gradle plugin has an opt-in check for this. Run it on the project that owns the graph, including on CI:
+
+```shell
+./gradlew :app:checkMainMetroHiddenDependencies
+```
+
+Task names include the target and compilation when present. For example, KMP JVM uses `checkJvmMainMetroHiddenDependencies` and an Android debug compilation uses `checkDebugMetroHiddenDependencies`. Each check resolves just that compilation's dependencies. The graph project itself can have compilation errors and still run the check. Local dependencies may need to compile before their hints can be inspected.
+
+To run these checks automatically, enable `checkOnCompile` in the graph project's `metro.hiddenDependencies` DSL:
+
+```kotlin
+@OptIn(ExperimentalMetroGradleApi::class)
+metro {
+  hiddenDependencies {
+    checkOnCompile.set(true)
+  }
+}
+```
+
+Each supported Kotlin compilation task runs its associated check as a Gradle finalizer, including when compilation fails or is up to date. This option is experimental and disabled by default. It may be enabled by default in a future release. You can also enable it with the `metro.hiddenDependencies.checkOnCompile=true` Gradle property.
+
+The report lists the resolved dependency, a path through the runtime dependency graph, and matching hint entries. Add the reported dependency directly in the graph project, or expose it with `api` upstream if it belongs in that project's public API.
+
+By default any Metro hints count. You can limit checks with `hiddenDependencies.scopes` using Kotlin ClassId strings. Slashes separate package segments and dots separate nested classes:
+
+```kotlin
+@OptIn(ExperimentalMetroGradleApi::class)
+metro {
+  hiddenDependencies {
+    scopes.addAll("dev/zacsweers/metro/AppScope", "com/example/Scopes.User")
+  }
+}
+```
+
+!!! tip "Interop"
+    With `includeHilt()`, the check also reads Hilt's `hilt_aggregated_deps` markers.
+    
+    Hilt markers name the components they install into. A standard Hilt component matches its canonical scope, so `javax/inject/Singleton` selects `SingletonComponent` markers. To select a custom `@DefineComponent`, add the component's own ClassId.
+
+Each check writes its report to `build/reports/metro/<target>/<compilation>/hidden-dependencies.txt` and fails if it finds hidden contributions. An empty file means the check passed. A blank target is omitted. Successful checks can be reused from Gradle's build cache.
+
+The check currently covers JVM and Android artifacts, including JVM targets in KMP projects. Other KMP platforms are outside its current scope. A finding means a dependency advertises contribution hints. The compiler remains responsible for scope and Kotlin visibility rules. Dependencies without hints can still be needed for types referenced by bindings.
+
 ## @ContributesTo
 
 This annotation is used to contribute graph interfaces to the target scope to be merged in at graph-processing time to the final merged graph class as another supertype.

@@ -1,15 +1,22 @@
 {
   "graph": "parity.composition.AppGraph",
+  "includedGraphKeys": [
+    "parity.composition.ExternalDependencies"
+  ],
   "scopes": [],
   "aggregationScopes": [],
   "roots": {
     "accessors": [
       {
         "key": "kotlin.String",
+        "name": "endpoint",
+        "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "parity.composition.Box<kotlin.Int>",
+        "name": "box",
+        "isProperty": true,
         "isDeferrable": false
       }
     ],
@@ -34,6 +41,7 @@
     "enableGraphSharding": true,
     "keysPerGraphShard": 2000,
     "mergedSupertypeChunkSize": 0,
+    "multibindingGetterThreshold": 25,
     "enableSwitchingProviders": false,
     "publicScopedProviderSeverity": "NONE",
     "nonPublicContributionSeverity": "NONE",
@@ -93,7 +101,8 @@
     "generateStaticAnnotations": true,
     "enableRuntimeTracing": false,
     "memberNamingStrategy": "DESCRIPTIVE",
-    "maxGeneratedClassNameLength": 233
+    "maxGeneratedClassNameLength": 233,
+    "diagnosticLevels": {}
   },
   "stats": {
     "providerFactories": 2,
@@ -126,7 +135,11 @@
       "shardsGenerated": 0,
       "shardedSupertypes": 0,
       "shardedInitFunctions": 0,
-      "providerInlines": 0
+      "providerInlines": 0,
+      "providerInlineFallbacks": {
+        "deferredAccess": 0,
+        "unavailableValue": 0
+      }
     }
   },
   "bindings": [
@@ -149,6 +162,11 @@
       "bindingKind": "GraphDependency",
       "isScoped": false,
       "nameHint": "ExternalDependenciesEndpoint",
+      "graphDependency": {
+        "ownerKey": "parity.composition.ExternalDependencies",
+        "ownerGraph": "parity.composition.ExternalDependencies",
+        "fromParent": false
+      },
       "dependencies": [
         {
           "key": "parity.composition.ExternalDependencies",
@@ -181,6 +199,7 @@
       "bindingKind": "BoundInstance",
       "isScoped": false,
       "nameHint": "ExternalDependenciesProvider",
+      "isGraphInput": true,
       "dependencies": [],
       "isSynthetic": false,
       "declaration": "dependencies"
@@ -190,6 +209,7 @@
       "bindingKind": "BoundInstance",
       "isScoped": false,
       "nameHint": "bindingsInstance",
+      "isGraphInput": true,
       "dependencies": [],
       "isSynthetic": false,
       "declaration": "bindings"

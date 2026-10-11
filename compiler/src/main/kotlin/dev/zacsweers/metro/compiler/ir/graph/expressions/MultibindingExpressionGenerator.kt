@@ -18,6 +18,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireSimpleType
+import dev.zacsweers.metro.compiler.ir.resolveImplicitClassKeyType
 import dev.zacsweers.metro.compiler.ir.shouldUnwrapMapKeyValues
 import dev.zacsweers.metro.compiler.ir.stripIfLazy
 import dev.zacsweers.metro.compiler.ir.stripSuspendProvider
@@ -49,12 +50,11 @@ import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.types.typeWithArguments
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
-import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.nonDispatchParameters
 import org.jetbrains.kotlin.platform.isJs
 
 internal class MultibindingExpressionGenerator(
-  private val parentGenerator: BindingExpressionGenerator<IrBinding>
+  private val parentGenerator: BindingExpressionGenerator<IrBinding>,
 ) :
   BindingExpressionGenerator<IrBinding.Multibinding>(
     parentGenerator,
@@ -190,7 +190,7 @@ internal class MultibindingExpressionGenerator(
                 provider.contextualTypeKey,
                 fieldInitKey,
                 accessType = AccessType.INSTANCE,
-              )
+              ),
             )
           irInvoke(
             callee = callee,
@@ -213,7 +213,7 @@ internal class MultibindingExpressionGenerator(
                       provider.contextualTypeKey,
                       fieldInitKey,
                       accessType = AccessType.INSTANCE,
-                    )
+                    ),
                   )
                   .also(collectionProviderInstanceVars::add)
               }
@@ -242,7 +242,7 @@ internal class MultibindingExpressionGenerator(
                         irInvoke(
                           dispatchReceiver = irGet(collectionProviderVar),
                           callee = metroSymbols.collectionSize,
-                        )
+                        ),
                       ),
                     typeHint = irBuiltIns.intType,
                   )
@@ -270,7 +270,7 @@ internal class MultibindingExpressionGenerator(
                           binding.contextualTypeKey,
                           fieldInitKey,
                           accessType = AccessType.INSTANCE,
-                        )
+                        ),
                       ),
                   )
                 }
@@ -315,34 +315,6 @@ internal class MultibindingExpressionGenerator(
       }
 
     return expression
-  }
-
-  /**
-   * Resolves the implicit class type for a binding with an implicit class key. For injected class
-   * bindings, this is the class itself. For provided/binds bindings, this is the input parameter
-   * type (which should already be populated during contribution code gen for contributions).
-   */
-  private fun resolveImplicitClassKeyType(binding: IrBinding): IrType {
-    return when (binding) {
-      is IrBinding.ConstructorInjected -> binding.type.defaultType
-      is IrBinding.ObjectClass -> binding.type.defaultType
-      is IrBinding.Alias -> binding.aliasedType.type.rawType().defaultType
-      is IrBinding.Provided -> {
-        // For @Binds, the implicit type is the single value parameter type
-        val function = binding.providerFactory.function
-        val paramType =
-          function.extensionReceiverParameterCompat?.type
-            ?: function.regularParameters.firstOrNull()?.type
-        paramType?.rawType()?.defaultType
-          ?: reportCompilerBug(
-            "Cannot resolve implicit class key type for Provided binding $binding"
-          )
-      }
-      else ->
-        reportCompilerBug(
-          "Implicit class keys are only supported on class, binds, or provided bindings, not ${binding::class}"
-        )
-    }
   }
 
   private fun createKClassReference(type: IrType): IrExpression {
@@ -516,7 +488,7 @@ internal class MultibindingExpressionGenerator(
         return@with with(metroSymbols.providerTypeConverter) {
           invoked.convertTo(
             IrContextualTypeKey(IrTypeKey(irBuiltIns.setClass.typeWith(elementType)))
-              .wrapInProvider()
+              .wrapInProvider(),
           )
         }
       }
@@ -547,7 +519,7 @@ internal class MultibindingExpressionGenerator(
                   provider.contextualTypeKey.wrapInProvider(providerClass),
                   accessType = AccessType.PROVIDER,
                   fieldInitKey = fieldInitKey,
-                )
+                ),
               ),
           )
         }
@@ -565,7 +537,7 @@ internal class MultibindingExpressionGenerator(
                   provider.contextualTypeKey.wrapInProvider(providerClass),
                   accessType = AccessType.PROVIDER,
                   fieldInitKey = fieldInitKey,
-                )
+                ),
               ),
           )
         }
@@ -580,7 +552,7 @@ internal class MultibindingExpressionGenerator(
         +with(metroSymbols.providerTypeConverter) {
           instance.convertTo(
             IrContextualTypeKey(IrTypeKey(irBuiltIns.setClass.typeWith(elementType)))
-              .wrapInProvider()
+              .wrapInProvider(),
           )
         }
       }
@@ -970,7 +942,7 @@ internal class MultibindingExpressionGenerator(
 
           val resultType =
             valueProviderSymbols.canonicalProviderType.typeWithArguments(
-              mapProviderType.requireSimpleType().arguments
+              mapProviderType.requireSimpleType().arguments,
             )
 
           irBlock(resultType = resultType) {

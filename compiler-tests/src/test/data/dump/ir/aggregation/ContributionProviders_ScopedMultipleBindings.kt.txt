@@ -39,6 +39,15 @@ interface Bar {
 interface Foo {
 }
 
+// FILE: ContributionProviders_ScopedMultipleBindings.kt
+@file:JvmName(name = "ImplContributionsToAppScopeDev_zacsweers_metro_AppScopeKt")
+package metro.hints
+
+@Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+fun dev_zacsweers_metro_AppScope(contributed: ImplContributions.ToAppScope) {
+  return error(message = "Never called")
+}
+
 // FILE: ImplContributions.kt
 
 @HiddenFromObjC
@@ -225,13 +234,5 @@ abstract class ImplContributions {
 
   }
 
-}
-
-// FILE: implContributionsToAppScopeDev_zacsweers_metro_AppScope.kt
-package metro.hints
-
-@Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-fun dev_zacsweers_metro_AppScope(contributed: ImplContributions.ToAppScope) {
-  return error(message = "Never called")
 }
 

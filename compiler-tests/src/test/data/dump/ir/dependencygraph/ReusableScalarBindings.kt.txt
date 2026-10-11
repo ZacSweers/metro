@@ -108,9 +108,6 @@ interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
-    private val thisGraphInstance: Impl
-      field = <this>
-
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
@@ -119,27 +116,22 @@ interface AppGraph {
 
     override val double: Double
       override get(): Double {
-        return <this>.#thisGraphInstance.provideDouble(long = <this>.<get-provideLong>(), long2 = <this>.<get-provideLong>())
+        return <this>.provideDouble(long = <this>.<get-provideLong>(), long2 = <this>.<get-provideLong>())
       }
 
     private val provideLong: Long
       private get(): Long {
-        return <this>.#thisGraphInstance.provideLong(int = <this>.#thisGraphInstance.provideInt(), int2 = <this>.#thisGraphInstance.provideInt())
+        return <this>.provideLong(int = <this>.provideInt(), int2 = <this>.provideInt())
       }
 
     override val reused: Reused
       override get(): Reused {
-        return <this>.<get-reused3>()
+        return Reused(nonReused = NonReused())
       }
 
     override val reused2: Reused
       override get(): Reused {
-        return <this>.<get-reused3>()
-      }
-
-    private val reused3: Reused
-      private get(): Reused {
-        return Reused(nonReused = NonReused())
+        return <this>.<get-reused>()
       }
 
   }

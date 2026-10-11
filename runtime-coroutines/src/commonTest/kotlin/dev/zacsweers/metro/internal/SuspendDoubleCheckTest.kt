@@ -103,7 +103,7 @@ class SuspendDoubleCheckTest {
     doubleCheckReference.store(doubleCheck)
     val block: suspend () -> Any = { doubleCheck() }
     block.startCoroutine(
-      Continuation(EmptyCoroutineContext) { result -> thrown = result.exceptionOrNull() }
+      Continuation(EmptyCoroutineContext) { result -> thrown = result.exceptionOrNull() },
     )
     assertTrue(thrown is IllegalStateException, "Expected IllegalStateException, was $thrown")
   }

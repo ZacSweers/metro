@@ -217,6 +217,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("IncludedGraphWithExtensionsIsStoredOnce.kt")
+    public void testIncludedGraphWithExtensionsIsStoredOnce() {
+      run("IncludedGraphWithExtensionsIsStoredOnce.kt");
+    }
+
+    @Test
     @TestMetadata("InitsAreChunked.kt")
     public void testInitsAreChunked() {
       run("InitsAreChunked.kt");
@@ -357,11 +363,61 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Nested
+    @TestMetadata("compiler-tests/src/test/data/dump/ir/dependencygraph/hoisting")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Hoisting {
+      private void run(String fileName) {
+        runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/hoisting/" + fileName);
+      }
+
+      @Test
+      public void testAllFilesPresentInHoisting() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/dependencygraph/hoisting"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      }
+
+      @Test
+      @TestMetadata("ChangedChildMultibindingsAreNotShared.kt")
+      public void testChangedChildMultibindingsAreNotShared() {
+        run("ChangedChildMultibindingsAreNotShared.kt");
+      }
+
+      @Test
+      @TestMetadata("ChildrenShareHoistedBinding.kt")
+      public void testChildrenShareHoistedBinding() {
+        run("ChildrenShareHoistedBinding.kt");
+      }
+
+      @Test
+      @TestMetadata("ChildrenShareHoistedMultibinding.kt")
+      public void testChildrenShareHoistedMultibinding() {
+        run("ChildrenShareHoistedMultibinding.kt");
+      }
+
+      @Test
+      @TestMetadata("NestedChildrenHoistToNearestSharedParent.kt")
+      public void testNestedChildrenHoistToNearestSharedParent() {
+        run("NestedChildrenHoistToNearestSharedParent.kt");
+      }
+
+      @Test
+      @TestMetadata("SingleChildBindingIsNotHoisted.kt")
+      public void testSingleChildBindingIsNotHoisted() {
+        run("SingleChildBindingIsNotHoisted.kt");
+      }
+    }
+
+    @Nested
     @TestMetadata("compiler-tests/src/test/data/dump/ir/dependencygraph/interop")
     @TestDataPath("$PROJECT_ROOT")
     public class Interop {
       private void run(String fileName) {
         runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/interop/" + fileName);
+      }
+
+      @Test
+      @TestMetadata("AbsentOptionalProvidersUseInstanceFactory.kt")
+      public void testAbsentOptionalProvidersUseInstanceFactory() {
+        run("AbsentOptionalProvidersUseInstanceFactory.kt");
       }
 
       @Test
@@ -635,6 +691,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("LargeMultibindingsKeepGetters.kt")
+    public void testLargeMultibindingsKeepGetters() {
+      run("LargeMultibindingsKeepGetters.kt");
+    }
+
+    @Test
     @TestMetadata("MapProvidersParticipateInProviderRefcounting.kt")
     public void testMapProvidersParticipateInProviderRefcounting() {
       run("MapProvidersParticipateInProviderRefcounting.kt");
@@ -671,6 +733,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("ReceiverLambdaTypes.kt")
+    public void testReceiverLambdaTypes() {
+      run("ReceiverLambdaTypes.kt");
+    }
+
+    @Test
     @TestMetadata("SingletonMapFactory.kt")
     public void testSingletonMapFactory() {
       run("SingletonMapFactory.kt");
@@ -698,6 +766,18 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     @TestMetadata("SingletonSetFactory.kt")
     public void testSingletonSetFactory() {
       run("SingletonSetFactory.kt");
+    }
+
+    @Test
+    @TestMetadata("UnchangedChildrenReuseParentMultibindings.kt")
+    public void testUnchangedChildrenReuseParentMultibindings() {
+      run("UnchangedChildrenReuseParentMultibindings.kt");
+    }
+
+    @Test
+    @TestMetadata("UnchangedChildrenReuseParentMultibindingsAcrossShards.kt")
+    public void testUnchangedChildrenReuseParentMultibindingsAcrossShards() {
+      run("UnchangedChildrenReuseParentMultibindingsAcrossShards.kt");
     }
   }
 

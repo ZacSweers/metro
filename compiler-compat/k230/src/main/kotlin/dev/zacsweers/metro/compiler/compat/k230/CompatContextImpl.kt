@@ -11,25 +11,48 @@ import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.KtSourceElementOffsetStrategy
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
+import org.jetbrains.kotlin.backend.common.fileForTopLevelPluginDeclarations
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
+import org.jetbrains.kotlin.config.AnalysisFlags
 import org.jetbrains.kotlin.config.CommonConfigurationKeys
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.config.LanguageVersionSettings
+import org.jetbrains.kotlin.config.WarningLevel
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.descriptors.Visibility
+import org.jetbrains.kotlin.diagnostics.AbstractKtDiagnosticFactory
+import org.jetbrains.kotlin.diagnostics.KtDiagnostic
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactory1
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticWithoutSource
+import org.jetbrains.kotlin.diagnostics.KtLightDiagnosticWithParameters1
+import org.jetbrains.kotlin.diagnostics.KtLightDiagnosticWithParameters2
+import org.jetbrains.kotlin.diagnostics.KtLightDiagnosticWithParameters3
+import org.jetbrains.kotlin.diagnostics.KtLightDiagnosticWithParameters4
+import org.jetbrains.kotlin.diagnostics.KtLightSimpleDiagnostic
+import org.jetbrains.kotlin.diagnostics.KtOffsetsOnlyDiagnosticWithParameters1
+import org.jetbrains.kotlin.diagnostics.KtOffsetsOnlyDiagnosticWithParameters2
+import org.jetbrains.kotlin.diagnostics.KtOffsetsOnlyDiagnosticWithParameters3
+import org.jetbrains.kotlin.diagnostics.KtOffsetsOnlyDiagnosticWithParameters4
+import org.jetbrains.kotlin.diagnostics.KtOffsetsOnlySimpleDiagnostic
+import org.jetbrains.kotlin.diagnostics.KtPsiDiagnosticWithParameters1
+import org.jetbrains.kotlin.diagnostics.KtPsiDiagnosticWithParameters2
+import org.jetbrains.kotlin.diagnostics.KtPsiDiagnosticWithParameters3
+import org.jetbrains.kotlin.diagnostics.KtPsiDiagnosticWithParameters4
+import org.jetbrains.kotlin.diagnostics.KtPsiSimpleDiagnostic
 import org.jetbrains.kotlin.diagnostics.KtSourcelessDiagnosticFactory
+import org.jetbrains.kotlin.diagnostics.Severity
 import org.jetbrains.kotlin.fakeElement as fakeElementNative
 import org.jetbrains.kotlin.fir.FirAnnotationContainer
 import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.FirSession
+import org.jetbrains.kotlin.fir.copy
 import org.jetbrains.kotlin.fir.declarations.DeprecationsProvider
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
+import org.jetbrains.kotlin.fir.declarations.FirDeclarationStatus
 import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.FirResolvePhase
 import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
@@ -63,6 +86,7 @@ import org.jetbrains.kotlin.fir.plugin.createTopLevelFunction as createTopLevelF
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 import org.jetbrains.kotlin.fir.toEffectiveVisibility
 import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
@@ -75,6 +99,7 @@ import org.jetbrains.kotlin.ir.builders.declarations.addBackingField
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
@@ -90,6 +115,7 @@ import org.jetbrains.kotlin.ir.symbols.IrPropertySymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.util.KotlinLikeDumpOptions
 import org.jetbrains.kotlin.ir.util.getValueArgument as getValueArgumentNative
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
@@ -98,9 +124,50 @@ import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.util.PrivateForInline
 
 public class CompatContextImpl : CompatContext {
+  override fun KtDiagnostic.withSeverityCompat(severity: Severity): KtDiagnostic {
+    return when (this) {
+      is KtPsiSimpleDiagnostic -> copy(severity = severity)
+      is KtPsiDiagnosticWithParameters1<*> -> copy(severity = severity)
+      is KtPsiDiagnosticWithParameters2<*, *> -> copy(severity = severity)
+      is KtPsiDiagnosticWithParameters3<*, *, *> -> copy(severity = severity)
+      is KtPsiDiagnosticWithParameters4<*, *, *, *> -> copy(severity = severity)
+      is KtLightSimpleDiagnostic -> copy(severity = severity)
+      is KtLightDiagnosticWithParameters1<*> -> copy(severity = severity)
+      is KtLightDiagnosticWithParameters2<*, *> -> copy(severity = severity)
+      is KtLightDiagnosticWithParameters3<*, *, *> -> copy(severity = severity)
+      is KtLightDiagnosticWithParameters4<*, *, *, *> -> copy(severity = severity)
+      is KtOffsetsOnlySimpleDiagnostic -> copy(severity = severity)
+      is KtOffsetsOnlyDiagnosticWithParameters1<*> -> copy(severity = severity)
+      is KtOffsetsOnlyDiagnosticWithParameters2<*, *> -> copy(severity = severity)
+      is KtOffsetsOnlyDiagnosticWithParameters3<*, *, *> -> copy(severity = severity)
+      is KtOffsetsOnlyDiagnosticWithParameters4<*, *, *, *> -> copy(severity = severity)
+      is KtDiagnosticWithoutSource -> KtDiagnosticWithoutSource(message, severity, factory)
+      else -> this
+    }
+  }
+
+  override fun IrFile.clearTopLevelPluginFileMarkerCompat() {
+    fileForTopLevelPluginDeclarations = false
+  }
+
+  override fun FirDeclarationStatus.copyWithOverrideCompat(
+    isOverride: Boolean,
+  ): FirDeclarationStatus = copy(isOverride = isOverride)
 
   override fun createCompilerConfigurationCompat(): CompilerConfiguration {
     return CompilerConfiguration()
+  }
+
+  override fun AbstractKtDiagnosticFactory.getEffectiveSeverityCompat(
+    languageVersionSettings: LanguageVersionSettings,
+  ): Severity? {
+    // Kotlin keeps this method protected on these compiler versions.
+    return when (languageVersionSettings.getFlag(AnalysisFlags.warningLevels)[name]) {
+      WarningLevel.Error -> Severity.ERROR
+      WarningLevel.Warning -> Severity.FIXED_WARNING
+      WarningLevel.Disabled -> null
+      null -> severity
+    }
   }
 
   override fun KtSourcelessDiagnosticFactory.createCompat(
@@ -130,14 +197,14 @@ public class CompatContextImpl : CompatContext {
 
   context(_: CompilerPluginRegistrar)
   override fun CompilerPluginRegistrar.ExtensionStorage.registerFirExtensionCompat(
-    extension: FirExtensionRegistrar
+    extension: FirExtensionRegistrar,
   ) {
     FirExtensionRegistrarAdapter.registerExtension(extension)
   }
 
   context(_: CompilerPluginRegistrar)
   override fun CompilerPluginRegistrar.ExtensionStorage.registerIrExtensionCompat(
-    extension: IrGenerationExtension
+    extension: IrGenerationExtension,
   ) {
     IrGenerationExtension.registerExtension(extension)
   }
@@ -188,6 +255,10 @@ public class CompatContextImpl : CompatContext {
     config: SimpleFunctionBuildingContext.() -> Unit,
   ): FirFunction {
     return createMemberFunctionNative(owner, key, name, returnTypeProvider, config)
+  }
+
+  override fun FirValueParameterSymbol.defaultValueSourceCompat(): KtSourceElement? {
+    return defaultValueSource
   }
 
   override fun KtSourceElement.fakeElement(
@@ -258,10 +329,10 @@ public class CompatContextImpl : CompatContext {
   }
 
   override fun createIrGeneratedDeclarationsRegistrar(
-    pluginContext: IrPluginContext
+    pluginContext: IrPluginContext,
   ): IrGeneratedDeclarationsRegistrarCompat {
     return IrConstructorCallIrGeneratedDeclarationsRegistrarCompat(
-      pluginContext.metadataDeclarationRegistrar
+      pluginContext.metadataDeclarationRegistrar,
     )
   }
 
@@ -285,7 +356,7 @@ public class CompatContextImpl : CompatContext {
   }
 
   override fun IrAnnotationContainer.replaceAnnotationsCompat(
-    annotations: List<IrConstructorCall>
+    annotations: List<IrConstructorCall>,
   ) {
     (this as IrMutableAnnotationContainer).annotations = annotations
   }
@@ -294,8 +365,18 @@ public class CompatContextImpl : CompatContext {
     return ReferenceApiDeclarationFinderCompat(this)
   }
 
+  override fun IrElement.dumpKotlinLikeCompat(
+    options: KotlinLikeDumpOptions,
+    classNameTransformer: (context: IrDeclaration?, declaration: IrDeclarationWithName) -> String,
+  ): String {
+    return dumpKotlinLikeFallback(options, classNameTransformer)
+  }
+
+  override val pluginGeneratedSourceElementKind: KtFakeSourceElementKind
+    get() = KtFakeSourceElementKind.PluginGenerated
+
   override fun IrPluginContext.finderForSourceCompat(
-    fromFile: IrFile
+    fromFile: IrFile,
   ): CompatContext.DeclarationFinderCompat {
     return ReferenceApiDeclarationFinderCompat(this)
   }
@@ -309,7 +390,7 @@ public class CompatContextImpl : CompatContext {
   }
 
   override fun FirAnnotationContainer.getDeprecationsProviderCompat(
-    session: FirSession
+    session: FirSession,
   ): DeprecationsProvider? {
     return getDeprecationsProvider(session)
   }
@@ -359,7 +440,7 @@ public class CompatContextImpl : CompatContext {
   }
 
   override fun IrModuleFragment.createEmptyExternalPackageFragmentCompat(
-    packageName: String
+    packageName: String,
   ): IrPackageFragment {
     return createEmptyExternalPackageFragmentNative(descriptor, FqName(packageName))
   }

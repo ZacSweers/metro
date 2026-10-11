@@ -52,6 +52,9 @@ internal class IndexOptionsFingerprint(val options: MetroOptions) {
       options.graphExtensionAnnotations,
       options.graphExtensionFactoryAnnotations,
       options.injectAnnotations,
+      options.functionInjectAnnotationsOverride.takeIf {
+        options.enableTopLevelFunctionInjection
+      },
       options.assistedInjectAnnotations,
       options.assistedAnnotations,
       options.assistedFactoryAnnotations,
@@ -123,6 +126,7 @@ internal fun sweepAnnotationIds(options: MetroOptions): Set<ClassId> {
     addAll(options.bindsAnnotations)
     addAll(options.multibindsAnnotations)
     addAll(options.injectAnnotations)
+    addAll(options.topLevelFunctionInjectAnnotations)
     addAll(options.assistedInjectAnnotations)
     addAll(options.allContributesAnnotations)
     addAll(options.dependencyGraphAnnotations)

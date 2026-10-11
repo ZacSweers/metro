@@ -67,7 +67,7 @@ kotlin {
       compileTaskProvider.configure {
         compilerOptions.freeCompilerArgs.addAll(
           // This is irrelevant for these tests and creates a bit of noise
-          "-Xwarning-level=SUSPICIOUS_UNUSED_MULTIBINDING:disabled"
+          "-Xwarning-level=SUSPICIOUS_UNUSED_MULTIBINDING:disabled",
         )
       }
     }

@@ -113,7 +113,7 @@ internal object ShardingDiagnostics {
           if (depShard != -1 && depShard != shard.index) {
             if (reportedCount < MAX_CROSS_SHARD_DEPS) {
               appendLine(
-                "  Shard${shard.index + 1}.${binding.typeKey} → Shard${depShard + 1}.${dep.typeKey}"
+                "  Shard${shard.index + 1}.${binding.typeKey} → Shard${depShard + 1}.${dep.typeKey}",
               )
               reportedCount++
             }

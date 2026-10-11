@@ -26,6 +26,7 @@ import dev.zacsweers.metro.compiler.ir.annotationClass
 import dev.zacsweers.metro.compiler.ir.annotationsCompat
 import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
+import dev.zacsweers.metro.compiler.ir.createIrAnnotation
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.declaredCallableMembers
 import dev.zacsweers.metro.compiler.ir.deepRemapperFor
@@ -192,8 +193,10 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
 
   fun getOrGenerateInjector(declaration: IrClass): MemberInjectClass? {
     val injectedClassId: ClassId = declaration.classId ?: return null
-    generatedInjectors[injectedClassId]?.getOrNull()?.let {
-      return it
+    val cachedInjector = generatedInjectors[injectedClassId]
+    if (cachedInjector != null) {
+      // Empty entries record completed lookups for classes without injectable members.
+      return cachedInjector.getOrNull()
     }
 
     val isExternal = declaration.isExternalParent
@@ -405,7 +408,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
           sourceTypeParameters = declaration,
           returnTypeProvider = { typeParams ->
             metroSymbols.metroMembersInjector.typeWith(
-              declaration.symbol.typeWithParameters(typeParams)
+              declaration.symbol.typeWithParameters(typeParams),
             )
           },
           targetConstructor = ctor.symbol,
@@ -564,8 +567,8 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
           overriddenSymbols =
             listOf(
               metroSymbols.metroMembersInjector.owner.requireSimpleFunction(
-                Symbols.StringNames.INJECT_MEMBERS
-              )
+                Symbols.StringNames.INJECT_MEMBERS,
+              ),
             )
           addValueParameter(
             name = Symbols.Names.instance,
@@ -602,11 +605,10 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
                         it.setter?.isAnnotatedWithAny(metroSymbols.injectAnnotations) == true ||
                         it.backingField?.isAnnotatedWithAny(metroSymbols.injectAnnotations) == true)
                   },
+                  // FIR uses source declaration order for the injector constructor.
+                  preserveDeclarationOrder = true,
                 )
                 .map { it.ir.memberInjectParameters(nameAllocator, clazz) }
-                // Stable sort properties first
-                // TODO this implicit ordering requirement is brittle
-                .sortedBy { !it.isProperty }
                 .toList()
 
             if (sourceParameters.isNotEmpty()) {
@@ -681,7 +683,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
    * Returns null if no Dagger injector is found.
    */
   private fun IrClass.tryDeriveDaggerMemberInjectParameters(
-    nameAllocator: NameAllocator
+    nameAllocator: NameAllocator,
   ): List<Parameters>? {
     val injectorClass =
       lookupClass(classIdOrFail.generatedClass("_MembersInjector"))?.owner ?: return null
@@ -825,6 +827,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
     // Drop the first as that's always the instance param, which we'll handle separately
     val dependencyParams = function.nonDispatchParameters.drop(1)
     val memberName = function.name.asString().removePrefix("inject").decapitalizeUS()
+    val classTypeRemapper = function.typeRemapperFor(clazz.defaultType)
 
     // Create a synthetic Parameters object from the inject function
     val callableId = CallableId(clazz.classIdOrFail, memberName.asName())
@@ -849,7 +852,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
                   """
                   Could not find corresponding injected member '$memberName' in ${clazz.fqNameWhenAvailable} for inject method ${function.name}.
                 """
-                    .trimIndent()
+                    .trimIndent(),
                 )
             sourceMemberParams.regularParameters[index].typeKey.qualifier
           }
@@ -860,12 +863,14 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
 
       // Create the parameter with the determined qualifier
       val contextKey =
-        param.type.asContextualTypeKey(
-          qualifierAnnotation = qualifier,
-          hasDefault = param.defaultValue != null,
-          patchMutableCollections = false,
-          declaration = param,
-        )
+        classTypeRemapper
+          .remapType(param.type)
+          .asContextualTypeKey(
+            qualifierAnnotation = qualifier,
+            hasDefault = param.defaultValue != null,
+            patchMutableCollections = false,
+            declaration = param,
+          )
 
       Parameter.member(
         kind = param.kind,
@@ -893,7 +898,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
     return annotationsCompat()
       .asSequence()
       .filterNot { it.annotationClass.classId in metroSymbols.classIds.optionalBindingAnnotations }
-      .map(::IrAnnotation)
+      .map(this@MembersInjectorTransformer::createIrAnnotation)
       .distinct()
       .singleOrNull()
   }
@@ -954,8 +959,8 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
         }
       }
     }
-      // Reverse it such that the supertypes are first
-      .asReversed()
+    // Reverse it such that the supertypes are first
+    .asReversed()
       .associate { it.first to it.second }
   }
 }
@@ -991,7 +996,7 @@ internal fun IrBlockBodyBuilder.addMemberInjection(
               injectorReceiver,
               parametersToFields,
               typeRemapper,
-            )
+            ),
           )
         },
     )

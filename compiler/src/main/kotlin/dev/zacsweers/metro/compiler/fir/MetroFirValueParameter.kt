@@ -49,7 +49,7 @@ internal interface MetroFirValueParameter {
         override val name by memoize {
           name
             ?: symbol.name.letIf(
-              symbol.isContextParameter() && symbol.name == UNDERSCORE_FOR_UNUSED_VAR
+              symbol.isContextParameter() && symbol.name == UNDERSCORE_FOR_UNUSED_VAR,
             ) {
               symbol.resolvedReturnType.classId?.let { generatedContextParameterName(it) }
                 ?: symbol.name

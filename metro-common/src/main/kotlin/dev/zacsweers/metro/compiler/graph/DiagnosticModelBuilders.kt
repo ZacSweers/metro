@@ -99,8 +99,8 @@ public fun emptyMultibindingDiagnostic(
       buildList {
         add(
           Note.help(
-            "annotate its declaration with `@Multibinds(allowEmpty = true)` if it can legitimately be empty"
-          )
+            "annotate its declaration with `@Multibinds(allowEmpty = true)` if it can legitimately be empty",
+          ),
         )
         addAll(extraNotes)
       },
@@ -153,7 +153,7 @@ public fun incompatibleScopeDiagnostic(
           append(" (unscoped) may not reference scoped bindings")
         } else {
           append(
-            " (scopes ${renders.graphScopes.joinToString { "'$it'" }}) may not reference bindings from different scopes"
+            " (scopes ${renders.graphScopes.joinToString { "'$it'" }}) may not reference bindings from different scopes",
           )
         }
       },
@@ -184,7 +184,7 @@ public fun duplicateMapKeysDiagnostic(
           DiagnosticSection.Locations(
             header = textOf("The following bindings contribute the same map key '$mapKeyRender'"),
             items = locations,
-          )
+          ),
         )
         trace?.let(::add)
       },

@@ -9,7 +9,9 @@
   "extensions": {
     "accessors": [
       {
-        "key": "parity.extension.ChildGraph"
+        "key": "parity.extension.ChildGraph",
+        "name": "childGraph",
+        "isProperty": true
       }
     ],
     "factoryAccessors": [],
@@ -29,6 +31,7 @@
     "enableGraphSharding": true,
     "keysPerGraphShard": 2000,
     "mergedSupertypeChunkSize": 0,
+    "multibindingGetterThreshold": 25,
     "enableSwitchingProviders": false,
     "publicScopedProviderSeverity": "NONE",
     "nonPublicContributionSeverity": "NONE",
@@ -88,7 +91,8 @@
     "generateStaticAnnotations": true,
     "enableRuntimeTracing": false,
     "memberNamingStrategy": "DESCRIPTIVE",
-    "maxGeneratedClassNameLength": 233
+    "maxGeneratedClassNameLength": 233,
+    "diagnosticLevels": {}
   },
   "stats": {
     "providerFactories": 1,
@@ -121,7 +125,11 @@
       "shardsGenerated": 0,
       "shardedSupertypes": 0,
       "shardedInitFunctions": 0,
-      "providerInlines": 0
+      "providerInlines": 0,
+      "providerInlineFallbacks": {
+        "deferredAccess": 0,
+        "unavailableValue": 0
+      }
     }
   },
   "bindings": [
@@ -130,6 +138,7 @@
       "bindingKind": "BoundInstance",
       "isScoped": false,
       "nameHint": "AppGraphProvider",
+      "isGraphInput": false,
       "dependencies": [],
       "isSynthetic": false,
       "declaration": "AppGraph"

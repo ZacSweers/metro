@@ -195,7 +195,7 @@ internal interface IrDependencyGraph {
         } catch (e: Exception) {
           if (options.debug) {
             System.err.println(
-              "[Metro] Failed to load external IR contribution extension from ${factory::class}: ${e.message}"
+              "[Metro] Failed to load external IR contribution extension from ${factory::class}: ${e.message}",
             )
           }
           null

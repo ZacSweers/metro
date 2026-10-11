@@ -36,8 +36,8 @@ class GraphExtensionTest : MetroCompilerTest() {
                 fun create(): ChildGraph
               }
             }
-        """
-      )
+        """,
+      ),
     ) {
       val parentGraph = ParentGraph.generatedImpl().createGraphWithNoArgs()
       val childGraph = parentGraph.invokeInstanceMethod<Any>("create")
@@ -60,8 +60,8 @@ class GraphExtensionTest : MetroCompilerTest() {
                 fun create(): ChildGraph
               }
             }
-        """
-        )
+        """,
+        ),
       )
 
     compile(
@@ -71,7 +71,7 @@ class GraphExtensionTest : MetroCompilerTest() {
             interface ParentGraph : ChildGraph.Factory {
               @Provides fun provideInt(): Int = 1
             }
-        """
+        """,
       ),
       previousCompilationResult = firstCompilation,
     ) {
@@ -102,8 +102,8 @@ class GraphExtensionTest : MetroCompilerTest() {
                 fun create(): ChildGraph
               }
             }
-        """
-      )
+        """,
+      ),
     ) {
       val parentGraph = ParentGraph.generatedImpl().createGraphWithNoArgs()
       val childGraph = parentGraph.callFunction<Any>("create")
@@ -138,8 +138,8 @@ class GraphExtensionTest : MetroCompilerTest() {
                 fun create(): ChildGraph
               }
             }
-        """
-      )
+        """,
+      ),
     ) {
       val parentGraph = ParentGraph.generatedImpl().createGraphWithNoArgs()
       val childGraph = parentGraph.callFunction<Any>("create")
@@ -173,8 +173,8 @@ class GraphExtensionTest : MetroCompilerTest() {
                 fun create(): ChildGraph
               }
             }
-        """
-      )
+        """,
+      ),
     ) {
       val parentGraph = ParentGraph.generatedImpl().createGraphWithNoArgs()
       val childGraph = parentGraph.callFunction<Any>("create")
@@ -207,8 +207,8 @@ class GraphExtensionTest : MetroCompilerTest() {
                 fun create(): ChildGraph
               }
             }
-        """
-      )
+        """,
+      ),
     ) {
       val parentGraph = ParentGraph.generatedImpl().createGraphWithNoArgs()
       val childGraph = parentGraph.callFunction<Any>("create")
@@ -249,7 +249,7 @@ class GraphExtensionTest : MetroCompilerTest() {
             }
         """,
         fileNameWithoutExtension = "Graphs",
-      )
+      ),
     ) {
       val grandParentGraph = GrandParentGraph.generatedImpl().createGraphWithNoArgs()
       val parentGraph = grandParentGraph.callFunction<Any>("create")
@@ -287,7 +287,7 @@ class GraphExtensionTest : MetroCompilerTest() {
             }
         """,
           fileNameWithoutExtension = "ParentGraphs",
-        )
+        ),
       )
 
     compile(
@@ -297,7 +297,7 @@ class GraphExtensionTest : MetroCompilerTest() {
             interface GrandParentGraph : ParentGraph.Factory {
               @Provides fun provideString(): String = "grandparent"
             }
-        """
+        """,
       ),
       previousCompilationResult = firstCompilation,
     ) {
@@ -335,8 +335,8 @@ class GraphExtensionTest : MetroCompilerTest() {
                 fun create(): ChildGraph
               }
             }
-        """
-      )
+        """,
+      ),
     ) {
       val parentGraph = ParentGraph.generatedImpl().createGraphWithNoArgs()
       val childGraph = parentGraph.callFunction<Any>("create")
@@ -368,8 +368,8 @@ class GraphExtensionTest : MetroCompilerTest() {
                 fun create(): ChildGraph
               }
             }
-        """
-      )
+        """,
+      ),
     ) {
       val parentGraph = ParentGraph.generatedImpl().createGraphWithNoArgs()
       val childGraph = parentGraph.callFunction<Any>("create")
@@ -404,8 +404,8 @@ class GraphExtensionTest : MetroCompilerTest() {
               fun create(): ChildGraph
             }
           }
-        """
-      )
+        """,
+      ),
     ) {
       val parentGraph = ParentGraph.generatedImpl().createGraphWithNoArgs()
       val childGraph = parentGraph.callFunction<Any>("create")
@@ -435,7 +435,7 @@ class GraphExtensionTest : MetroCompilerTest() {
               fun create(): ChildGraph
             }
           }
-        """
+        """,
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
@@ -444,7 +444,7 @@ class GraphExtensionTest : MetroCompilerTest() {
         e: ParentGraph.kt:8:35 Graph extension 'test.ChildGraph' has overlapping aggregation scopes with parent graph 'test.ParentGraph':
         - dev.zacsweers.metro.AppScope
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -471,7 +471,7 @@ class GraphExtensionTest : MetroCompilerTest() {
               fun create(): ChildGraph
             }
           }
-        """
+        """,
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
@@ -480,7 +480,7 @@ class GraphExtensionTest : MetroCompilerTest() {
         e: ParentGraph.kt:9:35 Graph extension 'test.ChildGraph' has overlapping scope annotations with parent graph 'test.ParentGraph':
         - @SingleIn(dev.zacsweers.metro.AppScope::class)
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -518,7 +518,7 @@ class GraphExtensionTest : MetroCompilerTest() {
               fun create(): ChildGraph
             }
           }
-        """
+        """,
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
@@ -527,7 +527,7 @@ class GraphExtensionTest : MetroCompilerTest() {
         e: GrandParentGraph.kt Graph extension 'test.ChildGraph' has overlapping scope annotations with ancestor graphs':
         - @dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class) (from ancestor 'test.GrandParentGraph')
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -558,7 +558,7 @@ class GraphExtensionTest : MetroCompilerTest() {
                 fun create(): ChildGraph
               }
             }
-        """
+        """,
       ),
       options = metroOptions.toBuilder().enableFullBindingGraphValidation(true).build(),
     ) {
@@ -592,8 +592,8 @@ class GraphExtensionTest : MetroCompilerTest() {
             interface ParentGraph : ChildGraph.Factory {
               @Provides fun provideInt(): Int = 1
             }
-        """
-      )
+        """,
+      ),
     ) {
       val parentGraph = ParentGraph.generatedImpl().createGraphWithNoArgs()
       val childGraph = parentGraph.callFunction<Any>("create")

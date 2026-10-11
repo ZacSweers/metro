@@ -10,26 +10,38 @@
     "accessors": [
       {
         "key": "libtest.LibClientWithDeps",
+        "name": "client",
+        "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "libtest.LibService",
+        "name": "service",
+        "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "kotlin.collections.Set<libtest.LibAnalytics>",
+        "name": "analytics",
+        "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "libtest.LibExplicit",
+        "name": "explicit",
+        "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "libtest.LibContained",
+        "name": "contained",
+        "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "libtest.LibHidden? = ...",
+        "name": "hidden",
+        "isProperty": true,
         "isDeferrable": false
       }
     ],
@@ -54,6 +66,7 @@
     "enableGraphSharding": true,
     "keysPerGraphShard": 2000,
     "mergedSupertypeChunkSize": 0,
+    "multibindingGetterThreshold": 25,
     "enableSwitchingProviders": false,
     "publicScopedProviderSeverity": "NONE",
     "nonPublicContributionSeverity": "NONE",
@@ -113,7 +126,8 @@
     "generateStaticAnnotations": true,
     "enableRuntimeTracing": false,
     "memberNamingStrategy": "DESCRIPTIVE",
-    "maxGeneratedClassNameLength": 233
+    "maxGeneratedClassNameLength": 233,
+    "diagnosticLevels": {}
   },
   "stats": {
     "providerFactories": 1,
@@ -134,7 +148,7 @@
     "reachableKeys": 10,
     "deferredKeys": 0,
     "unusedInputs": 0,
-    "providerProperties": 2,
+    "providerProperties": 1,
     "scopedProviderProperties": 1,
     "shards": 0,
     "optimizations": {
@@ -146,7 +160,11 @@
       "shardsGenerated": 0,
       "shardedSupertypes": 0,
       "shardedInitFunctions": 0,
-      "providerInlines": 0
+      "providerInlines": 0,
+      "providerInlineFallbacks": {
+        "deferredAccess": 0,
+        "unavailableValue": 0
+      }
     }
   },
   "bindings": [

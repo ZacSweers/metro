@@ -129,7 +129,7 @@ class IdeTraceThreadActivityTest : TestCase() {
           val calls = mutableListOf<String>()
           val path =
             withRecorder(
-              createOutput = { failure -> createIdeTraceOutput(directory, failure, enabled) }
+              createOutput = { failure -> createIdeTraceOutput(directory, failure, enabled) },
             ) { recorder ->
               val value = withContext(first) { exercisePhases(recorder, second, calls) }
               assertEquals(42, value)

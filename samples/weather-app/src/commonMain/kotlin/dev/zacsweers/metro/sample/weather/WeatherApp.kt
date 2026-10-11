@@ -64,7 +64,7 @@ class WeatherApp(private val repository: WeatherRepository) {
               ),
             hourlyForecast =
               weather.hourly.time.zip(
-                weather.hourly.temperatures.zip(weather.hourly.weatherCodes)
+                weather.hourly.temperatures.zip(weather.hourly.weatherCodes),
               ) { time, (temp, code) ->
                 HourlyForecastInfo(
                   time = LocalDateTime.parse(time).toInstant(TimeZone.UTC),
@@ -72,7 +72,7 @@ class WeatherApp(private val repository: WeatherRepository) {
                   description = getWeatherDescription(code),
                 )
               },
-          )
+          ),
         )
       }
     } catch (e: Exception) {

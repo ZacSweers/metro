@@ -52,7 +52,7 @@ val metroExtension =
         compilerJvmTargetVersion
       } else {
         jvmTargetVersion
-      }
+      },
     )
   }
 
@@ -78,7 +78,7 @@ pluginManager.withPlugin("java-base") {
       javaLauncher.set(
         javaToolchains.launcherFor {
           languageVersion.set(configuredTestJavaVersion.map(JavaLanguageVersion::of))
-        }
+        },
       )
     }
   }
@@ -232,7 +232,7 @@ pluginManager.withPlugin("org.jetbrains.dokka") {
         localDirectory.convention(layout.projectDirectory.dir("src"))
         val relPath = rootProject.projectDir.toPath().relativize(projectDir.toPath())
         remoteUrl(
-          providers.gradleProperty("POM_SCM_URL").map { scmUrl -> "$scmUrl/tree/main/$relPath" }
+          providers.gradleProperty("POM_SCM_URL").map { scmUrl -> "$scmUrl/tree/main/$relPath" },
         )
         remoteLineSuffix.convention("#L")
       }

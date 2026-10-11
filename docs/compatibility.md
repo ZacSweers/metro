@@ -8,13 +8,18 @@ Pre-release versions are normally only tested during their development cycle. Af
 
 | Kotlin version  | Metro versions (inclusive) | Notes                                                 |
 |-----------------|----------------------------|-------------------------------------------------------|
-| 2.5.0-dev-3513  | 1.5.0 -                    |                                                       |
-| 2.5.0-dev-498   | 1.3.2 -                    |                                                       |
-| 2.4.20-RC3      | 1.2.0 -                    |                                                       |
-| 2.4.20-RC2      | 1.2.0 -                    |                                                       |
-| 2.4.20-RC       | 1.2.0 -                    |                                                       |
-| 2.4.20-Beta2    | 1.2.0 -                    |                                                       |
-| 2.4.20-Beta1    | 1.2.0 -                    |                                                       |
+| 2.5.0-dev-10106 | unreleased -               |                                                       |
+| 2.5.0-dev-7307  | unreleased -               |                                                       |
+| 2.5.0-dev-6460  | 1.4.3 -                    |                                                       |
+| 2.5.0-dev-4967  | 1.4.3 - [1.4.3]            |                                                       |
+| 2.5.0-dev-3513  | 1.4.2 - [1.4.2]            |                                                       |
+| 2.5.0-dev-498   | 1.3.2 - [1.4.2]            |                                                       |
+| 2.4.20          | 1.2.0 -                    |                                                       |
+| 2.4.20-RC3      | 1.2.0 - [1.4.2]            |                                                       |
+| 2.4.20-RC2      | 1.2.0 - [1.4.2]            |                                                       |
+| 2.4.20-RC       | 1.2.0 - [1.4.2]            |                                                       |
+| 2.4.20-Beta2    | 1.2.0 - [1.4.2]            |                                                       |
+| 2.4.20-Beta1    | 1.2.0 - [1.4.2]            |                                                       |
 | 2.4.20-dev-6138 | 1.2.0 -                    |                                                       |
 | 2.4.20-dev-3583 | 1.2.0 - [1.3.0]            |                                                       |
 | 2.4.20-dev-835  | 1.0.1 - [1.1.1]            |                                                       |
@@ -57,6 +62,14 @@ Pre-release versions are normally only tested during their development cycle. Af
 
 Some releases may introduce prohibitively difficult breaking changes that require companion release, so check Metro's open PRs for one targeting that Kotlin version for details. There is a tested versions table at the bottom of this page that is updated with each Metro release.
 
+## Annotation Defaults in KLIB Dependencies
+
+Kotlin `2.3.0` and `2.3.10` can leave annotation defaults unavailable to compiler plugins when the annotation class comes from a KLIB dependency. Metro keeps these values omitted during annotation comparison. An explicit value might fail to match an equivalent omitted default, including defaults inside nested annotations. This can affect binding lookup and duplicate detection. Source annotation defaults, explicit argument values, and JVM binary defaults remain supported.
+
+We recommend upgrading to Kotlin `2.3.20` or newer. If you're staying on an affected version, supply the values explicitly at every affected annotation use, including nested annotations. Update affected annotation uses in dependencies too and rebuild those binaries.
+
+Kotlin `2.3.0` and `2.3.10` also serialize omitted array arguments as empty arrays, even when their defaults are nonempty. That metadata is indistinguishable from an explicit empty array. Metro can't recover the original default from it. Rebuild affected dependencies with Kotlin `2.3.20` or newer, or supply the array values explicitly before rebuilding.
+
 ## IDE Support
 
 IDEs have their own compatibility story with Kotlin versions. The Kotlin IDE plugin embeds Kotlin versions built from source, so Metro's IDE support selects the nearest compatible version and tries to support the latest stable IntelliJ and Android Studio releases + the next IntelliJ EAP release.
@@ -83,12 +96,11 @@ The following Kotlin versions are tested via CI:
 
 | Kotlin Version  |
 |-----------------|
-| 2.5.0-dev-3513  |
-| 2.5.0-dev-498   |
+| 2.5.0-dev-10106 |
+| 2.5.0-dev-7307  |
+| 2.5.0-dev-6460  |
 | 2.4.20-dev-6138 |
-| 2.4.20-RC       |
-| 2.4.20-Beta2    |
-| 2.4.20-Beta1    |
+| 2.4.20          |
 | 2.4.10          |
 | 2.4.0-dev-2124  |
 | 2.4.0           |
@@ -106,16 +118,17 @@ The following Kotlin versions are tested via CI:
 
 The following IDE versions are tested via IDE integration tests:
 
-| IntelliJ IDEA | Android Studio                |
-|---------------|-------------------------------|
-| 2025.3.2      | 2025.3.1.8 (Panda 1 Patch 1)  |
-| 2026.1.1      | 2025.3.2.6 (Panda 2)          |
-| 2026.1.2      | 2025.3.3.6 (Panda 3)          |
-| 2026.1.3      | 2025.3.4.7 (Panda 4 Patch 1)  |
-| 2026.2        | 2026.1.1.8 (Quail 1)          |
-| 2026.2.1      | 2026.1.2.10 (Quail 2)         |
-|               | 2026.1.3.7 (Quail 3)          |
-|               | 2026.1.4.4 (Quail 4 Canary 4) |
+| IntelliJ IDEA | Android Studio               |
+|---------------|------------------------------|
+| 2025.3.2      | 2025.3.1.8 (Panda 1 Patch 1) |
+| 2026.1.1      | 2025.3.2.6 (Panda 2)         |
+| 2026.1.2      | 2025.3.3.6 (Panda 3)         |
+| 2026.1.3      | 2025.3.4.7 (Panda 4 Patch 1) |
+| 2026.2        | 2026.1.1.8 (Quail 1)         |
+| 2026.2.1      | 2026.1.2.10 (Quail 2)        |
+| 2026.2.2      | 2026.1.3.7 (Quail 3)         |
+| 2026.2.3      | 2026.1.4.7 (Quail 4)         |
+| 263.6259.32   | 2026.2.1.8 (Rabbit 1)        |
 
 ## Runtime Compatibility
 

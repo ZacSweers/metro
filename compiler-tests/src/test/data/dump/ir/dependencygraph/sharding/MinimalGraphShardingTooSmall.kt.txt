@@ -175,13 +175,13 @@ interface TestGraph {
   @MetroImplMarker
   class Impl : TestGraph {
     private val service1Provider: Provider<Service1>
-      field = DoubleCheck/* companion */.provider<Provider<Service1>, Service1>(delegate = Service1.MetroFactory.create())
+      field = provider<Provider<Service1>, Service1>(delegate = create())
 
     private val service2Provider: Provider<Service2>
-      field = DoubleCheck/* companion */.provider<Provider<Service2>, Service2>(delegate = Service2.MetroFactory/* companion */.create(s1 = <this>.#service1Provider))
+      field = provider<Provider<Service2>, Service2>(delegate = create(s1 = <this>.#service1Provider))
 
     private val service3Provider: Provider<Service3>
-      field = DoubleCheck/* companion */.provider<Provider<Service3>, Service3>(delegate = Service3.MetroFactory/* companion */.create(s2 = <this>.#service2Provider))
+      field = provider<Provider<Service3>, Service3>(delegate = create(s2 = <this>.#service2Provider))
 
     private constructor() /* primary */ {
       super/*Any*/()

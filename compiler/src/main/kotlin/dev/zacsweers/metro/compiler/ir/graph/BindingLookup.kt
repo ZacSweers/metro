@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph
 
+import androidx.collection.MutableScatterMap
 import androidx.collection.ScatterMap
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnostic
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
@@ -52,7 +53,6 @@ import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.reportCompilerBug
-import java.util.concurrent.ConcurrentHashMap
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.types.IrSimpleType
@@ -72,7 +72,7 @@ internal class BindingLookup(
   private val sourceGraph: IrClass,
   private val findClassFactory: (IrClass) -> ClassFactory?,
   private val findMemberInjectors: (IrClass) -> List<MemberInjectClass>,
-  private val parentContext: ParentContextReader?,
+  internal val parentContext: ParentContextReader?,
   private val bindingLookupCache: BindingLookupCache,
   private val decisionCapture: BindingDecisionCapture? = null,
 ) {
@@ -80,7 +80,20 @@ internal class BindingLookup(
   // Single cache for all bindings, storing lists to track duplicates naturally
   private val bindingsCache = mutableMapOf<IrTypeKey, IrBinding>()
   private val duplicateBindings = mutableMapOf<IrTypeKey, MutableSet<IrBinding>>()
-  private val classBindingsCache = mutableMapOf<IrContextualTypeKey, Set<IrBinding>>()
+  private val classBindingsCache = mutableMapOf<ClassBindingKey, Set<IrBinding>>()
+
+  // Mutable remappers belong to this graph's lookup.
+  private val typeRemappers = MutableScatterMap<Pair<IrClass, IrType>, TypeRemapper>()
+
+  /** Reuses substitutions for the same source class and concrete type within this graph. */
+  private fun IrClass.cachedDeepRemapperFor(subtype: IrType): TypeRemapper =
+    typeRemappers.getOrPut(this to subtype) { deepRemapperFor(subtype) }
+
+  /** Keeps optional misses separate because contextual-key equality ignores default values. */
+  private data class ClassBindingKey(
+    val contextKey: IrContextualTypeKey,
+    val hasDefault: Boolean,
+  )
 
   private data class ParentGraphDepKey(val owner: IrClass, val typeKey: IrTypeKey)
 
@@ -218,6 +231,7 @@ internal class BindingLookup(
     bindingsCache.clear()
     duplicateBindings.clear()
     classBindingsCache.clear()
+    typeRemappers.clear()
     parentGraphDepCache.clear()
     lazyParentKeys.clear()
     multibindingsCache.clear()
@@ -346,7 +360,7 @@ internal class BindingLookup(
         // It's a map
         val keyType = mapKeyType(multibindingKeyData.mapKey)
         originalElementTypeKey.copy(
-          context.irBuiltIns.mapClass.typeWith(keyType, originalElementTypeKey.type)
+          context.irBuiltIns.mapClass.typeWith(keyType, originalElementTypeKey.type),
         )
       }
 
@@ -497,7 +511,7 @@ internal class BindingLookup(
     val wrappedType =
       typeKey.type.optionalType(declaration)
         ?: reportCompilerBug(
-          "Optional type not supported: ${typeKey.type.rawType().classIdOrFail.asSingleFqName()}"
+          "Optional type not supported: ${typeKey.type.rawType().classIdOrFail.asSingleFqName()}",
         )
 
     // Create the context key with hasDefault=true to allow absence
@@ -526,7 +540,7 @@ internal class BindingLookup(
 
   context(context: IrMetroContext)
   private fun IrClass.computeMembersInjectorBindings(
-    remapper: TypeRemapper
+    remapper: TypeRemapper,
   ): LinkedHashSet<IrBinding.MembersInjected> {
     val bindings = LinkedHashSet<IrBinding.MembersInjected>()
 
@@ -562,7 +576,7 @@ internal class BindingLookup(
           bindings += cached
         } else {
           reportCompilerBug(
-            "Found cached binding for $mappedTypeKey but wasn't a member injector! $cached"
+            "Found cached binding for $mappedTypeKey but wasn't a member injector! $cached",
           )
         }
         supertypeInjectorKeys += IrContextualTypeKey(mappedTypeKey)
@@ -762,7 +776,7 @@ internal class BindingLookup(
     }
 
   internal fun createExplicitConstructorInjectedBinding(
-    bindsCallable: BindsCallable
+    bindsCallable: BindsCallable,
   ): IrBinding.ConstructorInjected =
     context(metroContext) {
       val key = bindsCallable.typeKey
@@ -770,13 +784,13 @@ internal class BindingLookup(
       val classFactory =
         findClassFactory(irClass)
           ?: reportCompilerBug(
-            "Parameter-less @Binds target ${key.render(short = false)} was not validated before binding graph generation."
+            "Parameter-less @Binds target ${key.render(short = false)} was not validated before binding graph generation.",
           )
 
       trackFunctionCall(sourceGraph, classFactory.function)
       trackClassLookup(sourceGraph, classFactory.factoryClass)
 
-      val remapper = irClass.deepRemapperFor(key.type)
+      val remapper = irClass.cachedDeepRemapperFor(key.type)
       val injectedMembers =
         irClass.computeMembersInjectorBindings(remapper).mapToSet { binding ->
           binding.contextualTypeKey
@@ -814,7 +828,7 @@ internal class BindingLookup(
   private fun hydrateMemberInjectionAncestors(key: IrTypeKey): Set<IrBinding.MembersInjected> {
     val targetType = key.type.requireSimpleType().arguments.first().typeOrFail
     val targetClass = targetType.rawType()
-    val remapper = targetClass.deepRemapperFor(targetType)
+    val remapper = targetClass.cachedDeepRemapperFor(targetType)
     val bindings = targetClass.computeMembersInjectorBindings(remapper)
 
     // Check if we have a binding for this exact key (cached by computeMembersInjectorBindings)
@@ -869,7 +883,8 @@ internal class BindingLookup(
     currentBindings: ScatterMap<IrTypeKey, IrBinding>,
     stack: IrBindingStack,
   ): Set<IrBinding> {
-    return classBindingsCache.getOrPut(contextKey) {
+    val cacheKey = ClassBindingKey(contextKey, contextKey.hasDefault)
+    return classBindingsCache.getOrPut(cacheKey) {
       val key = contextKey.typeKey
       val irClass = key.type.rawType()
 
@@ -889,7 +904,7 @@ internal class BindingLookup(
       }
 
       val bindings = mutableSetOf<IrBinding>()
-      val remapper by memoize { irClass.deepRemapperFor(key.type) }
+      val remapper by memoize { irClass.cachedDeepRemapperFor(key.type) }
 
       // Compute all member injector bindings (needed for injectedMembers field)
       // Only add new bindings (not in currentBindings) to the graph to avoid duplicates
@@ -934,7 +949,7 @@ internal class BindingLookup(
 
         val binding =
           bindingLookupCache.getOrPutConstructorInjected(
-            irClass.takeIf { remapper == NOOP_TYPE_REMAPPER }
+            irClass.takeIf { remapper == NOOP_TYPE_REMAPPER },
           ) {
             IrBinding.ConstructorInjected(
               type = irClass,
@@ -976,7 +991,7 @@ internal class BindingLookup(
 
         val targetKey = IrTypeKey(targetType)
         val targetAnnotations = targetClass.metroAnnotations(context.metroSymbols.classIds)
-        val targetRemapper = targetClass.deepRemapperFor(targetType)
+        val targetRemapper = targetClass.cachedDeepRemapperFor(targetType)
 
         // Create the target's ConstructorInjected binding (NOT added to graph). Its @Inject members
         // are tracked so the assisted factory depends on them: the generated factory injects them
@@ -984,7 +999,7 @@ internal class BindingLookup(
         // awaited during member injection).
         val targetBinding =
           bindingLookupCache.getOrPutConstructorInjected(
-            targetClass.takeIf { targetRemapper == NOOP_TYPE_REMAPPER }
+            targetClass.takeIf { targetRemapper == NOOP_TYPE_REMAPPER },
           ) {
             IrBinding.ConstructorInjected(
               type = targetClass,
@@ -1003,7 +1018,7 @@ internal class BindingLookup(
 
         bindings +=
           bindingLookupCache.getOrPutAssistedFactory(
-            irClass.takeIf { remapper == NOOP_TYPE_REMAPPER }
+            irClass.takeIf { remapper == NOOP_TYPE_REMAPPER },
           ) {
             IrBinding.AssistedFactory(
               type = irClass,
@@ -1028,31 +1043,42 @@ internal class BindingLookup(
 }
 
 /**
- * Thread-safe cache for [IrBinding.ConstructorInjected] and [IrBinding.AssistedFactory] bindings
- * keyed by [IrClass]. This replaces the previous `irAttribute`-based caching which is not safe for
- * concurrent access during parallel graph extension validation.
+ * Reuses [IrBinding.ConstructorInjected] and [IrBinding.AssistedFactory] bindings by [IrClass].
+ * Lookups stay on the main compiler thread. Class bindings live for the compilation. Inherited
+ * graph data lives until its root finishes processing.
  */
 internal class BindingLookupCache {
   private val constructorInjectedBindings =
-    ConcurrentHashMap<IrClass, IrBinding.ConstructorInjected>()
-  private val assistedFactoryBindings = ConcurrentHashMap<IrClass, IrBinding.AssistedFactory>()
-  private val rawInheritedGraphData = ConcurrentHashMap<IrClass, Any>()
+    MutableScatterMap<IrClass, IrBinding.ConstructorInjected>()
+  private val assistedFactoryBindings = MutableScatterMap<IrClass, IrBinding.AssistedFactory>()
+  private val rawInheritedGraphData = MutableScatterMap<IrClass, Any>()
+
+  /** Releases inherited data after the current root and its extensions finish processing. */
+  fun clearGraphTree() {
+    rawInheritedGraphData.clear()
+  }
 
   /** Returns a cached binding or computes and caches it. If [irClass] is null, just computes. */
   fun getOrPutConstructorInjected(
     irClass: IrClass?,
     compute: () -> IrBinding.ConstructorInjected,
   ): IrBinding.ConstructorInjected =
-    if (irClass != null) constructorInjectedBindings.computeIfAbsent(irClass) { compute() }
-    else compute()
+    if (irClass != null) {
+      constructorInjectedBindings.getOrPut(irClass, compute)
+    } else {
+      compute()
+    }
 
   /** Returns a cached binding or computes and caches it. If [irClass] is null, just computes. */
   fun getOrPutAssistedFactory(
     irClass: IrClass?,
     compute: () -> IrBinding.AssistedFactory,
   ): IrBinding.AssistedFactory =
-    if (irClass != null) assistedFactoryBindings.computeIfAbsent(irClass) { compute() }
-    else compute()
+    if (irClass != null) {
+      assistedFactoryBindings.getOrPut(irClass, compute)
+    } else {
+      compute()
+    }
 
   /**
    * Cached unfiltered parent-aggregated graph data for child graphs sharing a parent. The opaque
@@ -1060,6 +1086,6 @@ internal class BindingLookupCache {
    */
   fun <T : Any> getOrPutRawInheritedGraphData(parentSourceGraph: IrClass, compute: () -> T): T {
     @Suppress("UNCHECKED_CAST")
-    return rawInheritedGraphData.computeIfAbsent(parentSourceGraph) { compute() } as T
+    return rawInheritedGraphData.getOrPut(parentSourceGraph, compute) as T
   }
 }

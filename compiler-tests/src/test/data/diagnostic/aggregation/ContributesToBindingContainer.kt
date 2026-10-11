@@ -36,22 +36,22 @@ interface <!CONTRIBUTES_TO_COULD_BE_BINDING_CONTAINER!>BindsGetter<!> {
 }
 
 @ContributesTo(AppScope::class)
-interface <!CONTRIBUTES_TO_COULD_BE_BINDING_CONTAINER!>MultibindsFunction<!> {
+interface MultibindsFunction {
   @Multibinds fun services(): Set<Service>
 }
 
 @ContributesTo(AppScope::class)
-interface <!CONTRIBUTES_TO_COULD_BE_BINDING_CONTAINER!>MultibindsProperty<!> {
+interface MultibindsProperty {
   @Multibinds val services: Set<Service>
 }
 
 @ContributesTo(AppScope::class)
-interface <!CONTRIBUTES_TO_COULD_BE_BINDING_CONTAINER!>MultibindsGetter<!> {
+interface MultibindsGetter {
   @get:Multibinds val services: Set<Service>
 }
 
 @ContributesTo(AppScope::class)
-interface <!CONTRIBUTES_TO_COULD_BE_BINDING_CONTAINER!>MixedBindings<!> {
+interface MixedBindings {
   @Binds @IntoSet fun bindService(impl: ServiceImpl): Service
   @Multibinds val services: Set<Service>
   @Provides fun provideString(): String = "hello"

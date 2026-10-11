@@ -68,6 +68,18 @@ This fetches release metadata from the JetBrains API and Google's Android Studio
 
 Requires `python3` and `gh` (GitHub CLI).
 
+### Prerelease Mappings
+
+Beta and RC releases are cut from a dev build, but they rank above every dev build of the same base version. Without a mapping, `2.5.0-Beta1` would pick the newest `2.5.0-dev-*` factory, even one that uses APIs its release branch doesn't have.
+
+`prerelease-mappings.txt` maps each Beta and RC to a dev compat module version. The script finds the dev build at the prerelease's merge-base with master in `JetBrains/kotlin`. It picks the lowest dev module at or above that build and records the branch point in a comment. That's a best guess, so test each prerelease in CI once it's published. The file is regenerated daily by the `update-ide-mappings` workflow. You can also run it locally:
+
+```bash
+./fetch-prerelease-kotlin-versions.py
+```
+
+It only checks base versions that have dev compat modules and no stable module. Requires `python3` and `gh` (GitHub CLI).
+
 ## Architecture
 
 ### Core Interface
@@ -148,15 +160,12 @@ For example:
 
 Standard semantic version comparison would incorrectly say `2.3.20-dev-7791 < 2.3.20-Beta1` (because dev < BETA in maturity ordering), potentially selecting the wrong factory.
 
-The resolution logic handles this by:
-1. If the current version is a dev build, first look for dev track factories with the same base
-   version (the same trunk lineage), comparing by build number
-2. If none match, cross base versions: lower-base dev factories and non-dev factories compete,
-   and the highest minVersion wins (e.g. a `2.4.0` stable factory outranks `2.4.0-dev-2124`)
+The resolution logic handles dev builds by:
 
-This ensures dev builds use same-lineage dev factories when available, don't regress to stale
-lower-base dev factories when a newer stable factory exists, and Beta/RC/Stable versions never
-accidentally use dev factories.
+1. First looking for dev track factories with the same base version (the same trunk lineage), comparing by build number.
+2. If none match, comparing lower-base dev factories and non-dev factories. The highest compatible minVersion wins (e.g. a `2.4.0` stable factory outranks `2.4.0-dev-2124`).
+
+Beta, RC, and stable builds first use the highest compatible non-dev factory with the same base version. If none matches, they use the newest dev factory with that base version. They fall back to an older non-dev factory only when no same-base factory is compatible. For example, an unmapped `2.5.0-Beta1` would use the newest `2.5.0-dev-*` factory when the newest release factory is `2.4.20`. Built-in prerelease mappings pin known Betas and RCs to a dev compat module first. See [Prerelease Mappings](#prerelease-mappings).
 
 ## Development Notes
 

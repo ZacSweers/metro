@@ -52,6 +52,7 @@ apiValidation {
   ignoredProjects += buildList {
     add("compiler")
     add("metro-common")
+    add("graph-viewer")
     add("compiler-tests")
     add("compiler-compat")
     add("latest")
@@ -81,6 +82,25 @@ dokka {
 
 tasks.register("installForFunctionalTest") {
   description = "Publishes all Metro artifacts to build/functionalTestRepo"
+}
+
+tasks.register<Sync>("prepareGraphViewer") {
+  description = "Builds the browser graph viewer for the docs site"
+  group = "documentation"
+  dependsOn(":graph-viewer:jsBrowserProductionLibraryDistribution")
+  into(layout.projectDirectory.dir("docs/graph-viewer"))
+  from(layout.projectDirectory.dir("graph-viewer/build/dist/js/productionLibrary")) {
+    include("*.mjs", "*.mjs.map")
+  }
+  from(layout.projectDirectory.dir("graph-viewer/src/host"))
+  from(
+    layout.projectDirectory.dir(
+      "gradle-plugin/src/main/resources/dev/zacsweers/metro/gradle/analysis",
+    ),
+  ) {
+    include("graph-viewer.html", "graph-viewer.css", "graph-viewer.js")
+  }
+  from(layout.projectDirectory.file("design/pluginIcon_dark.svg"))
 }
 
 subprojects {

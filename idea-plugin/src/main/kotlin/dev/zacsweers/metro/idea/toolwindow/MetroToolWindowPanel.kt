@@ -200,7 +200,7 @@ internal class MetroToolWindowPanel(
           searchText = searchField.text
           treeModel.invalidateAsync()
         }
-      }
+      },
     )
     tree.addTreeSelectionListener { updateValidationStatus() }
 
@@ -209,6 +209,8 @@ internal class MetroToolWindowPanel(
         templatePresentation.icon = AllIcons.Actions.More
         add(treeNavigation.autoscrollAction)
         add(ExportGraphDebugInfoAction(project) { selectedGraphNode()?.context })
+        // The overflow menu also exposes tracing to keyboard and accessibility navigation.
+        add(RefreshMetroTraceAction(project))
         add(StartMetroTraceAction(project))
         add(StopMetroTraceAction(project))
       }

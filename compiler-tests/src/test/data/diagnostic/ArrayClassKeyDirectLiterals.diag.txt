@@ -1,0 +1,35 @@
+/ArrayClassKeyDirectLiterals.kt:9:12: warning: kotlinc can read `Array<Int>::class` as `Int::class` when reading annotations from another module. This can make distinct qualifier values, map keys, or scopes match. Use a dedicated non-array key class.
+
+/ArrayClassKeyDirectLiterals.kt:12:12: warning: kotlinc can read `Array<IntArray>::class` as `IntArray::class` when reading annotations from another module. This can make distinct qualifier values, map keys, or scopes match. Use a dedicated non-array key class.
+
+/ArrayClassKeyDirectLiterals.kt:15:12: warning: kotlinc can read `Array<Array<String>>::class` as `String::class` when reading annotations from another module. This can make distinct qualifier values, map keys, or scopes match. Use a dedicated non-array key class.
+
+/ArrayClassKeyDirectLiterals.kt:21:16: warning: kotlinc can read `Array<String>::class` as `String::class` when reading annotations from another module. This can make distinct qualifier values, map keys, or scopes match. Use a dedicated non-array key class.
+
+/ArrayClassKeyDirectLiterals.kt:24:12: warning: kotlinc can read `Array<Byte>::class` as `Byte::class` when reading annotations from another module. This can make distinct qualifier values, map keys, or scopes match. Use a dedicated non-array key class.
+
+/ArrayClassKeyDirectLiterals.kt:27:12: warning: kotlinc can read `Array<ByteArray>::class` as `ByteArray::class` when reading annotations from another module. This can make distinct qualifier values, map keys, or scopes match. Use a dedicated non-array key class.
+
+/ArrayClassKeyDirectLiterals.kt:33:12: warning: kotlinc can read `Array<Short>::class` as `Short::class` when reading annotations from another module. This can make distinct qualifier values, map keys, or scopes match. Use a dedicated non-array key class.
+
+/ArrayClassKeyDirectLiterals.kt:36:12: warning: kotlinc can read `Array<ShortArray>::class` as `ShortArray::class` when reading annotations from another module. This can make distinct qualifier values, map keys, or scopes match. Use a dedicated non-array key class.
+
+/ArrayClassKeyDirectLiterals.kt:42:12: warning: kotlinc can read `Array<Long>::class` as `Long::class` when reading annotations from another module. This can make distinct qualifier values, map keys, or scopes match. Use a dedicated non-array key class.
+
+/ArrayClassKeyDirectLiterals.kt:45:12: warning: kotlinc can read `Array<LongArray>::class` as `LongArray::class` when reading annotations from another module. This can make distinct qualifier values, map keys, or scopes match. Use a dedicated non-array key class.
+
+/ArrayClassKeyDirectLiterals.kt:51:12: warning: kotlinc can read `Array<Float>::class` as `Float::class` when reading annotations from another module. This can make distinct qualifier values, map keys, or scopes match. Use a dedicated non-array key class.
+
+/ArrayClassKeyDirectLiterals.kt:54:12: warning: kotlinc can read `Array<FloatArray>::class` as `FloatArray::class` when reading annotations from another module. This can make distinct qualifier values, map keys, or scopes match. Use a dedicated non-array key class.
+
+/ArrayClassKeyDirectLiterals.kt:60:12: warning: kotlinc can read `Array<Double>::class` as `Double::class` when reading annotations from another module. This can make distinct qualifier values, map keys, or scopes match. Use a dedicated non-array key class.
+
+/ArrayClassKeyDirectLiterals.kt:63:12: warning: kotlinc can read `Array<DoubleArray>::class` as `DoubleArray::class` when reading annotations from another module. This can make distinct qualifier values, map keys, or scopes match. Use a dedicated non-array key class.
+
+/ArrayClassKeyDirectLiterals.kt:69:12: warning: kotlinc can read `Array<Char>::class` as `Char::class` when reading annotations from another module. This can make distinct qualifier values, map keys, or scopes match. Use a dedicated non-array key class.
+
+/ArrayClassKeyDirectLiterals.kt:72:12: warning: kotlinc can read `Array<CharArray>::class` as `CharArray::class` when reading annotations from another module. This can make distinct qualifier values, map keys, or scopes match. Use a dedicated non-array key class.
+
+/ArrayClassKeyDirectLiterals.kt:78:12: warning: kotlinc can read `Array<Boolean>::class` as `Boolean::class` when reading annotations from another module. This can make distinct qualifier values, map keys, or scopes match. Use a dedicated non-array key class.
+
+/ArrayClassKeyDirectLiterals.kt:81:12: warning: kotlinc can read `Array<BooleanArray>::class` as `BooleanArray::class` when reading annotations from another module. This can make distinct qualifier values, map keys, or scopes match. Use a dedicated non-array key class.

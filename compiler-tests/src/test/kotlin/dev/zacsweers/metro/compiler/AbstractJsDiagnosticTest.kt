@@ -22,7 +22,6 @@ import org.jetbrains.kotlin.test.directives.configureFirParser
 import org.jetbrains.kotlin.test.runners.AbstractKotlinCompilerTest
 import org.jetbrains.kotlin.test.services.EnvironmentBasedStandardLibrariesPathProvider
 import org.jetbrains.kotlin.test.services.KotlinStandardLibrariesPathProvider
-import org.jetbrains.kotlin.test.services.LibraryProvider
 import org.jetbrains.kotlin.test.services.TestPhase
 
 open class AbstractJsDiagnosticTest : AbstractKotlinCompilerTest() {
@@ -48,7 +47,7 @@ open class AbstractJsDiagnosticTest : AbstractKotlinCompilerTest() {
 
         // Unless overriden, assume the test will fail within the frontend.
         RUN_PIPELINE_TILL.with(TestPhase.FRONTEND)
-        LATEST_PHASE_IN_PIPELINE.with(TestPhase.BACKEND)
+        LATEST_PHASE_IN_PIPELINE.with(backendTestPhase)
       }
 
       configureFirHandlersStep {
@@ -79,7 +78,6 @@ open class AbstractJsDiagnosticTest : AbstractKotlinCompilerTest() {
       klibArtifactsHandlersStep { useHandlers(::KlibBackendDiagnosticsHandler) }
 
       enableMetaInfoHandler()
-      useAdditionalService(::LibraryProvider)
       usePhasedPipelineFailureSuppressorCompat()
       useAdditionalService<SuppressionChecker>(suppressionCheckerCtor)
     }

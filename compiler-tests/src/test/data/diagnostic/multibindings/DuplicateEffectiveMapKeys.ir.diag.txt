@@ -1,0 +1,98 @@
+/DuplicateEffectiveMapKeys.kt:19:7: error: [Metro/DuplicateMapKeys] Duplicate map keys found for multibinding Map<String, Int>
+
+  The following bindings contribute the same map key '@FirstStringKey("shared")'
+      DuplicateEffectiveMapKeys.kt:23:48
+        @Provides
+        @IntoMap
+        @FirstStringKey("shared")
+        fun firstString(): kotlin.Int
+
+      DuplicateEffectiveMapKeys.kt:24:49
+        @Provides
+        @IntoMap
+        @SecondStringKey("shared")
+        fun secondString(): kotlin.Int
+
+  trace (in ExplicitKeysGraph):
+      Map<String, Int> is requested at ExplicitKeysGraph.strings
+
+  note: These bindings use @FirstStringKey("shared"), @SecondStringKey("shared") with unwrapValue =
+        true. Metro uses the value inside each annotation as the map key, and those values are
+        equal.
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#duplicatemapkeys
+
+
+/DuplicateEffectiveMapKeys.kt:20:7: error: [Metro/DuplicateMapKeys] Duplicate map keys found for multibinding Map<Entry, Int>
+
+  The following bindings contribute the same map key '@FirstEnumKey(Entry.VALUE)'
+      DuplicateEffectiveMapKeys.kt:26:49
+        @Provides
+        @IntoMap
+        @FirstEnumKey(Entry.VALUE)
+        fun firstEnum(): kotlin.Int
+
+      DuplicateEffectiveMapKeys.kt:27:50
+        @Provides
+        @IntoMap
+        @SecondEnumKey(Entry.VALUE)
+        fun secondEnum(): kotlin.Int
+
+  trace (in ExplicitKeysGraph):
+      Map<Entry, Int> is requested at ExplicitKeysGraph.enums
+
+  note: These bindings use @FirstEnumKey(Entry.VALUE), @SecondEnumKey(Entry.VALUE) with unwrapValue
+        = true. Metro uses the value inside each annotation as the map key, and those values are
+        equal.
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#duplicatemapkeys
+
+
+/DuplicateEffectiveMapKeys.kt:21:7: error: [Metro/DuplicateMapKeys] Duplicate map keys found for multibinding Map<KClass<*>, Int>
+
+  The following bindings contribute the same map key
+  '@dev.zacsweers.metro.ClassKey(kotlin.String::class)'
+      DuplicateEffectiveMapKeys.kt:29:47
+        @Provides
+        @IntoMap
+        @dev.zacsweers.metro.ClassKey(kotlin.String::class)
+        fun firstClass(): kotlin.Int
+
+      DuplicateEffectiveMapKeys.kt:30:52
+        @Provides
+        @IntoMap
+        @OtherClassKey(kotlin.String::class)
+        fun secondClass(): kotlin.Int
+
+  trace (in ExplicitKeysGraph):
+      Map<KClass<*>, Int> is requested at ExplicitKeysGraph.classes
+
+  note: These bindings use @dev.zacsweers.metro.ClassKey(kotlin.String::class),
+        @OtherClassKey(kotlin.String::class) with unwrapValue = true. Metro uses the value inside
+        each annotation as the map key, and those values are equal.
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#duplicatemapkeys
+
+
+/DuplicateEffectiveMapKeys.kt:41:7: error: [Metro/DuplicateMapKeys] Duplicate map keys found for multibinding Map<KClass<*>, Item>
+
+  The following bindings contribute the same map key
+  '@dev.zacsweers.metro.ClassKey(ItemImpl::class)'
+      DuplicateEffectiveMapKeys.kt:46:3
+        @Provides
+        @IntoMap
+        @dev.zacsweers.metro.ClassKey(ItemImpl::class)
+        fun explicitItem(): Item
+
+      DuplicateEffectiveMapKeys.kt:43:37
+        @Binds
+        @IntoMap
+        @InferredClassKey(ItemImpl::class)
+        val ItemImpl.bindItem: Item
+                               ~~~~
+
+  trace (in ImplicitKeysGraph):
+      Map<KClass<*>, Item> is requested at ImplicitKeysGraph.items
+
+  note: These bindings use @dev.zacsweers.metro.ClassKey(ItemImpl::class),
+        @InferredClassKey(ItemImpl::class) with unwrapValue = true. Metro uses the value inside each
+        annotation as the map key, and those values are equal.
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#duplicatemapkeys
+

@@ -5,8 +5,8 @@ package dev.zacsweers.metro.idea.index.graph
 import dev.zacsweers.metro.idea.index.GraphInterfaceBinding
 import dev.zacsweers.metro.idea.model.ConsumerEntry
 import dev.zacsweers.metro.idea.model.GraphDeclarationId
-import dev.zacsweers.metro.idea.model.GraphDefaultImplementation
 import dev.zacsweers.metro.idea.model.GraphExtensionFactoryAccessor
+import dev.zacsweers.metro.idea.model.GraphMemberOverride
 import dev.zacsweers.metro.idea.model.GraphReference
 import org.jetbrains.kotlin.analysis.api.types.KaClassType
 import org.jetbrains.kotlin.name.ClassId
@@ -21,5 +21,5 @@ internal class GraphMemberTarget(
   val bindingTemplates: MutableList<GraphInterfaceBinding>? = null,
   /** The session-local receiver preserves an inherited factory SAM's annotated subtype. */
   val factoryContext: KaClassType? = null,
-  val defaultImplementations: MutableList<GraphDefaultImplementation> = mutableListOf(),
+  val memberOverrides: MutableList<GraphMemberOverride> = mutableListOf(),
 )

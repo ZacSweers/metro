@@ -8,6 +8,7 @@ import kotlin.jvm.JvmInline
 
 /** A simple class that produces instances of [T]. */
 public expect fun interface Provider<T> {
+  /** Returns an instance of [T]. */
   public operator fun invoke(): T
 }
 
@@ -40,7 +41,7 @@ public inline fun <T, R> Provider<T>.map(crossinline transform: (T) -> R): Provi
 
 /** Lazily maps [this] Provider's value to another [Provider] of type [R]. */
 public inline fun <T, R> Provider<T>.flatMap(
-  crossinline transform: (T) -> Provider<R>
+  crossinline transform: (T) -> Provider<R>,
 ): Provider<R> = Provider { transform(invoke())() }
 
 /**

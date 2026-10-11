@@ -15,9 +15,11 @@ import dev.zacsweers.metro.compiler.memoize
 import org.jetbrains.kotlin.builtins.StandardNames
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
+import org.jetbrains.kotlin.fir.expressions.FirCall
 import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
 import org.jetbrains.kotlin.fir.expressions.FirVarargArgumentsExpression
+import org.jetbrains.kotlin.fir.expressions.arguments
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension.TypeResolveService
 import org.jetbrains.kotlin.name.ClassId
@@ -39,8 +41,6 @@ public class HiltFirDeclarationExtension(
   MetroContributionHintExtension,
   CompatContext by compatContext {
 
-  private val scanner by memoize { HiltAggregatedDepsScanner(session) }
-
   /** Owns this extension's single-pass in-round `@InstallIn` scan. */
   private val componentScopes by memoize { HiltComponentScopeMapping(session) }
 
@@ -52,16 +52,6 @@ public class HiltFirDeclarationExtension(
 
   override fun getContributionHints(): List<ContributionHint> {
     val hints = mutableListOf<ContributionHint>()
-
-    // Upstream Hilt-processed modules need Metro hints for classpath discovery.
-    for (dep in scanner.getAllDeps()) {
-      if (dep.modules.isEmpty()) continue
-      val scopes = dep.components.mapNotNull(componentScopes::resolveScope)
-      if (scopes.isEmpty()) continue
-      for (moduleClassId in dep.modules) {
-        for (scope in scopes) hints += ContributionHint(moduleClassId, scope)
-      }
-    }
 
     // Current-compilation modules and entry points also emit hints for downstream modules.
     for (installIn in componentScopes.inRoundInstallIns) {
@@ -124,8 +114,9 @@ internal data class InRoundInstallIn(
 /**
  * Reads the `value: Class<?>[]` argument of `@InstallIn`.
  *
- * FIR may represent the argument as a single class call or as vararg class calls. The resolver
- * fallback covers phases where annotation arguments have not yet been fully resolved.
+ * FIR may represent the argument as a single class call, vararg class calls, or a collection
+ * literal. The resolver fallback covers phases where annotation arguments have not yet been fully
+ * resolved.
  */
 internal fun FirAnnotation.installInComponents(
   session: FirSession,
@@ -162,6 +153,7 @@ private inline fun FirAnnotation.installInComponentsImpl(
     when (arg) {
       is FirGetClassCall -> listOf(arg)
       is FirVarargArgumentsExpression -> arg.arguments.filterIsInstance<FirGetClassCall>()
+      is FirCall -> arg.arguments.filterIsInstance<FirGetClassCall>()
       else -> emptyList()
     }
   return classCalls.mapNotNull(resolveComponentClassId)

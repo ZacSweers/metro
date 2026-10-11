@@ -10,7 +10,7 @@ import dev.zacsweers.metro.compiler.ir.graph.IrBindingGraph
 import dev.zacsweers.metro.compiler.ir.instanceFactory
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.irLambda
-import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
+import dev.zacsweers.metro.compiler.ir.irLambdaAsMetroProvider
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInSuspendProvider
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
@@ -227,13 +227,7 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
         +irReturn(returnExpression(it))
       }
     lambda.function.body?.patchDeclarationParents(lambda.function)
-    return irInvoke(
-      dispatchReceiver = null,
-      callee = metroSymbols.metroProviderFunction,
-      typeHint = type.wrapInProvider(metroSymbols.metroProvider),
-      typeArgs = listOf(type),
-      args = listOf(lambda),
-    )
+    return irLambdaAsMetroProvider(lambda, type)
   }
 
   protected fun IrBuilderWithScope.wrapInSuspendProviderFunction(

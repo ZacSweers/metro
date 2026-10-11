@@ -28,7 +28,7 @@ interface AppGraph {
 
 fun box(): String {
   val graph = createGraph<AppGraph>()
-  val entryPoint = graph as MyEntryPoint
+  val entryPoint: MyEntryPoint = graph
   assertEquals("Hello entry point", entryPoint.message)
   return "OK"
 }

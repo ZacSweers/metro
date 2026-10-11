@@ -15,14 +15,18 @@ import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.config.LanguageVersionSettings
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibility
+import org.jetbrains.kotlin.diagnostics.AbstractKtDiagnosticFactory
+import org.jetbrains.kotlin.diagnostics.KtDiagnostic
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactory1
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticWithoutSource
 import org.jetbrains.kotlin.diagnostics.KtSourcelessDiagnosticFactory
+import org.jetbrains.kotlin.diagnostics.Severity
 import org.jetbrains.kotlin.fir.FirAnnotationContainer
 import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.DeprecationsProvider
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
+import org.jetbrains.kotlin.fir.declarations.FirDeclarationStatus
 import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameter
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
@@ -39,6 +43,7 @@ import org.jetbrains.kotlin.fir.plugin.SimpleFunctionBuildingContext
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.ir.IrDiagnosticReporter
 import org.jetbrains.kotlin.ir.IrElement
@@ -82,6 +87,9 @@ public interface CompatContext {
      * 2. If none match, cross base versions: lower-base dev factories and non-dev factories
      *    compete, highest minVersion wins
      *
+     * Other versions prefer a compatible non-dev factory with the same base version. If none
+     * matches, they try same-base dev factories before falling back to older non-dev versions.
+     *
      * IDE versions like 2.4.0-ij261-64 use IntelliJ build numbers that are not comparable with
      * Kotlin dev build numbers, so unmapped IDE builds choose the earliest same-base factory.
      *
@@ -107,7 +115,9 @@ public interface CompatContext {
           .toList()
 
       val currentVersion =
-        knownVersion ?: factoryDataList.firstOrNull()?.version ?: error("No factories available")
+        knownVersion
+          ?: factoryDataList.firstOrNull()?.version?.let(::applyBuiltInAliases)
+          ?: error("No factories available")
 
       val targetFactory = resolveFactoryForVersion(currentVersion, factoryDataList)
       return targetFactory
@@ -118,8 +128,20 @@ public interface CompatContext {
             Available factories for: ${factories.joinToString(separator = "\n") { it.minVersion }}
             Detected version(s): ${factories.map { it.currentVersion }.distinct().joinToString(separator = "\n")}
           """
-            .trimIndent()
+            .trimIndent(),
         )
+    }
+
+    /**
+     * Applies built-in aliases so detected versions resolve the same way as versions passed in by
+     * the compiler plugin registrar. CLI-only versions keep their original version here.
+     */
+    private fun applyBuiltInAliases(version: KotlinToolingVersion): KotlinToolingVersion {
+      val aliased = CompilerVersionAliases.map(version)
+      if (aliased == null) {
+        return version
+      }
+      return aliased
     }
 
     private fun resolveFactoryForVersion(
@@ -173,11 +195,13 @@ public interface CompatContext {
           ?.factory
       }
 
-      // For non-DEV versions, only consider non-DEV factories
-      val nonDevFactories = factoryDataList.filter {
-        !KotlinToolingVersion(it.factory.minVersion).isDev
+      // Same-base dev factories provide a fallback when no release factory matches this base
+      // version.
+      val candidateFactories = factoryDataList.filter {
+        val minVersion = KotlinToolingVersion(it.factory.minVersion)
+        !minVersion.isDev || minVersion.hasSameBaseVersionAs(currentVersion)
       }
-      return findHighestCompatibleFactory(currentVersion, nonDevFactories)
+      return findHighestCompatibleFactory(currentVersion, candidateFactories)
     }
 
     private fun findHighestCompatibleFactory(
@@ -229,7 +253,7 @@ public interface CompatContext {
       public fun loadCompilerVersionString(): String {
         return loadCompilerVersionStringOrNull()
           ?: throw AssertionError(
-            "'$COMPILER_VERSION_FILE' not found in the classpath or was blank"
+            "'$COMPILER_VERSION_FILE' not found in the classpath or was blank",
           )
       }
 
@@ -336,12 +360,33 @@ public interface CompatContext {
     config: SimpleFunctionBuildingContext.() -> Unit = {},
   ): FirFunction
 
+  /** Copies this status with the requested override flag. */
+  @CompatApi(
+    since = "2.5.0-dev-10106",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message = "FirDeclarationStatus.copy added isRichError",
+  )
+  public fun FirDeclarationStatus.copyWithOverrideCompat(isOverride: Boolean): FirDeclarationStatus
+
   // Changed to a new KtSourceElementOffsetStrategy overload in Kotlin 2.3.0
+  @CompatApi(
+    since = "2.5.0-dev-6460",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message = "fakeElement moved from an extension to a member function",
+  )
   public fun KtSourceElement.fakeElement(
     newKind: KtFakeSourceElementKind,
     startOffset: Int = -1,
     endOffset: Int = -1,
   ): KtSourceElement
+
+  /** Returns the default value's source for diagnostics, if the compiler exposes it. */
+  @CompatApi(
+    since = "2.5.0-dev-6810",
+    reason = CompatApi.Reason.RENAMED,
+    message = "defaultValueSource was renamed to resolvedDefaultValueSource",
+  )
+  public fun FirValueParameterSymbol.defaultValueSourceCompat(): KtSourceElement?
 
   @CompatApi(
     since = "2.3.20",
@@ -447,6 +492,16 @@ public interface CompatContext {
   public val supportsIrGeneratedClasses: Boolean
     get() = false
 
+  /** Returns the configured severity, or `null` when the diagnostic is disabled. */
+  @CompatApi(
+    since = "2.3.20",
+    reason = CompatApi.Reason.COMPAT,
+    message = "Effective diagnostic severity is protected in Kotlin 2.3.0 and 2.3.10",
+  )
+  public fun AbstractKtDiagnosticFactory.getEffectiveSeverityCompat(
+    languageVersionSettings: LanguageVersionSettings,
+  ): Severity?
+
   @CompatApi(
     since = "2.3.20-dev-7621",
     reason = CompatApi.Reason.COMPAT,
@@ -478,6 +533,18 @@ public interface CompatContext {
     throw NotImplementedError("reportCompat is not implemented on this version of the compiler")
   }
 
+  /** Returns a copy of this diagnostic with the given [severity]. */
+  @CompatApi(
+    since = "2.5.0-dev-6084",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message =
+      """
+        Diagnostic classes were merged into one class per parameter count
+        https://github.com/JetBrains/kotlin/commit/933301c8ce1d
+      """,
+  )
+  public fun KtDiagnostic.withSeverityCompat(severity: Severity): KtDiagnostic
+
   @CompatApi(
     since = "2.4.0",
     reason = CompatApi.Reason.ABI_CHANGE,
@@ -508,7 +575,7 @@ public interface CompatContext {
   )
   context(_: CompilerPluginRegistrar)
   public fun CompilerPluginRegistrar.ExtensionStorage.registerFirExtensionCompat(
-    extension: FirExtensionRegistrar
+    extension: FirExtensionRegistrar,
   )
 
   @CompatApi(
@@ -518,7 +585,7 @@ public interface CompatContext {
   )
   context(_: CompilerPluginRegistrar)
   public fun CompilerPluginRegistrar.ExtensionStorage.registerIrExtensionCompat(
-    extension: IrGenerationExtension
+    extension: IrGenerationExtension,
   )
 
   @CompatApi(
@@ -527,7 +594,7 @@ public interface CompatContext {
     message = "2.4 introduced IrAnnotation for IrConstructorCall",
   )
   public fun createIrGeneratedDeclarationsRegistrar(
-    pluginContext: IrPluginContext
+    pluginContext: IrPluginContext,
   ): IrGeneratedDeclarationsRegistrarCompat
 
   @CompatApi(
@@ -549,6 +616,14 @@ public interface CompatContext {
   public fun IrAnnotationContainer.addAnnotationCompat(annotation: IrConstructorCall) {
     replaceAnnotationsCompat(annotationsCompat() + annotation)
   }
+
+  /** Lets a FIR-generated file use normal output tracking for incremental compilation. */
+  @CompatApi(
+    since = "2.5.0-dev-7307",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message = "fileForTopLevelPluginDeclarations moved from backend.common to ir",
+  )
+  public fun IrFile.clearTopLevelPluginFileMarkerCompat()
 
   @CompatApi(
     since = "2.4.0",
@@ -626,7 +701,7 @@ public interface CompatContext {
     message = "2.4 changed to use more specific receivers",
   )
   public fun FirAnnotationContainer.getDeprecationsProviderCompat(
-    session: FirSession
+    session: FirSession,
   ): DeprecationsProvider?
 
   @CompatApi(
@@ -665,7 +740,6 @@ public interface CompatContext {
     message = "2.4.20-dev-3583 split PluginGenerated into nested source element kinds",
   )
   public val pluginGeneratedSourceElementKind: KtFakeSourceElementKind
-    get() = KtFakeSourceElementKind.PluginGenerated
 
   @CompatApi(
     since = "2.4.20-dev-3583",
@@ -675,10 +749,7 @@ public interface CompatContext {
   public fun IrElement.dumpKotlinLikeCompat(
     options: KotlinLikeDumpOptions,
     classNameTransformer: (context: IrDeclaration?, declaration: IrDeclarationWithName) -> String,
-    fallback: () -> String,
-  ): String {
-    return fallback()
-  }
+  ): String
 
   /**
    * Returns the compiler's configured [MessageCollector], or a non-silent fallback if no collector
@@ -712,7 +783,7 @@ public interface CompatContext {
       "createEmptyExternalPackageFragment now takes IrModuleFragment instead of ModuleDescriptor",
   )
   public fun IrModuleFragment.createEmptyExternalPackageFragmentCompat(
-    packageName: String
+    packageName: String,
   ): IrPackageFragment
 
   @CompatApi(

@@ -74,7 +74,7 @@ class BindingExplanationTest {
               "Service",
               BindingCandidateStatus.REJECTED,
               BindingReason.REPLACED,
-            )
+            ),
           ),
         details = listOf("Only decisions observed during registration are included."),
       )
@@ -90,7 +90,7 @@ class BindingExplanationTest {
   fun `minimal snapshots decode without optional fields`() {
     val snapshot =
       Json.decodeFromString<BindingExplanation>(
-        """{"context":{"id":"graph","label":"AppGraph"},"phase":"lookup","outcome":"missing","candidates":[],"request":{"key":"Service"}}"""
+        """{"context":{"id":"graph","label":"AppGraph"},"phase":"lookup","outcome":"missing","candidates":[],"request":{"key":"Service"}}""",
       )
 
     val request = checkNotNull(snapshot.request)

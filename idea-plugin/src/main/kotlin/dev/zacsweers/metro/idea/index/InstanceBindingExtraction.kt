@@ -22,6 +22,6 @@ internal fun CallableParameterView.instanceBindingData(
         null,
         null,
         isGraphPrivate = symbol.annotations.any { it.classId == MetroClassIds.graphPrivate },
-      )
+      ),
     )
   }

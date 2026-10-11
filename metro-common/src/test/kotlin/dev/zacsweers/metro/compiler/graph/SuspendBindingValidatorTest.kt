@@ -29,7 +29,7 @@ class SuspendBindingValidatorTest {
             SuspendMemberInjectionMetadata(
               "'Target' member injection",
               listOf(contextKey("Source")),
-            )
+            ),
           ),
       ),
       binding(
@@ -61,6 +61,74 @@ class SuspendBindingValidatorTest {
         MetroDiagnosticId.MISSING_RUNTIME_COROUTINES,
       )
       .inOrder()
+  }
+
+  @Test
+  fun `assisted targets report unsupported suspend multibindings at their constructor requests`() {
+    for (type in listOf("Set<Source>", "Map<String, Source>")) {
+      val fixture = ValidationFixture(runtimeCoroutinesAvailable = true)
+      val constructorRequest = contextKey(type)
+      val factory =
+        binding(
+          "Factory",
+          "() -> $type",
+          assistedFactory =
+            SuspendAssistedFactoryMetadata(
+              factoryName = "Target.Factory",
+              targetName = "Target",
+              functionName = "create",
+              functionIsSuspend = true,
+              constructorDependencies = listOf(constructorRequest),
+            ),
+        )
+      fixture.put(
+        binding("Source", isSuspend = true),
+        binding(
+          type,
+          "Source",
+          multibinding = SuspendMultibindingMetadata(isSet = type.startsWith("Set<")),
+        ),
+        factory,
+      )
+
+      val issue = fixture.validate(request("Factory")).issues.single()
+      val site = issue.site as SuspendValidationSite.BindingDependency<*, *>
+
+      assertThat(issue.diagnosticId).isEqualTo(MetroDiagnosticId.MULTIBINDING_OVER_SUSPEND_BINDINGS)
+      assertThat(site.binding).isSameInstanceAs(factory)
+      assertThat(site.dependency).isSameInstanceAs(constructorRequest)
+    }
+  }
+
+  @Test
+  fun `assisted targets can consume maps of suspend providers`() {
+    val fixture = ValidationFixture(runtimeCoroutinesAvailable = true)
+    val constructorRequest = contextKey("Map<String, suspend () -> Source>")
+    fixture.put(
+      binding("Source", isSuspend = true),
+      binding(
+        "Map<String, Source>",
+        "Source",
+        multibinding = SuspendMultibindingMetadata(isSet = false),
+      ),
+      binding(
+        "Factory",
+        "() -> Map<String, suspend () -> Source>",
+        assistedFactory =
+          SuspendAssistedFactoryMetadata(
+            factoryName = "Target.Factory",
+            targetName = "Target",
+            functionName = "create",
+            functionIsSuspend = false,
+            constructorDependencies = listOf(constructorRequest),
+          ),
+      ),
+    )
+
+    val result = fixture.validate(request("Factory"))
+
+    assertThat(result.issues).isEmpty()
+    assertThat(result.suspendKeys).contains(key("Map<String, Source>"))
   }
 
   @Test
@@ -202,7 +270,7 @@ private class ValidationFixture(
   }
 
   fun validate(
-    vararg requests: SuspendGraphRequest<StringContextualTypeKey, String>
+    vararg requests: SuspendGraphRequest<StringContextualTypeKey, String>,
   ): SuspendBindingValidationResult<
     StringTypeKey,
     StringContextualTypeKey,

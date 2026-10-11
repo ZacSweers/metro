@@ -93,7 +93,7 @@ internal fun KtDeclaration.hasPotentialDefaultMetroContext(): Boolean {
 }
 
 private fun KtDeclaration.hasPotentialAnnotationContext(
-  hasMatchingAnnotation: (KtAnnotated?) -> Boolean
+  hasMatchingAnnotation: (KtAnnotated?) -> Boolean,
 ): Boolean {
   var context: PsiElement? = this
   while (context != null && context !is KtFile) {

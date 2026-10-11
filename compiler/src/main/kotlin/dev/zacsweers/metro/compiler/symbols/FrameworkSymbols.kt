@@ -196,7 +196,7 @@ internal class MetroFrameworkSymbols(
 
   private val providerOfLazy: IrClassSymbol by lazy {
     builtinsFinder.findClass(
-      ClassId(metroRuntimeInternal.packageFqName, "ProviderOfLazy".asName())
+      ClassId(metroRuntimeInternal.packageFqName, "ProviderOfLazy".asName()),
     )!!
   }
 
@@ -250,7 +250,7 @@ internal class MetroFrameworkSymbols(
 
   override val mapProviderFactory: IrClassSymbol by lazy {
     builtinsFinder.findClass(
-      ClassId(metroRuntimeInternal.packageFqName, "MapProviderFactory".asName())
+      ClassId(metroRuntimeInternal.packageFqName, "MapProviderFactory".asName()),
     )!!
   }
 
@@ -272,7 +272,7 @@ internal class MetroFrameworkSymbols(
 
   override val mapLazyFactory: IrClassSymbol by lazy {
     builtinsFinder.findClass(
-      ClassId(metroRuntimeInternal.packageFqName, "MapLazyFactory".asName())
+      ClassId(metroRuntimeInternal.packageFqName, "MapLazyFactory".asName()),
     )!!
   }
 
@@ -294,7 +294,7 @@ internal class MetroFrameworkSymbols(
 
   override val mapProviderLazyFactory: IrClassSymbol by lazy {
     builtinsFinder.findClass(
-      ClassId(metroRuntimeInternal.packageFqName, "MapProviderLazyFactory".asName())
+      ClassId(metroRuntimeInternal.packageFqName, "MapProviderLazyFactory".asName()),
     )!!
   }
 
@@ -312,7 +312,7 @@ internal class MetroFrameworkSymbols(
 
   override val mapSuspendProviderFactory: IrClassSymbol by lazy {
     builtinsFinder.findClass(
-      ClassId(metroRuntimeInternal.packageFqName, "MapSuspendProviderFactory".asName())
+      ClassId(metroRuntimeInternal.packageFqName, "MapSuspendProviderFactory".asName()),
     )!!
   }
 
@@ -340,7 +340,7 @@ internal class MetroFrameworkSymbols(
   // Only access these symbols from code paths gated on `platform.isJs()`.
   val mapFunctionFactory: IrClassSymbol by lazy {
     builtinsFinder.findClass(
-      ClassId(metroRuntimeInternal.packageFqName, "MapFunctionFactory".asName())
+      ClassId(metroRuntimeInternal.packageFqName, "MapFunctionFactory".asName()),
     )!!
   }
 
@@ -400,7 +400,7 @@ internal class JavaxSymbols(
         CallableId(
           javaxInteropRuntime.packageFqName,
           Symbols.StringNames.AS_JAVAX_PROVIDER.asName(),
-        )
+        ),
       )
       .single()
   }
@@ -411,7 +411,7 @@ internal class JavaxSymbols(
         CallableId(
           javaxInteropRuntime.packageFqName,
           Symbols.StringNames.AS_METRO_PROVIDER.asName(),
-        )
+        ),
       )
       .first()
   }
@@ -448,7 +448,7 @@ internal class JakartaSymbols(
         CallableId(
           jakartaInteropRuntime.packageFqName,
           Symbols.StringNames.AS_JAKARTA_PROVIDER.asName(),
-        )
+        ),
       )
       .single()
   }
@@ -459,7 +459,7 @@ internal class JakartaSymbols(
         CallableId(
           jakartaInteropRuntime.packageFqName,
           Symbols.StringNames.AS_METRO_PROVIDER.asName(),
-        )
+        ),
       )
       .first()
   }
@@ -492,7 +492,7 @@ internal class GuiceSymbols(
   val guiceDoubleCheckCompanionObject: IrClassSymbol by lazy {
     builtinsFinder
       .findClass(
-        ClassId(guiceInteropRuntimeInternal.packageFqName, "GuiceInteropDoubleCheck".asName())
+        ClassId(guiceInteropRuntimeInternal.packageFqName, "GuiceInteropDoubleCheck".asName()),
       )!!
       .owner
       .companionObject()!!
@@ -514,7 +514,7 @@ internal class GuiceSymbols(
         CallableId(
           guiceInteropRuntime.packageFqName,
           Symbols.StringNames.AS_GUICE_PROVIDER.asName(),
-        )
+        ),
       )
       .single()
   }
@@ -525,7 +525,7 @@ internal class GuiceSymbols(
         CallableId(
           guiceInteropRuntime.packageFqName,
           Symbols.StringNames.AS_METRO_PROVIDER.asName(),
-        )
+        ),
       )
       .first()
   }
@@ -536,7 +536,7 @@ internal class GuiceSymbols(
         CallableId(
           guiceInteropRuntime.packageFqName,
           Symbols.StringNames.AS_GUICE_MEMBERS_INJECTOR.asName(),
-        )
+        ),
       )
       .first()
   }
@@ -547,7 +547,7 @@ internal class GuiceSymbols(
         CallableId(
           guiceInteropRuntime.packageFqName,
           Symbols.StringNames.AS_METRO_MEMBERS_INJECTOR.asName(),
-        )
+        ),
       )
       .first()
   }
@@ -591,7 +591,7 @@ internal class DaggerSymbols(
 
   override val canonicalProviderType: IrClassSymbol by lazy {
     builtinsFinder.findClass(
-      ClassId(daggerRuntimeInternal.packageFqName, Symbols.Names.ProviderClass)
+      ClassId(daggerRuntimeInternal.packageFqName, Symbols.Names.ProviderClass),
     )!!
   }
 
@@ -612,7 +612,7 @@ internal class DaggerSymbols(
 
   override val doubleCheck by lazy {
     builtinsFinder.findClass(
-      ClassId(daggerInteropRuntimeInternal.packageFqName, "DaggerInteropDoubleCheck".asName())
+      ClassId(daggerInteropRuntimeInternal.packageFqName, "DaggerInteropDoubleCheck".asName()),
     )!!
   }
 
@@ -624,7 +624,7 @@ internal class DaggerSymbols(
 
   private val providerOfLazy: IrClassSymbol by lazy {
     builtinsFinder.findClass(
-      ClassId(daggerRuntimeInternal.packageFqName, "ProviderOfLazy".asName())
+      ClassId(daggerRuntimeInternal.packageFqName, "ProviderOfLazy".asName()),
     )!!
   }
 
@@ -670,7 +670,7 @@ internal class DaggerSymbols(
 
   override val mapProviderFactory: IrClassSymbol by lazy {
     builtinsFinder.findClass(
-      ClassId(daggerRuntimeInternal.packageFqName, "MapProviderFactory".asName())
+      ClassId(daggerRuntimeInternal.packageFqName, "MapProviderFactory".asName()),
     )!!
   }
 
@@ -687,7 +687,7 @@ internal class DaggerSymbols(
 
   override val mapLazyFactory: IrClassSymbol by lazy {
     builtinsFinder.findClass(
-      ClassId(daggerRuntimeInternal.packageFqName, "MapLazyFactory".asName())
+      ClassId(daggerRuntimeInternal.packageFqName, "MapLazyFactory".asName()),
     )!!
   }
 
@@ -703,7 +703,7 @@ internal class DaggerSymbols(
 
   override val mapProviderLazyFactory: IrClassSymbol by lazy {
     builtinsFinder.findClass(
-      ClassId(daggerRuntimeInternal.packageFqName, "MapProviderLazyFactory".asName())
+      ClassId(daggerRuntimeInternal.packageFqName, "MapProviderLazyFactory".asName()),
     )!!
   }
 
@@ -720,7 +720,7 @@ internal class DaggerSymbols(
   // Dagger has no SuspendProvider concept, use Metro's runtime version
   override val mapSuspendProviderFactory: IrClassSymbol by lazy {
     builtinsFinder.findClass(
-      ClassId(FqName("dev.zacsweers.metro.internal"), "MapSuspendProviderFactory".asName())
+      ClassId(FqName("dev.zacsweers.metro.internal"), "MapSuspendProviderFactory".asName()),
     )!!
   }
 
@@ -746,7 +746,7 @@ internal class DaggerSymbols(
         CallableId(
           daggerInteropRuntimeInternal.packageFqName,
           Symbols.StringNames.AS_DAGGER_INTERNAL_PROVIDER.asName(),
-        )
+        ),
       )
       .single()
   }
@@ -757,7 +757,7 @@ internal class DaggerSymbols(
         CallableId(
           daggerInteropRuntime.packageFqName,
           Symbols.StringNames.AS_DAGGER_MEMBERS_INJECTOR.asName(),
-        )
+        ),
       )
       .first()
   }
@@ -768,7 +768,7 @@ internal class DaggerSymbols(
         CallableId(
           daggerInteropRuntime.packageFqName,
           Symbols.StringNames.AS_METRO_MEMBERS_INJECTOR.asName(),
-        )
+        ),
       )
       .first()
   }

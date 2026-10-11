@@ -3,17 +3,14 @@ interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
-    private val thisGraphInstance: Impl
-      field = <this>
-
     private val provideIntProvider: Provider<Int>
-      field = SwitchingProvider<Int>(graph = <this>, id = 3)
+      field = SwitchingProvider<Int>(graph = <this>, id = 2)
 
     private val provideStringProvider: Provider<String>
       field = DelegateFactory<String>()
 
     private val provideLongProvider: Provider<Long>
-      field = DoubleCheck/* companion */.provider<Provider<Long>, Long>(delegate = SwitchingProvider<Long>(graph = <this>, id = 1))
+      field = provider<Provider<Long>, Long>(delegate = SwitchingProvider<Long>(graph = <this>, id = 0))
 
     private class SwitchingProvider<T : Any?> : Provider<T> {
       private val graph: Impl
@@ -29,10 +26,11 @@ interface AppGraph {
       override fun invoke(): T {
         return { // BLOCK
           val tmp0_id: Int = <this>.#id
+          val tmp1_graph: AppGraph.Impl = <this>.#graph
           when {
-            EQEQ(arg0 = tmp0_id, arg1 = 3) -> <this>.#graph.#thisGraphInstance.provideInt() /*as T */
-            EQEQ(arg0 = tmp0_id, arg1 = 2) -> <this>.#graph.#thisGraphInstance.provideString(int = <this>.#graph.#provideIntProvider.invoke(), long = DoubleCheck/* companion */.lazy<Provider<Long>, Long>(provider = <this>.#graph.#provideLongProvider)) /*as T */
-            EQEQ(arg0 = tmp0_id, arg1 = 1) -> <this>.#graph.#thisGraphInstance.provideLong(string = <this>.#graph.#provideStringProvider.invoke()) /*as T */
+            EQEQ(arg0 = tmp0_id, arg1 = 0) -> tmp1_graph.provideLong(string = tmp1_graph.#provideStringProvider.invoke()) /*as T */
+            EQEQ(arg0 = tmp0_id, arg1 = 1) -> tmp1_graph.provideString(int = tmp1_graph.#provideIntProvider.invoke(), long = lazy<Provider<Long>, Long>(provider = tmp1_graph.#provideLongProvider)) /*as T */
+            EQEQ(arg0 = tmp0_id, arg1 = 2) -> tmp1_graph.provideInt() /*as T */
             else -> throw error(message = "Unexpected SwitchingProvider id: " + tmp0_id)
           }
         }
@@ -44,7 +42,7 @@ interface AppGraph {
       super/*Any*/()
       /* <init>() */
 
-      DelegateFactory/* companion */.setDelegate<String>(delegateFactory = <this>.#provideStringProvider, delegate = DoubleCheck/* companion */.provider<Provider<String>, String>(delegate = SwitchingProvider<String>(graph = <this>, id = 2)))
+      setDelegate<String>(delegateFactory = <this>.#provideStringProvider, delegate = provider<Provider<String>, String>(delegate = SwitchingProvider<String>(graph = <this>, id = 1)))
     }
 
     override val long: Long

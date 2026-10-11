@@ -21,24 +21,15 @@ interface RootGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : RootGraph {
-    private val thisGraphInstance: Impl
-      field = <this>
-
     @DependencyGraph
     private class Lvl1ExtremelyLongGraphExtensionInterfaceNameUsedToTriggerNameHashingImpl : Lvl1ExtremelyLongGraphExtensionInterfaceNameUsedToTriggerNameHashing {
       private val rootGraphImpl: Impl
         field = rootGraphImpl
 
-      private val thisGraphInstance: Lvl1ExtremelyLongGraphExtensionInterfaceNameUsedToTriggerNameHashingImpl
-        field = <this>
-
       @DependencyGraph
       private class Lvl2ExtremelyLongGraphExtensionInterfaceNameUsedToTriggerNameHashingImpl : Lvl2ExtremelyLongGraphExtensionInterfaceNameUsedToTriggerNameHashing {
         private val lvl1ExtremelyLongGraphExtensionInterfaceNameUsedToTriggerNameHashingImpl: Lvl1ExtremelyLongGraphExtensionInterfaceNameUsedToTriggerNameHashingImpl
           field = lvl1ExtremelyLongGraphExtensionInterfaceNameUsedToTriggerNameHashingImpl
-
-        private val thisGraphInstance: Lvl2ExtremelyLongGraphExtensionInterfaceNameUsedToTriggerNameHashingImpl
-          field = <this>
 
         @DependencyGraph
         private class Impl_o77fd : Lvl3ExtremelyLongGraphExtensionInterfaceNameUsedToTriggerNameHashing {
@@ -112,3 +103,4 @@ interface RootGraph {
     abstract get
 
 }
+

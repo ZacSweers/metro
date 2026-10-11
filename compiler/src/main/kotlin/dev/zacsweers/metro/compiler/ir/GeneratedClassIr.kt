@@ -18,7 +18,6 @@ import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.addChild
-import org.jetbrains.kotlin.ir.util.addSimpleDelegatingConstructor
 import org.jetbrains.kotlin.ir.util.copyTypeParametersFrom
 import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
 import org.jetbrains.kotlin.ir.util.nestedClasses
@@ -152,13 +151,8 @@ internal fun IrClass.addMetadataVisibleHiddenCompanionObject(): IrClass {
 context(context: IrMetroContext)
 internal fun IrClass.addMetadataVisibleDefaultConstructor() {
   if (primaryConstructor != null) return
-  addSimpleDelegatingConstructor(
-      context.irBuiltIns.anyClass.owner.primaryConstructor!!,
-      context.irBuiltIns,
-      isPrimary = true,
-    )
-    .apply {
-      visibility = DescriptorVisibilities.PRIVATE
-      context.metadataDeclarationRegistrarCompat.registerConstructorAsMetadataVisible(this)
-    }
+  addDefaultConstructor().apply {
+    visibility = DescriptorVisibilities.PRIVATE
+    context.metadataDeclarationRegistrarCompat.registerConstructorAsMetadataVisible(this)
+  }
 }

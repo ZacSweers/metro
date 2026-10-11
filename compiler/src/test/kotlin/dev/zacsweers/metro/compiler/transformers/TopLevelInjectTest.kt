@@ -3,9 +3,11 @@
 package dev.zacsweers.metro.compiler.transformers
 
 import com.google.common.truth.Truth.assertThat
+import com.tschuchort.compiletesting.KotlinCompilation.ExitCode
 import dev.zacsweers.metro.compiler.ExampleGraph
 import dev.zacsweers.metro.compiler.MetroCompilerTest
 import dev.zacsweers.metro.compiler.MetroOptions
+import dev.zacsweers.metro.compiler.assertDiagnostics
 import dev.zacsweers.metro.compiler.callProperty
 import dev.zacsweers.metro.compiler.captureStandardOut
 import dev.zacsweers.metro.compiler.createGraphViaFactory
@@ -20,6 +22,7 @@ import kotlin.reflect.full.contextParameters
 import kotlin.reflect.full.valueParameters
 import kotlin.reflect.jvm.kotlinFunction
 import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertThrows
 import org.junit.Test
 
 @OptIn(ExperimentalContextParameters::class)
@@ -31,6 +34,161 @@ class TopLevelInjectTest : MetroCompilerTest() {
         .enableTopLevelFunctionInjection(true)
         .apply { generateContributionHintsInFir = supportsFirContributionHints }
         .build()
+
+  @Test
+  fun `annotation override preserves class and member injection`() {
+    val result =
+      compile(
+        source(
+          """
+          @Target(AnnotationTarget.FUNCTION)
+          annotation class InjectFunction
+
+          @Inject
+          class Message {
+            @Inject lateinit var text: String
+          }
+
+          @InjectFunction
+          fun app(message: Message): String = message.text
+
+          @Inject
+          fun ignored(): String = "unused"
+
+          @DependencyGraph
+          interface ExampleGraph {
+            val app: App
+
+            @Provides fun message(): String = "Hello!"
+          }
+          """
+            .trimIndent(),
+        ),
+        options =
+          metroOptions
+            .toBuilder()
+            .apply {
+              applyRawOption("function-inject-annotations-override", "test/InjectFunction")
+            }
+            .build(),
+      )
+
+    val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
+    val app = graph.callProperty<Any>("app")
+    assertThat(app.invokeInstanceMethod<String>("invoke")).isEqualTo("Hello!")
+    assertThrows(ClassNotFoundException::class.java) {
+      result.classLoader.loadClass("test.Ignored")
+    }
+  }
+
+  @Test
+  fun `annotation override has no effect when function injection is disabled`() {
+    val result =
+      compile(
+        source(
+          """
+          @Target(AnnotationTarget.FUNCTION)
+          annotation class InjectFunction
+
+          @InjectFunction
+          fun String.customFunction(): String = this
+
+          @Inject
+          fun ordinaryFunction(): String = "unused"
+
+          @Inject
+          class Message
+
+          @DependencyGraph
+          interface ExampleGraph {
+            val message: Message
+          }
+          """
+            .trimIndent(),
+        ),
+        options =
+          metroOptions
+            .toBuilder()
+            .apply {
+              enableTopLevelFunctionInjection = false
+              applyRawOption("function-inject-annotations-override", "test/InjectFunction")
+            }
+            .build(),
+      )
+
+    val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
+    assertThat(graph.callProperty<Any>("message").javaClass.name).isEqualTo("test.Message")
+    assertThrows(ClassNotFoundException::class.java) {
+      result.classLoader.loadClass("test.CustomFunction")
+    }
+    assertThrows(ClassNotFoundException::class.java) {
+      result.classLoader.loadClass("test.OrdinaryFunction")
+    }
+  }
+
+  @Test
+  fun `empty annotation override skips injected functions`() {
+    val result =
+      compile(
+        source(
+          """
+          @Inject
+          fun ignored(): String = "unused"
+
+          @Inject
+          class Message
+
+          @DependencyGraph
+          interface ExampleGraph {
+            val message: Message
+          }
+          """
+            .trimIndent(),
+        ),
+        options =
+          metroOptions
+            .toBuilder()
+            .apply {
+              applyRawOption("function-inject-annotations-override", "")
+            }
+            .build(),
+      )
+
+    val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
+    assertThat(graph.callProperty<Any>("message").javaClass.name).isEqualTo("test.Message")
+    assertThrows(ClassNotFoundException::class.java) {
+      result.classLoader.loadClass("test.Ignored")
+    }
+  }
+
+  @Test
+  fun `annotation override uses function injection validation`() {
+    compile(
+      source(
+        """
+        @Target(AnnotationTarget.FUNCTION)
+        annotation class InjectFunction
+
+        @InjectFunction
+        fun String.app(): String = this
+        """
+          .trimIndent(),
+        fileNameWithoutExtension = "FunctionInjectionOverride",
+      ),
+      options =
+        metroOptions
+          .toBuilder()
+          .apply {
+            applyRawOption("function-inject-annotations-override", "test/InjectFunction")
+          }
+          .build(),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        "e: FunctionInjectionOverride.kt:10:5 Injected functions cannot have receiver parameters.",
+      )
+    }
+  }
 
   @Test
   fun simple() {
@@ -48,8 +206,8 @@ class TopLevelInjectTest : MetroCompilerTest() {
             val app: App
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
@@ -77,8 +235,8 @@ class TopLevelInjectTest : MetroCompilerTest() {
             val app: App
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
@@ -111,8 +269,8 @@ class TopLevelInjectTest : MetroCompilerTest() {
             }
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     val graph = result.ExampleGraph.generatedImpl().createGraphViaFactory("Hello, world!")
@@ -145,8 +303,8 @@ class TopLevelInjectTest : MetroCompilerTest() {
             }
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     val graph = result.ExampleGraph.generatedImpl().createGraphViaFactory("Hello, world!")
@@ -178,8 +336,8 @@ class TopLevelInjectTest : MetroCompilerTest() {
             }
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
@@ -213,8 +371,8 @@ class TopLevelInjectTest : MetroCompilerTest() {
             }
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
@@ -252,8 +410,8 @@ class TopLevelInjectTest : MetroCompilerTest() {
             }
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
@@ -288,8 +446,8 @@ class TopLevelInjectTest : MetroCompilerTest() {
             }
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
@@ -320,8 +478,8 @@ class TopLevelInjectTest : MetroCompilerTest() {
             }
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
@@ -350,8 +508,8 @@ class TopLevelInjectTest : MetroCompilerTest() {
             @Provides val provideLong: Long get() = 3
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
@@ -383,9 +541,9 @@ class TopLevelInjectTest : MetroCompilerTest() {
                 val app: App
               }
               """
-                .trimIndent()
+                .trimIndent(),
             ),
-          )
+          ),
       )
 
     val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
@@ -434,7 +592,7 @@ class TopLevelInjectTest : MetroCompilerTest() {
                 @Provides fun provideUiComponent(): MyUiComponentClass = object : MyUiComponentClass {}
               }
               """
-                .trimIndent()
+                .trimIndent(),
             ),
           ),
         compilationBlock = { this.kotlincArguments += "-Xcontext-parameters" },
@@ -489,7 +647,7 @@ class TopLevelInjectTest : MetroCompilerTest() {
                 @Provides fun provideScope(): SharedTransitionScope = object : SharedTransitionScope {}
               }
               """
-                .trimIndent()
+                .trimIndent(),
             ),
           ),
         compilationBlock = { this.kotlincArguments += "-Xcontext-parameters" },
@@ -544,7 +702,7 @@ class TopLevelInjectTest : MetroCompilerTest() {
                 @Provides fun provideUiComponent(): MyUiComponentClass = object : MyUiComponentClass {}
               }
               """
-                .trimIndent()
+                .trimIndent(),
             ),
           ),
         compilationBlock = { this.kotlincArguments += "-Xcontext-parameters" },
@@ -593,8 +751,8 @@ class TopLevelInjectTest : MetroCompilerTest() {
             }
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
 
     val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()

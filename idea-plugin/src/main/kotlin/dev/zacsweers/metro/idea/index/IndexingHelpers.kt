@@ -2,13 +2,16 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea.index
 
+import com.intellij.openapi.progress.ProgressManager
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiFile
 import com.intellij.psi.SmartPsiElementPointer
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.OptionalBindingBehavior
 import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.idea.annotationScopeKeys
+import dev.zacsweers.metro.idea.classLiteralClassId
 import dev.zacsweers.metro.idea.hasAnyAnnotation
 import dev.zacsweers.metro.idea.model.GraphDeclarationId
 import dev.zacsweers.metro.idea.model.HintAvailability
@@ -18,6 +21,7 @@ import dev.zacsweers.metro.idea.model.KaTypeKey
 import org.jetbrains.kotlin.analysis.api.KaSession
 import org.jetbrains.kotlin.analysis.api.annotations.KaAnnotated
 import org.jetbrains.kotlin.analysis.api.symbols.KaCallableSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaClassSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedClassSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaValueParameterSymbol
@@ -32,6 +36,32 @@ import org.jetbrains.kotlin.psi.psiUtil.containingClassOrObject
 
 internal fun shortNames(classIds: Set<ClassId>): Set<String> {
   return classIds.mapToSet { it.shortClassName.asString() }
+}
+
+/** Records origin aliases in nearest-first order and tracks their files for cache invalidation. */
+internal fun KaSession.contributionOriginClassIds(
+  classSymbol: KaNamedClassSymbol,
+  options: MetroOptions,
+  recordFile: (PsiFile) -> Unit,
+): Set<ClassId> {
+  val origins = linkedSetOf<ClassId>()
+  val visited = mutableSetOf(classSymbol.classId)
+  var current: KaClassSymbol = classSymbol
+  while (true) {
+    ProgressManager.checkCanceled()
+    val annotation = current.annotations.firstOrNull { it.classId in options.originAnnotations }
+    val argument = annotation?.arguments?.firstOrNull { it.name.asString() == "value" } ?: break
+    val originClassId = classLiteralClassId(argument.expression) ?: break
+    // Broken or cyclic generated origins still retain every alias we've already resolved.
+    if (!visited.add(originClassId)) {
+      break
+    }
+    origins += originClassId
+    val origin = findClass(originClassId) ?: break
+    origin.psi?.containingFile?.let(recordFile)
+    current = origin
+  }
+  return origins
 }
 
 /**

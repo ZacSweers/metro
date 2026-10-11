@@ -48,6 +48,7 @@ import dev.zacsweers.metro.idea.index.snapshot.ResolutionSnapshotTarget
 import dev.zacsweers.metro.idea.index.snapshot.SnapshotKey
 import dev.zacsweers.metro.idea.index.snapshot.SourceSnapshot
 import dev.zacsweers.metro.idea.index.snapshot.SourceSnapshotChanges
+import dev.zacsweers.metro.idea.index.snapshot.SourceSnapshotConflictException
 import dev.zacsweers.metro.idea.metroIdeState
 import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.GraphContext
@@ -132,9 +133,11 @@ private constructor(
   private val snapshotBuilder =
     ResolutionSnapshotBuilder(
       project,
-      onShardRead = ::seedSharedDeclarationFingerprints,
       captureResolutionInputs = resolutionInputCapture::capture,
       onSourceFilesScheduled = { preparingSourceFiles = it },
+      sourceScanPoolSize = { MetroSettings.getInstance(project).state.effectiveSourceScanPoolSize },
+      captureSourceFingerprints = ::captureSharedDeclarationFingerprints,
+      acceptSourceFingerprints = ::mergeSharedDeclarationFingerprints,
     )
 
   /** Latest progress of the coordinator's current index build. */
@@ -296,7 +299,7 @@ private constructor(
           PendingPsiChanges(
             files = files.associateWith { PendingFileChange(structuralChange = true) },
             directories = directories,
-          )
+          ),
         )
       },
     )
@@ -727,7 +730,7 @@ private constructor(
         pendingForceRebuildFiles += sourceSnapshot?.shardOrder.orEmpty()
       }
       snapshotBuilder.evictLibraryShards(
-        ProjectRootModificationTracker.getInstance(project).modificationCount
+        ProjectRootModificationTracker.getInstance(project).modificationCount,
       )
       notifyListeners(restartDaemon = true)
     }
@@ -749,7 +752,7 @@ private constructor(
       logger<MetroResolutionService>().warn("Metro project input reconciliation failed", failure)
       semanticRevision++
       snapshotBuilder.evictLibraryShards(
-        ProjectRootModificationTracker.getInstance(project).modificationCount
+        ProjectRootModificationTracker.getInstance(project).modificationCount,
       )
       notifyListeners(restartDaemon = false)
     }
@@ -786,7 +789,7 @@ private constructor(
       semanticRevision++
       if (!resolveFromLibraries) snapshotBuilder.clearLibraryShards()
       snapshotBuilder.evictLibraryShards(
-        ProjectRootModificationTracker.getInstance(project).modificationCount
+        ProjectRootModificationTracker.getInstance(project).modificationCount,
       )
     }
 
@@ -864,7 +867,7 @@ private constructor(
 
   /** Applies a pure state transformation and preserves disposal as a terminal state. */
   private fun updatePublishedResolution(
-    update: (PublishedResolution) -> PublishedResolution
+    update: (PublishedResolution) -> PublishedResolution,
   ): PublishedResolution? {
     val updated = publishedResolution.updateAndGet { publication ->
       if (publication.isDisposed || project.isDisposed) publication else update(publication)
@@ -1232,6 +1235,11 @@ private constructor(
         )
       } catch (_: ResolutionCandidateSupersededException) {
         trace?.outcome("superseded")
+        requeueResolutionCandidate(requests, manualRequest)
+        yield()
+        return
+      } catch (_: SourceSnapshotConflictException) {
+        trace?.outcome("conflictingSourceReads")
         requeueResolutionCandidate(requests, manualRequest)
         yield()
         return
@@ -2141,25 +2149,45 @@ private constructor(
     }
   }
 
-  /** Records shared declaration fingerprints during the shard's background read. */
-  private fun seedSharedDeclarationFingerprints(file: KtFile, shard: FileShard) {
-    seedSharedDeclarationFingerprint(file)
+  /** Each worker captures fingerprints alongside its shard without accessing coordinator state. */
+  private fun captureSharedDeclarationFingerprints(
+    file: KtFile,
+    shard: FileShard,
+  ): Map<VirtualFile, String> {
+    val captured = mutableMapOf<VirtualFile, String>()
+    fun capture(declarationFile: KtFile) {
+      ProgressManager.checkCanceled()
+      val virtualFile = declarationFile.virtualFile ?: return
+      if (virtualFile in captured || !fileHasSharedDeclarationsCached(declarationFile)) {
+        return
+      }
+      captured[virtualFile] = sharedDeclarationFingerprintCached(declarationFile)
+    }
+    capture(file)
     val psiManager = PsiManager.getInstance(project)
     for (dependencyFile in shard.dependencyFiles + shard.sharedDeclarationFiles) {
       ProgressManager.checkCanceled()
-      if (sharedDeclarationFingerprints.containsKey(dependencyFile)) continue
+      if (dependencyFile in captured) {
+        continue
+      }
       val dependency = psiManager.findFile(dependencyFile) as? KtFile ?: continue
-      seedSharedDeclarationFingerprint(dependency)
+      capture(dependency)
+    }
+    return captured
+  }
+
+  /** Ordered scan collection preserves the baselines used by later PSI change classification. */
+  private fun mergeSharedDeclarationFingerprints(captured: Map<VirtualFile, String>) {
+    for ((file, fingerprint) in captured) {
+      sharedDeclarationFingerprints.putIfAbsent(file, fingerprint)
     }
   }
 
-  private fun seedSharedDeclarationFingerprint(file: KtFile) {
-    ProgressManager.checkCanceled()
-    val virtualFile = file.virtualFile ?: return
-    if (sharedDeclarationFingerprints.containsKey(virtualFile)) return
-    if (!fileHasSharedDeclarationsCached(file)) return
-    sharedDeclarationFingerprints.putIfAbsent(virtualFile, sharedDeclarationFingerprint(file))
-  }
+  /** Common aliases and constants share one PSI-dependent fingerprint across source workers. */
+  private fun sharedDeclarationFingerprintCached(file: KtFile): String =
+    CachedValuesManager.getCachedValue(file) {
+      CachedValueProvider.Result.create(sharedDeclarationFingerprint(file), file)
+    }
 
   private fun currentInputs(): IndexInputs =
     IndexInputs(
@@ -2242,9 +2270,9 @@ private constructor(
                   if (sharedChange == SharedDeclarationChange.NONE) emptySet()
                   else setOf(sharedChange),
                 removedTrackedSharedDeclaration = mayHaveRemovedSharedDeclaration,
-              )
-          )
-      )
+              ),
+          ),
+      ),
     )
   }
 
@@ -3037,7 +3065,7 @@ internal suspend fun <T> retryCancelledIndexBuild(build: suspend () -> T): T {
 }
 
 private class ResolutionBuildPendingException(
-  val completion: CompletableDeferred<IndexBuildOutcome>
+  val completion: CompletableDeferred<IndexBuildOutcome>,
 ) : ProcessCanceledException() {
   override fun fillInStackTrace(): Throwable = this
 }

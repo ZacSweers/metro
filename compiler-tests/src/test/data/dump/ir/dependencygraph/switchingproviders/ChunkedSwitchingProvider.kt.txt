@@ -276,8 +276,8 @@ interface AppGraph {
         return { // BLOCK
           val tmp0_id: Int = <this>.#id
           when {
-            EQEQ(arg0 = tmp0_id, arg1 = 1) -> ClassD() /*as T */
             EQEQ(arg0 = tmp0_id, arg1 = 0) -> ClassE() /*as T */
+            EQEQ(arg0 = tmp0_id, arg1 = 1) -> ClassD() /*as T */
             else -> throw error(message = "Unexpected SwitchingProvider id: " + tmp0_id)
           }
         }
@@ -287,8 +287,8 @@ interface AppGraph {
         return { // BLOCK
           val tmp0_id: Int = <this>.#id
           when {
-            EQEQ(arg0 = tmp0_id, arg1 = 3) -> ClassB() /*as T */
             EQEQ(arg0 = tmp0_id, arg1 = 2) -> ClassC() /*as T */
+            EQEQ(arg0 = tmp0_id, arg1 = 3) -> ClassB() /*as T */
             else -> throw error(message = "Unexpected SwitchingProvider id: " + tmp0_id)
           }
         }
@@ -316,17 +316,17 @@ interface AppGraph {
     }
 
     private fun init() {
-      <this>.#classAProvider = DoubleCheck/* companion */.provider<Provider<ClassA>, ClassA>(delegate = SwitchingProvider<ClassA>(graph = <this>, id = 4))
-      <this>.#classBProvider = DoubleCheck/* companion */.provider<Provider<ClassB>, ClassB>(delegate = SwitchingProvider<ClassB>(graph = <this>, id = 3))
+      <this>.#classAProvider = provider<Provider<ClassA>, ClassA>(delegate = SwitchingProvider<ClassA>(graph = <this>, id = 4))
+      <this>.#classBProvider = provider<Provider<ClassB>, ClassB>(delegate = SwitchingProvider<ClassB>(graph = <this>, id = 3))
     }
 
     private fun init2() {
-      <this>.#classCProvider = DoubleCheck/* companion */.provider<Provider<ClassC>, ClassC>(delegate = SwitchingProvider<ClassC>(graph = <this>, id = 2))
-      <this>.#classDProvider = DoubleCheck/* companion */.provider<Provider<ClassD>, ClassD>(delegate = SwitchingProvider<ClassD>(graph = <this>, id = 1))
+      <this>.#classCProvider = provider<Provider<ClassC>, ClassC>(delegate = SwitchingProvider<ClassC>(graph = <this>, id = 2))
+      <this>.#classDProvider = provider<Provider<ClassD>, ClassD>(delegate = SwitchingProvider<ClassD>(graph = <this>, id = 1))
     }
 
     private fun init3() {
-      <this>.#classEProvider = DoubleCheck/* companion */.provider<Provider<ClassE>, ClassE>(delegate = SwitchingProvider<ClassE>(graph = <this>, id = 0))
+      <this>.#classEProvider = provider<Provider<ClassE>, ClassE>(delegate = SwitchingProvider<ClassE>(graph = <this>, id = 0))
     }
 
     override val a: ClassA

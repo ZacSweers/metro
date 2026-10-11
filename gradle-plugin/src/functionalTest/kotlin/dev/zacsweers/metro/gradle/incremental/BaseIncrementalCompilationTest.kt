@@ -282,6 +282,43 @@ abstract class BaseIncrementalCompilationTest(
     vararg args: String,
   ) = buildAndFail(projectDir, *buildArgs(task, enableDebugger, quiet = true, *args))
 
+  /**
+   * Returns the names of the source files that [taskPath] compiled across all incremental
+   * iterations in a Kotlin build [report]. The project must set `kotlin.build.report.output=file`.
+   *
+   * A non-incremental rebuild doesn't list its sources, so it returns an empty set.
+   */
+  protected fun compiledSourceNames(report: File, taskPath: String): Set<String> {
+    val sources = mutableSetOf<String>()
+    var inTask = false
+    var inIteration = false
+    for (line in report.readLines()) {
+      val text = line.trim()
+      if (text.startsWith("Compilation log for task ")) {
+        inTask = text == "Compilation log for task '$taskPath':"
+        inIteration = false
+        continue
+      }
+      if (!inTask) {
+        continue
+      }
+      if (text == "Compile iteration:") {
+        inIteration = true
+        continue
+      }
+      if (inIteration) {
+        // Files the IC runner marked dirty itself have no " <- reason" suffix.
+        val sourcePath = text.substringBefore(" <- ")
+        if (sourcePath.endsWith(".kt")) {
+          sources += File(sourcePath).name
+        } else {
+          inIteration = false
+        }
+      }
+    }
+    return sources
+  }
+
   private fun buildArgs(
     task: String,
     enableDebugger: Boolean,

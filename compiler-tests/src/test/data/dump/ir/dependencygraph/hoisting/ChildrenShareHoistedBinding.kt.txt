@@ -1,0 +1,210 @@
+@Inject
+class Dependency {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  object MetroFactory : Factory<Dependency> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun create(): MetroFactory {
+      return MetroFactory
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun newInstance(): Dependency {
+      return Dependency()
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): Dependency {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Dependency {
+      return MetroFactory.newInstance()
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@Inject
+class Shared {
+  val dependency: Dependency
+    field = dependency
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<Shared> {
+    private /* final field */ val dependency: Provider<Dependency> = dependency
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(dependency: Provider<Dependency>): MetroFactory {
+        return MetroFactory(dependency = dependency)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(dependency: Dependency): Shared {
+        return Shared(dependency = dependency)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(dependency: Provider<Dependency>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(dependency: Dependency): Shared {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Shared {
+      return MetroFactory/* companion */.newInstance(dependency = <this>.#dependency.invoke())
+    }
+
+  }
+
+  constructor(dependency: Dependency) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@DependencyGraph
+interface AppGraph : ChildA.Factory, ChildB.Factory {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : AppGraph {
+    @DependencyGraph
+    private class ChildAImpl : ChildA {
+      private val appGraphImpl: Impl
+        field = appGraphImpl
+
+      constructor(appGraphImpl: Impl) /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      override val shared: Shared
+        override get(): Shared {
+          return <this>.#appGraphImpl.<get-shared>()
+        }
+
+    }
+
+    @DependencyGraph
+    private class ChildBImpl : ChildB {
+      private val appGraphImpl: Impl
+        field = appGraphImpl
+
+      constructor(appGraphImpl: Impl) /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      override val shared: Shared
+        override get(): Shared {
+          return <this>.#appGraphImpl.<get-shared>()
+        }
+
+    }
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override fun createChildA(): ChildA {
+      return ChildAImpl(appGraphImpl = <this>)
+    }
+
+    override fun createChildB(): ChildB {
+      return ChildBImpl(appGraphImpl = <this>)
+    }
+
+    private val shared: Shared
+      private get(): Shared {
+        return Shared(dependency = Dependency())
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
+    operator fun invoke(): AppGraph {
+      return Impl()
+    }
+
+  }
+
+}
+
+@GraphExtension
+interface ChildA {
+  @GraphExtension.Factory
+  interface Factory {
+    abstract fun createChildA(): ChildA
+
+  }
+
+  abstract val shared: Shared
+    abstract get
+
+}
+
+@GraphExtension
+interface ChildB {
+  @GraphExtension.Factory
+  interface Factory {
+    abstract fun createChildB(): ChildB
+
+  }
+
+  abstract val shared: Shared
+    abstract get
+
+}

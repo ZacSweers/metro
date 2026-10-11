@@ -47,7 +47,9 @@ internal object FunctionInjectionChecker : FirCallableDeclarationChecker(MppChec
     val classIds = session.classIds
 
     if (declaration.dispatchReceiverType != null) return // Instance function, setter injection
-    if (!declaration.isAnnotatedWithAny(session, classIds.injectAnnotations)) return
+    if (!declaration.isAnnotatedWithAny(session, classIds.topLevelFunctionInjectAnnotations)) {
+      return
+    }
 
     if (declaration.typeParameters.isNotEmpty()) {
       for (tp in declaration.typeParameters) {

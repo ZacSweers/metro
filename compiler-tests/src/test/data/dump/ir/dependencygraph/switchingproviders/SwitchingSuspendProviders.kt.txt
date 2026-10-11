@@ -367,9 +367,6 @@ interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
-    private val thisGraphInstance: Impl
-      field = <this>
-
     private val provideDirectSuspendValueSuspendProvider: SuspendProvider<DirectSuspendValue>
 
     private val deferredSuspendConsumerProvider: Provider<DeferredSuspendConsumer>
@@ -395,8 +392,8 @@ interface AppGraph {
         return { // BLOCK
           val tmp0_id: Int = <this>.#id
           when {
-            EQEQ(arg0 = tmp0_id, arg1 = 1) -> DeferredSuspendConsumer(direct = <this>.#graph.#provideDirectSuspendValueSuspendProvider) /*as T */
             EQEQ(arg0 = tmp0_id, arg1 = 0) -> SynchronousScoped() /*as T */
+            EQEQ(arg0 = tmp0_id, arg1 = 1) -> DeferredSuspendConsumer(direct = <this>.#graph.#provideDirectSuspendValueSuspendProvider) /*as T */
             else -> throw error(message = "Unexpected SwitchingProvider id: " + tmp0_id)
           }
         }
@@ -430,9 +427,10 @@ interface AppGraph {
       private suspend fun invoke2(): T {
         return { // BLOCK
           val tmp0_id: Int = <this>.#id
+          val tmp1_graph: AppGraph.Impl = <this>.#graph
           when {
-            EQEQ(arg0 = tmp0_id, arg1 = 1) -> SharedUnscopedSuspendValue(direct = <this>.#graph.#provideDirectSuspendValueSuspendProvider.invoke()) /*as T */
-            EQEQ(arg0 = tmp0_id, arg1 = 0) -> TransitiveSuspendValue(direct = <this>.#graph.#provideDirectSuspendValueSuspendProvider.invoke()) /*as T */
+            EQEQ(arg0 = tmp0_id, arg1 = 0) -> TransitiveSuspendValue(direct = tmp1_graph.#provideDirectSuspendValueSuspendProvider.invoke()) /*as T */
+            EQEQ(arg0 = tmp0_id, arg1 = 1) -> SharedUnscopedSuspendValue(direct = tmp1_graph.#provideDirectSuspendValueSuspendProvider.invoke()) /*as T */
             else -> throw error(message = "Unexpected SwitchingSuspendProvider id: " + tmp0_id)
           }
         }
@@ -442,7 +440,7 @@ interface AppGraph {
         return { // BLOCK
           val tmp0_id: Int = <this>.#id
           when {
-            EQEQ(arg0 = tmp0_id, arg1 = 2) -> <this>.#graph.#thisGraphInstance.provideDirectSuspendValue() /*as T */
+            EQEQ(arg0 = tmp0_id, arg1 = 2) -> <this>.#graph.provideDirectSuspendValue() /*as T */
             else -> throw error(message = "Unexpected SwitchingSuspendProvider id: " + tmp0_id)
           }
         }
@@ -469,12 +467,12 @@ interface AppGraph {
 
     private fun init() {
       <this>.#provideDirectSuspendValueSuspendProvider = SuspendDoubleCheck/* companion */.provider<DirectSuspendValue>(delegate = SwitchingSuspendProvider<DirectSuspendValue>(graph = <this>, id = 2))
-      <this>.#deferredSuspendConsumerProvider = DoubleCheck/* companion */.provider<Provider<DeferredSuspendConsumer>, DeferredSuspendConsumer>(delegate = SwitchingProvider<DeferredSuspendConsumer>(graph = <this>, id = 1))
+      <this>.#deferredSuspendConsumerProvider = provider<Provider<DeferredSuspendConsumer>, DeferredSuspendConsumer>(delegate = SwitchingProvider<DeferredSuspendConsumer>(graph = <this>, id = 1))
     }
 
     private fun init2() {
       <this>.#sharedUnscopedSuspendValueSuspendProvider = SwitchingSuspendProvider<SharedUnscopedSuspendValue>(graph = <this>, id = 1)
-      <this>.#synchronousScopedProvider = DoubleCheck/* companion */.provider<Provider<SynchronousScoped>, SynchronousScoped>(delegate = SwitchingProvider<SynchronousScoped>(graph = <this>, id = 0))
+      <this>.#synchronousScopedProvider = provider<Provider<SynchronousScoped>, SynchronousScoped>(delegate = SwitchingProvider<SynchronousScoped>(graph = <this>, id = 0))
     }
 
     private fun init3() {
@@ -586,3 +584,4 @@ interface AppGraph {
     abstract get
 
 }
+

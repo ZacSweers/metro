@@ -6,9 +6,11 @@ import dev.zacsweers.metro.gradle.analysis.AnalyzeGraphTask
 import dev.zacsweers.metro.gradle.analysis.GenerateGraphHtmlTask
 import dev.zacsweers.metro.gradle.artifacts.GenerateGraphMetadataTask
 import dev.zacsweers.metro.gradle.artifacts.MetroArtifactCopyTask
+import dev.zacsweers.metro.gradle.validation.registerHiddenDependencyTasks
 import javax.inject.Inject
 import org.gradle.api.JavaVersion
 import org.gradle.api.Project
+import org.gradle.api.file.Directory
 import org.gradle.api.problems.ProblemGroup
 import org.gradle.api.problems.ProblemId
 import org.gradle.api.problems.Problems
@@ -68,43 +70,25 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
       task.dependsOn(
         target.tasks.named { candidate ->
           candidate != MetroEnvTask.AGGREGATE_NAME && candidate.endsWith("MetroEnv")
-        }
+        },
       )
     }
 
-    // Analysis tasks are registered, but skipped if reportsDestination isn't present.
-    val graphMetadataTask =
-      target.tasks.register(
-        GenerateGraphMetadataTask.NAME,
-        GenerateGraphMetadataTask::class.java,
-      )
-    graphMetadataTask.configure { task ->
-      task.onlyIf("reportsDestination is present") { extension.reportsDestination.isPresent }
-      task.description = "Generates Metro graph metadata for ${target.path}"
-      task.projectPath.convention(target.path)
-      task.outputFile.convention(
-        target.layout.buildDirectory.file("reports/metro/graphMetadata.json")
-      )
+    // Global commands delegate to compilation tasks that keep their report outputs separate.
+    target.tasks.register("generateMetroGraphMetadata") { task ->
+      task.group = "metro"
+      task.description = "Generates Metro graph metadata for all Kotlin compilations"
+      task.dependsOn(target.tasks.withType(GenerateGraphMetadataTask::class.java))
     }
-
-    // Analysis task - comprehensive graph analysis
-    val analyzeTask = target.tasks.register(AnalyzeGraphTask.NAME, AnalyzeGraphTask::class.java)
-    analyzeTask.configure { task ->
-      task.onlyIf("reportsDestination is present") { extension.reportsDestination.isPresent }
-      task.description = "Analyzes Metro dependency graphs and produces a comprehensive report"
-      task.inputFile.convention(graphMetadataTask.flatMap { it.outputFile })
-      task.outputFile.convention(target.layout.buildDirectory.file("reports/metro/analysis.json"))
+    target.tasks.register("analyzeMetroGraph") { task ->
+      task.group = "metro"
+      task.description = "Analyzes Metro dependency graphs for all Kotlin compilations"
+      task.dependsOn(target.tasks.withType(AnalyzeGraphTask::class.java))
     }
-
-    // HTML visualization task - interactive ECharts graphs
-    val htmlTask =
-      target.tasks.register(GenerateGraphHtmlTask.NAME, GenerateGraphHtmlTask::class.java)
-    htmlTask.configure { task ->
-      task.onlyIf("reportsDestination is present") { extension.reportsDestination.isPresent }
-      task.description = "Generates interactive HTML visualizations of Metro dependency graphs"
-      task.inputFile.convention(graphMetadataTask.flatMap { it.outputFile })
-      task.analysisFile.convention(analyzeTask.flatMap { it.outputFile })
-      task.outputDirectory.convention(target.layout.buildDirectory.dir("reports/metro/html"))
+    target.tasks.register("generateMetroGraphHtml") { task ->
+      task.group = "metro"
+      task.description = "Generates interactive Metro graph HTML for all Kotlin compilations"
+      task.dependsOn(target.tasks.withType(GenerateGraphHtmlTask::class.java))
     }
 
     target.afterEvaluate {
@@ -149,7 +133,7 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
                 .documentedAt(compatibilityUrl)
             }
             target.logger.warn(
-              "$label. $solution.\n$details.\nDocs: $compatibilityUrl\n($disableSolution)"
+              "$label. $solution.\n$details.\nDocs: $compatibilityUrl\n($disableSolution)",
             )
           } else {
             val label = "This build uses unrecognized Kotlin version '$compilerVersion'"
@@ -172,7 +156,7 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
                 .documentedAt(compatibilityUrl)
             }
             target.logger.warn(
-              "$label. $details.\n$solution.\nDocs: $compatibilityUrl\n($disableSolution)"
+              "$label. $details.\n$solution.\nDocs: $compatibilityUrl\n($disableSolution)",
             )
           }
         }
@@ -201,7 +185,7 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
     RequiresIdeSupport::class,
   )
   override fun applyToCompilation(
-    kotlinCompilation: KotlinCompilation<*>
+    kotlinCompilation: KotlinCompilation<*>,
   ): Provider<List<SubpluginOption>> {
     val project = kotlinCompilation.target.project
     val extension = project.extensions.getByType(MetroPluginExtension::class.java)
@@ -210,7 +194,7 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
 
     if (project.logVerbosely) {
       project.logger.lifecycle(
-        "Supported platforms for ${kotlinCompilation.platformType} are: ${extension.supportedHintContributionPlatforms.get()}"
+        "Supported platforms for ${kotlinCompilation.platformType} are: ${extension.supportedHintContributionPlatforms.get()}",
       )
     }
 
@@ -219,11 +203,11 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
       if (compilerPluginOrderSupported) {
         // Order before compose-compiler
         task.compilerOptions.freeCompilerArgs.add(
-          "-Xcompiler-plugin-order=${PLUGIN_ID}>androidx.compose.compiler.plugins.kotlin"
+          "-Xcompiler-plugin-order=${PLUGIN_ID}>androidx.compose.compiler.plugins.kotlin",
         )
         // Order Circuit's IR generation before kotlinx-serialization
         task.compilerOptions.freeCompilerArgs.add(
-          "-Xcompiler-plugin-order=${PLUGIN_ID}>org.jetbrains.kotlinx.serialization"
+          "-Xcompiler-plugin-order=${PLUGIN_ID}>org.jetbrains.kotlinx.serialization",
         )
       }
     }
@@ -305,18 +289,9 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
           .fold(baseDir) { dir, segment -> dir.dir(segment) }
       }
 
-    if (extension.reportsDestination.isPresent) {
-      val artifactsTask = MetroArtifactCopyTask.register(project, reportsDir, kotlinCompilation)
-
-      project.tasks.withType(GenerateGraphMetadataTask::class.java).configureEach { task ->
-        task.projectPath.set(project.path)
-        task.compilationName.set(kotlinCompilation.name)
-        task.graphJsonFiles.from(
-          artifactsTask
-            .flatMap { it.reportsDir.dir("graph-metadata") }
-            .map { it.asFileTree.matching { it.include("*.json") } }
-        )
-      }
+    registerGraphReportTasks(project, extension, kotlinCompilation, reportsDir)
+    if (isJvmTarget) {
+      registerHiddenDependencyTasks(project, extension, kotlinCompilation)
     }
 
     val metroOptions =
@@ -344,35 +319,35 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
       task.metroCompilerArtifact.set(
         project.providers.systemProperty(COMPILER_VERSION_OVERRIDE).orElse(VERSION).map {
           "dev.zacsweers.metro:compiler:$it"
-        }
+        },
       )
       task.kotlinVersion.set(kotlinVersion.toString())
       task.kotlinCompilerVersion.set(kotlinVersion.toString())
       task.gradleVersion.set(GradleVersion.current().version)
       task.javaVersion.set(JavaVersion.current().toString())
       task.os.set(
-        "${System.getProperty("os.name")} ${System.getProperty("os.version")} (${System.getProperty("os.arch")})"
+        "${System.getProperty("os.name")} ${System.getProperty("os.version")} (${System.getProperty("os.arch")})",
       )
       task.kotlinLanguageVersion.set(
         kotlinCompilation.compileTaskProvider.flatMap { compileTask ->
           compileTask.compilerOptions.languageVersion.map { it.version }
-        }
+        },
       )
       task.kotlinApiVersion.set(
         kotlinCompilation.compileTaskProvider.flatMap { compileTask ->
           compileTask.compilerOptions.apiVersion.map { it.version }
-        }
+        },
       )
       task.freeCompilerArgs.set(
         kotlinCompilation.compileTaskProvider.flatMap { compileTask ->
           compileTask.compilerOptions.freeCompilerArgs
-        }
+        },
       )
       task.metroCompilerOptions.set(metroOptions.map { it.renderForReport() })
       task.outputFile.set(
         project.layout.buildDirectory.file(
-          "reports/metro/env/${kotlinCompilation.target.name}/${kotlinCompilation.name}.txt"
-        )
+          "reports/metro/env/${kotlinCompilation.target.name}/${kotlinCompilation.name}.txt",
+        ),
       )
     }
 
@@ -381,9 +356,69 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
       .also {
         if (project.logVerbosely) {
           project.logger.lifecycle(
-            "Metro compiler plugin options for ${kotlinCompilation.platformType}:\n${it.get().joinToString("\n") { "- " + it.key + ": " + it.value }}"
+            "Metro compiler plugin options for ${kotlinCompilation.platformType}:\n${it.get().joinToString("\n") { "- " + it.key + ": " + it.value }}",
           )
         }
       }
+  }
+
+  /** Keeps each report chain's compilation dependencies and output files together. */
+  private fun registerGraphReportTasks(
+    project: Project,
+    extension: MetroPluginExtension,
+    compilation: KotlinCompilation<*>,
+    reportsDir: Provider<Directory>,
+  ) {
+    val segments = listOf(compilation.target.name, compilation.name).filter(String::isNotBlank)
+    val taskQualifier = segments.joinToString("") { it.capitalizeUS() }
+    val compilationPath = segments.joinToString("/")
+    val outputDir = project.layout.buildDirectory.dir("reports/metro/$compilationPath")
+    val reportsEnabled = extension.reportsDestination.isPresent
+
+    // Disabled reporting keeps the tasks discoverable without scheduling a compilation.
+    val artifactsTask =
+      if (reportsEnabled) {
+        MetroArtifactCopyTask.register(project, reportsDir, compilation)
+      } else {
+        null
+      }
+    val metadataTask =
+      project.tasks.register(
+        "generate${taskQualifier}MetroGraphMetadata",
+        GenerateGraphMetadataTask::class.java,
+      ) { task ->
+        task.onlyIf("reportsDestination is present") { reportsEnabled }
+        task.description = "Generates Metro graph metadata for $compilationPath"
+        task.projectPath.convention(project.path)
+        task.compilationName.convention(compilation.name)
+        task.outputFile.convention(outputDir.map { it.file("graphMetadata.json") })
+        if (artifactsTask != null) {
+          task.graphJsonFiles.from(
+            artifactsTask
+              .flatMap { it.reportsDir.dir("graph-metadata") }
+              .map { it.asFileTree.matching { it.include("*.json") } },
+          )
+        }
+      }
+    val analyzeTask =
+      project.tasks.register(
+        "analyze${taskQualifier}MetroGraph",
+        AnalyzeGraphTask::class.java,
+      ) { task ->
+        task.onlyIf("reportsDestination is present") { reportsEnabled }
+        task.description = "Analyzes Metro dependency graphs for $compilationPath"
+        task.inputFile.convention(metadataTask.flatMap { it.outputFile })
+        task.outputFile.convention(outputDir.map { it.file("analysis.json") })
+      }
+    project.tasks.register(
+      "generate${taskQualifier}MetroGraphHtml",
+      GenerateGraphHtmlTask::class.java,
+    ) { task ->
+      task.onlyIf("reportsDestination is present") { reportsEnabled }
+      task.description = "Generates interactive Metro graph HTML for $compilationPath"
+      task.inputFile.convention(metadataTask.flatMap { it.outputFile })
+      task.analysisFile.convention(analyzeTask.flatMap { it.outputFile })
+      task.outputDirectory.convention(outputDir.map { it.dir("html") })
+    }
   }
 }

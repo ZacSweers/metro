@@ -130,11 +130,11 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
         val isNestedInTargetGraphExtension = containingGraphClassId == targetGraph.classId
         val message = buildString {
           append(
-            "`@${annotationClassId.relativeClassName.asString()}` cannot create a graph extension."
+            "`@${annotationClassId.relativeClassName.asString()}` cannot create a graph extension.",
           )
           if (isNestedInTargetGraphExtension) {
             append(
-              "\n\n  help: use `@GraphExtension.Factory` instead since ${targetGraph.classId.asSingleFqName()} is a graph extension."
+              "\n\n  help: use `@GraphExtension.Factory` instead since ${targetGraph.classId.asSingleFqName()} is a graph extension.",
             )
           }
         }

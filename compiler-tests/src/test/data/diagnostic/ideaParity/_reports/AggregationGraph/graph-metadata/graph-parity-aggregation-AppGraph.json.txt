@@ -10,22 +10,32 @@
     "accessors": [
       {
         "key": "parity.aggregation.Repo",
+        "name": "repo",
+        "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "kotlin.collections.Set<parity.aggregation.Handler>",
+        "name": "handlers",
+        "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "Map<kotlin.String, parity.aggregation.Handler>",
+        "name": "handlersByName",
+        "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "kotlin.collections.Set<parity.aggregation.EmptyElement>",
+        "name": "emptyElements",
+        "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "parity.aggregation.ScopedValue",
+        "name": "scopedValue",
+        "isProperty": true,
         "isDeferrable": false
       }
     ],
@@ -50,6 +60,7 @@
     "enableGraphSharding": true,
     "keysPerGraphShard": 2000,
     "mergedSupertypeChunkSize": 0,
+    "multibindingGetterThreshold": 25,
     "enableSwitchingProviders": false,
     "publicScopedProviderSeverity": "NONE",
     "nonPublicContributionSeverity": "NONE",
@@ -109,7 +120,8 @@
     "generateStaticAnnotations": true,
     "enableRuntimeTracing": false,
     "memberNamingStrategy": "DESCRIPTIVE",
-    "maxGeneratedClassNameLength": 233
+    "maxGeneratedClassNameLength": 233,
+    "diagnosticLevels": {}
   },
   "stats": {
     "providerFactories": 2,
@@ -130,7 +142,7 @@
     "reachableKeys": 11,
     "deferredKeys": 0,
     "unusedInputs": 0,
-    "providerProperties": 4,
+    "providerProperties": 2,
     "scopedProviderProperties": 1,
     "shards": 0,
     "optimizations": {
@@ -142,7 +154,11 @@
       "shardsGenerated": 0,
       "shardedSupertypes": 0,
       "shardedInitFunctions": 0,
-      "providerInlines": 0
+      "providerInlines": 0,
+      "providerInlineFallbacks": {
+        "deferredAccess": 0,
+        "unavailableValue": 0
+      }
     }
   },
   "bindings": [
@@ -216,7 +232,7 @@
       "nameHint": "setOfEmptyElement",
       "dependencies": [],
       "isSynthetic": false,
-      "declaration": "emptyElements4205200196",
+      "declaration": "emptyElements995712408",
       "multibinding": {
         "type": "SET",
         "allowEmpty": true,
@@ -474,13 +490,13 @@
       "outcome": "selected",
       "candidates": [
         {
-          "id": "55:kotlin.collections.Set<parity.aggregation.EmptyElement>|167:parity.aggregation.AggregateBindings.BindsMirror.emptyElements4205200196(parity.aggregation.AggregateBindings): kotlin.collections.Set<parity.aggregation.EmptyElement>",
+          "id": "55:kotlin.collections.Set<parity.aggregation.EmptyElement>|166:parity.aggregation.AggregateBindings.BindsMirror.emptyElements995712408(parity.aggregation.AggregateBindings): kotlin.collections.Set<parity.aggregation.EmptyElement>",
           "key": "kotlin.collections.Set<parity.aggregation.EmptyElement>",
           "status": "selected",
           "reason": "selected_multibinding",
           "declaration": {
-            "id": "parity.aggregation.AggregateBindings.BindsMirror.emptyElements4205200196(parity.aggregation.AggregateBindings): kotlin.collections.Set<parity.aggregation.EmptyElement>",
-            "label": "parity.aggregation.AggregateBindings.BindsMirror.emptyElements4205200196"
+            "id": "parity.aggregation.AggregateBindings.BindsMirror.emptyElements995712408(parity.aggregation.AggregateBindings): kotlin.collections.Set<parity.aggregation.EmptyElement>",
+            "label": "parity.aggregation.AggregateBindings.BindsMirror.emptyElements995712408"
           },
           "relatedDeclarations": [],
           "details": []

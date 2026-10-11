@@ -26,8 +26,7 @@ internal fun IrContextualTypeKey.runtimeTraceType(): String {
 /** Renders the contextual trace type, or `null` when it matches [runtimeTraceType]. */
 internal fun IrContextualTypeKey.runtimeTraceContextualType(): String? {
   return when (wrappedType) {
-    is WrappedType.Canonical<*> ->
-      typeKey.render(short = true, includeQualifier = false, useRelativeClassNames = true)
+    is WrappedType.Canonical<*> -> null
     else -> render(short = true, includeQualifier = false, useRelativeClassNames = true)
   }
 }

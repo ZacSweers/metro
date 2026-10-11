@@ -14,7 +14,7 @@ apply(plugin = "com.vanniktech.maven.publish")
 apply(plugin = "com.autonomousapps.testkit")
 
 val isCompilerArtifact = project.path == ":compiler" || project.path.startsWith(":compiler-compat")
-val isCommonArtifact = project.path == ":metro-common"
+val isCommonArtifact = project.path == ":metro-common" || project.path == ":graph-viewer"
 val isCompatibilityCheckExcluded = isCompilerArtifact || isCommonArtifact
 
 if (!isCompatibilityCheckExcluded) {

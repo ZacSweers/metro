@@ -194,7 +194,7 @@ private class GraphDebugReport(
     field("plugin.version", VERSION)
     field("plugin.gitSha", GIT_SHA.ifEmpty { "<development build>" })
     line(
-      "Local report only; source bodies, absolute paths, and annotation literal values are omitted."
+      "Local report only; source bodies, absolute paths, and annotation literal values are omitted.",
     )
     line("Type and annotation IDs preserve exact identity when literal values are omitted.")
 
@@ -251,14 +251,14 @@ private class GraphDebugReport(
     for (contribution in ownContributions.sortedWith(contributionOrder)) {
       ProgressManager.checkCanceled()
       line(
-        "  ${classId(contribution.classId)} scopes=${classIds(contribution.scopeKeys)} at ${location(contribution.pointer)}"
+        "  ${classId(contribution.classId)} scopes=${classIds(contribution.scopeKeys)} at ${location(contribution.pointer)}",
       )
     }
     field("inherited", inheritedContributions.size)
     for (contribution in inheritedContributions.sortedWith(contributionOrder)) {
       ProgressManager.checkCanceled()
       line(
-        "  ${classId(contribution.classId)} scopes=${classIds(contribution.scopeKeys)} at ${location(contribution.pointer)}"
+        "  ${classId(contribution.classId)} scopes=${classIds(contribution.scopeKeys)} at ${location(contribution.pointer)}",
       )
     }
 
@@ -266,7 +266,7 @@ private class GraphDebugReport(
       session
         .accessorsFor(queryContext)
         .sortedWith(
-          compareBy({ pointerSortKey(it.pointer) }, { it.contextKey.render(short = false) })
+          compareBy({ pointerSortKey(it.pointer) }, { it.contextKey.render(short = false) }),
         )
     section("Index counts")
     field("bindings", index.bindings.size)
@@ -285,7 +285,7 @@ private class GraphDebugReport(
     section("Graph requests")
     line("rawSameType uses BindingIndex.bindingsWithType (all qualifiers).")
     line(
-      "inContext uses BindingIndex.bindingsForKey (including incompatible scopes for diagnostics)."
+      "inContext uses BindingIndex.bindingsForKey (including incompatible scopes for diagnostics).",
     )
     line("selected and duplicates come from the graph's initialized validation lookup.")
     for ((number, request) in requests.withIndex()) {
@@ -369,7 +369,7 @@ private class GraphDebugReport(
     field("  selectedSupertypeDeclarations", graphReferences(composition.supertypeDeclarations))
     val contributions =
       composition.contributions.sortedWith(
-        compareBy({ it.classId?.asFqNameString().orEmpty() }, { pointerSortKey(it.pointer) })
+        compareBy({ it.classId?.asFqNameString().orEmpty() }, { pointerSortKey(it.pointer) }),
       )
     field(
       "  selectedContributedInterfaces",
@@ -444,7 +444,7 @@ private class GraphDebugReport(
         field("  isBindingContainerInput", binding.isBindingContainerInput)
         val ownerGraphs =
           binding.additionalOwnerGraphIds.sortedWith(
-            compareBy({ it.classId?.asFqNameString().orEmpty() }, { it.file?.path.orEmpty() })
+            compareBy({ it.classId?.asFqNameString().orEmpty() }, { it.file?.path.orEmpty() }),
           )
         field(
           "  additionalOwnerGraphs",
@@ -622,7 +622,7 @@ private class GraphDebugReport(
   private fun extensionFactories(factories: Collection<GraphExtensionFactoryAccessor>): String {
     val sorted =
       factories.sortedWith(
-        compareBy({ it.factoryKey.render(short = false) }, { pointerSortKey(it.pointer) })
+        compareBy({ it.factoryKey.render(short = false) }, { pointerSortKey(it.pointer) }),
       )
     return sorted.joinToString(prefix = "[", postfix = "]") {
       "${key(it.factoryKey)} -> ${key(it.extensionKey)} (${graphReference(it.extension)}) at ${location(it.pointer)}"

@@ -1,16 +1,78 @@
+@Inject
+class IntsConsumer {
+  val ints: Set<Int>
+    field = ints
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<IntsConsumer> {
+    private /* final field */ val ints: Provider<Set<Int>> = ints
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(ints: Provider<Set<Int>>): MetroFactory {
+        return MetroFactory(ints = ints)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(ints: Set<Int>): IntsConsumer {
+        return IntsConsumer(ints = ints)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(ints: Provider<Set<Int>>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(ints: Set<Int>): IntsConsumer {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): IntsConsumer {
+      return MetroFactory/* companion */.newInstance(ints = <this>.#ints.invoke())
+    }
+
+  }
+
+  constructor(ints: Set<Int>) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
 @DependencyGraph
 interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
-    private val thisGraphInstance: Impl
-      field = <this>
-
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
 
     }
+
+    override val consumer: IntsConsumer
+      override get(): IntsConsumer {
+        return IntsConsumer(ints = <this>.<get-setOfInt>())
+      }
 
     override val ints: Set<Int>
       override get(): Set<Int> {
@@ -19,7 +81,7 @@ interface AppGraph {
 
     private val setOfInt: Set<Int>
       private get(): Set<Int> {
-        return setOf<Int>(element = <this>.#thisGraphInstance.provideInt(string = <this>.#thisGraphInstance.provideString()))
+        return setOf<Int>(element = <this>.provideInt(string = <this>.provideString()))
       }
 
   }
@@ -41,7 +103,7 @@ interface AppGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 137, endOffset = 208, newInstanceName = "provideInt")
+  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 166, endOffset = 237, newInstanceName = "provideInt")
   class ProvideIntMetroFactory : Factory<Int> {
     private /* final field */ val instance: AppGraph = instance
     private /* final field */ val string: Provider<String> = string
@@ -90,7 +152,7 @@ interface AppGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideString", propertyName = "", startOffset = 91, endOffset = 134, newInstanceName = "provideString")
+  @CallableMetadata(callableName = "provideString", propertyName = "", startOffset = 120, endOffset = 163, newInstanceName = "provideString")
   class ProvideStringMetroFactory : Factory<String> {
     private /* final field */ val instance: AppGraph = instance
     companion object Companion {
@@ -146,6 +208,9 @@ interface AppGraph {
   fun provideString(): String {
     return "3"
   }
+
+  abstract val consumer: IntsConsumer
+    abstract get
 
   abstract val ints: Set<Int>
     abstract get

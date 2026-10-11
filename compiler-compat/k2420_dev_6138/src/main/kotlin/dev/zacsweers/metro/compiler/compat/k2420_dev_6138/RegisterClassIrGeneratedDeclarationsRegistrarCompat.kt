@@ -7,13 +7,13 @@ import org.jetbrains.kotlin.ir.declarations.IrClass
 
 /** Extends the `IrAnnotation`-based registrar compat with `registerClassAsMetadataVisible`. */
 internal class RegisterClassIrGeneratedDeclarationsRegistrarCompat(
-  delegate: IrGeneratedDeclarationsRegistrar
+  delegate: IrGeneratedDeclarationsRegistrar,
 ) : IrAnnotationIrGeneratedDeclarationsRegistrarCompat(delegate) {
   override fun registerClassAsMetadataVisible(irClass: IrClass) =
     delegate.registerClassAsMetadataVisible(
       irClass.apply {
         convertAnnotations()
         typeParameters.forEach { it.convertAnnotations() }
-      }
+      },
     )
 }

@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.buildBlockBody
 import dev.zacsweers.metro.compiler.ir.canonicalize
+import dev.zacsweers.metro.compiler.ir.countValueReads
 import dev.zacsweers.metro.compiler.ir.graph.expressions.BindingExpressionGenerator
 import dev.zacsweers.metro.compiler.ir.graph.expressions.GraphExpressionGenerator
 import dev.zacsweers.metro.compiler.ir.graph.sharding.ShardExpressionContext
@@ -17,6 +18,7 @@ import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irGetProperty
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.irTemporaryVariable
+import dev.zacsweers.metro.compiler.ir.replaceValueReads
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.withIrBuilder
@@ -116,7 +118,24 @@ internal class SwitchingProviderGenerator(
     val bindings: List<SwitchingBinding>,
   )
 
-  data class SwitchingProvider(val irClass: IrClass, val constructor: IrConstructor)
+  /**
+   * A generated switching provider class.
+   *
+   * @param localIds Maps each binding's graph-wide switching ID to the dense ID this class switches
+   *   on. Dense IDs keep each `when` compact when a shard only holds some of the graph's bindings.
+   */
+  data class SwitchingProvider(
+    val irClass: IrClass,
+    val constructor: IrConstructor,
+    private val localIds: Map<Int, Int>,
+  ) {
+    fun localId(switchingId: Int): Int =
+      localIds[switchingId] ?: error("No switching provider ID for $switchingId")
+  }
+
+  /** The bindings this class dispatches, renumbered from zero in graph-wide ID order. */
+  private val localBindings =
+    switchingBindings.sortedBy { it.id }.mapIndexed { index, binding -> binding.copy(id = index) }
 
   /** Generates the switching provider nested class for the configured provider flavor. */
   fun generate(): SwitchingProvider? {
@@ -150,7 +169,12 @@ internal class SwitchingProviderGenerator(
     // Implement invoke(): T or suspend invoke(): T.
     switchingClass.addInvokeFunction(typeParam, graphProperty, idProperty)
 
-    return SwitchingProvider(switchingClass, constructor)
+    val localIds =
+      switchingBindings
+        .sortedBy { it.id }
+        .withIndex()
+        .associate { (index, binding) -> binding.id to index }
+    return SwitchingProvider(switchingClass, constructor, localIds)
   }
 
   /**
@@ -221,9 +245,9 @@ internal class SwitchingProviderGenerator(
   ) {
     val chunkSize = options.statementsPerInitFun
 
-    if (switchingBindings.size <= chunkSize) {
+    if (localBindings.size <= chunkSize) {
       addMainInvokeFunction(
-        bindings = switchingBindings,
+        bindings = localBindings,
         typeParam = typeParam,
         graphProperty = graphProperty,
         idProperty = idProperty,
@@ -232,7 +256,7 @@ internal class SwitchingProviderGenerator(
     }
 
     val bindingGroups =
-      switchingBindings
+      localBindings
         .groupBy { it.id / chunkSize }
         .map { (selector, bindings) -> SwitchingBindingGroup(selector, bindings) }
         .sortedBy { it.selector }
@@ -301,7 +325,7 @@ internal class SwitchingProviderGenerator(
                 graphProperty = graphProperty,
                 idProperty = idProperty,
                 typeParam = typeParam,
-              )
+              ),
             )
           }
       }
@@ -343,7 +367,7 @@ internal class SwitchingProviderGenerator(
                 switchingProviderThisReceiver = localDispatchReceiver,
                 idProperty = idProperty,
                 typeParam = typeParam,
-              )
+              ),
             )
           }
       }
@@ -380,7 +404,7 @@ internal class SwitchingProviderGenerator(
                 graphProperty = graphProperty,
                 idProperty = idProperty,
                 typeParam = typeParam,
-              )
+              ),
             )
           }
       }
@@ -428,7 +452,10 @@ internal class SwitchingProviderGenerator(
               ),
           )
         }
-        branches += irElseBranch(generateUnexpectedIdExpression(irGet(idLocal)))
+        branches +=
+          irElseBranch(
+            generateUnexpectedIdExpression(irGet(idLocal)),
+          )
 
         +irWhen(typeParam.defaultType, branches)
       }
@@ -471,6 +498,14 @@ internal class SwitchingProviderGenerator(
           )
         +idLocal
 
+        // Read `this.graph` once for all branches when several of them use it.
+        val graphLocal =
+          irTemporaryVariable(
+            value = irGetProperty(irGet(switchingProviderThisReceiver), graphProperty),
+            nameHint = Symbols.StringNames.GRAPH,
+          )
+        val branchContext = switchingProviderContext.withGraphValue(graphLocal)
+
         val branches = ArrayList<IrBranch>(bindings.size + 1)
 
         branches += bindings.map { switchingBinding ->
@@ -480,16 +515,30 @@ internal class SwitchingProviderGenerator(
               generateBindingExpression(
                 switchingBinding,
                 switchingProviderThisReceiver,
-                switchingProviderContext,
+                branchContext,
               ),
               typeParam.defaultType,
             )
           irBranch(condition, result)
         }
 
-        branches += irElseBranch(generateUnexpectedIdExpression(irGet(idLocal)))
+        branches +=
+          irElseBranch(
+            generateUnexpectedIdExpression(irGet(idLocal)),
+          )
 
-        +irWhen(typeParam.defaultType, branches)
+        val switch = irWhen(typeParam.defaultType, branches)
+        when (switch.countValueReads(graphLocal)) {
+          0 -> {}
+          // A local costs more than a single field read.
+          1 -> {
+            switch.replaceValueReads(graphLocal) {
+              irGetProperty(irGet(switchingProviderThisReceiver), graphProperty)
+            }
+          }
+          else -> +graphLocal
+        }
+        +switch
       }
     }
 

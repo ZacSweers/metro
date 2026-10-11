@@ -6,9 +6,6 @@ interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph, ContributionChunk_0, ContributionChunk_1 {
-    private val thisGraphInstance: Impl
-      field = <this>
-
     interface ContributionChunk_0 : ContributedA, ContributedA.MetroContributionToAppScope, ContributedB, ContributedB.MetroContributionToAppScope {
     }
 
@@ -23,17 +20,17 @@ interface AppGraph {
 
     override val a: String
       override get(): String {
-        return <this>.#thisGraphInstance.provideA()
+        return <this>.provideA()
       }
 
     override val b: String
       override get(): String {
-        return <this>.#thisGraphInstance.provideA()
+        return <this>.<get-a>()
       }
 
     override val c: String
       override get(): String {
-        return <this>.#thisGraphInstance.provideA()
+        return <this>.<get-a>()
       }
 
   }

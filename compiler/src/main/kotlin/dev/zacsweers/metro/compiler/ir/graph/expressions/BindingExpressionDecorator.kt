@@ -205,7 +205,7 @@ internal class GraphTraceContextAccessor(
         val graphProperty =
           shardContext?.graphProperty
             ?: reportCompilerBug(
-              "Shard ${shardContext?.currentShardIndex} requires graph access but has no graph property"
+              "Shard ${shardContext?.currentShardIndex} requires graph access but has no graph property",
             )
         return irGetProperty(irGet(thisReceiver), graphProperty)
       }

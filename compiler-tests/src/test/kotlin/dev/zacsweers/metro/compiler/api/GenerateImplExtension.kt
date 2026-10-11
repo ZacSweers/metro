@@ -275,7 +275,7 @@ class GenerateImplIrExtension : IrGenerationExtension {
           }
           return super.visitConstructor(declaration)
         }
-      }
+      },
     )
   }
 }

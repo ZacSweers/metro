@@ -50,7 +50,7 @@ public class CircuitSerializableIrDeclarationGenerationExtension
 private constructor(private val compatContext: CompatContext) : IrGenerationExtension {
   public companion object {
     public fun create(
-      compatContext: CompatContext
+      compatContext: CompatContext,
     ): CircuitSerializableIrDeclarationGenerationExtension {
       return CircuitSerializableIrDeclarationGenerationExtension(compatContext)
     }
@@ -99,7 +99,7 @@ public class CircuitSerializableIrExtension(
         symbols = symbols,
         generateClassesInIr = generateClassesInIr,
         compatContext = compatContext,
-      )
+      ),
     )
   }
 }
@@ -174,7 +174,7 @@ private class CircuitSerializableIrDeclarationGenerator(
           name = registrationClassId.shortClassName
           origin =
             IrDeclarationOrigin.GeneratedByPlugin(
-              CircuitOrigins.SerializerRegistrationClass(serializedClass.classIdOrFail)
+              CircuitOrigins.SerializerRegistrationClass(serializedClass.classIdOrFail),
             )
           kind = ClassKind.CLASS
           visibility = DescriptorVisibilities.PUBLIC
@@ -199,7 +199,7 @@ private class CircuitSerializableIrDeclarationGenerator(
     // Kotlin 2.4 requires the class shell to be registered without a constructor. Register the
     // constructor separately so both declarations receive valid FIR metadata.
     generationSupport.metadataDeclarationRegistrarCompat.registerClassAsMetadataVisible(
-      registrationClass
+      registrationClass,
     )
     registrationClass
       .addConstructor {
@@ -210,7 +210,7 @@ private class CircuitSerializableIrDeclarationGenerator(
       .apply {
         body = context(pluginContext) { generateDefaultConstructorBody() }
         generationSupport.metadataDeclarationRegistrarCompat.registerConstructorAsMetadataVisible(
-          this
+          this,
         )
       }
   }
@@ -241,7 +241,7 @@ private class CircuitSerializableIrTransformer(
       symbols.serializerRegisterFunction(registrationClass)
         ?: error(
           "Generated Circuit serializer registration ${registrationClass.classId} is missing " +
-            "CircuitSerializerRegistration.register()."
+            "CircuitSerializerRegistration.register().",
         )
 
     val serializedClass =
@@ -259,14 +259,14 @@ private class CircuitSerializableIrTransformer(
       symbols.serializerFunction(serializedClass)
         ?: error(
           "Could not find serializer output for ${origin.serializedType.asSingleFqName()}. " +
-            "Apply the kotlinx-serialization compiler plugin."
+            "Apply the kotlinx-serialization compiler plugin.",
         )
 
     val subclassFunction =
       symbols.polymorphicSubclassFunction
         ?: error(
           "Could not find PolymorphicModuleBuilder.subclass(KClass, KSerializer). Ensure " +
-            "Circuit's serialization runtime and kotlinx-serialization-core are on the classpath."
+            "Circuit's serialization runtime and kotlinx-serialization-core are on the classpath.",
         )
 
     val builderParameter =
@@ -274,7 +274,7 @@ private class CircuitSerializableIrTransformer(
         ?: registerFunction.regularParameters.singleOrNull()
         ?: error(
           "CircuitSerializerRegistration.register() on ${registrationClass.classId} is missing " +
-            "its builder parameter."
+            "its builder parameter.",
         )
 
     if (registerFunction.isFakeOverride) {

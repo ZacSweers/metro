@@ -34,7 +34,7 @@ class MetroGraphValidationParityTest : BasePlatformTestCase() {
         populatedReport = "CoreGraph/keys-populated/parity/core/AppGraph/Impl.txt",
         validatedReport = "CoreGraph/keys-validated/parity/core/AppGraph/Impl.txt",
         deferredReport = "CoreGraph/keys-deferred/parity/core/AppGraph/Impl.txt",
-      )
+      ),
     )
   }
 
@@ -48,7 +48,7 @@ class MetroGraphValidationParityTest : BasePlatformTestCase() {
         populatedReport = "CompositionGraph/keys-populated/parity/composition/AppGraph/Impl.txt",
         validatedReport = "CompositionGraph/keys-validated/parity/composition/AppGraph/Impl.txt",
         deferredReport = "CompositionGraph/keys-deferred/parity/composition/AppGraph/Impl.txt",
-      )
+      ),
     )
   }
 
@@ -64,7 +64,7 @@ class MetroGraphValidationParityTest : BasePlatformTestCase() {
         deferredReport = "AggregationGraph/keys-deferred/parity/aggregation/AppGraph/Impl.txt",
         explanationKeys = setOf("parity.aggregation.Repo"),
         explanationRejections = setOf(BindingReason.EXCLUDED, BindingReason.REPLACED),
-      )
+      ),
     )
   }
 
@@ -78,7 +78,7 @@ class MetroGraphValidationParityTest : BasePlatformTestCase() {
         populatedReport = "$fixture/keys-populated/parity/extension/AppGraph/Impl.txt",
         validatedReport = "$fixture/keys-validated/parity/extension/AppGraph/Impl.txt",
         deferredReport = "$fixture/keys-deferred/parity/extension/AppGraph/Impl.txt",
-      )
+      ),
     )
     assertParity(
       ParityCase(
@@ -92,7 +92,7 @@ class MetroGraphValidationParityTest : BasePlatformTestCase() {
         explanationReport =
           "$fixture/graph-metadata/graph-parity-extension-AppGraph-Impl-ChildGraphImpl.json.txt",
         explanationKeys = setOf("parity.extension.ChildValue", "parity.extension.ParentApi"),
-      )
+      ),
     )
   }
 
@@ -106,7 +106,7 @@ class MetroGraphValidationParityTest : BasePlatformTestCase() {
         populatedReport = "$fixture/keys-populated/parity/extension/scoped/AppGraph/Impl.txt",
         validatedReport = "$fixture/keys-validated/parity/extension/scoped/AppGraph/Impl.txt",
         deferredReport = "$fixture/keys-deferred/parity/extension/scoped/AppGraph/Impl.txt",
-      )
+      ),
     )
     assertParity(
       ParityCase(
@@ -119,7 +119,7 @@ class MetroGraphValidationParityTest : BasePlatformTestCase() {
           "$fixture/keys-validated/parity/extension/scoped/AppGraph/Impl/ChildGraphImpl.txt",
         deferredReport =
           "$fixture/keys-deferred/parity/extension/scoped/AppGraph/Impl/ChildGraphImpl.txt",
-      )
+      ),
     )
   }
 
@@ -134,7 +134,7 @@ class MetroGraphValidationParityTest : BasePlatformTestCase() {
           populatedReport = "$fixture/keys-populated/$reportPath.txt",
           validatedReport = "$fixture/keys-validated/$reportPath.txt",
           deferredReport = "$fixture/keys-deferred/$reportPath.txt",
-        )
+        ),
       )
       assertParity(
         ParityCase(
@@ -143,7 +143,7 @@ class MetroGraphValidationParityTest : BasePlatformTestCase() {
           populatedReport = "$fixture/keys-populated/$reportPath/ChildGraphImpl.txt",
           validatedReport = "$fixture/keys-validated/$reportPath/ChildGraphImpl.txt",
           deferredReport = "$fixture/keys-deferred/$reportPath/ChildGraphImpl.txt",
-        )
+        ),
       )
     }
   }
@@ -163,7 +163,7 @@ class MetroGraphValidationParityTest : BasePlatformTestCase() {
         deferredReport =
           "$fixture/keys-deferred/parity/precedence/explicitinject/AppGraph/Impl.txt",
         explanationKeys = setOf("parity.precedence.explicitinject.Thing"),
-      )
+      ),
     )
   }
 
@@ -198,7 +198,7 @@ class MetroGraphValidationParityTest : BasePlatformTestCase() {
         sourceModule = "main",
         sourceFile = "BinaryGraph.kt",
         withLibrary = true,
-      )
+      ),
     )
   }
 
@@ -213,7 +213,7 @@ class MetroGraphValidationParityTest : BasePlatformTestCase() {
         validatedReport = "SuspendGraph/keys-validated/parity/suspend/AppGraph/Impl.txt",
         deferredReport = "SuspendGraph/keys-deferred/parity/suspend/AppGraph/Impl.txt",
         metroOptions = options,
-      )
+      ),
     )
     assertParity(
       ParityCase(
@@ -222,7 +222,7 @@ class MetroGraphValidationParityTest : BasePlatformTestCase() {
         populatedReport = "SuspendFailure/keys-populated/parity/suspend/failure/AppGraph/Impl.txt",
         diagnosticReport = "SuspendFailure.ir.diag.txt",
         metroOptions = options,
-      )
+      ),
     )
     assertParity(
       ParityCase(
@@ -231,7 +231,7 @@ class MetroGraphValidationParityTest : BasePlatformTestCase() {
         populatedReport = "SuspendCycle/keys-populated/parity/suspend/cycle/AppGraph/Impl.txt",
         diagnosticReport = "SuspendCycle.ir.diag.txt",
         metroOptions = options,
-      )
+      ),
     )
   }
 

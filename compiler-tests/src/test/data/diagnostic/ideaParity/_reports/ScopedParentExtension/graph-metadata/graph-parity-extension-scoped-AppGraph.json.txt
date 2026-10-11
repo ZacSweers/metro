@@ -11,7 +11,9 @@
   "extensions": {
     "accessors": [
       {
-        "key": "parity.extension.scoped.ChildGraph"
+        "key": "parity.extension.scoped.ChildGraph",
+        "name": "childGraph",
+        "isProperty": true
       }
     ],
     "factoryAccessors": [],
@@ -31,6 +33,7 @@
     "enableGraphSharding": true,
     "keysPerGraphShard": 2000,
     "mergedSupertypeChunkSize": 0,
+    "multibindingGetterThreshold": 25,
     "enableSwitchingProviders": false,
     "publicScopedProviderSeverity": "NONE",
     "nonPublicContributionSeverity": "NONE",
@@ -90,7 +93,8 @@
     "generateStaticAnnotations": true,
     "enableRuntimeTracing": false,
     "memberNamingStrategy": "DESCRIPTIVE",
-    "maxGeneratedClassNameLength": 233
+    "maxGeneratedClassNameLength": 233,
+    "diagnosticLevels": {}
   },
   "stats": {
     "providerFactories": 0,
@@ -123,7 +127,11 @@
       "shardsGenerated": 0,
       "shardedSupertypes": 0,
       "shardedInitFunctions": 0,
-      "providerInlines": 0
+      "providerInlines": 0,
+      "providerInlineFallbacks": {
+        "deferredAccess": 0,
+        "unavailableValue": 0
+      }
     }
   },
   "bindings": [
@@ -132,6 +140,7 @@
       "bindingKind": "BoundInstance",
       "isScoped": false,
       "nameHint": "AppGraphProvider",
+      "isGraphInput": false,
       "dependencies": [],
       "isSynthetic": false,
       "declaration": "AppGraph"
@@ -263,36 +272,6 @@
           "id": "parity.extension.scoped.AppGraph.Impl.<get-childGraph>(parity.extension.scoped.AppGraph.Impl): parity.extension.scoped.ChildGraph",
           "label": "parity.extension.scoped.AppGraph.Impl.<get-childGraph>"
         },
-        "hasDefault": false,
-        "isOptional": false
-      },
-      "details": [
-        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
-      ]
-    },
-    {
-      "context": {
-        "id": "32:parity.extension.scoped.AppGraph",
-        "label": "parity.extension.scoped.AppGraph"
-      },
-      "phase": "lookup",
-      "outcome": "selected",
-      "candidates": [
-        {
-          "id": "29:parity.extension.scoped.Cache|29:parity.extension.scoped.Cache",
-          "key": "parity.extension.scoped.Cache",
-          "status": "selected",
-          "reason": "selected_implicit",
-          "declaration": {
-            "id": "parity.extension.scoped.Cache",
-            "label": "parity.extension.scoped.Cache"
-          },
-          "relatedDeclarations": [],
-          "details": []
-        }
-      ],
-      "request": {
-        "key": "parity.extension.scoped.Cache",
         "hasDefault": false,
         "isOptional": false
       },

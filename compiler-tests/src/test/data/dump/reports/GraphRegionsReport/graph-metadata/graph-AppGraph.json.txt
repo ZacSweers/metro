@@ -1,0 +1,536 @@
+{
+  "graph": "AppGraph",
+  "includedGraphKeys": [
+    "ExternalDependencies"
+  ],
+  "scopes": [
+    "@dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class)"
+  ],
+  "aggregationScopes": [
+    "dev.zacsweers.metro.AppScope"
+  ],
+  "roots": {
+    "accessors": [
+      {
+        "key": "Value",
+        "name": "value",
+        "isProperty": true,
+        "isDeferrable": false
+      },
+      {
+        "key": "ChildGraph.Factory",
+        "name": "childFactory",
+        "isProperty": true,
+        "isDeferrable": false
+      }
+    ],
+    "injectors": []
+  },
+  "extensions": {
+    "accessors": [],
+    "factoryAccessors": [
+      {
+        "key": "ChildGraph.Factory",
+        "name": "childFactory",
+        "isProperty": true,
+        "isSAM": false
+      }
+    ],
+    "factoriesImplemented": [
+      "ChildGraph.Factory"
+    ]
+  },
+  "config": {
+    "debug": false,
+    "enabled": true,
+    "generateAssistedFactories": false,
+    "enableTopLevelFunctionInjection": false,
+    "generateContributionHints": true,
+    "generateContributionHintsInFir": false,
+    "generateClassesInIr": false,
+    "enablePrivateProviderProperties": false,
+    "shrinkUnusedBindings": true,
+    "statementsPerInitFun": 25,
+    "enableGraphSharding": true,
+    "keysPerGraphShard": 2000,
+    "mergedSupertypeChunkSize": 0,
+    "multibindingGetterThreshold": 25,
+    "enableSwitchingProviders": false,
+    "publicScopedProviderSeverity": "NONE",
+    "nonPublicContributionSeverity": "NONE",
+    "optionalBindingBehavior": "DEFAULT",
+    "warnOnInjectAnnotationPlacement": true,
+    "interopAnnotationsNamedArgSeverity": "NONE",
+    "unusedGraphInputsSeverity": "WARN",
+    "enabledLoggers": [],
+    "enableDaggerRuntimeInterop": false,
+    "enableGuiceRuntimeInterop": false,
+    "maxIrErrorsCount": 20,
+    "customProviderTypes": [],
+    "customLazyTypes": [],
+    "customAssistedAnnotations": [],
+    "customAssistedFactoryAnnotations": [],
+    "customAssistedInjectAnnotations": [],
+    "customBindsAnnotations": [],
+    "customContributesToAnnotations": [],
+    "customContributesBindingAnnotations": [],
+    "customContributesIntoSetAnnotations": [],
+    "customGraphExtensionAnnotations": [],
+    "customGraphExtensionFactoryAnnotations": [],
+    "customElementsIntoSetAnnotations": [],
+    "customGraphAnnotations": [],
+    "customGraphFactoryAnnotations": [],
+    "customInjectAnnotations": [],
+    "customIntoMapAnnotations": [],
+    "customIntoSetAnnotations": [],
+    "customMapKeyAnnotations": [],
+    "customMultibindsAnnotations": [],
+    "customProvidesAnnotations": [],
+    "customQualifierAnnotations": [],
+    "customScopeAnnotations": [],
+    "customBindingContainerAnnotations": [],
+    "enableDaggerAnvilInterop": false,
+    "enableFullBindingGraphValidation": false,
+    "enableGraphImplClassAsReturnType": false,
+    "customOriginAnnotations": [],
+    "customOptionalBindingAnnotations": [],
+    "contributesAsInject": false,
+    "enableKlibParamsCheck": false,
+    "patchKlibParams": true,
+    "forceEnableFirInIde": false,
+    "compilerVersionAliases": {},
+    "parallelThreads": 0,
+    "bufferedIcTracking": true,
+    "omitRedundantMirrors": false,
+    "enableProviderInlining": true,
+    "enableFunctionProviders": true,
+    "enableSuspendProviders": false,
+    "desugaredProviderSeverity": "WARN",
+    "enableKClassToClassInterop": false,
+    "generateContributionProviders": false,
+    "enableCircuitCodegen": false,
+    "enableHiltInterop": false,
+    "diagnosticsRenderMode": "PLAIN",
+    "generateStaticAnnotations": true,
+    "enableRuntimeTracing": false,
+    "memberNamingStrategy": "DESCRIPTIVE",
+    "maxGeneratedClassNameLength": 233,
+    "diagnosticLevels": {}
+  },
+  "stats": {
+    "providerFactories": 0,
+    "bindsCallables": 0,
+    "multibindsCallables": 0,
+    "optionalBindings": 0,
+    "accessors": 2,
+    "injectors": 0,
+    "graphExtensionAccessors": 0,
+    "graphExtensionFactories": 1,
+    "includedGraphs": 1,
+    "bindingContainers": 0,
+    "dynamicBindings": 0,
+    "graphPrivateKeys": 0,
+    "publishedBindsKeys": 0,
+    "populatedKeys": 7,
+    "validatedKeys": 7,
+    "reachableKeys": 7,
+    "deferredKeys": 0,
+    "unusedInputs": 0,
+    "providerProperties": 3,
+    "scopedProviderProperties": 1,
+    "shards": 0,
+    "optimizations": {
+      "bindingsPrunedByShrinking": 0,
+      "classConstructorDirectInvocations": 1,
+      "classConstructorNewInstanceCalls": 0,
+      "providerDirectInvocations": 0,
+      "providerNewInstanceCalls": 0,
+      "shardsGenerated": 0,
+      "shardedSupertypes": 0,
+      "shardedInitFunctions": 0,
+      "providerInlines": 0,
+      "providerInlineFallbacks": {
+        "deferredAccess": 0,
+        "unavailableValue": 0
+      }
+    }
+  },
+  "bindings": [
+    {
+      "key": "AppGraph",
+      "bindingKind": "BoundInstance",
+      "isScoped": false,
+      "nameHint": "AppGraphProvider",
+      "isGraphInput": false,
+      "dependencies": [],
+      "isSynthetic": false,
+      "declaration": "AppGraph"
+    },
+    {
+      "key": "AppGraph.Impl",
+      "bindingKind": "Alias",
+      "isScoped": false,
+      "nameHint": "Impl",
+      "dependencies": [
+        {
+          "key": "AppGraph",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": true,
+      "aliasTarget": "AppGraph"
+    },
+    {
+      "key": "Cache",
+      "bindingKind": "ConstructorInjected",
+      "scope": "@dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class)",
+      "isScoped": true,
+      "nameHint": "Cache",
+      "dependencies": [],
+      "isSynthetic": false,
+      "declaration": "Cache"
+    },
+    {
+      "key": "ChildGraph.Factory",
+      "bindingKind": "GraphExtensionFactory",
+      "isScoped": false,
+      "nameHint": "FactoryFactory",
+      "extensionType": "ChildGraph",
+      "dependencies": [
+        {
+          "key": "AppGraph.Impl",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "declaration": "<get-childFactory>"
+    },
+    {
+      "key": "ExternalDependencies",
+      "bindingKind": "BoundInstance",
+      "isScoped": false,
+      "nameHint": "ExternalDependenciesProvider",
+      "isGraphInput": true,
+      "dependencies": [],
+      "isSynthetic": false,
+      "declaration": "dependencies"
+    },
+    {
+      "key": "Value",
+      "bindingKind": "ConstructorInjected",
+      "isScoped": false,
+      "nameHint": "Value",
+      "dependencies": [
+        {
+          "key": "Cache",
+          "hasDefault": false
+        },
+        {
+          "key": "kotlin.String",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "declaration": "Value"
+    },
+    {
+      "key": "kotlin.String",
+      "bindingKind": "GraphDependency",
+      "isScoped": false,
+      "nameHint": "ExternalDependenciesEndpoint",
+      "graphDependency": {
+        "ownerKey": "ExternalDependencies",
+        "ownerGraph": "ExternalDependencies",
+        "fromParent": false
+      },
+      "dependencies": [
+        {
+          "key": "ExternalDependencies",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "declaration": "endpoint"
+    }
+  ],
+  "bindingExplanations": [
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "8:AppGraph|8:AppGraph",
+          "key": "AppGraph",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "AppGraph",
+            "label": "AppGraph"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "AppGraph",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "13:AppGraph.Impl|9:generated",
+          "key": "AppGraph.Impl",
+          "status": "selected",
+          "reason": "selected_generated",
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "AppGraph.Impl",
+        "declaration": {
+          "id": "AppGraph.Impl.<get-childFactory>(AppGraph.Impl): ChildGraph.Factory",
+          "label": "AppGraph.Impl.<get-childFactory>"
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "5:Cache|5:Cache",
+          "key": "Cache",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "Cache",
+            "label": "Cache"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "Cache",
+        "declaration": {
+          "id": "Value.MetroFactory.declarationMirror(Value.MetroFactory,Cache,kotlin.String): Value#cache",
+          "label": "Value.MetroFactory.declarationMirror.cache"
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "18:ChildGraph.Factory|67:AppGraph.Impl.<get-childFactory>(AppGraph.Impl): ChildGraph.Factory",
+          "key": "ChildGraph.Factory",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "AppGraph.Impl.<get-childFactory>(AppGraph.Impl): ChildGraph.Factory",
+            "label": "AppGraph.Impl.<get-childFactory>"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "ChildGraph.Factory",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "20:ExternalDependencies|85:AppGraph.Factory.create(AppGraph.Factory,ExternalDependencies): AppGraph#dependencies",
+          "key": "ExternalDependencies",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "AppGraph.Factory.create(AppGraph.Factory,ExternalDependencies): AppGraph#dependencies",
+            "label": "AppGraph.Factory.create.dependencies"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "ExternalDependencies",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "5:Cache|5:Cache",
+          "key": "Cache",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "Cache",
+            "label": "Cache"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "Provider<Cache>",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "5:Value|5:Value",
+          "key": "Value",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "Value",
+            "label": "Value"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "Value",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "13:kotlin.String|44:ExternalDependencies.endpoint: kotlin.String",
+          "key": "kotlin.String",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "ExternalDependencies.endpoint: kotlin.String",
+            "label": "ExternalDependencies.endpoint"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "kotlin.String",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "13:kotlin.String|44:ExternalDependencies.endpoint: kotlin.String",
+          "key": "kotlin.String",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "ExternalDependencies.endpoint: kotlin.String",
+            "label": "ExternalDependencies.endpoint"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "kotlin.String",
+        "declaration": {
+          "id": "Value.MetroFactory.declarationMirror(Value.MetroFactory,Cache,kotlin.String): Value#endpoint",
+          "label": "Value.MetroFactory.declarationMirror.endpoint"
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    }
+  ]
+}

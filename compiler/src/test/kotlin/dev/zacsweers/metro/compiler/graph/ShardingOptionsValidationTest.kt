@@ -16,7 +16,7 @@ class ShardingOptionsValidationTest : MetroCompilerTest() {
         """
         @DependencyGraph
         interface TestGraph
-        """
+        """,
       ),
       options = MetroOptions.builder().keysPerGraphShard(0).build(),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
@@ -32,7 +32,7 @@ class ShardingOptionsValidationTest : MetroCompilerTest() {
         """
         @DependencyGraph
         interface TestGraph
-        """
+        """,
       ),
       options = MetroOptions.builder().keysPerGraphShard(-1).build(),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,

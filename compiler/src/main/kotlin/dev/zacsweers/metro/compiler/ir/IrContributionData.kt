@@ -16,6 +16,7 @@ import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.getAndAdd
+import dev.zacsweers.metro.compiler.hilt.HiltSymbols
 import dev.zacsweers.metro.compiler.ir.transformers.Lockable
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.mapToSet
@@ -23,7 +24,6 @@ import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.trace
-import java.util.concurrent.ConcurrentHashMap
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -58,11 +58,9 @@ internal class IrContributionData(
 
   private val contributions = MutableScatterMap<Scope, MutableScatterSet<IrType>>()
   private val directSupertypeContributions = MutableScatterMap<Scope, MutableScatterSet<IrClass>>()
-  // Lazily populated caches use ConcurrentHashMap for thread-safe access during parallel
-  // graph extension validation. These are not structural mutations (just caching lookups),
-  // so they remain writable after lock().
-  private val externalContributions = ConcurrentHashMap<ScopeLookupKey, Set<IrType>>()
-  private val scopeHintCache = ConcurrentHashMap<Scope, CallableId>()
+  // The main compiler thread can populate these caches after source contribution collection ends.
+  private val externalContributions = MutableScatterMap<ScopeLookupKey, Set<IrType>>()
+  private val scopeHintCache = MutableScatterMap<Scope, CallableId>()
 
   private fun scopeHintFor(scope: Scope): CallableId =
     scopeHintCache.getOrPut(scope) { Symbols.CallableIds.scopeHint(scope) }
@@ -139,7 +137,7 @@ internal class IrContributionData(
             addAll(
               findVisibleContributionClassesForScopeInHints(scope, callingDeclaration).filter {
                 it.isDirectContributedInterface(scope)
-              }
+              },
             )
           }
 
@@ -151,7 +149,7 @@ internal class IrContributionData(
                   with(metroContext) { trackClassLookup(callingDeclaration, irClass) }
                 }
               }
-            }
+            },
           )
         }
       }
@@ -162,7 +160,15 @@ internal class IrContributionData(
     if (kind != ClassKind.INTERFACE) return false
     val irClass = this
     if (with(metroContext) { irClass.isBindingContainer() }) return false
-    return isDirectContributionTo(scope)
+    if (isDirectContributionTo(scope)) {
+      return true
+    }
+    if (!metroContext.options.enableHiltInterop) {
+      return false
+    }
+    // The contribution hint already associates this entry point with the requested scope.
+    return findAnnotations(HiltSymbols.EntryPoint).any() &&
+      findAnnotations(HiltSymbols.InstallIn).any()
   }
 
   private fun IrClass.isDirectContributionTo(scope: Scope): Boolean {
@@ -194,7 +200,7 @@ internal class IrContributionData(
   /**
    * Tracks a lookup on scope hint functions for incremental compilation. This should be called
    * before checking any caches to ensure all callers register their dependency on scope hint
-   * changes.
+   * changes. Extensions' lookups for the scope are tracked too.
    */
   fun trackScopeHintLookup(scope: Scope, callingDeclaration: IrDeclaration?) {
     callingDeclaration?.let { caller ->
@@ -205,6 +211,15 @@ internal class IrContributionData(
           container = scopeHintName.packageName,
           declarationName = scopeHintName.callableName.asString(),
         )
+        for (extension in irContributionExtensions) {
+          for (fqName in extension.lookupFqNames(scope)) {
+            trackClassLookup(
+              callingDeclaration = caller,
+              container = fqName.parent(),
+              declarationName = fqName.shortName().asString(),
+            )
+          }
+        }
       }
     }
   }

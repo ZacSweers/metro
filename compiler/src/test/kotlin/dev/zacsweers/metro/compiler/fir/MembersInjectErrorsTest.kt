@@ -21,7 +21,7 @@ class MembersInjectErrorsTest : MetroCompilerTest() {
           }
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
@@ -45,7 +45,7 @@ class MembersInjectErrorsTest : MetroCompilerTest() {
               }
             }
             """
-              .trimIndent()
+              .trimIndent(),
           ),
         ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
@@ -69,9 +69,9 @@ class MembersInjectErrorsTest : MetroCompilerTest() {
                 @Composable get
             }
             """
-              .trimIndent()
+              .trimIndent(),
           ),
-        )
+        ),
     )
   }
 
@@ -89,9 +89,9 @@ class MembersInjectErrorsTest : MetroCompilerTest() {
               @Inject @get:Composable var value: Int = 0
             }
             """
-              .trimIndent()
+              .trimIndent(),
           ),
-        )
+        ),
     )
   }
 
@@ -105,11 +105,11 @@ class MembersInjectErrorsTest : MetroCompilerTest() {
           @Inject lateinit var value: String
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       assertDiagnostics(
-        "w: ExampleClass.kt:8:24 Non-null injected member property in constructor-injected class should usually be moved to the inject constructor. If this has a default value, use Metro's default values support."
+        "w: ExampleClass.kt:8:24 Non-null injected member property in constructor-injected class should usually be moved to the inject constructor. If this has a default value, use Metro's default values support.",
       )
     }
   }
@@ -124,11 +124,11 @@ class MembersInjectErrorsTest : MetroCompilerTest() {
           @Inject var value: Int = 0
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       assertDiagnostics(
-        "w: ExampleClass.kt:8:15 Non-null injected member property in constructor-injected class should usually be moved to the inject constructor. If this has a default value, use Metro's default values support."
+        "w: ExampleClass.kt:8:15 Non-null injected member property in constructor-injected class should usually be moved to the inject constructor. If this has a default value, use Metro's default values support.",
       )
     }
   }
@@ -143,8 +143,8 @@ class MembersInjectErrorsTest : MetroCompilerTest() {
           @Inject var value: Int? = 0
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       assertNoWarningsOrErrors()
     }
@@ -169,11 +169,11 @@ class MembersInjectErrorsTest : MetroCompilerTest() {
           }
         }
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       assertDiagnostics(
-        "w: ExampleClass.kt:15:33 Return types for injected member functions will always be ignored."
+        "w: ExampleClass.kt:15:33 Return types for injected member functions will always be ignored.",
       )
     }
   }
@@ -188,7 +188,7 @@ class MembersInjectErrorsTest : MetroCompilerTest() {
           @Inject abstract fun intFunction(int: Int)
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
@@ -197,7 +197,7 @@ class MembersInjectErrorsTest : MetroCompilerTest() {
         e: ExampleClass.kt:7:15 Injected members cannot be abstract.
         e: ExampleClass.kt:8:11 Injected members cannot be abstract.
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -234,7 +234,7 @@ class MembersInjectErrorsTest : MetroCompilerTest() {
         e: NonClasses.kt:13:15 Only regular classes can have member injections but containing class was OBJECT.
         e: NonClasses.kt:18:15 Only regular classes can have member injections but containing class was INTERFACE.
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -250,7 +250,7 @@ class MembersInjectErrorsTest : MetroCompilerTest() {
             @set:Inject var int2: Int,
           )
           """
-            .trimIndent()
+            .trimIndent(),
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
@@ -259,7 +259,7 @@ class MembersInjectErrorsTest : MetroCompilerTest() {
         e: ExampleClass.kt:7:15 Constructor property parameters should not be annotated with `@Inject`. Annotate the constructor or class instead.
         e: ExampleClass.kt:8:19 Constructor property parameters should not be annotated with `@Inject`. Annotate the constructor or class instead.
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }

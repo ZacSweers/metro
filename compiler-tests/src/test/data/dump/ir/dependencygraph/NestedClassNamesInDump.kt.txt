@@ -6,7 +6,7 @@ interface ExampleGraph {
   @MetroImplMarker
   class Impl : ExampleGraph {
     private val provideStringProvider: Provider<String>
-      field = DoubleCheck/* companion */.provider<Provider<String>, String>(delegate = ExampleGraph.Bindings.Companion.ProvideStringMetroFactory.create())
+      field = provider<Provider<String>, String>(delegate = create())
 
     private constructor() /* primary */ {
       super/*Any*/()

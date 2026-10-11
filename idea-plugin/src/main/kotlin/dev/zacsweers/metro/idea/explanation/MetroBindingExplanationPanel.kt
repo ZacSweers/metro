@@ -48,8 +48,8 @@ internal class MetroBindingExplanationPanel(
         DefaultTreeModel(
           DefaultMutableTreeNode().apply {
             for (candidate in explanation.candidates) add(DefaultMutableTreeNode(candidate))
-          }
-        )
+          },
+        ),
       )
       .apply {
         isRootVisible = false

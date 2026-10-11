@@ -102,7 +102,7 @@ internal class FirContextualTypeKey(
         } else {
           buildString { renderType(short, type, includeAbbreviation) }
         }
-      }
+      },
     )
     if (hasDefault) {
       append(" = ...")

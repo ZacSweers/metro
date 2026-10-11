@@ -24,36 +24,34 @@ import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.name.ClassId
 
-private const val CACHE_TYPE_REMAPPERS = "type-remappers"
-/** Gets or computes a cached [TypeRemapper] for the given class and subtype. */
-internal val IrMetroContext.typeRemapperCache: IrCache<IrType, TypeRemapper, IrClass>
-  get() {
-    return getOrCreateIrCache(CACHE_TYPE_REMAPPERS) { factory ->
-      factory.createCache { type, targetClass ->
-        // Build deep substitution map
-        val substitutionMap = buildDeepSubstitutionMap(targetClass, type)
-        if (substitutionMap.isEmpty()) {
-          NOOP_TYPE_REMAPPER
-        } else {
-          DeepTypeSubstitutor(substitutionMap)
-        }
-      }
-    }
-  }
-
-context(context: IrMetroContext)
+/** Creates a remapper for this class and subtype. The caller owns its mutable result cache. */
 internal fun IrClass.deepRemapperFor(subtype: IrType): TypeRemapper {
-  return context.typeRemapperCache.getValue(subtype, this)
+  val substitutionMap = buildDeepSubstitutionMap(this, subtype)
+  if (substitutionMap.isEmpty()) {
+    return NOOP_TYPE_REMAPPER
+  }
+  return DeepTypeSubstitutor(substitutionMap)
 }
 
-private fun buildDeepSubstitutionMap(
+/**
+ * Builds substitutions in depth-first declaration order, visiting each class instantiation once.
+ */
+internal fun buildDeepSubstitutionMap(
   targetClass: IrClass,
   concreteType: IrType,
 ): Map<IrTypeParameterSymbol, IrType> {
   val result = mutableMapOf<IrTypeParameterSymbol, IrType>()
+  val visited = HashSet<Pair<IrClass, IrType>>()
+  val pendingSupertypes = ArrayDeque<Iterator<IrType>>()
 
+  /** Records type arguments before scheduling a class's supertypes. */
   fun collectSubstitutions(currentClass: IrClass, currentType: IrType) {
-    if (currentType !is IrSimpleType) return
+    if (currentType !is IrSimpleType) {
+      return
+    }
+    if (!visited.add(currentClass to currentType)) {
+      return
+    }
 
     // Add substitutions for current class's type parameters
     currentClass.typeParameters.zip(currentType.arguments).forEach { (param, arg) ->
@@ -62,19 +60,25 @@ private fun buildDeepSubstitutionMap(
       }
     }
 
-    // Walk up the hierarchy
-    for (superType in currentClass.superTypes) {
-      val superClass = superType.classOrNull?.owner ?: continue
-
-      // Apply current substitutions to the supertype
-      val substitutedSuperType = superType.substitute(result)
-
-      // Recursively collect from supertypes
-      collectSubstitutions(superClass, substitutedSuperType)
-    }
+    pendingSupertypes.addLast(currentClass.superTypes.iterator())
   }
 
   collectSubstitutions(targetClass, concreteType)
+  // Resume a class's remaining supertypes after finishing the current supertype's ancestors.
+  while (pendingSupertypes.isNotEmpty()) {
+    val supertypes = pendingSupertypes.last()
+    if (!supertypes.hasNext()) {
+      pendingSupertypes.removeLast()
+      continue
+    }
+    val superType = supertypes.next()
+    val superClass = superType.classOrNull?.owner ?: continue
+
+    // Apply current substitutions to the supertype
+    val substitutedSuperType = superType.substitute(result)
+    collectSubstitutions(superClass, substitutedSuperType)
+  }
+
   return result
 }
 

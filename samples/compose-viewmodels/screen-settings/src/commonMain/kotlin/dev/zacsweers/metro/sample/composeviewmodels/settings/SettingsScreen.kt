@@ -30,7 +30,7 @@ fun SettingsScreen(
       extras =
         remember(userId) {
           MutableCreationExtras().apply { set(SettingsViewModel.UserIdKey, userId) }
-        }
+        },
     ),
 ) =
   Column(

@@ -3,11 +3,8 @@ interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
-    private val thisGraphInstance: Impl
-      field = <this>
-
     private val provideIntProvider: Provider<Int>
-      field = DoubleCheck/* companion */.provider<Provider<Int>, Int>(delegate = SwitchingProvider<Int>(graph = <this>, id = 1))
+      field = provider<Provider<Int>, Int>(delegate = SwitchingProvider<Int>(graph = <this>, id = 1))
 
     private val optionalIntProvider: Provider<Optional<Int>>
       field = SwitchingProvider<Optional<Int>>(graph = <this>, id = 0)
@@ -26,9 +23,10 @@ interface AppGraph {
       override fun invoke(): T {
         return { // BLOCK
           val tmp0_id: Int = <this>.#id
+          val tmp1_graph: AppGraph.Impl = <this>.#graph
           when {
-            EQEQ(arg0 = tmp0_id, arg1 = 1) -> <this>.#graph.#thisGraphInstance.provideInt() /*as T */
-            EQEQ(arg0 = tmp0_id, arg1 = 0) -> of<Int>(p0 = <this>.#graph.#provideIntProvider.invoke()) /*as T */
+            EQEQ(arg0 = tmp0_id, arg1 = 0) -> of<Int>(p0 = tmp1_graph.#provideIntProvider.invoke()) /*as T */
+            EQEQ(arg0 = tmp0_id, arg1 = 1) -> tmp1_graph.provideInt() /*as T */
             else -> throw error(message = "Unexpected SwitchingProvider id: " + tmp0_id)
           }
         }
@@ -49,7 +47,7 @@ interface AppGraph {
 
     override val int2: Function0<Optional<Int>>
       override get(): Function0<Optional<Int>> {
-        return <this>.#optionalIntProvider
+        return <this>.<get-int>()
       }
 
   }

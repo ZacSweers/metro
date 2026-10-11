@@ -381,17 +381,14 @@ interface CycleGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : CycleGraph {
-    private val thisGraphInstance: Impl
-      field = <this>
-
     private val cProvider: Provider<C>
       field = DelegateFactory<C>()
 
     private val bProvider: Provider<B>
-      field = B.MetroFactory/* companion */.create(c = <this>.#cProvider)
+      field = create(c = <this>.#cProvider)
 
     private val aProvider: Provider<A>
-      field = A.MetroFactory/* companion */.create(b = <this>.#bProvider, e = E.MetroFactory/* companion */.create(d = D.MetroFactory/* companion */.create(b = <this>.#bProvider)))
+      field = create(b = <this>.#bProvider, e = create(d = create(b = <this>.#bProvider)))
 
     private val provideObjectWithCycleProvider: Provider<Any>
       field = DelegateFactory<Any>()
@@ -405,16 +402,16 @@ interface CycleGraph {
         field = DelegateFactory<C>()
 
       private val bProvider: Provider<B>
-        field = B.MetroFactory/* companion */.create(c = <this>.#cProvider)
+        field = create(c = <this>.#cProvider)
 
       private val aProvider: Provider<A>
-        field = A.MetroFactory/* companion */.create(b = <this>.#bProvider, e = E.MetroFactory/* companion */.create(d = D.MetroFactory/* companion */.create(b = <this>.#bProvider)))
+        field = create(b = <this>.#bProvider, e = create(d = create(b = <this>.#bProvider)))
 
       private val provideObjectWithCycleProvider: Provider<Any>
         field = DelegateFactory<Any>()
 
       private class FactoryImpl : ChildCycleGraph.Factory {
-        private /* final field */ val CycleGraphImpl: Impl = CycleGraphImpl
+        package /* final field */ val CycleGraphImpl: Impl = CycleGraphImpl
         constructor(CycleGraphImpl: Impl) /* primary */ {
           super/*Any*/()
           /* <init>() */
@@ -431,8 +428,8 @@ interface CycleGraph {
         super/*Any*/()
         /* <init>() */
 
-        DelegateFactory/* companion */.setDelegate<C>(delegateFactory = <this>.#cProvider, delegate = C.MetroFactory/* companion */.create(aProvider = <this>.#aProvider))
-        DelegateFactory/* companion */.setDelegate<Any>(delegateFactory = <this>.#provideObjectWithCycleProvider, delegate = ProvideObjectWithCycleMetroFactory/* companion */.create(instance = <this>.#cycleGraphImpl, obj = <this>.#provideObjectWithCycleProvider))
+        setDelegate<C>(delegateFactory = <this>.#cProvider, delegate = create(aProvider = <this>.#aProvider))
+        setDelegate<Any>(delegateFactory = <this>.#provideObjectWithCycleProvider, delegate = create(instance = <this>.#cycleGraphImpl, obj = <this>.#provideObjectWithCycleProvider))
       }
 
       override val a: A
@@ -451,8 +448,8 @@ interface CycleGraph {
       super/*Any*/()
       /* <init>() */
 
-      DelegateFactory/* companion */.setDelegate<C>(delegateFactory = <this>.#cProvider, delegate = C.MetroFactory/* companion */.create(aProvider = <this>.#aProvider))
-      DelegateFactory/* companion */.setDelegate<Any>(delegateFactory = <this>.#provideObjectWithCycleProvider, delegate = ProvideObjectWithCycleMetroFactory/* companion */.create(instance = <this>.#thisGraphInstance, obj = <this>.#provideObjectWithCycleProvider))
+      setDelegate<C>(delegateFactory = <this>.#cProvider, delegate = create(aProvider = <this>.#aProvider))
+      setDelegate<Any>(delegateFactory = <this>.#provideObjectWithCycleProvider, delegate = create(instance = <this>, obj = <this>.#provideObjectWithCycleProvider))
     }
 
     override fun a(): A {
@@ -464,7 +461,7 @@ interface CycleGraph {
     }
 
     override fun childCycleGraph(): ChildCycleGraph.Factory {
-      return CycleGraph.Impl.ChildCycleGraphImpl.FactoryImpl(CycleGraphImpl = <this>.#thisGraphInstance)
+      return CycleGraph.Impl.ChildCycleGraphImpl.FactoryImpl(CycleGraphImpl = <this>)
     }
 
     override val objWithCycle: Any

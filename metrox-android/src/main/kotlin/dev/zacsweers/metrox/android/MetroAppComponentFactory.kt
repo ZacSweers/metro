@@ -38,13 +38,15 @@ public open class MetroAppComponentFactory : AppComponentFactory() {
     className: String,
     intent: Intent?,
   ): Activity {
-    return getInstance(cl, className, appComponentFactoryBindings.activityProviders)
-      ?: super.instantiateActivityCompat(cl, className, intent)
+    val bindings = appComponentFactoryBindingsOrNull()
+    val activity = bindings?.let { getInstance(cl, className, it.activityProviders) }
+    return activity ?: super.instantiateActivityCompat(cl, className, intent)
   }
 
   override fun instantiateApplicationCompat(cl: ClassLoader, className: String): Application {
     val app = super.instantiateApplicationCompat(cl, className)
-    metroApplication = app as MetroApplication
+    // Android creates a plain Application when it starts the app for a full backup or restore.
+    metroApplication = app as? MetroApplication
     return app
   }
 
@@ -59,8 +61,9 @@ public open class MetroAppComponentFactory : AppComponentFactory() {
     className: String,
     intent: Intent?,
   ): BroadcastReceiver {
-    return getInstance(cl, className, appComponentFactoryBindings.receiverProviders)
-      ?: super.instantiateReceiverCompat(cl, className, intent)
+    val bindings = appComponentFactoryBindingsOrNull()
+    val receiver = bindings?.let { getInstance(cl, className, it.receiverProviders) }
+    return receiver ?: super.instantiateReceiverCompat(cl, className, intent)
   }
 
   override fun instantiateServiceCompat(
@@ -68,8 +71,9 @@ public open class MetroAppComponentFactory : AppComponentFactory() {
     className: String,
     intent: Intent?,
   ): Service {
-    return getInstance(cl, className, appComponentFactoryBindings.serviceProviders)
-      ?: super.instantiateServiceCompat(cl, className, intent)
+    val bindings = appComponentFactoryBindingsOrNull()
+    val service = bindings?.let { getInstance(cl, className, it.serviceProviders) }
+    return service ?: super.instantiateServiceCompat(cl, className, intent)
   }
 
   private fun appComponentFactoryBindingsOrNull(): MetroAppComponentProviders? {
@@ -83,9 +87,9 @@ public open class MetroAppComponentFactory : AppComponentFactory() {
 
   // AppComponentFactory can be created multiple times
   internal companion object {
-    private lateinit var metroApplication: MetroApplication
+    private var metroApplication: MetroApplication? = null
 
-    private val appComponentFactoryBindings: MetroAppComponentProviders
-      get() = metroApplication.appComponentProviders
+    private val appComponentFactoryBindings: MetroAppComponentProviders?
+      get() = metroApplication?.appComponentProviders
   }
 }

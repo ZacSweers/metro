@@ -57,7 +57,7 @@ internal class IrContextualTypeKey(
         } else {
           type.render(short, useRelativeClassNames = useRelativeClassNames)
         }
-      }
+      },
     )
     if (hasDefault) {
       append(" = ...")
@@ -330,7 +330,7 @@ internal fun IrContextualTypeKey.canonicalize(): IrContextualTypeKey {
 
 context(context: IrMetroContext)
 internal fun IrContextualTypeKey.wrapInProvider(
-  providerType: IrClass = context.metroSymbols.metroProvider.owner
+  providerType: IrClass = context.metroSymbols.metroProvider.owner,
 ): IrContextualTypeKey {
   return if (wrappedType is Provider) {
     if (wrappedType.providerType == providerType) {
@@ -374,7 +374,7 @@ internal fun IrContextualTypeKey.wrapInSuspendProvider(): IrContextualTypeKey {
 /** Normalizes the outer scalar stack to a canonical Metro Provider or SuspendProvider key. */
 context(context: IrMetroContext)
 internal fun IrContextualTypeKey.asCanonicalProviderKey(
-  usesSuspendProvider: Boolean
+  usesSuspendProvider: Boolean,
 ): IrContextualTypeKey {
   val canonicalKey = canonicalize()
   val providerKey =
@@ -466,7 +466,7 @@ private fun IrSimpleType.asWrappedType(
 
     return WrappedType.Map(canonicalKeyType, valueWrappedType) {
       context.irBuiltIns.mapClass.typeWithArguments(
-        listOf(canonicalKeyType, valueWrappedType.canonicalType())
+        listOf(canonicalKeyType, valueWrappedType.canonicalType()),
       )
     }
   }

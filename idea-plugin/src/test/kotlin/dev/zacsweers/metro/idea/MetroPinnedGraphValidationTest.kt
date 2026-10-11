@@ -207,7 +207,7 @@ class MetroPinnedGraphValidationTest : BasePlatformTestCase() {
         @Provides fun value(): String = "first"
       }
       @DependencyGraph interface Second { val child: Child }
-      """
+      """,
       )
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     val child = index.graphs.single { it.name == "Child" }
@@ -337,7 +337,7 @@ class MetroPinnedGraphValidationTest : BasePlatformTestCase() {
       document.text.replace(
         "val value: String",
         "val value: String\n@Provides fun provideString(): String = \"ready\"",
-      )
+      ),
     )
     PsiDocumentManager.getInstance(project).commitAllDocuments()
   }

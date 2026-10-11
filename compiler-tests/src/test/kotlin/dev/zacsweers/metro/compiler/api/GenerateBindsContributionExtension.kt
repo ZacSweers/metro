@@ -303,7 +303,7 @@ internal class GenerateBindsContributionMetroExtension(private val session: FirS
     return annotatedClasses.mapNotNull { parentSymbol ->
       val contributionClassId =
         parentSymbol.classId.createNestedClassId(
-          GenerateBindsContributionExtension.NESTED_INTERFACE_NAME
+          GenerateBindsContributionExtension.NESTED_INTERFACE_NAME,
         )
       val metroContributionClassId =
         MetroContributions.metroContributionClassId(contributionClassId, scopeClassId)

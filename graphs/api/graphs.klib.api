@@ -1,0 +1,11 @@
+// Klib ABI Dump
+// Targets: [js]
+// Rendering settings:
+// - Signature version: 2
+// - Show manifest properties: true
+// - Show declarations: true
+
+// Library unique name: <dev.zacsweers.metro:graphs>
+open annotation class dev.zacsweers.metro.graph/ExperimentalMetroGraphApi : kotlin/Annotation { // dev.zacsweers.metro.graph/ExperimentalMetroGraphApi|null[0]
+    constructor <init>() // dev.zacsweers.metro.graph/ExperimentalMetroGraphApi.<init>|<init>(){}[0]
+}

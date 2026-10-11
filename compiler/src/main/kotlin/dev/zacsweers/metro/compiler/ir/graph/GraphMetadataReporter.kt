@@ -12,6 +12,7 @@ import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.renderSourceLocation
+import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
 import kotlin.io.path.createDirectories
 import kotlin.io.path.createParentDirectories
 import kotlin.io.path.writeText
@@ -63,15 +64,14 @@ internal class GraphMetadataReporter(
         "accessors",
         buildJsonArray {
           for (accessor in node.accessors) {
-            add(
-              buildJsonObject {
-                put(
-                  "key",
-                  JsonPrimitive(accessor.contextKey.render(short = false, includeQualifier = true)),
-                )
-                put("isDeferrable", JsonPrimitive(accessor.contextKey.wrappedType.isDeferrable()))
-              }
-            )
+            add(buildAccessorJson(accessor))
+          }
+          val recordedKeys = node.accessors.mapTo(mutableSetOf()) { it.contextKey }
+          for (accessor in bindingGraph.inheritedAccessors()) {
+            if (!recordedKeys.add(accessor.contextKey)) {
+              continue
+            }
+            add(buildAccessorJson(accessor))
           }
         },
       )
@@ -85,7 +85,11 @@ internal class GraphMetadataReporter(
                   "key",
                   JsonPrimitive(injector.contextKey.render(short = false, includeQualifier = true)),
                 )
-              }
+                put(
+                  "name",
+                  JsonPrimitive(injector.metroFunction.callableId.callableName.asString()),
+                )
+              },
             )
           }
         },
@@ -100,10 +104,15 @@ internal class GraphMetadataReporter(
         "accessors",
         buildJsonArray {
           for (ext in allExtensionAccessors.filter { !it.isFactory }) {
+            val function = ext.accessor.ir
+            val property = function.correspondingPropertySymbol?.owner
+            val name = property?.name ?: function.name
             add(
               buildJsonObject {
                 put("key", JsonPrimitive(ext.key.render(short = false, includeQualifier = true)))
-              }
+                put("name", JsonPrimitive(name.asString()))
+                put("isProperty", JsonPrimitive(property != null))
+              },
             )
           }
         },
@@ -113,11 +122,16 @@ internal class GraphMetadataReporter(
         "factoryAccessors",
         buildJsonArray {
           for (ext in allExtensionAccessors.filter { it.isFactory }) {
+            val function = ext.accessor.ir
+            val property = function.correspondingPropertySymbol?.owner
+            val name = property?.name ?: function.name
             add(
               buildJsonObject {
                 put("key", JsonPrimitive(ext.key.render(short = false, includeQualifier = true)))
+                put("name", JsonPrimitive(name.asString()))
+                put("isProperty", JsonPrimitive(property != null))
                 put("isSAM", JsonPrimitive(ext.isFactorySAM))
-              }
+              },
             )
           }
         },
@@ -135,6 +149,22 @@ internal class GraphMetadataReporter(
 
     val graphJson = buildJsonObject {
       put("graph", JsonPrimitive(node.sourceGraph.kotlinFqName.asString()))
+      node.contributedGraphTypeKey?.let {
+        put("graphType", JsonPrimitive(it.render(short = false)))
+      }
+      node.parentGraph?.let {
+        put("parentGraph", JsonPrimitive(it.sourceGraph.kotlinFqName.asString()))
+      }
+      if (node.includedGraphNodes.isNotEmpty()) {
+        put(
+          "includedGraphKeys",
+          JsonArray(
+            node.includedGraphNodes.keys.map {
+              JsonPrimitive(it.render(short = false, includeQualifier = true))
+            },
+          ),
+        )
+      }
       put("scopes", buildAnnotationArray(node.scopes))
       put(
         "aggregationScopes",
@@ -158,6 +188,26 @@ internal class GraphMetadataReporter(
 
   private fun buildAnnotationArray(annotations: Collection<IrAnnotation>): JsonArray {
     return JsonArray(annotations.map { JsonPrimitive(it.render(short = false)) })
+  }
+
+  private fun buildAccessorJson(accessor: GraphAccessor): JsonObject {
+    val function = accessor.metroFunction.ir
+    val property = function.correspondingPropertySymbol?.owner
+    val name = property?.name ?: function.name
+    return buildJsonObject {
+      put("key", JsonPrimitive(accessor.contextKey.render(short = false, includeQualifier = true)))
+      put("name", JsonPrimitive(name.asString()))
+      put("isProperty", JsonPrimitive(property != null))
+      put("isDeferrable", JsonPrimitive(accessor.contextKey.wrappedType.isDeferrable()))
+      accessor.declaringGraph?.let { declaringGraph ->
+        put("isInherited", JsonPrimitive(true))
+        put("declaringGraph", JsonPrimitive(declaringGraph))
+        put("declaringType", JsonPrimitive(accessor.declaringType))
+        accessor.origin?.let { location ->
+          put("origin", JsonPrimitive(location))
+        }
+      }
+    }
   }
 
   private fun buildStatsJson(
@@ -216,7 +266,14 @@ internal class GraphMetadataReporter(
           put("shardsGenerated", JsonPrimitive(codegenStats.shards))
           put("shardedSupertypes", JsonPrimitive(shardedSupertypes))
           put("shardedInitFunctions", JsonPrimitive(codegenStats.shardedInitFunctions))
-          put("providerInlines", JsonPrimitive(0))
+          put("providerInlines", JsonPrimitive(codegenStats.providerInlines))
+          put(
+            "providerInlineFallbacks",
+            buildJsonObject {
+              put("deferredAccess", JsonPrimitive(codegenStats.providerInlineDeferredAccess))
+              put("unavailableValue", JsonPrimitive(codegenStats.providerInlineUnavailableValue))
+            },
+          )
         },
       )
     }
@@ -241,6 +298,27 @@ internal class GraphMetadataReporter(
       binding.scope?.let { put("scope", JsonPrimitive(it.render(short = false))) }
       put("isScoped", JsonPrimitive(binding.isScoped()))
       put("nameHint", JsonPrimitive(binding.nameHint))
+      if (binding is IrBinding.BoundInstance) {
+        put("isGraphInput", JsonPrimitive(binding.isGraphInput))
+      }
+      if (binding is IrBinding.GraphExtensionFactory) {
+        put("extensionType", JsonPrimitive(binding.extensionTypeKey.render(short = false)))
+      }
+      if (binding is IrBinding.GraphDependency) {
+        put(
+          "graphDependency",
+          buildJsonObject {
+            put(
+              "ownerKey",
+              JsonPrimitive(binding.ownerKey.render(short = false, includeQualifier = true)),
+            )
+            val ownerKey = binding.token?.ownerGraphKey ?: binding.ownerKey
+            val owner = ownerKey.type.rawTypeOrNull()?.sourceGraphIfMetroGraph
+            owner?.let { put("ownerGraph", JsonPrimitive(it.kotlinFqName.asString())) }
+            put("fromParent", JsonPrimitive(binding.token != null))
+          },
+        )
+      }
 
       // For the graph's own binding (BoundInstance), dependencies are empty -
       // accessors are tracked separately in the "roots" object.
@@ -309,11 +387,11 @@ internal class GraphMetadataReporter(
                   put(
                     "key",
                     JsonPrimitive(
-                      param.contextualTypeKey.render(short = false, includeQualifier = true)
+                      param.contextualTypeKey.render(short = false, includeQualifier = true),
                     ),
                   )
                   put("name", JsonPrimitive(param.name.asString()))
-                }
+                },
               )
             }
           },
@@ -351,7 +429,7 @@ internal class GraphMetadataReporter(
             if (wrapperType != null) {
               put("wrapperType", JsonPrimitive(wrapperType))
             }
-          }
+          },
         )
       }
     }
@@ -375,7 +453,7 @@ internal class GraphMetadataReporter(
       put(
         "sources",
         JsonArray(
-          sourceBindings.map { JsonPrimitive(it.render(short = false, includeQualifier = true)) }
+          sourceBindings.map { JsonPrimitive(it.render(short = false, includeQualifier = true)) },
         ),
       )
     }
@@ -392,6 +470,7 @@ internal class GraphMetadataReporter(
     }
   }
 
+  /** Counts emitted code sites. Repeated runtime calls don't change these counts. */
   class CodegenStats {
     var providerProperties: Int = 0
     var scopedProviderProperties: Int = 0
@@ -400,6 +479,10 @@ internal class GraphMetadataReporter(
     var classConstructorNewInstanceCalls: Int = 0
     var providerDirectInvocations: Int = 0
     var providerNewInstanceCalls: Int = 0
+    var providerInlines: Int = 0
+    // Count only known inline candidates that fall back while generating an access expression.
+    var providerInlineDeferredAccess: Int = 0
+    var providerInlineUnavailableValue: Int = 0
     var shardedInitFunctions: Int = 0
   }
 }

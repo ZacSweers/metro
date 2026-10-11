@@ -47,7 +47,7 @@ internal sealed interface CircuitSymbols {
       annotated(
         CircuitCodegenTarget.entries.mapToSet {
           it.injectAnnotation.asSingleFqName()
-        }
+        },
       )
 
     val circuitSerializablePredicate =

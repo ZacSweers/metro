@@ -184,7 +184,7 @@ internal fun callableBindingView(symbol: KaCallableSymbol): CallableBindingView 
 
 /** Unwraps fake overrides for source metadata while retaining [signature]'s substituted types. */
 internal fun KaSession.callableBindingView(
-  signature: KaCallableSignature<*>
+  signature: KaCallableSignature<*>,
 ): CallableBindingView? {
   val sourceSymbol = signature.symbol.fakeOverrideOriginal
   val sourceParameters = (sourceSymbol as? KaNamedFunctionSymbol)?.valueParameters.orEmpty()
@@ -400,7 +400,7 @@ internal fun CallableBindingView.bindingData(
             multibindingId,
             mapKeyValue = mapKeyInfo?.annotationRender,
             isGraphPrivate = isGraphPrivate,
-          )
+          ),
         )
       }
       has(bindsOptionalOfAnnotations(options)) -> {
@@ -418,7 +418,7 @@ internal fun CallableBindingView.bindingData(
             implementationName,
             dependencies = listOf(wrappedContextKey),
             isGraphPrivate = isGraphPrivate,
-          )
+          ),
         )
       }
       has(options.multibindsAnnotations) -> {
@@ -441,7 +441,7 @@ internal fun CallableBindingView.bindingData(
             allowEmpty = allowEmpty,
             metroMultibindsAnnotation = sourceMetroMultibindsAnnotation(annotations),
             isGraphPrivate = isGraphPrivate,
-          )
+          ),
         )
       }
       has(options.providesAnnotations) -> {
@@ -477,7 +477,7 @@ internal fun CallableBindingView.bindingData(
             isSuspend = (symbol as? KaNamedFunctionSymbol)?.isSuspend == true,
             mapKeyValue = mapKeyInfo?.annotationRender,
             isGraphPrivate = isGraphPrivate,
-          )
+          ),
         )
       }
       else -> emptyList()
@@ -728,7 +728,7 @@ private fun KaSession.contributedBoundType(
 
 /** Keeps contribution indexing and source actions on the same implicit bound-type decision. */
 internal fun KaSession.implicitContributedBoundType(
-  classSymbol: KaNamedClassSymbol
+  classSymbol: KaNamedClassSymbol,
 ): BoundTypeResolution<KaType> {
   // The implicit bound type comes from a supertype's @DefaultBinding or the sole supertype.
   // The shared decision preserves ambiguous choices for the caller to handle.
@@ -745,7 +745,7 @@ internal fun KaSession.implicitContributedBoundType(
 
 /** Retains an edit target only when the declaration has one resolved Metro source annotation. */
 private fun sourceMetroMultibindsAnnotation(
-  annotations: List<KaAnnotation>
+  annotations: List<KaAnnotation>,
 ): SmartPsiElementPointer<KtAnnotationEntry>? {
   val annotation = annotations.distinctBy { it.psi ?: it }.singleOrNull() ?: return null
   if (annotation.classId != MetroClassIds.multibinds) return null

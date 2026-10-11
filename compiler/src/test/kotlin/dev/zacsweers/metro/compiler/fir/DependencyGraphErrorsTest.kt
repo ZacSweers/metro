@@ -51,7 +51,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       e: graphs.kt:17:18 DependencyGraph declarations must be public or internal.
       e: graphs.kt:18:57 DependencyGraph declarations' primary constructor must be public or internal.
       """
-        .trimIndent()
+        .trimIndent(),
     )
   }
 
@@ -67,12 +67,12 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
             val value: String
           }
           """
-            .trimIndent()
+            .trimIndent(),
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
     result.assertDiagnostics(
-      "e: ExampleGraph.kt:8:3 Graph accessor members cannot have scope annotations. Did you mean to use a qualifier annotation?"
+      "e: ExampleGraph.kt:8:3 Graph accessor members cannot have scope annotations. Did you mean to use a qualifier annotation?",
     )
   }
 
@@ -88,12 +88,12 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
             val value: String
           }
           """
-            .trimIndent()
+            .trimIndent(),
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
     result.assertDiagnostics(
-      "e: ExampleGraph.kt:8:3 Graph accessor members cannot have scope annotations. Did you mean to use a qualifier annotation?"
+      "e: ExampleGraph.kt:8:3 Graph accessor members cannot have scope annotations. Did you mean to use a qualifier annotation?",
     )
   }
 
@@ -108,12 +108,12 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
             val value: Unit
           }
           """
-            .trimIndent()
+            .trimIndent(),
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
     result.assertDiagnostics(
-      "e: ExampleGraph.kt:8:14 Graph accessor members must have a return type and cannot be Unit."
+      "e: ExampleGraph.kt:8:14 Graph accessor members must have a return type and cannot be Unit.",
     )
   }
 
@@ -129,12 +129,12 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
             fun value(): Unit
           }
           """
-            .trimIndent()
+            .trimIndent(),
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
     result.assertDiagnostics(
-      "e: ExampleGraph.kt:8:16 Graph accessor members must have a return type and cannot be Unit."
+      "e: ExampleGraph.kt:8:16 Graph accessor members must have a return type and cannot be Unit.",
     )
   }
 
@@ -149,12 +149,12 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
             fun value()
           }
           """
-            .trimIndent()
+            .trimIndent(),
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
     result.assertDiagnostics(
-      "e: ExampleGraph.kt:8:7 Graph accessor members must have a return type and cannot be Unit."
+      "e: ExampleGraph.kt:8:7 Graph accessor members must have a return type and cannot be Unit.",
     )
   }
 
@@ -169,7 +169,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
             val value: Nothing
           }
           """
-            .trimIndent()
+            .trimIndent(),
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
@@ -187,7 +187,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
             fun value(): Nothing
           }
           """
-            .trimIndent()
+            .trimIndent(),
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
@@ -205,12 +205,12 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
             fun inject(target: Int, target2: Int)
           }
           """
-            .trimIndent()
+            .trimIndent(),
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
     result.assertDiagnostics(
-      "e: ExampleGraph.kt:8:7 Inject functions must have exactly one parameter."
+      "e: ExampleGraph.kt:8:7 Inject functions must have exactly one parameter.",
     )
   }
 
@@ -225,12 +225,12 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
             fun inject(target: Int): Int
           }
           """
-            .trimIndent()
+            .trimIndent(),
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
     result.assertDiagnostics(
-      "e: ExampleGraph.kt:8:28 Inject functions must not return anything other than Unit."
+      "e: ExampleGraph.kt:8:28 Inject functions must not return anything other than Unit.",
     )
   }
 
@@ -247,11 +247,11 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
 
           @Inject class ExampleClass
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
     result.assertDiagnostics(
-      "w: ExampleGraph.kt:8:14 Injected class 'test.ExampleClass' is constructor-injected and can be instantiated by Metro directly, so this inject function is unnecessary."
+      "w: ExampleGraph.kt:8:14 Injected class 'test.ExampleClass' is constructor-injected and can be instantiated by Metro directly, so this inject function is unnecessary.",
     )
   }
 
@@ -268,15 +268,15 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
 
           class ExampleClass @Inject constructor()
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
     result.assertDiagnostics(
       """
       w: ExampleGraph.kt:8:14 Injected class 'test.ExampleClass' is constructor-injected and can be instantiated by Metro directly, so this inject function is unnecessary.
       w: ExampleGraph.kt:11:20 There is only one @Inject-annotated constructor. Consider moving the annotation to the class instead.
       """
-        .trimIndent()
+        .trimIndent(),
     )
   }
 
@@ -295,11 +295,11 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
             @Inject constructor() : this(0)
           }
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       )
     result.assertDiagnostics(
-      "w: ExampleGraph.kt:8:14 Injected class 'test.ExampleClass' is constructor-injected and can be instantiated by Metro directly, so this inject function is unnecessary."
+      "w: ExampleGraph.kt:8:14 Injected class 'test.ExampleClass' is constructor-injected and can be instantiated by Metro directly, so this inject function is unnecessary.",
     )
   }
 
@@ -317,12 +317,12 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
             }
           }
           """
-            .trimIndent()
+            .trimIndent(),
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
     result.assertDiagnostics(
-      "e: ExampleGraph.kt:9:17 @DependencyGraph.Factory abstract function 'create' must return a dependency graph but found kotlin.Unit."
+      "e: ExampleGraph.kt:9:17 @DependencyGraph.Factory abstract function 'create' must return a dependency graph but found kotlin.Unit.",
     )
   }
 
@@ -340,12 +340,12 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
             }
           }
           """
-            .trimIndent()
+            .trimIndent(),
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
     result.assertDiagnostics(
-      "e: ExampleGraph.kt:10:19 @DependencyGraph.Factory abstract function 'create' must return a dependency graph but found kotlin.Nothing."
+      "e: ExampleGraph.kt:10:19 @DependencyGraph.Factory abstract function 'create' must return a dependency graph but found kotlin.Nothing.",
     )
   }
 
@@ -365,7 +365,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
             interface Factory : BaseFactory<Nothing>
           }
           """
-            .trimIndent()
+            .trimIndent(),
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
@@ -386,12 +386,12 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
             }
           }
           """
-            .trimIndent()
+            .trimIndent(),
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
     result.assertDiagnostics(
-      "e: ExampleGraph.kt:10:41 DependencyGraph.Factory abstract function parameters must be annotated with exactly one @Includes or @Provides."
+      "e: ExampleGraph.kt:10:41 DependencyGraph.Factory abstract function parameters must be annotated with exactly one @Includes or @Provides.",
     )
   }
 
@@ -417,7 +417,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
 
           enum class SomeEnum { VALUE1 }
           """
-            .trimIndent()
+            .trimIndent(),
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
@@ -427,7 +427,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       e: ExampleGraph.kt:14:17 @Includes cannot be applied to enums, annotations, or platform types.
       e: ExampleGraph.kt:15:17 @Includes cannot be applied to enums, annotations, or platform types.
       """
-        .trimIndent()
+        .trimIndent(),
     )
   }
 
@@ -445,12 +445,12 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
             }
           }
           """
-            .trimIndent()
+            .trimIndent(),
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
     result.assertDiagnostics(
-      "e: ExampleGraph.kt:10:33 DependencyGraph.Factory declarations cannot have their target graph type as parameters."
+      "e: ExampleGraph.kt:10:33 DependencyGraph.Factory declarations cannot have their target graph type as parameters.",
     )
   }
 
@@ -462,12 +462,12 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
         @DependencyGraph(additionalScopes = [Unit::class])
         interface ExampleGraph
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ExampleGraph.kt:6:37 @DependencyGraph should have a primary `scope` defined if `additionalScopes` are defined."
+        "e: ExampleGraph.kt:6:37 @DependencyGraph should have a primary `scope` defined if `additionalScopes` are defined.",
       )
     }
   }
@@ -483,12 +483,12 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
         @ContributesTo(Unit::class)
         internal interface ContributedInterface
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ExampleGraph.kt:7:11 DependencyGraph declarations may not extend declarations with narrower visibility. Contributed supertype 'test.ContributedInterface' is internal but graph declaration 'test.ExampleGraph' is public."
+        "e: ExampleGraph.kt:7:11 DependencyGraph declarations may not extend declarations with narrower visibility. Contributed supertype 'test.ContributedInterface' is internal but graph declaration 'test.ExampleGraph' is public.",
       )
     }
   }
@@ -504,8 +504,8 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
         @ContributesTo(Unit::class)
         internal interface ContributedInterface
         """
-          .trimIndent()
-      )
+          .trimIndent(),
+      ),
     ) {
       assertThat(ExampleGraph.allSupertypes().map { it.simpleName })
         .doesNotContain("ContributedInterface")
@@ -523,12 +523,12 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
         @ContributesTo(Unit::class)
         private interface ContributedInterface
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ExampleGraph.kt:10:1 @Contributes*-annotated classes cannot be private."
+        "e: ExampleGraph.kt:10:1 @Contributes*-annotated classes cannot be private.",
       )
     }
   }
@@ -546,7 +546,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
         @ContributesTo(Unit::class)
         private interface ContributedInterface
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
@@ -567,7 +567,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
           interface ContributedInterface
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
@@ -576,7 +576,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
         e: ExampleGraph.kt:7:11 DependencyGraph declarations may not extend declarations with narrower visibility. Contributed supertype 'test.Parent.ContributedInterface' is effectively private but graph declaration 'test.ExampleGraph' is public.
         e: ExampleGraph.kt:11:13 @Contributes*-annotated classes cannot be private.
         """
-          .trimIndent()
+          .trimIndent(),
       )
     }
   }
@@ -597,12 +597,12 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
           }
         }
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ExampleGraph.kt:7:11 DependencyGraph declarations may not extend declarations with narrower visibility. Contributed supertype 'test.ContributedInterface.Factory' is effectively internal but graph declaration 'test.ExampleGraph' is public."
+        "e: ExampleGraph.kt:7:11 DependencyGraph declarations may not extend declarations with narrower visibility. Contributed supertype 'test.ContributedInterface.Factory' is effectively internal but graph declaration 'test.ExampleGraph' is public.",
       )
     }
   }
@@ -616,8 +616,8 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
           @ContributesTo(AppScope::class)
           internal interface ContributedInterface
           """
-            .trimIndent()
-        )
+            .trimIndent(),
+        ),
       ) {
         // Assert no hint is generated
         // metro/hints/MetroHintsContributedInterfaceAppScopeKt.class
@@ -633,7 +633,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
         @DependencyGraph(AppScope::class)
         interface ExampleGraph
         """
-          .trimIndent()
+          .trimIndent(),
       ),
       previousCompilationResult = firstResult,
     ) {

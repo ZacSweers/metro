@@ -28,10 +28,13 @@ import dev.zacsweers.metro.compiler.graph.BindingGraphValidator
 import dev.zacsweers.metro.compiler.graph.DiagnosticRoutes
 import dev.zacsweers.metro.compiler.graph.ErrorReporter
 import dev.zacsweers.metro.compiler.graph.GraphAdjacency
+import dev.zacsweers.metro.compiler.graph.GraphAnalysis
+import dev.zacsweers.metro.compiler.graph.GraphTopology
 import dev.zacsweers.metro.compiler.graph.GraphValidationIssue
 import dev.zacsweers.metro.compiler.graph.MissingBindingHints
 import dev.zacsweers.metro.compiler.graph.MultibindingKind
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
+import dev.zacsweers.metro.compiler.graph.PreparedGraphSeal
 import dev.zacsweers.metro.compiler.graph.SuspendDiagnosticMessages
 import dev.zacsweers.metro.compiler.graph.disambiguateIncompatibleScopes
 import dev.zacsweers.metro.compiler.graph.duplicateMapKeysDiagnostic
@@ -47,6 +50,8 @@ import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrContributionData
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.ParentContext
+import dev.zacsweers.metro.compiler.ir.ParentContextReader
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.getAnnotation
 import dev.zacsweers.metro.compiler.ir.graph.reporting.BindingDecisionCapture
@@ -54,11 +59,13 @@ import dev.zacsweers.metro.compiler.ir.hasErrorTypes
 import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.injectedFunctionOrNull
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.ir.isImplicitClassKeySentinel
 import dev.zacsweers.metro.compiler.ir.locationOrNull
 import dev.zacsweers.metro.compiler.ir.originContextOrNull
 import dev.zacsweers.metro.compiler.ir.originOrNull
 import dev.zacsweers.metro.compiler.ir.overriddenSymbolsSequence
 import dev.zacsweers.metro.compiler.ir.padForConsole
+import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.render
 import dev.zacsweers.metro.compiler.ir.renderSourceLocation
@@ -67,6 +74,8 @@ import dev.zacsweers.metro.compiler.ir.requireMapKeyType
 import dev.zacsweers.metro.compiler.ir.requireMapValueType
 import dev.zacsweers.metro.compiler.ir.requireSetElementType
 import dev.zacsweers.metro.compiler.ir.requireSimpleType
+import dev.zacsweers.metro.compiler.ir.resolveImplicitClassKeyType
+import dev.zacsweers.metro.compiler.ir.shouldUnwrapMapKeyValues
 import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
 import dev.zacsweers.metro.compiler.ir.toDiagnosticSpan
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
@@ -79,6 +88,10 @@ import dev.zacsweers.metro.compiler.tracing.trace
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactory1
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
+import org.jetbrains.kotlin.ir.expressions.IrClassReference
+import org.jetbrains.kotlin.ir.expressions.IrConst
+import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
+import org.jetbrains.kotlin.ir.expressions.IrGetEnumValue
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.isAny
@@ -86,17 +99,22 @@ import org.jetbrains.kotlin.ir.types.isMarkedNullable
 import org.jetbrains.kotlin.ir.types.makeNotNull
 import org.jetbrains.kotlin.ir.types.makeNullable
 import org.jetbrains.kotlin.ir.types.typeOrFail
+import org.jetbrains.kotlin.ir.types.typeOrNull
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.file
+import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.ir.util.isSubtypeOf
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
+import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.StandardClassIds
+import org.jetbrains.kotlin.platform.jvm.isJvm
 
 private const val MAX_SUSPICIOUS_UNUSED_MULTIBINDINGS_TO_REPORT = 3
 
@@ -112,6 +130,16 @@ private typealias IrMutableBindingGraph =
 
 private typealias IrDiagnosticRoutes =
   DiagnosticRoutes<IrType, IrTypeKey, IrContextualTypeKey, IrBindingStack.Entry>
+
+/** Groups map contributions by the keys emitted in generated code. */
+private class EffectiveMapKey(private val identity: Any) {
+  override fun equals(other: Any?): Boolean = other is EffectiveMapKey && identity == other.identity
+
+  override fun hashCode(): Int = identity.hashCode()
+}
+
+/** Class literals erase generic arguments. JVM array classes retain their component classes. */
+private data class MapClassKey(val classId: ClassId, val arrayComponent: MapClassKey? = null)
 
 internal data class ChildGraphScopeInfo(
   val reachableKeys: Set<IrTypeKey>,
@@ -147,14 +175,8 @@ internal class IrBindingGraph(
   /** Incremented whenever [realGraph] gains a binding before it is sealed. */
   private var graphGeneration = 0
 
-  /** Resolves parent suspend bindings before this graph is sealed, when a child first needs it. */
+  /** Caches this graph's suspend bindings for child lookups on the main compiler thread. */
   private var parentSuspendBindingAnalysis: SuspendBindingAnalysis? = null
-
-  /**
-   * Guards [parentSuspendBindingAnalysis] and the binding lookups it performs. Sibling extensions
-   * may be validated concurrently, while the underlying binding lookup is not thread-safe.
-   */
-  private val parentSuspendResolutionLock = Any()
 
   /** Returns true if the binding for [typeKey] transitively requires a suspend context. */
   internal fun isTransitivelySuspend(typeKey: IrTypeKey): Boolean =
@@ -179,20 +201,20 @@ internal class IrBindingGraph(
    * extensions are validated first, so they cannot use [transitivelySuspendKeys] yet.
    */
   internal fun isTransitivelySuspendForChild(typeKey: IrTypeKey): Boolean {
-    if (!metroContext.options.enableSuspendProviders) return false
-    return synchronized(parentSuspendResolutionLock) {
-      if (_bindingLookup == null) {
-        return@synchronized isTransitivelySuspend(typeKey)
-      }
-      val analysis =
-        parentSuspendBindingAnalysis
-          ?: SuspendBindingAnalysis(
-              findBinding = { findBinding(it, allowLookup = true) },
-              currentGraphGeneration = { graphGeneration },
-            )
-            .also { parentSuspendBindingAnalysis = it }
-      analysis.isSuspend(typeKey)
+    if (!metroContext.options.enableSuspendProviders) {
+      return false
     }
+    if (_bindingLookup == null) {
+      return isTransitivelySuspend(typeKey)
+    }
+    val analysis =
+      parentSuspendBindingAnalysis
+        ?: SuspendBindingAnalysis(
+            findBinding = { findBinding(it, allowLookup = true) },
+            currentGraphGeneration = { graphGeneration },
+          )
+          .also { parentSuspendBindingAnalysis = it }
+    return analysis.isSuspend(typeKey)
   }
 
   private sealed interface PendingDiagnostic {
@@ -215,9 +237,7 @@ internal class IrBindingGraph(
   }
 
   override fun report(diagnostic: MetroDiagnostic, stack: IrBindingStack) {
-    val element =
-      stack.lastEntryOrGraph?.originalDeclarationIfOverride()
-        ?: node.reportableSourceGraphDeclaration
+    val element = stack.lastEntryOrGraph ?: node.reportableSourceGraphDeclaration
     hasErrors = true
     if (element is IrDeclaration) {
       // For missing bindings the anchor is the interesting injection/request site — carry its
@@ -294,16 +314,17 @@ internal class IrBindingGraph(
         field = value
         return
       }
-      synchronized(parentSuspendResolutionLock) {
-        field?.clear()
-        parentSuspendBindingAnalysis = null
-        field = null
-      }
+      field?.clear()
+      parentSuspendBindingAnalysis = null
+      field = null
     }
 
   private val bindingLookup
     get() =
       _bindingLookup ?: reportCompilerBug("Tried to access bindingLookup after it's been cleared!")
+
+  /** The parent graph's context, or null for a root graph. */
+  private val parentReader: ParentContextReader? = bindingLookup.parentContext
 
   private val realGraph =
     IrMutableBindingGraph(
@@ -324,19 +345,24 @@ internal class IrBindingGraph(
       missingBindingDiagnosticDetails = ::missingBindingHints,
       findSuspendCycleKey = ::findSuspendCycleKey,
       onExistingBinding = decisionCapture?.let { capture -> capture::reused },
+      onDependencyResolved = if (parentReader != null) ::recordParentReadCandidate else null,
+      onSortedKey = if (parentReader != null) ::resolveSharedParentRead else null,
     )
 
-  private fun findSuspendCycleKey(
-    cycleKeys: List<IrTypeKey>,
-    bindings: ScatterMap<IrTypeKey, IrBinding>,
-  ): IrTypeKey? {
-    if (!metroContext.options.enableSuspendProviders) return null
-    val suspendKeys = SuspendBindingAnalysis(bindings::get).analyze(cycleKeys)
-    return cycleKeys.firstOrNull { it in suspendKeys }
-  }
+  /** How many ancestors in a row declare each binding the same way, cached by key. */
+  private val sharedDepths = mutableMapOf<IrTypeKey, Int>()
+
+  /** Bindings this graph reads directly that the parent might build for it. */
+  private val parentReadCandidates = mutableSetOf<IrTypeKey>()
+
+  /**
+   * Bindings at least the nearest parent could build the same way, including their dependencies.
+   */
+  private val ancestorBuilds = mutableMapOf<IrTypeKey, AncestorBuild>()
 
   // TODO hoist accessors up and visit in seal?
   private val accessors = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
+  private val inheritedAccessorRoots = mutableListOf<GraphAccessor>()
   private val injectors = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
   private val extraKeeps = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
   /**
@@ -345,14 +371,23 @@ internal class IrBindingGraph(
    */
   private val reservedContextKeys = mutableSetOf<IrContextualTypeKey>()
 
+  /** How many child graphs could share this graph's binding for each key. */
+  private val sharedReadCounts = mutableMapOf<IrTypeKey, Int>()
+
   // Thin immutable view over the internal bindings
   fun bindingsSnapshot(): ScatterMap<IrTypeKey, IrBinding> = realGraph.bindings
 
   fun keeps(): Set<IrContextualTypeKey> = extraKeeps.keys
 
-  fun addAccessor(key: IrContextualTypeKey, entry: IrBindingStack.Entry) {
+  fun inheritedAccessors(): List<GraphAccessor> = inheritedAccessorRoots
+
+  fun addAccessor(accessor: GraphAccessor, entry: IrBindingStack.Entry) {
+    val key = accessor.contextKey
     recordRuntimeCoroutinesUse(key)
     accessors.putGraphRoot(key, entry)
+    if (accessor.declaringGraph != null) {
+      inheritedAccessorRoots.add(accessor)
+    }
   }
 
   fun addInjector(key: IrContextualTypeKey, entry: IrBindingStack.Entry) {
@@ -361,13 +396,38 @@ internal class IrBindingGraph(
   }
 
   fun addBinding(key: IrTypeKey, binding: IrBinding, bindingStack: IrBindingStack) {
-    synchronized(parentSuspendResolutionLock) {
-      val previousSize = realGraph.bindings.size
-      realGraph.tryPut(binding, bindingStack, key)
-      if (realGraph.bindings.size != previousSize) {
-        graphGeneration++
-        decisionCapture?.registered(binding)
-      }
+    val previousSize = realGraph.bindings.size
+    realGraph.tryPut(binding, bindingStack, key)
+    if (realGraph.bindings.size != previousSize) {
+      graphGeneration++
+      decisionCapture?.registered(binding)
+    }
+  }
+
+  /**
+   * Returns true if this graph's declarations would give [childBinding]'s key the same binding.
+   *
+   * This only reads bindings this graph has registered. It doesn't resolve anything, so it can run
+   * before seal() without reporting errors. Dependencies need their own check.
+   */
+  fun declaresSameBindingAs(childBinding: IrBinding): Boolean {
+    val key = childBinding.typeKey
+    val registered = bindingLookup[key]
+    return when (childBinding) {
+      is IrBinding.Provided ->
+        registered is IrBinding.Provided &&
+          registered.providerFactory.factoryClass == childBinding.providerFactory.factoryClass
+      is IrBinding.Alias ->
+        registered is IrBinding.Alias && registered.aliasedType == childBinding.aliasedType
+      // Constructor-injected classes resolve the same way in any graph that doesn't override them.
+      is IrBinding.ConstructorInjected -> registered == null && !childBinding.isAssisted
+      is IrBinding.ObjectClass -> registered == null
+      is IrBinding.Multibinding ->
+        context(metroContext) {
+          bindingLookup.getAvailableMultibindings()[key]?.sourceBindings ==
+            childBinding.sourceBindings
+        }
+      else -> false
     }
   }
 
@@ -383,6 +443,21 @@ internal class IrBindingGraph(
   fun reserveContextKey(contextKey: IrContextualTypeKey) {
     recordRuntimeCoroutinesUse(contextKey)
     reservedContextKeys.add(contextKey)
+  }
+
+  /**
+   * Records that a child graph could reuse this graph's binding for [key]. If this graph builds the
+   * binding anyway, the reservation gives it a getter the child reuses. Once a second child records
+   * it, this graph keeps the binding even if it doesn't read it itself.
+   */
+  fun reserveSharedRead(key: IrTypeKey) {
+    val contextKey = IrContextualTypeKey(key)
+    reserveContextKey(contextKey)
+    val count = (sharedReadCounts[key] ?: 0) + 1
+    sharedReadCounts[key] = count
+    if (count == 2) {
+      keep(contextKey, IrBindingStack.Entry.simpleTypeRef(contextKey))
+    }
   }
 
   /** Returns all context keys reserved by child graphs. */
@@ -439,6 +514,92 @@ internal class IrBindingGraph(
 
   operator fun contains(key: IrTypeKey): Boolean = key in realGraph
 
+  /**
+   * Records bindings this graph reads directly that the parent declares the same way.
+   *
+   * Reads from another such binding aren't recorded. The parent's copy of that binding does those
+   * reads instead.
+   */
+  private fun recordParentReadCandidate(
+    callingBinding: IrBinding?,
+    contextKey: IrContextualTypeKey,
+    binding: IrBinding,
+  ) {
+    if (!isWorthSharing(binding)) return
+    val callerIsShared = callingBinding != null && isWorthSharing(callingBinding)
+    if (callerIsShared) return
+    parentReadCandidates += contextKey.typeKey
+  }
+
+  /** Bindings without dependencies are cheaper to build in place. */
+  private fun isWorthSharing(binding: IrBinding): Boolean =
+    binding.dependencies.isNotEmpty() && sharedDepth(binding) > 0
+
+  private fun sharedDepth(binding: IrBinding): Int =
+    sharedDepths.getOrPut(binding.typeKey) {
+      // Scoped and parent-owned bindings are already shared through tokens.
+      val isAlreadyShared = binding.isParentOwned || binding.isScoped()
+      val canShare = !isAlreadyShared && !binding.isSuspend
+      if (canShare) {
+        parentReader!!.sharedDepth(binding)
+      } else {
+        0
+      }
+    }
+
+  /**
+   * Runs for each key in sorted order, so dependencies are resolved first. An ancestor can only
+   * build a binding if it can build every dependency too. Otherwise building it there could fail.
+   *
+   * Alias reads are reported as the binding they alias, since property collection counts them that
+   * way.
+   */
+  private fun resolveSharedParentRead(key: IrTypeKey) {
+    val binding = realGraph.bindings[key] ?: return
+    val depth = ancestorBuildDepth(binding)
+    if (depth == 0) return
+    val target =
+      if (binding is IrBinding.Alias) {
+        ancestorBuilds.getValue(binding.aliasedType).target
+      } else {
+        key
+      }
+    ancestorBuilds[key] = AncestorBuild(target, depth)
+    if (key in parentReadCandidates) {
+      parentReader!!.markShared(target, depth)
+    }
+  }
+
+  /**
+   * Returns how many ancestors in a row could build [binding], starting with the nearest parent.
+   */
+  private fun ancestorBuildDepth(binding: IrBinding): Int {
+    val token = binding.parentToken
+    if (token != null) {
+      // Only the owner and the graphs below it can reach a parent-owned binding.
+      return parentReader!!.ancestorDepth(token.ownerGraphKey)
+    }
+    val ownDepth = sharedDepth(binding)
+    if (ownDepth == 0) return 0
+    val dependencyDepth = binding.dependencies.minOfOrNull(::dependencyBuildDepth) ?: ownDepth
+    return minOf(ownDepth, dependencyDepth)
+  }
+
+  private fun dependencyBuildDepth(dependency: IrContextualTypeKey): Int {
+    if (dependency.hasDefault) return 0
+    // Dependencies sorted later, like ones that break a cycle, aren't recorded yet.
+    return ancestorBuilds[dependency.typeKey]?.depth ?: 0
+  }
+
+  private fun findSuspendCycleKey(
+    cycleKeys: List<IrTypeKey>,
+    bindings: ScatterMap<IrTypeKey, IrBinding>,
+  ): IrTypeKey? {
+    if (!metroContext.options.enableSuspendProviders) return null
+    val suspendKeys = SuspendBindingAnalysis(bindings::get).analyze(cycleKeys)
+    return cycleKeys.firstOrNull { it in suspendKeys }
+  }
+
   data class BindingGraphResult(
     val sortedKeys: List<IrTypeKey>,
     val deferredTypes: Set<IrTypeKey>,
@@ -467,19 +628,33 @@ internal class IrBindingGraph(
     val factory: KtDiagnosticFactory1<String> = MetroDiagnostics.METRO_ERROR,
   )
 
+  /** Runs graph analysis on prepared inputs. Finish runs on the main compiler thread. */
+  class PreparedSeal(
+    private val graph: PreparedGraphSeal<IrTypeKey>,
+    private val finishGraph: (GraphTopology<IrTypeKey>) -> BindingGraphResult,
+  ) {
+    context(traceScope: TraceScope)
+    fun analyze(): GraphAnalysis<IrTypeKey> = graph.analyze()
+
+    context(traceScope: TraceScope)
+    fun finish(analysis: GraphAnalysis<IrTypeKey>): BindingGraphResult =
+      finishGraph(graph.finish(analysis))
+  }
+
+  /** Resolves bindings and captures the callbacks that must run on the main compiler thread. */
   context(traceScope: TraceScope)
-  fun seal(
+  fun prepareSeal(
     childGraphScopes: List<ChildGraphScopeInfo> = emptyList(),
     onError: (List<GraphError>) -> Unit,
-  ): BindingGraphResult {
-    val topologyResult =
-      trace("seal graph") {
+  ): PreparedSeal {
+    val prepared =
+      trace("prepare graph seal") {
         val roots = buildMap {
           putAll(accessors)
           putAll(injectors)
         }
 
-        realGraph.seal(
+        realGraph.prepareSeal(
           roots = roots,
           keep = extraKeeps,
           shrinkUnusedBindings = metroContext.options.shrinkUnusedBindings,
@@ -505,6 +680,18 @@ internal class IrBindingGraph(
         )
       }
 
+    return PreparedSeal(prepared) { topologyResult ->
+      finishSeal(topologyResult, childGraphScopes, onError)
+    }
+  }
+
+  /** Finishes IR validation and releases lookup state after graph analysis has joined. */
+  context(traceScope: TraceScope)
+  private fun finishSeal(
+    topologyResult: GraphTopology<IrTypeKey>,
+    childGraphScopes: List<ChildGraphScopeInfo>,
+    onError: (List<GraphError>) -> Unit,
+  ): BindingGraphResult {
     val sortedKeys = topologyResult.sortedKeys
     val deferredTypes = topologyResult.deferredTypes
     val reachableKeys = topologyResult.reachableKeys
@@ -547,16 +734,24 @@ internal class IrBindingGraph(
         if (unusedMultibindingElements.isNotEmpty()) {
           val allMultibindings by memoize {
             buildList {
-              realGraph.bindings.forEachValue { b -> if (b is IrBinding.Multibinding) add(b) }
+              realGraph.bindings.forEachValue { b ->
+                if (b is IrBinding.Multibinding) {
+                  add(b)
+                }
+              }
               addAll(bindingLookup.getAvailableMultibindings().values)
             }
               .distinctBy { it.typeKey }
           }
           val suspiciousDiagnostics = mutableListOf<MetroDiagnostic>()
           for ((key, binding) in bindingLookup.getAvailableMultibindings()) {
-            if (binding.declaration != null) continue // Skip explicitly declared
+            if (binding.declaration != null) {
+              continue // Skip explicitly declared
+            }
             val unusedSources = binding.sourceBindings.intersect(unusedMultibindingElements)
-            if (unusedSources.isEmpty()) continue
+            if (unusedSources.isEmpty()) {
+              continue
+            }
 
             // Report the first few bindings
             val examples =
@@ -580,7 +775,7 @@ internal class IrBindingGraph(
                   example.toLocatedItem(
                     preferSourceSnippet = true,
                     includeLeadingAnnotations = false,
-                  )
+                  ),
                 )
               }
               if (unusedSources.size > MAX_SUSPICIOUS_UNUSED_MULTIBINDINGS_TO_REPORT) {
@@ -590,7 +785,7 @@ internal class IrBindingGraph(
                     location = null,
                     code = null,
                     description = textOf("...and $remaining more"),
-                  )
+                  ),
                 )
               }
             }
@@ -598,8 +793,8 @@ internal class IrBindingGraph(
             val notes = buildList {
               add(
                 Note.help(
-                  "did you possibly bind them to the wrong type or contribute them to the wrong scope?"
-                )
+                  "did you possibly bind them to the wrong type or contribute them to the wrong scope?",
+                ),
               )
               similarMultibindingsNote(binding, allMultibindings)?.let(::add)
               addAll(examples.flatMap { it.notes }.distinct())
@@ -615,10 +810,10 @@ internal class IrBindingGraph(
                       append(" is used in the following child graph scope(s): ")
                       append(childScopesUsingThis.joinToString(", ") { it.asFqNameString() })
                       append(
-                        ". These bindings may need to be contributed to one of those scopes instead."
+                        ". These bindings may need to be contributed to one of those scopes instead.",
                       )
-                    }
-                  )
+                    },
+                  ),
                 )
               }
             }
@@ -817,7 +1012,7 @@ internal class IrBindingGraph(
           if (index > 0) append(", ")
           append(key.toText())
         }
-      }
+      },
     )
   }
 
@@ -868,9 +1063,9 @@ internal class IrBindingGraph(
         notes =
           listOf(
             Note.note(
-              "binding '${key.render(short = false, includeQualifier = true)}' is an error type and appears to be missing from the compile classpath"
-            )
-          )
+              "binding '${key.render(short = false, includeQualifier = true)}' is an error type and appears to be missing from the compile classpath",
+            ),
+          ),
       )
     }
 
@@ -881,8 +1076,8 @@ internal class IrBindingGraph(
         add(
           Note.note(
             "a binding for '${key.renderForDiagnostic(short = true)}' exists in a parent graph but is marked " +
-              "@GraphPrivate and cannot be accessed from this graph"
-          )
+              "@GraphPrivate and cannot be accessed from this graph",
+          ),
         )
       }
     }
@@ -907,10 +1102,10 @@ internal class IrBindingGraph(
                   "A directly-provided '${key.render(short = true, includeQualifier = false)}' binding exists, " +
                     "but direct Map bindings cannot satisfy '$requestedType' requests. " +
                     "Provider-, Lazy-, or SuspendProvider-wrapped map values (e.g., Map<K, Provider<V>>) only work with a Map " +
-                    "multibinding created with `@IntoMap` or `@Multibinds`."
+                    "multibinding created with `@IntoMap` or `@Multibinds`.",
                 ),
               items = listOf(locationDiagnostic.toLocatedItem()),
-            )
+            ),
           )
         }
       }
@@ -961,7 +1156,7 @@ internal class IrBindingGraph(
 
         if (isNullable && similarBinding is IrBinding.ConstructorInjected) {
           append(
-            ". Constructor-injected classes cannot implicitly satisfy nullable versions. Explicitly bind this type with `@Binds` separately if you want to use it for nullable bindings"
+            ". Constructor-injected classes cannot implicitly satisfy nullable versions. Explicitly bind this type with `@Binds` separately if you want to use it for nullable bindings",
           )
         }
       }
@@ -1099,6 +1294,49 @@ internal class IrBindingGraph(
     }
   }
 
+  /** Matches the unwrapping and implicit class resolution used when generating map keys. */
+  private fun effectiveMapKey(binding: IrBinding): EffectiveMapKey? {
+    val annotation = (binding as IrBinding.BindingWithAnnotations).annotations.mapKey ?: return null
+    val emittedAnnotation = binding.typeKey.multibindingKeyData?.mapKey ?: annotation
+    val mapKey = emittedAnnotation.ir
+    val identity =
+      if (!shouldUnwrapMapKeyValues(mapKey)) {
+        emittedAnnotation
+      } else if (isImplicitClassKeySentinel(mapKey)) {
+        mapClassKey(resolveImplicitClassKeyType(binding))
+      } else {
+        when (val value = mapKey.arguments[0]) {
+          is IrConst -> checkNotNull(value.value)
+          is IrClassReference -> mapClassKey(value.classType)
+          is IrGetEnumValue ->
+            value.symbol.owner.parentAsClass.classIdOrFail to value.symbol.owner.name
+          is IrConstructorCall -> IrAnnotation(value)
+          else -> reportCompilerBug("Unsupported map key value: $value in $annotation")
+        }
+      }
+    return EffectiveMapKey(identity)
+  }
+
+  /** Uses the referenced class for both KClass and Class map accessors. */
+  private fun mapClassKey(type: IrType): MapClassKey {
+    val classId = type.rawType().classIdOrFail
+    if (classId != StandardClassIds.Array) {
+      return MapClassKey(classId)
+    }
+    // Other backends erase the element type and dimensions to a single Array class literal.
+    if (!pluginContext.platform.isJvm()) {
+      return MapClassKey(classId)
+    }
+    val componentType = type.requireSimpleType().arguments.single().typeOrNull
+    val component =
+      if (componentType == null) {
+        MapClassKey(StandardClassIds.Any)
+      } else {
+        mapClassKey(componentType)
+      }
+    return MapClassKey(classId, component)
+  }
+
   private fun validateBindings(
     bindings: ScatterMap<IrTypeKey, IrBinding>,
     stack: IrBindingStack,
@@ -1133,11 +1371,11 @@ internal class IrBindingGraph(
         multibindingAllowsEmpty = { (it as IrBinding.Multibinding).allowEmpty },
         multibindingSourceKeys = { (it as IrBinding.Multibinding).sourceBindings },
         isMapContribution = { it is IrBinding.BindingWithAnnotations },
-        mapKeyOf = { (it as IrBinding.BindingWithAnnotations).annotations.mapKey },
+        mapKeyOf = ::effectiveMapKey,
         rootKeys = rootsByTypeKey.keys,
         reverseAdjacency = adjacency.reverse,
       )
-    val reportIssue: (GraphValidationIssue<IrBinding, IrAnnotation, IrAnnotation>) -> Unit =
+    val reportIssue: (GraphValidationIssue<IrBinding, IrAnnotation, EffectiveMapKey>) -> Unit =
       { issue ->
         reportStructuralIssue(issue, stack, diagnosticRoutes, rootsByTypeKey)
       }
@@ -1198,7 +1436,7 @@ internal class IrBindingGraph(
   }
 
   private fun reportStructuralIssue(
-    issue: GraphValidationIssue<IrBinding, IrAnnotation, IrAnnotation>,
+    issue: GraphValidationIssue<IrBinding, IrAnnotation, EffectiveMapKey>,
     stack: IrBindingStack,
     diagnosticRoutes: IrDiagnosticRoutes,
     roots: Map<IrTypeKey, IrBindingStack.Entry>,
@@ -1216,7 +1454,6 @@ internal class IrBindingGraph(
           checkNotNull(issue.multibinding as? IrBinding.Multibinding) {
             "Only multibindings can produce duplicate map key issues"
           },
-          issue.mapKey,
           issue.contributions,
           diagnosticRoutes,
         )
@@ -1358,7 +1595,7 @@ internal class IrBindingGraph(
       IrBindingStack.Entry.simpleTypeRef(
         binding.contextualTypeKey,
         usage = "(scoped to '${renders.bindingScope}')",
-      )
+      ),
     )
 
     val notes = buildList {
@@ -1373,8 +1610,8 @@ internal class IrBindingGraph(
         if (sourceGraphFqName != receivingGraphFqName) {
           add(
             Note.note(
-              "${node.sourceGraph.name} is contributed by '${sourceGraphFqName}' to '${receivingGraphFqName}'"
-            )
+              "${node.sourceGraph.name} is contributed by '${sourceGraphFqName}' to '${receivingGraphFqName}'",
+            ),
           )
         }
       }
@@ -1409,23 +1646,58 @@ internal class IrBindingGraph(
 
   private fun reportDuplicateMapKey(
     binding: IrBinding.Multibinding,
-    mapKey: IrAnnotation?,
     contributions: List<IrBinding>,
     diagnosticRoutes: IrDiagnosticRoutes,
   ) {
-    if (mapKey == null) {
-      reportCompilerBug("Map key should not be null for map multibindings")
-    }
-
     val stack = buildStackToRoot(binding.typeKey, diagnosticRoutes)
 
-    val locationDiagnostics = contributions.map { contribution ->
-      contribution.renderLocationDiagnostic(
-        shortLocation = MetroOptions.SystemProperties.SHORTEN_LOCATIONS,
-        underlineTypeKey = false,
-      )
-    }
+    // Equal runtime keys can come from different annotations. Keep the representative annotation
+    // and contribution order stable when annotation hashes or graph traversal order change.
+    val locatedContributions =
+      contributions
+        .map { contribution ->
+          contribution to
+            contribution.renderLocationDiagnostic(
+              shortLocation = MetroOptions.SystemProperties.SHORTEN_LOCATIONS,
+              underlineTypeKey = false,
+            )
+        }
+        .sortedWith(
+          compareBy(
+            { it.second.span?.filePath ?: it.second.location },
+            { it.second.span?.line ?: Int.MAX_VALUE },
+            { it.second.span?.column ?: Int.MAX_VALUE },
+            { it.second.description },
+          ),
+        )
+    val representative = locatedContributions.first().first as IrBinding.BindingWithAnnotations
+    val mapKey =
+      representative.annotations.mapKey
+        ?: reportCompilerBug("Map key should not be null for map multibindings")
+    val locationDiagnostics = locatedContributions.map { it.second }
     val locationItems = locationDiagnostics.map { it.toLocatedItem() }
+    val extraNotes = buildList {
+      addAll(locationDiagnostics.flatMap { it.notes }.distinct())
+      if (shouldUnwrapMapKeyValues(mapKey.ir)) {
+        // Use the populated keys from code generation so inferred class keys name their class.
+        val mapKeys =
+          locatedContributions
+            .map { (contribution, _) ->
+              val annotatedBinding = contribution as IrBinding.BindingWithAnnotations
+              val emittedMapKey =
+                contribution.typeKey.multibindingKeyData?.mapKey
+                  ?: checkNotNull(annotatedBinding.annotations.mapKey)
+              emittedMapKey.render(short = false)
+            }
+            .distinct()
+        add(
+          Note.note(
+            "These bindings use ${mapKeys.joinToString()} with unwrapValue = true. " +
+              "Metro uses the value inside each annotation as the map key, and those values are equal.",
+          ),
+        )
+      }
+    }
 
     val diagnostic =
       duplicateMapKeysDiagnostic(
@@ -1433,7 +1705,7 @@ internal class IrBindingGraph(
         mapKeyRender = mapKey.render(short = false),
         locations = locationItems,
         trace = stack.toTraceSection(),
-        extraNotes = locationDiagnostics.flatMap { it.notes }.distinct(),
+        extraNotes = extraNotes,
       )
     report(diagnostic, stack)
   }
@@ -1467,7 +1739,7 @@ internal class IrBindingGraph(
           rawType.nestedClasses
             .firstOrNull { nestedClass ->
               nestedClass.isAnnotatedWithAny(
-                metroContext.metroSymbols.classIds.assistedFactoryAnnotations
+                metroContext.metroSymbols.classIds.assistedFactoryAnnotations,
               )
             }
             ?.let { IrTypeKey(it.defaultType) }
@@ -1478,7 +1750,9 @@ internal class IrBindingGraph(
         injectionSite = textOf("${declaration?.fqNameWhenAvailable}", Style.EMPHASIS),
         assistedFactory = assistedFactory?.toText(),
       )
-    collectDiagnostic(diagnostic, declaration ?: node.sourceGraph)
+    // An accessor inherited from another module has no file to report on in this compilation.
+    val reportableDeclaration = declaration?.takeUnless { it.fileOrNull == null }
+    collectDiagnostic(diagnostic, reportableDeclaration ?: node.sourceGraph)
   }
 
   private fun Appendable.appendBinding(binding: IrBinding, short: Boolean, isNested: Boolean) {
@@ -1532,7 +1806,7 @@ internal class IrBindingGraph(
               append(
                 ". This is a generated contribution provider for ${origin.asFqNameString()}. If that class is the " +
                   "binding you're looking for, annotate the contributing class with `@ExposeImplBinding` to expose" +
-                  " its impl type to the graph"
+                  " its impl type to the graph",
               )
             }
           }
@@ -1561,3 +1835,21 @@ private fun IrBinding.Provided.isFromGeneratedContributionImpl(): ClassId? {
     null
   }
 }
+
+/**
+ * A binding that ancestors up to [depth] levels could build the same way. A read of it builds
+ * [target]. That's the aliased binding for aliases and the binding itself otherwise.
+ */
+private class AncestorBuild(val target: IrTypeKey, val depth: Int)
+
+/** The token for bindings a child graph reads from an ancestor graph's instance. */
+private val IrBinding.parentToken: ParentContext.Token?
+  get() =
+    when (this) {
+      is IrBinding.GraphDependency -> token
+      is IrBinding.BoundInstance -> token
+      else -> null
+    }
+
+private val IrBinding.isParentOwned: Boolean
+  get() = parentToken != null

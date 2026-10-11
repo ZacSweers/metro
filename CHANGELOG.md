@@ -4,30 +4,183 @@ Changelog
 **Unreleased**
 --------------
 
+### New
+
+- **[FIR]** Add the `diagnostic-level` compiler option to change the severity of Metro diagnostics reported in FIR. It works like kotlinc's `-Xwarning-level` but can also lower errors and use IDE-only levels. See [changing diagnostic severity](docs/validation-and-error-reporting.md#changing-diagnostic-severity).
+- **[FIR/IC]** Add the `function-inject-annotations-override` compiler option to use dedicated annotations for top-level function injection. See [custom function injection annotations](docs/injection-types.md#custom-function-injection-annotations).
+- **[Gradle]** Add opt-in checks to find Metro contributions hidden from a graph's compile classpath. Run `checkMainMetroHiddenDependencies` (i.e., on CI). It writes a report and fails if it finds hidden contributions.
+  - Supports JVM and Android compilations, including JVM targets in KMP. See [checking for hidden contributions](docs/aggregation.md#checking-for-hidden-contributions).
+  - Also checks Hilt aggregation metadata when Hilt interop is enabled.
+  - Configure scope filters with `scopes` in the experimental `metro.hiddenDependencies` DSL. Enable `checkOnCompile` in the same block to run each check automatically after its Kotlin compilation, including when compilation fails. Automatic checks are disabled by default and may become the default in a future release.
+
 ### Enhancements
 
-- **[FIR]** Warn when a `@ContributesTo` interface only exposes bindings and recommend making it a binding container with `@BindingContainer`.
-- **[FIR/IR]** Support `priority` on `@ContributesBinding` and `@ContributesIntoMap`, allowing higher-priority contributions to replace conflicting bindings or map entries without directly referencing the lower-priority implementation.
-- **[IR]** Support suspend providers with switching providers.
-- **[IR]** Reduce repeated work when validating suspend multibindings and reporting suspend-binding errors. Error traces now use cached, deterministic shortest paths to a suspend binding.
-- **[IR]** Avoid initializing the rich terminal renderer for plain compiler diagnostics.
-- **[Reports]** Explain binding choices in graph reports. Includes things like selection precedence, contribution filtering, and parent-graph ownership.
-- **[IDE]** Add actions to make classes injectable and contribute bindings, sets, or maps. Includes constructor, bound-type, scope, and map-key pickers, with editor templates for scope and key values.
-- **[IDE]** Add a Manual/Automatic refresh selector to the graph window. Manual is the default. Automatic mode batches edits after an idle delay and keeps possibly-stale data visible.
+- **[IR]** Reduce generated code in graph extensions by reusing existing parent bindings when their contributions and resolved dependencies are unchanged.
+- **[IR]** Graphs no longer generate a private getter for a multibinding that only one site reads. That site builds the collection itself.
+  - Reads from graph extensions that reuse the multibinding count too.
+  - Multibindings with more than 25 contributions also keep a getter so they don't crowd their reader's method. You can configure that threshold with the new `multibinding-getter-threshold` compiler option.
+- **[IR]** When several graph extensions build the same binding as their parent, like an unscoped class or a multibinding the parent never reads, the parent now builds it once in a shared getter and the extensions call it. Extensions at different depths share it through their nearest common ancestor.
+- **[IR]** When several accessors request the same key and return type, the first accessor holds the binding's code and the others call through to it.
+- **[IR]** Graphs no longer store themselves in a field. Code that needs the graph reads `this`, or the graph reference that a shard or switching provider already holds.
+- **[IR]** Generated code wraps instances in providers with `providerOf()`. On JVM that's one static call. `InstanceFactory.invoke()` also loaded its companion and boxed the value class.
+- **[IR]** Provider lambdas that Metro generates are SAM-converted to `Provider` directly. The inline `provider()` function they went through before added a type check and a second wrapper object at every site.
+- **[IR]** Each switching provider class numbers its bindings from zero. Shards used to switch on graph-wide IDs with gaps between them.
+- **[IR]** Switching provider branches read the graph reference into a local when more than one branch needs it.
+- **[IR]** Graph shard constructors read the graph from their constructor parameter. A shard drops its `graph` field when only its constructor used it.
+- **[IR]** Instance reads of `@Includes` graph accessors that return `Provider<T>` or `() -> T` call the accessor directly. They used to cache a converted provider in a field or wrap the accessor in a new provider lambda. `Lazy` accessors still cache their handle, so their value is computed once.
+- **[IR/JVM]** Fields in generated graphs, shards, and switching providers are now package-private on JVM. This reduces synthetic accessors.
+- **[IR/JVM]** Generated code calls `@JvmStatic` functions in objects and companion objects statically on JVM. This keeps companion classes out of the caller's constant pool. At runtime each call still goes through the companion, since the static method forwards to it. In a 500-module benchmark this made the generated graph classes 17% smaller.
+- **[IR/JS]** On JS, converting a `Provider` to `() -> T` or `suspend () -> T` now calls a small runtime helper. Each site used to generate its own wrapper lambda.
+- **[IR/interop]** Providers of absent `@BindsOptionalOf` bindings use an `InstanceFactory` that holds `Optional.empty()` instead of generating a local lambda each time.
 
 ### Fixes
 
-- **[IDE]** Reduce graph refreshes after unrelated edits and reuse completed analysis when a refresh is interrupted. Keep previous graph data visible while updating it.
-- **[IDE]** Preserve completed files and preparation stages when IDE write actions interrupt graph loading. Ignore unrelated configuration-file changes and use one Refresh action that shares an in-progress load.
-- **[IDE]** Invalidate cached compiler options and graph data when module facets change.
-- **[IDE]** Clarify contribution picker previews and respect implicit class keys.
-- **[IDE]** Offer primary and secondary constructors when making a class injectable, including public secondary constructors with a private primary constructor.
+- **[FIR]** Reduce redundant lookups when discovering contributed graph extension factories.
+- **[FIR]** Fix accessor override status on Kotlin `2.5.0-dev-10106`.
+- **[FIR/IC]** Avoid unnecessary recompilation of independent injected classes when generating contribution hints.
+- **[FIR/interop]** Fix duplicate class errors during caused by Hilt interop generating hints for upstream modules.
+- **[FIR/IR/interop]** Fix incremental builds not updating graphs when an upstream Hilt `@AggregatedDeps` marker changes or is removed.
+- **[IR]** Fix member injection across modules when an injected member uses a generic base class's type parameter.
+- **[IR]** Fix missing binding errors for accessors inherited from another module having no source location.
+- **[IR]** Fix `MissingRuntimeCoroutines` errors for injected top-level functions pointing at `0:0` in a generated file. They're now reported on the function.
+- **[IR]** Fix declaration parents for copied default argument lambdas and callable references, including references inside generated provider wrappers.
+- **[IR]** Include extension receivers in generated lambda function types, including set and map builder callbacks.
+- **[IR]** Fix IR diagnostic reporting on Kotlin `2.5.0-dev-10106`.
+- **[IR]** Fix graphs storing an `@Includes` graph parameter in two fields when the included graph has graph extensions.
+- **[IR]** Fix runtime tracing passing a contextual type that matches the binding's type. It's now `null` as documented.
+- **[IR/IC]** Fix stale graphs in incremental builds when a replacing binding container's `@ContributesTo` annotation is removed and restored.
+- **[IR/native/circuit]** Fix an `IrLinkageError` in generated `SubCircuit` UI factories on Kotlin/Native with Kotlin `2.5.0-Beta1`.
+- **[compat]** Fix Kotlin `2.5.0-Beta1` selecting a compat implementation built for newer `2.5.0` dev builds. Kotlin Beta and RC releases now map to the dev compat implementation that matches their branch point.
+- **[metrox-android]** Fix `MetroAppComponentFactory` crashing with a `ClassCastException` when Android starts the app with a plain `Application` for a full backup or restore.
+
+### Changes
+
+- **[compat]** Test against Kotlin `2.5.0-dev-10106`.
+- **[FIR/interop]** Report a `@MapKey` on a class with no Metro contribution annotation as a dedicated `MAP_KEY_WITHOUT_CONTRIBUTES_INTO_MAP` error. If another tool binds the class into a map, lower it to a warning with the `diagnostic-level` compiler option.
+- **[FIR/IR/IC]** Enable `omit-redundant-mirrors` by default on Kotlin 2.4.0 and newer to omit generated declaration mirrors when compiler metadata and declaration finders provide the same information. It remains disabled by default on older Kotlin versions. Disable it with `compilerOptions.disable("omit-redundant-mirrors")` in the `metro` DSL.
+- **[Gradle]** `enableTopLevelFunctionInjection` is **disabled by default** for now on **all** Kotlin versions because it makes incremental builds recompile more files. If you use top-level function injection, enable it with `enableTopLevelFunctionInjection.set(true)` in the `metro` DSL. See [incremental compilation perf docs](docs/performance.md#incremental-compilation).
+- Test Android Studio Rabbit 1 (`2026.2.1.8`).
+- Test IntelliJ `2026.2.3`.
+
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@agrosner](https://github.com/agrosner)
+- [@barq-al-layl](https://github.com/barq-al-layl)
+- [@joshfriend](https://github.com/joshfriend)
+- [@kevinguitar](https://github.com/kevinguitar)
+- [@wbonnefond](https://github.com/wbonnefond)
+
+### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
+
+1.4.5
+-----
+
+_2026-09-24_
+
+### Fixes
+
+- **[FIR]** Treat `@Multibinds` declarations as accessors to fix a false positive `CONTRIBUTES_TO_COULD_BE_BINDING_CONTAINER` warning.
+- **[IR]** Fix a `ClassCastException` during member injection when a class declares an injected method before an injected property.
+- **[Gradle]** Restore `ExperimentalMetroGradleApi` to the `gradle-plugin` artifact.
+
+### Changes
+
+- Update a few misc kdocs.
+- Use `AnalysisFlags` API to detect IDE mode in newer Kotlin versions.
+- **[Gradle]** Move shared graph report models into the `graphs` artifact and make `graph-viewer` an implementation dependency of the Gradle plugin. Model APIs now require opting into `@ExperimentalMetroGraphApi`. Existing model packages and the public experimental `BindingGraph` and `GraphAnalyzer` APIs are preserved.
+- **[Gradle]** Graph reports now have tasks for individual compilations, such as `generateMainMetroGraphHtml`. Outputs move to `build/reports/metro/{target}/{compilation}/`. See [migration details](docs/graph-analysis.md#updating-existing-commands).
+- Update `androidx.tracing` dependency to `2.0.3`.
+- Test against Kotlin `2.5.0-Beta1`.
+
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@vRallev](https://github.com/vRallev)
+
+### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
+
+1.4.4
+-----
+
+_2026-09-16_
+
+### Enhancements
+
+- **[IR]** Reduce repeated work when reporting dependency cycles.
+- **[Gradle]** Redesign the graph viewer feature.
+
+### Fixes
+
+- **[IR]** Avoid redundant class factories for contributed implementations when `generateContributionProviders` and `generateClassesInIr` are enabled.
+- **[IR]** Support `-Xwarning-level` overrides in fallback diagnostic reporting across all supported Kotlin versions.
+- **[compat]** Fix compiler compatibility selection for Beta, RC, and stable Kotlin builds when only dev support exists for their base version. For example, `2.5.0-Beta1` now selects the latest `2.5.0-dev-*` implementation if there is no `2.5.0-*` non-dev build.
+
+### Changes
+
+- **[compat]** Update the latest Kotlin `2.5.0` compat to `2.5.0-dev-7307`.
+- **[compat]** Raise `2.5.0-dev-4967` compat to `2.5.0-dev-6460` (pacing with IntelliJ 2026.3 EAPs).
+
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@kevinguitar](https://github.com/kevinguitar)
+
+### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
+
+1.4.3
+-----
+
+_2026-09-08_
+
+### Enhancements
+
+- **[FIR]** Warn when a `@ContributesTo` interface only exposes bindings and recommend making it a binding container with `@BindingContainer`. The latter is preferable as it reduces generated code.
+- **[FIR]** Warn about array class literals in qualifiers, map keys, and scopes that kotlinc can confuse across modules. For example, `Array<IntArray>::class` can be read as `IntArray::class`.
+- **[FIR/IR]** Support `priority` on `@ContributesBinding` and `@ContributesIntoMap`, allowing higher-priority contributions to replace conflicting bindings or map entries without directly referencing the lower-priority implementation.
+- **[IR]** Reuse completed member-injector lookups for classes without injectable members.
+- **[IR]** Support suspend providers with switching providers.
+- **[IR]** Avoid revisiting shared supertypes when resolving generic bindings through diamond inheritance.
+- **[IR]** Reduce per-entry memory overhead in more long-lived graph and contribution caches by using scatter maps.
+- **[IR]** Reduce repeated work when validating suspend multibindings and reporting suspend-binding errors. Error traces now use cached, deterministic shortest paths to a suspend binding.
+- **[IR]** Reduce repeated dependency scans when checking cycles in graphs with large multibindings.
+- **[IR]** Avoid initializing the rich terminal renderer for plain compiler diagnostics.
+- **[IR/interop]** Support Hilt interop when IR class generation is enabled.
+- **[Reports]** Explain binding choices in graph reports. Includes things like selection precedence, contribution filtering, and parent-graph ownership.
+- **[Reports]** Count emitted provider inlines in graph reports.
+- **[Reports]** Report when deferred access or unavailable values prevent provider inlining.
+
+### Fixes
+
+- **[FIR]** Avoid duplicate BindsMirror constructor generation across FIR generators.
+- **[FIR]** Fix a compiler crash when using typealiases as contribution scopes.
 - **[FIR]** Fix a compiler crash on zero-parameter member-injection functions.
+- **[FIR]** Fix graphs accidentally implementing binding-container interfaces when contributions use different scopes. Basically, checking another scope won't turn a container that supplies bindings into an interface the graph implements.
+- **[FIR]** Keep contributed graph accessors when their replacement or its origin is excluded.
 - **[FIR]** Avoid annotation-cache races during concurrent IDE analysis.
+- **[FIR]** Fix assisted factories whose return types nest or reorder factory type parameters.
 - **[FIR/IR/interop]** Fix recognition of `@get:BindsOptionalOf` properties when Dagger interop is enabled.
+- **[IR]** Keep dynamic graph arguments aligned when container order changes.
+- **[IR]** Prevent dynamic graph class name collisions when a generic binding container is used with different type arguments. Basically, graphs using `Bindings<Int>` and `Bindings<Long>` can coexist in the same file.
+- **[IR]** Avoid generated dynamic graph name collisions across sibling files.
+- **[IR]** Keep all transitively included binding containers when multiple graphs enter the same include cycle from different containers. Basically, improve compiler caching when containers are used in multiple graphs.
+- **[IR]** Resolve graph extension bindings before running parallel graph analysis. This keeps compiler lookups and cache writes on one thread, including for nested extensions and bindings loaded from dependencies.
+- **[IR]** Report required dependencies when an earlier parameter has a default value for the same missing type.
 - **[IR]** Fix a runtime crash when an assisted-injected class with no assisted parameters is used across modules with IR class generation.
+- **[IR]** Restore primitive and string inline provider values from dependency metadata.
+- **[IR]** Report an error when an assisted-injected constructor requests a set or eager map backed by suspend providers. Basically, assisted factories now get the same suspend-multibinding checks as ordinary injection.
+- **[IR]** Fix a compiler crash when reading `@Binds` declarations from generic binding containers.
+- **[IR]** Fix `@Binds` resolution when multiple graphs use the same generic binding container with different type arguments. Each graph now resolves bindings using its own container's type arguments.
 - **[IR]** Fix missing bindings for internal contributed objects across modules when `generateContributionProviders`, `generateClassesInIr`, and `contributesAsInject` are enabled together.
+- **[IR]** Report duplicate map keys when different key annotations unwrap to the same value, including implicit class keys.
+- **[IR]** Apply contribution replacements only in the scopes that declare them.
 - **[IR]** Report missing required graph bindings even when an `@OptionalBinding` accessor requests the same type, regardless of declaration order.
+- **[IR]** Compare annotation values structurally so hash collisions don't merge distinct bindings.
+- **[IR]** Preserve JVM array component types and dimensions in source class-literal qualifiers.
+- **[IR]** Resolve JVM binary annotation defaults on Kotlin `2.3.0` and `2.3.10`.
 - **[IR/interop]** Fix `Class`-keyed maps wrapped in providers or lazy values when `KClass`/`Class` interop is enabled.
 - **[IR/interop]** Fix a runtime `ClassCastException` when a `Class`-keyed map is injected into a provider-created class across modules with `KClass`/`Class` interop enabled.
 - **[IR/interop]** Respect `@GraphPrivate` on Dagger `@BindsOptionalOf` declarations inherited by graph extensions, while preserving public declarations for the same key.
@@ -35,9 +188,18 @@ Changelog
 
 ### Changes
 
+- **[IR]** Annotation default matching is limited for KLIB dependencies on Kotlin `2.3.0` and `2.3.10`. We recommend upgrading to Kotlin `2.3.20` or newer.
+- Build against Kotlin `2.4.20`. Note the runtime artifacts still target Kotlin `2.3.0` and Metro supports a wide range of compiler versions. See the [compatibility docs](https://zacsweers.github.io/metro/latest/compatibility/) for a full table of compatible versions.
+- Update embedded Okio dependency to `3.18.2`.
+- Raise Kotlin `2.5.0` support to `2.5.0-dev-4967` for IntelliJ 2026.3 EAPs. This replaces the `2.5.0-dev-498` and `2.5.0-dev-3513` compat modules.
+- Test Kotlin `2.5.0-dev-6460`.
+- Test Kotlin `2.4.20`.
 - Test Kotlin `2.4.20-RC2`.
 - Test Kotlin `2.4.20-RC3`.
-- Update embedded Okio dependency to `3.18.2`.
+- Test IntelliJ 2026.2.2.
+- Test IntelliJ 2026.3 EAPs (`263.3889.65`).
+- Test Android Studio Quail 4.
+- Test Android Studio Rabbit canaries (`canary 4`).
 
 ### Contributors
 
@@ -46,6 +208,8 @@ Special thanks to the following contributors for contributing to this release!
 - [@AlexVanyo](https://github.com/AlexVanyo)
 - [@grandstaish](https://github.com/grandstaish)
 - [@kevinguitar](https://github.com/kevinguitar)
+
+### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
 
 1.4.2
 -----
@@ -76,6 +240,8 @@ Special thanks to the following contributors for contributing to this release!
 - [@erawhctim](https://github.com/erawhctim)
 - [@eygraber](https://github.com/eygraber)
 - [@grandstaish](https://github.com/grandstaish)
+
+### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
 
 1.4.1
 -----
@@ -654,7 +820,7 @@ This may require some migration in existing codebases. To help with this, there'
 
 ### Changes
 
-- `enableFunctionProviders` (i.e. `() -> T` syntax for providers) is now enabled by default. Previously this required opting in. The function-syntax form is now the **recommended** way to declare provider dependencies; `Provider<T>` is still supported but treated as a desugared alternative and a **warning** by default, similar to if you were to use `Function0` instead of `() -> T` syntax for functions. See the [metro-intrinsics](docs/metro-intrinsics.md) docs for more details.
+- `enableFunctionProviders` (i.e. `() -> T` syntax for providers) is now enabled by default. Previously this required opting in. The function-syntax form is now the **recommended** way to declare provider dependencies; `Provider<T>` is still supported but treated as a desugared alternative and a **warning** by default, similar to if you were to use `Function0` instead of `() -> T` syntax for functions. See the [metro-intrinsics](https://zacsweers.github.io/metro/latest/metro-intrinsics/) docs for more details.
 - **[IR]** Remove deprecated `indexInOldValueParameters` use in IR for better `2.4.0`+ support.
 - **[Gradle]** Promote `enableFunctionProviders` to stable.
 - **[Gradle]** Remove deprecated `useAssistedParamNamesAsIdentifiers` property.

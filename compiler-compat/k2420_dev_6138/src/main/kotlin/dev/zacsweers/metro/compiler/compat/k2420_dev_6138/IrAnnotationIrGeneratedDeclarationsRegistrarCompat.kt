@@ -18,11 +18,11 @@ import org.jetbrains.kotlin.ir.expressions.impl.IrAnnotationImpl
  * `2.4.20-dev-6138`, where a subclass adds it.
  */
 public open class IrAnnotationIrGeneratedDeclarationsRegistrarCompat(
-  protected val delegate: IrGeneratedDeclarationsRegistrar
+  protected val delegate: IrGeneratedDeclarationsRegistrar,
 ) : IrGeneratedDeclarationsRegistrarCompat {
   @Suppress("UNCHECKED_CAST")
   override fun getMetadataVisibleAnnotationsForElement(
-    declaration: IrDeclaration
+    declaration: IrDeclaration,
   ): MutableList<IrConstructorCall> =
     delegate.getMetadataVisibleAnnotationsForElement(declaration) as MutableList<IrConstructorCall>
 
@@ -39,7 +39,7 @@ public open class IrAnnotationIrGeneratedDeclarationsRegistrarCompat(
 
   override fun registerConstructorAsMetadataVisible(irConstructor: IrConstructor) {
     delegate.registerConstructorAsMetadataVisible(
-      irConstructor.apply { convertFunctionAnnotations() }
+      irConstructor.apply { convertFunctionAnnotations() },
     )
   }
 

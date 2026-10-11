@@ -68,9 +68,6 @@ interface ExampleGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : ExampleGraph {
-    private val thisGraphInstance: Impl
-      field = <this>
-
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
@@ -78,7 +75,7 @@ interface ExampleGraph {
     }
 
     override suspend fun accountCreator(): AccountCreator {
-      return AccountCreator(database = <this>.#thisGraphInstance.provideDatabase(), tlsConnection = <this>.#thisGraphInstance.provideTls())
+      return AccountCreator(database = <this>.provideDatabase(), tlsConnection = <this>.provideTls())
     }
 
   }

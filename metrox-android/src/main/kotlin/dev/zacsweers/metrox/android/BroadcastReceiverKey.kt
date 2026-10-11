@@ -6,9 +6,13 @@ import android.content.BroadcastReceiver
 import dev.zacsweers.metro.MapKey
 import kotlin.reflect.KClass
 
-/** A [MapKey] annotation for binding a BroadcastReceiver in a multibinding map. */
+/**
+ * A [MapKey] annotation for binding a BroadcastReceiver in a multibinding map.
+ *
+ * @property value The receiver class used as the key. Defaults to the annotated class when omitted.
+ */
 @MapKey(implicitClassKey = true)
 @Target(AnnotationTarget.CLASS)
 public annotation class BroadcastReceiverKey(
-  val value: KClass<out BroadcastReceiver> = Nothing::class
+  val value: KClass<out BroadcastReceiver> = Nothing::class,
 )

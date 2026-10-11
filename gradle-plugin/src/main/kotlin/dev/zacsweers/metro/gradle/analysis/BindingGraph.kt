@@ -7,6 +7,7 @@ import com.google.common.graph.GraphBuilder
 import com.google.common.graph.ImmutableGraph
 import dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi
 
+/** A dependency graph built from a compiler report for graph analysis. */
 @ExperimentalMetroGradleApi
 public class BindingGraph
 private constructor(
@@ -18,7 +19,9 @@ private constructor(
    * and critical path analysis where deferred dependencies (Provider, Lazy) don't contribute.
    */
   public val eagerGraph: Graph<String>,
+  /** The graph's name in the compiler report. */
   public val graphName: String,
+  /** Scope keys declared by this graph. */
   public val scopes: List<String>,
 ) {
   /** All binding keys in this graph. */
@@ -54,6 +57,7 @@ private constructor(
    */
   public fun findLeaves(): Set<String> = graph.nodes().filter { graph.outDegree(it) == 0 }.toSet()
 
+  /** Creates graphs from compiler metadata. */
   public companion object {
     /** Build a [BindingGraph] from [GraphMetadata]. */
     public fun from(metadata: GraphMetadata): BindingGraph {
@@ -70,29 +74,10 @@ private constructor(
         eagerGraphBuilder.addNode(key)
       }
 
-      // Build edges from binding dependencies
-      for (binding in metadata.bindings) {
-        val from = binding.key
-        for (dep in binding.dependencies) {
-          // Unwrap Provider<X>/Lazy<X> to X to match node IDs
-          val to = unwrapTypeKey(dep.key)
-          if (to in bindingKeys) {
-            fullGraphBuilder.putEdge(from, to)
-            // Skip deferrable (Provider/Lazy/MembersInjected) edges from the eager graph -
-            // they don't represent construction-time dependencies
-            if (!dep.isDeferrable) {
-              eagerGraphBuilder.putEdge(from, to)
-            }
-          }
-        }
-      }
-
-      // Add accessor edges from the graph node to each accessor target
-      // These are entry points, so only in the full graph (not eager)
-      metadata.roots?.accessors?.forEach { accessor ->
-        val targetKey = unwrapTypeKey(accessor.key)
-        if (targetKey in bindingKeys) {
-          fullGraphBuilder.putEdge(metadata.graph, targetKey)
+      for (edge in metadata.analysisEdges()) {
+        fullGraphBuilder.putEdge(edge.source, edge.target)
+        if (edge.eager) {
+          eagerGraphBuilder.putEdge(edge.source, edge.target)
         }
       }
 

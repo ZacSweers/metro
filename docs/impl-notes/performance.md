@@ -167,6 +167,41 @@ Bound instances are already stored on the graph, so a single provider request ca
 
 Keep scalar and provider reference counts separate. Treating every repeated binding as a cached value changes unscoped behavior.
 
+When several accessors request the same key and return type, the first accessor holds the binding's code and the others call it. A multibinding with a single reader is built inline at that reader. One with more than `multibinding-getter-threshold` contributions keeps a getter so it doesn't crowd the reader's method.
+
+### Graph extension reuse
+
+Each graph fingerprints its bindings by declaration and the fingerprints of their dependencies. When a graph extension's binding has the same fingerprint as the nearest ancestor that binds that key, the extension calls the ancestor's property and skips building its own. A child multibinding that adds contributions gets a different fingerprint, so it's built separately.
+
+When two or more child graphs build the same binding, their nearest common ancestor builds it once in a getter that they all call.
+
+```kotlin
+// Before
+class ChildAImpl { val shared get() = Shared(Dependency()) }
+class ChildBImpl { val shared get() = Shared(Dependency()) }
+
+// After
+class AppGraphImpl { val shared get() = Shared(Dependency()) }
+class ChildAImpl { val shared get() = appGraphImpl.shared }
+class ChildBImpl { val shared get() = appGraphImpl.shared }
+```
+
+The nearest common ancestor can be several levels up. Consider this tree.
+
+```text
+A
+├── B
+│   ├── C
+│   └── D
+└── E
+```
+
+A binding that C, D, and E all build goes in A. One that only C and D build goes in B. One that only C and E build also goes in A, since B has just one child that reads it. Each graph keeps calling the copy nearest to it. In the C, D, and E case, B doesn't build its own copy.
+
+An ancestor can only build a binding if it declares the binding the same way. If B adds a contribution to a multibinding, C and D share B's version, and E builds A's version itself.
+
+A single child reading a binding never moves it into a parent. Each child works out how many ancestors in a row could build its binding the same way, including every dependency. It reports the read to those ancestors while its graph is sealed, so this adds no separate pass over the bindings. Ancestors count reads per direct child and keep the binding once two children report it.
+
 ### Graph and contribution caches
 
 Graph construction reuses several kinds of state:
@@ -517,6 +552,10 @@ Suspend provider fields use a separate `SwitchingSuspendProvider`.
 
 ## Generated binary size
 
+### Smaller call sites
+
+Several small changes keep per-site code down. Graphs read `this` and no longer store themselves in a field. Generated code wraps instances with `providerOf()` and SAM-converts provider lambdas to `Provider` directly. On JVM, fields in graphs, shards, and switching providers are package-private, which avoids synthetic accessors. `@JvmStatic` functions in objects and companion objects are called statically, so companion classes stay out of the caller's constant pool. On JS, converting a `Provider` to a function type calls a shared runtime helper.
+
 ### Supertype chunking
 
 Large contribution graphs can exceed the JVM class-signature limit when thousands of interfaces appear in one generated supertype list.
@@ -586,7 +625,7 @@ Some factory or mirror declarations exist for compiler metadata and cross-module
 
 Constant provider inlining must not remove a factory that is still needed to preserve lazy class initialization. Declaration mirrors must also remain available when compiler metadata does not provide the same information.
 
-`omit-redundant-mirrors` is disabled by default. Changes to mirrors need both binary-size measurements and cross-module coverage.
+`omit-redundant-mirrors` is enabled by default on Kotlin 2.4.0 and newer. It is disabled by default on older Kotlin versions. Changes to mirrors need both binary-size measurements and cross-module coverage.
 
 ## Measuring changes
 
@@ -630,6 +669,7 @@ Use ordinary box tests for small generated shapes and IR dump tests when generat
 | `keys-per-graph-shard`            | `2000`        | Sets the target number of bindings per shard        |
 | `enable-switching-providers`      | `false`       | Keeps ordinary binding-specific provider generation |
 | `merged-supertype-chunk-size`     | `0`           | Leaves contribution supertypes unchunked            |
+| `multibinding-getter-threshold`   | `25`          | Gives larger single-reader multibindings a getter   |
 | `generate-static-annotations`     | `true`        | Adds platform static factory entry points           |
 | `enable-provider-inlining`        | `true`        | Inlines eligible constant providers                 |
 | `generate-contribution-providers` | `false`       | Keeps the default contribution representation       |

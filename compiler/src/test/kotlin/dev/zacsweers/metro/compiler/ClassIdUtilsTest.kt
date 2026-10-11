@@ -155,7 +155,7 @@ class ClassIdUtilsTest {
     assertThat(MetroContributions.containerObjectClassId(source, otherScope, limit))
       .isNotEqualTo(container)
     assertThat(
-        providerFactoryClassId(container, Name.identifier(callable.asString() + "Other"), limit)
+        providerFactoryClassId(container, Name.identifier(callable.asString() + "Other"), limit),
       )
       .isNotEqualTo(factory)
   }
@@ -206,7 +206,7 @@ class ClassIdUtilsTest {
     val parent =
       classId(
         "AuthoredBindingContainerWhoseNameLeavesNoRoomForTheRequiredGeneratedFactoryAnd" +
-          "CompanionAtTheConfiguredNameLimit"
+          "CompanionAtTheConfiguredNameLimit",
       )
     val factory =
       providerFactoryClassId(

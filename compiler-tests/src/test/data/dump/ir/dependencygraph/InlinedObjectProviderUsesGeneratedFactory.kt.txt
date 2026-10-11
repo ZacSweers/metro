@@ -11,7 +11,7 @@ interface AppGraph {
 
     override val objectProvider: Provider<InlinedObject>
       override get(): Provider<InlinedObject> {
-        return Bindings.ProvideObjectMetroFactory.create()
+        return create()
       }
 
   }

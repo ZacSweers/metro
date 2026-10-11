@@ -30,6 +30,16 @@ constructor(
   public val compilerOptions: CompilerOptionsHandler =
     objects.newInstance(CompilerOptionsHandler::class.java)
 
+  @ExperimentalMetroGradleApi
+  public val hiddenDependencies: HiddenDependenciesHandler =
+    objects.newInstance(HiddenDependenciesHandler::class.java).also { hiddenDependencies ->
+      hiddenDependencies.checkOnCompile.propertyNameConventionImpl(
+        "metro.hiddenDependencies.checkOnCompile",
+        false,
+        String::toBoolean,
+      )
+    }
+
   /** Enables Metro for this project. */
   public val enabled: Property<Boolean> = objects.booleanProperty("metro.enabled", true)
 
@@ -64,30 +74,23 @@ constructor(
   /**
    * Enables injection for top-level functions. See the kdoc on `Inject` for more details.
    *
+   * This is disabled by default because it makes incremental builds recompile more files. See
+   * https://zacsweers.github.io/metro/latest/performance/#incremental-compilation.
+   *
    * **Warnings**
    * - Prior to Kotlin 2.3.20-Beta1, top-level function injection is only compatible with
    *   jvm/android targets.
    * - Prior to Kotlin 2.3.20-Beta1, top-level function injection is not yet compatible with
    *   incremental compilation on any platform
-   * - Kotlin/JS does not support this with incremental compilation enabled. See
-   *   https://youtrack.jetbrains.com/issue/KT-82395
+   * - Kotlin/JS supports this with incremental compilation enabled starting in Kotlin 2.3.21 and
+   *   Kotlin 2.4.0-Beta2. See https://youtrack.jetbrains.com/issue/KT-82395
    */
   @RequiresIdeSupport
   @DelicateMetroGradleApi(
-    "Top-level function injection is experimental and does not work yet in all cases. See the kdoc."
+    "Top-level function injection is experimental and does not work yet in all cases. See the kdoc.",
   )
   public val enableTopLevelFunctionInjection: Property<Boolean> =
-    objects
-      .booleanProperty()
-      .convention(
-        compilerVersion.map {
-          // Kotlin 2.3.20-Beta1, top-level declaration generation is supported on all platforms
-          // except JS.
-          // https://youtrack.jetbrains.com/issue/KT-82395
-          // https://youtrack.jetbrains.com/issue/KT-82989
-          KotlinVersions.supportsTopLevelFirGen(it)
-        }
-      )
+    objects.booleanProperty().convention(false)
 
   /**
    * Generates contribution hints.
@@ -107,17 +110,20 @@ constructor(
    * This is independent of [generateClassesInIr]. It must remain enabled with contribution hints on
    * Kotlin `2.3.20-Beta1` and newer.
    *
+   * For how this affects incremental builds, see
+   * https://zacsweers.github.io/metro/latest/performance/#incremental-compilation.
+   *
    * **Warnings**
    * - Prior to Kotlin 2.3.20-Beta1, FIR contribution hint generation is only compatible with
    *   jvm/android targets.
    * - Prior to Kotlin 2.3.20-Beta1, FIR contribution hint generation is not yet compatible with
    *   incremental compilation on any platform
-   * - Kotlin/JS does not support this with incremental compilation enabled. See
-   *   https://youtrack.jetbrains.com/issue/KT-82395
+   * - Kotlin/JS supports this with incremental compilation enabled starting in Kotlin 2.3.21 and
+   *   Kotlin 2.4.0-Beta2. See https://youtrack.jetbrains.com/issue/KT-82395
    */
   @ExperimentalMetroGradleApi // Will eventually be the default and removed
   @DelicateMetroGradleApi(
-    "FIR contribution hint generation is experimental and does not work yet in all cases. See the kdoc."
+    "FIR contribution hint generation is experimental and does not work yet in all cases. See the kdoc.",
   )
   public val generateContributionHintsInFir: Property<Boolean> = objects.booleanProperty()
 
@@ -158,7 +164,7 @@ constructor(
    */
   @ExperimentalMetroGradleApi // This may eventually be removed
   @DelicateMetroGradleApi(
-    "Contribution hint generation does not work yet in all platforms on all Kotlin versions. See the kdoc."
+    "Contribution hint generation does not work yet in all platforms on all Kotlin versions. See the kdoc.",
   )
   public val supportedHintContributionPlatforms: SetProperty<KotlinPlatformType> =
     objects
@@ -174,7 +180,7 @@ constructor(
             // Only jvm/android work prior to Kotlin 2.3.20
             setOf(KotlinPlatformType.common, KotlinPlatformType.jvm, KotlinPlatformType.androidJvm)
           }
-        }
+        },
       )
 
   /**
@@ -299,7 +305,7 @@ constructor(
       .convention(
         compilerVersion.map {
           it >= KotlinVersions.kotlin230 && it < KotlinVersions.kotlin2320Beta2
-        }
+        },
       )
 
   /**
@@ -507,8 +513,10 @@ constructor(
    *
    * This behaves similar to the compose-compiler's option of the same name.
    *
-   * This also enables the `generateMetroGraphMetadata` task, which will dump JSON representations
-   * of all graphs per compilation in this project.
+   * This also enables report tasks for each compilation. For example,
+   * `generateInternalDebugMetroGraphMetadata` combines graph JSON for Android's `internalDebug`
+   * compilation. Task names include the capitalized target and compilation names. A blank target
+   * name is omitted. Reports are written under `build/reports/metro/{target}/{compilation}/`.
    *
    * This enables a nontrivial amount of logging and overhead and should only be used for debugging.
    *
@@ -516,7 +524,7 @@ constructor(
    * _relative_ path from the project's **build** directory.
    */
   @DelicateMetroGradleApi(
-    "This should only be used for debugging purposes and is not intended to be always enabled."
+    "This should only be used for debugging purposes and is not intended to be always enabled.",
   )
   public val reportsDestination: DirectoryProperty =
     objects
@@ -524,7 +532,7 @@ constructor(
       .convention(
         providers.gradleProperty("metro.reportsDestination").flatMap {
           layout.buildDirectory.dir(it)
-        }
+        },
       )
 
   /**
@@ -541,8 +549,47 @@ constructor(
     objects
       .directoryProperty()
       .convention(
-        providers.gradleProperty("metro.traceDestination").flatMap { layout.buildDirectory.dir(it) }
+        providers.gradleProperty("metro.traceDestination").flatMap {
+          layout.buildDirectory.dir(it)
+        },
       )
+
+  /** Configures hidden-dependency checks. */
+  @ExperimentalMetroGradleApi
+  public fun hiddenDependencies(action: Action<HiddenDependenciesHandler>) {
+    action.execute(hiddenDependencies)
+  }
+
+  @MetroExtensionMarker
+  @ExperimentalMetroGradleApi
+  public abstract class HiddenDependenciesHandler @Inject constructor(objects: ObjectFactory) {
+    /**
+     * Limits hidden-dependency checks to contributions for these scopes. Use Kotlin ClassId strings
+     * such as `com/example/AppScope` or `com/example/Scopes.User`.
+     *
+     * An empty set checks every hint. Checks run when explicitly requested or when [checkOnCompile]
+     * is enabled. JVM and Android compilations support them, including those in multiplatform
+     * projects.
+     *
+     * Hilt metadata is checked when Hilt interop is enabled. Hilt markers match a standard
+     * component's canonical scope, such as `javax/inject/Singleton`. They also match the
+     * component's own ClassId.
+     */
+    public val scopes: SetProperty<String> =
+      objects.setProperty(String::class.java).convention(emptySet())
+
+    /**
+     * Runs each hidden-dependency check as a finalizer of its Kotlin compilation task, including
+     * when compilation fails. Supported for JVM and Android compilations, including those in
+     * multiplatform projects.
+     *
+     * Disabled by default. This may be enabled by default in a future release.
+     *
+     * Optionally, set the `metro.hiddenDependencies.checkOnCompile` Gradle property to enable this
+     * globally.
+     */
+    public abstract val checkOnCompile: Property<Boolean>
+  }
 
   /**
    * Configures interop to support in generated code, usually from another DI framework.
@@ -629,7 +676,7 @@ constructor(
       includeDaggerAnnotations.set(true)
       if (!includeJavax && !includeJakarta) {
         System.err.println(
-          "At least one of metro.interop.includeDagger.includeJavax or metro.interop.includeDagger.includeJakarta should be true"
+          "At least one of metro.interop.includeDagger.includeJavax or metro.interop.includeDagger.includeJakarta should be true",
         )
       }
       if (includeJavax) {
@@ -706,7 +753,7 @@ constructor(
     return property(T::class.java).propertyNameConventionImpl(name, defaultValue) { value ->
       enumValues<T>().find { it.name.equals(value, ignoreCase = true) }
         ?: error(
-          "Value '$value' is not a valid input for metro.$name. Allowed values: ${enumValues<T>().joinToString { it.name }}"
+          "Value '$value' is not a valid input for metro.$name. Allowed values: ${enumValues<T>().joinToString { it.name }}",
         )
     }
   }
@@ -714,7 +761,7 @@ constructor(
   private fun ObjectFactory.metroProperty(name: String, defaultValue: String): Property<String> {
     return property(String::class.java)
       .convention(
-        providers.gradleProperty(name).orElse(providers.systemProperty(name)).orElse(defaultValue)
+        providers.gradleProperty(name).orElse(providers.systemProperty(name)).orElse(defaultValue),
       )
   }
 
@@ -740,7 +787,7 @@ constructor(
         .gradleProperty(propertyName)
         .orElse(providers.systemProperty(propertyName))
         .map(mapper)
-        .orElse(defaultValue)
+        .orElse(defaultValue),
     )
   }
 }

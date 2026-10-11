@@ -172,6 +172,7 @@ metroProject { jvmTarget.set(libs.versions.ideaJvmTarget) }
 kotlin {
   compilerOptions {
     optIn.addAll(
+      "dev.zacsweers.metro.graph.ExperimentalMetroGraphApi",
       // Analysis API type rendering used by MetroResolutionService
       "org.jetbrains.kotlin.analysis.api.KaExperimentalApi",
       // Platform extension points can run on the EDT, where analysis must be explicitly allowed.
@@ -302,6 +303,13 @@ dependencies {
   testImplementation(libs.androidx.tracing.wire)
 }
 
+tasks.processResources {
+  from(layout.projectDirectory.dir("../design")) {
+    include("pluginIcon.svg", "pluginIcon_dark.svg")
+    into("META-INF")
+  }
+}
+
 tasks.jar {
   duplicatesStrategy = DuplicatesStrategy.EXCLUDE
   from(shadedClasspath.flatMap { it.elements }.map { files -> files.map { zipTree(it.asFile) } })
@@ -337,7 +345,7 @@ intellijPlatform {
     hidden.set(
       propertyResolver
         .optionalStringProvider("intellijPlatformPublishingHidden")
-        .map(String::toBoolean)
+        .map(String::toBoolean),
     )
   }
 
@@ -414,6 +422,6 @@ tasks.test {
         "-DmetroLibFixture.classpath=${libFixtureJar.get().archiveFile.get().asFile.absolutePath}",
         "-DmetroCompilerTestData.path=${compilerTestData.asFile.absolutePath}",
       )
-    }
+    },
   )
 }

@@ -71,7 +71,7 @@ public sealed interface SuspendValidationSite<out ContextualTypeKey, out Binding
 
   /** An issue originating at a graph accessor or members-injector request. */
   public data class GraphRequest<ContextualTypeKey, Request>(
-    val request: SuspendGraphRequest<ContextualTypeKey, Request>
+    val request: SuspendGraphRequest<ContextualTypeKey, Request>,
   ) : SuspendValidationSite<ContextualTypeKey, Nothing, Request>
 
   /** An issue originating at one dependency of [binding]. */

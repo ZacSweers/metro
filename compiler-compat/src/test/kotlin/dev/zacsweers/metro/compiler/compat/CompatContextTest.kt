@@ -251,7 +251,7 @@ class CompatContextTest {
   }
 
   @Test
-  fun `Beta version does not select dev factory`() {
+  fun `Beta version prefers matching Beta factory over same-base dev factory`() {
     val factoryStable = FakeFactory(minVersion = "2.3.0", reportedCurrentVersion = "2.3.20-Beta1")
     val factoryDev =
       FakeFactory(minVersion = "2.3.20-dev-5437", reportedCurrentVersion = "2.3.20-Beta1")
@@ -261,8 +261,49 @@ class CompatContextTest {
     val factories = sequenceOf(factoryStable, factoryDev, factoryBeta)
     val resolved = CompatContext.resolveFactory(factories, testVersionString = "2.3.20-Beta1")
 
-    // Beta version should NOT select dev factory, should select Beta factory
     assertThat(resolved.minVersion).isEqualTo("2.3.20-Beta1")
+  }
+
+  @Test
+  fun `Beta version falls back to latest same-base dev factory`() {
+    val factoryStable = FakeFactory(minVersion = "2.4.20", reportedCurrentVersion = "2.5.0-Beta1")
+    val factoryDev1 =
+      FakeFactory(minVersion = "2.5.0-dev-6460", reportedCurrentVersion = "2.5.0-Beta1")
+    val factoryDev2 =
+      FakeFactory(minVersion = "2.5.0-dev-7307", reportedCurrentVersion = "2.5.0-Beta1")
+
+    val factories = sequenceOf(factoryStable, factoryDev2, factoryDev1)
+    val resolved = CompatContext.resolveFactory(factories, testVersionString = "2.5.0-Beta1")
+
+    assertThat(resolved.minVersion).isEqualTo("2.5.0-dev-7307")
+  }
+
+  @Test
+  fun `incompatible Beta factory permits same-base dev fallback`() {
+    val factoryStable = FakeFactory(minVersion = "2.4.20", reportedCurrentVersion = "2.5.0-Beta1")
+    val factoryDev =
+      FakeFactory(minVersion = "2.5.0-dev-7307", reportedCurrentVersion = "2.5.0-Beta1")
+    val factoryBeta =
+      FakeFactory(minVersion = "2.5.0-Beta2", reportedCurrentVersion = "2.5.0-Beta1")
+
+    val factories = sequenceOf(factoryStable, factoryDev, factoryBeta)
+    val resolved = CompatContext.resolveFactory(factories, testVersionString = "2.5.0-Beta1")
+
+    assertThat(resolved.minVersion).isEqualTo("2.5.0-dev-7307")
+  }
+
+  @Test
+  fun `Beta version skips dev factories with different base versions`() {
+    val factoryStable = FakeFactory(minVersion = "2.4.20", reportedCurrentVersion = "2.5.0-Beta1")
+    val factoryOldDev =
+      FakeFactory(minVersion = "2.4.30-dev-100", reportedCurrentVersion = "2.5.0-Beta1")
+    val factoryNewDev =
+      FakeFactory(minVersion = "2.5.20-dev-100", reportedCurrentVersion = "2.5.0-Beta1")
+
+    val factories = sequenceOf(factoryStable, factoryOldDev, factoryNewDev)
+    val resolved = CompatContext.resolveFactory(factories, testVersionString = "2.5.0-Beta1")
+
+    assertThat(resolved.minVersion).isEqualTo("2.4.20")
   }
 
   @Test
@@ -382,32 +423,60 @@ class CompatContextTest {
   }
 
   @Test
-  fun `real factory matrix resolves reasonably for IDE-bundled compiler versions`() {
+  fun `real factory matrix resolves released and IDE-bundled compiler versions`() {
     // Mirrors the actual shipped compat modules. Keep in sync when adding/removing modules.
-    val realMinVersions = listOf("2.3.0", "2.3.20", "2.4.0-dev-2124", "2.4.0", "2.4.20-dev-6138")
+    val realMinVersions =
+      listOf(
+        "2.3.0",
+        "2.3.20",
+        "2.4.0-dev-2124",
+        "2.4.0",
+        "2.4.20-dev-6138",
+        "2.4.20",
+        "2.5.0-dev-6460",
+        "2.5.0-dev-7307",
+        "2.5.0-dev-10106",
+      )
 
-    // currentVersion -> expected factory minVersion. Current versions are the (aliased) kotlinc
-    // versions bundled by IDEs we test in ide-integration-tests, plus the dev track itself.
+    // Current compiler version -> expected factory minVersion.
     val expectations =
       mapOf(
         // IJ 2025.3.x / AS Panda (2.3.20-ij253-*, 2.3.255-dev-255 -> 2.3.0-dev-9992)
         "2.3.0-dev-9992" to "2.3.0",
         // IJ 2026.1.1 (2.4.0-ij261-32 -> 2.4.0-dev-2124)
         "2.4.0-dev-2124" to "2.4.0-dev-2124",
-        // IJ 2026.1.2/.3 / AS Quail (2.4.0-ij261-50/-64, 2.4.255-dev-255 -> 2.4.0-dev-2633)
+        // IJ 2026.1.2/.3 (2.4.0-ij261-50/-64 -> 2.4.0-dev-2633)
         "2.4.0-dev-2633" to "2.4.0-dev-2124",
-        // IJ 2026.2 RC (2.4.20-dev-6724)
-        "2.4.20-dev-6724" to "2.4.20-dev-6138",
+        "2.4.20-dev-6725" to "2.4.20-dev-6138",
+        // IJ 2026.2.1/.2 and AS Quail/Rabbit use the retained dev factory.
+        "2.4.20-ij262-34" to "2.4.20-dev-6138",
+        "2.4.20-ij262-52" to "2.4.20-dev-6138",
+        "2.4.255-dev-255" to "2.4.20-dev-6138",
         // Unmapped future IDE build picks the lowest same-base factory
         "2.4.20-ij262-1" to "2.4.20-dev-6138",
+        "2.4.20" to "2.4.20",
+        "2.5.0-dev-6460" to "2.5.0-dev-6460",
+        // IJ 2026.3 EAP uses a regular dev version.
+        "2.5.0-dev-6810" to "2.5.0-dev-6460",
+        "2.5.0-dev-7306" to "2.5.0-dev-6460",
+        "2.5.0-dev-7307" to "2.5.0-dev-7307",
+        "2.5.0-dev-10106" to "2.5.0-dev-10106",
+        // Prerelease mappings pin each Beta to the compat module picked from its branch point.
+        "2.5.0-Beta1" to "2.5.0-dev-7307",
+        "2.5.0-Beta2" to "2.5.0-dev-10106",
+        // Unmapped prereleases fall back to the newest same-base dev factory.
+        "2.5.0-Beta1-123" to "2.5.0-dev-10106",
+        "2.5.0-Beta1-release-123" to "2.5.0-dev-10106",
+        "2.5.0-RC" to "2.5.0-dev-10106",
+        "2.5.0" to "2.5.0-dev-10106",
       )
 
     for ((currentVersion, expectedMinVersion) in expectations) {
       val factories = realMinVersions.map {
         FakeFactory(minVersion = it, reportedCurrentVersion = currentVersion)
       }
-      val resolved =
-        CompatContext.resolveFactory(factories.asSequence(), testVersionString = currentVersion)
+      val aliasedVersion = CompilerVersionAliases.map(KotlinToolingVersion(currentVersion))!!
+      val resolved = CompatContext.resolveFactory(aliasedVersion, factories.asSequence())
       assertThat(resolved.minVersion).isEqualTo(expectedMinVersion)
     }
   }

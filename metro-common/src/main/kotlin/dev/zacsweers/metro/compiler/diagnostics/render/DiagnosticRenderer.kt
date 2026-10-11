@@ -248,7 +248,7 @@ public class DiagnosticRenderer(
           buildList {
             add(Run("${glyphs.loopStart} ", Style.DIM))
             addAll(resolvedNames[0])
-          }
+          },
         ),
         CONTENT_INDENT,
       )
@@ -262,7 +262,7 @@ public class DiagnosticRenderer(
             buildList {
               add(Run("${glyphs.vbar}$continuationPad $arrow ", Style.DIM))
               addAll(resolvedNames[i])
-            }
+            },
           ),
           CONTENT_INDENT,
         )
@@ -273,7 +273,7 @@ public class DiagnosticRenderer(
           buildList {
             add(Run("${glyphs.loopBottomStart}${glyphs.hline.repeat(2)} back to ", Style.DIM))
             addAll(resolvedNames[0])
-          }
+          },
         ),
         CONTENT_INDENT,
       )

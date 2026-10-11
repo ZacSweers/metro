@@ -22,6 +22,7 @@ import dev.zacsweers.metro.createGraphFactory
 import dev.zacsweers.metrox.android.ActivityKey
 import dev.zacsweers.metrox.android.BroadcastReceiverKey
 import dev.zacsweers.metrox.android.ContentProviderKey
+import dev.zacsweers.metrox.android.MetroAppComponentFactory
 import dev.zacsweers.metrox.android.MetroAppComponentProviders
 import dev.zacsweers.metrox.android.MetroApplication
 import dev.zacsweers.metrox.android.ServiceKey
@@ -112,6 +113,24 @@ class MetroAppComponentFactoryTest {
     assertThat(provider.value).isEqualTo(TEST_STRING)
   }
 
+  @Test
+  fun plainApplication() {
+    val factory = MetroAppComponentFactory()
+    val cl = javaClass.classLoader!!
+
+    // Android asks for a plain Application when it starts the app for a full backup or restore.
+    val app = factory.instantiateApplication(cl, Application::class.java.name)
+    assertThat(app).isNotInstanceOf(MetroApplication::class.java)
+
+    // No MetroApplication is set now, so the factory falls back to default instantiation.
+    val activity = factory.instantiateActivity(cl, PlainActivity::class.java.name, null)
+    assertThat(activity).isInstanceOf(PlainActivity::class.java)
+    val service = factory.instantiateService(cl, PlainService::class.java.name, null)
+    assertThat(service).isInstanceOf(PlainService::class.java)
+    val receiver = factory.instantiateReceiver(cl, PlainReceiver::class.java.name, null)
+    assertThat(receiver).isInstanceOf(PlainReceiver::class.java)
+  }
+
   // Test component classes
   @Inject
   @ActivityKey
@@ -170,5 +189,15 @@ class MetroAppComponentFactoryTest {
       selection: String?,
       selectionArgs: Array<out String>?,
     ) = 0
+  }
+
+  class PlainActivity : Activity()
+
+  class PlainService : Service() {
+    override fun onBind(intent: Intent?) = null
+  }
+
+  class PlainReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context?, intent: Intent?) {}
   }
 }

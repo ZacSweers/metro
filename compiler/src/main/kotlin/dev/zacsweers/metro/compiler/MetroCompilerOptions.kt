@@ -3,6 +3,8 @@
 package dev.zacsweers.metro.compiler
 
 import dev.zacsweers.metro.compiler.compat.KotlinToolingVersion
+import dev.zacsweers.metro.compiler.fir.irReportedDiagnosticNames
+import dev.zacsweers.metro.compiler.fir.metroDiagnosticNames
 import dev.zacsweers.metro.compiler.internal.isTopLevelFirGenerationSupported
 import org.jetbrains.kotlin.compiler.plugin.AbstractCliOption
 import org.jetbrains.kotlin.compiler.plugin.CliOption
@@ -30,11 +32,22 @@ private val <T : Any> RawMetroOption<T>.key: CompilerConfigurationKey<T>
     return compilerConfigurationKeysByName.getValue(name) as CompilerConfigurationKey<T>
   }
 
+/** Holds every occurrence of an option that allows multiple occurrences. */
+private val <T : Any> RawMetroOption<T>.listKey: CompilerConfigurationKey<List<T>>
+  get() {
+    @Suppress("UNCHECKED_CAST")
+    return compilerConfigurationKeysByName.getValue(name) as CompilerConfigurationKey<List<T>>
+  }
+
 internal fun <T : Any> RawMetroOption<T>.put(
   configuration: CompilerConfiguration,
   value: String,
 ) {
-  configuration.put(key, valueMapper(value))
+  if (allowMultipleOccurrences) {
+    configuration.add(listKey, valueMapper(value))
+  } else {
+    configuration.put(key, valueMapper(value))
+  }
 }
 
 internal fun CompilerConfiguration.metroOptionValue(option: MetroOption): Any =
@@ -45,8 +58,17 @@ internal fun MetroOptions.Companion.load(
   kotlinCompilerVersion: KotlinToolingVersion?,
   isIde: Boolean,
 ): MetroOptions = buildOptions {
+  omitRedundantMirrors =
+    kotlinCompilerVersion?.let(::kotlinVersionSupportsOmittingRedundantMirrors) == true
+
   for (entry in MetroOption.entries) {
-    configuration[entry.raw.key]?.let { applyOptionValue(entry, it) }
+    if (entry.raw.allowMultipleOccurrences) {
+      for (value in configuration.getList(entry.raw.listKey)) {
+        applyOptionValue(entry, value)
+      }
+    } else {
+      configuration[entry.raw.key]?.let { applyOptionValue(entry, it) }
+    }
   }
 
   val firHintOptionIsConfigured =
@@ -76,13 +98,13 @@ internal fun MetroOptions.validate(
   if (contributionHintsAreGeneratedInIr && kotlinVersionSupportsTopLevelFirGen(compilerVersion)) {
     onError(
       "generateContributionHintsInFir cannot be disabled when generateContributionHints is enabled " +
-        "on Kotlin $compilerVersion."
+        "on Kotlin $compilerVersion.",
     )
     valid = false
   } else if (contributionProvidersAreEnabledWithoutFirHintGen) {
     onError(
       "generateContributionProviders with generateContributionHints requires " +
-        "generateContributionHintsInFir to also be enabled."
+        "generateContributionHintsInFir to also be enabled.",
     )
     valid = false
   }
@@ -90,9 +112,39 @@ internal fun MetroOptions.validate(
   if (unusedGraphInputsSeverity.isIdeOnly) {
     onError(
       "unusedGraphInputsSeverity (set to ${unusedGraphInputsSeverity.name}) does not support IDE_WARN/IDE_ERROR " +
-        "because the underlying check only runs during IR (CLI-only). Use WARN, ERROR, or NONE instead."
+        "because the underlying check only runs during IR (CLI-only). Use WARN, ERROR, or NONE instead.",
     )
     valid = false
+  }
+  return valid
+}
+
+internal fun MetroOptions.validateDiagnosticLevels(
+  configuration: CompilerConfiguration,
+  onError: (String) -> Unit,
+): Boolean {
+  var valid = true
+  val configuredNames =
+    configuration.getList(MetroOption.DIAGNOSTIC_LEVEL.raw.listKey).flatMap {
+      (it as Map<*, *>).keys
+    }
+  val duplicateNames = configuredNames.groupingBy { it }.eachCount().filterValues { it > 1 }.keys
+  for (name in duplicateNames) {
+    onError("diagnostic-level is duplicated for $name.")
+    valid = false
+  }
+
+  for (name in diagnosticLevels.keys) {
+    if (name !in metroDiagnosticNames) {
+      onError("diagnostic-level references unknown Metro diagnostic $name.")
+      valid = false
+    } else if (name in irReportedDiagnosticNames) {
+      onError(
+        "diagnostic-level does not support $name because it is reported in IR. " +
+          "Only diagnostics reported in FIR are supported.",
+      )
+      valid = false
+    }
   }
   return valid
 }
@@ -126,7 +178,7 @@ private fun MetroOptions.validateKotlinJsIC(
     onError(
       "Kotlin/JS does not support generating top-level declarations with incremental compilation enabled. " +
         "See https://youtrack.jetbrains.com/issue/KT-82395 and https://youtrack.jetbrains.com/issue/KT-82989. " +
-        "Either disable ${jsICOptions.joinToString()} for JS targets or disable JS IC."
+        "Either disable ${jsICOptions.joinToString()} for JS targets or disable JS IC.",
     )
     return false
   }
@@ -143,6 +195,12 @@ private val MIN_KOTLIN_2_4_DEV_JS_IC = KotlinToolingVersion("2.4.0-dev-8064")
  * Minimum Kotlin non-dev version on the 2.4.x line that supports JS IC with top-level declarations.
  */
 private val MIN_KOTLIN_2_4_JS_IC = KotlinToolingVersion("2.4.0-Beta2")
+
+private val MIN_KOTLIN_OMIT_REDUNDANT_MIRRORS = KotlinToolingVersion("2.4.0")
+
+internal fun kotlinVersionSupportsOmittingRedundantMirrors(version: KotlinToolingVersion): Boolean {
+  return version >= MIN_KOTLIN_OMIT_REDUNDANT_MIRRORS
+}
 
 internal fun kotlinVersionSupportsTopLevelFirGen(version: KotlinToolingVersion): Boolean {
   val isDevVersion = version.maturity == KotlinToolingVersion.Maturity.DEV

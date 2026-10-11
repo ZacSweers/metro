@@ -45,6 +45,15 @@ fun defaultConfig(): DefaultConfig {
   return DefaultConfig()
 }
 
+// FILE: ContributionProviders_BoundedNames.kt
+@file:JvmName(name = "ObserveMapUserLocationStyleUseCaseImplContributionsToAccountUserScopeAccountUserScopeKt")
+package metro.hints
+
+@Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+fun AccountUserScope(contributed: ObserveMapUserLocationStyleUseCaseImplContributions.ToAccountUserScope) {
+  return error(message = "Never called")
+}
+
 // FILE: ObserveMapUserLocationStyleUseCaseImplContributions.kt
 
 @HiddenFromObjC
@@ -231,13 +240,5 @@ abstract class ObserveMapUserLocationStyleUseCaseImplContributions {
 
   }
 
-}
-
-// FILE: observeMapUserLocationStyleUseCaseImplContributionsToAccountUserScopeAccountUserScope.kt
-package metro.hints
-
-@Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-fun AccountUserScope(contributed: ObserveMapUserLocationStyleUseCaseImplContributions.ToAccountUserScope) {
-  return error(message = "Never called")
 }
 

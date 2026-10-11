@@ -186,7 +186,7 @@ internal class GraphDeclarationExtractor(
         supertypeKeys = supertypeKeys,
         supertypeDeclarations = supertypeDeclarations,
         extensionFactories = extensionFactories,
-        defaultImplementations = memberTarget.defaultImplementations,
+        memberOverrides = memberTarget.memberOverrides,
       )
     }
 

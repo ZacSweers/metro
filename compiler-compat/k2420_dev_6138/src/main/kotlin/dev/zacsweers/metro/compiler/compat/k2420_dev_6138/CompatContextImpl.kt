@@ -14,24 +14,31 @@ import org.jetbrains.kotlin.ir.util.CustomKotlinLikeDumpStrategy
 import org.jetbrains.kotlin.ir.util.KotlinLikeDumpOptions
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 
-public class CompatContextImpl : CompatContext by DelegateType() {
+public class CompatContextImpl private constructor(private val delegate: DelegateType) :
+  CompatContext by delegate {
+  public constructor() : this(DelegateType())
+
   override val supportsIrGeneratedClasses: Boolean = true
 
   override fun createIrGeneratedDeclarationsRegistrar(
-    pluginContext: IrPluginContext
+    pluginContext: IrPluginContext,
   ): IrGeneratedDeclarationsRegistrarCompat {
     return RegisterClassIrGeneratedDeclarationsRegistrarCompat(
-      pluginContext.metadataDeclarationRegistrar
+      pluginContext.metadataDeclarationRegistrar,
     )
   }
 
   override val pluginGeneratedSourceElementKind: KtFakeSourceElementKind
-    get() = KtFakeSourceElementKind.PluginGenerated.Default
+    get() {
+      if (hasDefaultPluginGeneratedSourceKind) {
+        return KtFakeSourceElementKind.PluginGenerated.Default
+      }
+      return delegate.pluginGeneratedSourceElementKind
+    }
 
   override fun IrElement.dumpKotlinLikeCompat(
     options: KotlinLikeDumpOptions,
     classNameTransformer: (context: IrDeclaration?, declaration: IrDeclarationWithName) -> String,
-    fallback: () -> String,
   ): String {
     val customDumpStrategy = options.customDumpStrategy
     return dumpKotlinLike(
@@ -45,8 +52,8 @@ public class CompatContextImpl : CompatContext by DelegateType() {
               ): String {
                 return classNameTransformer(container, declaration)
               }
-            }
-        )
+            },
+        ),
     )
   }
 
@@ -54,5 +61,22 @@ public class CompatContextImpl : CompatContext by DelegateType() {
     override val minVersion: String = "2.4.20-dev-6138"
 
     override fun create(): CompatContext = CompatContextImpl()
+  }
+}
+
+/**
+ * Quail shares its reported Kotlin version with newer IDEs and uses the original source kind. Check
+ * the source-kind API once per compiler classloader.
+ */
+private val hasDefaultPluginGeneratedSourceKind: Boolean by lazy {
+  try {
+    Class.forName(
+      "org.jetbrains.kotlin.KtFakeSourceElementKind\$PluginGenerated\$Default",
+      false,
+      KtFakeSourceElementKind::class.java.classLoader,
+    )
+    true
+  } catch (_: ClassNotFoundException) {
+    false
   }
 }

@@ -1,15 +1,21 @@
 {
   "graph": "AppGraph.Impl.ChildGraphImpl",
+  "graphType": "ChildGraph",
+  "parentGraph": "AppGraph",
   "scopes": [],
   "aggregationScopes": [],
   "roots": {
     "accessors": [
       {
         "key": "FirstParentConsumer",
+        "name": "first",
+        "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "SecondParentConsumer",
+        "name": "second",
+        "isProperty": true,
         "isDeferrable": false
       }
     ],
@@ -34,6 +40,7 @@
     "enableGraphSharding": true,
     "keysPerGraphShard": 2000,
     "mergedSupertypeChunkSize": 0,
+    "multibindingGetterThreshold": 25,
     "enableSwitchingProviders": false,
     "publicScopedProviderSeverity": "NONE",
     "nonPublicContributionSeverity": "NONE",
@@ -139,7 +146,8 @@
     "generateStaticAnnotations": true,
     "enableRuntimeTracing": false,
     "memberNamingStrategy": "DESCRIPTIVE",
-    "maxGeneratedClassNameLength": 233
+    "maxGeneratedClassNameLength": 233,
+    "diagnosticLevels": {}
   },
   "stats": {
     "providerFactories": 0,
@@ -172,7 +180,11 @@
       "shardsGenerated": 0,
       "shardedSupertypes": 0,
       "shardedInitFunctions": 0,
-      "providerInlines": 0
+      "providerInlines": 0,
+      "providerInlineFallbacks": {
+        "deferredAccess": 0,
+        "unavailableValue": 0
+      }
     }
   },
   "bindings": [
@@ -181,6 +193,7 @@
       "bindingKind": "BoundInstance",
       "isScoped": false,
       "nameHint": "parent",
+      "isGraphInput": false,
       "dependencies": [],
       "isSynthetic": false,
       "declaration": "AppGraph"
@@ -218,6 +231,11 @@
       "bindingKind": "GraphDependency",
       "isScoped": false,
       "nameHint": "ChildGraphImplParentValue",
+      "graphDependency": {
+        "ownerKey": "AppGraph.Impl",
+        "ownerGraph": "AppGraph",
+        "fromParent": true
+      },
       "dependencies": [
         {
           "key": "AppGraph.Impl",

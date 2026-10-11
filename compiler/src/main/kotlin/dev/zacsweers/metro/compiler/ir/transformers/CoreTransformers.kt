@@ -172,7 +172,7 @@ internal class CoreTransformers(
             declaration.getOrCreateGraphImplClassShell()
           } else {
             reportCompilerBug(
-              "Expected generated dependency graph for ${declaration.classIdOrFail}"
+              "Expected generated dependency graph for ${declaration.classIdOrFail}",
             )
           }
       }

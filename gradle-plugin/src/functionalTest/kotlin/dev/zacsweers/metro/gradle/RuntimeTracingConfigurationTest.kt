@@ -39,7 +39,7 @@ class RuntimeTracingConfigurationTest {
             }
             """,
             "AppGraph",
-          )
+          ),
         )
 
       override fun StringBuilder.onBuildScript() {

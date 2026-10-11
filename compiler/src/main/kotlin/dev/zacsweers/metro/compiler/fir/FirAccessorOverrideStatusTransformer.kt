@@ -9,7 +9,6 @@ import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.descriptors.isInterface
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.classKind
-import org.jetbrains.kotlin.fir.copy
 import org.jetbrains.kotlin.fir.declarations.FirAnonymousFunction
 import org.jetbrains.kotlin.fir.declarations.FirBackingField
 import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
@@ -147,7 +146,7 @@ internal class FirAccessorOverrideStatusTransformer(
 
       if (hasMatchingCallable) {
         // Found a match - immediately return transformed status
-        return status.copy(isOverride = true)
+        return status.copyWithOverrideCompat(isOverride = true)
       }
     }
 

@@ -34,6 +34,6 @@ fun main() {
     AbstractIrDumpTest,
     AbstractReportsTest,
   >(
-    exclusionPattern
+    exclusionPattern,
   )
 }

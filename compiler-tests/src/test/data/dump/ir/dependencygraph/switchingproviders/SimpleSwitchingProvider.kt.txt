@@ -50,17 +50,14 @@ interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
-    private val thisGraphInstance: Impl
-      field = <this>
-
     private val scopedClassProvider: Provider<ScopedClass>
-      field = DoubleCheck/* companion */.provider<Provider<ScopedClass>, ScopedClass>(delegate = SwitchingProvider<ScopedClass>(graph = <this>, id = 2))
+      field = provider<Provider<ScopedClass>, ScopedClass>(delegate = SwitchingProvider<ScopedClass>(graph = <this>, id = 2))
 
     private val provideReusedIntProvider: Provider<Int>
       field = SwitchingProvider<Int>(graph = <this>, id = 1)
 
     private val provideStringProvider: Provider<String>
-      field = DoubleCheck/* companion */.provider<Provider<String>, String>(delegate = SwitchingProvider<String>(graph = <this>, id = 0))
+      field = provider<Provider<String>, String>(delegate = SwitchingProvider<String>(graph = <this>, id = 0))
 
     private class SwitchingProvider<T : Any?> : Provider<T> {
       private val graph: Impl
@@ -76,10 +73,11 @@ interface AppGraph {
       override fun invoke(): T {
         return { // BLOCK
           val tmp0_id: Int = <this>.#id
+          val tmp1_graph: AppGraph.Impl = <this>.#graph
           when {
+            EQEQ(arg0 = tmp0_id, arg1 = 0) -> tmp1_graph.provideString() /*as T */
+            EQEQ(arg0 = tmp0_id, arg1 = 1) -> tmp1_graph.provideReusedInt() /*as T */
             EQEQ(arg0 = tmp0_id, arg1 = 2) -> ScopedClass() /*as T */
-            EQEQ(arg0 = tmp0_id, arg1 = 1) -> <this>.#graph.#thisGraphInstance.provideReusedInt() /*as T */
-            EQEQ(arg0 = tmp0_id, arg1 = 0) -> <this>.#graph.#thisGraphInstance.provideString() /*as T */
             else -> throw error(message = "Unexpected SwitchingProvider id: " + tmp0_id)
           }
         }
@@ -100,7 +98,7 @@ interface AppGraph {
 
     override val int2: Function0<Int>
       override get(): Function0<Int> {
-        return <this>.#provideReusedIntProvider
+        return <this>.<get-int1>()
       }
 
     override val scopedClass: ScopedClass

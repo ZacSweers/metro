@@ -674,7 +674,7 @@ private class GraphLineMarkerInfo(
             override fun actionPerformed(e: AnActionEvent) {
               e.project?.let { ValidateMetroGraphAction.openAndValidate(it, classId, file) }
             }
-          }
+          },
         )
       }
     }
@@ -683,7 +683,7 @@ private class GraphLineMarkerInfo(
 
 /** Related-item factories resolve and order targets in the platform's background read action. */
 private fun relatedItems(
-  targets: List<SmartPsiElementPointer<out PsiElement>>
+  targets: List<SmartPsiElementPointer<out PsiElement>>,
 ): List<GotoRelatedItem> {
   val elements = targets.mapNotNull { pointer ->
     ProgressManager.checkCanceled()
@@ -813,7 +813,7 @@ private fun orderNavigationTargets(targets: List<PsiElement>): List<PsiElement> 
       Comparator { left, right ->
         ProgressManager.checkCanceled()
         navigationTargetOrder.compare(left, right)
-      }
+      },
     )
     .map(NavigationTargetOrder::element)
 }

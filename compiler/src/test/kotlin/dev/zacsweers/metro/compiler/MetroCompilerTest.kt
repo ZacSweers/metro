@@ -50,7 +50,9 @@ abstract class MetroCompilerTest {
         generateContributionHintsInFir = supportsFirContributionHints,
         omitRedundantMirrors =
           testOmitRedundantMirrors
-            ?: MetroOption.OMIT_REDUNDANT_MIRRORS.raw.defaultValue.expectAs<Boolean>(),
+            ?: kotlinVersionSupportsOmittingRedundantMirrors(
+              CompatContext.Factory.loadCompilerVersion(),
+            ),
       )
 
   protected val debugOutputDir: Path
@@ -126,6 +128,10 @@ abstract class MetroCompilerTest {
               processor.option(entry.raw.cliOption, generateAssistedFactories)
             ENABLE_TOP_LEVEL_FUNCTION_INJECTION ->
               processor.option(entry.raw.cliOption, enableTopLevelFunctionInjection)
+            FUNCTION_INJECT_ANNOTATIONS_OVERRIDE -> {
+              val annotations = functionInjectAnnotationsOverride ?: continue
+              processor.option(entry.raw.cliOption, annotations.joinToString(":"))
+            }
             GENERATE_CONTRIBUTION_HINTS ->
               processor.option(entry.raw.cliOption, generateContributionHints)
             GENERATE_CONTRIBUTION_HINTS_IN_FIR ->
@@ -142,6 +148,8 @@ abstract class MetroCompilerTest {
             KEYS_PER_GRAPH_SHARD -> processor.option(entry.raw.cliOption, keysPerGraphShard)
             MERGED_SUPERTYPE_CHUNK_SIZE ->
               processor.option(entry.raw.cliOption, mergedSupertypeChunkSize)
+            MULTIBINDING_GETTER_THRESHOLD ->
+              processor.option(entry.raw.cliOption, multibindingGetterThreshold)
             PUBLIC_SCOPED_PROVIDER_SEVERITY ->
               processor.option(entry.raw.cliOption, publicScopedProviderSeverity)
             NON_PUBLIC_CONTRIBUTION_SEVERITY ->
@@ -415,6 +423,12 @@ abstract class MetroCompilerTest {
             }
             MAX_GENERATED_CLASS_NAME_LENGTH ->
               processor.option(entry.raw.cliOption, maxGeneratedClassNameLength)
+            DIAGNOSTIC_LEVEL -> {
+              for ((name, severity) in diagnosticLevels) {
+                yield(processor.option(entry.raw.cliOption, "$name:${severity.levelName}"))
+              }
+              continue
+            }
           }
         yield(option)
       }
@@ -557,7 +571,7 @@ abstract class MetroCompilerTest {
       .apply {
         if (exitCode != expectedExitCode) {
           throw AssertionError(
-            "Compilation exited with $exitCode but expected ${expectedExitCode}:\n${messages}"
+            "Compilation exited with $exitCode but expected ${expectedExitCode}:\n${messages}",
           )
         }
       }

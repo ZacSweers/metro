@@ -30,7 +30,8 @@ internal class ExtensionPredicates(private val classIds: ClassIds) {
 
   internal val dependencyGraphAndFactoryPredicate =
     annotated(
-      (classIds.dependencyGraphAnnotations + classIds.dependencyGraphFactoryAnnotations).asFqNames()
+      (classIds.dependencyGraphAnnotations + classIds.dependencyGraphFactoryAnnotations)
+        .asFqNames(),
     )
 
   internal val dependencyGraphCompanionPredicate =
@@ -44,7 +45,12 @@ internal class ExtensionPredicates(private val classIds: ClassIds) {
 
   internal val providesAnnotationPredicate = annotated(classIds.providesAnnotations.asFqNames())
 
-  internal val injectAnnotationPredicate = annotated(classIds.injectAnnotations.asFqNames())
+  internal val topLevelFunctionInjectPredicate =
+    if (classIds.topLevelFunctionInjectAnnotations.isEmpty()) {
+      null
+    } else {
+      annotated(classIds.topLevelFunctionInjectAnnotations.asFqNames())
+    }
 
   internal val injectLikeAnnotationsPredicate =
     annotated(classIds.injectLikeAnnotations.asFqNames())

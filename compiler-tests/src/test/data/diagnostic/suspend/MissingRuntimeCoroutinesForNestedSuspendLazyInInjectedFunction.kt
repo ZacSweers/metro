@@ -5,7 +5,7 @@
 // RUN_PIPELINE_TILL: FIR2IR
 // RENDER_IR_DIAGNOSTICS_FULL_TEXT
 @Inject
-fun NestedLazyFunction(
+fun <!MISSING_RUNTIME_COROUTINES!>NestedLazyFunction<!>(
   value: () -> SuspendLazy<String>
 ): String = value.toString()
 

@@ -5,5 +5,6 @@ package dev.zacsweers.metro
 /** Produces values of type [T] in a suspend context. */
 @ExperimentalMetroCoroutinesApi
 public actual fun interface SuspendProvider<T> {
+  /** Returns an instance of [T]. */
   public actual suspend operator fun invoke(): T
 }

@@ -65,7 +65,7 @@ fun irDiagnosticsForFileCompat(
   val getter =
     diagnosticsByFilePathGetter
       ?: error(
-        "Neither diagnosticsByFile nor diagnosticsByFilePath found on BaseDiagnosticsCollector"
+        "Neither diagnosticsByFile nor diagnosticsByFilePath found on BaseDiagnosticsCollector",
       )
   @Suppress("UNCHECKED_CAST")
   val byPath = getter.invoke(reporter) as Map<String?, List<KtDiagnostic>>
@@ -82,10 +82,12 @@ val tagsGeneratorCheckerHandler: Constructor<AnalysisHandler<FirOutputArtifact>>
 
 val tagsGeneratorCheckerAfterAnalysis: Constructor<AfterAnalysisChecker>? = null
 
+val backendTestPhase: TestPhase = TestPhase.BACKEND
+
 fun TestConfigurationBuilder.useIrDumpFailureSuppressorsCompat() {
   useAfterAnalysisCheckers(
     ::BlackBoxCodegenSuppressor,
-    ::PhasedPipelineChecker.bind(TestPhase.BACKEND),
+    ::PhasedPipelineChecker.bind(backendTestPhase),
   )
 }
 
@@ -97,11 +99,11 @@ fun RegisteredDirectivesBuilder.firIdenticalCompat() {
   +FIR_IDENTICAL
 }
 
-abstract class MetroReportsCheckerCompat(testServices: TestServices) :
+abstract class MetroAfterAnalysisCheckerCompat(testServices: TestServices) :
   AfterAnalysisChecker(testServices) {
   final override fun check(failedAssertions: List<WrappedException>) {
-    checkMetroReports(failedAssertions.isNotEmpty())
+    checkAfterAnalysis(failedAssertions.isNotEmpty())
   }
 
-  abstract fun checkMetroReports(thereWereFailures: Boolean)
+  abstract fun checkAfterAnalysis(thereWereFailures: Boolean)
 }

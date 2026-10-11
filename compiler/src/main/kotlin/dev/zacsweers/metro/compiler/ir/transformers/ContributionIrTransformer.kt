@@ -18,6 +18,7 @@ import dev.zacsweers.metro.compiler.ir.IrContributionData
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.addDefaultConstructor
 import dev.zacsweers.metro.compiler.ir.addDeprecatedHiddenAnnotation
 import dev.zacsweers.metro.compiler.ir.allSupertypesSequence
 import dev.zacsweers.metro.compiler.ir.annotationClass
@@ -86,7 +87,6 @@ import org.jetbrains.kotlin.ir.overrides.isEffectivelyPrivate
 import org.jetbrains.kotlin.ir.types.isMarkedNullable
 import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.addFakeOverrides
-import org.jetbrains.kotlin.ir.util.addSimpleDelegatingConstructor
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.copyTo
@@ -300,7 +300,7 @@ internal class ContributionIrTransformer(
   }
 
   private fun IrClass.shouldContributeDirectSupertype(
-    scopedContributions: List<Contribution>
+    scopedContributions: List<Contribution>,
   ): Boolean {
     if (kind != ClassKind.INTERFACE) return false
     if (isBindingContainer()) return false
@@ -363,15 +363,10 @@ internal class ContributionIrTransformer(
         addContributesToAnnotation(scope)
         addOriginAnnotation(this@getOrCreateContributionProviderContainer)
         metadataDeclarationRegistrarCompat.registerClassAsMetadataVisible(this)
-        addSimpleDelegatingConstructor(
-            irBuiltIns.anyClass.owner.primaryConstructor!!,
-            irBuiltIns,
-            isPrimary = true,
-          )
-          .apply {
-            visibility = DescriptorVisibilities.PRIVATE
-            metadataDeclarationRegistrarCompat.registerConstructorAsMetadataVisible(this)
-          }
+        addDefaultConstructor().apply {
+          visibility = DescriptorVisibilities.PRIVATE
+          metadataDeclarationRegistrarCompat.registerConstructorAsMetadataVisible(this)
+        }
       }
   }
 
@@ -420,7 +415,7 @@ internal class ContributionIrTransformer(
           annotation.arguments[0] =
             pluginContext.createIrBuilder(symbol).kClassReference(scopeSymbol)
         }
-      }
+      },
     )
   }
 
@@ -435,7 +430,7 @@ internal class ContributionIrTransformer(
           annotation.arguments[0] =
             pluginContext.createIrBuilder(symbol).kClassReference(scopeSymbol)
         }
-      }
+      },
     )
   }
 
@@ -448,7 +443,7 @@ internal class ContributionIrTransformer(
           pluginContext
             .createIrBuilder(symbol)
             .irString(Symbols.StringNames.CONTRIBUTION_PROVIDER_ORIGIN_CONTEXT)
-      }
+      },
     )
   }
 
@@ -484,7 +479,7 @@ internal class ContributionIrTransformer(
       } else {
         originClass.findInjectableConstructor(onlyUsePrimaryConstructor = false)
           ?: reportCompilerBug(
-            "No inject constructor found in IR for contribution provider ${originClass.fqNameWhenAvailable}"
+            "No inject constructor found in IR for contribution provider ${originClass.fqNameWhenAvailable}",
           )
       }
     val nameAllocator = NameAllocator(mode = COUNT)
@@ -516,12 +511,12 @@ internal class ContributionIrTransformer(
       val (bindingTypeKey, explicitBindingType) =
         boundTypeResolver.resolveBoundType(originClass, contribution.annotation)
           ?: reportCompilerBug(
-            "Could not resolve bound type for ${originClass.classIdOrFail}. This should have been caught in FIR."
+            "Could not resolve bound type for ${originClass.classIdOrFail}. This should have been caught in FIR.",
           )
       val legacyName =
         nameAllocator.newName(
           contribution.callableName.replace("bind", "provide") +
-            originClass.classIdOrFail.contributionSimpleName()
+            originClass.classIdOrFail.contributionSimpleName(),
         )
       val qualifier = explicitBindingType?.qualifier ?: bindingTypeKey.qualifier
       val mapKey =
@@ -585,7 +580,7 @@ internal class ContributionIrTransformer(
                       originClass = originClass,
                       targetConstructor = injectConstructor!!,
                       function = this@apply,
-                    )
+                    ),
                   )
                 }
             }
@@ -644,7 +639,7 @@ internal class ContributionIrTransformer(
     val targetClass = singleAbstractFunction().returnType.rawType()
     return targetClass.findInjectableConstructor(onlyUsePrimaryConstructor = false)
       ?: reportCompilerBug(
-        "No inject constructor found in IR for assisted factory contribution provider ${fqNameWhenAvailable}"
+        "No inject constructor found in IR for assisted factory contribution provider ${fqNameWhenAvailable}",
       )
   }
 
@@ -762,13 +757,13 @@ internal class ContributionIrTransformer(
                 originClass = originClass,
                 targetConstructor = assistedFactoryTargetConstructor!!,
                 function = function,
-              )
+              ),
             )
           } else {
             val calleeCtor =
               injectConstructor
                 ?: reportCompilerBug(
-                  "No inject constructor found in IR for provided contribution ${declaration.fqNameWhenAvailable}"
+                  "No inject constructor found in IR for provided contribution ${declaration.fqNameWhenAvailable}",
                 )
 
             copyParameterDefaultValues(
@@ -833,7 +828,7 @@ internal class ContributionIrTransformer(
             val functionParam =
               functionParams[parameter.name]
                 ?: reportCompilerBug(
-                  "No contribution provider parameter ${parameter.name} in ${function.name}. Available: ${functionParams.keys}"
+                  "No contribution provider parameter ${parameter.name} in ${function.name}. Available: ${functionParams.keys}",
                 )
             typeAsProviderArgument(
               contextKey = parameter.contextualTypeKey,
@@ -844,7 +839,7 @@ internal class ContributionIrTransformer(
           }
         }
         ?: reportCompilerBug(
-          "No generated target factory found for assisted factory contribution ${originClass.classIdOrFail}"
+          "No generated target factory found for assisted factory contribution ${originClass.classIdOrFail}",
         )
 
     val factoryProvider =
@@ -909,7 +904,7 @@ internal class ContributionIrTransformer(
           val (bindingTypeKey, explicitBindingType) =
             boundTypeResolver.resolveBoundType(annotatedType, annotation)
               ?: reportCompilerBug(
-                "Could not resolve bound type for ${annotatedType.classIdOrFail}. This should have been caught in FIR."
+                "Could not resolve bound type for ${annotatedType.classIdOrFail}. This should have been caught in FIR.",
               )
 
           val qualifier = explicitBindingType?.qualifier ?: bindingTypeKey.qualifier

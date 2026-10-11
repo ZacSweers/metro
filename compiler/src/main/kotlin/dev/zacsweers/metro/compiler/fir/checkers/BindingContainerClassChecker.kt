@@ -159,7 +159,7 @@ internal object BindingContainerClassChecker : FirClassChecker(MppCheckerKind.Co
         BINDING_CONTAINER_ERROR,
         "Classes cannot be annotated with both '@${
           bindingContainerAnno.toAnnotationClass(
-            session
+            session,
           )?.name
         }' and '@${graphLikeAnno.toAnnotationClass(session)?.name}'.",
       )
@@ -283,7 +283,7 @@ internal object BindingContainerClassChecker : FirClassChecker(MppCheckerKind.Co
             )
           } else {
             noArgConstructor.validateVisibility(
-              "Contributed binding container ${declaration.classId.diagnosticString}'s no-arg constructor"
+              "Contributed binding container ${declaration.classId.diagnosticString}'s no-arg constructor",
             ) {
               return
             }

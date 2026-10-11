@@ -65,7 +65,7 @@ private fun ClassId.joinSimpleNamesPrivate(
         } else {
           it.asString()
         }
-      }
+      },
     ),
   )
 

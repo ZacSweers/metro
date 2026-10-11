@@ -2,10 +2,10 @@
 # Run `kempt --help` to see all options.
 
 [ktfmt]
-version = "0.64"
+version = "0.65"
 
 [gjf]
-version = "1.36.1"
+version = "1.37.0"
 
 [license-header]
 file = "config/license-header.txt"

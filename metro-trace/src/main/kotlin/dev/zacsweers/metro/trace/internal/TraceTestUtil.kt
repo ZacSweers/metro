@@ -107,7 +107,7 @@ public class MetroTraceTestScope(
           appendLine("Expected next Metro trace event to match.")
           appendLine("Expected: $expected")
           appendLine("Actual: $actual")
-        }
+        },
       )
     }
   }
@@ -120,7 +120,7 @@ public class MetroTraceTestScope(
           appendLine("Expected all Metro trace events to be asserted.")
           appendLine("Remaining:")
           remainingEvents.forEach { appendLine("  $it") }
-        }
+        },
       )
     }
   }

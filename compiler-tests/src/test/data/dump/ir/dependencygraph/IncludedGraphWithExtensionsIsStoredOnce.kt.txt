@@ -1,0 +1,182 @@
+@DependencyGraph
+interface AppGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : AppGraph {
+    private val includedGraphInstance: IncludedGraph
+      field = included
+
+    private constructor(@Includes included: IncludedGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override val string: String
+      override get(): String {
+        return <this>.#includedGraphInstance.<get-string>()
+      }
+
+  }
+
+  companion object Companion : Factory {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
+    override fun create(@Includes included: IncludedGraph): AppGraph {
+      return Impl(included = included)
+    }
+
+  }
+
+  @DependencyGraph.Factory
+  interface Factory {
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    @MetroImplMarker
+    object Impl : Factory {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @GraphFactoryInvokeFunctionMarker
+      override fun create(@Includes included: IncludedGraph): AppGraph {
+        return Impl(included = included)
+      }
+
+    }
+
+    abstract fun create(@Includes included: IncludedGraph): AppGraph
+
+  }
+
+  abstract val string: String
+    abstract get
+
+}
+
+@GraphExtension
+interface ChildGraph {
+  @GraphExtension.Factory
+  interface Factory {
+    abstract fun createChild(): ChildGraph
+
+  }
+
+}
+
+@DependencyGraph
+interface IncludedGraph : ChildGraph.Factory {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : IncludedGraph {
+    @DependencyGraph
+    private class ChildGraphImpl : ChildGraph {
+      private val includedGraphImpl: Impl
+        field = includedGraphImpl
+
+      constructor(includedGraphImpl: Impl) /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+    }
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override fun createChild(): ChildGraph {
+      return ChildGraphImpl(includedGraphImpl = <this>)
+    }
+
+    override val string: String
+      override get(): String {
+        return <this>.provideString()
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
+    operator fun invoke(): IncludedGraph {
+      return Impl()
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideString", propertyName = "", startOffset = 245, endOffset = 295, newInstanceName = "provideString")
+  class ProvideStringMetroFactory : Factory<String> {
+    private /* final field */ val instance: IncludedGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(instance: IncludedGraph): ProvideStringMetroFactory {
+        return ProvideStringMetroFactory(instance = instance)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun provideString(instance: IncludedGraph): String {
+        return instance.provideString()
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(instance: IncludedGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): String {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): String {
+      return ProvideStringMetroFactory/* companion */.provideString(instance = <this>.#instance)
+    }
+
+  }
+
+  @Provides
+  fun provideString(): String {
+    return "included"
+  }
+
+  abstract val string: String
+    abstract get
+
+}
+

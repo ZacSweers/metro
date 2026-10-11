@@ -116,16 +116,20 @@ internal class InjectedClassTransformer(
     val injectableConstructor =
       declaration.findInjectableConstructor(onlyUsePrimaryConstructor = false) ?: return false
 
-    // Skip factory generation when generateContributionProviders is enabled and the class
-    // has binding contributions — the contribution provider handles construction.
+    // Contribution providers handle construction in both class generation modes.
     // @ExposeImplBinding opts out of this skip.
-    if (
-      !options.generateClassesInIr &&
-        declaration.usesContributionProviderPath(options, metroSymbols.classIds)
-    ) {
-      // Cache absence so later lookups (e.g., from BindingLookup) return null instead of
-      // attempting to generate after locking.
+    if (declaration.usesContributionProviderPath(options, metroSymbols.classIds)) {
+      // Cache absence so later binding lookups remain valid after the transformers lock.
       generatedFactories[declaration.classIdOrFail] = Optional.empty()
+
+      // Constructor-injected classes rely on this transformer to publish member-injector metadata.
+      val memberInjections = membersInjectorTransformer.getOrGenerateInjector(declaration)
+      if (memberInjections != null) {
+        declaration.writeInjectedClassMetadata(
+          classFactory = null,
+          memberInjectClass = memberInjections,
+        )
+      }
       return false
     }
 
@@ -164,7 +168,7 @@ internal class InjectedClassTransformer(
           append("Run Metro's compiler for the upstream module")
           if (options.enableDaggerRuntimeInterop) {
             append(
-              ". If Dagger owns that upstream declaration instead, run Dagger's compiler there"
+              ". If Dagger owns that upstream declaration instead, run Dagger's compiler there",
             )
           }
           appendLine(".")
@@ -179,7 +183,7 @@ internal class InjectedClassTransformer(
           val factoryCls =
             declaration.nestedClasses.singleOrNull { it.name == factoryClassName }
               ?: reportCompilerBug(
-                "Expected nested class '$factoryClassName' not found in '${declaration.kotlinFqName}'."
+                "Expected nested class '$factoryClassName' not found in '${declaration.kotlinFqName}'.",
               )
           val signatureCarrier = metadata.signature_carrier
           val signatureFunction =
@@ -285,7 +289,7 @@ internal class InjectedClassTransformer(
           createInjectConstructorFactoryShell(declaration, isAssistedInject)
         } else {
           reportCompilerBug(
-            "No expected FIR-generated factory class found for '${declaration.kotlinFqName}'."
+            "No expected FIR-generated factory class found for '${declaration.kotlinFqName}'.",
           )
         }
 
@@ -488,8 +492,8 @@ internal class InjectedClassTransformer(
     if (coroutinesRuntimeAvailability.isAvailable) return
     // Function injection carries its params on the injected function, not the synthetic
     // constructor.
-    val injectedFunctionParams =
-      declaration.injectedFunctionOrNull()?.owner?.parameters()?.regularParameters.orEmpty()
+    val injectedFunction = declaration.injectedFunctionOrNull()?.owner
+    val injectedFunctionParams = injectedFunction?.parameters()?.regularParameters.orEmpty()
     val allParams =
       constructorParameters.allParameters +
         memberInjectParameters.flatMap { it.regularParameters } +
@@ -498,7 +502,9 @@ internal class InjectedClassTransformer(
       it.contextualTypeKey.wrappedType.containsSuspendLazy()
     }
     if (!requestsSuspendLazy) return
-    reportMissingRuntimeCoroutines(declaration, "'${declaration.kotlinFqName}'")
+    // An injected function's class is generated and has no source to report on.
+    val reportedDeclaration = injectedFunction ?: declaration
+    reportMissingRuntimeCoroutines(reportedDeclaration, "'${declaration.kotlinFqName}'")
   }
 
   private fun createInjectConstructorFactoryShell(
@@ -586,7 +592,7 @@ internal class InjectedClassTransformer(
 
               else ->
                 reportCompilerBug(
-                  "Unmatched top level injected function param: $targetParam. Available: ${functionParamsByName.keys}"
+                  "Unmatched top level injected function param: $targetParam. Available: ${functionParamsByName.keys}",
                 )
             }
           }
@@ -625,7 +631,7 @@ internal class InjectedClassTransformer(
                         receiver = invokeFunction.dispatchReceiverParameter!!,
                         providerFieldsByKey = providerFieldsByKey,
                         typeRemapper = typeRemapper,
-                      )
+                      ),
                     )
                   },
               )
@@ -814,7 +820,7 @@ internal class InjectedClassTransformer(
     // Deduplicate to match the FIR-generated create() function signature
     val dedupedMerged =
       mergedParameters.copy(
-        regularParameters = mergedParameters.regularParameters.dedupeParameters()
+        regularParameters = mergedParameters.regularParameters.dedupeParameters(),
       )
 
     // Generate create()

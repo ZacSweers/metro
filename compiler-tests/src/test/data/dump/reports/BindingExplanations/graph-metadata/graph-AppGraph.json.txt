@@ -10,38 +10,56 @@
     "accessors": [
       {
         "key": "Service",
+        "name": "service",
+        "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "PrioritizedService",
+        "name": "prioritizedService",
+        "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "kotlin.collections.Set<Handler>",
+        "name": "handlers",
+        "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "ExplicitValue",
+        "name": "explicitValue",
+        "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "DefaultValue",
+        "name": "defaultValue",
+        "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "java.util.Optional<kotlin.String>",
+        "name": "optionalString",
+        "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "MemberTarget",
+        "name": "memberTarget",
+        "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "FirstMapConsumer",
+        "name": "firstMapConsumer",
+        "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "MapConsumerHolder",
+        "name": "mapConsumerHolder",
+        "isProperty": true,
         "isDeferrable": false
       }
     ],
@@ -50,7 +68,9 @@
   "extensions": {
     "accessors": [
       {
-        "key": "ChildGraph"
+        "key": "ChildGraph",
+        "name": "child",
+        "isProperty": true
       }
     ],
     "factoryAccessors": [],
@@ -70,6 +90,7 @@
     "enableGraphSharding": true,
     "keysPerGraphShard": 2000,
     "mergedSupertypeChunkSize": 0,
+    "multibindingGetterThreshold": 25,
     "enableSwitchingProviders": false,
     "publicScopedProviderSeverity": "NONE",
     "nonPublicContributionSeverity": "NONE",
@@ -175,7 +196,8 @@
     "generateStaticAnnotations": true,
     "enableRuntimeTracing": false,
     "memberNamingStrategy": "DESCRIPTIVE",
-    "maxGeneratedClassNameLength": 233
+    "maxGeneratedClassNameLength": 233,
+    "diagnosticLevels": {}
   },
   "stats": {
     "providerFactories": 4,
@@ -196,7 +218,7 @@
     "reachableKeys": 21,
     "deferredKeys": 0,
     "unusedInputs": 0,
-    "providerProperties": 4,
+    "providerProperties": 3,
     "scopedProviderProperties": 1,
     "shards": 0,
     "optimizations": {
@@ -208,7 +230,11 @@
       "shardsGenerated": 0,
       "shardedSupertypes": 0,
       "shardedInitFunctions": 0,
-      "providerInlines": 0
+      "providerInlines": 0,
+      "providerInlineFallbacks": {
+        "deferredAccess": 0,
+        "unavailableValue": 0
+      }
     }
   },
   "bindings": [
@@ -246,6 +272,7 @@
       "bindingKind": "BoundInstance",
       "isScoped": false,
       "nameHint": "AppGraphProvider",
+      "isGraphInput": false,
       "dependencies": [],
       "isSynthetic": false,
       "declaration": "AppGraph"
@@ -1121,36 +1148,6 @@
       ],
       "request": {
         "key": "MemberTarget",
-        "hasDefault": false,
-        "isOptional": false
-      },
-      "details": [
-        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
-      ]
-    },
-    {
-      "context": {
-        "id": "8:AppGraph",
-        "label": "AppGraph"
-      },
-      "phase": "lookup",
-      "outcome": "selected",
-      "candidates": [
-        {
-          "id": "11:ParentValue|11:ParentValue",
-          "key": "ParentValue",
-          "status": "selected",
-          "reason": "selected_implicit",
-          "declaration": {
-            "id": "ParentValue",
-            "label": "ParentValue"
-          },
-          "relatedDeclarations": [],
-          "details": []
-        }
-      ],
-      "request": {
-        "key": "ParentValue",
         "hasDefault": false,
         "isOptional": false
       },

@@ -23,7 +23,7 @@ import org.jetbrains.kotlin.test.model.FrontendKinds
  * on the duplicate (master added `.distinct()`, hence the divergence).
  */
 fun TestConfigurationBuilder.setupMetroJvmPipeline(
-  @Suppress("UNUSED_PARAMETER") parser: FirParser
+  @Suppress("UNUSED_PARAMETER") parser: FirParser,
 ) {
   commonConfigurationForJvmTest(
     targetFrontend = FrontendKinds.FIR,

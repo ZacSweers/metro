@@ -3,9 +3,6 @@ abstract class AppGraph : BaseGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
-    private val thisGraphInstance: Impl
-      field = <this>
-
     private constructor() /* primary */ {
       super/*AppGraph*/()
       /* <init>() */
@@ -14,7 +11,7 @@ abstract class AppGraph : BaseGraph {
 
     override val int: Int
       override get(): Int {
-        return <this>.#thisGraphInstance.provideInt()
+        return <this>.provideInt()
       }
 
     override val protectedConstructorClass: ProtectedConstructorClass
@@ -24,7 +21,7 @@ abstract class AppGraph : BaseGraph {
 
     override val string: String
       override get(): String {
-        return <this>.#thisGraphInstance.provideString()
+        return <this>.provideString()
       }
 
   }

@@ -266,7 +266,7 @@ fun interface PrimaryWorkerFactory {
       @JvmStatic
       @JsStatic
       fun create(delegateFactory: SharedWorker.MetroFactory): Provider<PrimaryWorkerFactory> {
-        return InstanceFactory/* companion */.invoke<PrimaryWorkerFactory>(value = Impl(delegateFactory = delegateFactory))
+        return providerOf<PrimaryWorkerFactory>(value = Impl(delegateFactory = delegateFactory))
       }
 
     }
@@ -301,7 +301,7 @@ fun interface SecondaryWorkerFactory {
       @JvmStatic
       @JsStatic
       fun create(delegateFactory: SharedWorker.MetroFactory): Provider<SecondaryWorkerFactory> {
-        return InstanceFactory/* companion */.invoke<SecondaryWorkerFactory>(value = Impl(delegateFactory = delegateFactory))
+        return providerOf<SecondaryWorkerFactory>(value = Impl(delegateFactory = delegateFactory))
       }
 
     }
@@ -331,10 +331,10 @@ interface TestGraph {
       field = example
 
     private val provider: Provider<Service>
-      field = Service.MetroFactory/* companion */.create(repository = Repository.MetroFactory/* companion */.create(config = Config.MetroFactory/* companion */.create(example = InstanceFactory/* companion */.invoke<ProvidedExample>(value = <this>.#instance))))
+      field = create(repository = create(config = create(example = providerOf<ProvidedExample>(value = <this>.#instance))))
 
     private val factory: SharedWorker.MetroFactory
-      field = SharedWorker.MetroFactory/* companion */.create(service = <this>.#provider)
+      field = create(service = <this>.#provider)
 
     private constructor(@Provides example: ProvidedExample) /* primary */ {
       super/*Any*/()
@@ -344,12 +344,12 @@ interface TestGraph {
 
     override val primaryWorkerFactory: PrimaryWorkerFactory
       override get(): PrimaryWorkerFactory {
-        return PrimaryWorkerFactory.Impl/* companion */.create(delegateFactory = <this>.#factory).invoke()
+        return create(delegateFactory = <this>.#factory).invoke()
       }
 
     override val secondaryWorkerFactory: SecondaryWorkerFactory
       override get(): SecondaryWorkerFactory {
-        return SecondaryWorkerFactory.Impl/* companion */.create(delegateFactory = <this>.#factory).invoke()
+        return create(delegateFactory = <this>.#factory).invoke()
       }
 
     override val service: Service

@@ -96,7 +96,7 @@ interface AppGraph {
   @MetroImplMarker
   class Impl : AppGraph {
     private val reusedFactory: Reused.MetroFactory
-      field = Reused.MetroFactory.create()
+      field = create()
 
     private constructor() /* primary */ {
       super/*Any*/()
@@ -106,17 +106,17 @@ interface AppGraph {
 
     override val notReusedFactory: NotReusedFactory
       override get(): NotReusedFactory {
-        return NotReusedFactory.Impl/* companion */.create(delegateFactory = NotReused.MetroFactory.create()).invoke()
+        return create(delegateFactory = create()).invoke()
       }
 
     override val reusedFactory1: ReusedFactory1
       override get(): ReusedFactory1 {
-        return ReusedFactory1.Impl/* companion */.create(delegateFactory = <this>.#reusedFactory).invoke()
+        return create(delegateFactory = <this>.#reusedFactory).invoke()
       }
 
     override val reusedFactory2: ReusedFactory2
       override get(): ReusedFactory2 {
-        return ReusedFactory2.Impl/* companion */.create(delegateFactory = <this>.#reusedFactory).invoke()
+        return create(delegateFactory = <this>.#reusedFactory).invoke()
       }
 
   }
@@ -162,7 +162,7 @@ interface NotReusedFactory {
       @JvmStatic
       @JsStatic
       fun create(delegateFactory: NotReused.MetroFactory): Provider<NotReusedFactory> {
-        return InstanceFactory/* companion */.invoke<NotReusedFactory>(value = Impl(delegateFactory = delegateFactory))
+        return providerOf<NotReusedFactory>(value = Impl(delegateFactory = delegateFactory))
       }
 
     }
@@ -197,7 +197,7 @@ interface ReusedFactory1 {
       @JvmStatic
       @JsStatic
       fun create(delegateFactory: Reused.MetroFactory): Provider<ReusedFactory1> {
-        return InstanceFactory/* companion */.invoke<ReusedFactory1>(value = Impl(delegateFactory = delegateFactory))
+        return providerOf<ReusedFactory1>(value = Impl(delegateFactory = delegateFactory))
       }
 
     }
@@ -232,7 +232,7 @@ interface ReusedFactory2 {
       @JvmStatic
       @JsStatic
       fun create(delegateFactory: Reused.MetroFactory): Provider<ReusedFactory2> {
-        return InstanceFactory/* companion */.invoke<ReusedFactory2>(value = Impl(delegateFactory = delegateFactory))
+        return providerOf<ReusedFactory2>(value = Impl(delegateFactory = delegateFactory))
       }
 
     }

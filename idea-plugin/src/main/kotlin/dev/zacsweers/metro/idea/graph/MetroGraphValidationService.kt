@@ -196,7 +196,7 @@ internal class MetroGraphValidationService(
       val validation = byPath[path] ?: return this
       if (validation.token !== token) return this
       return ValidationActivity(
-        byPath + (path to ActiveValidation(token, validation.job, progress))
+        byPath + (path to ActiveValidation(token, validation.job, progress)),
       )
     }
 
@@ -322,7 +322,7 @@ internal class MetroGraphValidationService(
 
   /** Keeps this computation's cache entries private until the caller publishes the result. */
   private fun computeValidation(
-    captured: CapturedValidation
+    captured: CapturedValidation,
   ): CompletedValidation<KaGraphValidationResult> {
     return captured.operation.phase("validation.compute") { phase ->
       try {
@@ -595,7 +595,7 @@ internal class MetroGraphValidationService(
           graphName = graphName,
           completed = index,
           total = traversal.inputs.size,
-        )
+        ),
       )
       traversalResults += validate(input, workspace, operation)
     }
@@ -623,7 +623,7 @@ internal class MetroGraphValidationService(
                     graphName = graphDisplayName(context.graph),
                     completed = 0,
                     total = 1,
-                  )
+                  ),
                 )
                 reporter.details("Validating ${graphDisplayName(context.graph)}")
                 reporter.fraction(0.0)
