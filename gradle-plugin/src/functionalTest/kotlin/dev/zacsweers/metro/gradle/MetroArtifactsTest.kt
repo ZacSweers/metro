@@ -14,6 +14,8 @@ import dev.zacsweers.metro.compiler.DEFAULT_MAX_GENERATED_CLASS_NAME_LENGTH
 import dev.zacsweers.metro.compiler.MIN_GENERATED_CLASS_NAME_LENGTH
 import dev.zacsweers.metro.compiler.graph.explanation.BindingExplanation
 import dev.zacsweers.metro.compiler.graph.explanation.BindingReason
+import dev.zacsweers.metro.gradle.analysis.AggregatedGraphMetadata
+import dev.zacsweers.metro.gradle.analysis.FullAnalysisReport
 import java.io.File
 import kotlin.io.path.exists
 import kotlin.io.path.readText
@@ -676,6 +678,61 @@ class MetroArtifactsTest {
 
     val result = buildAndFail(fixture.gradleProject.rootDir, "help")
     assertThat(result.output).contains("experimental Metro graph API")
+  }
+
+  // https://github.com/ZacSweers/metro/issues/2928
+  @Test
+  fun `analyzeMetroGraph keeps qualified map bindings distinct`() {
+    val fixture =
+      object : MetroProject(multiplatform = false) {
+        override fun sources() =
+          listOf(
+            source(
+              """
+              @Qualifier annotation class MapOne
+              @Qualifier annotation class MapTwo
+
+              @DependencyGraph
+              interface AppGraph {
+                @MapTwo val mapTwo: Map<String, String>
+                @MapTwo val mapTwoProvider: () -> Map<String, String>
+                @MapTwo val mapTwoLazy: Lazy<Map<String, String>>
+
+                @Provides
+                @MapOne
+                fun provideMapOne(): Map<String, String> = mapOf("key" to "value")
+
+                @Provides
+                @MapTwo
+                fun provideMapTwo(@MapOne mapOne: Map<String, String>): Map<String, String> = mapOne
+              }
+              """,
+              "AppGraph",
+            ),
+          )
+      }
+    val project = fixture.gradleProject
+    val reports = AnalysisReports.from(project.rootDir, compilationName = "main")
+
+    val result = build(project.rootDir, "analyzeMetroGraph")
+
+    assertThat(result.task(":analyzeMainMetroGraph")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    val metadata =
+      reportJson.decodeFromString<AggregatedGraphMetadata>(reports.graphMetadataFile.readText())
+    val graph = metadata.graphs.single()
+    val mapOne = "@test.MapOne Map<kotlin.String, kotlin.String>"
+    val mapTwo = "@test.MapTwo Map<kotlin.String, kotlin.String>"
+    assertThat(graph.bindings.map { it.key }).containsExactly("test.AppGraph", mapOne, mapTwo)
+    assertThat(graph.bindings.single { it.key == mapTwo }.dependencies.map { it.key })
+      .containsExactly("test.AppGraph", mapOne)
+    assertThat(graph.roots!!.accessors.map { it.key })
+      .containsExactly(mapTwo, "Provider<$mapTwo>", "Lazy<$mapTwo>")
+
+    val analysis = reportJson.decodeFromString<FullAnalysisReport>(reports.analysisFile.readText())
+    val graphAnalysis = analysis.graphs.single()
+    assertThat(graphAnalysis.statistics.totalBindings).isEqualTo(3)
+    assertThat(graphAnalysis.fanAnalysis.highFanOut.single { it.key == mapTwo }.dependencies)
+      .containsExactly("test.AppGraph", mapOne)
   }
 
   @Test

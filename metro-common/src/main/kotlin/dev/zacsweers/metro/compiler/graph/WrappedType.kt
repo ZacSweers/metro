@@ -344,15 +344,19 @@ public sealed interface WrappedType<T : Any> {
     }
   }
 
-  public fun render(renderType: (T) -> String): String =
-    when (this) {
-      is Canonical -> renderType(type)
-      is Provider -> "Provider<${innerType.render(renderType)}>"
-      is SuspendProvider -> "SuspendProvider<${innerType.render(renderType)}>"
-      is Lazy -> "Lazy<${innerType.render(renderType)}>"
-      is SuspendLazy -> "SuspendLazy<${innerType.render(renderType)}>"
-      is Map -> "Map<${renderType(keyType)}, ${valueType.render(renderType)}>"
+  /** Renders [qualifier] on the canonical value or map inside any wrappers. */
+  public fun render(qualifier: String? = null, renderType: (T) -> String): String {
+    val qualifierPrefix = qualifier?.let { "$it " }.orEmpty()
+    return when (this) {
+      is Canonical -> "$qualifierPrefix${renderType(type)}"
+      is Provider -> "Provider<${innerType.render(qualifier, renderType)}>"
+      is SuspendProvider -> "SuspendProvider<${innerType.render(qualifier, renderType)}>"
+      is Lazy -> "Lazy<${innerType.render(qualifier, renderType)}>"
+      is SuspendLazy -> "SuspendLazy<${innerType.render(qualifier, renderType)}>"
+      is Map ->
+        "${qualifierPrefix}Map<${renderType(keyType)}, ${valueType.render(renderType = renderType)}>"
     }
+  }
 
   public val innerTypesSequence: Sequence<WrappedType<T>>
     get() =

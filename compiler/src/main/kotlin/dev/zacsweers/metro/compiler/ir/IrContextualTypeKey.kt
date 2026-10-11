@@ -50,13 +50,15 @@ internal class IrContextualTypeKey(
     includeQualifier: Boolean,
     useRelativeClassNames: Boolean,
   ): String = buildString {
+    val qualifier =
+      if (includeQualifier) {
+        typeKey.qualifier?.render(short, useRelativeClassNames = useRelativeClassNames)
+      } else {
+        null
+      }
     append(
-      wrappedType.render { type ->
-        if (type == typeKey.type) {
-          typeKey.render(short, includeQualifier, useRelativeClassNames)
-        } else {
-          type.render(short, useRelativeClassNames = useRelativeClassNames)
-        }
+      wrappedType.render(qualifier) { type ->
+        type.render(short, useRelativeClassNames = useRelativeClassNames)
       },
     )
     if (hasDefault) {

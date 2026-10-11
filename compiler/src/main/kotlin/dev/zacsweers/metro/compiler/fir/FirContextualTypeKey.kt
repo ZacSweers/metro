@@ -95,13 +95,15 @@ internal class FirContextualTypeKey(
     includeAbbreviation: Boolean,
     includeQualifier: Boolean = true,
   ): String = buildString {
+    val qualifier =
+      if (includeQualifier) {
+        typeKey.qualifier?.simpleString()
+      } else {
+        null
+      }
     append(
-      wrappedType.render { type ->
-        if (type == typeKey.type) {
-          typeKey.render(short, includeQualifier, includeAbbreviation)
-        } else {
-          buildString { renderType(short, type, includeAbbreviation) }
-        }
+      wrappedType.render(qualifier) { type ->
+        buildString { renderType(short, type, includeAbbreviation) }
       },
     )
     if (hasDefault) {
