@@ -1,0 +1,3 @@
+/CallbackOverrides.kt:12:16: error: 'start' overrides an @OnGraphInit callback, so it must also be annotated @OnGraphInit.
+
+/CallbackOverrides.kt:14:29: error: 'stop' overrides an @OnGraphClose callback, so it must also be annotated @OnGraphClose.

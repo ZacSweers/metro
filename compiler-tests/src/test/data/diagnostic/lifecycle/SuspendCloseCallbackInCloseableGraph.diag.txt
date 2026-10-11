@@ -1,0 +1,1 @@
+/SuspendCloseCallbackInCloseableGraph.kt:7:29: error: 'stop' is a suspend @OnGraphClose callback, so 'AppGraph' must implement SuspendCloseableGraph instead of CloseableGraph.

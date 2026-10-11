@@ -1,0 +1,9 @@
+/GraphRequirements.kt:5:11: error: 'NotCloseableGraph' has @OnGraphInit or @OnGraphClose callbacks, so it must implement CloseableGraph or SuspendCloseableGraph.
+
+/GraphRequirements.kt:14:45: error: 'ContributedCallbackGraph' has @OnGraphInit or @OnGraphClose callbacks, so it must implement CloseableGraph or SuspendCloseableGraph.
+
+/GraphRequirements.kt:18:16: error: Metro generates close() for closeable graphs. Move this cleanup into an @OnGraphClose callback.
+
+/GraphRequirements.kt:25:28: error: 'InheritedCloseGraph' inherits an implementation of close() from 'CloseImplementation'. Metro generates close() for closeable graphs, so move that cleanup into an @OnGraphClose callback.
+
+/GraphRequirements.kt:27:28: error: 'AutoCloseableGraph' has an abstract close() function. Implement CloseableGraph or SuspendCloseableGraph so Metro generates it.

@@ -1,0 +1,9 @@
+/DirectCalls.kt:12:5: error: 'start' is an @OnGraphInit callback. Metro calls it for you, so it can't be called or referenced directly.
+
+/DirectCalls.kt:19:3: error: 'start' is an @OnGraphInit callback. Metro calls it for you, so it can't be called or referenced directly.
+
+/DirectCalls.kt:20:3: error: 'stop' is an @OnGraphClose callback. Metro calls it for you, so it can't be called or referenced directly.
+
+/DirectCalls.kt:21:15: error: 'stop' is an @OnGraphClose callback. Metro calls it for you, so it can't be called or referenced directly.
+
+/DirectCalls.kt:22:17: error: 'stop' is an @OnGraphClose callback. Metro calls it for you, so it can't be called or referenced directly.

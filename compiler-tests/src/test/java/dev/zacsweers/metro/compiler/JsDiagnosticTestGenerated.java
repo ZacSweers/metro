@@ -1402,6 +1402,62 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
   }
 
   @Nested
+  @TestMetadata("compiler-tests/src/test/data/diagnostic/lifecycle")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Lifecycle {
+    private void run(String fileName) {
+      runTest("compiler-tests/src/test/data/diagnostic/lifecycle/" + fileName);
+    }
+
+    @Test
+    public void testAllFilesPresentInLifecycle() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/lifecycle"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit", "_reports");
+    }
+
+    @Test
+    @TestMetadata("BothCloseableInterfaces.kt")
+    public void testBothCloseableInterfaces() {
+      run("BothCloseableInterfaces.kt");
+    }
+
+    @Test
+    @TestMetadata("CallbackDeclarations.kt")
+    public void testCallbackDeclarations() {
+      run("CallbackDeclarations.kt");
+    }
+
+    @Test
+    @TestMetadata("CallbackOverrides.kt")
+    public void testCallbackOverrides() {
+      run("CallbackOverrides.kt");
+    }
+
+    @Test
+    @TestMetadata("DirectCalls.kt")
+    public void testDirectCalls() {
+      run("DirectCalls.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphRequirements.kt")
+    public void testGraphRequirements() {
+      run("GraphRequirements.kt");
+    }
+
+    @Test
+    @TestMetadata("SuspendCloseCallbackInCloseableGraph.kt")
+    public void testSuspendCloseCallbackInCloseableGraph() {
+      run("SuspendCloseCallbackInCloseableGraph.kt");
+    }
+
+    @Test
+    @TestMetadata("SuspendLifecycleRequiresSuspendProviders.kt")
+    public void testSuspendLifecycleRequiresSuspendProviders() {
+      run("SuspendLifecycleRequiresSuspendProviders.kt");
+    }
+  }
+
+  @Nested
   @TestMetadata("compiler-tests/src/test/data/diagnostic/multibindings")
   @TestDataPath("$PROJECT_ROOT")
   public class Multibindings {
