@@ -1661,9 +1661,39 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("CallbackParameterSuspendRequired.kt")
+    public void testCallbackParameterSuspendRequired() {
+      run("CallbackParameterSuspendRequired.kt");
+    }
+
+    @Test
+    @TestMetadata("CloseOnlyBinding.kt")
+    public void testCloseOnlyBinding() {
+      run("CloseOnlyBinding.kt");
+    }
+
+    @Test
     @TestMetadata("DirectCalls.kt")
     public void testDirectCalls() {
       run("DirectCalls.kt");
+    }
+
+    @Test
+    @TestMetadata("DynamicGraphInitSuspendRequired.kt")
+    public void testDynamicGraphInitSuspendRequired() {
+      run("DynamicGraphInitSuspendRequired.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphExtensionInitSuspendRequired.kt")
+    public void testGraphExtensionInitSuspendRequired() {
+      run("GraphExtensionInitSuspendRequired.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphInitSuspendRequired.kt")
+    public void testGraphInitSuspendRequired() {
+      run("GraphInitSuspendRequired.kt");
     }
 
     @Test
@@ -1673,15 +1703,45 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("MissingBindingInCallbackParameter.kt")
+    public void testMissingBindingInCallbackParameter() {
+      run("MissingBindingInCallbackParameter.kt");
+    }
+
+    @Test
+    @TestMetadata("MissingCloseableGraphMergedInIr.kt")
+    public void testMissingCloseableGraphMergedInIr() {
+      run("MissingCloseableGraphMergedInIr.kt");
+    }
+
+    @Test
     @TestMetadata("SuspendCloseCallbackInCloseableGraph.kt")
     public void testSuspendCloseCallbackInCloseableGraph() {
       run("SuspendCloseCallbackInCloseableGraph.kt");
     }
 
     @Test
+    @TestMetadata("SuspendCloseRequired.kt")
+    public void testSuspendCloseRequired() {
+      run("SuspendCloseRequired.kt");
+    }
+
+    @Test
+    @TestMetadata("SuspendCloseableGraphWithoutRuntimeCoroutines.kt")
+    public void testSuspendCloseableGraphWithoutRuntimeCoroutines() {
+      run("SuspendCloseableGraphWithoutRuntimeCoroutines.kt");
+    }
+
+    @Test
     @TestMetadata("SuspendLifecycleRequiresSuspendProviders.kt")
     public void testSuspendLifecycleRequiresSuspendProviders() {
       run("SuspendLifecycleRequiresSuspendProviders.kt");
+    }
+
+    @Test
+    @TestMetadata("UnscopedLifecycleParameter.kt")
+    public void testUnscopedLifecycleParameter() {
+      run("UnscopedLifecycleParameter.kt");
     }
   }
 

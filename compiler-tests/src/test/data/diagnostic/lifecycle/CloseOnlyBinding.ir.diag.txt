@@ -1,0 +1,5 @@
+/CloseOnlyBinding.kt:27:35: warning: [Metro/CloseOnlyBinding] Database is reachable only from @OnGraphClose callbacks in AppGraph.
+    Resolving parameter 'database' of AppGraph.closeDatabase may create Database for the first time
+    during graph close.
+
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#closeonlybinding

@@ -328,7 +328,8 @@ public fun <TypeKey, ContextualTypeKey, Source> validateGraphExtensionCreation(
         title =
           "'$parentName' closes '$extensionName', which implements SuspendCloseableGraph, so " +
             "'$parentName' must implement SuspendCloseableGraph instead of CloseableGraph.",
-        source = sites.firstOrNull()?.source,
+        // This is about the parent, so it's reported on the parent graph.
+        source = null,
       )
   }
   return issues

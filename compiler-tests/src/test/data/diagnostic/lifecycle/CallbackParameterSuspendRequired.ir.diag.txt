@@ -1,0 +1,13 @@
+/CallbackParameterSuspendRequired.kt:13:26: error: [Metro/LifecycleCallbackSuspendRequired] Parameter 'database' of @OnGraphInit AppGraph.initializeDatabase depends on suspend bindings, so the callback must be a suspend function or request `suspend () -> Database` instead.
+
+Trace:
+    Database is injected at @OnGraphInit
+        [AppGraph] AppGraph.initializeDatabase(database) // ❌ needs suspend support
+    Database is provided at
+        [AppGraph] suspend AppGraph.provideDatabase(…)
+
+/CallbackParameterSuspendRequired.kt:13:26: warning: [Metro/UnscopedLifecycleParameter] Unscoped Database is injected into parameter 'database' of
+    @OnGraphInit AppGraph.initializeDatabase. This instance may be discarded after the callback.
+
+  help: request () -> Database or Lazy<Database> to resolve Database explicitly
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#unscopedlifecycleparameter

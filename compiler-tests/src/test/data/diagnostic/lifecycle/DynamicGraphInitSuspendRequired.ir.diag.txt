@@ -1,0 +1,24 @@
+/DynamicGraphInitSuspendRequired.kt:13:24: error: [Metro/LifecycleCallbackSuspendRequired] Parameter 'message' of @OnGraphInit AppGraph.log depends on suspend bindings, so the callback must be a suspend function or request `suspend () -> String` instead.
+
+Trace:
+    String is injected at @OnGraphInit
+        [DynamicAppGraphImpl_w3b7f] AppGraph.log(message) // ❌ needs suspend support
+    String is provided at
+        [DynamicAppGraphImpl_w3b7f] suspend FakeBindings.provideMessage(…)
+
+/DynamicGraphInitSuspendRequired.kt:13:24: warning: [Metro/UnscopedLifecycleParameter] Unscoped String is injected into parameter 'message' of
+    @OnGraphInit AppGraph.log. This instance may be discarded after the callback.
+
+  help: request () -> String or Lazy<String> to resolve String explicitly
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#unscopedlifecycleparameter
+
+
+/DynamicGraphInitSuspendRequired.kt:21:25: error: [Metro/GraphInitSuspendRequired] Parameter 'message' of @OnGraphInit AppGraph.log depends on suspend
+    bindings, so creating 'AppGraph' suspends. Declare a graph factory whose function is suspend and
+    create 'AppGraph' with it.
+
+  trace (in DynamicAppGraphImpl_w3b7f):
+      String is provided at suspend FakeBindings.provideMessage(…)
+      String is injected at @OnGraphInit AppGraph.log(message)
+
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#graphinitsuspendrequired

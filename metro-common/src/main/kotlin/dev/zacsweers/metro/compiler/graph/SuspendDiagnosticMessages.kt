@@ -21,4 +21,8 @@ public object SuspendDiagnosticMessages {
   public fun suspendLazyRuntimeTrigger(subject: String): String =
     "$subject requests a `SuspendLazy` value, which needs the optional runtime-coroutines " +
       "artifact."
+
+  public fun suspendCloseableGraphRuntimeTrigger(graphName: String): String =
+    "'$graphName' implements SuspendCloseableGraph, whose cleanup needs the optional " +
+      "runtime-coroutines artifact."
 }

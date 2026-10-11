@@ -1,0 +1,11 @@
+/GraphExtensionInitSuspendRequired.kt:17:9: error: [Metro/GraphInitSuspendRequired] @OnGraphInit FactoryChild.start is a suspend function, so creating
+    'FactoryChild' suspends. Make 'create' a suspend function.
+
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#graphinitsuspendrequired
+
+
+/GraphExtensionInitSuspendRequired.kt:23:7: error: [Metro/GraphInitSuspendRequired] @OnGraphInit DirectChild.start is a suspend function, so creating
+    'DirectChild' suspends. 'directChild' can't create it directly. Create it through a
+    @GraphExtension.Factory whose function is suspend.
+
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#graphinitsuspendrequired

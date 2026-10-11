@@ -1602,6 +1602,9 @@ internal class IrBindingGraph(
    * is stable.
    */
   private fun describeRuntimeCoroutinesTrigger(): String? {
+    if (node.lifecycle.closeKind == GraphCloseKind.SUSPEND) {
+      return SuspendDiagnosticMessages.suspendCloseableGraphRuntimeTrigger(node.lifecycleGraphName)
+    }
     val scopedSuspendKeys = mutableListOf<IrTypeKey>()
     val suspendLazyKeys = mutableListOf<IrTypeKey>()
     realGraph.bindings.forEachValue { binding ->

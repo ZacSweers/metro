@@ -1,0 +1,13 @@
+/UnscopedLifecycleParameter.kt:17:38: warning: [Metro/UnscopedLifecycleParameter] Unscoped Service is injected into parameter 'service' of
+    @OnGraphInit AppGraph.initializeService. This instance may be discarded after the callback.
+
+  help: request () -> Service or Lazy<Service> to resolve Service explicitly
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#unscopedlifecycleparameter
+
+
+/UnscopedLifecycleParameter.kt:25:34: warning: [Metro/UnscopedLifecycleParameter] Set<Plugin> includes unscoped bindings and is injected into
+    parameter 'plugins' of @OnGraphClose AppGraph.closePlugins. Those instances may be discarded
+    after the callback.
+
+  help: scope the bindings contributed to Set<Plugin>
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#unscopedlifecycleparameter
