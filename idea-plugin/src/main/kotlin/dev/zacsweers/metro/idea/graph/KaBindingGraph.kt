@@ -433,7 +433,8 @@ internal class KaBindingGraph(
     }
     val closesSuspending = lifecycleValidator.closeKind == GraphCloseKind.SUSPEND
     if (closesSuspending && !graph.runtimeCoroutinesAvailable) {
-      val trigger = SuspendDiagnosticMessages.suspendCloseableGraphRuntimeTrigger(lifecycleName())
+      val trigger =
+        SuspendDiagnosticMessages.suspendCloseableGraphRuntimeTrigger(graph.lifecycleGraphName)
       report(
         MetroDiagnostic(
           id = MetroDiagnosticId.MISSING_RUNTIME_COROUTINES,
@@ -454,9 +455,6 @@ internal class KaBindingGraph(
         lifecycleSuspendPath(contextKey, bindings, pathAnalysis)
       }
   }
-
-  /** The graph's simple name, which lifecycle diagnostics use. */
-  private fun lifecycleName(): String = graph.classId?.shortClassName?.asString() ?: graphName
 
   private fun lifecycleSuspendPath(
     contextKey: KaContextualTypeKey,

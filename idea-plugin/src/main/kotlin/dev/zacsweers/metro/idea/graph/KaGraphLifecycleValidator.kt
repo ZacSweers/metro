@@ -135,8 +135,6 @@ internal class KaGraphLifecycleValidator(
   fun validateExtensionCreation(extensions: List<KaGraphLifecycleSummary>) {
     for (extension in extensions) {
       ProgressManager.checkCanceled()
-      val hasLifecycle = extension.initSuspendReason != null || extension.closeKind != null
-      if (!hasLifecycle) continue
       val sites =
         creationSites
           .filter { it.extension in extension.graph.selfReferences }
@@ -248,7 +246,7 @@ internal class KaGraphLifecycleValidator(
 }
 
 /** The graph's simple name, which lifecycle diagnostics use. */
-private val KaGraphDeclaration.lifecycleGraphName: String
+internal val KaGraphDeclaration.lifecycleGraphName: String
   get() = classId?.shortClassName?.asString() ?: name ?: "<unknown>"
 
 /** How a graph closes, based on which closeable graph interface it implements. */
