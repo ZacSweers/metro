@@ -5,7 +5,9 @@ package dev.zacsweers.metro.idea.index.graph
 import dev.zacsweers.metro.idea.index.GraphInterfaceBinding
 import dev.zacsweers.metro.idea.model.ConsumerEntry
 import dev.zacsweers.metro.idea.model.GraphDeclarationId
+import dev.zacsweers.metro.idea.model.GraphExtensionCreationSiteEntry
 import dev.zacsweers.metro.idea.model.GraphExtensionFactoryAccessor
+import dev.zacsweers.metro.idea.model.GraphLifecycleCallbackEntry
 import dev.zacsweers.metro.idea.model.GraphMemberOverride
 import dev.zacsweers.metro.idea.model.GraphReference
 import org.jetbrains.kotlin.analysis.api.types.KaClassType
@@ -22,4 +24,6 @@ internal class GraphMemberTarget(
   /** The session-local receiver preserves an inherited factory SAM's annotated subtype. */
   val factoryContext: KaClassType? = null,
   val memberOverrides: MutableList<GraphMemberOverride> = mutableListOf(),
+  val lifecycleCallbacks: MutableList<GraphLifecycleCallbackEntry> = mutableListOf(),
+  val extensionCreationSites: MutableList<GraphExtensionCreationSiteEntry> = mutableListOf(),
 )

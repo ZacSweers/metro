@@ -161,6 +161,27 @@ class MetroGraphInspectionTest : BasePlatformTestCase() {
     )
   }
 
+  fun testLifecycleDiagnosticHighlightsItsReportedDeclaration() {
+    project.setMetroOptions("enable-suspend-providers" to "true")
+    myFixture.addGraphLifecycleRuntime()
+    val file =
+      myFixture.configureMetroFile(
+        """
+        @DependencyGraph
+        interface AppGraph : CloseableGraph {
+          @OnGraphInit suspend fun start() {}
+
+          @DependencyGraph.Factory
+          fun interface Factory {
+            fun create(): AppGraph
+          }
+        }
+        """,
+      )
+    validate(file)
+    assertEquals("create", inspect(file).single().psiElement.text)
+  }
+
   fun testDuplicateBindingsHighlightEachProvider() {
     val file =
       myFixture.configureMetroFile(

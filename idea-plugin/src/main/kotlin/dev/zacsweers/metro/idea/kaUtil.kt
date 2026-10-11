@@ -15,6 +15,7 @@ import com.intellij.psi.PsiReferenceExpression
 import com.intellij.psi.search.GlobalSearchScope
 import dev.zacsweers.metro.compiler.MetroClassIds
 import dev.zacsweers.metro.compiler.MetroOptions
+import dev.zacsweers.metro.compiler.graph.GraphLifecyclePhase
 import dev.zacsweers.metro.idea.model.KaAnnotationSnapshot
 import dev.zacsweers.metro.idea.model.KaAnnotationValueSnapshot
 import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
@@ -40,6 +41,17 @@ import org.jetbrains.uast.toUElement
 
 internal fun KaAnnotated.hasAnyAnnotation(classIds: Set<ClassId>): Boolean {
   return annotations.any { it.classId in classIds }
+}
+
+/** When an `@OnGraphInit` or `@OnGraphClose` function runs, or null for other declarations. */
+internal fun KaAnnotated.graphLifecyclePhase(): GraphLifecyclePhase? {
+  for (annotation in annotations) {
+    when (annotation.classId) {
+      MetroClassIds.onGraphInit -> return GraphLifecyclePhase.INIT
+      MetroClassIds.onGraphClose -> return GraphLifecyclePhase.CLOSE
+    }
+  }
+  return null
 }
 
 /** Converts a resolved [KaAnnotation] to its session-free structured snapshot. */

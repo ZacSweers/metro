@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnostic
 import dev.zacsweers.metro.compiler.diagnostics.MetroSeverity
 import dev.zacsweers.metro.compiler.diagnostics.textOf
 import dev.zacsweers.metro.compiler.graph.SuspendAssistedFactoryMetadata
+import dev.zacsweers.metro.compiler.graph.SuspendBindingAnalysisResult
 import dev.zacsweers.metro.compiler.graph.SuspendBindingKind
 import dev.zacsweers.metro.compiler.graph.SuspendBindingMetadata
 import dev.zacsweers.metro.compiler.graph.SuspendBindingValidator
@@ -39,8 +40,13 @@ internal class KaSuspendBindingValidator(
 ) {
   private val suspendBindingAnalysis = SuspendBindingAnalysis(bindings::get)
 
+  /** Witness paths from [validate]'s analysis, which lifecycle validation reuses. */
+  var pathAnalysis: SuspendBindingAnalysisResult<KaTypeKey, KaContextualTypeKey>? = null
+    private set
+
   fun validate(): Set<KaTypeKey> {
     val requests = graphConsumers.map { consumer ->
+      val callback = consumer.lifecycleCallback
       SuspendGraphRequest(
         contextKey = consumer.contextKey,
         source = consumer,
@@ -49,9 +55,13 @@ internal class KaSuspendBindingValidator(
             ConsumerEntry.GraphRequestKind.ACCESSOR -> SuspendGraphRequestKind.ACCESSOR
             ConsumerEntry.GraphRequestKind.MEMBERS_INJECTOR ->
               SuspendGraphRequestKind.MEMBERS_INJECTOR
+            ConsumerEntry.GraphRequestKind.LIFECYCLE_CALLBACK ->
+              SuspendGraphRequestKind.LIFECYCLE_CALLBACK
             null -> SuspendGraphRequestKind.OTHER
           },
         isSuspend = consumer.isSuspend,
+        callbackName = callback?.let { "${it.phase.annotationName} ${it.name}" },
+        parameterName = callback?.let { sources.name(consumer) },
       )
     }
     val validation =
@@ -64,7 +74,9 @@ internal class KaSuspendBindingValidator(
           multibindingIsSet = {
             (it as KaBinding.Multibinding).typeKey.type.classId == StandardClassIds.Set
           },
-          analyze = suspendBindingAnalysis::analyzeWithPaths,
+          analyze = { keys ->
+            suspendBindingAnalysis.analyzeWithPaths(keys).also { pathAnalysis = it }
+          },
           rules = suspendBindingAnalysis.rules,
           suspendProvidersEnabled = options.enableSuspendProviders,
           functionProvidersEnabled = options.enableFunctionProviders,

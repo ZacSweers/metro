@@ -1,0 +1,452 @@
+{
+  "graph": "parity.lifecycle.AppGraph",
+  "scopes": [
+    "@dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class)"
+  ],
+  "aggregationScopes": [
+    "dev.zacsweers.metro.AppScope"
+  ],
+  "roots": {
+    "accessors": [
+      {
+        "key": "parity.lifecycle.Database",
+        "name": "database",
+        "isProperty": true,
+        "isDeferrable": false
+      }
+    ],
+    "injectors": [],
+    "lifecycleCallbacks": [
+      {
+        "phase": "init",
+        "name": "migrate",
+        "declaringType": "parity.lifecycle.AppGraph",
+        "isSuspend": false,
+        "parameters": [
+          {
+            "name": "migrations",
+            "key": "parity.lifecycle.Migrations",
+            "isDeferrable": false
+          }
+        ]
+      },
+      {
+        "phase": "init",
+        "name": "load",
+        "declaringType": "parity.lifecycle.AppGraph",
+        "isSuspend": true,
+        "parameters": [
+          {
+            "name": "config",
+            "key": "SuspendProvider<parity.lifecycle.Config>",
+            "isDeferrable": true
+          }
+        ]
+      },
+      {
+        "phase": "init",
+        "name": "prepare",
+        "declaringType": "parity.lifecycle.AppGraph",
+        "isSuspend": false,
+        "parameters": [
+          {
+            "name": "request",
+            "key": "Provider<parity.lifecycle.Request>",
+            "isDeferrable": true
+          }
+        ]
+      },
+      {
+        "phase": "close",
+        "name": "log",
+        "declaringType": "parity.lifecycle.AppGraph",
+        "isSuspend": false,
+        "parameters": []
+      },
+      {
+        "phase": "close",
+        "name": "closeDatabase",
+        "declaringType": "parity.lifecycle.ShutdownHooks",
+        "isSuspend": false,
+        "parameters": [
+          {
+            "name": "database",
+            "key": "parity.lifecycle.Database",
+            "isDeferrable": false
+          }
+        ]
+      }
+    ]
+  },
+  "extensions": {
+    "accessors": [],
+    "factoryAccessors": [],
+    "factoriesImplemented": []
+  },
+  "config": {
+    "debug": false,
+    "enabled": true,
+    "generateAssistedFactories": false,
+    "enableTopLevelFunctionInjection": false,
+    "generateContributionHints": true,
+    "generateContributionHintsInFir": false,
+    "generateClassesInIr": false,
+    "enablePrivateProviderProperties": false,
+    "shrinkUnusedBindings": true,
+    "statementsPerInitFun": 25,
+    "enableGraphSharding": true,
+    "keysPerGraphShard": 2000,
+    "mergedSupertypeChunkSize": 0,
+    "multibindingGetterThreshold": 25,
+    "enableSwitchingProviders": false,
+    "publicScopedProviderSeverity": "NONE",
+    "nonPublicContributionSeverity": "NONE",
+    "optionalBindingBehavior": "DEFAULT",
+    "warnOnInjectAnnotationPlacement": true,
+    "interopAnnotationsNamedArgSeverity": "NONE",
+    "unusedGraphInputsSeverity": "WARN",
+    "enabledLoggers": [],
+    "enableDaggerRuntimeInterop": false,
+    "enableGuiceRuntimeInterop": false,
+    "maxIrErrorsCount": 20,
+    "customProviderTypes": [],
+    "customLazyTypes": [],
+    "customAssistedAnnotations": [],
+    "customAssistedFactoryAnnotations": [],
+    "customAssistedInjectAnnotations": [],
+    "customBindsAnnotations": [],
+    "customContributesToAnnotations": [],
+    "customContributesBindingAnnotations": [],
+    "customContributesIntoSetAnnotations": [],
+    "customGraphExtensionAnnotations": [],
+    "customGraphExtensionFactoryAnnotations": [],
+    "customElementsIntoSetAnnotations": [],
+    "customGraphAnnotations": [],
+    "customGraphFactoryAnnotations": [],
+    "customInjectAnnotations": [],
+    "customIntoMapAnnotations": [],
+    "customIntoSetAnnotations": [],
+    "customMapKeyAnnotations": [],
+    "customMultibindsAnnotations": [],
+    "customProvidesAnnotations": [],
+    "customQualifierAnnotations": [],
+    "customScopeAnnotations": [],
+    "customBindingContainerAnnotations": [],
+    "enableDaggerAnvilInterop": false,
+    "enableFullBindingGraphValidation": false,
+    "enableGraphImplClassAsReturnType": false,
+    "customOriginAnnotations": [],
+    "customOptionalBindingAnnotations": [],
+    "contributesAsInject": false,
+    "enableKlibParamsCheck": false,
+    "patchKlibParams": true,
+    "forceEnableFirInIde": false,
+    "compilerVersionAliases": {},
+    "parallelThreads": 0,
+    "bufferedIcTracking": true,
+    "omitRedundantMirrors": false,
+    "enableProviderInlining": true,
+    "enableFunctionProviders": true,
+    "enableSuspendProviders": true,
+    "desugaredProviderSeverity": "WARN",
+    "enableKClassToClassInterop": false,
+    "generateContributionProviders": false,
+    "enableCircuitCodegen": false,
+    "enableHiltInterop": false,
+    "diagnosticsRenderMode": "PLAIN",
+    "generateStaticAnnotations": true,
+    "enableRuntimeTracing": false,
+    "memberNamingStrategy": "DESCRIPTIVE",
+    "maxGeneratedClassNameLength": 233,
+    "diagnosticLevels": {}
+  },
+  "stats": {
+    "providerFactories": 1,
+    "bindsCallables": 0,
+    "multibindsCallables": 0,
+    "optionalBindings": 0,
+    "accessors": 1,
+    "injectors": 0,
+    "lifecycleCallbacks": 5,
+    "graphExtensionAccessors": 0,
+    "graphExtensionFactories": 0,
+    "includedGraphs": 0,
+    "bindingContainers": 0,
+    "dynamicBindings": 0,
+    "graphPrivateKeys": 0,
+    "publishedBindsKeys": 0,
+    "populatedKeys": 5,
+    "validatedKeys": 5,
+    "reachableKeys": 5,
+    "deferredKeys": 0,
+    "unusedInputs": 0,
+    "providerProperties": 2,
+    "scopedProviderProperties": 2,
+    "shards": 0,
+    "optimizations": {
+      "bindingsPrunedByShrinking": 0,
+      "classConstructorDirectInvocations": 0,
+      "classConstructorNewInstanceCalls": 0,
+      "providerDirectInvocations": 1,
+      "providerNewInstanceCalls": 0,
+      "shardsGenerated": 0,
+      "shardedSupertypes": 0,
+      "shardedInitFunctions": 0,
+      "providerInlines": 0,
+      "providerInlineFallbacks": {
+        "deferredAccess": 0,
+        "unavailableValue": 0
+      }
+    }
+  },
+  "bindings": [
+    {
+      "key": "parity.lifecycle.AppGraph",
+      "bindingKind": "BoundInstance",
+      "isScoped": false,
+      "nameHint": "AppGraphProvider",
+      "isGraphInput": false,
+      "dependencies": [],
+      "isSynthetic": false,
+      "declaration": "AppGraph"
+    },
+    {
+      "key": "parity.lifecycle.Config",
+      "bindingKind": "Provided",
+      "isScoped": false,
+      "nameHint": "provideConfig",
+      "dependencies": [
+        {
+          "key": "parity.lifecycle.AppGraph",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "declaration": "provideConfig"
+    },
+    {
+      "key": "parity.lifecycle.Database",
+      "bindingKind": "ConstructorInjected",
+      "scope": "@dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class)",
+      "isScoped": true,
+      "nameHint": "Database",
+      "dependencies": [],
+      "isSynthetic": false,
+      "declaration": "Database"
+    },
+    {
+      "key": "parity.lifecycle.Migrations",
+      "bindingKind": "ConstructorInjected",
+      "scope": "@dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class)",
+      "isScoped": true,
+      "nameHint": "Migrations",
+      "dependencies": [
+        {
+          "key": "parity.lifecycle.Database",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "declaration": "Migrations"
+    },
+    {
+      "key": "parity.lifecycle.Request",
+      "bindingKind": "ConstructorInjected",
+      "isScoped": false,
+      "nameHint": "Request",
+      "dependencies": [],
+      "isSynthetic": false,
+      "declaration": "Request"
+    }
+  ],
+  "bindingExplanations": [
+    {
+      "context": {
+        "id": "25:parity.lifecycle.AppGraph",
+        "label": "parity.lifecycle.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "24:parity.lifecycle.Request|24:parity.lifecycle.Request",
+          "key": "parity.lifecycle.Request",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "parity.lifecycle.Request",
+            "label": "parity.lifecycle.Request"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "Provider<parity.lifecycle.Request>",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "25:parity.lifecycle.AppGraph",
+        "label": "parity.lifecycle.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "23:parity.lifecycle.Config|91:parity.lifecycle.AppGraph.provideConfig(parity.lifecycle.AppGraph): parity.lifecycle.Config",
+          "key": "parity.lifecycle.Config",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "parity.lifecycle.AppGraph.provideConfig(parity.lifecycle.AppGraph): parity.lifecycle.Config",
+            "label": "parity.lifecycle.AppGraph.provideConfig"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "SuspendProvider<parity.lifecycle.Config>",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "25:parity.lifecycle.AppGraph",
+        "label": "parity.lifecycle.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "25:parity.lifecycle.AppGraph|25:parity.lifecycle.AppGraph",
+          "key": "parity.lifecycle.AppGraph",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "parity.lifecycle.AppGraph",
+            "label": "parity.lifecycle.AppGraph"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "parity.lifecycle.AppGraph",
+        "declaration": {
+          "id": "parity.lifecycle.AppGraph.provideConfig(parity.lifecycle.AppGraph): parity.lifecycle.Config#<this>",
+          "label": "parity.lifecycle.AppGraph.provideConfig.<this>"
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "25:parity.lifecycle.AppGraph",
+        "label": "parity.lifecycle.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "25:parity.lifecycle.Database|25:parity.lifecycle.Database",
+          "key": "parity.lifecycle.Database",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "parity.lifecycle.Database",
+            "label": "parity.lifecycle.Database"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "parity.lifecycle.Database",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "25:parity.lifecycle.AppGraph",
+        "label": "parity.lifecycle.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "25:parity.lifecycle.Database|25:parity.lifecycle.Database",
+          "key": "parity.lifecycle.Database",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "parity.lifecycle.Database",
+            "label": "parity.lifecycle.Database"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "parity.lifecycle.Database",
+        "declaration": {
+          "id": "parity.lifecycle.Migrations.MetroFactory.declarationMirror(parity.lifecycle.Migrations.MetroFactory,parity.lifecycle.Database): parity.lifecycle.Migrations#database",
+          "label": "parity.lifecycle.Migrations.MetroFactory.declarationMirror.database"
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "25:parity.lifecycle.AppGraph",
+        "label": "parity.lifecycle.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "27:parity.lifecycle.Migrations|27:parity.lifecycle.Migrations",
+          "key": "parity.lifecycle.Migrations",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "parity.lifecycle.Migrations",
+            "label": "parity.lifecycle.Migrations"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "parity.lifecycle.Migrations",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    }
+  ]
+}

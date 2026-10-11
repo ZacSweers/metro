@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
 import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.index.MetroResolutionService
+import org.jetbrains.kotlin.psi.KtNamedFunction
 
 class MetroSuspendGraphValidationTest : BasePlatformTestCase() {
 
@@ -431,6 +432,176 @@ class MetroSuspendGraphValidationTest : BasePlatformTestCase() {
 
     assertDiagnostic(result, MetroDiagnosticId.MISSING_RUNTIME_COROUTINES)
     assertTrue(result.suspendKeys.isEmpty())
+  }
+
+  fun testSuspendInitRequiresSuspendGraphFactory() {
+    myFixture.addGraphLifecycleRuntime()
+    val result =
+      validate(
+        """
+        @DependencyGraph
+        interface AppGraph : CloseableGraph {
+          @OnGraphInit suspend fun start() {}
+
+          @DependencyGraph.Factory
+          fun interface Factory {
+            fun create(): AppGraph
+          }
+        }
+        """,
+      )
+
+    val diagnostic = result.diagnostics.single()
+    assertEquals(MetroDiagnosticId.GRAPH_INIT_SUSPEND_REQUIRED, diagnostic.id)
+    assertTrue(diagnostic.render(), "Make 'create' a suspend function." in diagnostic.render())
+    assertEquals("create", (diagnostic.anchor?.element as KtNamedFunction).name)
+  }
+
+  fun testLifecycleCallbackParameterMustBeSuspend() {
+    myFixture.addGraphLifecycleRuntime()
+    val result =
+      validate(
+        """
+        class Database
+
+        @DependencyGraph
+        interface AppGraph : CloseableGraph {
+          @Provides suspend fun provideDatabase(): Database = Database()
+
+          @OnGraphInit fun migrate(database: suspend () -> Database, eager: Database) {}
+
+          @DependencyGraph.Factory
+          fun interface Factory {
+            suspend fun create(): AppGraph
+          }
+        }
+        """,
+      )
+
+    assertEquals(
+      setOf(
+        MetroDiagnosticId.LIFECYCLE_CALLBACK_SUSPEND_REQUIRED,
+        MetroDiagnosticId.UNSCOPED_LIFECYCLE_PARAMETER,
+      ),
+      result.diagnostics.mapTo(mutableSetOf()) { it.id },
+    )
+    val diagnostic =
+      result.diagnostics.single { it.id == MetroDiagnosticId.LIFECYCLE_CALLBACK_SUSPEND_REQUIRED }
+    assertTrue(diagnostic.render(), "Parameter 'eager' of @OnGraphInit" in diagnostic.render())
+  }
+
+  fun testSuspendCloseableGraphRequiresRuntimeCoroutines() {
+    myFixture.addGraphLifecycleRuntime()
+    val result =
+      validate(
+        """
+        @DependencyGraph
+        interface AppGraph : SuspendCloseableGraph {
+          @OnGraphClose suspend fun stop() {}
+        }
+        """,
+      )
+
+    val diagnostic = result.diagnostics.single()
+    assertEquals(MetroDiagnosticId.MISSING_RUNTIME_COROUTINES, diagnostic.id)
+    assertTrue(diagnostic.render(), "implements SuspendCloseableGraph" in diagnostic.render())
+  }
+
+  fun testSuspendLifecycleReportsWhenFeatureIsDisabled() {
+    myFixture.addGraphLifecycleRuntime()
+    val result =
+      validate(
+        """
+        @DependencyGraph
+        interface AppGraph : SuspendCloseableGraph
+        """,
+        suspendProvidersEnabled = false,
+      )
+
+    assertEquals(
+      listOf(MetroDiagnosticId.SUSPEND_PROVIDERS_NOT_ENABLED),
+      result.diagnostics.map { it.id },
+    )
+  }
+
+  fun testSuspendInitExtensionsNeedSuspendFactories() {
+    myFixture.addGraphLifecycleRuntime()
+    val result =
+      validate(
+        """
+        @GraphExtension
+        interface DirectChild : CloseableGraph {
+          @OnGraphInit suspend fun start() {}
+        }
+
+        @GraphExtension
+        interface FactoryChild : CloseableGraph {
+          @OnGraphInit suspend fun start() {}
+
+          @GraphExtension.Factory
+          fun interface Factory {
+            fun create(): FactoryChild
+          }
+        }
+
+        @GraphExtension
+        interface SuspendFactoryChild : CloseableGraph {
+          @OnGraphInit suspend fun start() {}
+
+          @GraphExtension.Factory
+          fun interface Factory {
+            suspend fun create(): SuspendFactoryChild
+          }
+        }
+
+        @DependencyGraph
+        interface AppGraph : CloseableGraph {
+          val directChild: DirectChild
+          val factoryChild: FactoryChild.Factory
+          val suspendFactoryChild: SuspendFactoryChild.Factory
+        }
+        """,
+      )
+
+    assertEquals(
+      listOf(
+        MetroDiagnosticId.GRAPH_INIT_SUSPEND_REQUIRED,
+        MetroDiagnosticId.GRAPH_INIT_SUSPEND_REQUIRED,
+      ),
+      result.diagnostics.map { it.id },
+    )
+    val titles = result.diagnostics.joinToString { it.diagnostic.title.toString() }
+    assertTrue(titles, "'directChild' can't create it directly." in titles)
+    assertTrue(titles, "creating 'FactoryChild' suspends. Make 'create'" in titles)
+  }
+
+  fun testCloseableParentCannotCloseSuspendingExtension() {
+    myFixture.addGraphLifecycleRuntime()
+    myFixture.addFileToProject(
+      "metro/internal/SuspendDoubleCheck.kt",
+      """
+      package dev.zacsweers.metro.internal
+
+      class SuspendDoubleCheck
+      """
+        .trimIndent(),
+    )
+    val result =
+      validate(
+        """
+        @GraphExtension
+        interface ChildGraph : SuspendCloseableGraph
+
+        @DependencyGraph
+        interface AppGraph : CloseableGraph {
+          val child: ChildGraph
+        }
+        """,
+      )
+
+    val diagnostic = result.diagnostics.single()
+    assertEquals(MetroDiagnosticId.SUSPEND_CLOSE_REQUIRED, diagnostic.id)
+    assertTrue(diagnostic.render(), "'AppGraph' closes 'ChildGraph'" in diagnostic.render())
   }
 
   private fun scopedSuspendBindingSource(): String =

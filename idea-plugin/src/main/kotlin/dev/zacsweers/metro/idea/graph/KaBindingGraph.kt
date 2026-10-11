@@ -22,10 +22,14 @@ import dev.zacsweers.metro.compiler.graph.BindingGraphValidator
 import dev.zacsweers.metro.compiler.graph.DiagnosticRoutes
 import dev.zacsweers.metro.compiler.graph.ErrorReporter
 import dev.zacsweers.metro.compiler.graph.GraphAdjacency
+import dev.zacsweers.metro.compiler.graph.GraphCloseKind
 import dev.zacsweers.metro.compiler.graph.GraphValidationIssue
 import dev.zacsweers.metro.compiler.graph.MissingBindingHints
 import dev.zacsweers.metro.compiler.graph.MultibindingKind
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
+import dev.zacsweers.metro.compiler.graph.SuspendBindingAnalysisResult
+import dev.zacsweers.metro.compiler.graph.SuspendBindingPath
+import dev.zacsweers.metro.compiler.graph.SuspendDiagnosticMessages
 import dev.zacsweers.metro.compiler.graph.disambiguateIncompatibleScopes
 import dev.zacsweers.metro.compiler.graph.duplicateMapKeysDiagnostic
 import dev.zacsweers.metro.compiler.graph.emptyMultibindingDiagnostic
@@ -74,6 +78,8 @@ internal class KaBindingGraph(
   private val sources: ValidationSourceSnapshot,
   /** Keys extension children delegate to this graph, validated here like the compiler does. */
   private val reservations: List<ReservedParentKey> = emptyList(),
+  /** Lifecycle facts from extension children that sealed without errors. */
+  private val extensionLifecycles: List<KaGraphLifecycleSummary> = emptyList(),
   private val resolveParentGraph: (GraphContext) -> ParentGraphLookup? = { null },
 ) :
   // The TraceScope delegation supplies a no-op tracer for the shared graph phases.
@@ -84,9 +90,21 @@ internal class KaBindingGraph(
   private val context = queryContext.graphContext
   private val graph = context.graph
   private val graphName = graph.classId?.asFqNameString() ?: graph.name ?: "<unknown>"
-  private val graphConsumers = session.accessorsFor(queryContext)
+  private val composition = session.graphComposition(queryContext)
+  private val graphConsumers = composition.accessors
   private val diagnostics = mutableListOf<KaGraphDiagnostic>()
   private var suspendKeys: Set<KaTypeKey> = emptySet()
+  private val lifecycleValidator =
+    KaGraphLifecycleValidator(
+      context,
+      composition,
+      graphConsumers,
+      options,
+      sources,
+      ::reportLifecycleDiagnostic,
+    )
+  private var lifecycleResult: KaGraphLifecycleResult? = null
+  private var keepKeys: Set<KaTypeKey> = emptySet()
   private val pendingEmptyMultibindings = mutableListOf<KaBinding.Multibinding>()
   private var reportedLazyFactorySites: MutableSet<LazyFactorySite>? = null
   private val lazyFactoryTypes by
@@ -201,6 +219,9 @@ internal class KaBindingGraph(
       )
     }
 
+    keepKeys = keeps.keys.mapTo(HashSet()) { it.typeKey }
+    lifecycleValidator.validateExtensionCreation(extensionLifecycles)
+
     val roots = LinkedHashMap<KaContextualTypeKey, KaBindingStack.Entry>()
     for (consumer in graphConsumers) {
       ProgressManager.checkCanceled()
@@ -269,7 +290,18 @@ internal class KaBindingGraph(
       realGraph.bindings,
       suspendKeys,
       reservedParentBindings,
+      lifecycleSummary(),
     )
+  }
+
+  /** Parents only check how they create extensions that sealed without errors. */
+  private fun lifecycleSummary(): KaGraphLifecycleSummary? {
+    val hasErrors = diagnostics.any { it.severity == MetroSeverity.ERROR }
+    if (hasErrors) return null
+    val initSuspendReason = lifecycleResult?.initSuspendReason?.description
+    val closeKind = lifecycleValidator.closeKind
+    if (initSuspendReason == null && closeKind == null) return null
+    return KaGraphLifecycleSummary(graph, closeKind, initSuspendReason)
   }
 
   // The bindings the in-flight report is about, attached to the next reported diagnostic. The
@@ -278,6 +310,14 @@ internal class KaBindingGraph(
 
   override fun report(diagnostic: MetroDiagnostic, stack: KaBindingStack) {
     diagnostics += KaGraphDiagnostic(diagnostic, stack.entries.toList(), pendingRelated)
+  }
+
+  private fun reportLifecycleDiagnostic(
+    diagnostic: MetroDiagnostic,
+    stack: KaBindingStack,
+    anchor: KaSourcePointer?,
+  ) {
+    diagnostics += KaGraphDiagnostic(diagnostic, stack.entries.toList(), anchor = anchor)
   }
 
   override fun reportFatal(diagnostic: MetroDiagnostic, stack: KaBindingStack): Nothing {
@@ -351,18 +391,84 @@ internal class KaBindingGraph(
         reportStructuralIssue(issue, stack, diagnosticRoutes, rootsByTypeKey)
       }
     }
-    suspendKeys =
+    // A graph that closes suspending reports the missing runtime itself, naming that reason.
+    val closesSuspending = lifecycleValidator.closeKind == GraphCloseKind.SUSPEND
+    val suspendValidator =
       KaSuspendBindingValidator(
-          graph = graph,
-          graphName = graphName,
-          options = options,
-          sources = sources,
-          graphConsumers = graphConsumers,
-          bindings = bindings,
-          runtimeCoroutinesAvailable = graph.runtimeCoroutinesAvailable,
-          report = ::reportSuspendDiagnostic,
+        graph = graph,
+        graphName = graphName,
+        options = options,
+        sources = sources,
+        graphConsumers = graphConsumers,
+        bindings = bindings,
+        runtimeCoroutinesAvailable = graph.runtimeCoroutinesAvailable || closesSuspending,
+        report = ::reportSuspendDiagnostic,
+      )
+    suspendKeys = suspendValidator.validate()
+    validateLifecycle(bindings, suspendValidator.pathAnalysis)
+  }
+
+  /** Mirrors the compiler, which checks lifecycle callbacks after suspend validation. */
+  private fun validateLifecycle(
+    bindings: ScatterMap<KaTypeKey, KaBinding>,
+    pathAnalysis: SuspendBindingAnalysisResult<KaTypeKey, KaContextualTypeKey>?,
+  ) {
+    if (!options.enableSuspendProviders) {
+      val reportedDisabledSuspend = diagnostics.any {
+        it.id == MetroDiagnosticId.SUSPEND_PROVIDERS_NOT_ENABLED
+      }
+      val lifecycleUsesSuspend = lifecycleValidator.usesSuspend()
+      if (lifecycleUsesSuspend && !reportedDisabledSuspend) {
+        report(
+          MetroDiagnostic(
+            id = MetroDiagnosticId.SUSPEND_PROVIDERS_NOT_ENABLED,
+            severity = MetroSeverity.ERROR,
+            title = textOf(SuspendDiagnosticMessages.SUSPEND_PROVIDERS_NOT_ENABLED),
+          ),
+          KaBindingStack(graph),
         )
-        .validate()
+      }
+      // The compiler stops here once it reports that suspend providers are disabled.
+      if (lifecycleUsesSuspend || reportedDisabledSuspend) return
+    }
+    val closesSuspending = lifecycleValidator.closeKind == GraphCloseKind.SUSPEND
+    if (closesSuspending && !graph.runtimeCoroutinesAvailable) {
+      val trigger = SuspendDiagnosticMessages.suspendCloseableGraphRuntimeTrigger(lifecycleName())
+      report(
+        MetroDiagnostic(
+          id = MetroDiagnosticId.MISSING_RUNTIME_COROUTINES,
+          severity = MetroSeverity.ERROR,
+          title = textOf("$trigger ${SuspendDiagnosticMessages.MISSING_RUNTIME_COROUTINES_FIX}"),
+        ),
+        KaBindingStack(graph),
+      )
+    }
+    val nonCallbackRootKeys = HashSet(keepKeys)
+    for (consumer in graphConsumers) {
+      if (consumer.lifecycleCallback == null) {
+        nonCallbackRootKeys += consumer.contextKey.typeKey
+      }
+    }
+    lifecycleResult =
+      lifecycleValidator.validate(bindings, nonCallbackRootKeys) { contextKey ->
+        lifecycleSuspendPath(contextKey, bindings, pathAnalysis)
+      }
+  }
+
+  /** The graph's simple name, which lifecycle diagnostics use. */
+  private fun lifecycleName(): String = graph.classId?.shortClassName?.asString() ?: graphName
+
+  private fun lifecycleSuspendPath(
+    contextKey: KaContextualTypeKey,
+    bindings: ScatterMap<KaTypeKey, KaBinding>,
+    pathAnalysis: SuspendBindingAnalysisResult<KaTypeKey, KaContextualTypeKey>?,
+  ): SuspendBindingPath<KaTypeKey, KaContextualTypeKey>? {
+    val requiresSuspend = contextKey.typeKey in suspendKeys
+    if (!requiresSuspend || contextKey.isDeferrable) return null
+    val graphDependency = bindings[contextKey.typeKey] as? KaBinding.GraphDependency
+    if (graphDependency?.canPassThrough(contextKey) == true) return null
+    return pathAnalysis?.pathFrom(contextKey.typeKey) { it.typeKey }
+      ?: SuspendBindingPath(contextKey.typeKey, emptyList(), contextKey.typeKey, false)
   }
 
   private fun reportStructuralIssue(

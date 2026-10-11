@@ -27,6 +27,8 @@ internal sealed interface KaGraphValidationResult {
     val suspendKeys: Set<KaTypeKey>,
     /** Bindings this context delegates to its immediate parent for validation. */
     val parentReservations: Map<KaTypeKey, KaBinding> = emptyMap(),
+    /** What this context's parent checks about creating it, when it has lifecycle callbacks. */
+    val lifecycle: KaGraphLifecycleSummary? = null,
   ) : KaGraphValidationResult
 
   /** The IDE reached an analysis limit and cannot claim that the graph is fully validated. */

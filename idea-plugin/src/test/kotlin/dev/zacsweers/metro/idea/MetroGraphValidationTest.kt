@@ -9,6 +9,7 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.util.Disposer
 import com.intellij.psi.PsiDocumentManager
+import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.util.ui.UIUtil
@@ -50,6 +51,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtDeclaration
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtParameter
@@ -5642,5 +5644,94 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     } catch (e: CancellationException) {
       assertEquals("Metro graph declaration is no longer current", e.message)
     }
+  }
+
+  fun testLifecycleCallbackParametersAreGraphRoots() {
+    myFixture.addGraphLifecycleRuntime()
+    val result =
+      validate(
+        """
+        interface Database
+
+        @DependencyGraph
+        interface AppGraph : CloseableGraph {
+          @OnGraphClose fun closeDatabase(database: Database) {}
+        }
+        """,
+      )
+
+    val diagnostic = result.diagnostics.single()
+    assertEquals(MetroDiagnosticId.MISSING_BINDING, diagnostic.id)
+    val rendered = diagnostic.render()
+    assertTrue(
+      rendered,
+      "Database is injected at @OnGraphClose test.AppGraph.closeDatabase(database)" in rendered,
+    )
+    assertTrue(diagnostic.stack.first().pointer?.element is KtParameter)
+  }
+
+  fun testContributedLifecycleCallbacksAreGraphRoots() {
+    myFixture.addGraphLifecycleRuntime()
+    val result =
+      validate(
+        """
+        interface Database
+
+        @ContributesTo(AppScope::class)
+        interface DatabaseHooks {
+          @OnGraphInit fun openDatabase(database: Database) {}
+        }
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph : CloseableGraph
+        """,
+      )
+
+    val diagnostic = result.diagnostics.single()
+    assertEquals(MetroDiagnosticId.MISSING_BINDING, diagnostic.id)
+    assertTrue(diagnostic.render(), "DatabaseHooks.openDatabase(database)" in diagnostic.render())
+  }
+
+  fun testOverridingLifecycleCallbackReplacesTheOverriddenCallback() {
+    myFixture.addGraphLifecycleRuntime()
+    val result =
+      validate(
+        """
+        @Inject class Request
+
+        interface Hooks {
+          @OnGraphInit fun start(request: Request) {}
+        }
+
+        @DependencyGraph
+        interface AppGraph : CloseableGraph, Hooks {
+          @OnGraphInit override fun start(request: Request) {}
+        }
+        """,
+      )
+
+    val diagnostic = result.diagnostics.single()
+    assertEquals(MetroDiagnosticId.UNSCOPED_LIFECYCLE_PARAMETER, diagnostic.id)
+    assertTrue(diagnostic.render(), "AppGraph.start" in diagnostic.render())
+    val anchor = diagnostic.anchor?.element as KtParameter
+    assertEquals("AppGraph", PsiTreeUtil.getParentOfType(anchor, KtClass::class.java)?.name)
+  }
+
+  fun testLifecycleCallbacksRequireCloseableGraph() {
+    myFixture.addGraphLifecycleRuntime()
+    val result =
+      validate(
+        """
+        @DependencyGraph
+        interface AppGraph {
+          @OnGraphClose fun stop() {}
+        }
+        """,
+      )
+
+    assertEquals(
+      listOf(MetroDiagnosticId.MISSING_CLOSEABLE_GRAPH),
+      result.diagnostics.map { it.id },
+    )
   }
 }

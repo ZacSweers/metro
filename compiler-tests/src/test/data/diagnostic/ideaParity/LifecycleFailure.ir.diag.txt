@@ -1,0 +1,37 @@
+/LifecycleFailure.kt:26:11: error: [Metro/GraphInitSuspendRequired] Parameter 'database' of @OnGraphInit AppGraph.migrate depends on
+    suspend bindings, so creating 'AppGraph' suspends. Declare a graph factory whose function is
+    suspend and create 'AppGraph' with it.
+
+  trace (in parity.lifecycle.failure.AppGraph):
+      Database is provided at suspend parity.lifecycle.failure.AppGraph.provideDatabase(…)
+      Database is injected at @OnGraphInit parity.lifecycle.failure.AppGraph.migrate(database)
+
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#graphinitsuspendrequired
+
+
+/LifecycleFailure.kt:30:15: error: [Metro/LifecycleCallbackSuspendRequired] Parameter 'database' of @OnGraphInit AppGraph.migrate depends on suspend bindings, so the callback must be a suspend function or request `suspend () -> Database` instead.
+
+Trace:
+    Database is injected at @OnGraphInit
+        [parity.lifecycle.failure.AppGraph] parity.lifecycle.failure.AppGraph.migrate(database) // ❌ needs suspend support
+    Database is provided at
+        [parity.lifecycle.failure.AppGraph] suspend parity.lifecycle.failure.AppGraph.provideDatabase(…)
+
+/LifecycleFailure.kt:30:15: warning: [Metro/UnscopedLifecycleParameter] Unscoped Database is injected into parameter 'database' of
+    @OnGraphInit AppGraph.migrate. This instance may be discarded after the callback.
+
+  help: request () -> Database or Lazy<Database> to resolve Database explicitly
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#unscopedlifecycleparameter
+
+
+/LifecycleFailure.kt:32:26: warning: [Metro/UnscopedLifecycleParameter] Unscoped Request is injected into parameter 'request' of
+    @OnGraphInit AppGraph.start. This instance may be discarded after the callback.
+
+  help: request () -> Request or Lazy<Request> to resolve Request explicitly
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#unscopedlifecycleparameter
+
+
+/LifecycleFailure.kt:34:26: warning: [Metro/CloseOnlyBinding] Cache is reachable only from @OnGraphClose callbacks in AppGraph. Resolving
+    parameter 'cache' of AppGraph.stop may create Cache for the first time during graph close.
+
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#closeonlybinding

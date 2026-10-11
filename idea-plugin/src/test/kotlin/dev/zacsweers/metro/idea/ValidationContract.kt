@@ -41,6 +41,8 @@ internal data class ParityCase(
   val explanationReport: String? = metadataReport,
   val explanationKeys: Set<String> = emptySet(),
   val explanationRejections: Set<BindingReason> = emptySet(),
+  /** Whether the fixture needs the graph lifecycle APIs, which the test runtime lacks. */
+  val usesGraphLifecycle: Boolean = false,
 )
 
 internal data class ValidationContract(
@@ -211,6 +213,13 @@ internal class CompilerContractReader(
       }
       for (root in rootsObject.getValue("injectors").jsonArray.objects()) {
         add(root.toRootContract())
+      }
+      // Callback parameters are roots too. Reports only list callbacks when a graph has some.
+      val lifecycleCallbacks = rootsObject["lifecycleCallbacks"]?.jsonArray?.objects().orEmpty()
+      for (callback in lifecycleCallbacks) {
+        for (parameter in callback.getValue("parameters").jsonArray.objects()) {
+          add(parameter.toRootContract())
+        }
       }
     }
       .sortedBy(RootContract::key)

@@ -139,7 +139,11 @@ public data class LifecycleCallbackMetadata(
 /** A lifecycle callback parameter and the key it requests. */
 @Serializable
 @ExperimentalMetroGraphApi
-public data class LifecycleCallbackParameterMetadata(val name: String, val key: String)
+public data class LifecycleCallbackParameterMetadata(
+  val name: String,
+  val key: String,
+  val isDeferrable: Boolean = false,
+)
 
 /** Graph extension information. */
 @Serializable

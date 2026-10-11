@@ -353,6 +353,10 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
       val bindingIdentities = hashSetOf<Any>()
       val accessors = mutableListOf<ConsumerEntry>()
       val accessorIdentities = hashSetOf<Any>()
+      val lifecycleCallbacks = mutableListOf<GraphLifecycleCallbackEntry>()
+      val lifecycleCallbackIdentities = hashSetOf<Any>()
+      val creationSites = mutableListOf<GraphExtensionCreationSiteEntry>()
+      val creationSiteIdentities = hashSetOf<Any>()
       var supersededDeclarations: MutableSet<SourcePointerIdentity>? = null
 
       fun addMemberOverrides(overrides: List<GraphMemberOverride>) {
@@ -378,8 +382,10 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
           ) {
             continue
           }
-          // A fake override can still point at the concrete declaration itself.
-          if (!memberOverride.isAbstract) {
+          // A fake override can still point at the concrete declaration itself. Lifecycle
+          // callbacks are concrete, but an overriding callback is the one that runs.
+          val retainsOwnRequest = memberOverride.isAbstract || memberOverride.isLifecycleCallback
+          if (!retainsOwnRequest) {
             declaration.sourceIdentity?.let(identities::add)
           }
           // Abstract overrides retain their own request with its narrowed type and qualifiers.
@@ -406,12 +412,28 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
         if (accessorIdentities.add(identity)) accessors += consumer
       }
 
+      fun addLifecycleCallbacks(callbacks: List<GraphLifecycleCallbackEntry>) {
+        for (callback in callbacks) {
+          val identity = callback.sourceIdentity ?: callback
+          if (lifecycleCallbackIdentities.add(identity)) lifecycleCallbacks += callback
+        }
+      }
+
+      fun addCreationSites(sites: List<GraphExtensionCreationSiteEntry>) {
+        for (site in sites) {
+          val identity = site.sourceIdentity?.let { it to site.extension } ?: site
+          if (creationSiteIdentities.add(identity)) creationSites += site
+        }
+      }
+
       for ((index, consumer) in
         lookups.accessorsByGraph[graph.declarationId].orEmpty().withIndex()) {
         checkCanceledEvery(index)
         if (consumer.graphContribution == null) addAccessor(consumer)
       }
       addMemberOverrides(graph.memberOverrides)
+      addLifecycleCallbacks(graph.lifecycleCallbacks)
+      addCreationSites(graph.extensionCreationSites)
       for (candidate in graph.contributedInterfaces) {
         ProgressManager.checkCanceled()
         val reference = candidate.contribution.declarationId ?: continue
@@ -427,6 +449,8 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
         factories += candidate.extensionFactories
         memberOwners += candidate.injectedMemberOwnerIds
         addMemberOverrides(candidate.memberOverrides)
+        addLifecycleCallbacks(candidate.lifecycleCallbacks)
+        addCreationSites(candidate.extensionCreationSites)
         for ((bindingIndex, binding) in candidate.bindings.withIndex()) {
           checkCanceledEvery(bindingIndex)
           if (hasWrittenBinding(binding, graph)) continue
@@ -450,6 +474,7 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
       val supersededRequests = supersededDeclarations.orEmpty()
       if (supersededRequests.isNotEmpty()) {
         accessors.removeAll { isSupersededGraphRequest(it, supersededRequests) }
+        lifecycleCallbacks.removeAll { it.sourceIdentity in supersededRequests }
       }
       SelectedGraphComposition(
         GraphComposition(
@@ -460,6 +485,8 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
           selectedContributions.toList(),
           accessors.toList(),
           memberOwners.toSet(),
+          lifecycleCallbacks.toList(),
+          creationSites.toList(),
         ),
         selection,
         contributionIds.toSet(),
@@ -1574,7 +1601,7 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
     if (supersededRequests.isEmpty()) {
       return false
     }
-    val source = consumer.sourceIdentity ?: return false
+    val source = consumer.graphRequestIdentity ?: return false
     return source in supersededRequests
   }
 

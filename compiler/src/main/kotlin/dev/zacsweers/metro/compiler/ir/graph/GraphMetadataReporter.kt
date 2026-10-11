@@ -243,6 +243,7 @@ internal class GraphMetadataReporter(
                     parameter.contextKey.render(short = false, includeQualifier = true),
                   ),
                 )
+                put("isDeferrable", JsonPrimitive(parameter.contextKey.wrappedType.isDeferrable()))
               },
             )
           }

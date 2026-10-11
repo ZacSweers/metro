@@ -59,13 +59,28 @@ internal class KaBindingStack(override val graph: KaGraphDeclaration) :
     override fun toString() = contextKey.toString()
 
     companion object {
-      /** An entry for a graph accessor or injector root requesting [contextKey]. */
+      /**
+       * An entry for a graph root requesting [contextKey]. Roots are accessors, injectors, and
+       * lifecycle callback parameters. [name] is the accessor, injector, or parameter name.
+       */
       fun requestedAt(
         contextKey: KaContextualTypeKey,
         consumer: ConsumerEntry,
         graph: String,
         name: String?,
       ): Entry {
+        val callback = consumer.lifecycleCallback
+        if (callback != null) {
+          val callbackFqName =
+            "${callback.declaringClassId.asFqNameString()}.${callback.functionName}"
+          return Entry(
+            contextKey = contextKey,
+            usage = "is injected at ${callback.phase.annotationName}",
+            graphContext = "$callbackFqName(${name.orEmpty()})",
+            pointer = consumer.pointer,
+            isSynthetic = true,
+          )
+        }
         return Entry(
           contextKey = contextKey,
           usage = "is requested at",

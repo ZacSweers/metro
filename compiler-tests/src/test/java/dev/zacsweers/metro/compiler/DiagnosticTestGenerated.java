@@ -1197,6 +1197,18 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("LifecycleFailure.kt")
+    public void testLifecycleFailure() {
+      run("LifecycleFailure.kt");
+    }
+
+    @Test
+    @TestMetadata("LifecycleGraph.kt")
+    public void testLifecycleGraph() {
+      run("LifecycleGraph.kt");
+    }
+
+    @Test
     @TestMetadata("MissingBinding.kt")
     public void testMissingBinding() {
       run("MissingBinding.kt");
