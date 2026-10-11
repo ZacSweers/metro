@@ -1,0 +1,7 @@
+/Warnings.kt:16:14: warning: [Metro/UnscopedLifecycleParameter] Unscoped Unscoped is injected into parameter 'unscoped' of @OnGraphClose ExampleGraph.finish. Scope the binding or request a provider or lazy value to resolve it explicitly.
+
+/Warnings.kt:16:50: warning: [Metro/UnscopedLifecycleParameter] Unscoped Ordinary is injected into parameter 'ordinary' of @OnGraphClose ExampleGraph.finish. Scope the binding or request a provider or lazy value to resolve it explicitly.
+
+/Warnings.kt:26:14: warning: [Metro/CloseOnlyBinding] Unscoped is reachable only from @OnGraphClose callbacks in CloseOnlyGraph. Resolving parameter 'deferred' may create Unscoped for the first time during close.
+
+/Warnings.kt:26:40: warning: [Metro/CloseOnlyBinding] Scoped is reachable only from @OnGraphClose callbacks in CloseOnlyGraph. Resolving parameter 'lazy' may create Scoped for the first time during close.

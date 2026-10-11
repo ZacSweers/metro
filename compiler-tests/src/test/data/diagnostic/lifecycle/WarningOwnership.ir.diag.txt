@@ -1,0 +1,9 @@
+/WarningOwnership.kt:35:14: warning: [Metro/UnscopedLifecycleParameter] Unscoped Supplied is injected into parameter 'supplied' of @OnGraphClose IncludesGraph.finish. Scope the binding or request a provider or lazy value to resolve it explicitly.
+
+/WarningOwnership.kt:47:13: warning: [Metro/CloseOnlyBinding] Temporary is reachable only from @OnGraphClose callbacks in IndependentlySuppressed. Resolving parameter 'temporary' may create Temporary for the first time during close.
+
+/WarningOwnership.kt:51:14: warning: [Metro/UnscopedLifecycleParameter] Unscoped Temporary is injected into parameter 'temporary' of @OnGraphClose IndependentlySuppressed.second. Scope the binding or request a provider or lazy value to resolve it explicitly.
+
+/WarningOwnership.kt:54:14: warning: [Metro/CloseOnlyBinding] Nested, Temporary are reachable only from @OnGraphClose callbacks in IndependentlySuppressed. Resolving parameter 'nested' may create Nested, Temporary for the first time during close.
+
+/WarningOwnership.kt:54:14: warning: [Metro/UnscopedLifecycleParameter] Unscoped Nested is injected into parameter 'nested' of @OnGraphClose IndependentlySuppressed.nested. Scope the binding or request a provider or lazy value to resolve it explicitly.

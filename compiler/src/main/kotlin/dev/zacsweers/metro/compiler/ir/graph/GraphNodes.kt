@@ -737,6 +737,30 @@ internal class GraphNodes(
           // Functions and properties only
           if (declaration !is IrOverridableDeclaration<*>) continue
           if (!declaration.isFakeOverride) continue
+          if (declaration is IrSimpleFunction) {
+            val lifecycleAnnotations =
+              setOf(
+                dev.zacsweers.metro.compiler.MetroClassIds.onGraphInit,
+                dev.zacsweers.metro.compiler.MetroClassIds.onGraphClose,
+              )
+            val isCallback =
+              declaration.overriddenSymbolsSequence().any {
+                it.owner.isAnnotatedWithAny(lifecycleAnnotations)
+              }
+            val lifecycleTypes =
+              setOf(
+                dev.zacsweers.metro.compiler.MetroClassIds.closeableGraph,
+                dev.zacsweers.metro.compiler.MetroClassIds.suspendCloseableGraph,
+              )
+            val isCloseSignature =
+              declaration.name.asString() == "close" && declaration.regularParameters.isEmpty()
+            val isClose =
+              isCloseSignature &&
+                supertypes.any { it.classOrNull?.owner?.classId in lifecycleTypes }
+            if (isCallback || isClose) {
+              continue
+            }
+          }
           if (
             declaration is IrFunction &&
               declaration.isCompilerIntrinsicOrAny(
@@ -1352,6 +1376,7 @@ internal class GraphNodes(
         val graphNode =
           GraphNode.Local(
             sourceGraph = graphDeclaration,
+            lifecycleCallbacks = nonNullMetroGraph.lifecycleCallbacks(),
             supertypes = supertypes.toList(),
             includedGraphNodes = includedGraphNodes,
             graphExtensions = graphExtensions,

@@ -1,0 +1,1 @@
+/SuspendPropertyCreation.kt:9:7: error: Graph extension 'InitializingChild' has a creator type 'InitializingChild.Factory' that must be used to create its instances. Either make 'PropertyParent' implement 'InitializingChild.Factory' or expose an accessor for 'InitializingChild.Factory' instead of 'InitializingChild' directly.

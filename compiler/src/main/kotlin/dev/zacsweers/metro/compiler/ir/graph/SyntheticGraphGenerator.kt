@@ -192,23 +192,29 @@ internal class SyntheticGraphGenerator(
     samFunction.body =
       metroContext.createIrBuilder(samFunction.symbol).run {
         irExprBodySafe(
-          irCallConstructor(graphCtor.symbol, emptyList()).apply {
-            val storedFields = paramsToFields.values.toMutableList()
-            val samParams = samFunction.regularParameters
+          initializeGraph(
+            irCallConstructor(graphCtor.symbol, emptyList()).apply {
+              val storedFields = paramsToFields.values.toMutableList()
+              val samParams = samFunction.regularParameters
 
-            var paramIndex = 0
-            if (hasParentGraph) {
-              // First arg is always the parent graph instance
-              arguments[paramIndex++] =
-                irGetField(irGet(samFunction.dispatchReceiverParameter!!), storedFields.removeAt(0))
-            }
+              var paramIndex = 0
+              if (hasParentGraph) {
+                // First arg is always the parent graph instance
+                arguments[paramIndex++] =
+                  irGetField(
+                    irGet(samFunction.dispatchReceiverParameter!!),
+                    storedFields.removeAt(0),
+                  )
+              }
 
-            samParams.forEach { param -> arguments[paramIndex++] = irGet(param) }
-            storedFields.forEach { field ->
-              arguments[paramIndex++] =
-                irGetField(irGet(samFunction.dispatchReceiverParameter!!), field)
-            }
-          },
+              samParams.forEach { param -> arguments[paramIndex++] = irGet(param) }
+              storedFields.forEach { field ->
+                arguments[paramIndex++] =
+                  irGetField(irGet(samFunction.dispatchReceiverParameter!!), field)
+              }
+            },
+            suspendInit = samFunction.isSuspend,
+          ),
         )
       }
 
@@ -343,6 +349,8 @@ internal class SyntheticGraphGenerator(
           }
         }
 
+    graphImpl.addFakeOverrides(irTypeSystemContext)
+
     // If there's an extension, generate it into this impl
     val factoryImpl = creatorFunction?.let { factory ->
       // Don't need to do this if the parent implements the factory
@@ -354,8 +362,6 @@ internal class SyntheticGraphGenerator(
         storedParams = storedParams,
       )
     }
-
-    graphImpl.addFakeOverrides(irTypeSystemContext)
 
     graphImpl.validateOverrides()
 

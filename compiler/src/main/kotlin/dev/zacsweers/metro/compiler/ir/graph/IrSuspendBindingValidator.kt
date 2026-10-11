@@ -56,11 +56,11 @@ internal class IrSuspendBindingValidator(
       IrTypeKey,
       IrContextualTypeKey,
       IrBinding,
-      GraphAccessor,
+      GraphRoot,
     > {
     val analysis = SuspendBindingAnalysis(bindings::get)
     val requests =
-      node.accessors.map { accessor ->
+      (node.accessors + node.lifecycleParameters).map { accessor ->
         SuspendGraphRequest(
           contextKey = accessor.contextKey,
           source = accessor,
@@ -169,7 +169,7 @@ internal class IrSuspendBindingValidator(
   }
 
   private fun reportIssue(
-    issue: SuspendValidationIssue<IrTypeKey, IrContextualTypeKey, IrBinding, GraphAccessor>,
+    issue: SuspendValidationIssue<IrTypeKey, IrContextualTypeKey, IrBinding, GraphRoot>,
   ) {
     val trace = issueTrace(issue)
     val message = buildString {
@@ -184,24 +184,30 @@ internal class IrSuspendBindingValidator(
       if (issue.kind == SuspendValidationIssueKind.NON_SUSPEND_ACCESSOR) {
         val site =
           issue.site.expectAs<
-            SuspendValidationSite.GraphRequest<IrContextualTypeKey, GraphAccessor>,
+            SuspendValidationSite.GraphRequest<IrContextualTypeKey, GraphRoot>,
           >()
         val request = site.request
         val typeRender = request.contextKey.typeKey.render(short = true)
         val deferredForm = suspendFunctionRender(typeRender)
         appendLine()
-        appendLine("Either:")
-        appendLine(
-          "  - Mark this accessor as `suspend fun` so it can await suspend dependencies, or",
-        )
-        append("  - Make the return type `$deferredForm`.")
+        if (request.source is LifecycleParameter) {
+          append(
+            "Mark this lifecycle callback as `suspend fun` or request `$deferredForm` to defer resolution.",
+          )
+        } else {
+          appendLine("Either:")
+          appendLine(
+            "  - Mark this accessor as `suspend fun` so it can await suspend dependencies, or",
+          )
+          append("  - Make the return type `$deferredForm`.")
+        }
       }
     }
     report(reportCandidates(issue), message, issue.diagnosticId.factory)
   }
 
   private fun reportCandidates(
-    issue: SuspendValidationIssue<IrTypeKey, IrContextualTypeKey, IrBinding, GraphAccessor>,
+    issue: SuspendValidationIssue<IrTypeKey, IrContextualTypeKey, IrBinding, GraphRoot>,
   ): Sequence<IrDeclaration?> {
     if (
       issue.kind == SuspendValidationIssueKind.FEATURE_DISABLED ||
@@ -210,13 +216,18 @@ internal class IrSuspendBindingValidator(
       return sequenceOf(node.sourceGraph)
     }
     val requestSite =
-      issue.site as? SuspendValidationSite.GraphRequest<IrContextualTypeKey, GraphAccessor>
+      issue.site as? SuspendValidationSite.GraphRequest<IrContextualTypeKey, GraphRoot>
     if (requestSite != null) {
       val request = requestSite.request
       // Resolve to the property (if it's a getter) so the diagnostic lands on the property
       // declaration, then walk fake overrides back to the original interface declaration.
+      val source = request.source
       val declaration =
-        request.source.metroFunction.ir.propertyIfAccessorCompat.expectAs<IrDeclarationWithName>()
+        if (source is LifecycleParameter) {
+          checkNotNull(source.parameter.ir)
+        } else {
+          request.source.metroFunction.ir.propertyIfAccessorCompat.expectAs<IrDeclarationWithName>()
+        }
       return sequenceOf(declaration.originalDeclarationIfOverride())
     }
 
@@ -270,14 +281,25 @@ internal class IrSuspendBindingValidator(
    * see which declarations stand in the way.
    */
   private fun issueTrace(
-    issue: SuspendValidationIssue<IrTypeKey, IrContextualTypeKey, IrBinding, GraphAccessor>,
+    issue: SuspendValidationIssue<IrTypeKey, IrContextualTypeKey, IrBinding, GraphRoot>,
   ): List<IrBindingStack.Entry> {
     val path = issue.path ?: return emptyList()
     val head =
       when (val site = issue.site) {
         is SuspendValidationSite.GraphRequest -> {
           val request = site.request
-          IrBindingStack.Entry.requestedAt(request.contextKey, request.source.metroFunction.ir)
+          val source = request.source
+          if (source is LifecycleParameter) {
+            IrBindingStack.Entry.injectedAt(
+              request.contextKey,
+              source.metroFunction.ir,
+              source.parameter.asValueParameter,
+              declaration = source.parameter.ir,
+              annotation = source.annotation,
+            )
+          } else {
+            IrBindingStack.Entry.requestedAt(request.contextKey, source.metroFunction.ir)
+          }
         }
         is SuspendValidationSite.BindingDependency -> {
           val binding = site.binding

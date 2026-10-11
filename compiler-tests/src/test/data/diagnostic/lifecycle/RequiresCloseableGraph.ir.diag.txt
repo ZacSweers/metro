@@ -1,0 +1,1 @@
+/RequiresCloseableGraph.kt:13:11: error: [Metro/GraphLifecycle] The assembled graph must implement CloseableGraph or SuspendCloseableGraph to declare lifecycle callbacks.

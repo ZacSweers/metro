@@ -2600,6 +2600,98 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
   }
 
   @Nested
+  @TestMetadata("compiler-tests/src/test/data/box/lifecycle")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Lifecycle {
+    private void run(String fileName) {
+      runTest("compiler-tests/src/test/data/box/lifecycle/" + fileName);
+    }
+
+    @Test
+    public void testAllFilesPresentInLifecycle() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/lifecycle"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
+    }
+
+    @Test
+    @TestMetadata("CancellationAndConcurrentClose.kt")
+    public void testCancellationAndConcurrentClose() {
+      run("CancellationAndConcurrentClose.kt");
+    }
+
+    @Test
+    @TestMetadata("ChildOwnership.kt")
+    public void testChildOwnership() {
+      run("ChildOwnership.kt");
+    }
+
+    @Test
+    @TestMetadata("ConcurrentClose.kt")
+    public void testConcurrentClose() {
+      run("ConcurrentClose.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributedLifecycleOwnership.kt")
+    public void testContributedLifecycleOwnership() {
+      run("ContributedLifecycleOwnership.kt");
+    }
+
+    @Test
+    @TestMetadata("DynamicInitialization.kt")
+    public void testDynamicInitialization() {
+      run("DynamicInitialization.kt");
+    }
+
+    @Test
+    @TestMetadata("InheritedContributions.kt")
+    public void testInheritedContributions() {
+      run("InheritedContributions.kt");
+    }
+
+    @Test
+    @TestMetadata("InitializationAndClose.kt")
+    public void testInitializationAndClose() {
+      run("InitializationAndClose.kt");
+    }
+
+    @Test
+    @TestMetadata("InitializationAndResolutionFailures.kt")
+    public void testInitializationAndResolutionFailures() {
+      run("InitializationAndResolutionFailures.kt");
+    }
+
+    @Test
+    @TestMetadata("ReentrantAndExternalOwnership.kt")
+    public void testReentrantAndExternalOwnership() {
+      run("ReentrantAndExternalOwnership.kt");
+    }
+
+    @Test
+    @TestMetadata("SuspendInitialization.kt")
+    public void testSuspendInitialization() {
+      run("SuspendInitialization.kt");
+    }
+
+    @Test
+    @TestMetadata("SuspendParentOwnership.kt")
+    public void testSuspendParentOwnership() {
+      run("SuspendParentOwnership.kt");
+    }
+
+    @Test
+    @TestMetadata("SuspendTracing.kt")
+    public void testSuspendTracing() {
+      run("SuspendTracing.kt");
+    }
+
+    @Test
+    @TestMetadata("Tracing.kt")
+    public void testTracing() {
+      run("Tracing.kt");
+    }
+  }
+
+  @Nested
   @TestMetadata("compiler-tests/src/test/data/box/member")
   @TestDataPath("$PROJECT_ROOT")
   public class Member {

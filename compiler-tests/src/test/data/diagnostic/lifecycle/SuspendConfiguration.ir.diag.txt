@@ -1,0 +1,3 @@
+/SuspendConfiguration.kt:8:11: error: [Metro/MissingRuntimeCoroutines] Add `dev.zacsweers.metro:runtime-coroutines` to the compile and runtime classpath.
+
+/SuspendConfiguration.kt:8:11: error: [Metro/SuspendProvidersNotEnabled] Suspend provider support is disabled. Enable the `enable-suspend-providers` compiler option or set `metro.enableSuspendProviders` to true.

@@ -534,6 +534,9 @@ internal class BindingGraphGenerator(
     }
 
     trace("Process accessors") {
+      for (root in node.lifecycleParameters) {
+        graph.addLifecycleParameter(root)
+      }
       val accessorsToAdd = buildList {
         addAll(node.accessors)
         // Pass down @Multibinds declarations in the same way we do for multibinding providers

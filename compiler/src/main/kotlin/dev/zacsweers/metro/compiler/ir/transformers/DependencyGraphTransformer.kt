@@ -56,6 +56,8 @@ import dev.zacsweers.metro.compiler.ir.graph.IrGraphExtensionGenerator
 import dev.zacsweers.metro.compiler.ir.graph.IrGraphGenerator
 import dev.zacsweers.metro.compiler.ir.graph.expressions.BindingExpressionDecorator
 import dev.zacsweers.metro.compiler.ir.graph.generatedGraphExtensionData
+import dev.zacsweers.metro.compiler.ir.graph.initializeGraph
+import dev.zacsweers.metro.compiler.ir.graph.prepareGraphLifecycle
 import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.irCallConstructorWithSameParameters
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
@@ -364,6 +366,11 @@ internal class DependencyGraphTransformer(
         dependencyGraphAnno,
       ) as GraphNode.Local
 
+    metroGraph.prepareGraphLifecycle(
+      node.originalCreator?.function?.isSuspend == true ||
+        (node.creator?.function as? IrSimpleFunction)?.isSuspend == true,
+    )
+
     // Generate creator functions
     trace("Implement creator functions") {
       implementCreatorFunctions(node.sourceGraph, node.creator, metroGraph)
@@ -466,6 +473,7 @@ internal class DependencyGraphTransformer(
       localParentContext.pushParentGraph(
         node,
         bindingGraph::isTransitivelySuspendForChild,
+        bindingGraph::isLifecycleScopedForChild,
         bindingGraph::declaresSameBindingAs,
       )
 
@@ -1006,9 +1014,12 @@ internal class DependencyGraphTransformer(
           body =
             pluginContext.createIrBuilder(symbol).run {
               irExprBodySafe(
-                irCallConstructorWithSameParameters(
-                  source = createFunction,
-                  constructor = metroGraph.primaryConstructor!!.symbol,
+                initializeGraph(
+                  irCallConstructorWithSameParameters(
+                    source = createFunction,
+                    constructor = metroGraph.primaryConstructor!!.symbol,
+                  ),
+                  suspendInit = createFunction.isSuspend,
                 ),
               )
             }
@@ -1055,7 +1066,11 @@ internal class DependencyGraphTransformer(
           }
           body =
             pluginContext.createIrBuilder(symbol).run {
-              irExprBodySafe(irCallConstructor(metroGraph.primaryConstructor!!.symbol, emptyList()))
+              irExprBodySafe(
+                initializeGraph(
+                  irCallConstructor(metroGraph.primaryConstructor!!.symbol, emptyList()),
+                ),
+              )
             }
         }
       }
