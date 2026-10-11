@@ -53,6 +53,8 @@ import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.ParentContext
 import dev.zacsweers.metro.compiler.ir.ParentContextReader
 import dev.zacsweers.metro.compiler.ir.annotationsIn
+import dev.zacsweers.metro.compiler.ir.contextParameters
+import dev.zacsweers.metro.compiler.ir.extensionReceiverParameterCompat
 import dev.zacsweers.metro.compiler.ir.getAnnotation
 import dev.zacsweers.metro.compiler.ir.graph.reporting.BindingDecisionCapture
 import dev.zacsweers.metro.compiler.ir.hasErrorTypes
@@ -96,6 +98,7 @@ import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.isAny
 import org.jetbrains.kotlin.ir.types.isMarkedNullable
+import org.jetbrains.kotlin.ir.types.isUnit
 import org.jetbrains.kotlin.ir.types.makeNotNull
 import org.jetbrains.kotlin.ir.types.makeNullable
 import org.jetbrains.kotlin.ir.types.typeOrFail
@@ -1508,6 +1511,25 @@ internal class IrBindingGraph(
       node.metroGraphOrFail.graphLifecycleGeneration?.initialize?.isSuspend == true
     for (callback in callbacks) {
       val function = callback.metroFunction.ir
+      val implementedUnit =
+        function.modality != org.jetbrains.kotlin.descriptors.Modality.ABSTRACT &&
+          function.returnType.isUnit()
+      if (!implementedUnit) {
+        reportError(
+          sequenceOf(callback.declaration, node.sourceGraph.sourceGraphIfMetroGraph),
+          "[Metro/GraphLifecycle] Lifecycle callbacks must be implemented member functions returning Unit.",
+          MetroDiagnostics.GRAPH_LIFECYCLE_ERROR,
+        )
+      }
+      val hasReceiver =
+        function.extensionReceiverParameterCompat != null || function.contextParameters.isNotEmpty()
+      if (hasReceiver || function.typeParameters.isNotEmpty()) {
+        reportError(
+          sequenceOf(callback.declaration, node.sourceGraph.sourceGraphIfMetroGraph),
+          "[Metro/GraphLifecycle] Lifecycle callbacks cannot declare receivers or type parameters.",
+          MetroDiagnostics.GRAPH_LIFECYCLE_ERROR,
+        )
+      }
       if (callback.onInit && function.isSuspend && !suspendFactory) {
         reportError(
           sequenceOf(

@@ -1697,6 +1697,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("UnprocessedCallbacks.kt")
+    public void testUnprocessedCallbacks() {
+      run("UnprocessedCallbacks.kt");
+    }
+
+    @Test
     @TestMetadata("WarningOwnership.kt")
     public void testWarningOwnership() {
       run("WarningOwnership.kt");
