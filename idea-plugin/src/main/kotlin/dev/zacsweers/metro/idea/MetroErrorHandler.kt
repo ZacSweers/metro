@@ -33,6 +33,14 @@ internal constructor(
 
   override fun getReportActionText(): String = "Send to Metro"
 
+  override fun getPrivacyNoticeText(): String =
+    "When you choose Send to Metro, the report is sent to Bugsnag and includes the error " +
+      "message and stack trace, any description you enter, operating system and Java runtime " +
+      "versions, IDE version and build, Metro plugin version and, when available, build SHA, " +
+      "and the name, ID, and version of other installed IDE plugins. The installed plugin " +
+      "inventory is stored with the report so we can identify the Kotlin plugin version and " +
+      "diagnose compatibility issues. Bugsnag session tracking is disabled."
+
   override fun submit(
     events: Array<out IdeaLoggingEvent>,
     additionalInfo: String?,
@@ -66,10 +74,12 @@ internal constructor(
       val client =
         Bugsnag(key, false).apply {
           setAutoCaptureSessions(false)
-          startSession()
           setAppVersion(VERSION)
           setProjectPackages("dev.zacsweers.metro.idea")
           addOnError { event ->
+            event.device.remove("hostname")
+            event.clearTab("device")
+            event.user.clear()
             val appInfo = ApplicationInfo.getInstance()
             event.addMetadata("Device", "osVersion", System.getProperty("os.version"))
             event.addMetadata("Device", "JRE", System.getProperty("java.version"))

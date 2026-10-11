@@ -11,6 +11,18 @@ import junit.framework.TestCase
 
 class MetroErrorHandlerTest : TestCase() {
 
+  fun testPrivacyNoticeDisclosesReportContentsAndPluginInventoryPurpose() {
+    val expected =
+      "When you choose Send to Metro, the report is sent to Bugsnag and includes the error " +
+        "message and stack trace, any description you enter, operating system and Java runtime " +
+        "versions, IDE version and build, Metro plugin version and, when available, build SHA, " +
+        "and the name, ID, and version of other installed IDE plugins. The installed plugin " +
+        "inventory is stored with the report so we can identify the Kotlin plugin version and " +
+        "diagnose compatibility issues. Bugsnag session tracking is disabled."
+
+    assertEquals(expected, MetroErrorHandler(null).privacyNoticeText)
+  }
+
   fun testUnconfiguredReporterDoesNotStartSubmission() {
     var submitted: SubmittedReportInfo? = null
 

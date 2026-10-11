@@ -40,6 +40,31 @@ val propertyResolver =
     globalGradleLocalProperty = metroRootGradleProperty,
   )
 
+fun ideaPluginSigningProperty(name: String): Provider<String> =
+  providers
+    .environmentVariable(name)
+    .filter(String::isNotBlank)
+    .orElse(propertyResolver.optionalStringProvider(name).filter(String::isNotBlank))
+
+val ideaPluginPrivateKey = ideaPluginSigningProperty("METRO_IDEA_PLUGIN_PRIVATE_KEY")
+val ideaPluginPrivateKeyFile =
+  layout
+    .file(
+      ideaPluginSigningProperty("METRO_IDEA_PLUGIN_PRIVATE_KEY_FILE").map { path -> file(path) }
+    )
+    .filter { !ideaPluginPrivateKey.isPresent }
+val ideaPluginPrivateKeyPassword =
+  ideaPluginSigningProperty("METRO_IDEA_PLUGIN_PRIVATE_KEY_PASSWORD")
+val ideaPluginCertificateChain = ideaPluginSigningProperty("METRO_IDEA_PLUGIN_CERTIFICATE_CHAIN")
+val ideaPluginCertificateChainFile =
+  layout
+    .file(
+      ideaPluginSigningProperty("METRO_IDEA_PLUGIN_CERTIFICATE_CHAIN_FILE").map { path ->
+        file(path)
+      }
+    )
+    .filter { !ideaPluginCertificateChain.isPresent }
+
 val metroBootstrapVersion = propertyResolver.requiredStringProvider("METRO_BOOTSTRAP_VERSION").get()
 
 val explicitReleaseBuild =
@@ -296,9 +321,11 @@ intellijPlatform {
   }
 
   signing {
-    privateKey.set(providers.environmentVariable("METRO_IDEA_PLUGIN_PRIVATE_KEY"))
-    password.set(providers.environmentVariable("METRO_IDEA_PLUGIN_PRIVATE_KEY_PASSWORD"))
-    certificateChain.set(providers.environmentVariable("METRO_IDEA_PLUGIN_CERTIFICATE_CHAIN"))
+    privateKey.set(ideaPluginPrivateKey)
+    privateKeyFile.set(ideaPluginPrivateKeyFile)
+    password.set(ideaPluginPrivateKeyPassword)
+    certificateChain.set(ideaPluginCertificateChain)
+    certificateChainFile.set(ideaPluginCertificateChainFile)
   }
 
   publishing {
@@ -322,6 +349,43 @@ intellijPlatform {
     }
   }
 }
+
+val validateIdeaPluginSigning =
+  tasks.register("validateIdeaPluginSigning") {
+    group = "intellij platform"
+    description = "Validates the credentials used to sign the IDEA plugin."
+
+    doLast {
+      check(ideaPluginPrivateKey.isPresent || ideaPluginPrivateKeyFile.isPresent) {
+        "Missing METRO_IDEA_PLUGIN_PRIVATE_KEY or METRO_IDEA_PLUGIN_PRIVATE_KEY_FILE"
+      }
+      ideaPluginPrivateKeyFile.orNull?.asFile?.let { privateKeyFile ->
+        check(privateKeyFile.isFile) {
+          "METRO_IDEA_PLUGIN_PRIVATE_KEY_FILE does not point to a regular file: $privateKeyFile"
+        }
+      }
+
+      check(ideaPluginPrivateKeyPassword.isPresent) {
+        "Missing METRO_IDEA_PLUGIN_PRIVATE_KEY_PASSWORD"
+      }
+
+      check(ideaPluginCertificateChain.isPresent || ideaPluginCertificateChainFile.isPresent) {
+        "Missing METRO_IDEA_PLUGIN_CERTIFICATE_CHAIN or METRO_IDEA_PLUGIN_CERTIFICATE_CHAIN_FILE"
+      }
+      ideaPluginCertificateChainFile.orNull?.asFile?.let { certificateChainFile ->
+        check(certificateChainFile.isFile) {
+          "METRO_IDEA_PLUGIN_CERTIFICATE_CHAIN_FILE does not point to a regular file: " +
+            certificateChainFile
+        }
+      }
+    }
+  }
+
+tasks.named("buildPlugin") { mustRunAfter(validateIdeaPluginSigning) }
+
+tasks.named("signPlugin") { dependsOn(validateIdeaPluginSigning) }
+
+tasks.named("publishPlugin") { dependsOn(validateIdeaPluginSigning) }
 
 tasks.test {
   dependsOn(metroRuntimeClasspath)

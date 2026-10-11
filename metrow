@@ -137,20 +137,6 @@ case "$1" in
        fi
 
        if [[ "$local" = true ]]; then
-           if [[ "$dry_run" = false ]]; then
-               if [[ -z "${METRO_IDEA_PLUGIN_PRIVATE_KEY:-}" ]]; then
-                   echo "Missing METRO_IDEA_PLUGIN_PRIVATE_KEY"
-                   exit 1
-               fi
-               if [[ -z "${METRO_IDEA_PLUGIN_PRIVATE_KEY_PASSWORD:-}" ]]; then
-                   echo "Missing METRO_IDEA_PLUGIN_PRIVATE_KEY_PASSWORD"
-                   exit 1
-               fi
-               if [[ -z "${METRO_IDEA_PLUGIN_CERTIFICATE_CHAIN:-}" ]]; then
-                   echo "Missing METRO_IDEA_PLUGIN_CERTIFICATE_CHAIN"
-                   exit 1
-               fi
-           fi
            ./gradlew -p idea-plugin signPlugin verifyPluginSignature "${publish_args[@]}"
        else
            ./gradlew -p idea-plugin publishPlugin "${publish_args[@]}"
