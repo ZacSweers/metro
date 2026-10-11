@@ -4,15 +4,15 @@
 
 @file:OptIn(ExperimentalMetroApi::class)
 
-@DependencyGraph
+@DependencyGraph(AppScope::class)
 interface ExampleGraph : CloseableGraph {
-  @Provides fun value(): String = "default"
-  @OnGraphInit fun initialize(<!SUSPEND_BINDING_FROM_NON_SUSPEND_ACCESSOR, UNSCOPED_LIFECYCLE_PARAMETER!>value: String<!>) {}
+  @Provides @SingleIn(AppScope::class) fun value(): String = "default"
+  @OnGraphInit fun initialize(<!SUSPEND_BINDING_FROM_NON_SUSPEND_ACCESSOR!>value: String<!>) {}
 }
 
 @BindingContainer
 object Replacement {
-  @Provides suspend fun value(): String = "replacement"
+  @Provides <!INLINABLE_PROVIDES_WARNING!>@SingleIn(AppScope::class)<!> suspend fun value(): String = "replacement"
 }
 
 fun create() = createDynamicGraph<ExampleGraph>(Replacement)

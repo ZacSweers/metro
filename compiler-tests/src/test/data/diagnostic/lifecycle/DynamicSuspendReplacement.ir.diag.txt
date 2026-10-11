@@ -7,5 +7,3 @@ Trace:
         [DynamicExampleGraphImpl_xe427] suspend Replacement.value(…)
 
 Mark this lifecycle callback as `suspend fun` or request `suspend () -> String` to defer resolution.
-
-/DynamicSuspendReplacement.kt:11:31: warning: [Metro/UnscopedLifecycleParameter] Unscoped String is injected into parameter 'value' of @OnGraphInit ExampleGraph.initialize. Scope the binding or request a provider or lazy value to resolve it explicitly.
