@@ -12,26 +12,32 @@ Diagnostics rendering is controlled by the `diagnosticsRenderMode` Gradle option
 | Diagnostic | Summary |
 |------------|---------|
 | [`Metro/AssistedFactorySuspendRequired`](#assistedfactorysuspendrequired) | An assisted factory creates a target that depends on suspend bindings. |
+| [`Metro/CloseOnlyBinding`](#closeonlybinding) | A binding is only reachable from close callbacks. |
 | [`Metro/DependencyCycle`](#dependencycycle) | A binding cycle has no deferred edge. |
 | [`Metro/DuplicateBinding`](#duplicatebinding) | Multiple bindings match the same type key. |
 | [`Metro/DuplicateMapKeys`](#duplicatemapkeys) | Multiple map contributions use the same key. |
 | [`Metro/EmptyMultibinding`](#emptymultibinding) | A declared multibinding has no contributions. |
 | [`Metro/Error`](#error) | A general Metro graph validation error. |
+| [`Metro/GraphInitSuspendRequired`](#graphinitsuspendrequired) | A graph's initialization suspends but its creator isn't a suspend function. |
 | [`Metro/IncompatibleOverrides`](#incompatibleoverrides) | Merged declarations conflict in their binding roles. |
 | [`Metro/IncompatibleReturnTypes`](#incompatiblereturntypes) | Merged declarations have incompatible return types. |
 | [`Metro/IncompatiblyScopedBindings`](#incompatiblyscopedbindings) | A graph uses bindings with incompatible scopes. |
 | [`Metro/InvalidBinding`](#invalidbinding) | A binding declaration uses an unsupported form. |
+| [`Metro/LifecycleCallbackSuspendRequired`](#lifecyclecallbacksuspendrequired) | A lifecycle callback parameter needs a suspend context. |
 | [`Metro/MemberInjectionOverSuspendBinding`](#memberinjectionoversuspendbinding) | Member injection depends on a suspend binding. |
 | [`Metro/MissingBinding`](#missingbinding) | No binding satisfies a requested type. |
+| [`Metro/MissingCloseableGraph`](#missingcloseablegraph) | A graph has lifecycle callbacks but isn't closeable. |
 | [`Metro/MissingRuntimeCoroutines`](#missingruntimecoroutines) | Suspend codegen needs the optional runtime-coroutines artifact. |
 | [`Metro/MultibindingOverSuspendBindings`](#multibindingoversuspendbindings) | A multibinding aggregates suspend bindings. |
 | [`Metro/QualifierOverrideMismatch`](#qualifieroverridemismatch) | An override changes the qualifiers on a declaration. |
 | [`Metro/SuspendBindingFromNonSuspendAccessor`](#suspendbindingfromnonsuspendaccessor) | A non-suspend accessor requests a binding that needs a suspend context. |
 | [`Metro/SuspendBindingWrappedInLazy`](#suspendbindingwrappedinlazy) | A suspend binding is requested through a synchronous `Lazy`. |
 | [`Metro/SuspendBindingWrappedInProvider`](#suspendbindingwrappedinprovider) | A suspend binding is requested through a synchronous `Provider`. |
+| [`Metro/SuspendCloseRequired`](#suspendcloserequired) | Closing a CloseableGraph would need to suspend. |
 | [`Metro/SuspendProvidersNotEnabled`](#suspendprovidersnotenabled) | A suspend binding is used while suspend providers are disabled. |
 | [`Metro/SuspiciousUnusedMultibinding`](#suspiciousunusedmultibinding) | A multibinding has contributions but is never requested. |
 | [`Metro/UnprocessedUpstreamDeclaration`](#unprocessedupstreamdeclaration) | An upstream declaration does not appear to have been processed by Metro. |
+| [`Metro/UnscopedLifecycleParameter`](#unscopedlifecycleparameter) | A lifecycle callback parameter requests an unscoped binding. |
 | [`Metro/UnusedGraphInputs`](#unusedgraphinputs) | A graph input is unused and can be removed. |
 
 ## AssistedFactorySuspendRequired
@@ -41,6 +47,14 @@ Diagnostics rendering is controlled by the `diagnosticsRenderMode` Gradle option
 **Summary:** An assisted factory creates a target that depends on suspend bindings.
 
 An `@AssistedFactory` creates a type whose non-assisted dependencies include suspend bindings. The factory function must await them. Declare the factory function as a `suspend` function so the generated implementation can await the suspend dependencies.
+
+## CloseOnlyBinding
+
+**Diagnostic:** `Metro/CloseOnlyBinding`
+
+**Summary:** A binding is only reachable from close callbacks.
+
+An `@OnGraphClose` parameter requests a binding that nothing else in the graph uses, including init callbacks and graph extensions. Resolving it during close can create it for the first time just to clean it up. If that's intended, suppress this with `@Suppress("CLOSE_ONLY_BINDING")`.
 
 ## DependencyCycle
 
@@ -82,6 +96,14 @@ A `Set` or `Map` multibinding is declared or requested, but no binding contribut
 
 Metro reported a graph validation error that does not have a dedicated diagnostic ID. The diagnostic message contains the specific failure and any available fix guidance.
 
+## GraphInitSuspendRequired
+
+**Diagnostic:** `Metro/GraphInitSuspendRequired`
+
+**Summary:** A graph's initialization suspends but its creator isn't a suspend function.
+
+A graph's `@OnGraphInit` callbacks need a suspend context. A callback is a `suspend` function or one of its parameters depends on suspend bindings. Creating the graph then has to suspend too. Declare a `@DependencyGraph.Factory` or `@GraphExtension.Factory` whose function is `suspend` and create the graph through it.
+
 ## IncompatibleOverrides
 
 **Diagnostic:** `Metro/IncompatibleOverrides`
@@ -114,6 +136,14 @@ A graph references a scoped binding without declaring that scope, or an unscoped
 
 A binding is requested in a way its declaration does not support. The most common case is injecting an assisted-injected class directly. Inject its `@AssistedFactory` instead and call the factory's `create()` function.
 
+## LifecycleCallbackSuspendRequired
+
+**Diagnostic:** `Metro/LifecycleCallbackSuspendRequired`
+
+**Summary:** A lifecycle callback parameter needs a suspend context.
+
+An `@OnGraphInit` or `@OnGraphClose` callback requests a binding that depends on suspend bindings, but the callback isn't a `suspend` function. Make the callback `suspend`, or request the parameter as `suspend () -> T` and call it where the value is needed.
+
 ## MemberInjectionOverSuspendBinding
 
 **Diagnostic:** `Metro/MemberInjectionOverSuspendBinding`
@@ -131,6 +161,14 @@ A member-injected dependency resolves to a suspend binding, but member injection
 A graph accessor, injected constructor parameter, or injected member requests a type that no visible binding provides. The report includes the dependency path that led to the request and any similar bindings Metro found, such as the same type with a different qualifier, nullability, subtype/supertype relationship, or multibinding.
 
 Add an `@Inject` constructor, an `@Provides` function, or a `@Binds`/contributed binding visible to the graph that requests the type.
+
+## MissingCloseableGraph
+
+**Diagnostic:** `Metro/MissingCloseableGraph`
+
+**Summary:** A graph has lifecycle callbacks but isn't closeable.
+
+`@OnGraphInit` and `@OnGraphClose` callbacks only run on graphs that opt in to lifecycle management. The callbacks can come from the graph itself or from interfaces it extends, including contributed ones. Make the graph implement `CloseableGraph`, or `SuspendCloseableGraph` if its cleanup suspends.
 
 ## MissingRuntimeCoroutines
 
@@ -180,6 +218,14 @@ A suspend binding is wrapped in a synchronous `Lazy`. `Lazy` resolves its value 
 
 A suspend binding is wrapped in a synchronous `Provider` (or `() -> T`). That wrapper resolves its value without a suspend context and cannot await the binding. Use the deferred suspend form `suspend () -> T` (or `SuspendProvider<T>`) instead.
 
+## SuspendCloseRequired
+
+**Diagnostic:** `Metro/SuspendCloseRequired`
+
+**Summary:** Closing a CloseableGraph would need to suspend.
+
+A `CloseableGraph` closes synchronously, but its cleanup needs a suspend context. An `@OnGraphClose` callback is a `suspend` function, a callback parameter depends on suspend bindings, or the graph tracks a graph extension that implements `SuspendCloseableGraph`. Implement `SuspendCloseableGraph` instead.
+
 ## SuspendProvidersNotEnabled
 
 **Diagnostic:** `Metro/SuspendProvidersNotEnabled`
@@ -205,6 +251,14 @@ Contributions exist for a multibinding that nothing in the graph requests. This 
 Metro was asked to use an injected declaration from another module or compilation unit, but that declaration does not appear to have been processed by Metro. This usually means Metro was enabled only in the downstream module while the referenced declaration lives upstream.
 
 Enable Metro in the upstream module too. If this happens while using framework interop, make sure the upstream module also runs that framework's code generation when Metro relies on its generated code.
+
+## UnscopedLifecycleParameter
+
+**Diagnostic:** `Metro/UnscopedLifecycleParameter`
+
+**Summary:** A lifecycle callback parameter requests an unscoped binding.
+
+An `@OnGraphInit` or `@OnGraphClose` parameter requests an unscoped binding directly. The callback can get a new instance that's discarded afterward, or a different instance than other consumers. Request `() -> T` or `Lazy<T>` to resolve it explicitly, or scope the binding. If a temporary instance is intended, suppress this with `@Suppress("UNSCOPED_LIFECYCLE_PARAMETER")`.
 
 ## UnusedGraphInputs
 

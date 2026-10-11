@@ -26,6 +26,8 @@ internal class RuntimeTracingAvailability(context: IrMetroContext) {
         context.metroSymbols.metroTraceContextTrace == null ||
         context.metroSymbols.metroTraceContextInstant == null ||
         context.metroSymbols.metroTraceContextChild == null ||
+        context.metroSymbols.metroTraceContextTraceLifecycle == null ||
+        context.metroSymbols.metroTraceContextTraceLifecycleSuspend == null ||
         context.metroSymbols.tracedMembersInjector == null ||
         context.metroSymbols.tracedProvider == null ->
         "Metro tracing infra is missing from the classpath."

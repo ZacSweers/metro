@@ -26,6 +26,7 @@ import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classOrNull
+import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.constructors
@@ -433,6 +434,22 @@ internal class Symbols(
       ?.symbol
   }
 
+  val metroTraceContextTraceLifecycle: IrSimpleFunctionSymbol? by lazy {
+    metroTraceContext
+      ?.owner
+      ?.functions
+      ?.singleOrNull { it.name.asString() == "traceLifecycle" }
+      ?.symbol
+  }
+
+  val metroTraceContextTraceLifecycleSuspend: IrSimpleFunctionSymbol? by lazy {
+    metroTraceContext
+      ?.owner
+      ?.functions
+      ?.singleOrNull { it.name.asString() == "traceLifecycleSuspend" }
+      ?.symbol
+  }
+
   val metroTraceContextInstant: IrSimpleFunctionSymbol? by lazy {
     metroTraceContext?.owner?.functions?.single { it.name.asString() == "instant" }?.symbol
   }
@@ -639,6 +656,37 @@ internal class Symbols(
 
   val suspendDoubleCheckLazy by lazy {
     suspendDoubleCheckCompanionObject?.requireSimpleFunction("lazy")
+  }
+
+  val closeableGraph: IrClassSymbol by lazy {
+    builtinsFinder.findClass(MetroClassIds.closeableGraph)!!
+  }
+
+  val suspendCloseableGraph: IrClassSymbol by lazy {
+    builtinsFinder.findClass(MetroClassIds.suspendCloseableGraph)!!
+  }
+
+  private val graphLifecycle: IrClassSymbol by lazy {
+    builtinsFinder.findClass(MetroClassIds.graphLifecycle)!!
+  }
+
+  val graphLifecycleType: IrType
+    get() = graphLifecycle.defaultType
+
+  val graphLifecycleConstructor: IrConstructorSymbol by lazy {
+    graphLifecycle.constructors.single()
+  }
+  val graphLifecycleCheckOpen by lazy { graphLifecycle.requireSimpleFunction("checkOpen") }
+  val graphLifecycleMarkClosed by lazy { graphLifecycle.requireSimpleFunction("markClosed") }
+  val graphLifecycleAddChild by lazy { graphLifecycle.requireSimpleFunction("addChild") }
+  val graphLifecycleRemoveChild by lazy { graphLifecycle.requireSimpleFunction("removeChild") }
+  val graphLifecycleCloseChildren by lazy { graphLifecycle.requireSimpleFunction("closeChildren") }
+
+  /** `GraphLifecycle.closeSuspending` from runtime-coroutines, or null when it's not available. */
+  val graphLifecycleCloseSuspending: IrSimpleFunctionSymbol? by lazy {
+    builtinsFinder
+      .findFunctions(CallableId(metroRuntimeInternal.packageFqName, "closeSuspending".asName()))
+      .singleOrNull()
   }
 
   private val metroDelegateFactory: IrClassSymbol by lazy {
