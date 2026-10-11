@@ -24,7 +24,7 @@ internal class MetroContributeBindingInspection : LocalInspectionTool() {
       override fun visitClassOrObject(classOrObject: KtClassOrObject) {
         val name = classOrObject.nameIdentifier ?: return
         if (contributionCandidate(classOrObject) == null) return
-        val fix = LocalQuickFix.from(ContributeBindingAction(classOrObject), false) ?: return
+        val fix = LocalQuickFix.from(ContributeBindingAction(classOrObject)) ?: return
         holder.registerProblem(
           name,
           "Class can contribute a Metro binding",

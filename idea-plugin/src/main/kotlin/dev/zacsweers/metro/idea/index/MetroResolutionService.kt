@@ -24,7 +24,6 @@ import com.intellij.openapi.roots.ModuleRootEvent
 import com.intellij.openapi.roots.ModuleRootListener
 import com.intellij.openapi.roots.ProjectRootModificationTracker
 import com.intellij.openapi.util.Disposer
-import com.intellij.openapi.util.ShutDownTracker
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiDirectory
@@ -2408,11 +2407,9 @@ private constructor(
     return requested
   }
 
-  /** Keeps captured project unavailability retryable and stops VFS access during shutdown. */
+  /** Keeps captured project unavailability retryable and stops VFS access after disposal. */
   internal fun checkPsiClassificationActive(projectDisposed: Boolean = project.isDisposed) {
-    val applicationStopping =
-      ShutDownTracker.isShutdownStarted() || ApplicationManager.getApplication().isDisposed
-    if (isDisposed || applicationStopping) {
+    if (isDisposed || ApplicationManager.getApplication().isDisposed) {
       throw CancellationException("Metro PSI classification stopped during disposal")
     }
     // Light projects can temporarily close while their service scope stays alive. Preserve the

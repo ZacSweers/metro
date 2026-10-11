@@ -172,13 +172,13 @@ internal fun Project.setMetroOptions(vararg options: Pair<String, String>) {
 
 /** Removes the plugin arguments so tests can represent a project that does not use Metro. */
 internal fun Project.clearMetroOptions() {
-  updateMetroOptions(null)
+  updateMetroOptions(emptyArray())
 }
 
 /**
  * Holds write access through option changes and notifications so background reads see one state.
  */
-private fun Project.updateMetroOptions(options: Array<String>?) {
+private fun Project.updateMetroOptions(options: Array<String>) {
   runInEdtAndWait {
     runWriteAction {
       KotlinCommonCompilerArgumentsHolder.getInstance(this).update { pluginOptions = options }

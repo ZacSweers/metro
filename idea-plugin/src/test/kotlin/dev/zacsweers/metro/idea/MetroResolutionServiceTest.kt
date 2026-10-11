@@ -486,6 +486,27 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     }
   }
 
+  fun testDisposedServiceStopsPsiClassification() {
+    val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    val service =
+      MetroResolutionService.createForTest(
+        project,
+        serviceScope,
+        IndexRequestPolicy.Production,
+        AutomaticRefreshWindow(0, 0),
+      )
+    Disposer.dispose(service)
+    try {
+      service.checkPsiClassificationActive(projectDisposed = false)
+      fail("Expected disposed classification to stop")
+    } catch (failure: CancellationException) {
+      assertEquals("Metro PSI classification stopped during disposal", failure.message)
+    } finally {
+      serviceScope.cancel()
+      serviceScope.coroutineContext.job.awaitTestCompletion()
+    }
+  }
+
   fun testQueuedIndexRequestsShareThePublishedIndex() {
     configure()
     val executor = Executors.newSingleThreadExecutor()
