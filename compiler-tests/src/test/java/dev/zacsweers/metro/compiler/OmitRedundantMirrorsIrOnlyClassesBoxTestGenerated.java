@@ -3556,8 +3556,32 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
     }
 
     @Test
+    @TestMetadata("AbstractClassGraph.kt")
+    public void testAbstractClassGraph() {
+      run("AbstractClassGraph.kt");
+    }
+
+    @Test
     public void testAllFilesPresentInLifecycle() {
       KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/lifecycle"), Pattern.compile("^(.+)\\.kt$"), null, true);
+    }
+
+    @Test
+    @TestMetadata("CallbackFailures.kt")
+    public void testCallbackFailures() {
+      run("CallbackFailures.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributedCallbacks.kt")
+    public void testContributedCallbacks() {
+      run("ContributedCallbacks.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributedCallbacksAcrossModules.kt")
+    public void testContributedCallbacksAcrossModules() {
+      run("ContributedCallbacksAcrossModules.kt");
     }
 
     @Test
@@ -3570,6 +3594,42 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
     @TestMetadata("InitAndCloseCallbacks.kt")
     public void testInitAndCloseCallbacks() {
       run("InitAndCloseCallbacks.kt");
+    }
+
+    @Test
+    @TestMetadata("NonCloseableExtensionOfCloseableParent.kt")
+    public void testNonCloseableExtensionOfCloseableParent() {
+      run("NonCloseableExtensionOfCloseableParent.kt");
+    }
+
+    @Test
+    @TestMetadata("ScopedBindingOnlyUsedByCallbacks.kt")
+    public void testScopedBindingOnlyUsedByCallbacks() {
+      run("ScopedBindingOnlyUsedByCallbacks.kt");
+    }
+
+    @Test
+    @TestMetadata("SuspendClose.kt")
+    public void testSuspendClose() {
+      run("SuspendClose.kt");
+    }
+
+    @Test
+    @TestMetadata("SuspendInitDynamicGraph.kt")
+    public void testSuspendInitDynamicGraph() {
+      run("SuspendInitDynamicGraph.kt");
+    }
+
+    @Test
+    @TestMetadata("SuspendInitGraphExtension.kt")
+    public void testSuspendInitGraphExtension() {
+      run("SuspendInitGraphExtension.kt");
+    }
+
+    @Test
+    @TestMetadata("SuspendInitWithFactory.kt")
+    public void testSuspendInitWithFactory() {
+      run("SuspendInitWithFactory.kt");
     }
   }
 
@@ -4410,6 +4470,12 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
     @TestMetadata("RuntimeTracingIncludedGraphProvider.kt")
     public void testRuntimeTracingIncludedGraphProvider() {
       run("RuntimeTracingIncludedGraphProvider.kt");
+    }
+
+    @Test
+    @TestMetadata("RuntimeTracingLifecycle.kt")
+    public void testRuntimeTracingLifecycle() {
+      run("RuntimeTracingLifecycle.kt");
     }
 
     @Test
