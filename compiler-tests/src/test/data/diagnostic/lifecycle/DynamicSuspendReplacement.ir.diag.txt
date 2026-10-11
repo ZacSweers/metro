@@ -2,8 +2,8 @@
 
 Trace:
     String is injected at @OnGraphInit
-        [DynamicExampleGraphImpl_xe427] ExampleGraph.initialize(…, value) // ❌ needs suspend support
+        [ExampleGraph] ExampleGraph.initialize(…, value) // ❌ needs suspend support
     String is provided at
-        [DynamicExampleGraphImpl_xe427] suspend Replacement.value(…)
+        [ExampleGraph] suspend Replacement.value(…)
 
 Mark this lifecycle callback as `suspend fun` or request `suspend () -> String` to defer resolution.

@@ -31,6 +31,7 @@ import dev.zacsweers.metro.compiler.ir.overriddenSymbolsSequence
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.render
 import dev.zacsweers.metro.compiler.ir.requireSimpleType
+import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactory1
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
@@ -179,7 +180,16 @@ internal class IrSuspendBindingValidator(
         appendLine()
         appendLine()
         appendLine("Trace:")
-        appendBindingStackEntries(node.sourceGraph.kotlinFqName, trace)
+        val site = issue.site
+        val lifecycleRequest =
+          site is SuspendValidationSite.GraphRequest && site.request.source is LifecycleParameter
+        val graphName =
+          if (lifecycleRequest) {
+            node.sourceGraph.sourceGraphIfMetroGraph.kotlinFqName
+          } else {
+            node.sourceGraph.kotlinFqName
+          }
+        appendBindingStackEntries(graphName, trace)
       }
       if (issue.kind == SuspendValidationIssueKind.NON_SUSPEND_ACCESSOR) {
         val site =
