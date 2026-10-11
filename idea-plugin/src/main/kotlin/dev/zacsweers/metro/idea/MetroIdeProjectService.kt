@@ -12,6 +12,7 @@ import com.intellij.openapi.util.Key
 import com.intellij.psi.PsiElement
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
+import dev.zacsweers.metro.compiler.MetroClassIds
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.circuit.CircuitClassIds
 import java.util.concurrent.atomic.AtomicReference
@@ -55,7 +56,8 @@ internal class MetroIdeAnnotationClassIds(private val options: MetroOptions) {
   }
 
   val functionAnnotations: Set<ClassId> by lazy {
-    functionAnnotations(options.injectAnnotations)
+    functionAnnotations(options.injectAnnotations) +
+      setOf(MetroClassIds.onGraphInit, MetroClassIds.onGraphClose)
   }
 
   val topLevelFunctionAnnotations: Set<ClassId> by lazy {

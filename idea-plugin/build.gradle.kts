@@ -193,7 +193,6 @@ val metroRuntimeClasspath =
   configurations.resolvable("metroRuntimeClasspath") {
     extendsFrom(metroRuntime)
     isTransitive = false
-    resolutionStrategy.useGlobalDependencySubstitutionRules = false
   }
 
 val kotlinStdlib = configurations.dependencyScope("kotlinStdlib")

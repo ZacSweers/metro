@@ -222,10 +222,32 @@ internal class KaBindingLookup(
         ownerKey = parentKey,
         accessorIsSuspend = parentTransitiveSuspend(binding),
         isParentScoped = true,
+        isLifecycleScoped = parentLifecycleScoped(binding),
         multibindingId = binding.multibindingId,
         mapKeyValue = binding.mapKeyValue,
       )
     }
+  }
+
+  private fun parentLifecycleScoped(binding: KaBinding): Boolean {
+    val parentPath =
+      GraphPath(
+        queryContext.graphContext.chain.drop(1).map { it.declarationId },
+        queryContext.graphContext.dynamicGraph?.id,
+      )
+    val parentContext = session.findContext(parentPath) ?: return binding.scope != null
+    val resolved = resolveParentGraph(parentContext)
+    val parentSession = resolved?.session ?: session
+    val parentQuery =
+      resolved?.queryContext ?: parentSession.queryContext(parentContext) ?: return false
+    var current: KaBinding? =
+      parentSession.bindingsForKey(binding.typeKey, parentQuery).firstOrNull()
+    val visited = hashSetOf<KaTypeKey>()
+    while (current is KaBinding.Alias && visited.add(current.typeKey)) {
+      val key = current.consumedKey?.typeKey ?: return false
+      current = parentSession.bindingsForKey(key, parentQuery).firstOrNull()
+    }
+    return current is KaBinding.BoundInstance || current?.scope != null
   }
 
   /**

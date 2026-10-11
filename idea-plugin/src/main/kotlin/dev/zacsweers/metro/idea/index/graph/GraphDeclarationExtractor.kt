@@ -16,6 +16,7 @@ import dev.zacsweers.metro.idea.index.FactoryInputEntry
 import dev.zacsweers.metro.idea.index.callableBindingView
 import dev.zacsweers.metro.idea.index.classListArgument
 import dev.zacsweers.metro.idea.index.graphFactoryInputs
+import dev.zacsweers.metro.idea.index.lifecycleSuppressions
 import dev.zacsweers.metro.idea.index.typeKey
 import dev.zacsweers.metro.idea.model.ConsumerEntry
 import dev.zacsweers.metro.idea.model.GraphDeclarationId
@@ -76,6 +77,7 @@ internal class GraphDeclarationExtractor(
       val graphId = GraphDeclarationId(graphClassId, graphPointer.virtualFile)
       val factoryAnnotations =
         options.dependencyGraphFactoryAnnotations + options.graphExtensionFactoryAnnotations
+      var factoryIsSuspend = false
       val nestedClassIds = mutableSetOf<ClassId>()
       val includedBindingContainers = mutableSetOf<KaTypeKey>()
       val includedDependencies = mutableSetOf<KaTypeKey>()
@@ -116,6 +118,7 @@ internal class GraphDeclarationExtractor(
                 graphId,
                 includeInstanceBindings = onInstanceBinding != null,
               )
+            factoryIsSuspend = graphInputs.isSuspend
             for (binding in graphInputs.instanceBindings) onInstanceBinding?.invoke(binding)
             graphInputs.cacheDependencies.forEach(onDeclarationFile)
             includedBindingContainers += graphInputs.bindingContainers
@@ -187,6 +190,11 @@ internal class GraphDeclarationExtractor(
         supertypeDeclarations = supertypeDeclarations,
         extensionFactories = extensionFactories,
         memberOverrides = memberTarget.memberOverrides,
+        lifecycleCallbacks = memberTarget.lifecycleCallbacks,
+        closeImplementations = memberTarget.closeImplementations,
+        synchronousExtensionCreations = memberTarget.synchronousExtensionCreations,
+        factoryIsSuspend = factoryIsSuspend,
+        lifecycleSuppressions = lifecycleSuppressions(ktClass),
       )
     }
 

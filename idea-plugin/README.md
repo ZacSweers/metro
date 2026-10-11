@@ -52,6 +52,12 @@ Covered declarations include:
 Configured custom Metro annotations and supported interop annotation sets are read from the same
 compiler plugin options used by the compiler.
 
+### Graph Lifecycle
+
+`@OnGraphInit` and `@OnGraphClose` parameters support binding navigation and graph validation. The plugin selects inherited and contributed callbacks, checks suspend lifecycle configuration and child ownership, and reports lifecycle dependency warnings. `@Suppress("UNSCOPED_LIFECYCLE_PARAMETER")` and `@Suppress("CLOSE_ONLY_BINDING")` work independently.
+
+Callbacks count as implicitly used. The lifecycle inspection checks callback declarations, repeated annotations on overrides, direct calls, and callable references. See [graph lifecycle](../docs/graph-lifecycle.md) for runtime behavior and ownership.
+
 ### Binding Navigation
 
 The plugin adds gutter icons for the standard Metro binding relationships:

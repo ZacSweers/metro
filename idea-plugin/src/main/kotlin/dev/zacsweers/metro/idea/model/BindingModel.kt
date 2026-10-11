@@ -52,10 +52,23 @@ internal class ConsumerEntry(
   val isOptional: Boolean = false,
   /** Exact implicit interface contribution that must survive in the owning graph path. */
   val graphContribution: GraphReference? = null,
+  /** The callback declaration owns parameter roots during override selection. */
+  val lifecycleOwner: SmartPsiElementPointer<out KtElement>? = null,
+  val lifecycleSuppressions: Set<String> = emptySet(),
 ) {
   val sourceIdentity: BindingIndex.SourcePointerIdentity? = sourcePointerIdentity(pointer)
   val injectedMemberSourceIdentity: BindingIndex.SourcePointerIdentity? =
     injectedMemberPointer?.let(::sourcePointerIdentity)
+
+  val lifecycleOwnerIdentity = lifecycleOwner?.let(::sourcePointerIdentity)
+
+  val lifecycleAnnotation: String?
+    get() =
+      when (graphRequestKind) {
+        GraphRequestKind.INIT_CALLBACK -> "OnGraphInit"
+        GraphRequestKind.CLOSE_CALLBACK -> "OnGraphClose"
+        else -> null
+      }
 
   val key: KaTypeKey
     get() = contextKey.typeKey
@@ -79,12 +92,16 @@ internal class ConsumerEntry(
       isSuspend = isSuspend,
       isOptional = isOptional,
       graphContribution = contribution.declarationId,
+      lifecycleOwner = lifecycleOwner,
+      lifecycleSuppressions = lifecycleSuppressions,
     )
   }
 
   enum class GraphRequestKind {
     ACCESSOR,
     MEMBERS_INJECTOR,
+    INIT_CALLBACK,
+    CLOSE_CALLBACK,
   }
 }
 
@@ -173,6 +190,11 @@ internal class KaGraphDeclaration(
   val contributedInterfaces: List<GraphInterfaceContribution> = emptyList(),
   /** Written member overrides that determine which inherited graph requests remain active. */
   val memberOverrides: List<GraphMemberOverride> = emptyList(),
+  val lifecycleCallbacks: List<GraphLifecycleCallback> = emptyList(),
+  val closeImplementations: List<SmartPsiElementPointer<out KtElement>> = emptyList(),
+  val synchronousExtensionCreations: List<GraphExtensionCreation> = emptyList(),
+  val factoryIsSuspend: Boolean = false,
+  val lifecycleSuppressions: Set<String> = emptySet(),
 ) {
   val sourceIdentity: BindingIndex.SourcePointerIdentity? = sourcePointerIdentity(pointer)
   val declarationId: GraphDeclarationId = GraphDeclarationId(classId, pointer.virtualFile)
@@ -205,6 +227,11 @@ internal class KaGraphDeclaration(
       extensionFactories = extensionFactories,
       contributedInterfaces = interfaces,
       memberOverrides = memberOverrides,
+      lifecycleCallbacks = lifecycleCallbacks,
+      closeImplementations = closeImplementations,
+      synchronousExtensionCreations = synchronousExtensionCreations,
+      factoryIsSuspend = factoryIsSuspend,
+      lifecycleSuppressions = lifecycleSuppressions,
     )
   }
 }
@@ -300,6 +327,25 @@ internal class GraphMemberOverride(
   val overriddenDeclarations: List<GraphCallableReference>,
   val isOptional: Boolean,
   val isAbstract: Boolean,
+  val isLifecycle: Boolean = false,
+)
+
+/** An annotated callback retained independently of its dependency parameters. */
+internal class GraphLifecycleCallback(
+  val pointer: SmartPsiElementPointer<out KtElement>,
+  val onInit: Boolean,
+  val onClose: Boolean,
+  val isSuspend: Boolean,
+  val isImplementedUnit: Boolean = true,
+  val hasInvalidParameters: Boolean = false,
+) {
+  val sourceIdentity = sourcePointerIdentity(pointer)
+}
+
+/** A child accessor whose creation cannot suspend. */
+internal class GraphExtensionCreation(
+  val pointer: SmartPsiElementPointer<out KtElement>,
+  val extension: GraphReference,
 )
 
 /** A real graph accessor whose result is an extension factory. */
@@ -323,6 +369,9 @@ internal class GraphInterfaceContribution(
   val consumers: List<ConsumerEntry>,
   val injectedMemberOwnerIds: Set<ClassId>,
   val memberOverrides: List<GraphMemberOverride> = emptyList(),
+  val lifecycleCallbacks: List<GraphLifecycleCallback> = emptyList(),
+  val closeImplementations: List<SmartPsiElementPointer<out KtElement>> = emptyList(),
+  val synchronousExtensionCreations: List<GraphExtensionCreation> = emptyList(),
 )
 
 /** The effective interface surface of one graph in a concrete parent path and root module. */
@@ -334,6 +383,9 @@ internal class GraphComposition(
   val contributions: List<ContributionEntry>,
   val accessors: List<ConsumerEntry>,
   val injectedMemberOwnerIds: Set<ClassId>,
+  val lifecycleCallbacks: List<GraphLifecycleCallback> = emptyList(),
+  val closeImplementations: List<SmartPsiElementPointer<out KtElement>> = emptyList(),
+  val synchronousExtensionCreations: List<GraphExtensionCreation> = emptyList(),
 )
 
 /** A concrete graph path, ordered from the graph itself through its ancestors. */
