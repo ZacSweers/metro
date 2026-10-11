@@ -180,7 +180,7 @@ An outline surrounds the bindings available to each graph. An extension's outlin
 
 Hover over a graph name to highlight its boundary. This also reveals boundaries omitted from **Circular** while you hover.
 
-Accessors and injectors are roots. Graph inputs appear as squares. Roots and graph inputs sit on the boundary in Full graph, Radial, Connections, and routes. Short lines connect them to the bindings inside. Inputs enter on the left by default. Accessors and injectors sit on the right. Routes read from top to bottom.
+Accessors, injectors, and lifecycle callbacks are roots. Graph inputs appear as squares. Roots and graph inputs sit on the boundary in Full graph, Radial, Connections, and routes. Short lines connect them to the bindings inside. Inputs enter on the left by default. Accessors and injectors sit on the right. Routes read from top to bottom.
 
 Ordinary bindings appear as circles. Scoped bindings have a white border. The graph instance appears as a separate binding when other bindings depend on it. Package groups in **Overview** show a binding count and use group colors.
 
@@ -203,7 +203,7 @@ Sibling extensions overlap around their shared ancestors. Each sibling's own bin
 
 Included graphs appear separately when the report contains enough information to identify them. They connect through `@Includes` and their named roots. Select an extension or graph dependency in the inspector to fit it into view. Opening an extension report shows that extension and its available ancestors.
 
-Accessors show their property or function name above the requested type. Functions and injectors include parentheses. Reports without recorded names use the requested type as the label. **Graph** shows the graph boundary at a readable zoom. **Roots** shows the roots and their immediate dependencies. Select a root to inspect its requested type and connections.
+Accessors show their property or function name above the requested type. Functions and injectors include parentheses. Lifecycle callbacks show their annotation and function name, like `@OnGraphClose closeDatabase()`, and connect to each binding their parameters request. Reports without recorded names use the requested type as the label. **Graph** shows the graph boundary at a readable zoom. **Roots** shows the roots and their immediate dependencies. Select a root to inspect its requested type and connections.
 
 ### Display Options
 
@@ -298,7 +298,7 @@ The viewer's **Route from root** action starts from recorded accessors and injec
 
 ### Root and Leaf Analysis
 
-The `rootBindings` statistic counts nodes with no dependents in the analysis graph. The viewer's roots are recorded accessors and injectors. These counts describe different things.
+The `rootBindings` statistic counts nodes with no dependents in the analysis graph. The viewer's roots are recorded accessors, injectors, and lifecycle callbacks. These counts describe different things.
 
 Leaves have no dependencies. Configuration values, constants, and external dependencies are common examples.
 
@@ -345,9 +345,10 @@ for (graph in metadata.graphs) {
 
 The raw metadata includes:
 
-- **roots** - Accessor and injector roots
+- **roots** - Accessor, injector, and lifecycle callback roots
     - `accessors` - Property and function roots, including inherited multibinding requests
     - `injectors` - Functions that inject dependencies into targets
+    - `lifecycleCallbacks` - `@OnGraphInit` and `@OnGraphClose` functions and the keys their parameters request. This is only present when a graph has callbacks.
 - **extensions** - Graph extension information
     - `accessors` - Non-factory extension accessors
     - `factoryAccessors` - Factory accessors (with `isSAM` flag)

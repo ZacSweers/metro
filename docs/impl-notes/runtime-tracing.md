@@ -6,10 +6,11 @@ Internal notes for Metro's generated runtime tracing implementation. User-facing
 
 `metro { enableRuntimeTracing.set(true) }` makes generated graph code emit AndroidX Tracing events while user code runs. This is separate from Metro's compiler self-tracing, which records FIR and IR extension work during compilation.
 
-Runtime tracing records two kinds of work:
+Runtime tracing records three kinds of work:
 
 - graph entry-point instants, such as accessors, graph extension creators, and member-injection functions
 - binding-realization spans, such as constructor injection, `@Provides`, multibindings, and provider invocation
+- graph lifecycle spans for `@OnGraphInit` and `@OnGraphClose` callbacks
 
 The implementation currently targets JVM and Android JVM code (what androix.trace targets). The helper runtime lives in the JVM-only `metro-trace` artifact.
 
@@ -96,6 +97,12 @@ Current entry-point kinds are:
 - `Member Injector`: generated member-injection functions and requested `MembersInjector<T>` invocations.
 
 These entry-point markers use `MetroTraceContext.instant(...)`. Their visible names render the implemented graph member, such as `AppGraph.foo` or `AppGraph.createChildGraph`. Metadata records the callable name separately without using binding-kind metadata.
+
+## Lifecycle Spans
+
+`IrGraphLifecycleGenerator` wraps a graph's init callbacks in one span named like `AppGraph init`. It wraps closing extensions and running close callbacks in one span named like `AppGraph close`. Each callback gets its own span inside, named like `@OnGraphInit AppGraph.migrate`. These use `MetroTraceContext.traceLifecycle`, or `traceLifecycleSuspend` when the phase suspends.
+
+Lifecycle spans record `metro.lifecycle_phase` as `init` or `close`. Callback spans also record `metro.callable` with the callback's function name. They don't record binding metadata. The bindings that callbacks resolve record their own spans.
 
 ## Names And Metadata
 

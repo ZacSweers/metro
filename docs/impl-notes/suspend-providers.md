@@ -125,7 +125,7 @@ Suspend traces follow the coroutine across suspension and thread changes. `Trace
 
 ## Limitations and future work
 
-Metro currently initializes constructor and provider arguments sequentially in the caller's coroutine context. Graphs cache scoped values, but they do not own a `CoroutineScope` or `Job` and have no resource-cleanup lifecycle.
+Metro currently initializes constructor and provider arguments sequentially in the caller's coroutine context. Graphs cache scoped values, but they do not own a `CoroutineScope` or `Job`. [Graph lifecycle callbacks](../graph-lifecycle.md) run in the coroutine that creates or closes the graph.
 
 The possible additions below are independent.
 
@@ -145,13 +145,11 @@ If Metro adds a warm-up API, roots should be selected explicitly. Warming every 
 
 Ordinary graph access remains sequential. If Metro adds parallel initialization, it should happen at an explicit warm-up boundary rather than at every construction site.
 
-### Graph lifecycle and resource cleanup
+### Graph-owned scopes
 
-Warm-up does not require a graph-owned scope. A graph lifecycle would be a separate change to the execution model.
+`@OnGraphClose` callbacks handle resource cleanup. A `SuspendCloseableGraph` closes its graph extensions and runs its cleanup in `NonCancellable`. `@OnGraphInit` callbacks run in the coroutine that creates the graph.
 
-Initialization currently runs in the caller. Adding a `Job` field would not make that work a child of the graph job; Metro would have to launch it in a graph-owned scope. A design would need to define caller cancellation, dispatchers, tracing, parent and child graph ownership, and behavior after the graph is closed.
-
-Cancelling in-flight work is not resource cleanup. Closing an initialized database or other cached value needs a separate ownership and disposal contract.
+Warm-up does not require a graph-owned scope either. Graphs still don't own a `CoroutineScope` or `Job`. Adding a `Job` field would not make initialization a child of the graph job. Metro would have to launch it in a graph-owned scope. A design would need to define caller cancellation, dispatchers, and tracing for that work.
 
 ### Unsupported APIs and shapes
 

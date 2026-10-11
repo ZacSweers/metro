@@ -6,6 +6,12 @@ Changelog
 
 ### New
 
+- **[Runtime/FIR/IR]** Add experimental graph lifecycle callbacks. A graph that implements `CloseableGraph` or `SuspendCloseableGraph` can declare `@OnGraphInit` and `@OnGraphClose` functions, and Metro injects their parameters. Metro generates `close()`, which closes the graph's extensions before running its close callbacks. See [Graph Lifecycle](docs/graph-lifecycle.md).
+  - Callbacks can come from the graph, its supertypes, or `@ContributesTo` interfaces.
+  - Suspend callbacks and `SuspendCloseableGraph` require `enableSuspendProviders`. Init that suspends needs a graph factory whose function is `suspend`.
+  - New `UnscopedLifecycleParameter` and `CloseOnlyBinding` warnings flag callback parameters that are likely mistakes.
+  - Runtime tracing records spans for init, close, and each callback. Graph reports and the graph viewer show callbacks as roots.
+  - The IDE plugin validates callbacks like the compiler does.
 - **[FIR]** Add the `diagnostic-level` compiler option to change the severity of Metro diagnostics reported in FIR. It works like kotlinc's `-Xwarning-level` but can also lower errors and use IDE-only levels. See [changing diagnostic severity](docs/validation-and-error-reporting.md#changing-diagnostic-severity).
 - **[FIR/IC]** Add the `function-inject-annotations-override` compiler option to use dedicated annotations for top-level function injection. See [custom function injection annotations](docs/injection-types.md#custom-function-injection-annotations).
 - **[Gradle]** Add opt-in checks to find Metro contributions hidden from a graph's compile classpath. Run `checkMainMetroHiddenDependencies` (i.e., on CI). It writes a report and fails if it finds hidden contributions.
