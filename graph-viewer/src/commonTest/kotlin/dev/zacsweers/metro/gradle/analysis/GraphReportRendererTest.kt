@@ -123,6 +123,59 @@ class GraphReportRendererTest {
   }
 
   @Test
+  fun lifecycleCallbacksAreRootsThatLinkToTheirParameters() {
+    val graph =
+      GraphMetadata(
+        graph = "AppGraph",
+        scopes = emptyList(),
+        aggregationScopes = emptyList(),
+        roots =
+          RootsMetadata(
+            lifecycleCallbacks =
+              listOf(
+                LifecycleCallbackMetadata(
+                  phase = "close",
+                  name = "closeDatabase",
+                  declaringType = "AppGraph",
+                  parameters = listOf(LifecycleCallbackParameterMetadata("database", "Database")),
+                ),
+              ),
+          ),
+        bindings =
+          listOf(
+            BindingMetadata(
+              "Database",
+              "ConstructorInjected",
+              isScoped = true,
+              nameHint = "Database",
+              dependencies = emptyList(),
+            ),
+          ),
+      )
+    val data = GraphReportRenderer().buildData(graph)
+    val callback =
+      data
+        .getValue("nodes")
+        .jsonArray
+        .map { it.jsonObject }
+        .single {
+          it["rootKind"] == JsonPrimitive("lifecycle")
+        }
+    assertEquals(JsonPrimitive("@OnGraphClose closeDatabase()"), callback["name"])
+    assertEquals(JsonPrimitive("Lifecycle Callback"), callback["kind"])
+    val link =
+      data
+        .getValue("links")
+        .jsonArray
+        .map { it.jsonObject }
+        .single {
+          it["rootKind"] == JsonPrimitive("lifecycle")
+        }
+    assertEquals(callback["id"], link["source"])
+    assertEquals(JsonPrimitive("Database"), link["target"])
+  }
+
+  @Test
   fun qualifiedNestedTypesKeepTheSameDisplayNames() {
     val key =
       "@test.Named(\"a ) value\") kotlin.collections.Map<first.Item, test.Presenter.Factory>"

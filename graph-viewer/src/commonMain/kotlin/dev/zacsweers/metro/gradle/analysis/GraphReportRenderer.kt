@@ -672,6 +672,10 @@ public class GraphReportRenderer(
     val declaringGraph: String? = null,
     val declaringType: String? = null,
     val origin: String? = null,
+    /** For lifecycle callbacks, the keys their parameters request. */
+    val dependencies: List<DependencyMetadata> = emptyList(),
+    /** For lifecycle callbacks, `init` or `close`. */
+    val lifecyclePhase: String? = null,
   )
 
   private data class GlowThresholds(
@@ -918,6 +922,21 @@ public class GraphReportRenderer(
           ),
         )
       }
+      metadata.roots?.lifecycleCallbacks.orEmpty().forEachIndexed { index, callback ->
+        add(
+          RootMemberInfo(
+            id = "root:${metadata.graph}:lifecycle:$index:${callback.name}",
+            // A callback isn't a request itself. Its parameters are.
+            key = metadata.graph,
+            kind = "lifecycle",
+            name = callback.name,
+            declaringType = callback.declaringType,
+            dependencies =
+              callback.parameters.map { DependencyMetadata(it.key, hasDefault = false) },
+            lifecyclePhase = callback.phase,
+          ),
+        )
+      }
     }
 
     private fun buildTypeNames(): Map<String, String> {
@@ -978,6 +997,15 @@ public class GraphReportRenderer(
     }
 
     private fun rootDisplayName(member: RootMemberInfo): String {
+      if (member.kind == "lifecycle") {
+        val annotation =
+          if (member.lifecyclePhase == "close") {
+            "@OnGraphClose"
+          } else {
+            "@OnGraphInit"
+          }
+        return "$annotation ${member.name}()"
+      }
       val declaration = member.name
       val isAccessor = member.kind == "accessor"
       val displayType = extractDisplayName(member.key, typeNames)
@@ -1010,11 +1038,12 @@ public class GraphReportRenderer(
 
     private fun buildRootNode(member: RootMemberInfo): JsonObject = buildJsonObject {
       val isAccessor = member.kind == "accessor"
+      val isLifecycle = member.kind == "lifecycle"
       val color =
-        if (isAccessor) {
-          Colors.EDGE_ACCESSOR
-        } else {
-          Colors.MEMBERS_INJECTED
+        when {
+          isAccessor -> Colors.EDGE_ACCESSOR
+          isLifecycle -> Colors.LIFECYCLE_CALLBACK
+          else -> Colors.MEMBERS_INJECTED
         }
       put("id", JsonPrimitive(member.id))
       put("name", JsonPrimitive(rootDisplayName(member)))
@@ -1026,10 +1055,10 @@ public class GraphReportRenderer(
       put(
         "kind",
         JsonPrimitive(
-          if (isAccessor) {
-            "Accessor"
-          } else {
-            "Injector"
+          when {
+            isAccessor -> "Accessor"
+            isLifecycle -> "Lifecycle Callback"
+            else -> "Injector"
           },
         ),
       )
@@ -1051,10 +1080,10 @@ public class GraphReportRenderer(
       put(
         "category",
         JsonPrimitive(
-          if (isAccessor) {
-            14
-          } else {
-            15
+          when {
+            isAccessor -> 14
+            isLifecycle -> 17
+            else -> 15
           },
         ),
       )
@@ -1067,6 +1096,9 @@ public class GraphReportRenderer(
           ),
         )
         put("resolutionUnavailable", JsonPrimitive(member.resolvedKey == null))
+      } else if (isLifecycle) {
+        put("rawDependencies", json.encodeToJsonElement(member.dependencies))
+        put("resolutionUnavailable", JsonPrimitive(false))
       } else {
         put("injectorTarget", JsonPrimitive(member.key))
         put("rawDependencies", json.encodeToJsonElement(member.binding?.dependencies.orEmpty()))
@@ -1433,13 +1465,39 @@ public class GraphReportRenderer(
           put("rootMembership", JsonPrimitive(true))
         },
       )
-      if (member.kind == "accessor") {
-        val targetKey = member.resolvedKey
-        if (targetKey != null) {
-          add(buildAccessorLink(member, targetKey))
+      when (member.kind) {
+        "accessor" -> {
+          val targetKey = member.resolvedKey
+          if (targetKey != null) {
+            add(buildAccessorLink(member, targetKey))
+          }
         }
-      } else {
-        addAll(buildInjectorLinks(member))
+        "lifecycle" -> addAll(buildLifecycleLinks(member))
+        else -> addAll(buildInjectorLinks(member))
+      }
+    }
+
+    private fun buildLifecycleLinks(member: RootMemberInfo): JsonArray = buildJsonArray {
+      for (dependency in member.dependencies) {
+        val targetKey = unwrapTypeKey(dependency.key)
+        val resolvedKey = keyToProviderNodeId[targetKey] ?: continue
+        add(
+          buildJsonObject {
+            put("source", JsonPrimitive(member.id))
+            put("target", JsonPrimitive(resolvedKey))
+            put("edgeType", JsonPrimitive("injects"))
+            put("rootKind", JsonPrimitive("lifecycle"))
+            put("requestedKey", JsonPrimitive(dependency.key))
+            put(
+              "lineStyle",
+              buildJsonObject {
+                put("color", JsonPrimitive(Colors.LIFECYCLE_CALLBACK))
+                put("type", JsonPrimitive("dashed"))
+                put("width", JsonPrimitive(2))
+              },
+            )
+          },
+        )
       }
     }
 
@@ -1588,6 +1646,7 @@ public class GraphReportRenderer(
         "Accessor" to Colors.EDGE_ACCESSOR,
         "Injector" to Colors.MEMBERS_INJECTED,
         "Graph" to Colors.GRAPH_NODE_BORDER,
+        "Lifecycle Callback" to Colors.LIFECYCLE_CALLBACK,
       )
 
     return buildJsonArray {
@@ -1647,6 +1706,7 @@ internal object Colors {
   const val OBJECT_CLASS = SUBWAY_TEAL // object classes
   const val GRAPH_DEPENDENCY = SUBWAY_BLUE // graph dependencies
   const val MEMBERS_INJECTED = SUBWAY_LIGHT_GREEN // members injection
+  const val LIFECYCLE_CALLBACK = SUBWAY_BROWN // lifecycle callbacks
   const val CUSTOM_WRAPPER = SUBWAY_TEAL // custom wrappers
   const val DEFAULT_VALUE = SUBWAY_YELLOW // default value provider
   const val OTHER = SUBWAY_GREY

@@ -25,6 +25,7 @@ import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.encodeToJsonElement
 import org.jetbrains.kotlin.ir.util.kotlinFqName
+import org.jetbrains.kotlin.ir.util.parentAsClass
 
 internal class GraphMetadataReporter(
   private val context: IrMetroContext,
@@ -94,6 +95,18 @@ internal class GraphMetadataReporter(
           }
         },
       )
+      // Only written when present so reports for graphs without callbacks don't change.
+      val lifecycleCallbacks = node.lifecycle.callbacks
+      if (lifecycleCallbacks.isNotEmpty()) {
+        put(
+          "lifecycleCallbacks",
+          buildJsonArray {
+            for (callback in lifecycleCallbacks) {
+              add(buildLifecycleCallbackJson(callback))
+            }
+          },
+        )
+      }
     }
 
     // Build extensions object
@@ -210,6 +223,34 @@ internal class GraphMetadataReporter(
     }
   }
 
+  private fun buildLifecycleCallbackJson(callback: LifecycleCallback): JsonObject {
+    val declaration = callback.function.lifecycleCallbackDeclaration
+    return buildJsonObject {
+      put("phase", JsonPrimitive(callback.phase.name.lowercase()))
+      put("name", JsonPrimitive(declaration.name.asString()))
+      put("declaringType", JsonPrimitive(declaration.parentAsClass.kotlinFqName.asString()))
+      put("isSuspend", JsonPrimitive(callback.function.ir.isSuspend))
+      put(
+        "parameters",
+        buildJsonArray {
+          for (parameter in callback.parameters) {
+            add(
+              buildJsonObject {
+                put("name", JsonPrimitive(parameter.parameter.name.asString()))
+                put(
+                  "key",
+                  JsonPrimitive(
+                    parameter.contextKey.render(short = false, includeQualifier = true),
+                  ),
+                )
+              },
+            )
+          }
+        },
+      )
+    }
+  }
+
   private fun buildStatsJson(
     node: GraphNode.Local,
     bindingGraph: IrBindingGraph,
@@ -227,6 +268,9 @@ internal class GraphMetadataReporter(
       put("optionalBindings", JsonPrimitive(node.optionalKeys.values.sumOf { it.size }))
       put("accessors", JsonPrimitive(node.accessors.size))
       put("injectors", JsonPrimitive(node.injectors.size))
+      if (node.lifecycle.callbacks.isNotEmpty()) {
+        put("lifecycleCallbacks", JsonPrimitive(node.lifecycle.callbacks.size))
+      }
       val graphExtensionAccessors = node.graphExtensions.values.flatten()
       put("graphExtensionAccessors", JsonPrimitive(graphExtensionAccessors.count { !it.isFactory }))
       put("graphExtensionFactories", JsonPrimitive(graphExtensionAccessors.count { it.isFactory }))
