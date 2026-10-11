@@ -40,6 +40,7 @@ Changelog
 - **[FIR/IC]** Avoid unnecessary recompilation of independent injected classes when generating contribution hints.
 - **[FIR/interop]** Fix duplicate class errors during caused by Hilt interop generating hints for upstream modules.
 - **[FIR/IR/interop]** Fix incremental builds not updating graphs when an upstream Hilt `@AggregatedDeps` marker changes or is removed.
+- **[FIR/IR/Gradle]** Fix false self-loop errors in `analyzeMetroGraph` when one qualified map depends on another.
 - **[IR]** Fix member injection across modules when an injected member uses a generic base class's type parameter.
 - **[IR]** Fix missing binding errors for accessors inherited from another module having no source location.
 - **[IR]** Fix `MissingRuntimeCoroutines` errors for injected top-level functions pointing at `0:0` in a generated file. They're now reported on the function.
