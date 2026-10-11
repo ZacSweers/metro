@@ -1415,6 +1415,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("DeferredWarnings.kt")
+    public void testDeferredWarnings() {
+      run("DeferredWarnings.kt");
+    }
+
+    @Test
     @TestMetadata("DynamicSuspendReplacement.kt")
     public void testDynamicSuspendReplacement() {
       run("DynamicSuspendReplacement.kt");

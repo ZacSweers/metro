@@ -1643,6 +1643,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("DeferredWarnings.kt")
+    public void testDeferredWarnings() {
+      run("DeferredWarnings.kt");
+    }
+
+    @Test
     @TestMetadata("DynamicSuspendReplacement.kt")
     public void testDynamicSuspendReplacement() {
       run("DynamicSuspendReplacement.kt");

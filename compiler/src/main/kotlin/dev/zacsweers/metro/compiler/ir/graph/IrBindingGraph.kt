@@ -1584,7 +1584,7 @@ internal class IrBindingGraph(
     val usedOutsideClose = reachableFrom(ordinaryRoots)
     for (root in node.lifecycleParameters) {
       val binding = resolveAlias(root.contextKey.typeKey) ?: continue
-      val unscopedScalar = !root.parameter.isWrappedInProvider && !root.parameter.isWrappedInLazy
+      val unscopedScalar = !root.contextKey.isWrapped
       val unscopedBinding = !binding.isLifecycleScoped()
       if (unscopedScalar && unscopedBinding) {
         val callback = root.parameter.ir?.parent ?: root.metroFunction.ir
