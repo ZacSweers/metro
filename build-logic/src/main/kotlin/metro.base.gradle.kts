@@ -117,7 +117,7 @@ tasks.withType<JavaExec>().configureEach {
   jvmArgumentProviders.add(
     objects.newInstance<UnsafeMemoryAccessArgumentProvider>().apply {
       javaVersion.set(launcherJavaVersion)
-    }
+    },
   )
 }
 
