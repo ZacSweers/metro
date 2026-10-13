@@ -7,14 +7,15 @@ import {
   LinkedHashSet_init_$Create$vv7nkva6wxy5 as LinkedHashSet_init_$Create$,
   getOrNull1go7ef9ldk0df as getOrNull,
   ArrayList_init_$Create$2xrifdqz5xirg as ArrayList_init_$Create$,
-  collectionSizeOrDefault36dulx8yinfqm as collectionSizeOrDefault,
-  ArrayList_init_$Create$a978fvbbts3d as ArrayList_init_$Create$_0,
-  to2cs3ny02qtbcb as to,
+  Triple1vhi3d0dgpnjb as Triple,
   addAll1k27qatfgp3k5 as addAll,
   Collection1k04j3hzsbod0 as Collection,
   isInterface3d6p8outrmvmk as isInterface,
   emptyList1g2z5xcrvp2zy as emptyList,
+  to2cs3ny02qtbcb as to,
   getValue48kllevslyh6 as getValue,
+  collectionSizeOrDefault36dulx8yinfqm as collectionSizeOrDefault,
+  ArrayList_init_$Create$a978fvbbts3d as ArrayList_init_$Create$_0,
   equals2au1ep9vhcato as equals,
   mapCapacity1h45rc3eh9p2l as mapCapacity,
   coerceAtLeast2bkz8m9ik7hep as coerceAtLeast,
@@ -36,13 +37,12 @@ import {
   coerceAtLeastklytehohcpeq as coerceAtLeast_0,
   toSet2orjxp16sotqu as toSet,
   plus1ogy4liedzq5j as plus,
-  substringBeforekje8w2lxhyb6 as substringBefore,
+  removeSuffix3d61x5lsuvuho as removeSuffix,
   LinkedHashMap_init_$Create$s27yccuovnls as LinkedHashMap_init_$Create$_0,
   toMutableList20rdgwi7d3cwi as toMutableList,
   VOID3gxj6tk5isa35 as VOID,
   plus310ted5e4i90h as plus_0,
   distinct10qe1scfdvu5k as distinct,
-  contains3ue2qo8xhmpf1 as contains,
   checkIndexOverflow3frtmheghr0th as checkIndexOverflow,
   startsWith26w8qjqapeeq6 as startsWith,
   _Char___init__impl__6a9atxrzocepzq3zgi as _Char___init__impl__6a9atx,
@@ -50,6 +50,7 @@ import {
   dropLastlqc2oyv04br0 as dropLast,
   endsWith278181ii8uuo as endsWith,
   listOfvhqybd2zx248 as listOf_0,
+  contains3ue2qo8xhmpf1 as contains,
   emptySetcxexqki71qfa as emptySet,
   emptyMapr06gerzljqtm as emptyMap,
   toString1pkumu07cwy4m as toString,
@@ -69,6 +70,7 @@ import {
   isUpperCase16ivdixranflt as isUpperCase,
   substringAfterLast3r0t0my8cpqhk as substringAfterLast,
   joinToString1cxrrlmo0chqs as joinToString,
+  replaceqbix900hl8kl as replace,
   mapsbvh18eqox7a as map,
   toListx6x8nvfmvvht as toList,
   indexOf1xbs558u7wr52 as indexOf,
@@ -106,23 +108,6 @@ import {
   sortedWith2csnbbb21k0lg as sortedWith,
 } from './kotlin-kotlin-stdlib.mjs';
 import {
-  unwrapTypeKey3m568br941v1y as unwrapTypeKey,
-  BindingMetadata2vqn7lk5kttug as BindingMetadata,
-  BindingExplanationtrjyxewvnqvh as BindingExplanation,
-  AccessorMetadatabrzra2dayqyz as AccessorMetadata,
-  BindingExplanationOutcome_SELECTED_getInstance2tfy6rsok1hmq as BindingExplanationOutcome_SELECTED_getInstance,
-  BindingCandidateStatus_SELECTED_getInstance2cfyov6j2a6z8 as BindingCandidateStatus_SELECTED_getInstance,
-  DependencyMetadata8rtjsv2z9kiq as DependencyMetadata,
-  MultibindingMetadata29e72hjz84wjv as MultibindingMetadata,
-  OptionalWrapperMetadata325xthvr1c6hr as OptionalWrapperMetadata,
-  GraphDependencyMetadata10z3tse19c59g as GraphDependencyMetadata,
-  FullAnalysisReport2xfl94zu4035r as FullAnalysisReport,
-  GraphStatsMetadata2mb61swu85h8w as GraphStatsMetadata,
-  GraphMetadata374r61jzvfi7l as GraphMetadata,
-  GraphAnalysis3tvx3nafb3xyc as GraphAnalysis,
-  analysisEdges21jont9fxzxmq as analysisEdges,
-} from './metro-graphs.mjs';
-import {
   get_jsonArray18sglwhl4pclz as get_jsonArray,
   get_jsonObject2u4z2ch1uuca9 as get_jsonObject,
   JsonPrimitiveolttw629wj53 as JsonPrimitive,
@@ -139,6 +124,22 @@ import {
   get_intOrNulld29i64b3udf as get_intOrNull,
   Default_getInstancevb13yk0g3h3e as Default_getInstance,
 } from './kotlinx-serialization-kotlinx-serialization-json.mjs';
+import {
+  BindingMetadata2vqn7lk5kttug as BindingMetadata,
+  BindingExplanationtrjyxewvnqvh as BindingExplanation,
+  AccessorMetadatabrzra2dayqyz as AccessorMetadata,
+  BindingExplanationOutcome_SELECTED_getInstance2tfy6rsok1hmq as BindingExplanationOutcome_SELECTED_getInstance,
+  BindingCandidateStatus_SELECTED_getInstance2cfyov6j2a6z8 as BindingCandidateStatus_SELECTED_getInstance,
+  DependencyMetadata8rtjsv2z9kiq as DependencyMetadata,
+  MultibindingMetadata29e72hjz84wjv as MultibindingMetadata,
+  OptionalWrapperMetadata325xthvr1c6hr as OptionalWrapperMetadata,
+  GraphDependencyMetadata10z3tse19c59g as GraphDependencyMetadata,
+  FullAnalysisReport2xfl94zu4035r as FullAnalysisReport,
+  GraphStatsMetadata2mb61swu85h8w as GraphStatsMetadata,
+  GraphMetadata374r61jzvfi7l as GraphMetadata,
+  GraphAnalysis3tvx3nafb3xyc as GraphAnalysis,
+  analysisEdges21jont9fxzxmq as analysisEdges,
+} from './metro-graphs.mjs';
 import {
   serializer1i4e9ym37oxmo as serializer,
   KSerializerzf77vz1967fq as KSerializer,
@@ -302,28 +303,61 @@ function findIncludedGraphs($this) {
   var _iterator__ex2g4s = tmp0.iterator_jk1svi_k$();
   while (_iterator__ex2g4s.hasNext_bitz1p_k$()) {
     var element = _iterator__ex2g4s.next_20eer_k$();
-    // Inline function 'kotlin.collections.filter' call
-    var tmp0_0 = element.bindings_1;
-    // Inline function 'kotlin.collections.filterTo' call
+    // Inline function 'kotlin.collections.mapNotNull' call
+    var tmp0_0 = element.includedGraphs_1;
+    // Inline function 'kotlin.collections.mapNotNullTo' call
     var destination_0 = ArrayList_init_$Create$();
+    // Inline function 'kotlin.collections.forEach' call
     var _iterator__ex2g4s_0 = tmp0_0.iterator_jk1svi_k$();
     while (_iterator__ex2g4s_0.hasNext_bitz1p_k$()) {
       var element_0 = _iterator__ex2g4s_0.next_20eer_k$();
-      var suppliedInstance = element_0.bindingKind_1 === 'BoundInstance' && element_0.isGraphInput_1 === true;
-      if (suppliedInstance && element.includedGraphKeys_1.contains_aljjnj_k$(element_0.key_1)) {
-        destination_0.add_utx5q5_k$(element_0);
+      var tmp$ret$7;
+      $l$block_1: {
+        var tmp0_1 = element.bindings_1;
+        var tmp$ret$8;
+        $l$block_0: {
+          // Inline function 'kotlin.collections.singleOrNull' call
+          var single = null;
+          var found = false;
+          var _iterator__ex2g4s_1 = tmp0_1.iterator_jk1svi_k$();
+          while (_iterator__ex2g4s_1.hasNext_bitz1p_k$()) {
+            var element_1 = _iterator__ex2g4s_1.next_20eer_k$();
+            var suppliedInstance = element_1.bindingKind_1 === 'BoundInstance' && element_1.isGraphInput_1 === true;
+            if (suppliedInstance && element_1.key_1 === element_0.key_1) {
+              if (found) {
+                tmp$ret$8 = null;
+                break $l$block_0;
+              }
+              single = element_1;
+              found = true;
+            }
+          }
+          if (!found) {
+            tmp$ret$8 = null;
+            break $l$block_0;
+          }
+          tmp$ret$8 = single;
+        }
+        var tmp0_elvis_lhs = tmp$ret$8;
+        var tmp;
+        if (tmp0_elvis_lhs == null) {
+          tmp$ret$7 = null;
+          break $l$block_1;
+        } else {
+          tmp = tmp0_elvis_lhs;
+        }
+        var input = tmp;
+        tmp$ret$7 = new Triple(element, input, element_0.graph_1);
+      }
+      var tmp0_safe_receiver = tmp$ret$7;
+      if (tmp0_safe_receiver == null)
+        null;
+      else {
+        // Inline function 'kotlin.let' call
+        destination_0.add_utx5q5_k$(tmp0_safe_receiver);
       }
     }
-    // Inline function 'kotlin.collections.map' call
-    // Inline function 'kotlin.collections.mapTo' call
-    var destination_1 = ArrayList_init_$Create$_0(collectionSizeOrDefault(destination_0, 10));
-    var _iterator__ex2g4s_1 = destination_0.iterator_jk1svi_k$();
-    while (_iterator__ex2g4s_1.hasNext_bitz1p_k$()) {
-      var item = _iterator__ex2g4s_1.next_20eer_k$();
-      var tmp$ret$8 = to(element, item);
-      destination_1.add_utx5q5_k$(tmp$ret$8);
-    }
-    var list = destination_1;
+    var list = destination_0;
     addAll(destination, list);
   }
   var suppliedInputs = destination;
@@ -333,182 +367,182 @@ function findIncludedGraphs($this) {
   $l$loop_1: while (_iterator__ex2g4s_2.hasNext_bitz1p_k$()) {
     var _destruct__k2r9zo = _iterator__ex2g4s_2.next_20eer_k$();
     var consumer = _destruct__k2r9zo.component1_7eebsc_k$();
-    var input = _destruct__k2r9zo.component2_7eebsb_k$();
-    var inputType = bindingType(input.key_1);
+    var input_0 = _destruct__k2r9zo.component2_7eebsb_k$();
+    var producerName = _destruct__k2r9zo.component3_7eebsa_k$();
     // Inline function 'kotlin.collections.filter' call
     // Inline function 'kotlin.collections.filterTo' call
-    var destination_2 = ArrayList_init_$Create$();
+    var destination_1 = ArrayList_init_$Create$();
     var _iterator__ex2g4s_3 = suppliedInputs.iterator_jk1svi_k$();
     while (_iterator__ex2g4s_3.hasNext_bitz1p_k$()) {
-      var element_1 = _iterator__ex2g4s_3.next_20eer_k$();
-      if (bindingType(element_1.second_1.key_1) === inputType) {
-        destination_2.add_utx5q5_k$(element_1);
+      var element_2 = _iterator__ex2g4s_3.next_20eer_k$();
+      if (element_2.third_1 === producerName) {
+        destination_1.add_utx5q5_k$(element_2);
       }
     }
-    var suppliedInstances = destination_2;
+    var suppliedInstances = destination_1;
     if (!(suppliedInstances.get_size_woubt6_k$() === 1)) {
       continue $l$loop_1;
     }
-    var tmp0_1 = $this.reports_1;
-    var tmp$ret$13;
-    $l$block_0: {
+    var tmp0_2 = $this.reports_1;
+    var tmp$ret$16;
+    $l$block_3: {
       // Inline function 'kotlin.collections.singleOrNull' call
-      var single = null;
-      var found = false;
-      var _iterator__ex2g4s_4 = tmp0_1.iterator_jk1svi_k$();
+      var single_0 = null;
+      var found_0 = false;
+      var _iterator__ex2g4s_4 = tmp0_2.iterator_jk1svi_k$();
       while (_iterator__ex2g4s_4.hasNext_bitz1p_k$()) {
-        var element_2 = _iterator__ex2g4s_4.next_20eer_k$();
-        if (element_2.parentGraph_1 == null && (element_2.graph_1 === inputType || element_2.graphType_1 === inputType)) {
-          if (found) {
-            tmp$ret$13 = null;
-            break $l$block_0;
+        var element_3 = _iterator__ex2g4s_4.next_20eer_k$();
+        if (element_3.graph_1 === producerName && element_3.parentGraph_1 == null) {
+          if (found_0) {
+            tmp$ret$16 = null;
+            break $l$block_3;
           }
-          single = element_2;
-          found = true;
+          single_0 = element_3;
+          found_0 = true;
         }
       }
-      if (!found) {
-        tmp$ret$13 = null;
-        break $l$block_0;
+      if (!found_0) {
+        tmp$ret$16 = null;
+        break $l$block_3;
       }
-      tmp$ret$13 = single;
+      tmp$ret$16 = single_0;
     }
-    var tmp0_elvis_lhs = tmp$ret$13;
-    var tmp;
-    if (tmp0_elvis_lhs == null) {
+    var tmp0_elvis_lhs_0 = tmp$ret$16;
+    var tmp_0;
+    if (tmp0_elvis_lhs_0 == null) {
       continue $l$loop_1;
     } else {
-      tmp = tmp0_elvis_lhs;
+      tmp_0 = tmp0_elvis_lhs_0;
     }
-    var producer = tmp;
+    var producer = tmp_0;
     if (producer.graph_1 === consumer.graph_1) {
       continue $l$loop_1;
     }
     // Inline function 'kotlin.collections.filter' call
-    var tmp0_2 = consumer.bindings_1;
+    var tmp0_3 = consumer.bindings_1;
     // Inline function 'kotlin.collections.filterTo' call
-    var destination_3 = ArrayList_init_$Create$();
-    var _iterator__ex2g4s_5 = tmp0_2.iterator_jk1svi_k$();
+    var destination_2 = ArrayList_init_$Create$();
+    var _iterator__ex2g4s_5 = tmp0_3.iterator_jk1svi_k$();
     while (_iterator__ex2g4s_5.hasNext_bitz1p_k$()) {
-      var element_3 = _iterator__ex2g4s_5.next_20eer_k$();
-      var tmp$ret$17;
-      $l$block_8: {
-        var tmp0_elvis_lhs_0 = element_3.graphDependency_1;
-        var tmp_0;
-        if (tmp0_elvis_lhs_0 == null) {
-          tmp$ret$17 = false;
-          break $l$block_8;
+      var element_4 = _iterator__ex2g4s_5.next_20eer_k$();
+      var tmp$ret$20;
+      $l$block_11: {
+        var tmp0_elvis_lhs_1 = element_4.graphDependency_1;
+        var tmp_1;
+        if (tmp0_elvis_lhs_1 == null) {
+          tmp$ret$20 = false;
+          break $l$block_11;
         } else {
-          tmp_0 = tmp0_elvis_lhs_0;
+          tmp_1 = tmp0_elvis_lhs_1;
         }
-        var dependency = tmp_0;
-        if (!(element_3.bindingKind_1 === 'GraphDependency') || dependency.fromParent_1) {
-          tmp$ret$17 = false;
-          break $l$block_8;
+        var dependency = tmp_1;
+        if (!(element_4.bindingKind_1 === 'GraphDependency') || dependency.fromParent_1) {
+          tmp$ret$20 = false;
+          break $l$block_11;
         }
-        var matchesOwner = dependency.ownerKey_1 === input.key_1 && dependency.ownerGraph_1 === inputType;
-        var tmp0_3 = element_3.dependencies_1;
-        var tmp$ret$18;
-        $l$block_4: {
+        var matchesOwner = dependency.ownerKey_1 === input_0.key_1 && dependency.ownerGraph_1 === producer.graph_1;
+        var tmp0_4 = element_4.dependencies_1;
+        var tmp$ret$21;
+        $l$block_7: {
           // Inline function 'kotlin.collections.any' call
-          var tmp_1;
-          if (isInterface(tmp0_3, Collection)) {
-            tmp_1 = tmp0_3.isEmpty_y1axqb_k$();
+          var tmp_2;
+          if (isInterface(tmp0_4, Collection)) {
+            tmp_2 = tmp0_4.isEmpty_y1axqb_k$();
           } else {
-            tmp_1 = false;
+            tmp_2 = false;
           }
-          if (tmp_1) {
-            tmp$ret$18 = false;
-            break $l$block_4;
+          if (tmp_2) {
+            tmp$ret$21 = false;
+            break $l$block_7;
           }
-          var _iterator__ex2g4s_6 = tmp0_3.iterator_jk1svi_k$();
+          var _iterator__ex2g4s_6 = tmp0_4.iterator_jk1svi_k$();
           while (_iterator__ex2g4s_6.hasNext_bitz1p_k$()) {
-            var element_4 = _iterator__ex2g4s_6.next_20eer_k$();
-            if (element_4.key_1 === input.key_1) {
-              tmp$ret$18 = true;
-              break $l$block_4;
+            var element_5 = _iterator__ex2g4s_6.next_20eer_k$();
+            if (element_5.key_1 === input_0.key_1) {
+              tmp$ret$21 = true;
+              break $l$block_7;
             }
           }
-          tmp$ret$18 = false;
+          tmp$ret$21 = false;
         }
-        var recordedOwner = tmp$ret$18;
+        var recordedOwner = tmp$ret$21;
         if (!matchesOwner || !recordedOwner) {
-          tmp$ret$17 = false;
-          break $l$block_8;
+          tmp$ret$20 = false;
+          break $l$block_11;
         }
         var tmp1_safe_receiver = producer.roots_1;
         // Inline function 'kotlin.collections.orEmpty' call
-        var tmp0_elvis_lhs_1 = tmp1_safe_receiver == null ? null : tmp1_safe_receiver.accessors_1;
-        var tmp0_4 = tmp0_elvis_lhs_1 == null ? emptyList() : tmp0_elvis_lhs_1;
-        var tmp$ret$21;
-        $l$block_7: {
+        var tmp0_elvis_lhs_2 = tmp1_safe_receiver == null ? null : tmp1_safe_receiver.accessors_1;
+        var tmp0_5 = tmp0_elvis_lhs_2 == null ? emptyList() : tmp0_elvis_lhs_2;
+        var tmp$ret$24;
+        $l$block_10: {
           // Inline function 'kotlin.collections.singleOrNull' call
-          var single_0 = null;
-          var found_0 = false;
-          var _iterator__ex2g4s_7 = tmp0_4.iterator_jk1svi_k$();
+          var single_1 = null;
+          var found_1 = false;
+          var _iterator__ex2g4s_7 = tmp0_5.iterator_jk1svi_k$();
           while (_iterator__ex2g4s_7.hasNext_bitz1p_k$()) {
-            var element_5 = _iterator__ex2g4s_7.next_20eer_k$();
-            var matchesDeclaration = !(element_5.name_1 == null) && element_5.name_1 == element_3.declaration_1;
-            if (matchesDeclaration && unwrapTypeKey(element_5.key_1) === element_3.key_1) {
-              if (found_0) {
-                tmp$ret$21 = null;
-                break $l$block_7;
+            var element_6 = _iterator__ex2g4s_7.next_20eer_k$();
+            var matchesDeclaration = !(element_6.name_1 == null) && element_6.name_1 == element_4.declaration_1;
+            if (matchesDeclaration && element_6.key_1 === element_4.key_1) {
+              if (found_1) {
+                tmp$ret$24 = null;
+                break $l$block_10;
               }
-              single_0 = element_5;
-              found_0 = true;
+              single_1 = element_6;
+              found_1 = true;
             }
           }
-          if (!found_0) {
-            tmp$ret$21 = null;
-            break $l$block_7;
-          }
-          tmp$ret$21 = single_0;
-        }
-        var tmp2_elvis_lhs = tmp$ret$21;
-        var tmp_2;
-        if (tmp2_elvis_lhs == null) {
-          tmp$ret$17 = false;
-          break $l$block_8;
-        } else {
-          tmp_2 = tmp2_elvis_lhs;
-        }
-        var accessor = tmp_2;
-        var tmp0_5 = producer.bindings_1;
-        var tmp$ret$23;
-        $l$block_10: {
-          // Inline function 'kotlin.collections.any' call
-          var tmp_3;
-          if (isInterface(tmp0_5, Collection)) {
-            tmp_3 = tmp0_5.isEmpty_y1axqb_k$();
-          } else {
-            tmp_3 = false;
-          }
-          if (tmp_3) {
-            tmp$ret$23 = false;
+          if (!found_1) {
+            tmp$ret$24 = null;
             break $l$block_10;
           }
-          var _iterator__ex2g4s_8 = tmp0_5.iterator_jk1svi_k$();
+          tmp$ret$24 = single_1;
+        }
+        var tmp2_elvis_lhs = tmp$ret$24;
+        var tmp_3;
+        if (tmp2_elvis_lhs == null) {
+          tmp$ret$20 = false;
+          break $l$block_11;
+        } else {
+          tmp_3 = tmp2_elvis_lhs;
+        }
+        var accessor = tmp_3;
+        var tmp0_6 = producer.bindings_1;
+        var tmp$ret$26;
+        $l$block_13: {
+          // Inline function 'kotlin.collections.any' call
+          var tmp_4;
+          if (isInterface(tmp0_6, Collection)) {
+            tmp_4 = tmp0_6.isEmpty_y1axqb_k$();
+          } else {
+            tmp_4 = false;
+          }
+          if (tmp_4) {
+            tmp$ret$26 = false;
+            break $l$block_13;
+          }
+          var _iterator__ex2g4s_8 = tmp0_6.iterator_jk1svi_k$();
           while (_iterator__ex2g4s_8.hasNext_bitz1p_k$()) {
-            var element_6 = _iterator__ex2g4s_8.next_20eer_k$();
-            if (element_6.key_1 === unwrapTypeKey(accessor.key_1)) {
-              tmp$ret$23 = true;
-              break $l$block_10;
+            var element_7 = _iterator__ex2g4s_8.next_20eer_k$();
+            if (element_7.key_1 === accessor.key_1) {
+              tmp$ret$26 = true;
+              break $l$block_13;
             }
           }
-          tmp$ret$23 = false;
+          tmp$ret$26 = false;
         }
-        tmp$ret$17 = tmp$ret$23;
+        tmp$ret$20 = tmp$ret$26;
       }
-      if (tmp$ret$17) {
-        destination_3.add_utx5q5_k$(element_3);
+      if (tmp$ret$20) {
+        destination_2.add_utx5q5_k$(element_4);
       }
     }
-    var getters = destination_3;
+    var getters = destination_2;
     // Inline function 'kotlin.collections.isNotEmpty' call
     if (!getters.isEmpty_y1axqb_k$()) {
       // Inline function 'kotlin.collections.plusAssign' call
-      var element_7 = new IncludedGraph(consumer, input, producer, getters);
-      includedGraphs.add_utx5q5_k$(element_7);
+      var element_8 = new IncludedGraph(consumer, input_0, producer, getters);
+      includedGraphs.add_utx5q5_k$(element_8);
     }
   }
   return includedGraphs;
@@ -536,6 +570,26 @@ function ancestor($this, graph, name) {
     }
     var candidate = tmp;
     if (candidate.graph_1 === name || candidate.graphType_1 == name) {
+      return candidate;
+    }
+    parent = candidate.parentGraph_1;
+  }
+  return null;
+}
+function ancestorOfType($this, graph, key) {
+  var parent = graph.parentGraph_1;
+  // Inline function 'kotlin.collections.mutableSetOf' call
+  var visited = LinkedHashSet_init_$Create$();
+  while (!(parent == null) && visited.add_utx5q5_k$(parent)) {
+    var tmp0_elvis_lhs = $this.metadataByName_1.get_wei43m_k$(parent);
+    var tmp;
+    if (tmp0_elvis_lhs == null) {
+      return null;
+    } else {
+      tmp = tmp0_elvis_lhs;
+    }
+    var candidate = tmp;
+    if (candidate.key_1 === key || candidate.graphType_1 === key) {
       return candidate;
     }
     parent = candidate.parentGraph_1;
@@ -618,7 +672,7 @@ function capturedOwner($this, graph, key) {
     if (!(binding.bindingKind_1 === 'BoundInstance') || !(binding.isGraphInput_1 === false)) {
       return null;
     }
-    var tmp1_elvis_lhs = ancestor($this, graph, binding.key_1);
+    var tmp1_elvis_lhs = ancestorOfType($this, graph, binding.key_1);
     var tmp_1;
     if (tmp1_elvis_lhs == null) {
       return null;
@@ -643,7 +697,8 @@ function capturedOwner($this, graph, key) {
       var _iterator__ex2g4s_1 = tmp0_1.iterator_jk1svi_k$();
       while (_iterator__ex2g4s_1.hasNext_bitz1p_k$()) {
         var element_1 = _iterator__ex2g4s_1.next_20eer_k$();
-        if (element_1.key_1 === binding.key_1 && element_1.bindingKind_1 === 'BoundInstance' && element_1.isGraphInput_1 === false) {
+        var isOwnInstance = element_1.bindingKind_1 === 'BoundInstance' && element_1.isGraphInput_1 === false;
+        if (element_1.key_1 === binding.key_1 && isOwnInstance) {
           tmp$ret$7 = true;
           break $l$block_4;
         }
@@ -793,7 +848,7 @@ function recordIncludedReferences($this) {
         while (_iterator__ex2g4s_2.hasNext_bitz1p_k$()) {
           var element = _iterator__ex2g4s_2.next_20eer_k$();
           var namedAccessor = equals(element.get_6bo4tg_k$('rootKind'), JsonPrimitive('accessor')) && equals(element.get_6bo4tg_k$('declaration'), JsonPrimitive(getter.declaration_1));
-          if (namedAccessor && unwrapTypeKey(get_jsonPrimitive(getValue(element, 'fullKey')).get_content_h02jrk_k$()) === getter.key_1) {
+          if (namedAccessor && equals(element.get_6bo4tg_k$('targetKey'), JsonPrimitive(getter.key_1))) {
             if (found) {
               tmp$ret$3 = null;
               break $l$block_0;
@@ -896,6 +951,7 @@ function referenceData($this, reference, includeBinding) {
     builder.put_mrde5n_k$('binding', tmp$ret$2);
   } else {
     builder.put_mrde5n_k$('key', JsonPrimitive(reference.binding_1.key_1));
+    builder.put_mrde5n_k$('renderedKey', JsonPrimitive(reference.binding_1.renderedKey_1));
   }
   return builder.build_bkh6qh_k$();
 }
@@ -1225,8 +1281,7 @@ function buildRegionMetadata($this, region) {
   builder.put_mrde5n_k$('id', JsonPrimitive(regionId));
   builder.put_mrde5n_k$('ownerId', JsonPrimitive(regionId));
   builder.put_mrde5n_k$('graphName', JsonPrimitive(graph.graph_1));
-  var tmp0_elvis_lhs = graph.graphType_1;
-  builder.put_mrde5n_k$('name', JsonPrimitive(extractDisplayName(tmp0_elvis_lhs == null ? graph.graph_1 : tmp0_elvis_lhs)));
+  builder.put_mrde5n_k$('name', JsonPrimitive(extractDisplayName(get_displayType(graph))));
   var tmp;
   if ($this.dependencyRegions_1.contains_aljjnj_k$(graph.graph_1)) {
     tmp = 'dependency';
@@ -1255,13 +1310,13 @@ function buildRegionMetadata($this, region) {
   var tmp$ret$4 = tmp0.encodeToJsonElement_w5lo4o_k$(tmp$ret$5, value);
   builder.put_mrde5n_k$('parentId', tmp$ret$4);
   var tmp0_0 = $this.$this_1.json_1;
-  var tmp2_safe_receiver = firstOrNull(creators);
+  var tmp1_safe_receiver = firstOrNull(creators);
   var tmp_1;
-  if (tmp2_safe_receiver == null) {
+  if (tmp1_safe_receiver == null) {
     tmp_1 = null;
   } else {
     // Inline function 'kotlin.let' call
-    tmp_1 = nodeId($this, ensureNotNull(parent), tmp2_safe_receiver.key_1);
+    tmp_1 = nodeId($this, ensureNotNull(parent), tmp1_safe_receiver.key_1);
   }
   // Inline function 'kotlinx.serialization.json.encodeToJsonElement' call
   var value_0 = tmp_1;
@@ -1298,8 +1353,8 @@ function buildRegionMetadata($this, region) {
   while (_iterator__ex2g4s_0.hasNext_bitz1p_k$()) {
     var element = _iterator__ex2g4s_0.next_20eer_k$();
     var tmp0_safe_receiver = element.get_6bo4tg_k$('isRootMember');
-    var tmp1_safe_receiver = tmp0_safe_receiver == null ? null : get_jsonPrimitive(tmp0_safe_receiver);
-    if ((tmp1_safe_receiver == null ? null : get_booleanOrNull(tmp1_safe_receiver)) === true) {
+    var tmp1_safe_receiver_0 = tmp0_safe_receiver == null ? null : get_jsonPrimitive(tmp0_safe_receiver);
+    if ((tmp1_safe_receiver_0 == null ? null : get_booleanOrNull(tmp1_safe_receiver_0)) === true) {
       destination_0.add_utx5q5_k$(element);
     }
   }
@@ -1328,8 +1383,8 @@ function buildRegionMetadata($this, region) {
   while (_iterator__ex2g4s_2.hasNext_bitz1p_k$()) {
     var element_0 = _iterator__ex2g4s_2.next_20eer_k$();
     var tmp0_safe_receiver_0 = element_0.get_6bo4tg_k$('isGraphInput');
-    var tmp1_safe_receiver_0 = tmp0_safe_receiver_0 == null ? null : get_jsonPrimitive(tmp0_safe_receiver_0);
-    if ((tmp1_safe_receiver_0 == null ? null : get_booleanOrNull(tmp1_safe_receiver_0)) === true) {
+    var tmp1_safe_receiver_1 = tmp0_safe_receiver_0 == null ? null : get_jsonPrimitive(tmp0_safe_receiver_0);
+    if ((tmp1_safe_receiver_1 == null ? null : get_booleanOrNull(tmp1_safe_receiver_1)) === true) {
       destination_2.add_utx5q5_k$(element_0);
     }
   }
@@ -1490,13 +1545,11 @@ function findDefaultValues($this) {
     $l$loop: while (_iterator__ex2g4s_2.hasNext_bitz1p_k$()) {
       var dep = _iterator__ex2g4s_2.next_20eer_k$();
       if (dep.hasDefault_1) {
-        var rawKey = substringBefore(dep.key_1, ' = ');
-        var targetKey = unwrapTypeKey(rawKey);
-        if (resolvedKeys.contains_aljjnj_k$(targetKey)) {
+        if (resolvedKeys.contains_aljjnj_k$(dep.key_1)) {
           continue $l$loop;
         }
-        var syntheticKey = 'default:' + targetKey + '@' + binding.key_1;
-        defaultValueNodes.add_utx5q5_k$(new DefaultValueInfo(syntheticKey, targetKey, binding.key_1, extractPackage(targetKey)));
+        var label = removeSuffix(dep.renderedKey_1, ' = ...');
+        defaultValueNodes.add_utx5q5_k$(new DefaultValueInfo('default:' + dep.key_1 + '@' + binding.key_1, label, dep.key_1, binding.key_1, extractPackage(label)));
       }
     }
   }
@@ -1513,7 +1566,7 @@ function findMembersInjectedRoots($this) {
   var _iterator__ex2g4s = this_0.iterator_jk1svi_k$();
   while (_iterator__ex2g4s.hasNext_bitz1p_k$()) {
     var item = _iterator__ex2g4s.next_20eer_k$();
-    var tmp$ret$3 = unwrapTypeKey(item.key_1);
+    var tmp$ret$3 = item.key_1;
     destination.add_utx5q5_k$(tmp$ret$3);
   }
   var injectorKeys = toSet(destination);
@@ -1578,7 +1631,7 @@ function collectAccessors($this) {
   var _iterator__ex2g4s = this_0.iterator_jk1svi_k$();
   while (_iterator__ex2g4s.hasNext_bitz1p_k$()) {
     var item = _iterator__ex2g4s.next_20eer_k$();
-    var tmp$ret$4 = new AccessorMetadata(item.key_1, VOID, item.name_1, item.isProperty_1);
+    var tmp$ret$4 = new AccessorMetadata(item.key_1, VOID, VOID, item.name_1, item.isProperty_1, VOID, VOID, VOID, VOID, item.renderedKey_1);
     destination.add_utx5q5_k$(tmp$ret$4);
   }
   var tmp = destination;
@@ -1592,7 +1645,7 @@ function collectAccessors($this) {
   var _iterator__ex2g4s_0 = this_1.iterator_jk1svi_k$();
   while (_iterator__ex2g4s_0.hasNext_bitz1p_k$()) {
     var item_0 = _iterator__ex2g4s_0.next_20eer_k$();
-    var tmp$ret$8 = new AccessorMetadata(item_0.key_1, VOID, item_0.name_1, item_0.isProperty_1);
+    var tmp$ret$8 = new AccessorMetadata(item_0.key_1, VOID, VOID, item_0.name_1, item_0.isProperty_1, VOID, VOID, VOID, VOID, item_0.renderedKey_1);
     destination_0.add_utx5q5_k$(tmp$ret$8);
   }
   var extensionAccessors = plus_0(tmp, destination_0);
@@ -1615,7 +1668,8 @@ function collectAccessors($this) {
       var _iterator__ex2g4s_2 = accessors.iterator_jk1svi_k$();
       while (_iterator__ex2g4s_2.hasNext_bitz1p_k$()) {
         var element = _iterator__ex2g4s_2.next_20eer_k$();
-        if (element.key_1 === accessor.key_1 && element.name_1 == accessor.name_1 && element.isProperty_1 === accessor.isProperty_1) {
+        var sameDeclaration = element.name_1 == accessor.name_1 && element.isProperty_1 === accessor.isProperty_1;
+        if (element.key_1 === accessor.key_1 && sameDeclaration) {
           tmp$ret$9 = true;
           break $l$block_0;
         }
@@ -1630,24 +1684,25 @@ function collectAccessors($this) {
   return accessors;
 }
 function resolveAccessorKey($this, accessor) {
-  var targetKey = unwrapTypeKey(accessor.key_1);
+  var tmp0 = $this.keyToProviderNodeId_1;
   // Inline function 'kotlin.collections.contains' call
   // Inline function 'kotlin.collections.containsKey' call
-  var this_0 = $this.keyToProviderNodeId_1;
-  if ((isInterface(this_0, KtMap) ? this_0 : THROW_CCE()).containsKey_aw81wo_k$(targetKey)) {
-    return targetKey;
+  var key = accessor.key_1;
+  if ((isInterface(tmp0, KtMap) ? tmp0 : THROW_CCE()).containsKey_aw81wo_k$(key)) {
+    return accessor.key_1;
   }
   // Inline function 'kotlin.collections.filter' call
-  var tmp0 = $this.metadata_1.bindingExplanations_1;
+  var tmp0_0 = $this.metadata_1.bindingExplanations_1;
   // Inline function 'kotlin.collections.filterTo' call
   var destination = ArrayList_init_$Create$();
-  var _iterator__ex2g4s = tmp0.iterator_jk1svi_k$();
+  var _iterator__ex2g4s = tmp0_0.iterator_jk1svi_k$();
   while (_iterator__ex2g4s.hasNext_bitz1p_k$()) {
     var element = _iterator__ex2g4s.next_20eer_k$();
+    var isSelected = element.outcome_1.equals(BindingExplanationOutcome_SELECTED_getInstance());
     var tmp;
     var tmp0_safe_receiver = element.request_1;
     if ((tmp0_safe_receiver == null ? null : tmp0_safe_receiver.key_1) === accessor.key_1) {
-      tmp = element.outcome_1.equals(BindingExplanationOutcome_SELECTED_getInstance());
+      tmp = isSelected;
     } else {
       tmp = false;
     }
@@ -1683,8 +1738,8 @@ function resolveAccessorKey($this, accessor) {
     var tmp$ret$13 = item.key_1;
     destination_2.add_utx5q5_k$(tmp$ret$13);
   }
-  var selectedKeys = distinct(destination_2);
-  var tmp0_safe_receiver_0 = singleOrNull(selectedKeys);
+  var selectedIds = distinct(destination_2);
+  var tmp0_safe_receiver_0 = singleOrNull(selectedIds);
   var tmp_0;
   if (tmp0_safe_receiver_0 == null) {
     tmp_0 = null;
@@ -1693,8 +1748,8 @@ function resolveAccessorKey($this, accessor) {
     var tmp_1;
     // Inline function 'kotlin.collections.contains' call
     // Inline function 'kotlin.collections.containsKey' call
-    var this_1 = $this.keyToProviderNodeId_1;
-    if ((isInterface(this_1, KtMap) ? this_1 : THROW_CCE()).containsKey_aw81wo_k$(tmp0_safe_receiver_0)) {
+    var this_0 = $this.keyToProviderNodeId_1;
+    if ((isInterface(this_0, KtMap) ? this_0 : THROW_CCE()).containsKey_aw81wo_k$(tmp0_safe_receiver_0)) {
       tmp_1 = tmp0_safe_receiver_0;
     } else {
       tmp_1 = null;
@@ -1704,15 +1759,14 @@ function resolveAccessorKey($this, accessor) {
   return tmp_0;
 }
 function buildAccessorRoot($this, index, accessor) {
-  var actualType = bindingType(accessor.key_1);
   var tmp;
   if (accessor.isDeferrable_1) {
-    tmp = contains(actualType, 'Provider<') ? 'Provider' : contains(actualType, 'Lazy<') ? 'Lazy' : null;
+    tmp = accessor.wrapperType_1;
   } else {
     tmp = null;
   }
   var wrapperType = tmp;
-  return new RootMemberInfo('root:' + $this.metadata_1.graph_1 + ':accessor:' + index + ':' + accessor.key_1, accessor.key_1, 'accessor', accessor.name_1, accessor.isProperty_1, resolveAccessorKey($this, accessor), VOID, accessor.isDeferrable_1, wrapperType, accessor.isInherited_1, accessor.declaringGraph_1, accessor.declaringType_1, accessor.origin_1);
+  return new RootMemberInfo('root:' + $this.metadata_1.graph_1 + ':accessor:' + index + ':' + accessor.renderedKey_1, accessor.renderedKey_1, accessor.key_1, 'accessor', accessor.name_1, accessor.isProperty_1, resolveAccessorKey($this, accessor), VOID, accessor.isDeferrable_1, wrapperType, accessor.isInherited_1, accessor.declaringGraph_1, accessor.declaringType_1, accessor.origin_1);
 }
 function buildRootMembers($this) {
   // Inline function 'kotlin.collections.buildList' call
@@ -1740,8 +1794,7 @@ function buildRootMembers($this) {
     var _unary__edvuaz_0 = index_1;
     index_1 = _unary__edvuaz_0 + 1 | 0;
     var index_2 = checkIndexOverflow(_unary__edvuaz_0);
-    var targetKey = unwrapTypeKey(item_0.key_1);
-    this_0.add_utx5q5_k$(new RootMemberInfo('root:' + $this.metadata_1.graph_1 + ':injector:' + index_2 + ':' + item_0.key_1, item_0.key_1, 'injector', item_0.name_1, VOID, VOID, $this.membersInjectedRoots_1.get_wei43m_k$(targetKey)));
+    this_0.add_utx5q5_k$(new RootMemberInfo('root:' + $this.metadata_1.graph_1 + ':injector:' + index_2 + ':' + item_0.renderedKey_1, item_0.renderedKey_1, item_0.key_1, 'injector', item_0.name_1, VOID, VOID, $this.membersInjectedRoots_1.get_wei43m_k$(item_0.key_1)));
   }
   return this_0.build_nmwvly_k$();
 }
@@ -1758,7 +1811,7 @@ function buildTypeNames($this) {
   var _iterator__ex2g4s = this_1.iterator_jk1svi_k$();
   while (_iterator__ex2g4s.hasNext_bitz1p_k$()) {
     var item = _iterator__ex2g4s.next_20eer_k$();
-    var tmp$ret$6 = item.key_1;
+    var tmp$ret$6 = item.renderedKey_1;
     destination.add_utx5q5_k$(tmp$ret$6);
   }
   this_0.addAll_h3ej1q_k$(destination);
@@ -1783,14 +1836,14 @@ function buildTypeNames($this) {
   while (_iterator__ex2g4s_1.hasNext_bitz1p_k$()) {
     var binding = _iterator__ex2g4s_1.next_20eer_k$();
     if (!isInjectorRoot($this, binding)) {
-      this_0.add_utx5q5_k$(binding.key_1);
+      this_0.add_utx5q5_k$(binding.renderedKey_1);
     }
     var tmp0_safe_receiver_0 = binding.assistedTarget_1;
     if (tmp0_safe_receiver_0 == null)
       null;
     else {
       // Inline function 'kotlin.let' call
-      this_0.add_utx5q5_k$(tmp0_safe_receiver_0.key_1);
+      this_0.add_utx5q5_k$(tmp0_safe_receiver_0.renderedKey_1);
     }
   }
   // Inline function 'kotlin.collections.map' call
@@ -1884,14 +1937,14 @@ function buildGraphNode($this) {
 function rootDisplayName($this, member) {
   var declaration = member.name_1;
   var isAccessor = member.kind_1 === 'accessor';
-  var displayType = extractDisplayName(member.key_1, $this.typeNames_1);
-  var actualType = bindingType(member.key_1);
+  var displayType = extractDisplayName(member.renderedKey_1, $this.typeNames_1);
+  var actualType = bindingType(member.renderedKey_1);
   var hasInjectorWrapper = startsWith(actualType, 'dev.zacsweers.metro.MembersInjector<') || startsWith(actualType, 'MembersInjector<');
   var tmp;
   if (hasInjectorWrapper && endsWith(actualType, _Char___init__impl__6a9atx(62))) {
     tmp = dropLast(substringAfter(actualType, _Char___init__impl__6a9atx(60)), 1);
   } else {
-    tmp = member.key_1;
+    tmp = member.renderedKey_1;
   }
   var injectorTarget = tmp;
   var tmp_0;
@@ -1926,10 +1979,11 @@ function buildRootNode($this, member) {
   var color = tmp;
   builder.put_mrde5n_k$('id', JsonPrimitive(member.id_1));
   builder.put_mrde5n_k$('name', JsonPrimitive(rootDisplayName($this, member)));
-  builder.put_mrde5n_k$('typeLabel', JsonPrimitive(extractDisplayName(member.key_1, $this.typeNames_1)));
+  builder.put_mrde5n_k$('typeLabel', JsonPrimitive(extractDisplayName(member.renderedKey_1, $this.typeNames_1)));
   builder.put_mrde5n_k$('isProperty', JsonPrimitive_0(member.isProperty_1));
-  builder.put_mrde5n_k$('fullKey', JsonPrimitive(member.key_1));
-  builder.put_mrde5n_k$('requestedKey', JsonPrimitive(member.key_1));
+  builder.put_mrde5n_k$('fullKey', JsonPrimitive(member.renderedKey_1));
+  builder.put_mrde5n_k$('requestedKey', JsonPrimitive(member.renderedKey_1));
+  builder.put_mrde5n_k$('targetKey', JsonPrimitive(member.key_1));
   builder.put_mrde5n_k$('pkg', JsonPrimitive($this.graphPackage_1));
   var tmp_0;
   if (isAccessor) {
@@ -1981,7 +2035,7 @@ function buildRootNode($this, member) {
   if (isAccessor) {
     var tmp0 = $this.$this_1.json_1;
     // Inline function 'kotlinx.serialization.json.encodeToJsonElement' call
-    var value = listOf_0(new DependencyMetadata(member.key_1, false, member.wrapperType_1));
+    var value = listOf_0(new DependencyMetadata(member.key_1, false, member.wrapperType_1, member.renderedKey_1));
     // Inline function 'kotlinx.serialization.serializer' call
     var this_0 = tmp0.get_serializersModule_piitvg_k$();
     // Inline function 'kotlinx.serialization.internal.cast' call
@@ -1991,7 +2045,7 @@ function buildRootNode($this, member) {
     builder.put_mrde5n_k$('rawDependencies', tmp$ret$6);
     builder.put_mrde5n_k$('resolutionUnavailable', JsonPrimitive_0(member.resolvedKey_1 == null));
   } else {
-    builder.put_mrde5n_k$('injectorTarget', JsonPrimitive(member.key_1));
+    builder.put_mrde5n_k$('injectorTarget', JsonPrimitive(member.renderedKey_1));
     var tmp0_0 = $this.$this_1.json_1;
     var tmp2_safe_receiver = member.binding_1;
     // Inline function 'kotlin.collections.orEmpty' call
@@ -2012,8 +2066,8 @@ function buildRootNode($this, member) {
 function buildBindingNode($this, binding) {
   // Inline function 'kotlinx.serialization.json.buildJsonObject' call
   var builder = new JsonObjectBuilder();
-  var isSynthetic = binding.isSynthetic_1 || binding.bindingKind_1 === 'Alias' || contains(binding.key_1, 'MetroContribution');
-  var isMainGraph = binding.key_1 === $this.metadata_1.graph_1;
+  var isSynthetic = binding.isSynthetic_1 || binding.bindingKind_1 === 'Alias' || contains(binding.renderedKey_1, 'MetroContribution');
+  var isMainGraph = binding.key_1 === $this.metadata_1.key_1;
   var isGraphExtension_0 = isGraphExtension($this, binding);
   var tmp;
   if (isGraphExtension_0) {
@@ -2026,9 +2080,10 @@ function buildBindingNode($this, binding) {
   var metrics = $this.analysis_1.bindingMetrics_1.get_wei43m_k$(binding.key_1);
   bindingDetails($this.$this_1, builder, binding);
   builder.put_mrde5n_k$('id', JsonPrimitive(binding.key_1));
-  builder.put_mrde5n_k$('name', JsonPrimitive(extractDisplayName(binding.key_1, $this.typeNames_1)));
-  builder.put_mrde5n_k$('fullKey', JsonPrimitive(binding.key_1));
-  builder.put_mrde5n_k$('pkg', JsonPrimitive(extractPackage(binding.key_1)));
+  builder.put_mrde5n_k$('bindingKey', JsonPrimitive(binding.key_1));
+  builder.put_mrde5n_k$('name', JsonPrimitive(extractDisplayName(binding.renderedKey_1, $this.typeNames_1)));
+  builder.put_mrde5n_k$('fullKey', JsonPrimitive(binding.renderedKey_1));
+  builder.put_mrde5n_k$('pkg', JsonPrimitive(extractPackage(binding.renderedKey_1)));
   builder.put_mrde5n_k$('kind', JsonPrimitive(binding.bindingKind_1));
   builder.put_mrde5n_k$('scoped', JsonPrimitive_0(binding.isScoped_1));
   builder.put_mrde5n_k$('synthetic', JsonPrimitive_0(isSynthetic));
@@ -2036,27 +2091,51 @@ function buildBindingNode($this, binding) {
   builder.put_mrde5n_k$('isGraphInstance', JsonPrimitive_0(isMainGraph));
   var tmp0_elvis_lhs = binding.isGraphInput_1;
   builder.put_mrde5n_k$('isGraphInput', JsonPrimitive_0(tmp0_elvis_lhs == null ? binding.bindingKind_1 === 'BoundInstance' && !isMainGraph : tmp0_elvis_lhs));
-  builder.put_mrde5n_k$('isIncludedGraph', JsonPrimitive_0($this.metadata_1.includedGraphKeys_1.contains_aljjnj_k$(binding.key_1)));
+  var tmp0 = $this.metadata_1.includedGraphs_1;
+  var tmp$ret$2;
+  $l$block_0: {
+    // Inline function 'kotlin.collections.any' call
+    var tmp_0;
+    if (isInterface(tmp0, Collection)) {
+      tmp_0 = tmp0.isEmpty_y1axqb_k$();
+    } else {
+      tmp_0 = false;
+    }
+    if (tmp_0) {
+      tmp$ret$2 = false;
+      break $l$block_0;
+    }
+    var _iterator__ex2g4s = tmp0.iterator_jk1svi_k$();
+    while (_iterator__ex2g4s.hasNext_bitz1p_k$()) {
+      var element = _iterator__ex2g4s.next_20eer_k$();
+      if (element.key_1 === binding.key_1) {
+        tmp$ret$2 = true;
+        break $l$block_0;
+      }
+    }
+    tmp$ret$2 = false;
+  }
+  builder.put_mrde5n_k$('isIncludedGraph', JsonPrimitive_0(tmp$ret$2));
   builder.put_mrde5n_k$('isExtension', JsonPrimitive_0(isGraphExtension_0));
   var tmp1_safe_receiver = binding.scope_1;
-  var tmp_0;
-  if (tmp1_safe_receiver == null) {
-    tmp_0 = null;
-  } else {
-    // Inline function 'kotlin.let' call
-    tmp_0 = JsonPrimitive(tmp1_safe_receiver);
-  }
-  var tmp2_elvis_lhs = tmp_0;
-  builder.put_mrde5n_k$('scope', tmp2_elvis_lhs == null ? JsonPrimitive('') : tmp2_elvis_lhs);
-  var tmp3_safe_receiver = binding.origin_1;
   var tmp_1;
-  if (tmp3_safe_receiver == null) {
+  if (tmp1_safe_receiver == null) {
     tmp_1 = null;
   } else {
     // Inline function 'kotlin.let' call
-    tmp_1 = JsonPrimitive(tmp3_safe_receiver);
+    tmp_1 = JsonPrimitive(tmp1_safe_receiver);
   }
-  var tmp4_elvis_lhs = tmp_1;
+  var tmp2_elvis_lhs = tmp_1;
+  builder.put_mrde5n_k$('scope', tmp2_elvis_lhs == null ? JsonPrimitive('') : tmp2_elvis_lhs);
+  var tmp3_safe_receiver = binding.origin_1;
+  var tmp_2;
+  if (tmp3_safe_receiver == null) {
+    tmp_2 = null;
+  } else {
+    // Inline function 'kotlin.let' call
+    tmp_2 = JsonPrimitive(tmp3_safe_receiver);
+  }
+  var tmp4_elvis_lhs = tmp_2;
   builder.put_mrde5n_k$('origin', tmp4_elvis_lhs == null ? JsonPrimitive('') : tmp4_elvis_lhs);
   var tmp5_elvis_lhs = $this.categoryMap_1.get_wei43m_k$(binding.bindingKind_1);
   builder.put_mrde5n_k$('category', JsonPrimitive_1(tmp5_elvis_lhs == null ? 11 : tmp5_elvis_lhs));
@@ -2098,7 +2177,7 @@ function buildBindingNode($this, binding) {
 function bindingNodeStyle($this, binding, isSynthetic, metrics) {
   // Inline function 'kotlinx.serialization.json.buildJsonObject' call
   var builder = new JsonObjectBuilder();
-  if (binding.key_1 === $this.metadata_1.graph_1) {
+  if (binding.key_1 === $this.metadata_1.key_1) {
     builder.put_mrde5n_k$('color', JsonPrimitive('#009952'));
     builder.put_mrde5n_k$('borderColor', JsonPrimitive('#009952'));
     builder.put_mrde5n_k$('borderWidth', JsonPrimitive_1(3));
@@ -2113,7 +2192,7 @@ function bindingNodeStyle($this, binding, isSynthetic, metrics) {
   if (isSynthetic) {
     builder.put_mrde5n_k$('opacity', JsonPrimitive_1(0.6));
   }
-  if (!(metrics == null) && !(binding.key_1 === $this.metadata_1.graph_1)) {
+  if (!(metrics == null) && !(binding.key_1 === $this.metadata_1.key_1)) {
     applyBindingGlow($this, builder, metrics);
   }
   return builder.build_bkh6qh_k$();
@@ -2204,9 +2283,10 @@ function buildAssistedTargetNode($this, target) {
   var tmp$ret$9 = tmp0_1.encodeToJsonElement_w5lo4o_k$(tmp$ret$10, value_1);
   builder.put_mrde5n_k$('optionalWrapper', tmp$ret$9);
   builder.put_mrde5n_k$('id', JsonPrimitive(target.key_1));
-  builder.put_mrde5n_k$('name', JsonPrimitive(extractDisplayName(target.key_1, $this.typeNames_1)));
-  builder.put_mrde5n_k$('fullKey', JsonPrimitive(target.key_1));
-  builder.put_mrde5n_k$('pkg', JsonPrimitive(extractPackage(target.key_1)));
+  builder.put_mrde5n_k$('bindingKey', JsonPrimitive(target.key_1));
+  builder.put_mrde5n_k$('name', JsonPrimitive(extractDisplayName(target.renderedKey_1, $this.typeNames_1)));
+  builder.put_mrde5n_k$('fullKey', JsonPrimitive(target.renderedKey_1));
+  builder.put_mrde5n_k$('pkg', JsonPrimitive(extractPackage(target.renderedKey_1)));
   builder.put_mrde5n_k$('kind', JsonPrimitive('AssistedInject'));
   builder.put_mrde5n_k$('scoped', JsonPrimitive_0(target.isScoped_1));
   builder.put_mrde5n_k$('synthetic', JsonPrimitive_0(false));
@@ -2309,7 +2389,7 @@ function buildBindingLinks($this, binding) {
   var _iterator__ex2g4s = binding.dependencies_1.iterator_jk1svi_k$();
   while (_iterator__ex2g4s.hasNext_bitz1p_k$()) {
     var dependency = _iterator__ex2g4s.next_20eer_k$();
-    var targetKey = unwrapTypeKey(substringBefore(dependency.key_1, ' = '));
+    var targetKey = dependency.key_1;
     var defaultKey = $this.defaultValueNodeMap_1.get_wei43m_k$(to(binding.key_1, targetKey));
     if (!(defaultKey == null)) {
       builder.addAll_s6d7z9_k$(buildDefaultValueLinks($this, binding.key_1, defaultKey, targetKey));
@@ -2384,7 +2464,37 @@ function dependencyEdgeType($this, binding, dependency, targetKey, multibindingS
   }
   var tmp1_safe_receiver = tmp;
   var includedOwner = tmp1_safe_receiver == null ? null : tmp1_safe_receiver.ownerKey_1;
-  var isIncludedDependency = includedOwner === dependency.key_1 && $this.metadata_1.includedGraphKeys_1.contains_aljjnj_k$(includedOwner);
+  var tmp_1;
+  if (includedOwner === dependency.key_1) {
+    var tmp0 = $this.metadata_1.includedGraphs_1;
+    var tmp$ret$2;
+    $l$block_0: {
+      // Inline function 'kotlin.collections.any' call
+      var tmp_2;
+      if (isInterface(tmp0, Collection)) {
+        tmp_2 = tmp0.isEmpty_y1axqb_k$();
+      } else {
+        tmp_2 = false;
+      }
+      if (tmp_2) {
+        tmp$ret$2 = false;
+        break $l$block_0;
+      }
+      var _iterator__ex2g4s = tmp0.iterator_jk1svi_k$();
+      while (_iterator__ex2g4s.hasNext_bitz1p_k$()) {
+        var element = _iterator__ex2g4s.next_20eer_k$();
+        if (element.key_1 === includedOwner) {
+          tmp$ret$2 = true;
+          break $l$block_0;
+        }
+      }
+      tmp$ret$2 = false;
+    }
+    tmp_1 = tmp$ret$2;
+  } else {
+    tmp_1 = false;
+  }
+  var isIncludedDependency = tmp_1;
   return isIncludedDependency ? 'includes' : isInheritedScope ? 'inherited' : isAlias ? 'alias' : isAssistedFactory ? 'assisted' : dependency.get_isDeferrable_x0h2s3_k$() ? 'deferrable' : isMultibinding && multibindingSourceKeys.contains_aljjnj_k$(dependency.key_1) ? 'multibinding' : 'normal';
 }
 function buildDependencyLink($this, binding, dependency, targetKey, edgeType) {
@@ -2484,7 +2594,7 @@ function buildAccessorLink($this, member, targetKey) {
   }
   builder.put_mrde5n_k$('edgeType', JsonPrimitive(tmp));
   builder.put_mrde5n_k$('rootKind', JsonPrimitive('accessor'));
-  builder.put_mrde5n_k$('requestedKey', JsonPrimitive(member.key_1));
+  builder.put_mrde5n_k$('requestedKey', JsonPrimitive(member.renderedKey_1));
   builder.put_mrde5n_k$('isDeferrable', JsonPrimitive_0(member.isDeferrable_1));
   if (!(member.wrapperType_1 == null)) {
     builder.put_mrde5n_k$('wrapperType', JsonPrimitive(member.wrapperType_1));
@@ -2515,9 +2625,8 @@ function buildInjectorLinks($this, member) {
     var _iterator__ex2g4s = binding.dependencies_1.iterator_jk1svi_k$();
     $l$loop: while (_iterator__ex2g4s.hasNext_bitz1p_k$()) {
       var dependency = _iterator__ex2g4s.next_20eer_k$();
-      var targetKey = unwrapTypeKey(substringBefore(dependency.key_1, ' = '));
-      var defaultKey = $this.defaultValueNodeMap_1.get_wei43m_k$(to(binding.key_1, targetKey));
-      var resolvedKey = defaultKey == null ? $this.keyToProviderNodeId_1.get_wei43m_k$(targetKey) : defaultKey;
+      var defaultKey = $this.defaultValueNodeMap_1.get_wei43m_k$(to(binding.key_1, dependency.key_1));
+      var resolvedKey = defaultKey == null ? $this.keyToProviderNodeId_1.get_wei43m_k$(dependency.key_1) : defaultKey;
       if (resolvedKey == null) {
         continue $l$loop;
       }
@@ -2527,8 +2636,8 @@ function buildInjectorLinks($this, member) {
       builder_0.put_mrde5n_k$('target', JsonPrimitive(resolvedKey));
       builder_0.put_mrde5n_k$('edgeType', JsonPrimitive('injects'));
       builder_0.put_mrde5n_k$('rootKind', JsonPrimitive('injector'));
-      builder_0.put_mrde5n_k$('injectorTarget', JsonPrimitive(member.key_1));
-      builder_0.put_mrde5n_k$('requestedKey', JsonPrimitive(dependency.key_1));
+      builder_0.put_mrde5n_k$('injectorTarget', JsonPrimitive(member.renderedKey_1));
+      builder_0.put_mrde5n_k$('requestedKey', JsonPrimitive(dependency.renderedKey_1));
       builder_0.put_mrde5n_k$('hasDefault', JsonPrimitive_0(dependency.hasDefault_1));
       if (!(dependency.wrapperType_1 == null)) {
         builder_0.put_mrde5n_k$('wrapperType', JsonPrimitive(dependency.wrapperType_1));
@@ -2567,7 +2676,7 @@ function buildAssistedTargetLinks($this, binding, target) {
   var _iterator__ex2g4s = target.dependencies_1.iterator_jk1svi_k$();
   while (_iterator__ex2g4s.hasNext_bitz1p_k$()) {
     var dep = _iterator__ex2g4s.next_20eer_k$();
-    var depTargetKey = unwrapTypeKey(substringBefore(dep.key_1, ' = '));
+    var depTargetKey = dep.key_1;
     // Inline function 'kotlin.collections.contains' call
     // Inline function 'kotlin.collections.containsKey' call
     var this_0 = $this.keyToProviderNodeId_1;
@@ -3109,18 +3218,20 @@ function bindingDetails($this, $receiver, binding) {
 function buildGraphData($this, metadata, analysis) {
   return (new GraphDataBuilder($this, metadata, analysis)).build_1k0s4u_k$();
 }
-function DefaultValueInfo(syntheticKey, targetType, consumerKey, targetPackage) {
+function DefaultValueInfo(syntheticKey, targetType, targetKey, consumerKey, targetPackage) {
   this.syntheticKey_1 = syntheticKey;
   this.targetType_1 = targetType;
+  this.targetKey_1 = targetKey;
   this.consumerKey_1 = consumerKey;
   this.targetPackage_1 = targetPackage;
 }
 protoOf(DefaultValueInfo).toString = function () {
-  return 'DefaultValueInfo(syntheticKey=' + this.syntheticKey_1 + ', targetType=' + this.targetType_1 + ', consumerKey=' + this.consumerKey_1 + ', targetPackage=' + this.targetPackage_1 + ')';
+  return 'DefaultValueInfo(syntheticKey=' + this.syntheticKey_1 + ', targetType=' + this.targetType_1 + ', targetKey=' + this.targetKey_1 + ', consumerKey=' + this.consumerKey_1 + ', targetPackage=' + this.targetPackage_1 + ')';
 };
 protoOf(DefaultValueInfo).hashCode = function () {
   var result = getStringHashCode(this.syntheticKey_1);
   result = imul(result, 31) + getStringHashCode(this.targetType_1) | 0;
+  result = imul(result, 31) + getStringHashCode(this.targetKey_1) | 0;
   result = imul(result, 31) + getStringHashCode(this.consumerKey_1) | 0;
   result = imul(result, 31) + getStringHashCode(this.targetPackage_1) | 0;
   return result;
@@ -3134,13 +3245,15 @@ protoOf(DefaultValueInfo).equals = function (other) {
     return false;
   if (!(this.targetType_1 === other.targetType_1))
     return false;
+  if (!(this.targetKey_1 === other.targetKey_1))
+    return false;
   if (!(this.consumerKey_1 === other.consumerKey_1))
     return false;
   if (!(this.targetPackage_1 === other.targetPackage_1))
     return false;
   return true;
 };
-function RootMemberInfo(id, key, kind, name, isProperty, resolvedKey, binding, isDeferrable, wrapperType, isInherited, declaringGraph, declaringType, origin) {
+function RootMemberInfo(id, renderedKey, key, kind, name, isProperty, resolvedKey, binding, isDeferrable, wrapperType, isInherited, declaringGraph, declaringType, origin) {
   name = name === VOID ? null : name;
   isProperty = isProperty === VOID ? false : isProperty;
   resolvedKey = resolvedKey === VOID ? null : resolvedKey;
@@ -3152,6 +3265,7 @@ function RootMemberInfo(id, key, kind, name, isProperty, resolvedKey, binding, i
   declaringType = declaringType === VOID ? null : declaringType;
   origin = origin === VOID ? null : origin;
   this.id_1 = id;
+  this.renderedKey_1 = renderedKey;
   this.key_1 = key;
   this.kind_1 = kind;
   this.name_1 = name;
@@ -3166,10 +3280,11 @@ function RootMemberInfo(id, key, kind, name, isProperty, resolvedKey, binding, i
   this.origin_1 = origin;
 }
 protoOf(RootMemberInfo).toString = function () {
-  return 'RootMemberInfo(id=' + this.id_1 + ', key=' + this.key_1 + ', kind=' + this.kind_1 + ', name=' + this.name_1 + ', isProperty=' + this.isProperty_1 + ', resolvedKey=' + this.resolvedKey_1 + ', binding=' + toString_0(this.binding_1) + ', isDeferrable=' + this.isDeferrable_1 + ', wrapperType=' + this.wrapperType_1 + ', isInherited=' + this.isInherited_1 + ', declaringGraph=' + this.declaringGraph_1 + ', declaringType=' + this.declaringType_1 + ', origin=' + this.origin_1 + ')';
+  return 'RootMemberInfo(id=' + this.id_1 + ', renderedKey=' + this.renderedKey_1 + ', key=' + this.key_1 + ', kind=' + this.kind_1 + ', name=' + this.name_1 + ', isProperty=' + this.isProperty_1 + ', resolvedKey=' + this.resolvedKey_1 + ', binding=' + toString_0(this.binding_1) + ', isDeferrable=' + this.isDeferrable_1 + ', wrapperType=' + this.wrapperType_1 + ', isInherited=' + this.isInherited_1 + ', declaringGraph=' + this.declaringGraph_1 + ', declaringType=' + this.declaringType_1 + ', origin=' + this.origin_1 + ')';
 };
 protoOf(RootMemberInfo).hashCode = function () {
   var result = getStringHashCode(this.id_1);
+  result = imul(result, 31) + getStringHashCode(this.renderedKey_1) | 0;
   result = imul(result, 31) + getStringHashCode(this.key_1) | 0;
   result = imul(result, 31) + getStringHashCode(this.kind_1) | 0;
   result = imul(result, 31) + (this.name_1 == null ? 0 : getStringHashCode(this.name_1)) | 0;
@@ -3190,6 +3305,8 @@ protoOf(RootMemberInfo).equals = function (other) {
   if (!(other instanceof RootMemberInfo))
     return false;
   if (!(this.id_1 === other.id_1))
+    return false;
+  if (!(this.renderedKey_1 === other.renderedKey_1))
     return false;
   if (!(this.key_1 === other.key_1))
     return false;
@@ -3269,7 +3386,7 @@ function GraphDataBuilder($outer, metadata, analysis) {
   while (_iterator__ex2g4s.hasNext_bitz1p_k$()) {
     var element = _iterator__ex2g4s.next_20eer_k$();
     // Inline function 'kotlin.collections.plusAssign' call
-    var pair = to(to(element.consumerKey_1, element.targetType_1), element.syntheticKey_1);
+    var pair = to(to(element.consumerKey_1, element.targetKey_1), element.syntheticKey_1);
     destination.put_4fpzoq_k$(pair.first_1, pair.second_1);
   }
   tmp.defaultValueNodeMap_1 = destination;
@@ -3532,6 +3649,23 @@ function extractDisplayName(key, typeNames) {
   var actualType = bindingType(key);
   var tmp = get_qualifiedTypePattern();
   return tmp.replace_dbivij_k$(actualType, extractDisplayName$lambda(typeNames));
+}
+function displayTypeKey(key) {
+  _init_properties_GraphReportRenderer_kt__jnv419();
+  return replace(key, _Char___init__impl__6a9atx(47), _Char___init__impl__6a9atx(46));
+}
+function get_displayType(_this__u8e3s4) {
+  _init_properties_GraphReportRenderer_kt__jnv419();
+  var tmp0_safe_receiver = _this__u8e3s4.graphType_1;
+  var tmp;
+  if (tmp0_safe_receiver == null) {
+    tmp = null;
+  } else {
+    // Inline function 'kotlin.let' call
+    tmp = displayTypeKey(tmp0_safe_receiver);
+  }
+  var tmp1_elvis_lhs = tmp;
+  return tmp1_elvis_lhs == null ? _this__u8e3s4.graph_1 : tmp1_elvis_lhs;
 }
 function typeDisplayNames(keys) {
   _init_properties_GraphReportRenderer_kt__jnv419();
@@ -4301,17 +4435,22 @@ function readGraph($this, document) {
   // Inline function 'kotlin.collections.buildListInternal' call
   // Inline function 'kotlin.apply' call
   var this_4 = ArrayList_init_$Create$();
-  this_4.addAll_h3ej1q_k$(graph.includedGraphKeys_1);
+  // Inline function 'kotlin.collections.forEach' call
+  var _iterator__ex2g4s = graph.includedGraphs_1.iterator_jk1svi_k$();
+  while (_iterator__ex2g4s.hasNext_bitz1p_k$()) {
+    var element = _iterator__ex2g4s.next_20eer_k$();
+    this_4.add_utx5q5_k$(element.key_1);
+  }
   var tmp0_safe_receiver = graph.roots_1;
   var tmp1_safe_receiver = tmp0_safe_receiver == null ? null : tmp0_safe_receiver.accessors_1;
   if (tmp1_safe_receiver == null)
     null;
   else {
     // Inline function 'kotlin.collections.forEach' call
-    var _iterator__ex2g4s = tmp1_safe_receiver.iterator_jk1svi_k$();
-    while (_iterator__ex2g4s.hasNext_bitz1p_k$()) {
-      var element = _iterator__ex2g4s.next_20eer_k$();
-      this_4.add_utx5q5_k$(element.key_1);
+    var _iterator__ex2g4s_0 = tmp1_safe_receiver.iterator_jk1svi_k$();
+    while (_iterator__ex2g4s_0.hasNext_bitz1p_k$()) {
+      var element_0 = _iterator__ex2g4s_0.next_20eer_k$();
+      this_4.add_utx5q5_k$(element_0.key_1);
     }
   }
   var tmp2_safe_receiver = graph.roots_1;
@@ -4320,38 +4459,38 @@ function readGraph($this, document) {
     null;
   else {
     // Inline function 'kotlin.collections.forEach' call
-    var _iterator__ex2g4s_0 = tmp3_safe_receiver.iterator_jk1svi_k$();
-    while (_iterator__ex2g4s_0.hasNext_bitz1p_k$()) {
-      var element_0 = _iterator__ex2g4s_0.next_20eer_k$();
-      this_4.add_utx5q5_k$(element_0.key_1);
+    var _iterator__ex2g4s_1 = tmp3_safe_receiver.iterator_jk1svi_k$();
+    while (_iterator__ex2g4s_1.hasNext_bitz1p_k$()) {
+      var element_1 = _iterator__ex2g4s_1.next_20eer_k$();
+      this_4.add_utx5q5_k$(element_1.key_1);
     }
   }
   // Inline function 'kotlin.collections.forEach' call
-  var _iterator__ex2g4s_1 = graph.bindings_1.iterator_jk1svi_k$();
-  while (_iterator__ex2g4s_1.hasNext_bitz1p_k$()) {
-    var element_1 = _iterator__ex2g4s_1.next_20eer_k$();
+  var _iterator__ex2g4s_2 = graph.bindings_1.iterator_jk1svi_k$();
+  while (_iterator__ex2g4s_2.hasNext_bitz1p_k$()) {
+    var element_2 = _iterator__ex2g4s_2.next_20eer_k$();
     // Inline function 'kotlin.collections.forEach' call
-    var _iterator__ex2g4s_2 = element_1.dependencies_1.iterator_jk1svi_k$();
-    while (_iterator__ex2g4s_2.hasNext_bitz1p_k$()) {
-      var element_2 = _iterator__ex2g4s_2.next_20eer_k$();
-      this_4.add_utx5q5_k$(element_2.key_1);
+    var _iterator__ex2g4s_3 = element_2.dependencies_1.iterator_jk1svi_k$();
+    while (_iterator__ex2g4s_3.hasNext_bitz1p_k$()) {
+      var element_3 = _iterator__ex2g4s_3.next_20eer_k$();
+      this_4.add_utx5q5_k$(element_3.key_1);
     }
-    var tmp0_safe_receiver_0 = element_1.assistedTarget_1;
+    var tmp0_safe_receiver_0 = element_2.assistedTarget_1;
     if (tmp0_safe_receiver_0 == null)
       null;
     else {
       // Inline function 'kotlin.let' call
       this_4.add_utx5q5_k$(tmp0_safe_receiver_0.key_1);
       // Inline function 'kotlin.collections.forEach' call
-      var _iterator__ex2g4s_3 = tmp0_safe_receiver_0.dependencies_1.iterator_jk1svi_k$();
-      while (_iterator__ex2g4s_3.hasNext_bitz1p_k$()) {
-        var element_3 = _iterator__ex2g4s_3.next_20eer_k$();
-        this_4.add_utx5q5_k$(element_3.key_1);
+      var _iterator__ex2g4s_4 = tmp0_safe_receiver_0.dependencies_1.iterator_jk1svi_k$();
+      while (_iterator__ex2g4s_4.hasNext_bitz1p_k$()) {
+        var element_4 = _iterator__ex2g4s_4.next_20eer_k$();
+        this_4.add_utx5q5_k$(element_4.key_1);
       }
     }
   }
   var referencedKeys = this_4.build_nmwvly_k$();
-  var tmp$ret$25;
+  var tmp$ret$27;
   $l$block_0: {
     // Inline function 'kotlin.collections.none' call
     var tmp_0;
@@ -4361,26 +4500,26 @@ function readGraph($this, document) {
       tmp_0 = false;
     }
     if (tmp_0) {
-      tmp$ret$25 = true;
+      tmp$ret$27 = true;
       break $l$block_0;
     }
-    var _iterator__ex2g4s_4 = referencedKeys.iterator_jk1svi_k$();
-    while (_iterator__ex2g4s_4.hasNext_bitz1p_k$()) {
-      var element_4 = _iterator__ex2g4s_4.next_20eer_k$();
-      if (isBlank(element_4)) {
-        tmp$ret$25 = false;
+    var _iterator__ex2g4s_5 = referencedKeys.iterator_jk1svi_k$();
+    while (_iterator__ex2g4s_5.hasNext_bitz1p_k$()) {
+      var element_5 = _iterator__ex2g4s_5.next_20eer_k$();
+      if (isBlank(element_5)) {
+        tmp$ret$27 = false;
         break $l$block_0;
       }
     }
-    tmp$ret$25 = true;
+    tmp$ret$27 = true;
   }
   // Inline function 'kotlin.require' call
-  if (!tmp$ret$25) {
+  if (!tmp$ret$27) {
     var message_1 = graph.graph_1 + ' contains an empty root or dependency key.';
     throw IllegalArgumentException_init_$Create$(toString(message_1));
   }
   var tmp0 = graph.bindings_1;
-  var tmp$ret$29;
+  var tmp$ret$31;
   $l$block_2: {
     // Inline function 'kotlin.collections.all' call
     var tmp_1;
@@ -4390,31 +4529,31 @@ function readGraph($this, document) {
       tmp_1 = false;
     }
     if (tmp_1) {
-      tmp$ret$29 = true;
+      tmp$ret$31 = true;
       break $l$block_2;
     }
-    var _iterator__ex2g4s_5 = tmp0.iterator_jk1svi_k$();
-    while (_iterator__ex2g4s_5.hasNext_bitz1p_k$()) {
-      var element_5 = _iterator__ex2g4s_5.next_20eer_k$();
+    var _iterator__ex2g4s_6 = tmp0.iterator_jk1svi_k$();
+    while (_iterator__ex2g4s_6.hasNext_bitz1p_k$()) {
+      var element_6 = _iterator__ex2g4s_6.next_20eer_k$();
       var tmp_2;
       // Inline function 'kotlin.text.isNotBlank' call
-      var this_5 = element_5.key_1;
+      var this_5 = element_6.key_1;
       if (!isBlank(this_5)) {
         // Inline function 'kotlin.text.isNotBlank' call
-        var this_6 = element_5.bindingKind_1;
+        var this_6 = element_6.bindingKind_1;
         tmp_2 = !isBlank(this_6);
       } else {
         tmp_2 = false;
       }
       if (!tmp_2) {
-        tmp$ret$29 = false;
+        tmp$ret$31 = false;
         break $l$block_2;
       }
     }
-    tmp$ret$29 = true;
+    tmp$ret$31 = true;
   }
   // Inline function 'kotlin.require' call
-  if (!tmp$ret$29) {
+  if (!tmp$ret$31) {
     var message_2 = graph.graph_1 + ' contains a binding without a key or kind.';
     throw IllegalArgumentException_init_$Create$(toString(message_2));
   }
@@ -4422,11 +4561,11 @@ function readGraph($this, document) {
   var this_7 = graph.bindings_1;
   // Inline function 'kotlin.collections.mapTo' call
   var destination = ArrayList_init_$Create$_0(collectionSizeOrDefault(this_7, 10));
-  var _iterator__ex2g4s_6 = this_7.iterator_jk1svi_k$();
-  while (_iterator__ex2g4s_6.hasNext_bitz1p_k$()) {
-    var item = _iterator__ex2g4s_6.next_20eer_k$();
-    var tmp$ret$37 = to(item.key_1, item.bindingKind_1 === 'MembersInjected');
-    destination.add_utx5q5_k$(tmp$ret$37);
+  var _iterator__ex2g4s_7 = this_7.iterator_jk1svi_k$();
+  while (_iterator__ex2g4s_7.hasNext_bitz1p_k$()) {
+    var item = _iterator__ex2g4s_7.next_20eer_k$();
+    var tmp$ret$39 = item.key_1;
+    destination.add_utx5q5_k$(tmp$ret$39);
   }
   var identities = destination;
   // Inline function 'kotlin.require' call
@@ -4574,12 +4713,12 @@ function validateAnalysis($this) {
     }
     var measuredKeys = destination_0;
     // Inline function 'kotlin.require' call
-    if (!equals(minus_0(keys, graph.graph_1), minus_0(measuredKeys, graph.graph_1))) {
+    if (!equals(minus_0(keys, graph.key_1), minus_0(measuredKeys, graph.key_1))) {
       var message_2 = 'Analysis bindings do not match ' + graph.graph_1 + '. Generate metadata and analysis from the same compilation.';
       throw IllegalArgumentException_init_$Create$(toString(message_2));
     }
     // Inline function 'kotlin.collections.plusAssign' call
-    var element_1 = graph.graph_1;
+    var element_1 = graph.key_1;
     keys.add_utx5q5_k$(element_1);
     // Inline function 'kotlin.collections.buildList' call
     // Inline function 'kotlin.collections.buildListInternal' call
@@ -4811,7 +4950,7 @@ function findMissingReports($this) {
       var _iterator__ex2g4s_1 = tmp1_safe_receiver.iterator_jk1svi_k$();
       while (_iterator__ex2g4s_1.hasNext_bitz1p_k$()) {
         var element_1 = _iterator__ex2g4s_1.next_20eer_k$();
-        this_1.add_utx5q5_k$(bindingType(unwrapTypeKey(element_1.key_1)));
+        this_1.add_utx5q5_k$(element_1.key_1);
       }
     }
     // Inline function 'kotlin.collections.filter' call
@@ -4829,7 +4968,7 @@ function findMissingReports($this) {
     var _iterator__ex2g4s_3 = destination.iterator_jk1svi_k$();
     while (_iterator__ex2g4s_3.hasNext_bitz1p_k$()) {
       var element_3 = _iterator__ex2g4s_3.next_20eer_k$();
-      this_1.add_utx5q5_k$(bindingType(unwrapTypeKey(element_3.key_1)));
+      this_1.add_utx5q5_k$(element_3.key_1);
     }
     var extensionTypes = this_1.build_nmwvly_k$();
     var _iterator__ex2g4s_4 = extensionTypes.iterator_jk1svi_k$();
@@ -4852,7 +4991,7 @@ function findMissingReports($this) {
         var _iterator__ex2g4s_5 = tmp0_1.iterator_jk1svi_k$();
         while (_iterator__ex2g4s_5.hasNext_bitz1p_k$()) {
           var element_4 = _iterator__ex2g4s_5.next_20eer_k$();
-          var matchesType = element_4.graphType_1 === type || element_4.graph_1 === type;
+          var matchesType = element_4.graphType_1 === type || element_4.key_1 === type;
           var matchesParent = element_4.parentGraph_1 === graph.graph_1;
           if (matchesType && matchesParent) {
             tmp$ret$20 = true;
@@ -4865,52 +5004,26 @@ function findMissingReports($this) {
       if (!available) {
         var tmp0_2 = $this.warnings_1;
         // Inline function 'kotlin.collections.plusAssign' call
-        var element_5 = graphLabel($this, graph) + ': extension report ' + type + ' is missing.';
+        var element_5 = graphLabel($this, graph) + ': extension report ' + displayTypeKey(type) + ' is missing.';
         tmp0_2.add_utx5q5_k$(element_5);
       }
     }
-    var _iterator__ex2g4s_6 = graph.includedGraphKeys_1.iterator_jk1svi_k$();
+    var _iterator__ex2g4s_6 = graph.includedGraphs_1.iterator_jk1svi_k$();
     while (_iterator__ex2g4s_6.hasNext_bitz1p_k$()) {
-      var key = _iterator__ex2g4s_6.next_20eer_k$();
-      var type_0 = bindingType(key);
-      var tmp0_3 = $this.graphs_1.get_values_ksazhn_k$();
-      var tmp$ret$23;
-      $l$block_2: {
-        // Inline function 'kotlin.collections.any' call
-        var tmp_1;
-        if (isInterface(tmp0_3, Collection)) {
-          tmp_1 = tmp0_3.isEmpty_y1axqb_k$();
-        } else {
-          tmp_1 = false;
-        }
-        if (tmp_1) {
-          tmp$ret$23 = false;
-          break $l$block_2;
-        }
-        var _iterator__ex2g4s_7 = tmp0_3.iterator_jk1svi_k$();
-        while (_iterator__ex2g4s_7.hasNext_bitz1p_k$()) {
-          var element_6 = _iterator__ex2g4s_7.next_20eer_k$();
-          var matchesType_0 = element_6.graph_1 === type_0 || element_6.graphType_1 === type_0;
-          if (matchesType_0 && element_6.parentGraph_1 == null) {
-            tmp$ret$23 = true;
-            break $l$block_2;
-          }
-        }
-        tmp$ret$23 = false;
-      }
-      var available_0 = tmp$ret$23;
+      var included = _iterator__ex2g4s_6.next_20eer_k$();
+      var includedReport = $this.graphs_1.get_wei43m_k$(included.graph_1);
+      var available_0 = !(includedReport == null) && includedReport.parentGraph_1 == null;
       if (!available_0) {
-        var tmp0_4 = $this.warnings_1;
+        var tmp0_3 = $this.warnings_1;
         // Inline function 'kotlin.collections.plusAssign' call
-        var element_7 = graphLabel($this, graph) + ': included graph report ' + key + ' is missing.';
-        tmp0_4.add_utx5q5_k$(element_7);
+        var element_6 = graphLabel($this, graph) + ': included graph report ' + included.graph_1 + ' is missing.';
+        tmp0_3.add_utx5q5_k$(element_6);
       }
     }
   }
 }
 function graphLabel($this, graph) {
-  var tmp0_elvis_lhs = graph.graphType_1;
-  return substringAfterLast(tmp0_elvis_lhs == null ? graph.graph_1 : tmp0_elvis_lhs, _Char___init__impl__6a9atx(46));
+  return substringAfterLast(get_displayType(graph), _Char___init__impl__6a9atx(46));
 }
 function sam$kotlin_Comparator$0(function_0) {
   this.function_1 = function_0;
@@ -5038,8 +5151,7 @@ function GraphReportImport(files) {
   var _iterator__ex2g4s_0 = this_0.iterator_jk1svi_k$();
   while (_iterator__ex2g4s_0.hasNext_bitz1p_k$()) {
     var item = _iterator__ex2g4s_0.next_20eer_k$();
-    var tmp0_elvis_lhs = item.graphType_1;
-    var tmp$ret$16 = tmp0_elvis_lhs == null ? item.graph_1 : tmp0_elvis_lhs;
+    var tmp$ret$16 = get_displayType(item);
     destination.add_utx5q5_k$(tmp$ret$16);
   }
   var typeNames = typeDisplayNames(destination);
@@ -5051,9 +5163,8 @@ function GraphReportImport(files) {
   var _iterator__ex2g4s_1 = this_1.iterator_jk1svi_k$();
   while (_iterator__ex2g4s_1.hasNext_bitz1p_k$()) {
     var element_0 = _iterator__ex2g4s_1.next_20eer_k$();
-    var tmp0_elvis_lhs_0 = element_0.graphType_1;
     // Inline function 'kotlin.collections.plusAssign' call
-    var pair = to(element_0.graph_1, extractDisplayName(tmp0_elvis_lhs_0 == null ? element_0.graph_1 : tmp0_elvis_lhs_0, typeNames));
+    var pair = to(element_0.graph_1, extractDisplayName(get_displayType(element_0), typeNames));
     destination_0.put_4fpzoq_k$(pair.first_1, pair.second_1);
   }
   var displayNames = destination_0;

@@ -86,8 +86,8 @@ initMetadataForInterface(KtList, 'List', VOID, VOID, [Collection]);
 initMetadataForInterface(Entry, 'Entry');
 initMetadataForInterface(KtMap, 'Map');
 initMetadataForInterface(MutableIterable, 'MutableIterable');
-initMetadataForInterface(KtMutableSet, 'MutableSet', VOID, VOID, [KtSet, MutableIterable, Collection]);
-initMetadataForInterface(KtMutableList, 'MutableList', VOID, VOID, [KtList, MutableIterable, Collection]);
+initMetadataForInterface(KtMutableSet, 'MutableSet', VOID, VOID, [KtSet, Collection, MutableIterable]);
+initMetadataForInterface(KtMutableList, 'MutableList', VOID, VOID, [KtList, Collection, MutableIterable]);
 initMetadataForInterface(KtMutableMap, 'MutableMap', VOID, VOID, [KtMap]);
 initMetadataForCompanion(Companion_0);
 initMetadataForClass(Enum, 'Enum', VOID, VOID, [Comparable]);
@@ -107,7 +107,7 @@ initMetadataForObject(Letter, 'Letter');
 initMetadataForInterface(Comparator, 'Comparator');
 initMetadataForObject(Unit, 'Unit');
 initMetadataForClass(AbstractCollection, 'AbstractCollection', VOID, VOID, [Collection]);
-initMetadataForClass(AbstractMutableCollection, 'AbstractMutableCollection', VOID, AbstractCollection, [MutableIterable, Collection]);
+initMetadataForClass(AbstractMutableCollection, 'AbstractMutableCollection', VOID, AbstractCollection, [Collection, MutableIterable]);
 initMetadataForClass(IteratorImpl, 'IteratorImpl');
 initMetadataForClass(AbstractMutableList, 'AbstractMutableList', VOID, AbstractMutableCollection, [KtMutableList]);
 initMetadataForClass(AbstractMap, 'AbstractMap', VOID, VOID, [KtMap]);
@@ -117,7 +117,7 @@ initMetadataForCompanion(Companion_2);
 initMetadataForClass(ArrayList, 'ArrayList', ArrayList_init_$Create$, AbstractMutableList, [KtMutableList]);
 initMetadataForClass(HashMap, 'HashMap', HashMap_init_$Create$, AbstractMutableMap, [KtMutableMap]);
 initMetadataForClass(HashMapKeys, 'HashMapKeys', VOID, AbstractMutableSet, [KtMutableSet]);
-initMetadataForClass(HashMapValues, 'HashMapValues', VOID, AbstractMutableCollection, [MutableIterable, Collection]);
+initMetadataForClass(HashMapValues, 'HashMapValues', VOID, AbstractMutableCollection, [Collection, MutableIterable]);
 initMetadataForClass(HashMapEntrySetBase, 'HashMapEntrySetBase', VOID, AbstractMutableSet, [KtMutableSet]);
 initMetadataForClass(HashMapEntrySet, 'HashMapEntrySet', VOID, HashMapEntrySetBase);
 initMetadataForClass(HashMapKeysDefault$iterator$1);
@@ -6020,6 +6020,12 @@ function Companion_4() {
   this.replacementEscape_1 = new RegExp('[\\\\$]', 'g');
   this.nativeReplacementEscape_1 = new RegExp('\\$', 'g');
 }
+protoOf(Companion_4).escape_984trb_k$ = function (literal) {
+  // Inline function 'kotlin.text.nativeReplace' call
+  var pattern = this.patternEscape_1;
+  // Inline function 'kotlin.js.asDynamic' call
+  return literal.replace(pattern, '\\$&');
+};
 var Companion_instance_4;
 function Companion_getInstance_4() {
   if (Companion_instance_4 == null)
@@ -6299,9 +6305,26 @@ function startsWith(_this__u8e3s4, prefix, ignoreCase) {
   } else
     return regionMatches(_this__u8e3s4, 0, prefix, 0, prefix.length, ignoreCase);
 }
+function replace(_this__u8e3s4, oldChar, newChar, ignoreCase) {
+  ignoreCase = ignoreCase === VOID ? false : ignoreCase;
+  var tmp2 = new RegExp(Companion_getInstance_4().escape_984trb_k$(toString(oldChar)), ignoreCase ? 'gui' : 'gu');
+  // Inline function 'kotlin.text.nativeReplace' call
+  var replacement = toString(newChar);
+  // Inline function 'kotlin.js.asDynamic' call
+  return _this__u8e3s4.replace(tmp2, replacement);
+}
 function regionMatches(_this__u8e3s4, thisOffset, other, otherOffset, length, ignoreCase) {
   ignoreCase = ignoreCase === VOID ? false : ignoreCase;
   return regionMatchesImpl(_this__u8e3s4, thisOffset, other, otherOffset, length, ignoreCase);
+}
+function endsWith(_this__u8e3s4, suffix, ignoreCase) {
+  ignoreCase = ignoreCase === VOID ? false : ignoreCase;
+  if (!ignoreCase) {
+    // Inline function 'kotlin.text.nativeEndsWith' call
+    // Inline function 'kotlin.js.asDynamic' call
+    return _this__u8e3s4.endsWith(suffix);
+  } else
+    return regionMatches(_this__u8e3s4, _this__u8e3s4.length - suffix.length | 0, suffix, 0, suffix.length, ignoreCase);
 }
 function equals_0(_this__u8e3s4, other, ignoreCase) {
   ignoreCase = ignoreCase === VOID ? false : ignoreCase;
@@ -6327,15 +6350,6 @@ function equals_0(_this__u8e3s4, other, ignoreCase) {
     }
      while (inductionVariable < last);
   return true;
-}
-function endsWith(_this__u8e3s4, suffix, ignoreCase) {
-  ignoreCase = ignoreCase === VOID ? false : ignoreCase;
-  if (!ignoreCase) {
-    // Inline function 'kotlin.text.nativeEndsWith' call
-    // Inline function 'kotlin.js.asDynamic' call
-    return _this__u8e3s4.endsWith(suffix);
-  } else
-    return regionMatches(_this__u8e3s4, _this__u8e3s4.length - suffix.length | 0, suffix, 0, suffix.length, ignoreCase);
 }
 var REPLACEMENT_BYTE_SEQUENCE;
 function decodeUtf8(bytes, startIndex, endIndex, throwOnMalformed) {
@@ -8482,10 +8496,20 @@ function toLongOrNull_0(_this__u8e3s4, radix) {
      while (inductionVariable < length);
   return isNegative ? result : negate(result);
 }
-function substringBefore(_this__u8e3s4, delimiter, missingDelimiterValue) {
+function removeSuffix(_this__u8e3s4, suffix) {
+  if (endsWith_1(_this__u8e3s4, suffix)) {
+    return substring(_this__u8e3s4, 0, _this__u8e3s4.length - charSequenceLength(suffix) | 0);
+  }
+  return _this__u8e3s4;
+}
+function endsWith_0(_this__u8e3s4, char, ignoreCase) {
+  ignoreCase = ignoreCase === VOID ? false : ignoreCase;
+  return charSequenceLength(_this__u8e3s4) > 0 && equals_1(charSequenceGet(_this__u8e3s4, get_lastIndex_3(_this__u8e3s4)), char, ignoreCase);
+}
+function substringAfter(_this__u8e3s4, delimiter, missingDelimiterValue) {
   missingDelimiterValue = missingDelimiterValue === VOID ? _this__u8e3s4 : missingDelimiterValue;
-  var index = indexOf_5(_this__u8e3s4, delimiter);
-  return index === -1 ? missingDelimiterValue : substring(_this__u8e3s4, 0, index);
+  var index = indexOf_4(_this__u8e3s4, delimiter);
+  return index === -1 ? missingDelimiterValue : substring(_this__u8e3s4, index + 1 | 0, _this__u8e3s4.length);
 }
 function contains_5(_this__u8e3s4, other, ignoreCase) {
   ignoreCase = ignoreCase === VOID ? false : ignoreCase;
@@ -8496,15 +8520,6 @@ function contains_5(_this__u8e3s4, other, ignoreCase) {
     tmp = indexOf_6(_this__u8e3s4, other, 0, charSequenceLength(_this__u8e3s4), ignoreCase) >= 0;
   }
   return tmp;
-}
-function endsWith_0(_this__u8e3s4, char, ignoreCase) {
-  ignoreCase = ignoreCase === VOID ? false : ignoreCase;
-  return charSequenceLength(_this__u8e3s4) > 0 && equals_1(charSequenceGet(_this__u8e3s4, get_lastIndex_3(_this__u8e3s4)), char, ignoreCase);
-}
-function substringAfter(_this__u8e3s4, delimiter, missingDelimiterValue) {
-  missingDelimiterValue = missingDelimiterValue === VOID ? _this__u8e3s4 : missingDelimiterValue;
-  var index = indexOf_4(_this__u8e3s4, delimiter);
-  return index === -1 ? missingDelimiterValue : substring(_this__u8e3s4, index + 1 | 0, _this__u8e3s4.length);
 }
 function split(_this__u8e3s4, delimiters, ignoreCase, limit) {
   ignoreCase = ignoreCase === VOID ? false : ignoreCase;
@@ -8579,6 +8594,26 @@ function padStart(_this__u8e3s4, length, padChar) {
 }
 function get_lastIndex_3(_this__u8e3s4) {
   return charSequenceLength(_this__u8e3s4) - 1 | 0;
+}
+function endsWith_1(_this__u8e3s4, suffix, ignoreCase) {
+  ignoreCase = ignoreCase === VOID ? false : ignoreCase;
+  var tmp;
+  var tmp_0;
+  if (!ignoreCase) {
+    tmp_0 = typeof _this__u8e3s4 === 'string';
+  } else {
+    tmp_0 = false;
+  }
+  if (tmp_0) {
+    tmp = typeof suffix === 'string';
+  } else {
+    tmp = false;
+  }
+  if (tmp)
+    return endsWith(_this__u8e3s4, suffix);
+  else {
+    return regionMatchesImpl(_this__u8e3s4, charSequenceLength(_this__u8e3s4) - charSequenceLength(suffix) | 0, suffix, 0, charSequenceLength(suffix), ignoreCase);
+  }
 }
 function indexOf_5(_this__u8e3s4, string, startIndex, ignoreCase) {
   startIndex = startIndex === VOID ? 0 : startIndex;
@@ -8922,13 +8957,7 @@ function lastIndexOfAny(_this__u8e3s4, chars, startIndex, ignoreCase) {
      while (0 <= inductionVariable);
   return -1;
 }
-function removeSuffix(_this__u8e3s4, suffix) {
-  if (endsWith_1(_this__u8e3s4, suffix)) {
-    return substring(_this__u8e3s4, 0, _this__u8e3s4.length - charSequenceLength(suffix) | 0);
-  }
-  return _this__u8e3s4;
-}
-function substringBefore_0(_this__u8e3s4, delimiter, missingDelimiterValue) {
+function substringBefore(_this__u8e3s4, delimiter, missingDelimiterValue) {
   missingDelimiterValue = missingDelimiterValue === VOID ? _this__u8e3s4 : missingDelimiterValue;
   var index = indexOf_4(_this__u8e3s4, delimiter);
   return index === -1 ? missingDelimiterValue : substring(_this__u8e3s4, 0, index);
@@ -8961,52 +8990,6 @@ function lastIndexOf_0(_this__u8e3s4, string, startIndex, ignoreCase) {
     tmp = _this__u8e3s4.lastIndexOf(string, startIndex);
   }
   return tmp;
-}
-function removePrefix(_this__u8e3s4, prefix) {
-  if (startsWith_0(_this__u8e3s4, prefix)) {
-    return substring_0(_this__u8e3s4, charSequenceLength(prefix));
-  }
-  return _this__u8e3s4;
-}
-function endsWith_1(_this__u8e3s4, suffix, ignoreCase) {
-  ignoreCase = ignoreCase === VOID ? false : ignoreCase;
-  var tmp;
-  var tmp_0;
-  if (!ignoreCase) {
-    tmp_0 = typeof _this__u8e3s4 === 'string';
-  } else {
-    tmp_0 = false;
-  }
-  if (tmp_0) {
-    tmp = typeof suffix === 'string';
-  } else {
-    tmp = false;
-  }
-  if (tmp)
-    return endsWith(_this__u8e3s4, suffix);
-  else {
-    return regionMatchesImpl(_this__u8e3s4, charSequenceLength(_this__u8e3s4) - charSequenceLength(suffix) | 0, suffix, 0, charSequenceLength(suffix), ignoreCase);
-  }
-}
-function startsWith_0(_this__u8e3s4, prefix, ignoreCase) {
-  ignoreCase = ignoreCase === VOID ? false : ignoreCase;
-  var tmp;
-  var tmp_0;
-  if (!ignoreCase) {
-    tmp_0 = typeof _this__u8e3s4 === 'string';
-  } else {
-    tmp_0 = false;
-  }
-  if (tmp_0) {
-    tmp = typeof prefix === 'string';
-  } else {
-    tmp = false;
-  }
-  if (tmp)
-    return startsWith(_this__u8e3s4, prefix);
-  else {
-    return regionMatchesImpl(_this__u8e3s4, 0, prefix, 0, charSequenceLength(prefix), ignoreCase);
-  }
 }
 function lines(_this__u8e3s4) {
   return toList_1(lineSequence(_this__u8e3s4));
@@ -11302,6 +11285,15 @@ function Triple(first, second, third) {
 protoOf(Triple).toString = function () {
   return '(' + toString_0(this.first_1) + ', ' + toString_0(this.second_1) + ', ' + toString_0(this.third_1) + ')';
 };
+protoOf(Triple).component1_7eebsc_k$ = function () {
+  return this.first_1;
+};
+protoOf(Triple).component2_7eebsb_k$ = function () {
+  return this.second_1;
+};
+protoOf(Triple).component3_7eebsa_k$ = function () {
+  return this.third_1;
+};
 protoOf(Triple).hashCode = function () {
   var result = this.first_1 == null ? 0 : hashCode_0(this.first_1);
   result = imul_0(result, 31) + (this.second_1 == null ? 0 : hashCode_0(this.second_1)) | 0;
@@ -12598,7 +12590,6 @@ export {
   contains_6 as contains2el4s70rdq4ld,
   dropLast as dropLastlqc2oyv04br0,
   endsWith_0 as endsWith278181ii8uuo,
-  endsWith as endsWith3cq61xxngobwh,
   equals_0 as equals2v6cggk171b6e,
   getOrNull_1 as getOrNull1cdnsfrisdp41,
   indexOf_5 as indexOfwa4w6635jewi,
@@ -12608,15 +12599,14 @@ export {
   isUpperCase as isUpperCase16ivdixranflt,
   isWhitespace as isWhitespace25occ8z1ed1s9,
   lastIndexOf_0 as lastIndexOf2d52xhix5ymjr,
-  removePrefix as removePrefix279df90bhrqqg,
   removeSuffix as removeSuffix3d61x5lsuvuho,
+  replace as replaceqbix900hl8kl,
   single_0 as single29ec4rh52687r,
   split as split3d3yeauc4rm2n,
   startsWith as startsWith26w8qjqapeeq6,
   substringAfterLast as substringAfterLast3r0t0my8cpqhk,
   substringAfter as substringAfter1hku067gwr5ve,
-  substringBefore as substringBeforekje8w2lxhyb6,
-  substringBefore_0 as substringBefore3n7kj60w69hju,
+  substringBefore as substringBefore3n7kj60w69hju,
   substring_0 as substring3saq8ornu0luv,
   substring as substringiqarkczpya5m,
   take as take9j4462mea726,

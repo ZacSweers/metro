@@ -137,7 +137,8 @@
     for (const region of regions) {
       const localKeys = new Map();
       for (const node of nodes) {
-        const keys = new Set(node.regionId === region.id ? [node.fullKey] : []);
+        const ownKey = node.bindingKey || node.targetKey;
+        const keys = new Set(node.regionId === region.id && ownKey ? [ownKey] : []);
         for (const reference of [...(node.inheritedBindings || []), ...(node.includedBindings || [])]) {
           if (reference.regionId === region.id && reference.binding?.key) {
             keys.add(reference.binding.key);
@@ -2464,8 +2465,8 @@
     parent.append(row);
   }
 
-  function bindingIdForKey(key, regionId) {
-    return model.bindingNodes.find(node => node.regionId === regionId && node.fullKey === key)?.id;
+  function bindingNode(key, regionId) {
+    return model.bindingNodes.find(node => node.regionId === regionId && node.bindingKey === key);
   }
 
   function connection(parent, id, label, kind) {
@@ -2586,7 +2587,9 @@
     detailRow(facts, 'Scope', node.scope);
     detailRow(facts, 'Declaration', node.declaration);
     detailRow(facts, 'Origin', node.origin);
-    detailRow(facts, 'Alias target', node.aliasTarget);
+    if (node.aliasTarget) {
+      detailRow(facts, 'Alias target', bindingNode(node.aliasTarget, node.regionId)?.fullKey || node.aliasTarget);
+    }
     if (node.isGraphInput) {
       facts.append(text('p', 'detail-note', 'Supplied when this graph is created. Consumers receive the same instance.'));
     }
@@ -2636,7 +2639,7 @@
       raw.className = 'detail-section';
       raw.append(text('summary', 'section-heading', 'Declared dependency keys · ' + node.rawDependencies.length));
       for (const dependency of node.rawDependencies) {
-        connection(raw, bindingIdForKey(dependency.key, node.regionId), dependency.key, [dependency.wrapperType, dependency.hasDefault ? 'default available' : ''].filter(Boolean).join(' · '));
+        connection(raw, bindingNode(dependency.key, node.regionId)?.id, dependency.renderedKey, [dependency.wrapperType, dependency.hasDefault ? 'default available' : ''].filter(Boolean).join(' · '));
       }
       container.append(raw);
     }
@@ -2651,7 +2654,8 @@
       detailRow(multibinding, 'Collection', node.multibinding.type);
       detailRow(multibinding, 'Allows empty', node.multibinding.allowEmpty ? 'Yes' : 'No');
       for (const key of node.multibinding.sources || []) {
-        connection(multibinding, bindingIdForKey(key, node.regionId), key, 'contribution');
+        const source = bindingNode(key, node.regionId);
+        connection(multibinding, source?.id, source?.fullKey || key, 'contribution');
       }
     }
     renderExplanations(container, node);
@@ -2693,13 +2697,14 @@
       const disclosure = document.createElement('details');
       disclosure.className = 'explanation-item';
       const candidates = record.candidates || [];
-      const matching = candidates.filter(candidate => candidate.key === node.fullKey);
+      const ownKey = node.bindingKey || node.targetKey;
+      const matching = candidates.filter(candidate => candidate.key === ownKey);
       disclosure.append(text('summary', '', humanize(record.outcome) + ' · ' + humanize(record.phase)));
       detailRow(disclosure, 'Context', record.context?.label);
-      detailRow(disclosure, 'Request', displayKey(record.request?.key));
+      detailRow(disclosure, 'Request', displayKey(record.request?.renderedKey));
       for (const candidate of matching.length ? matching : candidates) {
         const candidateBlock = text('div', 'explanation-candidate', '');
-        detailRow(candidateBlock, humanize(candidate.status), displayKey(candidate.key));
+        detailRow(candidateBlock, humanize(candidate.status), displayKey(candidate.renderedKey));
         detailRow(candidateBlock, 'Reason', typeof candidate.reason === 'string' ? humanize(candidate.reason) : JSON.stringify(candidate.reason));
         detailRow(candidateBlock, 'Declaration', candidate.declaration?.label);
         const source = candidate.declaration?.source;
