@@ -13,8 +13,10 @@ import com.intellij.openapi.editor.event.EditorFactoryListener
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
+import com.intellij.pom.Navigatable
 import com.intellij.psi.PsiElement
 import com.intellij.psi.SmartPsiElementPointer
+import com.intellij.util.OpenSourceUtil
 import java.util.IdentityHashMap
 import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.CoroutineScope
@@ -24,6 +26,12 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.annotations.TestOnly
+
+internal fun Navigatable.navigateMetroTarget(requestFocus: Boolean) {
+  if (canNavigate()) {
+    OpenSourceUtil.navigate(requestFocus, this)
+  }
+}
 
 /**
  * Resolves navigation targets in a background read action.

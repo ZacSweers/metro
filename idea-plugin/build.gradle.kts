@@ -370,7 +370,7 @@ intellijPlatform {
     ides {
       create(IntelliJPlatformType.IntellijIdea, "2026.2")
       create(IntelliJPlatformType.IntellijIdea, "2026.2.3")
-      create(IntelliJPlatformType.IntellijIdea, "263.6259.32")
+      create(IntelliJPlatformType.IntellijIdea, "263.6800.24")
       create(IntelliJPlatformType.AndroidStudio, "2026.2.1.8")
     }
   }

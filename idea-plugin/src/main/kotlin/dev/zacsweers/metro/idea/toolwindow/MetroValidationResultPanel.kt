@@ -30,6 +30,7 @@ import dev.zacsweers.metro.idea.MetroNavigationService
 import dev.zacsweers.metro.idea.graph.CachedValidation
 import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
 import dev.zacsweers.metro.idea.model.GraphPath
+import dev.zacsweers.metro.idea.navigateMetroTarget
 import dev.zacsweers.metro.idea.presentableName
 import java.awt.BorderLayout
 import javax.swing.JPanel
@@ -201,7 +202,7 @@ internal class MetroValidationResultPanel(
       val isCurrentResult = isVisible && generation == currentGeneration
       if (disposed || !isCurrentResult) return@resolveTargets
       val target = targets.singleOrNull() as? Navigatable ?: return@resolveTargets
-      if (target.canNavigate()) target.navigate(requestFocus)
+      target.navigateMetroTarget(requestFocus)
     }
   }
 

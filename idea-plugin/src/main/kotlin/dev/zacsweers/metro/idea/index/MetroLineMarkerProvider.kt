@@ -42,6 +42,7 @@ import dev.zacsweers.metro.idea.model.GraphContext
 import dev.zacsweers.metro.idea.model.KaAnnotationSnapshot
 import dev.zacsweers.metro.idea.model.KaAnnotationValueSnapshot
 import dev.zacsweers.metro.idea.model.KaBinding
+import dev.zacsweers.metro.idea.navigateMetroTarget
 import dev.zacsweers.metro.idea.presentableName
 import dev.zacsweers.metro.idea.toolwindow.ValidateMetroGraphAction
 import java.awt.Component
@@ -744,7 +745,7 @@ private fun showResolvedNavigationTargets(
   editor: Editor? = null,
 ) {
   if (elements.size == 1) {
-    (elements.single() as? Navigatable)?.navigate(true)
+    (elements.single() as? Navigatable)?.navigateMetroTarget(requestFocus = true)
     return
   }
   val popup =

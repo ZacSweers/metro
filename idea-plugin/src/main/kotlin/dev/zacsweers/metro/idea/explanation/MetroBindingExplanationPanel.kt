@@ -22,6 +22,7 @@ import com.intellij.ui.treeStructure.Tree
 import com.intellij.util.ui.JBUI
 import dev.zacsweers.metro.idea.MetroIcons
 import dev.zacsweers.metro.idea.MetroNavigationService
+import dev.zacsweers.metro.idea.navigateMetroTarget
 import dev.zacsweers.metro.idea.toolwindow.MetroTreeNavigation
 import java.awt.BorderLayout
 import java.awt.Dimension
@@ -148,7 +149,7 @@ internal class MetroBindingExplanationPanel(
     ) { targets ->
       if (disposed) return@resolveTargets
       val target = targets.singleOrNull() as? Navigatable ?: return@resolveTargets
-      if (target.canNavigate()) target.navigate(requestFocus)
+      target.navigateMetroTarget(requestFocus)
     }
   }
 
