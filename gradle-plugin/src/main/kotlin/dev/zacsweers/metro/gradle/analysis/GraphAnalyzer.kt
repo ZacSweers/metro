@@ -81,6 +81,7 @@ public class GraphAnalyzer(private val bindingGraph: BindingGraph) {
           val dominated = dominators.dominatedBy(key)
           DominatorNode(
             key = key,
+            renderedKey = bindingGraph.renderedKeyOf(key),
             bindingKind = bindingGraph.getBinding(key)?.bindingKind ?: "Unknown",
             dominatedCount = dominated.size,
             dominatedKeys = dominated.sorted(),
@@ -105,6 +106,7 @@ public class GraphAnalyzer(private val bindingGraph: BindingGraph) {
       centrality.nodesByScore().map { (key, score) ->
         CentralityScore(
           key = key,
+          renderedKey = bindingGraph.renderedKeyOf(key),
           bindingKind = bindingGraph.getBinding(key)?.bindingKind ?: "Unknown",
           betweennessCentrality = score,
           normalizedCentrality = centrality.normalizedScoreOf(key) ?: 0.0,
@@ -159,6 +161,7 @@ public class GraphAnalyzer(private val bindingGraph: BindingGraph) {
       fanAnalysis.nodes().map { key ->
         FanScore(
           key = key,
+          renderedKey = bindingGraph.renderedKeyOf(key),
           bindingKind = bindingGraph.getBinding(key)?.bindingKind ?: "Unknown",
           fanIn = fanAnalysis.fanIn(key) ?: 0,
           fanOut = fanAnalysis.fanOut(key) ?: 0,

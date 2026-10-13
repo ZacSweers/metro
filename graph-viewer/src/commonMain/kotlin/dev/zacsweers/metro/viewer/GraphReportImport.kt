@@ -8,10 +8,10 @@ import dev.zacsweers.metro.gradle.analysis.GraphAnalysis
 import dev.zacsweers.metro.gradle.analysis.GraphMetadata
 import dev.zacsweers.metro.gradle.analysis.GraphReportRenderer
 import dev.zacsweers.metro.gradle.analysis.analysisEdges
-import dev.zacsweers.metro.gradle.analysis.bindingType
+import dev.zacsweers.metro.gradle.analysis.displayType
+import dev.zacsweers.metro.gradle.analysis.displayTypeKey
 import dev.zacsweers.metro.gradle.analysis.extractDisplayName
 import dev.zacsweers.metro.gradle.analysis.typeDisplayNames
-import dev.zacsweers.metro.gradle.analysis.unwrapTypeKey
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -59,10 +59,10 @@ public class GraphReportImport(files: List<ReportFile>) {
     findMissingReports()
     renderer =
       GraphReportRenderer(FullAnalysisReport("", analyses.values.toList()), graphs.values.toList())
-    val typeNames = typeDisplayNames(graphs.values.map { it.graphType ?: it.graph })
+    val typeNames = typeDisplayNames(graphs.values.map { it.displayType })
     val displayNames =
       graphs.values.associate { graph ->
-        graph.graph to extractDisplayName(graph.graphType ?: graph.graph, typeNames)
+        graph.graph to extractDisplayName(graph.displayType, typeNames)
       }
     val repeatedNames =
       displayNames.values.groupingBy { it }.eachCount().filterValues { it > 1 }.keys
@@ -153,7 +153,7 @@ public class GraphReportImport(files: List<ReportFile>) {
       "The parent graph name is empty."
     }
     val referencedKeys = buildList {
-      addAll(graph.includedGraphKeys)
+      graph.includedGraphs.forEach { add(it.key) }
       graph.roots?.accessors?.forEach { add(it.key) }
       graph.roots?.injectors?.forEach { add(it.key) }
       graph.bindings.forEach { binding ->
@@ -170,7 +170,7 @@ public class GraphReportImport(files: List<ReportFile>) {
     require(graph.bindings.all { it.key.isNotBlank() && it.bindingKind.isNotBlank() }) {
       "${graph.graph} contains a binding without a key or kind."
     }
-    val identities = graph.bindings.map { it.key to (it.bindingKind == "MembersInjected") }
+    val identities = graph.bindings.map { it.key }
     require(identities.distinct().size == identities.size) {
       "${graph.graph} contains duplicate binding definitions."
     }
@@ -224,10 +224,10 @@ public class GraphReportImport(files: List<ReportFile>) {
         }
       val keys = graph.bindings.mapTo(mutableSetOf()) { it.key }
       val measuredKeys = analysis.fanAnalysis.bindings.mapTo(mutableSetOf()) { it.key }
-      require(keys - graph.graph == measuredKeys - graph.graph) {
+      require(keys - graph.key == measuredKeys - graph.key) {
         "Analysis bindings do not match ${graph.graph}. Generate metadata and analysis from the same compilation."
       }
-      keys += graph.graph
+      keys += graph.key
       val referencedKeys = buildList {
         analysis.fanAnalysis.bindings.forEach {
           addAll(it.dependencies)
@@ -293,37 +293,31 @@ public class GraphReportImport(files: List<ReportFile>) {
       }
       val extensionTypes = buildSet {
         graph.bindings.mapNotNullTo(this) { it.extensionType }
-        graph.extensions?.accessors?.forEach { add(bindingType(unwrapTypeKey(it.key))) }
-        graph.bindings
-          .filter { it.bindingKind == "GraphExtension" }
-          .forEach { add(bindingType(unwrapTypeKey(it.key))) }
+        graph.extensions?.accessors?.forEach { add(it.key) }
+        graph.bindings.filter { it.bindingKind == "GraphExtension" }.forEach { add(it.key) }
       }
       for (type in extensionTypes) {
         val available =
           graphs.values.any {
-            val matchesType = it.graphType == type || it.graph == type
+            val matchesType = it.graphType == type || it.key == type
             val matchesParent = it.parentGraph == graph.graph
             matchesType && matchesParent
           }
         if (!available) {
-          warnings += "${graphLabel(graph)}: extension report $type is missing."
+          warnings += "${graphLabel(graph)}: extension report ${displayTypeKey(type)} is missing."
         }
       }
-      for (key in graph.includedGraphKeys) {
-        val type = bindingType(key)
-        val available =
-          graphs.values.any {
-            val matchesType = it.graph == type || it.graphType == type
-            matchesType && it.parentGraph == null
-          }
+      for (included in graph.includedGraphs) {
+        val includedReport = graphs[included.graph]
+        val available = includedReport != null && includedReport.parentGraph == null
         if (!available) {
-          warnings += "${graphLabel(graph)}: included graph report $key is missing."
+          warnings += "${graphLabel(graph)}: included graph report ${included.graph} is missing."
         }
       }
     }
   }
 
   private fun graphLabel(graph: GraphMetadata): String {
-    return (graph.graphType ?: graph.graph).substringAfterLast('.')
+    return graph.displayType.substringAfterLast('.')
   }
 }

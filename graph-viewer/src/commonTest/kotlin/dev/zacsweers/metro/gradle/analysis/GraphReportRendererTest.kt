@@ -16,6 +16,7 @@ class GraphReportRendererTest {
     val graph =
       GraphMetadata(
         graph = "AppGraph",
+        key = "AppGraph",
         scopes = emptyList(),
         aggregationScopes = emptyList(),
         bindings =
@@ -43,6 +44,7 @@ class GraphReportRendererTest {
     val parent =
       GraphMetadata(
         graph = "AppGraph",
+        key = "AppGraph",
         scopes = listOf("AppScope"),
         aggregationScopes = emptyList(),
         bindings =
@@ -66,6 +68,7 @@ class GraphReportRendererTest {
     val child =
       GraphMetadata(
         graph = "AppGraph.Impl.ChildGraphImpl",
+        key = "AppGraph.Impl.ChildGraphImpl",
         graphType = "ChildGraph",
         parentGraph = parent.graph,
         scopes = emptyList(),

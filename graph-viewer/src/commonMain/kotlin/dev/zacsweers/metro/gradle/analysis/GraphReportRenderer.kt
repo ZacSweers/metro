@@ -4,7 +4,6 @@ package dev.zacsweers.metro.gradle.analysis
 
 import dev.zacsweers.metro.compiler.graph.explanation.BindingCandidateStatus
 import dev.zacsweers.metro.compiler.graph.explanation.BindingExplanationOutcome
-import kotlin.jvm.JvmName
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -258,24 +257,23 @@ public class GraphReportRenderer(
 
     private fun findIncludedGraphs(): List<IncludedGraph> {
       val suppliedInputs = reports.flatMap { graph ->
-        graph.bindings
-          .filter {
-            val suppliedInstance = it.bindingKind == "BoundInstance" && it.isGraphInput == true
-            suppliedInstance && it.key in graph.includedGraphKeys
-          }
-          .map { graph to it }
+        graph.includedGraphs.mapNotNull { included ->
+          val input =
+            graph.bindings.singleOrNull {
+              val suppliedInstance = it.bindingKind == "BoundInstance" && it.isGraphInput == true
+              suppliedInstance && it.key == included.key
+            } ?: return@mapNotNull null
+          Triple(graph, input, included.graph)
+        }
       }
       val includedGraphs = mutableListOf<IncludedGraph>()
-      for ((consumer, input) in suppliedInputs) {
-        val inputType = bindingType(input.key)
-        val suppliedInstances = suppliedInputs.filter { bindingType(it.second.key) == inputType }
+      for ((consumer, input, producerName) in suppliedInputs) {
+        val suppliedInstances = suppliedInputs.filter { it.third == producerName }
         if (suppliedInstances.size != 1) {
           continue
         }
         val producer =
-          reports.singleOrNull {
-            it.parentGraph == null && (it.graph == inputType || it.graphType == inputType)
-          } ?: continue
+          reports.singleOrNull { it.graph == producerName && it.parentGraph == null } ?: continue
         if (producer.graph == consumer.graph) {
           continue
         }
@@ -286,7 +284,7 @@ public class GraphReportRenderer(
               return@filter false
             }
             val matchesOwner =
-              dependency.ownerKey == input.key && dependency.ownerGraph == inputType
+              dependency.ownerKey == input.key && dependency.ownerGraph == producer.graph
             val recordedOwner = binding.dependencies.any { it.key == input.key }
             if (!matchesOwner || !recordedOwner) {
               return@filter false
@@ -294,9 +292,9 @@ public class GraphReportRenderer(
             val accessor =
               producer.roots?.accessors.orEmpty().singleOrNull {
                 val matchesDeclaration = it.name != null && it.name == binding.declaration
-                matchesDeclaration && unwrapTypeKey(it.key) == binding.key
+                matchesDeclaration && it.key == binding.key
               } ?: return@filter false
-            producer.bindings.any { it.key == unwrapTypeKey(accessor.key) }
+            producer.bindings.any { it.key == accessor.key }
           }
         if (getters.isNotEmpty()) {
           includedGraphs += IncludedGraph(consumer, input, producer, getters)
@@ -328,6 +326,20 @@ public class GraphReportRenderer(
       return null
     }
 
+    /** Finds the ancestor whose own graph type has [key]. */
+    private fun ancestorOfType(graph: GraphMetadata, key: String): GraphMetadata? {
+      var parent = graph.parentGraph
+      val visited = mutableSetOf<String>()
+      while (parent != null && visited.add(parent)) {
+        val candidate = metadataByName[parent] ?: return null
+        if (candidate.key == key || candidate.graphType == key) {
+          return candidate
+        }
+        parent = candidate.parentGraph
+      }
+      return null
+    }
+
     private fun capturedOwner(
       graph: GraphMetadata,
       key: String,
@@ -349,10 +361,11 @@ public class GraphReportRenderer(
         if (binding.bindingKind != "BoundInstance" || binding.isGraphInput != false) {
           return null
         }
-        val owner = ancestor(graph, binding.key) ?: return null
+        val owner = ancestorOfType(graph, binding.key) ?: return null
         val ownsInstance =
           owner.bindings.any {
-            it.key == binding.key && it.bindingKind == "BoundInstance" && it.isGraphInput == false
+            val isOwnInstance = it.bindingKind == "BoundInstance" && it.isGraphInput == false
+            it.key == binding.key && isOwnInstance
           }
         if (ownsInstance) {
           return owner to path
@@ -401,8 +414,7 @@ public class GraphReportRenderer(
               val namedAccessor =
                 it["rootKind"] == JsonPrimitive("accessor") &&
                   it["declaration"] == JsonPrimitive(getter.declaration)
-              namedAccessor &&
-                unwrapTypeKey(it.getValue("fullKey").jsonPrimitive.content) == getter.key
+              namedAccessor && it["targetKey"] == JsonPrimitive(getter.key)
             } ?: continue
           val accessorId =
             nodeId(dependency.producer, accessor.getValue("id").jsonPrimitive.content)
@@ -438,6 +450,7 @@ public class GraphReportRenderer(
           put("binding", json.encodeToJsonElement(reference.binding))
         } else {
           put("key", JsonPrimitive(reference.binding.key))
+          put("renderedKey", JsonPrimitive(reference.binding.renderedKey))
         }
       }
 
@@ -594,7 +607,7 @@ public class GraphReportRenderer(
         put("id", JsonPrimitive(regionId))
         put("ownerId", JsonPrimitive(regionId))
         put("graphName", JsonPrimitive(graph.graph))
-        put("name", JsonPrimitive(extractDisplayName(graph.graphType ?: graph.graph)))
+        put("name", JsonPrimitive(extractDisplayName(graph.displayType)))
         val kind =
           if (graph.graph in dependencyRegions) {
             "dependency"
@@ -653,13 +666,17 @@ public class GraphReportRenderer(
 
   private data class DefaultValueInfo(
     val syntheticKey: String,
+    /** Display text of the requested type. */
     val targetType: String,
+    val targetKey: String,
     val consumerKey: String,
     val targetPackage: String,
   )
 
   private data class RootMemberInfo(
     val id: String,
+    val renderedKey: String,
+    /** Key of the requested binding. */
     val key: String,
     val kind: String,
     val name: String? = null,
@@ -731,7 +748,7 @@ public class GraphReportRenderer(
     private val keyToProviderNodeId = buildProviderNodeIds()
     private val defaultValueNodes = findDefaultValues()
     private val defaultValueNodeMap = defaultValueNodes.associate {
-      (it.consumerKey to it.targetType) to it.syntheticKey
+      (it.consumerKey to it.targetKey) to it.syntheticKey
     }
     private val rootMembers = buildRootMembers()
     private val typeNames = buildTypeNames()
@@ -795,20 +812,18 @@ public class GraphReportRenderer(
       for (binding in metadata.bindings) {
         for (dep in binding.dependencies) {
           if (dep.hasDefault) {
-            // Strip " = ..." suffix from default value keys (e.g., "com.example.Analytics = ..." ->
-            // "com.example.Analytics")
-            val rawKey = dep.key.substringBefore(" = ")
-            val targetKey = unwrapTypeKey(rawKey)
-            if (targetKey in resolvedKeys) {
+            if (dep.key in resolvedKeys) {
               continue
             }
-            val syntheticKey = "default:$targetKey@${binding.key}"
+            // Labels mark defaulted requests with a " = ..." suffix, which isn't part of the type.
+            val label = dep.renderedKey.removeSuffix(" = ...")
             defaultValueNodes.add(
               DefaultValueInfo(
-                syntheticKey = syntheticKey,
-                targetType = targetKey,
+                syntheticKey = "default:${dep.key}@${binding.key}",
+                targetType = label,
+                targetKey = dep.key,
                 consumerKey = binding.key,
-                targetPackage = extractPackage(targetKey),
+                targetPackage = extractPackage(label),
               ),
             )
           }
@@ -818,7 +833,7 @@ public class GraphReportRenderer(
     }
 
     private fun findMembersInjectedRoots(): Map<String, BindingMetadata> {
-      val injectorKeys = metadata.roots?.injectors.orEmpty().map { unwrapTypeKey(it.key) }.toSet()
+      val injectorKeys = metadata.roots?.injectors.orEmpty().map { it.key }.toSet()
       // Injector roots carry member-injection dependencies.
       return metadata.bindings
         .filter { binding ->
@@ -841,14 +856,25 @@ public class GraphReportRenderer(
       val accessors = metadata.roots?.accessors.orEmpty().toMutableList()
       val extensionAccessors =
         metadata.extensions?.accessors.orEmpty().map {
-          AccessorMetadata(it.key, name = it.name, isProperty = it.isProperty)
+          AccessorMetadata(
+            it.key,
+            name = it.name,
+            isProperty = it.isProperty,
+            renderedKey = it.renderedKey,
+          )
         } +
           metadata.extensions?.factoryAccessors.orEmpty().map {
-            AccessorMetadata(it.key, name = it.name, isProperty = it.isProperty)
+            AccessorMetadata(
+              it.key,
+              name = it.name,
+              isProperty = it.isProperty,
+              renderedKey = it.renderedKey,
+            )
           }
       for (accessor in extensionAccessors) {
         val alreadyRecorded = accessors.any {
-          it.key == accessor.key && it.name == accessor.name && it.isProperty == accessor.isProperty
+          val sameDeclaration = it.name == accessor.name && it.isProperty == accessor.isProperty
+          it.key == accessor.key && sameDeclaration
         }
         if (!alreadyRecorded) {
           accessors.add(accessor)
@@ -858,36 +884,32 @@ public class GraphReportRenderer(
     }
 
     private fun resolveAccessorKey(accessor: AccessorMetadata): String? {
-      val targetKey = unwrapTypeKey(accessor.key)
-      if (targetKey in keyToProviderNodeId) {
-        return targetKey
+      if (accessor.key in keyToProviderNodeId) {
+        return accessor.key
       }
-      val selectedKeys =
+      val selectedIds =
         metadata.bindingExplanations
           .filter {
-            it.request?.key == accessor.key && it.outcome == BindingExplanationOutcome.SELECTED
+            val isSelected = it.outcome == BindingExplanationOutcome.SELECTED
+            it.request?.key == accessor.key && isSelected
           }
           .flatMap { it.candidates }
           .filter { it.status == BindingCandidateStatus.SELECTED }
           .map { it.key }
           .distinct()
-      return selectedKeys.singleOrNull()?.takeIf { it in keyToProviderNodeId }
+      return selectedIds.singleOrNull()?.takeIf { it in keyToProviderNodeId }
     }
 
     private fun buildAccessorRoot(index: Int, accessor: AccessorMetadata): RootMemberInfo {
-      val actualType = bindingType(accessor.key)
       val wrapperType =
         if (accessor.isDeferrable) {
-          when {
-            "Provider<" in actualType -> "Provider"
-            "Lazy<" in actualType -> "Lazy"
-            else -> null
-          }
+          accessor.wrapperType
         } else {
           null
         }
       return RootMemberInfo(
-        id = "root:${metadata.graph}:accessor:$index:${accessor.key}",
+        id = "root:${metadata.graph}:accessor:$index:${accessor.renderedKey}",
+        renderedKey = accessor.renderedKey,
         key = accessor.key,
         kind = "accessor",
         name = accessor.name,
@@ -907,14 +929,14 @@ public class GraphReportRenderer(
         add(buildAccessorRoot(index, accessor))
       }
       metadata.roots?.injectors.orEmpty().forEachIndexed { index, injector ->
-        val targetKey = unwrapTypeKey(injector.key)
         add(
           RootMemberInfo(
-            id = "root:${metadata.graph}:injector:$index:${injector.key}",
+            id = "root:${metadata.graph}:injector:$index:${injector.renderedKey}",
+            renderedKey = injector.renderedKey,
             key = injector.key,
             kind = "injector",
             name = injector.name,
-            binding = membersInjectedRoots[targetKey],
+            binding = membersInjectedRoots[injector.key],
           ),
         )
       }
@@ -923,13 +945,13 @@ public class GraphReportRenderer(
     private fun buildTypeNames(): Map<String, String> {
       val nodeTypeKeys = buildList {
         add(metadata.graph)
-        addAll(rootMembers.map { it.key })
+        addAll(rootMembers.map { it.renderedKey })
         addAll(rootMembers.mapNotNull { it.declaringType })
         for (binding in metadata.bindings) {
           if (!isInjectorRoot(binding)) {
-            add(binding.key)
+            add(binding.renderedKey)
           }
-          binding.assistedTarget?.let { add(it.key) }
+          binding.assistedTarget?.let { add(it.renderedKey) }
         }
         addAll(defaultValueNodes.map { it.targetType })
       }
@@ -980,8 +1002,8 @@ public class GraphReportRenderer(
     private fun rootDisplayName(member: RootMemberInfo): String {
       val declaration = member.name
       val isAccessor = member.kind == "accessor"
-      val displayType = extractDisplayName(member.key, typeNames)
-      val actualType = bindingType(member.key)
+      val displayType = extractDisplayName(member.renderedKey, typeNames)
+      val actualType = bindingType(member.renderedKey)
       val hasInjectorWrapper =
         actualType.startsWith("dev.zacsweers.metro.MembersInjector<") ||
           actualType.startsWith("MembersInjector<")
@@ -989,7 +1011,7 @@ public class GraphReportRenderer(
         if (hasInjectorWrapper && actualType.endsWith('>')) {
           actualType.substringAfter('<').dropLast(1)
         } else {
-          member.key
+          member.renderedKey
         }
       val accessorName =
         if (declaration != null && member.isProperty) {
@@ -1018,10 +1040,11 @@ public class GraphReportRenderer(
         }
       put("id", JsonPrimitive(member.id))
       put("name", JsonPrimitive(rootDisplayName(member)))
-      put("typeLabel", JsonPrimitive(extractDisplayName(member.key, typeNames)))
+      put("typeLabel", JsonPrimitive(extractDisplayName(member.renderedKey, typeNames)))
       put("isProperty", JsonPrimitive(member.isProperty))
-      put("fullKey", JsonPrimitive(member.key))
-      put("requestedKey", JsonPrimitive(member.key))
+      put("fullKey", JsonPrimitive(member.renderedKey))
+      put("requestedKey", JsonPrimitive(member.renderedKey))
+      put("targetKey", JsonPrimitive(member.key))
       put("pkg", JsonPrimitive(graphPackage))
       put(
         "kind",
@@ -1063,12 +1086,12 @@ public class GraphReportRenderer(
         put(
           "rawDependencies",
           json.encodeToJsonElement(
-            listOf(DependencyMetadata(member.key, false, member.wrapperType)),
+            listOf(DependencyMetadata(member.key, false, member.wrapperType, member.renderedKey)),
           ),
         )
         put("resolutionUnavailable", JsonPrimitive(member.resolvedKey == null))
       } else {
-        put("injectorTarget", JsonPrimitive(member.key))
+        put("injectorTarget", JsonPrimitive(member.renderedKey))
         put("rawDependencies", json.encodeToJsonElement(member.binding?.dependencies.orEmpty()))
         put("resolutionUnavailable", JsonPrimitive(member.binding == null))
       }
@@ -1078,8 +1101,8 @@ public class GraphReportRenderer(
       val isSynthetic =
         binding.isSynthetic ||
           binding.bindingKind == "Alias" ||
-          binding.key.contains("MetroContribution")
-      val isMainGraph = binding.key == metadata.graph
+          binding.renderedKey.contains("MetroContribution")
+      val isMainGraph = binding.key == metadata.key
       val isGraphExtension = isGraphExtension(binding)
       val symbol =
         if (isGraphExtension) {
@@ -1094,12 +1117,13 @@ public class GraphReportRenderer(
           else -> 12
         }
       val metrics = analysis.bindingMetrics[binding.key]
-      // Links refer to the complete binding key.
+      // Links point at binding IDs.
       bindingDetails(binding)
       put("id", JsonPrimitive(binding.key))
-      put("name", JsonPrimitive(extractDisplayName(binding.key, typeNames)))
-      put("fullKey", JsonPrimitive(binding.key))
-      put("pkg", JsonPrimitive(extractPackage(binding.key)))
+      put("bindingKey", JsonPrimitive(binding.key))
+      put("name", JsonPrimitive(extractDisplayName(binding.renderedKey, typeNames)))
+      put("fullKey", JsonPrimitive(binding.renderedKey))
+      put("pkg", JsonPrimitive(extractPackage(binding.renderedKey)))
       put("kind", JsonPrimitive(binding.bindingKind))
       put("scoped", JsonPrimitive(binding.isScoped))
       put("synthetic", JsonPrimitive(isSynthetic))
@@ -1111,7 +1135,7 @@ public class GraphReportRenderer(
           binding.isGraphInput ?: (binding.bindingKind == "BoundInstance" && !isMainGraph),
         ),
       )
-      put("isIncludedGraph", JsonPrimitive(binding.key in metadata.includedGraphKeys))
+      put("isIncludedGraph", JsonPrimitive(metadata.includedGraphs.any { it.key == binding.key }))
       put("isExtension", JsonPrimitive(isGraphExtension))
       put("scope", binding.scope?.let { JsonPrimitive(it) } ?: JsonPrimitive(""))
       put("origin", binding.origin?.let { JsonPrimitive(it) } ?: JsonPrimitive(""))
@@ -1136,7 +1160,7 @@ public class GraphReportRenderer(
     ): JsonObject = buildJsonObject {
       // Main graph gets green fill+border, extensions get orange border
       when {
-        binding.key == metadata.graph -> {
+        binding.key == metadata.key -> {
           put("color", JsonPrimitive(Colors.GRAPH_NODE_BORDER))
           put("borderColor", JsonPrimitive(Colors.GRAPH_NODE_BORDER))
           put("borderWidth", JsonPrimitive(3))
@@ -1155,7 +1179,7 @@ public class GraphReportRenderer(
         put("opacity", JsonPrimitive(0.6))
       }
 
-      if (metrics != null && binding.key != metadata.graph) {
+      if (metrics != null && binding.key != metadata.key) {
         applyBindingGlow(metrics)
       }
     }
@@ -1215,9 +1239,10 @@ public class GraphReportRenderer(
         put("multibinding", json.encodeToJsonElement(target.multibinding))
         put("optionalWrapper", json.encodeToJsonElement(target.optionalWrapper))
         put("id", JsonPrimitive(target.key))
-        put("name", JsonPrimitive(extractDisplayName(target.key, typeNames)))
-        put("fullKey", JsonPrimitive(target.key))
-        put("pkg", JsonPrimitive(extractPackage(target.key)))
+        put("bindingKey", JsonPrimitive(target.key))
+        put("name", JsonPrimitive(extractDisplayName(target.renderedKey, typeNames)))
+        put("fullKey", JsonPrimitive(target.renderedKey))
+        put("pkg", JsonPrimitive(extractPackage(target.renderedKey)))
         put("kind", JsonPrimitive("AssistedInject"))
         put("scoped", JsonPrimitive(target.isScoped))
         put("synthetic", JsonPrimitive(false))
@@ -1283,7 +1308,7 @@ public class GraphReportRenderer(
     private fun buildBindingLinks(binding: BindingMetadata): JsonArray = buildJsonArray {
       val multibindingSourceKeys = binding.multibinding?.sources?.toSet() ?: emptySet()
       for (dependency in binding.dependencies) {
-        val targetKey = unwrapTypeKey(dependency.key.substringBefore(" = "))
+        val targetKey = dependency.key
         val defaultKey = defaultValueNodeMap[binding.key to targetKey]
         if (defaultKey != null) {
           addAll(buildDefaultValueLinks(binding.key, defaultKey, targetKey))
@@ -1348,7 +1373,7 @@ public class GraphReportRenderer(
       val isMultibinding = binding.multibinding != null
       val includedOwner = binding.graphDependency?.takeUnless { it.fromParent }?.ownerKey
       val isIncludedDependency =
-        includedOwner == dependency.key && includedOwner in metadata.includedGraphKeys
+        includedOwner == dependency.key && metadata.includedGraphs.any { it.key == includedOwner }
       return when {
         isIncludedDependency -> "includes"
         isInheritedScope -> "inherited"
@@ -1458,7 +1483,7 @@ public class GraphReportRenderer(
           ),
         )
         put("rootKind", JsonPrimitive("accessor"))
-        put("requestedKey", JsonPrimitive(member.key))
+        put("requestedKey", JsonPrimitive(member.renderedKey))
         put("isDeferrable", JsonPrimitive(member.isDeferrable))
         if (member.wrapperType != null) {
           put("wrapperType", JsonPrimitive(member.wrapperType))
@@ -1478,9 +1503,8 @@ public class GraphReportRenderer(
     private fun buildInjectorLinks(member: RootMemberInfo): JsonArray = buildJsonArray {
       val binding = member.binding ?: return@buildJsonArray
       for (dependency in binding.dependencies) {
-        val targetKey = unwrapTypeKey(dependency.key.substringBefore(" = "))
-        val defaultKey = defaultValueNodeMap[binding.key to targetKey]
-        val resolvedKey = defaultKey ?: keyToProviderNodeId[targetKey]
+        val defaultKey = defaultValueNodeMap[binding.key to dependency.key]
+        val resolvedKey = defaultKey ?: keyToProviderNodeId[dependency.key]
         if (resolvedKey == null) {
           continue
         }
@@ -1490,8 +1514,8 @@ public class GraphReportRenderer(
             put("target", JsonPrimitive(resolvedKey))
             put("edgeType", JsonPrimitive("injects"))
             put("rootKind", JsonPrimitive("injector"))
-            put("injectorTarget", JsonPrimitive(member.key))
-            put("requestedKey", JsonPrimitive(dependency.key))
+            put("injectorTarget", JsonPrimitive(member.renderedKey))
+            put("requestedKey", JsonPrimitive(dependency.renderedKey))
             put("hasDefault", JsonPrimitive(dependency.hasDefault))
             if (dependency.wrapperType != null) {
               put("wrapperType", JsonPrimitive(dependency.wrapperType))
@@ -1533,7 +1557,7 @@ public class GraphReportRenderer(
 
       // Edges from target to its dependencies
       for (dep in target.dependencies) {
-        val depTargetKey = unwrapTypeKey(dep.key.substringBefore(" = "))
+        val depTargetKey = dep.key
         if (depTargetKey in keyToProviderNodeId) {
           val edgeType =
             if (dep.isDeferrable) {
@@ -1684,10 +1708,6 @@ internal object Colors {
     )
 }
 
-// Retains the JVM entry point used by callers compiled before the graphs module extraction.
-@JvmName("unwrapTypeKey")
-internal fun unwrapTypeKeyForBinaryCompatibility(key: String): String = unwrapTypeKey(key)
-
 /**
  * Extracts just the class name(s) from a fully qualified type, removing the package prefix.
  *
@@ -1734,6 +1754,16 @@ public fun extractDisplayName(key: String, typeNames: Map<String, String> = empt
 }
 
 private val qualifiedTypePattern = Regex("""[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)+""")
+
+/**
+ * Shows an encoded type key with dotted class names. Use it only when the report has no compiler
+ * rendering for the key.
+ */
+internal fun displayTypeKey(key: String): String = key.replace('/', '.')
+
+/** The type this graph implements, for display. */
+internal val GraphMetadata.displayType: String
+  get() = graphType?.let(::displayTypeKey) ?: graph
 
 /** Keeps package names when distinct types would otherwise have the same display name. */
 public fun typeDisplayNames(keys: List<String>): Map<String, String> {

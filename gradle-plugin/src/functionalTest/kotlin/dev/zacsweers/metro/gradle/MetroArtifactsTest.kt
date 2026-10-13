@@ -428,12 +428,14 @@ class MetroArtifactsTest {
           "graphs": [
             {
               "graph": "test.AppGraph",
+              "key": "test/AppGraph",
               "scopes": [],
               "aggregationScopes": [],
               "roots": {
                 "accessors": [
                   {
-                    "key": "kotlin.String",
+                    "key": "kotlin/String",
+                    "renderedKey": "kotlin.String",
                     "name": "value",
                     "isProperty": true,
                     "isDeferrable": false
@@ -564,13 +566,15 @@ class MetroArtifactsTest {
               },
               "bindings": [
                 {
-                  "key": "kotlin.String",
+                  "key": "kotlin/String",
+                  "renderedKey": "kotlin.String",
                   "bindingKind": "Provided",
                   "isScoped": false,
                   "nameHint": "provideValue",
                   "dependencies": [
                     {
-                      "key": "test.AppGraph",
+                      "key": "test/AppGraph",
+                      "renderedKey": "test.AppGraph",
                       "hasDefault": false
                     }
                   ],
@@ -579,7 +583,8 @@ class MetroArtifactsTest {
                   "declaration": "provideValue"
                 },
                 {
-                  "key": "test.AppGraph",
+                  "key": "test/AppGraph",
+                  "renderedKey": "test.AppGraph",
                   "bindingKind": "BoundInstance",
                   "isScoped": false,
                   "nameHint": "AppGraphProvider",
@@ -617,11 +622,13 @@ class MetroArtifactsTest {
               doLast {
                 val metadata = dev.zacsweers.metro.gradle.analysis.GraphMetadata(
                   graph = "test.AppGraph",
+                  key = "test/AppGraph",
                   scopes = emptyList(),
                   aggregationScopes = emptyList(),
                   bindings = listOf(
                     dev.zacsweers.metro.gradle.analysis.BindingMetadata(
-                      key = "test.AppGraph",
+                      key = "test/AppGraph",
+                      renderedKey = "test.AppGraph",
                       bindingKind = "BoundInstance",
                       isScoped = false,
                       nameHint = "AppGraphProvider",
@@ -630,8 +637,8 @@ class MetroArtifactsTest {
                   ),
                 )
                 val graph = dev.zacsweers.metro.gradle.analysis.BindingGraph.from(metadata)
-                check(graph.graph.nodes() == setOf("test.AppGraph"))
-                check(graph.getBinding("test.AppGraph") == metadata.bindings.single())
+                check(graph.graph.nodes() == setOf("test/AppGraph"))
+                check(graph.getBinding("test/AppGraph") == metadata.bindings.single())
 
                 val statistics =
                   dev.zacsweers.metro.gradle.analysis.GraphAnalyzer(graph).computeStatistics()
@@ -722,17 +729,31 @@ class MetroArtifactsTest {
     val graph = metadata.graphs.single()
     val mapOne = "@test.MapOne Map<kotlin.String, kotlin.String>"
     val mapTwo = "@test.MapTwo Map<kotlin.String, kotlin.String>"
-    assertThat(graph.bindings.map { it.key }).containsExactly("test.AppGraph", mapOne, mapTwo)
-    assertThat(graph.bindings.single { it.key == mapTwo }.dependencies.map { it.key })
+    assertThat(graph.bindings.map { it.renderedKey })
+      .containsExactly("test.AppGraph", mapOne, mapTwo)
+    assertThat(
+        graph.bindings.single { it.renderedKey == mapTwo }.dependencies.map { it.renderedKey },
+      )
       .containsExactly("test.AppGraph", mapOne)
-    assertThat(graph.roots!!.accessors.map { it.key })
+    assertThat(graph.roots!!.accessors.map { it.renderedKey })
       .containsExactly(mapTwo, "Provider<$mapTwo>", "Lazy<$mapTwo>")
+
+    // Keys identify bindings. Wrappers and rendered text don't change them.
+    val graphKey = "test/AppGraph"
+    val mapOneKey = "@test/MapOne kotlin/collections/Map<kotlin/String,kotlin/String>"
+    val mapTwoKey = "@test/MapTwo kotlin/collections/Map<kotlin/String,kotlin/String>"
+    assertThat(graph.bindings.map { it.key }).containsExactly(graphKey, mapOneKey, mapTwoKey)
+    assertThat(graph.bindings.single { it.key == mapTwoKey }.dependencies.map { it.key })
+      .containsExactly(graphKey, mapOneKey)
+    assertThat(graph.roots!!.accessors.map { it.key }.distinct()).containsExactly(mapTwoKey)
 
     val analysis = reportJson.decodeFromString<FullAnalysisReport>(reports.analysisFile.readText())
     val graphAnalysis = analysis.graphs.single()
     assertThat(graphAnalysis.statistics.totalBindings).isEqualTo(3)
-    assertThat(graphAnalysis.fanAnalysis.highFanOut.single { it.key == mapTwo }.dependencies)
-      .containsExactly("test.AppGraph", mapOne)
+    assertThat(
+        graphAnalysis.fanAnalysis.highFanOut.single { it.renderedKey == mapTwo }.dependencies,
+      )
+      .containsExactly(graphKey, mapOneKey)
   }
 
   @Test
@@ -805,7 +826,7 @@ class MetroArtifactsTest {
                 },
                 "averageDependencies": 0.75,
                 "maxDependencies": 1,
-                "maxDependenciesBinding": "dev.zacsweers.metro.MembersInjector<test.App>",
+                "maxDependenciesBinding": "dev/zacsweers/metro/MembersInjector<test/App>",
                 "rootBindings": 1,
                 "leafBindings": 1,
                 "multibindingCount": 0,
@@ -815,9 +836,9 @@ class MetroArtifactsTest {
                 "longestPathLength": 3,
                 "longestPaths": [
                   [
-                    "test.ExampleClass",
-                    "test.Context",
-                    "test.App"
+                    "test/ExampleClass",
+                    "test/Context",
+                    "test/App"
                   ]
                 ],
                 "averagePathLength": 2.0,
@@ -829,189 +850,209 @@ class MetroArtifactsTest {
               "dominator": {
                 "dominators": [
                   {
-                    "key": "test.ExampleClass",
+                    "key": "test/ExampleClass",
                     "bindingKind": "ConstructorInjected",
                     "dominatedCount": 2,
                     "dominatedKeys": [
-                      "test.App",
-                      "test.Context"
-                    ]
+                      "test/App",
+                      "test/Context"
+                    ],
+                    "renderedKey": "test.ExampleClass"
                   },
                   {
-                    "key": "test.Context",
+                    "key": "test/Context",
                     "bindingKind": "Alias",
                     "dominatedCount": 1,
                     "dominatedKeys": [
-                      "test.App"
-                    ]
+                      "test/App"
+                    ],
+                    "renderedKey": "test.Context"
                   },
                   {
-                    "key": "dev.zacsweers.metro.MembersInjector<test.App>",
+                    "key": "dev/zacsweers/metro/MembersInjector<test/App>",
                     "bindingKind": "MembersInjected",
                     "dominatedCount": 0,
-                    "dominatedKeys": []
+                    "dominatedKeys": [],
+                    "renderedKey": "dev.zacsweers.metro.MembersInjector<test.App>"
                   },
                   {
-                    "key": "test.App",
+                    "key": "test/App",
                     "bindingKind": "BoundInstance",
                     "dominatedCount": 0,
-                    "dominatedKeys": []
+                    "dominatedKeys": [],
+                    "renderedKey": "test.App"
                   }
                 ]
               },
               "centrality": {
                 "centralityScores": [
                   {
-                    "key": "test.ExampleClass",
-                    "bindingKind": "ConstructorInjected",
-                    "betweennessCentrality": 2.0,
-                    "normalizedCentrality": 1.0
-                  },
-                  {
-                    "key": "test.Context",
+                    "key": "test/Context",
                     "bindingKind": "Alias",
                     "betweennessCentrality": 2.0,
-                    "normalizedCentrality": 1.0
+                    "normalizedCentrality": 1.0,
+                    "renderedKey": "test.Context"
                   },
                   {
-                    "key": "dev.zacsweers.metro.MembersInjector<test.App>",
-                    "bindingKind": "MembersInjected",
-                    "betweennessCentrality": 0.0,
-                    "normalizedCentrality": 0.0
+                    "key": "test/ExampleClass",
+                    "bindingKind": "ConstructorInjected",
+                    "betweennessCentrality": 2.0,
+                    "normalizedCentrality": 1.0,
+                    "renderedKey": "test.ExampleClass"
                   },
                   {
-                    "key": "test.App",
+                    "key": "test/App",
                     "bindingKind": "BoundInstance",
                     "betweennessCentrality": 0.0,
-                    "normalizedCentrality": 0.0
+                    "normalizedCentrality": 0.0,
+                    "renderedKey": "test.App"
+                  },
+                  {
+                    "key": "dev/zacsweers/metro/MembersInjector<test/App>",
+                    "bindingKind": "MembersInjected",
+                    "betweennessCentrality": 0.0,
+                    "normalizedCentrality": 0.0,
+                    "renderedKey": "dev.zacsweers.metro.MembersInjector<test.App>"
                   }
                 ]
               },
               "fanAnalysis": {
                 "bindings": [
                   {
-                    "key": "dev.zacsweers.metro.MembersInjector<test.App>",
+                    "key": "dev/zacsweers/metro/MembersInjector<test/App>",
                     "bindingKind": "MembersInjected",
                     "fanIn": 0,
                     "fanOut": 1,
                     "dependents": [],
-                    "dependencies": []
+                    "dependencies": [],
+                    "renderedKey": "dev.zacsweers.metro.MembersInjector<test.App>"
                   },
                   {
-                    "key": "test.App",
+                    "key": "test/App",
                     "bindingKind": "BoundInstance",
                     "fanIn": 1,
                     "fanOut": 0,
                     "dependents": [],
-                    "dependencies": []
+                    "dependencies": [],
+                    "renderedKey": "test.App"
                   },
                   {
-                    "key": "test.Context",
+                    "key": "test/Context",
                     "bindingKind": "Alias",
                     "fanIn": 1,
                     "fanOut": 1,
                     "dependents": [],
-                    "dependencies": []
+                    "dependencies": [],
+                    "renderedKey": "test.Context"
                   },
                   {
-                    "key": "test.ExampleClass",
+                    "key": "test/ExampleClass",
                     "bindingKind": "ConstructorInjected",
                     "fanIn": 1,
                     "fanOut": 1,
                     "dependents": [],
-                    "dependencies": []
+                    "dependencies": [],
+                    "renderedKey": "test.ExampleClass"
                   }
                 ],
                 "highFanIn": [
                   {
-                    "key": "test.App",
+                    "key": "test/App",
                     "bindingKind": "BoundInstance",
                     "fanIn": 1,
                     "fanOut": 0,
                     "dependents": [
-                      "test.Context"
+                      "test/Context"
                     ],
-                    "dependencies": []
+                    "dependencies": [],
+                    "renderedKey": "test.App"
                   },
                   {
-                    "key": "test.Context",
+                    "key": "test/Context",
                     "bindingKind": "Alias",
                     "fanIn": 1,
                     "fanOut": 1,
                     "dependents": [
-                      "test.ExampleClass"
+                      "test/ExampleClass"
                     ],
                     "dependencies": [
-                      "test.App"
-                    ]
+                      "test/App"
+                    ],
+                    "renderedKey": "test.Context"
                   },
                   {
-                    "key": "test.ExampleClass",
+                    "key": "test/ExampleClass",
                     "bindingKind": "ConstructorInjected",
                     "fanIn": 1,
                     "fanOut": 1,
                     "dependents": [
-                      "dev.zacsweers.metro.MembersInjector<test.App>"
+                      "dev/zacsweers/metro/MembersInjector<test/App>"
                     ],
                     "dependencies": [
-                      "test.Context"
-                    ]
+                      "test/Context"
+                    ],
+                    "renderedKey": "test.ExampleClass"
                   },
                   {
-                    "key": "dev.zacsweers.metro.MembersInjector<test.App>",
+                    "key": "dev/zacsweers/metro/MembersInjector<test/App>",
                     "bindingKind": "MembersInjected",
                     "fanIn": 0,
                     "fanOut": 1,
                     "dependents": [],
                     "dependencies": [
-                      "test.ExampleClass"
-                    ]
+                      "test/ExampleClass"
+                    ],
+                    "renderedKey": "dev.zacsweers.metro.MembersInjector<test.App>"
                   }
                 ],
                 "highFanOut": [
                   {
-                    "key": "dev.zacsweers.metro.MembersInjector<test.App>",
+                    "key": "dev/zacsweers/metro/MembersInjector<test/App>",
                     "bindingKind": "MembersInjected",
                     "fanIn": 0,
                     "fanOut": 1,
                     "dependents": [],
                     "dependencies": [
-                      "test.ExampleClass"
-                    ]
+                      "test/ExampleClass"
+                    ],
+                    "renderedKey": "dev.zacsweers.metro.MembersInjector<test.App>"
                   },
                   {
-                    "key": "test.Context",
+                    "key": "test/Context",
                     "bindingKind": "Alias",
                     "fanIn": 1,
                     "fanOut": 1,
                     "dependents": [
-                      "test.ExampleClass"
+                      "test/ExampleClass"
                     ],
                     "dependencies": [
-                      "test.App"
-                    ]
+                      "test/App"
+                    ],
+                    "renderedKey": "test.Context"
                   },
                   {
-                    "key": "test.ExampleClass",
+                    "key": "test/ExampleClass",
                     "bindingKind": "ConstructorInjected",
                     "fanIn": 1,
                     "fanOut": 1,
                     "dependents": [
-                      "dev.zacsweers.metro.MembersInjector<test.App>"
+                      "dev/zacsweers/metro/MembersInjector<test/App>"
                     ],
                     "dependencies": [
-                      "test.Context"
-                    ]
+                      "test/Context"
+                    ],
+                    "renderedKey": "test.ExampleClass"
                   },
                   {
-                    "key": "test.App",
+                    "key": "test/App",
                     "bindingKind": "BoundInstance",
                     "fanIn": 1,
                     "fanOut": 0,
                     "dependents": [
-                      "test.Context"
+                      "test/Context"
                     ],
-                    "dependencies": []
+                    "dependencies": [],
+                    "renderedKey": "test.App"
                   }
                 ],
                 "averageFanIn": 0.75,

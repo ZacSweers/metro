@@ -29,7 +29,7 @@ internal class GraphFixture(
   private val bindings = mutableListOf<BindingMetadata>()
   private val accessors = mutableListOf<AccessorMetadata>()
   private val injectors = mutableListOf<InjectorMetadata>()
-  private val includedGraphKeys = mutableListOf<String>()
+  private val includedGraphs = mutableListOf<IncludedGraphMetadata>()
 
   fun binding(
     key: String,
@@ -95,9 +95,9 @@ internal class GraphFixture(
     )
   }
 
-  fun includes(key: String) {
+  fun includes(key: String, graph: String = key) {
     input(key)
-    includedGraphKeys.add(key)
+    includedGraphs.add(IncludedGraphMetadata(key, graph))
   }
 
   fun accessor(
@@ -105,9 +105,18 @@ internal class GraphFixture(
     name: String? = null,
     isProperty: Boolean = false,
     isDeferrable: Boolean = false,
+    wrapperType: String? = null,
+    renderedKey: String = key,
   ) {
     accessor(
-      AccessorMetadata(key, name = name, isProperty = isProperty, isDeferrable = isDeferrable),
+      AccessorMetadata(
+        key,
+        isDeferrable = isDeferrable,
+        wrapperType = wrapperType,
+        name = name,
+        isProperty = isProperty,
+        renderedKey = renderedKey,
+      ),
     )
   }
 
@@ -128,6 +137,7 @@ internal class GraphFixture(
       }
     return GraphMetadata(
       graph = name,
+      key = name,
       parentGraph = parent,
       graphType = type,
       scopes = scopes,
@@ -135,7 +145,7 @@ internal class GraphFixture(
       bindings = bindings.toList(),
       roots = roots,
       extensions = extensions,
-      includedGraphKeys = includedGraphKeys.toList(),
+      includedGraphs = includedGraphs.toList(),
       bindingExplanations = bindingExplanations,
     )
   }

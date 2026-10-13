@@ -125,14 +125,16 @@ public abstract class AnalyzeGraphTask : DefaultTask() {
       if (path.longestPathLength > 0) {
         logger.lifecycle("  Longest path: ${path.longestPathLength} nodes")
         path.longestPaths.firstOrNull()?.let { p ->
-          logger.lifecycle("    ${p.joinToString(" -> ") { it.substringAfterLast('.') }}")
+          logger.lifecycle(
+            "    ${p.joinToString(" -> ") { it.substringAfterLast('/').substringAfterLast('.') }}",
+          )
         }
       }
 
       val topFanIn = graph.fanAnalysis.highFanIn.firstOrNull()
       if (topFanIn != null && topFanIn.fanIn > 0) {
         logger.lifecycle(
-          "  Highest fan-in: ${topFanIn.key.substringAfterLast('.')} (${topFanIn.fanIn} dependents)",
+          "  Highest fan-in: ${topFanIn.renderedKey.substringAfterLast('.')} (${topFanIn.fanIn} dependents)",
         )
       }
     }

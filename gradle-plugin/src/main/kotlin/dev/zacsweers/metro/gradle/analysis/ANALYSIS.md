@@ -92,7 +92,8 @@ data class ExtensionsMetadata(
 Represents a single binding in the graph:
 ```kotlin
 data class BindingMetadata(
-  val key: String,           // Full type key (may include annotations/generics)
+  val key: String,           // Encoded type key that identifies the binding
+  val renderedKey: String,   // Compiler rendering of the key, for display
   val bindingKind: String,   // ConstructorInjected, Provided, Alias, Multibinding, etc.
   val isScoped: Boolean,
   val dependencies: List<DependencyMetadata>,
@@ -105,9 +106,10 @@ data class BindingMetadata(
 Represents a dependency edge:
 ```kotlin
 data class DependencyMetadata(
-  val key: String,            // Type key of the dependency
+  val key: String,            // Encoded type key of the requested binding
   val hasDefault: Boolean,    // Has a default value
   val wrapperType: String?,   // Wrapper type if wrapped (e.g., "Provider", "Lazy")
+  val renderedKey: String,    // Compiler rendering of the full request, for display
 ) {
   val isDeferrable: Boolean   // Computed: true if wrapperType != null
 }
@@ -117,7 +119,8 @@ data class DependencyMetadata(
 `Assisted` factory bindings expose their target through nested metadata. This has the same structure as `BindingMetadata` plus `assistedParameters`:
 ```kotlin
 data class AssistedTargetMetadata(
-  val key: String,                                   // Target type key
+  val key: String,                                   // Encoded target type key
+  val renderedKey: String,                           // Compiler rendering of the key, for display
   val bindingKind: String,                           // Usually "ConstructorInjected"
   val scope: String? = null,
   val isScoped: Boolean = false,
@@ -170,12 +173,9 @@ The parent `GraphAnalysis` stores `graphName` for all its results. Individual re
 
 ## Type Key Handling
 
-Type keys can be complex strings with annotations, generics, or wrapper types. Three helper functions handle these:
+Graph nodes and edges use encoded type keys. The compiler writes them, so analysis never parses rendered text to find a binding. Analysis results name bindings by key and carry the compiler's rendering as `renderedKey`.
 
-### `unwrapTypeKey(key: String): String`
-Unwraps Provider/Lazy wrappers to find the actual target node:
-- `Provider<com.example.Foo>` → `com.example.Foo`
-- `Lazy<com.example.Bar>` → `com.example.Bar`
+Rendered keys can be complex strings with annotations, generics, or wrapper types. Two display helpers handle these:
 
 ### `extractDisplayName(key: String): String`
 Extracts a human-readable short name:
