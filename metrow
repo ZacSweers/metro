@@ -137,7 +137,7 @@ case "$1" in
        fi
 
        if [[ "$local" = true ]]; then
-           ./gradlew -p idea-plugin signPlugin verifyPluginSignature "${publish_args[@]}"
+           ./gradlew -p idea-plugin signPlugin verifyPluginSignature verifyPlugin "${publish_args[@]}"
        else
            ./gradlew -p idea-plugin publishPlugin "${publish_args[@]}"
        fi

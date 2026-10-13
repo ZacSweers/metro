@@ -18,6 +18,14 @@ repositories {
 
 val ideVersionsFile = layout.projectDirectory.file("ide-versions.txt")
 val testProjectDirectory = layout.projectDirectory.dir("test-project")
+val ideaPluginArchivePath =
+  providers
+    .gradleProperty("metroIdeaPluginArchive")
+    .orElse(providers.environmentVariable("METRO_IDEA_PLUGIN_ARCHIVE"))
+val ideVersionOverride =
+  providers
+    .gradleProperty("metroIdeVersion")
+    .orElse(providers.environmentVariable("METRO_IDE_VERSION"))
 
 val intellijVersion =
   providers.fileContents(ideVersionsFile).asText.map { text ->
@@ -106,6 +114,18 @@ tasks.test {
   systemProperty("junit.jupiter.execution.timeout.default", "15m")
   systemProperty("metro.testProject", testProjectDirectory.asFile.absolutePath)
   systemProperty("metro.ideVersions", ideVersionsFile.asFile.absolutePath)
+  ideVersionOverride.orNull?.let { ideVersion ->
+    inputs.property("metroIdeVersion", ideVersion)
+    systemProperty("metro.ideVersion", ideVersion)
+  }
+  ideaPluginArchivePath.orNull?.let { archivePath ->
+    val archiveFile = file(archivePath)
+    inputs
+      .file(archiveFile)
+      .withPropertyName("metroIdeaPluginArchive")
+      .withPathSensitivity(PathSensitivity.NONE)
+    systemProperty("metro.ideaPluginArchive", archiveFile.absolutePath)
+  }
   // Suppress "Could not find installation home path" warning from Driver SDK logging
   systemProperty("idea.home.path", layout.projectDirectory.asFile.absolutePath)
 

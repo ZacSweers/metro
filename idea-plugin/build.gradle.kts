@@ -5,6 +5,7 @@ import foundry.gradle.properties.StartParameterProperties
 import foundry.gradle.properties.createPropertiesProvider
 import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
+import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask
 
 plugins {
   alias(libs.plugins.kotlin.jvm)
@@ -357,9 +358,19 @@ intellijPlatform {
   }
 
   pluginVerification {
+    failureLevel.set(
+      listOf(
+        VerifyPluginTask.FailureLevel.COMPATIBILITY_PROBLEMS,
+        VerifyPluginTask.FailureLevel.INTERNAL_API_USAGES,
+        VerifyPluginTask.FailureLevel.OVERRIDE_ONLY_API_USAGES,
+        VerifyPluginTask.FailureLevel.MISSING_DEPENDENCIES,
+      ),
+    )
+
     ides {
       create(IntelliJPlatformType.IntellijIdea, "2026.2")
       create(IntelliJPlatformType.IntellijIdea, "2026.2.3")
+      create(IntelliJPlatformType.IntellijIdea, "263.6259.32")
       create(IntelliJPlatformType.AndroidStudio, "2026.2.1.8")
     }
   }

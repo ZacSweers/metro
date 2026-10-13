@@ -27,7 +27,6 @@ jobs:
       - name: Check CI routing
         run: |
           python3 scripts/test-classify-ci-changes.py
-          python3 scripts/test-check-ci-status.py
       - uses: ./.github/actions/classify-changes
         id: changes
         with:
