@@ -27,4 +27,6 @@ The Gradle plugin's `GraphHtmlRendererTest` covers the complete conversion and H
 
 The importer accepts current unversioned compiler reports and aggregated metadata. It rejects unsupported explicit `formatVersion` values. Version 1 represents the current structure. Files with the same graph name must contain identical definitions.
 
+Fields named `key` hold encoded type keys, and bindings are matched by them. The `renderedKey` fields are only used for display.
+
 Analysis remains optional. The importer checks graph names, binding keys, dependency counts, recorded connections, and longest-chain edges against the metadata. Analysis for graphs outside the import is skipped with a warning. Centrality, dominator counts, and longest-chain data come from `analysis.json`. The browser doesn't run the JVM analyzer.

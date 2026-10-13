@@ -406,6 +406,20 @@ public final class dev/zacsweers/metro/gradle/analysis/GraphStatsMetadata$Compan
 	public final fun serializer ()Lkotlinx/serialization/KSerializer;
 }
 
+public final synthetic class dev/zacsweers/metro/gradle/analysis/IncludedGraphMetadata$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Ldev/zacsweers/metro/gradle/analysis/IncludedGraphMetadata$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ldev/zacsweers/metro/gradle/analysis/IncludedGraphMetadata;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Ldev/zacsweers/metro/gradle/analysis/IncludedGraphMetadata;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+}
+
+public final class dev/zacsweers/metro/gradle/analysis/IncludedGraphMetadata$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
 public final synthetic class dev/zacsweers/metro/gradle/analysis/InjectorMetadata$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
 	public static final field INSTANCE Ldev/zacsweers/metro/gradle/analysis/InjectorMetadata$$serializer;
 	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;

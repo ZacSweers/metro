@@ -168,11 +168,11 @@ internal class CompilerContractReader(
       candidates
         .filter { candidate ->
           candidate.status == BindingCandidateStatus.SELECTED &&
-            normalizeRender(candidate.key) in case.explanationKeys
+            normalizeRender(candidate.renderedKey) in case.explanationKeys
         }
         .mapTo(mutableSetOf()) { candidate ->
           ExplanationSelection(
-            normalizeRender(candidate.key),
+            normalizeRender(candidate.renderedKey),
             candidate.declaration?.label?.substringAfterLast('.'),
             candidate.reason,
           )
@@ -216,6 +216,8 @@ internal class CompilerContractReader(
       .sortedBy(RootContract::key)
 
     val rawBindings = metadata.getValue("bindings").jsonArray.objects().map(::RawCompilerBinding)
+    // The IDE contract compares rendered keys. Multibinding sources only carry encoded keys.
+    val renderedKeys = rawBindings.associate { it.encodedKey to it.key }
     val keyMap = canonicalKeyMap(rawBindings.map { KeyEntry(it.key, it.declaration) })
     val bindings =
       rawBindings
@@ -243,7 +245,10 @@ internal class CompilerContractReader(
                   type = it.type,
                   allowEmpty = it.allowEmpty,
                   sources =
-                    it.sources.map { source -> keyMap[source] ?: normalizeRender(source) }.sorted(),
+                    it.sources
+                      .map { source -> renderedKeys[source] ?: source }
+                      .map { source -> keyMap[source] ?: normalizeRender(source) }
+                      .sorted(),
                 )
               },
           )
@@ -453,13 +458,14 @@ private data class RawMultibinding(
 
 private class RawCompilerBinding(json: JsonObject) {
   val kind = json.getValue("bindingKind").jsonPrimitive.content
-  val key = json.getValue("key").jsonPrimitive.content
+  val encodedKey = json.getValue("key").jsonPrimitive.content
+  val key = json.getValue("renderedKey").jsonPrimitive.content
   val declaration = json["declaration"]?.jsonPrimitive?.contentOrNull
   val scope = json["scope"]?.jsonPrimitive?.contentOrNull
   val dependencies =
     json.getValue("dependencies").jsonArray.objects().map { dependency ->
       RawDependency(
-        key = dependency.getValue("key").jsonPrimitive.content,
+        key = dependency.getValue("renderedKey").jsonPrimitive.content,
         hasDefault = dependency.getValue("hasDefault").jsonPrimitive.boolean,
       )
     }
@@ -530,7 +536,7 @@ private data class ElementKey(
 }
 
 private fun JsonObject.toRootContract(): RootContract {
-  val rawKey = getValue("key").jsonPrimitive.content
+  val rawKey = getValue("renderedKey").jsonPrimitive.content
   return RootContract(
     key = normalizeRender(rawKey),
     isDeferrable = this["isDeferrable"]?.jsonPrimitive?.boolean ?: false,

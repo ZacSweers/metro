@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir
 
+import dev.zacsweers.metro.compiler.graph.identity.TypeKeyIdentity
 import dev.zacsweers.metro.compiler.memoize
 import org.jetbrains.kotlin.descriptors.annotations.AnnotationUseSiteTarget
 import org.jetbrains.kotlin.fir.FirSession
@@ -20,6 +21,9 @@ import org.jetbrains.kotlin.fir.types.coneType
 internal class FirTypeKey(val type: ConeKotlinType, val qualifier: MetroFirAnnotation? = null) :
   Comparable<FirTypeKey> {
   private val cachedHashCode: Int = (type.hashCode() * 31) + (qualifier?.hashCode() ?: 0)
+  val identity: TypeKeyIdentity by memoize {
+    TypeKeyIdentity(type.typeIdentity(), qualifier?.identity)
+  }
   private val cachedToString by memoize {
     render(short = false, includeAbbreviation = true, includeQualifier = true)
   }
@@ -36,8 +40,8 @@ internal class FirTypeKey(val type: ConeKotlinType, val qualifier: MetroFirAnnot
   }
 
   override fun compareTo(other: FirTypeKey): Int {
-    if (this === other) return 0
-    return cachedToString.compareTo(other.cachedToString)
+    if (this == other) return 0
+    return identity.compareTo(other.identity)
   }
 
   fun render(

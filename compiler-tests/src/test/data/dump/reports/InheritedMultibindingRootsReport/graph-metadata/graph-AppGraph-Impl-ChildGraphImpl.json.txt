@@ -1,5 +1,6 @@
 {
   "graph": "AppGraph.Impl.ChildGraphImpl",
+  "key": "AppGraph.Impl.ChildGraphImpl",
   "graphType": "ChildGraph",
   "parentGraph": "AppGraph",
   "scopes": [],
@@ -7,19 +8,22 @@
   "roots": {
     "accessors": [
       {
-        "key": "kotlin.collections.Set<kotlin.String>",
+        "key": "kotlin/collections/Set<kotlin/String>",
+        "renderedKey": "kotlin.collections.Set<kotlin.String>",
         "name": "names",
         "isProperty": false,
         "isDeferrable": false
       },
       {
         "key": "ChildValue",
+        "renderedKey": "ChildValue",
         "name": "childValue",
         "isProperty": true,
         "isDeferrable": false
       },
       {
-        "key": "kotlin.collections.Set<ValueFactory>",
+        "key": "kotlin/collections/Set<ValueFactory>",
+        "renderedKey": "kotlin.collections.Set<ValueFactory>",
         "name": "factories",
         "isProperty": true,
         "isDeferrable": false,
@@ -34,6 +38,7 @@
     "accessors": [
       {
         "key": "GrandchildGraph",
+        "renderedKey": "GrandchildGraph",
         "name": "grandchild",
         "isProperty": true
       }
@@ -158,13 +163,15 @@
   },
   "bindings": [
     {
-      "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"ValueFactory\", \"610231206\") ValueFactory",
+      "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"ValueFactory\",\"610231206\") ValueFactory",
+      "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"ValueFactory\", \"610231206\") ValueFactory",
       "bindingKind": "Provided",
       "isScoped": false,
       "nameHint": "factory",
       "dependencies": [
         {
           "key": "ValueFactory",
+          "renderedKey": "ValueFactory",
           "hasDefault": false
         }
       ],
@@ -172,7 +179,8 @@
       "declaration": "factory"
     },
     {
-      "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String\", \"-1409686752\") kotlin.String",
+      "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String\",\"-1409686752\") kotlin/String",
+      "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin/String\", \"-1409686752\") kotlin.String",
       "bindingKind": "Provided",
       "isScoped": false,
       "nameHint": "name",
@@ -182,6 +190,7 @@
     },
     {
       "key": "AppGraph.Impl.ChildGraphImpl",
+      "renderedKey": "AppGraph.Impl.ChildGraphImpl",
       "bindingKind": "BoundInstance",
       "isScoped": false,
       "nameHint": "ChildGraphImplProvider",
@@ -192,6 +201,7 @@
     },
     {
       "key": "ChildValue",
+      "renderedKey": "ChildValue",
       "bindingKind": "ConstructorInjected",
       "isScoped": false,
       "nameHint": "ChildValue",
@@ -201,12 +211,14 @@
     },
     {
       "key": "GrandchildGraph",
+      "renderedKey": "GrandchildGraph",
       "bindingKind": "GraphExtension",
       "isScoped": false,
       "nameHint": "GrandchildGraph",
       "dependencies": [
         {
           "key": "AppGraph.Impl.ChildGraphImpl",
+          "renderedKey": "AppGraph.Impl.ChildGraphImpl",
           "hasDefault": false
         }
       ],
@@ -215,6 +227,7 @@
     },
     {
       "key": "ValueFactory",
+      "renderedKey": "ValueFactory",
       "bindingKind": "AssistedFactory",
       "isScoped": false,
       "nameHint": "ValueFactory",
@@ -223,6 +236,7 @@
       "declaration": "ValueFactory",
       "assistedTarget": {
         "key": "Value",
+        "renderedKey": "Value",
         "bindingKind": "ConstructorInjected",
         "isScoped": false,
         "nameHint": "Value",
@@ -238,13 +252,15 @@
       }
     },
     {
-      "key": "kotlin.collections.Set<ValueFactory>",
+      "key": "kotlin/collections/Set<ValueFactory>",
+      "renderedKey": "kotlin.collections.Set<ValueFactory>",
       "bindingKind": "Multibinding",
       "isScoped": false,
       "nameHint": "setOfValueFactory",
       "dependencies": [
         {
-          "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"ValueFactory\", \"610231206\") ValueFactory",
+          "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"ValueFactory\",\"610231206\") ValueFactory",
+          "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"ValueFactory\", \"610231206\") ValueFactory",
           "hasDefault": false
         }
       ],
@@ -253,18 +269,20 @@
         "type": "SET",
         "allowEmpty": false,
         "sources": [
-          "@dev.zacsweers.metro.internal.MultibindingElement(\"ValueFactory\", \"610231206\") ValueFactory"
+          "@dev/zacsweers/metro/internal/MultibindingElement(\"ValueFactory\",\"610231206\") ValueFactory"
         ]
       }
     },
     {
-      "key": "kotlin.collections.Set<kotlin.String>",
+      "key": "kotlin/collections/Set<kotlin/String>",
+      "renderedKey": "kotlin.collections.Set<kotlin.String>",
       "bindingKind": "Multibinding",
       "isScoped": false,
       "nameHint": "setOfString",
       "dependencies": [
         {
-          "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String\", \"-1409686752\") kotlin.String",
+          "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String\",\"-1409686752\") kotlin/String",
+          "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin/String\", \"-1409686752\") kotlin.String",
           "hasDefault": false
         }
       ],
@@ -273,7 +291,7 @@
         "type": "SET",
         "allowEmpty": false,
         "sources": [
-          "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String\", \"-1409686752\") kotlin.String"
+          "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String\",\"-1409686752\") kotlin/String"
         ]
       }
     }
@@ -288,8 +306,8 @@
       "outcome": "selected",
       "candidates": [
         {
-          "id": "91:@dev.zacsweers.metro.internal.MultibindingElement(\"ValueFactory\", \"610231206\") ValueFactory|73:AppGraph.Companion.factory(AppGraph.Companion,ValueFactory): ValueFactory",
-          "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"ValueFactory\", \"610231206\") ValueFactory",
+          "id": "90:@dev/zacsweers/metro/internal/MultibindingElement(\"ValueFactory\",\"610231206\") ValueFactory|73:AppGraph.Companion.factory(AppGraph.Companion,ValueFactory): ValueFactory",
+          "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"ValueFactory\",\"610231206\") ValueFactory",
           "status": "selected",
           "reason": "selected_explicit",
           "declaration": {
@@ -297,13 +315,15 @@
             "label": "AppGraph.Companion.factory"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"ValueFactory\", \"610231206\") ValueFactory"
         }
       ],
       "request": {
-        "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"ValueFactory\", \"610231206\") ValueFactory",
+        "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"ValueFactory\",\"610231206\") ValueFactory",
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"ValueFactory\", \"610231206\") ValueFactory"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -318,22 +338,24 @@
       "outcome": "selected",
       "candidates": [
         {
-          "id": "95:@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String\", \"-1409686752\") kotlin.String|58:AppGraph.Companion.name(AppGraph.Companion): kotlin.String",
-          "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String\", \"-1409686752\") kotlin.String",
+          "id": "94:@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String\",\"-1409686752\") kotlin/String|58:AppGraph.Companion.name(AppGraph.Companion): kotlin/String",
+          "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String\",\"-1409686752\") kotlin/String",
           "status": "selected",
           "reason": "selected_explicit",
           "declaration": {
-            "id": "AppGraph.Companion.name(AppGraph.Companion): kotlin.String",
+            "id": "AppGraph.Companion.name(AppGraph.Companion): kotlin/String",
             "label": "AppGraph.Companion.name"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin/String\", \"-1409686752\") kotlin.String"
         }
       ],
       "request": {
-        "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String\", \"-1409686752\") kotlin.String",
+        "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String\",\"-1409686752\") kotlin/String",
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin/String\", \"-1409686752\") kotlin.String"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -357,13 +379,15 @@
             "label": "AppGraph.Impl.ChildGraphImpl"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "AppGraph.Impl.ChildGraphImpl"
         }
       ],
       "request": {
         "key": "AppGraph.Impl.ChildGraphImpl",
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "AppGraph.Impl.ChildGraphImpl"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -387,7 +411,8 @@
             "label": "AppGraph.Impl.ChildGraphImpl"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "AppGraph.Impl.ChildGraphImpl"
         }
       ],
       "request": {
@@ -397,7 +422,8 @@
           "label": "AppGraph.Impl.ChildGraphImpl.<get-grandchild>"
         },
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "AppGraph.Impl.ChildGraphImpl"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -421,13 +447,15 @@
             "label": "ChildValue"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "ChildValue"
         }
       ],
       "request": {
         "key": "ChildValue",
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "ChildValue"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -451,7 +479,8 @@
             "label": "AppGraph.Impl.ChildGraphImpl.<get-grandchild>"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "GrandchildGraph"
         }
       ],
       "request": {
@@ -461,7 +490,8 @@
           "label": "AppGraph.Impl.ChildGraphImpl.<get-grandchild>"
         },
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "GrandchildGraph"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -485,7 +515,8 @@
             "label": "ValueFactory"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "ValueFactory"
         }
       ],
       "request": {
@@ -495,7 +526,8 @@
           "label": "AppGraph.Companion.factory.factory"
         },
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "ValueFactory"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -510,18 +542,20 @@
       "outcome": "selected",
       "candidates": [
         {
-          "id": "36:kotlin.collections.Set<ValueFactory>|9:generated",
-          "key": "kotlin.collections.Set<ValueFactory>",
+          "id": "36:kotlin/collections/Set<ValueFactory>|9:generated",
+          "key": "kotlin/collections/Set<ValueFactory>",
           "status": "selected",
           "reason": "selected_multibinding",
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "kotlin.collections.Set<ValueFactory>"
         }
       ],
       "request": {
-        "key": "kotlin.collections.Set<ValueFactory>",
+        "key": "kotlin/collections/Set<ValueFactory>",
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "kotlin.collections.Set<ValueFactory>"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -536,18 +570,20 @@
       "outcome": "selected",
       "candidates": [
         {
-          "id": "37:kotlin.collections.Set<kotlin.String>|9:generated",
-          "key": "kotlin.collections.Set<kotlin.String>",
+          "id": "37:kotlin/collections/Set<kotlin/String>|9:generated",
+          "key": "kotlin/collections/Set<kotlin/String>",
           "status": "selected",
           "reason": "selected_multibinding",
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "kotlin.collections.Set<kotlin.String>"
         }
       ],
       "request": {
-        "key": "kotlin.collections.Set<kotlin.String>",
+        "key": "kotlin/collections/Set<kotlin/String>",
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "kotlin.collections.Set<kotlin.String>"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -571,7 +607,8 @@
             "label": "AppGraph.Impl.ChildGraphImpl.<get-grandchild>"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "GrandchildGraph"
         }
       ],
       "details": [

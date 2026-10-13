@@ -1,7 +1,11 @@
 {
   "graph": "AppGraph",
-  "includedGraphKeys": [
-    "ExternalDependencies"
+  "key": "AppGraph",
+  "includedGraphs": [
+    {
+      "key": "ExternalDependencies",
+      "graph": "ExternalDependencies"
+    }
   ],
   "scopes": [
     "@dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class)"
@@ -13,12 +17,14 @@
     "accessors": [
       {
         "key": "Value",
+        "renderedKey": "Value",
         "name": "value",
         "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "ChildGraph.Factory",
+        "renderedKey": "ChildGraph.Factory",
         "name": "childFactory",
         "isProperty": true,
         "isDeferrable": false
@@ -31,6 +37,7 @@
     "factoryAccessors": [
       {
         "key": "ChildGraph.Factory",
+        "renderedKey": "ChildGraph.Factory",
         "name": "childFactory",
         "isProperty": true,
         "isSAM": false
@@ -158,6 +165,7 @@
   "bindings": [
     {
       "key": "AppGraph",
+      "renderedKey": "AppGraph",
       "bindingKind": "BoundInstance",
       "isScoped": false,
       "nameHint": "AppGraphProvider",
@@ -168,12 +176,14 @@
     },
     {
       "key": "AppGraph.Impl",
+      "renderedKey": "AppGraph.Impl",
       "bindingKind": "Alias",
       "isScoped": false,
       "nameHint": "Impl",
       "dependencies": [
         {
           "key": "AppGraph",
+          "renderedKey": "AppGraph",
           "hasDefault": false
         }
       ],
@@ -182,6 +192,7 @@
     },
     {
       "key": "Cache",
+      "renderedKey": "Cache",
       "bindingKind": "ConstructorInjected",
       "scope": "@dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class)",
       "isScoped": true,
@@ -192,6 +203,7 @@
     },
     {
       "key": "ChildGraph.Factory",
+      "renderedKey": "ChildGraph.Factory",
       "bindingKind": "GraphExtensionFactory",
       "isScoped": false,
       "nameHint": "FactoryFactory",
@@ -199,6 +211,7 @@
       "dependencies": [
         {
           "key": "AppGraph.Impl",
+          "renderedKey": "AppGraph.Impl",
           "hasDefault": false
         }
       ],
@@ -207,6 +220,7 @@
     },
     {
       "key": "ExternalDependencies",
+      "renderedKey": "ExternalDependencies",
       "bindingKind": "BoundInstance",
       "isScoped": false,
       "nameHint": "ExternalDependenciesProvider",
@@ -217,16 +231,19 @@
     },
     {
       "key": "Value",
+      "renderedKey": "Value",
       "bindingKind": "ConstructorInjected",
       "isScoped": false,
       "nameHint": "Value",
       "dependencies": [
         {
           "key": "Cache",
+          "renderedKey": "Cache",
           "hasDefault": false
         },
         {
-          "key": "kotlin.String",
+          "key": "kotlin/String",
+          "renderedKey": "kotlin.String",
           "hasDefault": false
         }
       ],
@@ -234,7 +251,8 @@
       "declaration": "Value"
     },
     {
-      "key": "kotlin.String",
+      "key": "kotlin/String",
+      "renderedKey": "kotlin.String",
       "bindingKind": "GraphDependency",
       "isScoped": false,
       "nameHint": "ExternalDependenciesEndpoint",
@@ -246,6 +264,7 @@
       "dependencies": [
         {
           "key": "ExternalDependencies",
+          "renderedKey": "ExternalDependencies",
           "hasDefault": false
         }
       ],
@@ -272,13 +291,15 @@
             "label": "AppGraph"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "AppGraph"
         }
       ],
       "request": {
         "key": "AppGraph",
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "AppGraph"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -298,7 +319,8 @@
           "status": "selected",
           "reason": "selected_generated",
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "AppGraph.Impl"
         }
       ],
       "request": {
@@ -308,7 +330,8 @@
           "label": "AppGraph.Impl.<get-childFactory>"
         },
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "AppGraph.Impl"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -332,17 +355,51 @@
             "label": "Cache"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "Cache"
+        }
+      ],
+      "request": {
+        "key": "Cache",
+        "hasDefault": false,
+        "isOptional": false,
+        "renderedKey": "Provider<Cache>"
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "5:Cache|5:Cache",
+          "key": "Cache",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "Cache",
+            "label": "Cache"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "Cache"
         }
       ],
       "request": {
         "key": "Cache",
         "declaration": {
-          "id": "Value.MetroFactory.declarationMirror(Value.MetroFactory,Cache,kotlin.String): Value#cache",
+          "id": "Value.MetroFactory.declarationMirror(Value.MetroFactory,Cache,kotlin/String): Value#cache",
           "label": "Value.MetroFactory.declarationMirror.cache"
         },
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "Cache"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -366,13 +423,15 @@
             "label": "AppGraph.Impl.<get-childFactory>"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "ChildGraph.Factory"
         }
       ],
       "request": {
         "key": "ChildGraph.Factory",
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "ChildGraph.Factory"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -396,43 +455,15 @@
             "label": "AppGraph.Factory.create.dependencies"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "ExternalDependencies"
         }
       ],
       "request": {
         "key": "ExternalDependencies",
         "hasDefault": false,
-        "isOptional": false
-      },
-      "details": [
-        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
-      ]
-    },
-    {
-      "context": {
-        "id": "8:AppGraph",
-        "label": "AppGraph"
-      },
-      "phase": "lookup",
-      "outcome": "selected",
-      "candidates": [
-        {
-          "id": "5:Cache|5:Cache",
-          "key": "Cache",
-          "status": "selected",
-          "reason": "selected_implicit",
-          "declaration": {
-            "id": "Cache",
-            "label": "Cache"
-          },
-          "relatedDeclarations": [],
-          "details": []
-        }
-      ],
-      "request": {
-        "key": "Provider<Cache>",
-        "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "ExternalDependencies"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -456,13 +487,15 @@
             "label": "Value"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "Value"
         }
       ],
       "request": {
         "key": "Value",
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "Value"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -477,22 +510,24 @@
       "outcome": "selected",
       "candidates": [
         {
-          "id": "13:kotlin.String|44:ExternalDependencies.endpoint: kotlin.String",
-          "key": "kotlin.String",
+          "id": "13:kotlin/String|44:ExternalDependencies.endpoint: kotlin/String",
+          "key": "kotlin/String",
           "status": "selected",
           "reason": "selected_explicit",
           "declaration": {
-            "id": "ExternalDependencies.endpoint: kotlin.String",
+            "id": "ExternalDependencies.endpoint: kotlin/String",
             "label": "ExternalDependencies.endpoint"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "kotlin.String"
         }
       ],
       "request": {
-        "key": "kotlin.String",
+        "key": "kotlin/String",
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "kotlin.String"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -507,26 +542,28 @@
       "outcome": "selected",
       "candidates": [
         {
-          "id": "13:kotlin.String|44:ExternalDependencies.endpoint: kotlin.String",
-          "key": "kotlin.String",
+          "id": "13:kotlin/String|44:ExternalDependencies.endpoint: kotlin/String",
+          "key": "kotlin/String",
           "status": "selected",
           "reason": "selected_explicit",
           "declaration": {
-            "id": "ExternalDependencies.endpoint: kotlin.String",
+            "id": "ExternalDependencies.endpoint: kotlin/String",
             "label": "ExternalDependencies.endpoint"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "kotlin.String"
         }
       ],
       "request": {
-        "key": "kotlin.String",
+        "key": "kotlin/String",
         "declaration": {
-          "id": "Value.MetroFactory.declarationMirror(Value.MetroFactory,Cache,kotlin.String): Value#endpoint",
+          "id": "Value.MetroFactory.declarationMirror(Value.MetroFactory,Cache,kotlin/String): Value#endpoint",
           "label": "Value.MetroFactory.declarationMirror.endpoint"
         },
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "kotlin.String"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."

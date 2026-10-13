@@ -14,6 +14,7 @@ import dev.zacsweers.metro.gradle.analysis.GraphAnalysis
 import dev.zacsweers.metro.gradle.analysis.GraphMetadata
 import dev.zacsweers.metro.gradle.analysis.GraphReportRenderer
 import dev.zacsweers.metro.gradle.analysis.GraphStatistics
+import dev.zacsweers.metro.gradle.analysis.IncludedGraphMetadata
 import dev.zacsweers.metro.gradle.analysis.LongestPathResult
 import dev.zacsweers.metro.gradle.analysis.analysisEdges
 import kotlin.test.Test
@@ -27,6 +28,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 class GraphReportImportTest {
   private val graph = graph("AppGraph")
@@ -89,7 +91,8 @@ class GraphReportImportTest {
   @Test
   fun `members injection and a supplied instance can share a key`() {
     val binding = graph.bindings.single()
-    val injected = binding.copy(bindingKind = "MembersInjected")
+    val injected =
+      binding.copy(key = "MembersInjector<Application>", bindingKind = "MembersInjected")
     val report = graph.copy(bindings = listOf(binding, injected))
 
     assertEquals(2, GraphReportImport(listOf(file(report))).summary.graphs.single().bindingCount)
@@ -113,7 +116,8 @@ class GraphReportImportTest {
   @Test
   fun `missing parent and included graph reports are listed`() {
     val child =
-      graph("SessionGraph", parent = "AppGraph").copy(includedGraphKeys = listOf("ConfigGraph"))
+      graph("SessionGraph", parent = "AppGraph")
+        .copy(includedGraphs = listOf(IncludedGraphMetadata("ConfigGraph", "ConfigGraph")))
     val imported = GraphReportImport(listOf(file(child)))
 
     assertEquals(2, imported.summary.warnings.size)
@@ -163,7 +167,11 @@ class GraphReportImportTest {
 
   @Test
   fun `qualifiers on included graph inputs do not hide available reports`() {
-    val consumer = graph.copy(includedGraphKeys = listOf("@Named(\"primary\") ConfigGraph"))
+    val consumer =
+      graph.copy(
+        includedGraphs =
+          listOf(IncludedGraphMetadata("@test/Named(\"primary\") ConfigGraph", "ConfigGraph")),
+      )
     val imported = GraphReportImport(listOf(file(consumer), file(graph("ConfigGraph"))))
 
     assertTrue(imported.summary.warnings.isEmpty())
@@ -207,6 +215,25 @@ class GraphReportImportTest {
     assertFailsWith<IllegalArgumentException> {
       GraphReportImport(listOf(ReportFile("future.json", future.toString())))
     }
+  }
+
+  @Test
+  fun `bindings with the same rendered key and different keys stay distinct`() {
+    val binding = graph.bindings.single()
+    val first =
+      binding.copy(key = "first/Service", renderedKey = "Service", bindingKind = "Provided")
+    val second =
+      binding.copy(key = "second/Service", renderedKey = "Service", bindingKind = "Provided")
+    val report = graph.copy(bindings = listOf(binding, first, second))
+    val imported = GraphReportImport(listOf(file(report)))
+
+    assertEquals(3, imported.summary.graphs.single().bindingCount)
+    val nodeIds =
+      imported.renderGraph(graph.graph).getValue("nodes").jsonArray.map {
+        it.jsonObject.getValue("id").jsonPrimitive.content
+      }
+    assertTrue("first/Service" in nodeIds)
+    assertTrue("second/Service" in nodeIds)
   }
 
   @Test
@@ -330,6 +357,7 @@ class GraphReportImportTest {
   private fun graph(name: String, parent: String? = null): GraphMetadata =
     GraphMetadata(
       graph = name,
+      key = name,
       scopes = emptyList(),
       aggregationScopes = emptyList(),
       parentGraph = parent,

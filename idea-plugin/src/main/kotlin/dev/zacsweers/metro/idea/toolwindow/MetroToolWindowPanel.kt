@@ -48,6 +48,7 @@ import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.model.GraphContext
 import dev.zacsweers.metro.idea.model.GraphPath
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
+import dev.zacsweers.metro.idea.navigateMetroTarget
 import dev.zacsweers.metro.idea.navigation.MetroRevealTarget
 import dev.zacsweers.metro.idea.presentableName
 import dev.zacsweers.metro.idea.tracing.IdeTraceState
@@ -595,7 +596,7 @@ internal class MetroToolWindowPanel(
       ->
       if (disposed) return@resolveTargets
       val target = targets.singleOrNull() as? Navigatable ?: return@resolveTargets
-      if (target.canNavigate()) target.navigate(requestFocus)
+      target.navigateMetroTarget(requestFocus)
     }
   }
 

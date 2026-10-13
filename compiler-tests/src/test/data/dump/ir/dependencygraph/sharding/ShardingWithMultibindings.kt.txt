@@ -168,7 +168,7 @@ interface TestGraph {
     private class Shard1 {
       internal val service1Provider: Provider<Service1>
 
-      @MultibindingElement(bindingId = "kotlin.Any", elementId = "1716830850")
+      @MultibindingElement(bindingId = "kotlin/Any", elementId = "1716830850")
       internal val provideService1Provider: Provider<Any>
 
       internal val service2Provider: Provider<Service2>
@@ -183,7 +183,7 @@ interface TestGraph {
     }
 
     private class Shard2 {
-      @MultibindingElement(bindingId = "kotlin.Any", elementId = "1716890464")
+      @MultibindingElement(bindingId = "kotlin/Any", elementId = "1716890464")
       internal val provideService2Provider: Provider<Any>
 
       internal val collectorProvider: Provider<Collector>

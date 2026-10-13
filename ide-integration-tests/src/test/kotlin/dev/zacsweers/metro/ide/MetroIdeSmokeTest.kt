@@ -19,6 +19,7 @@ import com.intellij.ide.starter.ide.IdeProductProvider
 import com.intellij.ide.starter.ide.installer.StandardInstaller
 import com.intellij.ide.starter.junit5.hyphenateWithClass
 import com.intellij.ide.starter.models.TestCase
+import com.intellij.ide.starter.plugins.PluginConfigurator
 import com.intellij.ide.starter.project.LocalProjectInfo
 import com.intellij.ide.starter.report.ErrorReporterToCI
 import com.intellij.ide.starter.runner.CurrentTestMethod
@@ -94,6 +95,21 @@ private data class ExpectedInlay(
 // can point at nested declarations without matching unrelated highlights elsewhere in the fixture.
 private const val EXPECTED_DIAGNOSTIC_LINE_WINDOW = 8
 
+private fun platformBranch(version: String): Int {
+  val components = version.split('.')
+  val firstComponent = components.first().toInt()
+  if (firstComponent < 2000) {
+    return firstComponent
+  }
+
+  val year = firstComponent % 2000
+  val release = components.getOrNull(1)?.toIntOrNull()
+  requireNotNull(release) { "IDE version is missing its release number: $version" }
+  return year * 10 + release
+}
+
+private fun supportsMetroIdeaPlugin(version: String): Boolean = platformBranch(version) >= 262
+
 /** Builds a lookup from character offset to 0-indexed line number. */
 private fun buildLineOffsets(sourceText: String): List<Int> {
   val lineStarts = mutableListOf(0)
@@ -157,9 +173,15 @@ class MetroIdeSmokeTest {
 
   companion object {
     @JvmStatic
-    fun ideVersions(): List<Arguments> =
-      Path.of(System.getProperty("metro.ideVersions"))
-        .readLines()
+    fun ideVersions(): List<Arguments> {
+      val versionOverride = System.getProperty("metro.ideVersion")
+      val configuredVersions =
+        if (versionOverride == null) {
+          Path.of(System.getProperty("metro.ideVersions")).readLines()
+        } else {
+          listOf(versionOverride)
+        }
+      return configuredVersions
         .filter { it.isNotBlank() && !it.startsWith("#") }
         .map { line ->
           // Strip inline comments
@@ -169,6 +191,7 @@ class MetroIdeSmokeTest {
           // IU extra = build type (rc, eap); AS extra = filename prefix
           Arguments.of(parts[0], parts[1], parts.getOrElse(2) { "" })
         }
+    }
   }
 
   @ParameterizedTest
@@ -262,6 +285,19 @@ class MetroIdeSmokeTest {
 
     val testContext =
       Starter.newContext(CurrentTestMethod.hyphenateWithClass(), testCase)
+        .apply {
+          if (supportsMetroIdeaPlugin(version)) {
+            val archivePath = System.getProperty("metro.ideaPluginArchive")
+            require(!archivePath.isNullOrBlank()) {
+              "Set METRO_IDEA_PLUGIN_ARCHIVE or -PmetroIdeaPluginArchive to the buildPlugin ZIP"
+            }
+            val archive = Path.of(archivePath)
+            require(Files.isRegularFile(archive)) {
+              "Metro IDEA plugin archive does not exist: $archive"
+            }
+            PluginConfigurator(this).installPluginFromPath(archive)
+          }
+        }
         .prepareProjectCleanImport()
         .addProjectToTrustedLocations()
         .applyVMOptionsPatch {
@@ -405,6 +441,24 @@ class MetroIdeSmokeTest {
     // Verify Metro extensions were actually loaded by checking idea.log.
     // Check this before highlights — if extensions weren't enabled, highlights will be empty.
     val ideaLogLines = logsDir.resolve("idea.log").readLines()
+    if (supportsMetroIdeaPlugin(version)) {
+      val loadedPluginLines = ideaLogLines.filter { it.contains("Loaded custom plugins:") }
+      val metroPluginLoaded = loadedPluginLines.any { it.contains("Metro (") }
+      if (!metroPluginLoaded) {
+        fail(
+          buildString {
+            appendLine("The packaged Metro IDEA plugin was not loaded.")
+            appendLine("Loaded custom plugins lines:")
+            if (loadedPluginLines.isEmpty()) {
+              appendLine("  <missing>")
+            } else {
+              loadedPluginLines.forEach { appendLine(it) }
+            }
+          },
+        )
+      }
+    }
+
     val skipPattern = "Skipping enabling Metro extensions"
     val skipIndex = ideaLogLines.indexOfFirst { it.contains(skipPattern) }
     if (skipIndex != -1) {

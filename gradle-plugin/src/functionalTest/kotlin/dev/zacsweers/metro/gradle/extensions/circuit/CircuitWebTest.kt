@@ -36,7 +36,10 @@ class CircuitWebTest(target: KmpTarget, private val generateClassesInIr: Boolean
   // https://github.com/ZacSweers/metro/issues/2904
   @Test
   fun subUiFunctionFactoriesCompileAfterAnEdit() {
-    assumeTrue(getTestCompilerToolingVersion() >= KotlinToolingVersion("2.3.20"))
+    assumeTrue(
+      "Circuit and Metro runtime web KLIBs require Kotlin 2.4.0+",
+      getTestCompilerToolingVersion() >= KotlinToolingVersion("2.4.0"),
+    )
     if (generateClassesInIr) {
       assumeTrue(getTestCompilerToolingVersion() >= KotlinToolingVersion("2.4.20-dev-6138"))
     }

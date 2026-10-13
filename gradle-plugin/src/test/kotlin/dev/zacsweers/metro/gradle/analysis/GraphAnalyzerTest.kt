@@ -43,6 +43,7 @@ class GraphAnalyzerTest {
   private fun graph(vararg bindings: BindingMetadata): GraphMetadata =
     GraphMetadata(
       graph = "test.AppGraph.Impl.ChildImpl",
+      key = "test.AppGraph.Impl.ChildImpl",
       graphType = "test.ChildGraph",
       parentGraph = "test.AppGraph",
       scopes = emptyList(),

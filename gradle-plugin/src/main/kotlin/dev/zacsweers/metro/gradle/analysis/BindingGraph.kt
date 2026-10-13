@@ -7,7 +7,10 @@ import com.google.common.graph.GraphBuilder
 import com.google.common.graph.ImmutableGraph
 import dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi
 
-/** A dependency graph built from a compiler report for graph analysis. */
+/**
+ * A dependency graph built from a compiler report for graph analysis. Nodes are encoded binding
+ * keys.
+ */
 @ExperimentalMetroGradleApi
 public class BindingGraph
 private constructor(
@@ -21,6 +24,8 @@ private constructor(
   public val eagerGraph: Graph<String>,
   /** The graph's name in the compiler report. */
   public val graphName: String,
+  /** Key of the graph's own binding. */
+  public val graphKey: String,
   /** Scope keys declared by this graph. */
   public val scopes: List<String>,
 ) {
@@ -34,10 +39,13 @@ private constructor(
 
   /** The root node key (the main dependency graph node). */
   public val graphRoot: String?
-    get() = if (graphName in graph.nodes()) graphName else null
+    get() = if (graphKey in graph.nodes()) graphKey else null
 
   /** Get binding metadata by key, or null if not found. */
   public fun getBinding(key: String): BindingMetadata? = bindings[key]
+
+  /** The compiler's rendering of [key], for display. */
+  public fun renderedKeyOf(key: String): String = bindings[key]?.renderedKey ?: key
 
   /** Get all bindings in this graph. */
   public fun getAllBindings(): Collection<BindingMetadata> = bindings.values
@@ -86,6 +94,7 @@ private constructor(
         graph = ImmutableGraph.copyOf(fullGraphBuilder),
         eagerGraph = ImmutableGraph.copyOf(eagerGraphBuilder),
         graphName = metadata.graph,
+        graphKey = metadata.key,
         scopes = metadata.scopes,
       )
     }

@@ -192,9 +192,9 @@ internal class IrDynamicGraphGenerator(
     // type participate in the name hash as well.
     val hash =
       buildList<Any> {
-          add(cacheKey.targetTypeKey.render(short = false))
+          add(cacheKey.targetTypeKey.identity.encoded)
           add(cacheKey.isFactory)
-          addAll(cacheKey.containerKeys.map { it.render(short = false) }.sorted())
+          addAll(cacheKey.containerKeys.map { it.identity.encoded }.sorted())
           // Include the file to keep sibling impl names stable when their traversal order changes.
           if (containerToAddTo is IrFile) {
             add(containerToAddTo.fileEntry.name)

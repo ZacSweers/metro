@@ -712,8 +712,7 @@ public open class MutableBindingGraph<
   public fun reportMissingBinding(typeKey: TypeKey, bindingStack: BindingStack) {
     if (reportedMissingKeys.add(typeKey)) {
       val hints = missingBindingDiagnosticDetails(typeKey)
-      // Don't have access to an IrPluginContext here to check it's an anyType
-      val isAnyType = typeKey.render(short = false) == "kotlin.Any"
+      val isAnyType = typeKey.isUnqualifiedAny
       val graphName = bindingStack.graphFqName.takeIf { it != FqName.ROOT }?.shortName()?.asString()
 
       val diagnostic =

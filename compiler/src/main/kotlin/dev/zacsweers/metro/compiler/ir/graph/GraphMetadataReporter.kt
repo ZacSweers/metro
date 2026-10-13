@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.graph.reporting.graphReportFileName
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
+import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.renderSourceLocation
 import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
@@ -48,15 +49,13 @@ internal class GraphMetadataReporter(
     val outputDir = reportsDir.resolve("graph-metadata")
     outputDir.createDirectories()
 
-    val graphTypeKeyRendered = node.typeKey.render(short = false)
-
     val bindings =
       bindingGraph
         .bindingsSnapshot()
         .asMap()
         .values
-        .sortedBy { it.contextualTypeKey.render(short = false, includeQualifier = true) }
-        .map { binding -> buildBindingJson(binding, graphTypeKeyRendered) }
+        .sortedBy { it.typeKey }
+        .map { binding -> buildBindingJson(binding, node.typeKey) }
 
     // Build roots object with accessors and injectors
     val rootsJson = buildJsonObject {
@@ -81,8 +80,9 @@ internal class GraphMetadataReporter(
           for (injector in node.injectors) {
             add(
               buildJsonObject {
+                put("key", JsonPrimitive(injector.contextKey.typeKey.identity.encoded))
                 put(
-                  "key",
+                  "renderedKey",
                   JsonPrimitive(injector.contextKey.render(short = false, includeQualifier = true)),
                 )
                 put(
@@ -109,7 +109,11 @@ internal class GraphMetadataReporter(
             val name = property?.name ?: function.name
             add(
               buildJsonObject {
-                put("key", JsonPrimitive(ext.key.render(short = false, includeQualifier = true)))
+                put("key", JsonPrimitive(ext.key.typeKey.identity.encoded))
+                put(
+                  "renderedKey",
+                  JsonPrimitive(ext.key.render(short = false, includeQualifier = true)),
+                )
                 put("name", JsonPrimitive(name.asString()))
                 put("isProperty", JsonPrimitive(property != null))
               },
@@ -127,7 +131,11 @@ internal class GraphMetadataReporter(
             val name = property?.name ?: function.name
             add(
               buildJsonObject {
-                put("key", JsonPrimitive(ext.key.render(short = false, includeQualifier = true)))
+                put("key", JsonPrimitive(ext.key.typeKey.identity.encoded))
+                put(
+                  "renderedKey",
+                  JsonPrimitive(ext.key.render(short = false, includeQualifier = true)),
+                )
                 put("name", JsonPrimitive(name.asString()))
                 put("isProperty", JsonPrimitive(property != null))
                 put("isSAM", JsonPrimitive(ext.isFactorySAM))
@@ -149,20 +157,24 @@ internal class GraphMetadataReporter(
 
     val graphJson = buildJsonObject {
       put("graph", JsonPrimitive(node.sourceGraph.kotlinFqName.asString()))
-      node.contributedGraphTypeKey?.let {
-        put("graphType", JsonPrimitive(it.render(short = false)))
-      }
+      put("key", JsonPrimitive(node.typeKey.identity.encoded))
+      node.contributedGraphTypeKey?.let { put("graphType", JsonPrimitive(it.identity.encoded)) }
       node.parentGraph?.let {
         put("parentGraph", JsonPrimitive(it.sourceGraph.kotlinFqName.asString()))
       }
       if (node.includedGraphNodes.isNotEmpty()) {
         put(
-          "includedGraphKeys",
-          JsonArray(
-            node.includedGraphNodes.keys.map {
-              JsonPrimitive(it.render(short = false, includeQualifier = true))
-            },
-          ),
+          "includedGraphs",
+          buildJsonArray {
+            for ((key, includedNode) in node.includedGraphNodes) {
+              add(
+                buildJsonObject {
+                  put("key", JsonPrimitive(key.identity.encoded))
+                  put("graph", JsonPrimitive(includedNode.sourceGraph.kotlinFqName.asString()))
+                },
+              )
+            }
+          },
         )
       }
       put("scopes", buildAnnotationArray(node.scopes))
@@ -195,10 +207,17 @@ internal class GraphMetadataReporter(
     val property = function.correspondingPropertySymbol?.owner
     val name = property?.name ?: function.name
     return buildJsonObject {
-      put("key", JsonPrimitive(accessor.contextKey.render(short = false, includeQualifier = true)))
+      put("key", JsonPrimitive(accessor.contextKey.typeKey.identity.encoded))
+      put(
+        "renderedKey",
+        JsonPrimitive(accessor.contextKey.render(short = false, includeQualifier = true)),
+      )
       put("name", JsonPrimitive(name.asString()))
       put("isProperty", JsonPrimitive(property != null))
       put("isDeferrable", JsonPrimitive(accessor.contextKey.wrappedType.isDeferrable()))
+      accessor.contextKey.wrappedType.wrapperTypeName()?.let {
+        put("wrapperType", JsonPrimitive(it))
+      }
       accessor.declaringGraph?.let { declaringGraph ->
         put("isInherited", JsonPrimitive(true))
         put("declaringGraph", JsonPrimitive(declaringGraph))
@@ -284,13 +303,14 @@ internal class GraphMetadataReporter(
    * targets.
    *
    * @param binding The binding to serialize
-   * @param graphTypeKeyRendered The graph's type key (for detecting the graph's own BoundInstance).
-   *   Pass null when serializing assisted-inject targets (they're not in the graph).
+   * @param graphTypeKey The graph's type key (for detecting the graph's own BoundInstance). Pass
+   *   null when serializing assisted-inject targets (they're not in the graph).
    */
-  private fun buildBindingJson(binding: IrBinding, graphTypeKeyRendered: String?): JsonObject {
+  private fun buildBindingJson(binding: IrBinding, graphTypeKey: IrTypeKey?): JsonObject {
     return buildJsonObject {
+      put("key", JsonPrimitive(binding.typeKey.identity.encoded))
       put(
-        "key",
+        "renderedKey",
         JsonPrimitive(binding.contextualTypeKey.render(short = false, includeQualifier = true)),
       )
       val bindingKind = binding.javaClass.simpleName ?: binding.javaClass.name
@@ -302,16 +322,13 @@ internal class GraphMetadataReporter(
         put("isGraphInput", JsonPrimitive(binding.isGraphInput))
       }
       if (binding is IrBinding.GraphExtensionFactory) {
-        put("extensionType", JsonPrimitive(binding.extensionTypeKey.render(short = false)))
+        put("extensionType", JsonPrimitive(binding.extensionTypeKey.identity.encoded))
       }
       if (binding is IrBinding.GraphDependency) {
         put(
           "graphDependency",
           buildJsonObject {
-            put(
-              "ownerKey",
-              JsonPrimitive(binding.ownerKey.render(short = false, includeQualifier = true)),
-            )
+            put("ownerKey", JsonPrimitive(binding.ownerKey.identity.encoded))
             val ownerKey = binding.token?.ownerGraphKey ?: binding.ownerKey
             val owner = ownerKey.type.rawTypeOrNull()?.sourceGraphIfMetroGraph
             owner?.let { put("ownerGraph", JsonPrimitive(it.kotlinFqName.asString())) }
@@ -324,11 +341,8 @@ internal class GraphMetadataReporter(
       // accessors are tracked separately in the "roots" object.
       // For Assisted factories, dependencies are empty - the factory only "depends on" its target,
       // and the target's actual dependencies are shown in the assistedTarget object.
-      val isGraphBinding =
-        graphTypeKeyRendered != null &&
-          binding is IrBinding.BoundInstance &&
-          binding.contextualTypeKey.render(short = false, includeQualifier = true) ==
-            graphTypeKeyRendered
+      val isOwnKey = binding.typeKey == graphTypeKey
+      val isGraphBinding = binding is IrBinding.BoundInstance && isOwnKey
       val dependencies =
         when {
           isGraphBinding -> JsonArray(emptyList())
@@ -370,7 +384,7 @@ internal class GraphMetadataReporter(
         else -> Unit
       }
       if (binding is IrBinding.Alias) {
-        put("aliasTarget", JsonPrimitive(binding.aliasedType.render(short = false)))
+        put("aliasTarget", JsonPrimitive(binding.aliasedType.identity.encoded))
       }
       if (binding is IrBinding.AssistedFactory) {
         put("assistedTarget", buildAssistedTargetJson(binding))
@@ -402,9 +416,9 @@ internal class GraphMetadataReporter(
 
   /** Builds JSON for an assisted factory's encapsulated assisted-inject target binding. */
   private fun buildAssistedTargetJson(assistedFactory: IrBinding.AssistedFactory): JsonObject {
-    // Reuse the standard binding serialization, passing null for graphTypeKeyRendered
+    // Reuse the standard binding serialization, passing null for graphTypeKey
     // since assisted-inject targets are not in the main graph
-    return buildBindingJson(assistedFactory.targetBinding, graphTypeKeyRendered = null)
+    return buildBindingJson(assistedFactory.targetBinding, graphTypeKey = null)
   }
 
   private fun buildDependenciesArray(
@@ -419,7 +433,11 @@ internal class GraphMetadataReporter(
       for (dependency in deps) {
         add(
           buildJsonObject {
-            put("key", JsonPrimitive(dependency.render(short = false, includeQualifier = true)))
+            put("key", JsonPrimitive(dependency.typeKey.identity.encoded))
+            put(
+              "renderedKey",
+              JsonPrimitive(dependency.render(short = false, includeQualifier = true)),
+            )
             put("hasDefault", JsonPrimitive(dependency.hasDefault))
             // Get the wrapper type name if wrapped (Provider, Lazy, etc.)
             // MembersInjected dependencies are treated as deferrable
@@ -450,12 +468,7 @@ internal class GraphMetadataReporter(
     return buildJsonObject {
       put("type", JsonPrimitive(if (isMap) "MAP" else "SET"))
       put("allowEmpty", JsonPrimitive(allowEmpty))
-      put(
-        "sources",
-        JsonArray(
-          sourceBindings.map { JsonPrimitive(it.render(short = false, includeQualifier = true)) },
-        ),
-      )
+      put("sources", JsonArray(sourceBindings.map { JsonPrimitive(it.identity.encoded) }))
     }
   }
 

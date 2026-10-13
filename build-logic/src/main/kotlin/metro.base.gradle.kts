@@ -2,10 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 import com.vanniktech.maven.publish.DeploymentValidation
 import com.vanniktech.maven.publish.MavenPublishBaseExtension
+import org.gradle.api.provider.Property
+import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.jvm.toolchain.JavaLanguageVersion
 import org.gradle.jvm.toolchain.JavaToolchainService
 import org.gradle.kotlin.dsl.withType
+import org.gradle.process.CommandLineArgumentProvider
 import org.jetbrains.dokka.gradle.DokkaExtension
 import org.jetbrains.dokka.gradle.engine.parameters.VisibilityModifier
 import org.jetbrains.kotlin.gradle.dsl.JvmDefaultMode
@@ -15,6 +18,17 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 import org.jetbrains.kotlin.gradle.plugin.KotlinBasePlugin
 import org.jetbrains.kotlin.gradle.targets.js.testing.KotlinJsTest
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
+
+abstract class UnsafeMemoryAccessArgumentProvider : CommandLineArgumentProvider {
+  @get:Input abstract val javaVersion: Property<Int>
+
+  override fun asArguments(): Iterable<String> =
+    if (javaVersion.get() >= 23) {
+      listOf("--sun-misc-unsafe-memory-access=allow")
+    } else {
+      emptyList()
+    }
+}
 
 val catalog = rootProject.extensions.getByType<VersionCatalogsExtension>().named("libs")
 val jdkVersion = catalog.findVersion("jdk").get().requiredVersion
@@ -96,8 +110,14 @@ tasks.withType<Test>().configureEach {
 tasks.withType<JavaExec>().configureEach {
   jvmArgs(
     "--enable-native-access=ALL-UNNAMED",
-    "--sun-misc-unsafe-memory-access=allow",
     "-XX:StackReservedPages=0",
+  )
+
+  val launcherJavaVersion = javaLauncher.map { it.metadata.languageVersion.asInt() }
+  jvmArgumentProviders.add(
+    objects.newInstance<UnsafeMemoryAccessArgumentProvider>().apply {
+      javaVersion.set(launcherJavaVersion)
+    },
   )
 }
 

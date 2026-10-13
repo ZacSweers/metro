@@ -22,6 +22,40 @@ class GraphHtmlRendererTest {
   private val renderer = GraphHtmlRenderer()
 
   @Test
+  fun `rendered keys don't affect topology or metrics`() {
+    val original = graph {
+      instance()
+      binding("Service", "Repository")
+      binding("Repository", "Api")
+      binding("Api")
+      accessor("Service", name = "service", isProperty = true)
+    }
+    val rerendered =
+      original.copy(
+        bindings =
+          original.bindings.map { binding ->
+            binding.copy(
+              renderedKey = "@Renamed ${binding.key}",
+              dependencies =
+                binding.dependencies.map { it.copy(renderedKey = "Provider<${it.key}>") },
+            )
+          },
+      )
+
+    val originalAnalysis = analysisReport(original).graphs.single()
+    val rerenderedAnalysis = analysisReport(rerendered).graphs.single()
+    assertThat(rerenderedAnalysis.fanAnalysis.bindings.map { Triple(it.key, it.fanIn, it.fanOut) })
+      .isEqualTo(originalAnalysis.fanAnalysis.bindings.map { Triple(it.key, it.fanIn, it.fanOut) })
+    assertThat(rerenderedAnalysis.longestPath).isEqualTo(originalAnalysis.longestPath)
+
+    val originalData = GraphHtmlRenderer(analysisReport(original)).buildData(original)
+    val rerenderedData = GraphHtmlRenderer(analysisReport(rerendered)).buildData(rerendered)
+    assertThat(rerenderedData.nodeIds()).isEqualTo(originalData.nodeIds())
+    assertThat(rerenderedData.links().map { it.string("source") to it.string("target") })
+      .isEqualTo(originalData.links().map { it.string("source") to it.string("target") })
+  }
+
+  @Test
   fun `standalone child keeps its metadata and initial focus`() {
     val fixture = NestedChildScenario()
     val data = fixture.data
@@ -516,8 +550,8 @@ class GraphHtmlRendererTest {
           "Consumer",
           dependencies =
             listOf(
-              DependencyMetadata("Service = ...", true),
-              DependencyMetadata("Missing = ...", true),
+              DependencyMetadata("Service", true, renderedKey = "Service = ..."),
+              DependencyMetadata("Missing", true, renderedKey = "Missing = ..."),
             ),
         ),
       )
@@ -730,11 +764,17 @@ class GraphHtmlRendererTest {
 
   @Test
   fun `deferred accessor roots preserve wrappers`() {
-    val keys = listOf("dev.zacsweers.metro.Provider<Service>", "kotlin.Lazy<Service>")
+    val requests =
+      mapOf("dev.zacsweers.metro.Provider<Service>" to "Provider", "kotlin.Lazy<Service>" to "Lazy")
     val graph = graph {
       binding("Service")
-      for (key in keys) {
-        accessor(key, isDeferrable = true)
+      for ((renderedKey, wrapperType) in requests) {
+        accessor(
+          "Service",
+          isDeferrable = true,
+          wrapperType = wrapperType,
+          renderedKey = renderedKey,
+        )
       }
     }
     val data = renderer.buildData(graph)
@@ -752,7 +792,7 @@ class GraphHtmlRendererTest {
     val selectedKey = "Map<kotlin.String, Service>"
     val graph = graph {
       binding(selectedKey, kind = "Multibinding")
-      accessor(requestedKey, isDeferrable = true)
+      accessor(requestedKey, isDeferrable = true, wrapperType = "Provider")
       bindingExplanations = listOf(selectedLookup(requestedKey, selectedKey))
     }
     val data = renderer.buildData(graph)

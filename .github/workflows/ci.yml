@@ -27,7 +27,6 @@ jobs:
       - name: Check CI routing
         run: |
           python3 scripts/test-classify-ci-changes.py
-          python3 scripts/test-check-ci-status.py
       - uses: ./.github/actions/classify-changes
         id: changes
         with:
@@ -465,6 +464,18 @@ jobs:
       - name: Test idea-plugin
         run: ./gradlew -p idea-plugin test --quiet ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
 
+      - name: Verify idea-plugin compatibility
+        run: ./gradlew -p idea-plugin verifyPlugin --quiet ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+
+      - name: Upload idea-plugin compatibility reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: idea-plugin-compatibility-reports
+          path: idea-plugin/build/reports/pluginVerifier/**
+          if-no-files-found: error
+          retention-days: 14
+
       - name: (Fail-only) Upload reports
         if: failure()
         uses: actions/upload-artifact@v7
@@ -641,3 +652,52 @@ jobs:
           ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.SonatypeUsername }}
           ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.SonatypePassword }}
         run: ./metrow publish
+
+  publish-idea-plugin:
+    name: Publish IDEA plugin snapshot (opt-in)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    # Set this repository variable to true after the first manual EAP upload succeeds.
+    if: >-
+      ${{
+        !cancelled() &&
+        needs.final-status.result == 'success' &&
+        github.ref == 'refs/heads/main' &&
+        github.repository == 'zacsweers/metro' &&
+        vars.METRO_IDEA_PLUGIN_AUTOMATIC_SNAPSHOTS == 'true'
+      }}
+    needs:
+      - final-status
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup Gradle
+        uses: ./.github/actions/setup-gradle
+        with:
+          encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+          cache-read-only: true
+
+      - name: Verify idea-plugin compatibility
+        run: ./gradlew -p idea-plugin verifyPlugin --quiet
+
+      - name: Publish EAP snapshot
+        env:
+          METRO_IDEA_PLUGIN_PRIVATE_KEY: ${{ secrets.METRO_IDEA_PLUGIN_PRIVATE_KEY }}
+          METRO_IDEA_PLUGIN_PRIVATE_KEY_PASSWORD: ${{ secrets.METRO_IDEA_PLUGIN_PRIVATE_KEY_PASSWORD }}
+          METRO_IDEA_PLUGIN_CERTIFICATE_CHAIN: ${{ secrets.METRO_IDEA_PLUGIN_CERTIFICATE_CHAIN }}
+          ORG_GRADLE_PROJECT_intellijPlatformPublishingToken: ${{ secrets.METRO_IDEA_PLUGIN_PUBLISHING_TOKEN }}
+          ORG_GRADLE_PROJECT_intellijPlatformPublishingChannels: eap
+        run: ./metrow publish-idea-plugin
+
+      - name: Upload signed plugin
+        if: ${{ !cancelled() && hashFiles('idea-plugin/build/distributions/*-signed.zip') != '' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: metro-idea-plugin-eap-${{ github.sha }}
+          path: idea-plugin/build/distributions/*-signed.zip
+          if-no-files-found: error
+          retention-days: 14

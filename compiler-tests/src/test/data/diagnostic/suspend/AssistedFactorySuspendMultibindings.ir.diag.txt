@@ -3,7 +3,7 @@
 Trace:
     Set<String> is injected at
         [ExampleGraph] Target(…, values) // ❌ needs suspend support
-    @MultibindingElement("kotlin.String", "2040696630") String is provided at
+    @MultibindingElement("kotlin/String", "2040696630") String is provided at
         [ExampleGraph] suspend ExampleGraph.provideElement(…)
 
 /AssistedFactorySuspendMultibindings.kt:14:3: error: [Metro/MultibindingOverSuspendBindings] Map<String, String> aggregates suspend bindings and must be consumed as `Map<String, suspend () -> String>` so each value is initialized only when its provider is invoked.
@@ -11,5 +11,5 @@ Trace:
 Trace:
     Map<String, String> is injected at
         [ExampleGraph] Target(…, valuesByName) // ❌ needs suspend support
-    @MultibindingElement("kotlin.String_kotlin.String", "1626177339") String is provided at
+    @MultibindingElement("kotlin/String|kotlin/String", "1626177339") String is provided at
         [ExampleGraph] suspend ExampleGraph.provideMapValue(…)

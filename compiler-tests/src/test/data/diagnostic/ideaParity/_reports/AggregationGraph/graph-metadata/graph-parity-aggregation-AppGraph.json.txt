@@ -1,5 +1,6 @@
 {
   "graph": "parity.aggregation.AppGraph",
+  "key": "parity/aggregation/AppGraph",
   "scopes": [
     "@dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class)"
   ],
@@ -9,31 +10,36 @@
   "roots": {
     "accessors": [
       {
-        "key": "parity.aggregation.Repo",
+        "key": "parity/aggregation/Repo",
+        "renderedKey": "parity.aggregation.Repo",
         "name": "repo",
         "isProperty": true,
         "isDeferrable": false
       },
       {
-        "key": "kotlin.collections.Set<parity.aggregation.Handler>",
+        "key": "kotlin/collections/Set<parity/aggregation/Handler>",
+        "renderedKey": "kotlin.collections.Set<parity.aggregation.Handler>",
         "name": "handlers",
         "isProperty": true,
         "isDeferrable": false
       },
       {
-        "key": "Map<kotlin.String, parity.aggregation.Handler>",
+        "key": "kotlin/collections/Map<kotlin/String,parity/aggregation/Handler>",
+        "renderedKey": "Map<kotlin.String, parity.aggregation.Handler>",
         "name": "handlersByName",
         "isProperty": true,
         "isDeferrable": false
       },
       {
-        "key": "kotlin.collections.Set<parity.aggregation.EmptyElement>",
+        "key": "kotlin/collections/Set<parity/aggregation/EmptyElement>",
+        "renderedKey": "kotlin.collections.Set<parity.aggregation.EmptyElement>",
         "name": "emptyElements",
         "isProperty": true,
         "isDeferrable": false
       },
       {
-        "key": "parity.aggregation.ScopedValue",
+        "key": "parity/aggregation/ScopedValue",
+        "renderedKey": "parity.aggregation.ScopedValue",
         "name": "scopedValue",
         "isProperty": true,
         "isDeferrable": false
@@ -163,13 +169,15 @@
   },
   "bindings": [
     {
-      "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String_parity.aggregation.Handler\", \"-678079832\") parity.aggregation.Handler",
+      "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|parity/aggregation/Handler\",\"-678079832\") parity/aggregation/Handler",
+      "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin/String|parity/aggregation/Handler\", \"-678079832\") parity.aggregation.Handler",
       "bindingKind": "Provided",
       "isScoped": false,
       "nameHint": "primaryHandler",
       "dependencies": [
         {
-          "key": "parity.aggregation.Repo",
+          "key": "parity/aggregation/Repo",
+          "renderedKey": "parity.aggregation.Repo",
           "hasDefault": false
         }
       ],
@@ -177,7 +185,8 @@
       "declaration": "primaryHandler"
     },
     {
-      "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String_parity.aggregation.Handler\", \"42302901\") parity.aggregation.Handler",
+      "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|parity/aggregation/Handler\",\"42302901\") parity/aggregation/Handler",
+      "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin/String|parity/aggregation/Handler\", \"42302901\") parity.aggregation.Handler",
       "bindingKind": "Provided",
       "isScoped": false,
       "nameHint": "secondaryHandler",
@@ -186,32 +195,37 @@
       "declaration": "secondaryHandler"
     },
     {
-      "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"parity.aggregation.Handler\", \"2113724328\") parity.aggregation.Handler",
+      "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"parity/aggregation/Handler\",\"2113724328\") parity/aggregation/Handler",
+      "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"parity/aggregation/Handler\", \"2113724328\") parity.aggregation.Handler",
       "bindingKind": "Alias",
       "isScoped": false,
       "nameHint": "bindIntoSetAsHandler",
       "dependencies": [
         {
-          "key": "parity.aggregation.AppHandler",
+          "key": "parity/aggregation/AppHandler",
+          "renderedKey": "parity.aggregation.AppHandler",
           "hasDefault": false
         }
       ],
       "isSynthetic": false,
       "declaration": "AppHandler",
-      "aliasTarget": "parity.aggregation.AppHandler"
+      "aliasTarget": "parity/aggregation/AppHandler"
     },
     {
-      "key": "Map<kotlin.String, parity.aggregation.Handler>",
+      "key": "kotlin/collections/Map<kotlin/String,parity/aggregation/Handler>",
+      "renderedKey": "Map<kotlin.String, parity.aggregation.Handler>",
       "bindingKind": "Multibinding",
       "isScoped": false,
       "nameHint": "mapOfStringToHandler",
       "dependencies": [
         {
-          "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String_parity.aggregation.Handler\", \"-678079832\") parity.aggregation.Handler",
+          "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|parity/aggregation/Handler\",\"-678079832\") parity/aggregation/Handler",
+          "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin/String|parity/aggregation/Handler\", \"-678079832\") parity.aggregation.Handler",
           "hasDefault": false
         },
         {
-          "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String_parity.aggregation.Handler\", \"42302901\") parity.aggregation.Handler",
+          "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|parity/aggregation/Handler\",\"42302901\") parity/aggregation/Handler",
+          "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin/String|parity/aggregation/Handler\", \"42302901\") parity.aggregation.Handler",
           "hasDefault": false
         }
       ],
@@ -220,19 +234,20 @@
         "type": "MAP",
         "allowEmpty": false,
         "sources": [
-          "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String_parity.aggregation.Handler\", \"-678079832\") parity.aggregation.Handler",
-          "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String_parity.aggregation.Handler\", \"42302901\") parity.aggregation.Handler"
+          "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|parity/aggregation/Handler\",\"-678079832\") parity/aggregation/Handler",
+          "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|parity/aggregation/Handler\",\"42302901\") parity/aggregation/Handler"
         ]
       }
     },
     {
-      "key": "kotlin.collections.Set<parity.aggregation.EmptyElement>",
+      "key": "kotlin/collections/Set<parity/aggregation/EmptyElement>",
+      "renderedKey": "kotlin.collections.Set<parity.aggregation.EmptyElement>",
       "bindingKind": "Multibinding",
       "isScoped": false,
       "nameHint": "setOfEmptyElement",
       "dependencies": [],
       "isSynthetic": false,
-      "declaration": "emptyElements995712408",
+      "declaration": "emptyElements1596672316",
       "multibinding": {
         "type": "SET",
         "allowEmpty": true,
@@ -240,13 +255,15 @@
       }
     },
     {
-      "key": "kotlin.collections.Set<parity.aggregation.Handler>",
+      "key": "kotlin/collections/Set<parity/aggregation/Handler>",
+      "renderedKey": "kotlin.collections.Set<parity.aggregation.Handler>",
       "bindingKind": "Multibinding",
       "isScoped": false,
       "nameHint": "setOfHandler",
       "dependencies": [
         {
-          "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"parity.aggregation.Handler\", \"2113724328\") parity.aggregation.Handler",
+          "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"parity/aggregation/Handler\",\"2113724328\") parity/aggregation/Handler",
+          "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"parity/aggregation/Handler\", \"2113724328\") parity.aggregation.Handler",
           "hasDefault": false
         }
       ],
@@ -255,12 +272,13 @@
         "type": "SET",
         "allowEmpty": false,
         "sources": [
-          "@dev.zacsweers.metro.internal.MultibindingElement(\"parity.aggregation.Handler\", \"2113724328\") parity.aggregation.Handler"
+          "@dev/zacsweers/metro/internal/MultibindingElement(\"parity/aggregation/Handler\",\"2113724328\") parity/aggregation/Handler"
         ]
       }
     },
     {
-      "key": "parity.aggregation.AppHandler",
+      "key": "parity/aggregation/AppHandler",
+      "renderedKey": "parity.aggregation.AppHandler",
       "bindingKind": "ConstructorInjected",
       "isScoped": false,
       "nameHint": "AppHandler",
@@ -269,7 +287,8 @@
       "declaration": "AppHandler"
     },
     {
-      "key": "parity.aggregation.RealRepo",
+      "key": "parity/aggregation/RealRepo",
+      "renderedKey": "parity.aggregation.RealRepo",
       "bindingKind": "ConstructorInjected",
       "isScoped": false,
       "nameHint": "RealRepo",
@@ -278,22 +297,25 @@
       "declaration": "RealRepo"
     },
     {
-      "key": "parity.aggregation.Repo",
+      "key": "parity/aggregation/Repo",
+      "renderedKey": "parity.aggregation.Repo",
       "bindingKind": "Alias",
       "isScoped": false,
       "nameHint": "bindsAsRepo",
       "dependencies": [
         {
-          "key": "parity.aggregation.TestRepo",
+          "key": "parity/aggregation/TestRepo",
+          "renderedKey": "parity.aggregation.TestRepo",
           "hasDefault": false
         }
       ],
       "isSynthetic": false,
       "declaration": "TestRepo",
-      "aliasTarget": "parity.aggregation.TestRepo"
+      "aliasTarget": "parity/aggregation/TestRepo"
     },
     {
-      "key": "parity.aggregation.ScopedValue",
+      "key": "parity/aggregation/ScopedValue",
+      "renderedKey": "parity.aggregation.ScopedValue",
       "bindingKind": "ConstructorInjected",
       "scope": "@dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class)",
       "isScoped": true,
@@ -303,13 +325,15 @@
       "declaration": "ScopedValue"
     },
     {
-      "key": "parity.aggregation.TestRepo",
+      "key": "parity/aggregation/TestRepo",
+      "renderedKey": "parity.aggregation.TestRepo",
       "bindingKind": "ConstructorInjected",
       "isScoped": false,
       "nameHint": "TestRepo",
       "dependencies": [
         {
-          "key": "parity.aggregation.RealRepo",
+          "key": "parity/aggregation/RealRepo",
+          "renderedKey": "parity.aggregation.RealRepo",
           "hasDefault": false
         }
       ],
@@ -320,7 +344,7 @@
   "bindingExplanations": [
     {
       "context": {
-        "id": "27:parity.aggregation.AppGraph",
+        "id": "27:parity/aggregation/AppGraph",
         "label": "parity.aggregation.AppGraph"
       },
       "phase": "candidate_filtering",
@@ -328,7 +352,7 @@
       "candidates": [
         {
           "id": "parity.aggregation.ExcludedHandler.MetroContributionToAppScope",
-          "key": "parity.aggregation.ExcludedHandler.MetroContributionToAppScope",
+          "key": "parity/aggregation/ExcludedHandler.MetroContributionToAppScope",
           "status": "rejected",
           "reason": "excluded",
           "declaration": {
@@ -341,11 +365,12 @@
               "label": "parity.aggregation.AppGraph"
             }
           ],
-          "details": []
+          "details": [],
+          "renderedKey": "parity.aggregation.ExcludedHandler.MetroContributionToAppScope"
         },
         {
           "id": "parity.aggregation.RealRepo.MetroContributionToAppScope",
-          "key": "parity.aggregation.RealRepo.MetroContributionToAppScope",
+          "key": "parity/aggregation/RealRepo.MetroContributionToAppScope",
           "status": "rejected",
           "reason": "replaced",
           "declaration": {
@@ -358,7 +383,8 @@
               "label": "parity.aggregation.TestRepo"
             }
           ],
-          "details": []
+          "details": [],
+          "renderedKey": "parity.aggregation.RealRepo.MetroContributionToAppScope"
         }
       ],
       "details": [
@@ -367,29 +393,31 @@
     },
     {
       "context": {
-        "id": "27:parity.aggregation.AppGraph",
+        "id": "27:parity/aggregation/AppGraph",
         "label": "parity.aggregation.AppGraph"
       },
       "phase": "lookup",
       "outcome": "selected",
       "candidates": [
         {
-          "id": "134:@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String_parity.aggregation.Handler\", \"-678079832\") parity.aggregation.Handler|161:parity.aggregation.AggregateBindings.Companion.primaryHandler(parity.aggregation.AggregateBindings.Companion,parity.aggregation.Repo): parity.aggregation.Handler",
-          "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String_parity.aggregation.Handler\", \"-678079832\") parity.aggregation.Handler",
+          "id": "133:@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|parity/aggregation/Handler\",\"-678079832\") parity/aggregation/Handler|161:parity.aggregation.AggregateBindings.Companion.primaryHandler(parity/aggregation/AggregateBindings.Companion,parity/aggregation/Repo): parity/aggregation/Handler",
+          "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|parity/aggregation/Handler\",\"-678079832\") parity/aggregation/Handler",
           "status": "selected",
           "reason": "selected_explicit",
           "declaration": {
-            "id": "parity.aggregation.AggregateBindings.Companion.primaryHandler(parity.aggregation.AggregateBindings.Companion,parity.aggregation.Repo): parity.aggregation.Handler",
+            "id": "parity.aggregation.AggregateBindings.Companion.primaryHandler(parity/aggregation/AggregateBindings.Companion,parity/aggregation/Repo): parity/aggregation/Handler",
             "label": "parity.aggregation.AggregateBindings.Companion.primaryHandler"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin/String|parity/aggregation/Handler\", \"-678079832\") parity.aggregation.Handler"
         }
       ],
       "request": {
-        "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String_parity.aggregation.Handler\", \"-678079832\") parity.aggregation.Handler",
+        "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|parity/aggregation/Handler\",\"-678079832\") parity/aggregation/Handler",
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin/String|parity/aggregation/Handler\", \"-678079832\") parity.aggregation.Handler"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -397,29 +425,31 @@
     },
     {
       "context": {
-        "id": "27:parity.aggregation.AppGraph",
+        "id": "27:parity/aggregation/AppGraph",
         "label": "parity.aggregation.AppGraph"
       },
       "phase": "lookup",
       "outcome": "selected",
       "candidates": [
         {
-          "id": "132:@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String_parity.aggregation.Handler\", \"42302901\") parity.aggregation.Handler|139:parity.aggregation.AggregateBindings.Companion.secondaryHandler(parity.aggregation.AggregateBindings.Companion): parity.aggregation.Handler",
-          "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String_parity.aggregation.Handler\", \"42302901\") parity.aggregation.Handler",
+          "id": "131:@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|parity/aggregation/Handler\",\"42302901\") parity/aggregation/Handler|139:parity.aggregation.AggregateBindings.Companion.secondaryHandler(parity/aggregation/AggregateBindings.Companion): parity/aggregation/Handler",
+          "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|parity/aggregation/Handler\",\"42302901\") parity/aggregation/Handler",
           "status": "selected",
           "reason": "selected_explicit",
           "declaration": {
-            "id": "parity.aggregation.AggregateBindings.Companion.secondaryHandler(parity.aggregation.AggregateBindings.Companion): parity.aggregation.Handler",
+            "id": "parity.aggregation.AggregateBindings.Companion.secondaryHandler(parity/aggregation/AggregateBindings.Companion): parity/aggregation/Handler",
             "label": "parity.aggregation.AggregateBindings.Companion.secondaryHandler"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin/String|parity/aggregation/Handler\", \"42302901\") parity.aggregation.Handler"
         }
       ],
       "request": {
-        "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String_parity.aggregation.Handler\", \"42302901\") parity.aggregation.Handler",
+        "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|parity/aggregation/Handler\",\"42302901\") parity/aggregation/Handler",
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin/String|parity/aggregation/Handler\", \"42302901\") parity.aggregation.Handler"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -427,15 +457,15 @@
     },
     {
       "context": {
-        "id": "27:parity.aggregation.AppGraph",
+        "id": "27:parity/aggregation/AppGraph",
         "label": "parity.aggregation.AppGraph"
       },
       "phase": "lookup",
       "outcome": "selected",
       "candidates": [
         {
-          "id": "120:@dev.zacsweers.metro.internal.MultibindingElement(\"parity.aggregation.Handler\", \"2113724328\") parity.aggregation.Handler|29:parity.aggregation.AppHandler",
-          "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"parity.aggregation.Handler\", \"2113724328\") parity.aggregation.Handler",
+          "id": "119:@dev/zacsweers/metro/internal/MultibindingElement(\"parity/aggregation/Handler\",\"2113724328\") parity/aggregation/Handler|29:parity.aggregation.AppHandler",
+          "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"parity/aggregation/Handler\",\"2113724328\") parity/aggregation/Handler",
           "status": "selected",
           "reason": "selected_explicit",
           "declaration": {
@@ -443,13 +473,15 @@
             "label": "parity.aggregation.AppHandler"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"parity/aggregation/Handler\", \"2113724328\") parity.aggregation.Handler"
         }
       ],
       "request": {
-        "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"parity.aggregation.Handler\", \"2113724328\") parity.aggregation.Handler",
+        "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"parity/aggregation/Handler\",\"2113724328\") parity/aggregation/Handler",
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"parity/aggregation/Handler\", \"2113724328\") parity.aggregation.Handler"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -457,25 +489,27 @@
     },
     {
       "context": {
-        "id": "27:parity.aggregation.AppGraph",
+        "id": "27:parity/aggregation/AppGraph",
         "label": "parity.aggregation.AppGraph"
       },
       "phase": "lookup",
       "outcome": "selected",
       "candidates": [
         {
-          "id": "46:Map<kotlin.String, parity.aggregation.Handler>|9:generated",
-          "key": "Map<kotlin.String, parity.aggregation.Handler>",
+          "id": "64:kotlin/collections/Map<kotlin/String,parity/aggregation/Handler>|9:generated",
+          "key": "kotlin/collections/Map<kotlin/String,parity/aggregation/Handler>",
           "status": "selected",
           "reason": "selected_multibinding",
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "Map<kotlin.String, parity.aggregation.Handler>"
         }
       ],
       "request": {
-        "key": "Map<kotlin.String, parity.aggregation.Handler>",
+        "key": "kotlin/collections/Map<kotlin/String,parity/aggregation/Handler>",
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "Map<kotlin.String, parity.aggregation.Handler>"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -483,29 +517,31 @@
     },
     {
       "context": {
-        "id": "27:parity.aggregation.AppGraph",
+        "id": "27:parity/aggregation/AppGraph",
         "label": "parity.aggregation.AppGraph"
       },
       "phase": "lookup",
       "outcome": "selected",
       "candidates": [
         {
-          "id": "55:kotlin.collections.Set<parity.aggregation.EmptyElement>|166:parity.aggregation.AggregateBindings.BindsMirror.emptyElements995712408(parity.aggregation.AggregateBindings): kotlin.collections.Set<parity.aggregation.EmptyElement>",
-          "key": "kotlin.collections.Set<parity.aggregation.EmptyElement>",
+          "id": "55:kotlin/collections/Set<parity/aggregation/EmptyElement>|167:parity.aggregation.AggregateBindings.BindsMirror.emptyElements1596672316(parity/aggregation/AggregateBindings): kotlin/collections/Set<parity/aggregation/EmptyElement>",
+          "key": "kotlin/collections/Set<parity/aggregation/EmptyElement>",
           "status": "selected",
           "reason": "selected_multibinding",
           "declaration": {
-            "id": "parity.aggregation.AggregateBindings.BindsMirror.emptyElements995712408(parity.aggregation.AggregateBindings): kotlin.collections.Set<parity.aggregation.EmptyElement>",
-            "label": "parity.aggregation.AggregateBindings.BindsMirror.emptyElements995712408"
+            "id": "parity.aggregation.AggregateBindings.BindsMirror.emptyElements1596672316(parity/aggregation/AggregateBindings): kotlin/collections/Set<parity/aggregation/EmptyElement>",
+            "label": "parity.aggregation.AggregateBindings.BindsMirror.emptyElements1596672316"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "kotlin.collections.Set<parity.aggregation.EmptyElement>"
         }
       ],
       "request": {
-        "key": "kotlin.collections.Set<parity.aggregation.EmptyElement>",
+        "key": "kotlin/collections/Set<parity/aggregation/EmptyElement>",
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "kotlin.collections.Set<parity.aggregation.EmptyElement>"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -513,25 +549,27 @@
     },
     {
       "context": {
-        "id": "27:parity.aggregation.AppGraph",
+        "id": "27:parity/aggregation/AppGraph",
         "label": "parity.aggregation.AppGraph"
       },
       "phase": "lookup",
       "outcome": "selected",
       "candidates": [
         {
-          "id": "50:kotlin.collections.Set<parity.aggregation.Handler>|9:generated",
-          "key": "kotlin.collections.Set<parity.aggregation.Handler>",
+          "id": "50:kotlin/collections/Set<parity/aggregation/Handler>|9:generated",
+          "key": "kotlin/collections/Set<parity/aggregation/Handler>",
           "status": "selected",
           "reason": "selected_multibinding",
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "kotlin.collections.Set<parity.aggregation.Handler>"
         }
       ],
       "request": {
-        "key": "kotlin.collections.Set<parity.aggregation.Handler>",
+        "key": "kotlin/collections/Set<parity/aggregation/Handler>",
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "kotlin.collections.Set<parity.aggregation.Handler>"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -539,15 +577,15 @@
     },
     {
       "context": {
-        "id": "27:parity.aggregation.AppGraph",
+        "id": "27:parity/aggregation/AppGraph",
         "label": "parity.aggregation.AppGraph"
       },
       "phase": "lookup",
       "outcome": "selected",
       "candidates": [
         {
-          "id": "29:parity.aggregation.AppHandler|29:parity.aggregation.AppHandler",
-          "key": "parity.aggregation.AppHandler",
+          "id": "29:parity/aggregation/AppHandler|29:parity.aggregation.AppHandler",
+          "key": "parity/aggregation/AppHandler",
           "status": "selected",
           "reason": "selected_implicit",
           "declaration": {
@@ -555,17 +593,19 @@
             "label": "parity.aggregation.AppHandler"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "parity.aggregation.AppHandler"
         }
       ],
       "request": {
-        "key": "parity.aggregation.AppHandler",
+        "key": "parity/aggregation/AppHandler",
         "declaration": {
-          "id": "parity.aggregation.AppHandler.MetroContributionToAppScope.bindIntoSetAsHandler(parity.aggregation.AppHandler.MetroContributionToAppScope,parity.aggregation.AppHandler): parity.aggregation.Handler#instance",
+          "id": "parity.aggregation.AppHandler.MetroContributionToAppScope.bindIntoSetAsHandler(parity/aggregation/AppHandler.MetroContributionToAppScope,parity/aggregation/AppHandler): parity/aggregation/Handler#instance",
           "label": "parity.aggregation.AppHandler.MetroContributionToAppScope.bindIntoSetAsHandler.instance"
         },
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "parity.aggregation.AppHandler"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -573,15 +613,15 @@
     },
     {
       "context": {
-        "id": "27:parity.aggregation.AppGraph",
+        "id": "27:parity/aggregation/AppGraph",
         "label": "parity.aggregation.AppGraph"
       },
       "phase": "lookup",
       "outcome": "selected",
       "candidates": [
         {
-          "id": "27:parity.aggregation.RealRepo|27:parity.aggregation.RealRepo",
-          "key": "parity.aggregation.RealRepo",
+          "id": "27:parity/aggregation/RealRepo|27:parity.aggregation.RealRepo",
+          "key": "parity/aggregation/RealRepo",
           "status": "selected",
           "reason": "selected_implicit",
           "declaration": {
@@ -589,17 +629,19 @@
             "label": "parity.aggregation.RealRepo"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "parity.aggregation.RealRepo"
         }
       ],
       "request": {
-        "key": "parity.aggregation.RealRepo",
+        "key": "parity/aggregation/RealRepo",
         "declaration": {
-          "id": "parity.aggregation.TestRepo.MetroFactory.declarationMirror(parity.aggregation.TestRepo.MetroFactory,parity.aggregation.RealRepo): parity.aggregation.TestRepo#realRepo",
+          "id": "parity.aggregation.TestRepo.MetroFactory.declarationMirror(parity/aggregation/TestRepo.MetroFactory,parity/aggregation/RealRepo): parity/aggregation/TestRepo#realRepo",
           "label": "parity.aggregation.TestRepo.MetroFactory.declarationMirror.realRepo"
         },
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "parity.aggregation.RealRepo"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -607,15 +649,15 @@
     },
     {
       "context": {
-        "id": "27:parity.aggregation.AppGraph",
+        "id": "27:parity/aggregation/AppGraph",
         "label": "parity.aggregation.AppGraph"
       },
       "phase": "lookup",
       "outcome": "selected",
       "candidates": [
         {
-          "id": "23:parity.aggregation.Repo|27:parity.aggregation.TestRepo",
-          "key": "parity.aggregation.Repo",
+          "id": "23:parity/aggregation/Repo|27:parity.aggregation.TestRepo",
+          "key": "parity/aggregation/Repo",
           "status": "selected",
           "reason": "selected_explicit",
           "declaration": {
@@ -623,13 +665,15 @@
             "label": "parity.aggregation.TestRepo"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "parity.aggregation.Repo"
         }
       ],
       "request": {
-        "key": "parity.aggregation.Repo",
+        "key": "parity/aggregation/Repo",
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "parity.aggregation.Repo"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -637,15 +681,15 @@
     },
     {
       "context": {
-        "id": "27:parity.aggregation.AppGraph",
+        "id": "27:parity/aggregation/AppGraph",
         "label": "parity.aggregation.AppGraph"
       },
       "phase": "lookup",
       "outcome": "selected",
       "candidates": [
         {
-          "id": "23:parity.aggregation.Repo|27:parity.aggregation.TestRepo",
-          "key": "parity.aggregation.Repo",
+          "id": "23:parity/aggregation/Repo|27:parity.aggregation.TestRepo",
+          "key": "parity/aggregation/Repo",
           "status": "selected",
           "reason": "selected_explicit",
           "declaration": {
@@ -653,17 +697,19 @@
             "label": "parity.aggregation.TestRepo"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "parity.aggregation.Repo"
         }
       ],
       "request": {
-        "key": "parity.aggregation.Repo",
+        "key": "parity/aggregation/Repo",
         "declaration": {
-          "id": "parity.aggregation.AggregateBindings.Companion.primaryHandler(parity.aggregation.AggregateBindings.Companion,parity.aggregation.Repo): parity.aggregation.Handler#repo",
+          "id": "parity.aggregation.AggregateBindings.Companion.primaryHandler(parity/aggregation/AggregateBindings.Companion,parity/aggregation/Repo): parity/aggregation/Handler#repo",
           "label": "parity.aggregation.AggregateBindings.Companion.primaryHandler.repo"
         },
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "parity.aggregation.Repo"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -671,15 +717,15 @@
     },
     {
       "context": {
-        "id": "27:parity.aggregation.AppGraph",
+        "id": "27:parity/aggregation/AppGraph",
         "label": "parity.aggregation.AppGraph"
       },
       "phase": "lookup",
       "outcome": "selected",
       "candidates": [
         {
-          "id": "30:parity.aggregation.ScopedValue|30:parity.aggregation.ScopedValue",
-          "key": "parity.aggregation.ScopedValue",
+          "id": "30:parity/aggregation/ScopedValue|30:parity.aggregation.ScopedValue",
+          "key": "parity/aggregation/ScopedValue",
           "status": "selected",
           "reason": "selected_implicit",
           "declaration": {
@@ -687,13 +733,15 @@
             "label": "parity.aggregation.ScopedValue"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "parity.aggregation.ScopedValue"
         }
       ],
       "request": {
-        "key": "parity.aggregation.ScopedValue",
+        "key": "parity/aggregation/ScopedValue",
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "parity.aggregation.ScopedValue"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -701,15 +749,15 @@
     },
     {
       "context": {
-        "id": "27:parity.aggregation.AppGraph",
+        "id": "27:parity/aggregation/AppGraph",
         "label": "parity.aggregation.AppGraph"
       },
       "phase": "lookup",
       "outcome": "selected",
       "candidates": [
         {
-          "id": "27:parity.aggregation.TestRepo|27:parity.aggregation.TestRepo",
-          "key": "parity.aggregation.TestRepo",
+          "id": "27:parity/aggregation/TestRepo|27:parity.aggregation.TestRepo",
+          "key": "parity/aggregation/TestRepo",
           "status": "selected",
           "reason": "selected_implicit",
           "declaration": {
@@ -717,17 +765,19 @@
             "label": "parity.aggregation.TestRepo"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "parity.aggregation.TestRepo"
         }
       ],
       "request": {
-        "key": "parity.aggregation.TestRepo",
+        "key": "parity/aggregation/TestRepo",
         "declaration": {
-          "id": "parity.aggregation.TestRepo.MetroContributionToAppScope.bindsAsRepo(parity.aggregation.TestRepo.MetroContributionToAppScope,parity.aggregation.TestRepo): parity.aggregation.Repo#instance",
+          "id": "parity.aggregation.TestRepo.MetroContributionToAppScope.bindsAsRepo(parity/aggregation/TestRepo.MetroContributionToAppScope,parity/aggregation/TestRepo): parity/aggregation/Repo#instance",
           "label": "parity.aggregation.TestRepo.MetroContributionToAppScope.bindsAsRepo.instance"
         },
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "parity.aggregation.TestRepo"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."

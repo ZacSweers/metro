@@ -853,8 +853,6 @@ internal class MultibindingExpressionGenerator(
             val singletonInvoke =
               irInvoke(
                 callee = singletonFunction,
-                typeHint =
-                  singletonFunction.owner.returnType.rawType().typeWith(keyType, factoryValueType),
                 typeArgs = listOf(keyType, factoryValueType),
                 args =
                   listOf(

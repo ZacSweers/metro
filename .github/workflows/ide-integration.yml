@@ -37,7 +37,7 @@ jobs:
   generate-matrix:
     name: Generate IDE matrix
     needs: changes
-    if: needs.changes.outputs.full == 'true'
+    if: needs.changes.outputs.idea == 'true'
     runs-on: ubuntu-slim
     outputs:
       ide-matrix: ${{ steps.matrix.outputs.ide-matrix }}
@@ -57,9 +57,9 @@ jobs:
   build-metro:
     name: Build Metro artifacts
     needs: changes
-    if: needs.changes.outputs.full == 'true'
+    if: needs.changes.outputs.idea == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -74,6 +74,9 @@ jobs:
       - name: Publish Metro to functionalTestRepo
         run: ./gradlew :installForFunctionalTest --quiet
 
+      - name: Build IDEA plugin
+        run: ./gradlew -p idea-plugin buildPlugin --quiet
+
       - name: Upload Metro artifacts
         uses: actions/upload-artifact@v7
         with:
@@ -81,12 +84,20 @@ jobs:
           path: build/functionalTestRepo
           retention-days: 1
 
+      - name: Upload IDEA plugin
+        uses: actions/upload-artifact@v7
+        with:
+          name: metro-idea-plugin
+          path: idea-plugin/build/distributions/*.zip
+          if-no-files-found: error
+          retention-days: 1
+
   ide-tests:
     needs:
       - changes
       - generate-matrix
       - build-metro
-    if: needs.changes.outputs.full == 'true'
+    if: needs.changes.outputs.idea == 'true'
     name: "IDE / ${{ matrix.ide }}"
     runs-on: ubuntu-latest
     strategy:
@@ -118,6 +129,12 @@ jobs:
             with:
               name: metro-repo
               path: build/functionalTestRepo
+
+          - name: Download IDEA plugin
+            uses: actions/download-artifact@v8
+            with:
+              name: metro-idea-plugin
+              path: idea-plugin/build/distributions
 
           - name: Setup Gradle
             uses: ./.github/actions/setup-gradle
@@ -153,6 +170,13 @@ jobs:
         # IntelliJ Platform plugin and dependency resolution occasionally fails on remote I/O.
         # Retry once with a fresh dependency lookup and a stacktrace.
         run: |
+          plugin_archives=(idea-plugin/build/distributions/*.zip)
+          if [[ ${#plugin_archives[@]} -ne 1 || ! -f "${plugin_archives[0]}" ]]; then
+            echo "::error::Expected exactly one packaged IDEA plugin"
+            exit 1
+          fi
+          export METRO_IDEA_PLUGIN_ARCHIVE="$(realpath "${plugin_archives[0]}")"
+
           # Track free disk space through extraction and IDE startup during cleanup validation.
           python3 -u - <<'PY' &
           import subprocess

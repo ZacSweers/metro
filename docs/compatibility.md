@@ -128,7 +128,7 @@ The following IDE versions are tested via IDE integration tests:
 | 2026.2.1      | 2026.1.2.10 (Quail 2)        |
 | 2026.2.2      | 2026.1.3.7 (Quail 3)         |
 | 2026.2.3      | 2026.1.4.7 (Quail 4)         |
-| 263.6259.32   | 2026.2.1.8 (Rabbit 1)        |
+| 263.6800.24   | 2026.2.1.8 (Rabbit 1)        |
 
 ## Runtime Compatibility
 

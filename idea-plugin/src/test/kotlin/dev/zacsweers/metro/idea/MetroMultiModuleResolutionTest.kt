@@ -41,6 +41,7 @@ import java.util.IdentityHashMap
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicBoolean
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModuleProvider
+import org.jetbrains.kotlin.config.CompilerSettings
 import org.jetbrains.kotlin.idea.facet.KotlinFacetType
 import org.jetbrains.kotlin.idea.facet.initializeIfNeeded
 import org.jetbrains.kotlin.idea.serialization.updateCompilerArguments
@@ -105,6 +106,27 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     } finally {
       super.tearDown()
     }
+  }
+
+  fun testModuleFacetAdditionalArgumentsOverrideProjectOptions() {
+    val file =
+      fixture.addFileToProject(
+        "library/lib/AdditionalArguments.kt",
+        "package lib; class AdditionalArguments",
+      ) as KtFile
+    val module = checkNotNull(ModuleUtilCore.findModuleForPsiElement(file))
+    module.setModuleMetroAdditionalArguments("enable-function-providers" to "false")
+
+    val state = fixture.project.service<MetroIdeProjectService>().state(module)
+    assertTrue(state.isEnabled)
+    assertFalse(state.options.enableFunctionProviders)
+    assertEquals(
+      listOf(
+        "plugin:$PLUGIN_ID:enable-function-providers=false",
+        "plugin:$PLUGIN_ID:enabled=true",
+      ),
+      state.optionsFingerprint,
+    )
   }
 
   fun testClassArrivalInInvisibleModulePreservesAnUnresolvedGraphSnapshot() {
@@ -3513,20 +3535,38 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
 }
 
 private fun Module.setModuleMetroOptions(vararg options: Pair<String, String>) {
+  setModuleMetroOptions(options.toList(), useAdditionalArguments = false)
+}
+
+private fun Module.setModuleMetroAdditionalArguments(vararg options: Pair<String, String>) {
+  setModuleMetroOptions(options.toList(), useAdditionalArguments = true)
+}
+
+private fun Module.setModuleMetroOptions(
+  options: List<Pair<String, String>>,
+  useAdditionalArguments: Boolean,
+) {
   val facetManager = FacetManager.getInstance(this)
   val facetModel = facetManager.createModifiableModel()
   val configuration = KotlinFacetBridgeFactory.createFacetConfiguration()
   configuration.settings.initializeIfNeeded(this, null)
   configuration.settings.useProjectSettings = false
-  configuration.settings.updateCompilerArguments {
-    val configuredOptions =
-      if (options.any { (name, _) -> name == "enabled" }) {
-        options.toList()
-      } else {
-        listOf("enabled" to "true") + options
+  val configuredOptions =
+    if (options.any { (name, _) -> name == "enabled" }) {
+      options
+    } else {
+      listOf("enabled" to "true") + options
+    }
+  val pluginOptions = configuredOptions.map { (name, value) -> "plugin:$PLUGIN_ID:$name=$value" }
+  if (useAdditionalArguments) {
+    configuration.settings.compilerSettings =
+      CompilerSettings().apply {
+        additionalArguments = pluginOptions.joinToString(separator = " ") { "-P $it" }
       }
-    pluginOptions =
-      configuredOptions.map { (name, value) -> "plugin:$PLUGIN_ID:$name=$value" }.toTypedArray()
+  } else {
+    configuration.settings.updateCompilerArguments {
+      this.pluginOptions = pluginOptions.toTypedArray()
+    }
   }
   val facet = facetManager.createFacet(KotlinFacetType.INSTANCE, "Kotlin", configuration, null)
   facetModel.addFacet(facet)

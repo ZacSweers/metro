@@ -14,7 +14,6 @@ import dev.zacsweers.metro.compiler.mapToArray
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.GuiceSymbols
 import dev.zacsweers.metro.compiler.symbols.Symbols
-import java.util.Objects
 import kotlin.contracts.contract
 import org.jetbrains.kotlin.GeneratedDeclarationKey
 import org.jetbrains.kotlin.KtSourceElement
@@ -88,7 +87,6 @@ import org.jetbrains.kotlin.fir.lookupTracker
 import org.jetbrains.kotlin.fir.moduleData
 import org.jetbrains.kotlin.fir.recordFqNameLookup
 import org.jetbrains.kotlin.fir.references.impl.FirSimpleNamedReference
-import org.jetbrains.kotlin.fir.references.toResolvedCallableSymbol
 import org.jetbrains.kotlin.fir.render
 import org.jetbrains.kotlin.fir.renderer.ConeIdRenderer
 import org.jetbrains.kotlin.fir.renderer.ConeIdShortRenderer
@@ -414,85 +412,6 @@ internal inline fun FirClass.singleAbstractFunction(
     onError()
   }
   return function
-}
-
-/**
- * Computes a hash key for this annotation instance composed of its underlying type and value
- * arguments.
- */
-internal fun FirAnnotation.computeAnnotationHash(
-  session: FirSession,
-  typeResolver: TypeResolveService? = null,
-): Int {
-  val args =
-    if (this is FirAnnotationCall) {
-      arguments
-    } else {
-      argumentMapping.mapping.values
-    }
-  return Objects.hash(
-    toAnnotationClassIdSafe(session),
-    args
-      .map { arg -> renderAnnotationArgument(session, arg, typeResolver) }
-      .toTypedArray()
-      .contentDeepHashCode(),
-  )
-}
-
-private fun renderAnnotationArgument(
-  session: FirSession,
-  arg: FirExpression,
-  typeResolver: TypeResolveService?,
-): Any? {
-  val compatContext = session.compatContext
-  return with(compatContext) {
-    when (arg) {
-      is FirLiteralExpression -> arg.value
-      is FirGetClassCall -> arg.resolveClassIdForAnnotationValue(session, typeResolver)
-
-      is FirNamedArgumentExpression -> {
-        // Ignore the name for the hash, it's the value we want
-        renderAnnotationArgument(session, arg.expression, typeResolver)
-      }
-
-      // Enum entry reference or const val reference.
-      // Use toResolvedCallableSymbol() (not toResolvedPropertySymbol()) because
-      // enum entries are FirEnumEntrySymbol, not FirPropertySymbol.
-      is FirPropertyAccessExpression -> {
-        arg.calleeReference.toResolvedCallableSymbol()?.callableId
-      }
-
-      is FirFunctionCall -> {
-        // This is some constant-able expression like "foo" + "bar" in an annotation arg, which
-        // is legal
-        val evaluated = arg.evaluateAsCompat(session, FirElement::class)
-        return when (evaluated) {
-          is FirLiteralExpression -> evaluated.value
-          is FirGetClassCall -> {
-            // May have been something like a GetClass expression, which can fall through here in
-            // 2.4+
-            // but isn't "evaluatable"
-            renderAnnotationArgument(session, evaluated, typeResolver)
-          }
-          else -> null
-        }
-      }
-
-      is FirCall -> {
-        // Could be FirArrayLiteral on <2.3.20
-        // Could be FirCollectionLiteral on 2.3.20+
-        // This is an array of some type
-        arg.arguments.map { renderAnnotationArgument(session, it, typeResolver) }
-      }
-
-      else -> {
-        System.err.println(
-          "Unexpected annotation argument type: ${arg::class.java} - ${arg.render()}",
-        )
-        null
-      }
-    }
-  }
 }
 
 context(context: CheckerContext, reporter: DiagnosticReporter)

@@ -1,11 +1,13 @@
 {
   "graph": "AppGraph",
+  "key": "AppGraph",
   "scopes": [],
   "aggregationScopes": [],
   "roots": {
     "accessors": [
       {
         "key": "Settings",
+        "renderedKey": "Settings",
         "name": "settings",
         "isProperty": true,
         "isDeferrable": false
@@ -136,6 +138,7 @@
   "bindings": [
     {
       "key": "Settings",
+      "renderedKey": "Settings",
       "bindingKind": "Provided",
       "isScoped": false,
       "nameHint": "provideSettings",
@@ -163,13 +166,15 @@
             "label": "SettingsProviders.provideSettings"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "Settings"
         }
       ],
       "request": {
         "key": "Settings",
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "Settings"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."

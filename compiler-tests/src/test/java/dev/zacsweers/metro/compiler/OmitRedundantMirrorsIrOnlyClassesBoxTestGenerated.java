@@ -1697,9 +1697,21 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
     }
 
     @Test
+    @TestMetadata("QualifiersThatRenderAlikeStayDistinct.kt")
+    public void testQualifiersThatRenderAlikeStayDistinct() {
+      run("QualifiersThatRenderAlikeStayDistinct.kt");
+    }
+
+    @Test
     @TestMetadata("QualifiersWithEnumsWork.kt")
     public void testQualifiersWithEnumsWork() {
       run("QualifiersWithEnumsWork.kt");
+    }
+
+    @Test
+    @TestMetadata("QualifiersWithSameSimpleNameStayDistinct.kt")
+    public void testQualifiersWithSameSimpleNameStayDistinct() {
+      run("QualifiersWithSameSimpleNameStayDistinct.kt");
     }
 
     @Test
@@ -3278,6 +3290,12 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
       }
 
       @Test
+      @TestMetadata("SingleEntryClassMapProviderCanBeInjected.kt")
+      public void testSingleEntryClassMapProviderCanBeInjected() {
+        run("SingleEntryClassMapProviderCanBeInjected.kt");
+      }
+
+      @Test
       @TestMetadata("SourceMemberInjectionTakesPrecedenceOverDaggerInjector.kt")
       public void testSourceMemberInjectionTakesPrecedenceOverDaggerInjector() {
         run("SourceMemberInjectionTakesPrecedenceOverDaggerInjector.kt");
@@ -3524,6 +3542,12 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
       public void testMixedClassKClassMapKeyInterop() {
         run("MixedClassKClassMapKeyInterop.kt");
       }
+
+      @Test
+      @TestMetadata("SingleEntryClassMapProviderCanBeInjected.kt")
+      public void testSingleEntryClassMapProviderCanBeInjected() {
+        run("SingleEntryClassMapProviderCanBeInjected.kt");
+      }
     }
 
     @Nested
@@ -3758,6 +3782,12 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
     @TestMetadata("PrimeMultibindingMapEnumKey.kt")
     public void testPrimeMultibindingMapEnumKey() {
       run("PrimeMultibindingMapEnumKey.kt");
+    }
+
+    @Test
+    @TestMetadata("QualifiedMultibindingsAcrossModules.kt")
+    public void testQualifiedMultibindingsAcrossModules() {
+      run("QualifiedMultibindingsAcrossModules.kt");
     }
 
     @Test

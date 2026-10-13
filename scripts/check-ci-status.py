@@ -33,7 +33,7 @@ def check_results(needs, workflow, is_main=False):
         if is_main:
             required.add("kmp-functional")
     elif workflow == "ide":
-        if routes["full"] == "true":
+        if routes["idea"] == "true":
             required.update(("generate-matrix", "build-metro", "ide-tests"))
     else:
         raise ValueError(f"Unknown workflow: {workflow}")

@@ -42,7 +42,7 @@ import org.jetbrains.annotations.TestOnly
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.permissions.allowAnalysisOnEdt
 import org.jetbrains.kotlin.analysis.api.types.KaClassType
-import org.jetbrains.kotlin.analysis.utils.classId
+import org.jetbrains.kotlin.idea.base.psi.classIdIfNonLocal
 import org.jetbrains.kotlin.idea.references.mainReference
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.psi.KtAnnotated
@@ -459,14 +459,14 @@ private fun KtAnnotationEntry.isAnyMetroAnnotation(classIds: Set<ClassId>): Bool
   val annotationClassId =
     when (val annotationClass = typeReference?.mainReference?.resolve()) {
       is KtClassOrObject -> annotationClass.getClassId()
-      is PsiClass -> annotationClass.classId
-      is PsiMember -> annotationClass.containingClass?.classId
+      is PsiClass -> annotationClass.classIdIfNonLocal
+      is PsiMember -> annotationClass.containingClass?.classIdIfNonLocal
       else -> null
     }
 
   if (annotationClassId != null) return annotationClassId in classIds
 
-  val uastClassId = toUElement(UAnnotation::class.java)?.resolve()?.classId
+  val uastClassId = toUElement(UAnnotation::class.java)?.resolve()?.classIdIfNonLocal
   if (uastClassId != null) return uastClassId in classIds
 
   // PSI/UAST reference resolution can fail for library annotations outside JVM contexts (like

@@ -164,14 +164,15 @@ internal class BindingDecisionCapture(private val node: GraphNode.Local) {
   /** Formats only recorded work, preserving the lazy lookup coverage of the compiler. */
   fun snapshot(): List<BindingExplanation> {
     val chain = generateSequence<GraphNode>(node) { it.parentGraph }.toList().asReversed()
-    val contextParts = chain.map { it.typeKey.render(short = false) }
-    val contextId = bindingExplanationId(*contextParts.toTypedArray())
-    val context = BindingExplanationContext(contextId, contextParts.joinToString(" -> "))
+    val contextLabel = chain.joinToString(" -> ") { it.typeKey.render(short = false) }
+    val contextIdParts = chain.map { it.typeKey.identity.encoded }
+    val contextId = bindingExplanationId(*contextIdParts.toTypedArray())
+    val context = BindingExplanationContext(contextId, contextLabel)
     // Ancestor ownership uses the same IDs as those graphs' own reports.
     val ownerGraphIds =
       chain
         .mapIndexed { index, graph ->
-          graph.typeKey to bindingExplanationId(*contextParts.take(index + 1).toTypedArray())
+          graph.typeKey to bindingExplanationId(*contextIdParts.take(index + 1).toTypedArray())
         }
         .toMap()
     val result = mutableListOf<BindingExplanation>()
@@ -198,7 +199,8 @@ internal class BindingDecisionCapture(private val node: GraphNode.Local) {
           context = context,
           request =
             BindingExplanationRequest(
-              key = identity.request.render(short = false, includeQualifier = true),
+              key = identity.request.typeKey.identity.encoded,
+              renderedKey = identity.request.render(short = false, includeQualifier = true),
               declaration = identity.declaration?.bindingExplanationDeclaration(),
               hasDefault = identity.hasDefault,
               // hasDefault already includes the configured default-parameter policy.
@@ -278,13 +280,13 @@ private fun RejectedBindingDecision.toExplanationCandidate(
   ownerGraphIds: Map<IrTypeKey, String>,
 ): BindingExplanationCandidate {
   val declaration = declaration?.bindingExplanationDeclaration()
-  val key = key.render(short = false, includeQualifier = true)
   return BindingExplanationCandidate(
-    id = bindingExplanationId(key, declaration?.id ?: "generated"),
-    key = key,
+    id = bindingExplanationId(key.identity.encoded, declaration?.id ?: "generated"),
+    key = key.identity.encoded,
+    renderedKey = key.render(short = false, includeQualifier = true),
     status = BindingCandidateStatus.REJECTED,
     reason = reason,
     declaration = declaration,
-    ownerGraphId = ownerGraph?.let { ownerGraphIds[it] ?: it.render(short = false) },
+    ownerGraphId = ownerGraph?.let { ownerGraphIds[it] ?: it.identity.encoded },
   )
 }

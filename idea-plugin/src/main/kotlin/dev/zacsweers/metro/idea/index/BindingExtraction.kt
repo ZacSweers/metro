@@ -11,6 +11,7 @@ import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.graph.BoundTypeResolution
 import dev.zacsweers.metro.compiler.graph.computeMultibindingId
 import dev.zacsweers.metro.compiler.graph.createMapBindingId
+import dev.zacsweers.metro.compiler.graph.identity.TypeIdentity
 import dev.zacsweers.metro.compiler.graph.resolveImplicitBoundType
 import dev.zacsweers.metro.idea.annotationScopeKeys
 import dev.zacsweers.metro.idea.checkCanceledEvery
@@ -157,10 +158,10 @@ internal fun KaNamedClassSymbol.isInjectableKind(): Boolean {
 }
 
 /**
- * The map key of an `@IntoMap` contribution. [keyTypeRender] identifies the multibinding and
+ * The map key of an `@IntoMap` contribution. [keyType] identifies the multibinding and
  * [annotationRender] carries the key value for duplicate detection.
  */
-internal class MapKeyInfo(val keyTypeRender: String, val annotationRender: String?)
+internal class MapKeyInfo(val keyType: TypeIdentity, val annotationRender: String?)
 
 /** A callable parameter paired with its use-site-substituted type. */
 internal class CallableParameterView(val symbol: KaCallableSymbol, val returnType: KaType)
@@ -249,7 +250,7 @@ internal fun KaSession.mapKeyInfo(
         annotationClass.defaultType
       }
     return MapKeyInfo(
-      keyTypeRender = renderKeyType(keyType),
+      keyType = typeIdentity(keyType),
       annotationRender =
         toKaAnnotationSnapshot(annotation)
           ?.resolveImplicitClassKey(mapKeyMeta, implicitClassId)
@@ -367,7 +368,7 @@ internal fun CallableBindingView.bindingData(
       val canonicalKey = contextualTypeKey(returnType, elementKey.qualifier, options).typeKey
       return when {
         isIntoMap -> {
-          val mapKeyType = mapKeyInfo?.keyTypeRender ?: return null
+          val mapKeyType = mapKeyInfo?.keyType ?: return null
           createMapBindingId(mapKeyType, canonicalKey)
         }
         isElementsIntoSet -> {
@@ -649,7 +650,7 @@ private fun KtClassOrObject.classBindingData(
               scope = scope,
               implementationName = ktClass.name,
               consumedKey = consumedKey,
-              multibindingId = createMapBindingId(mapKeyInfo.keyTypeRender, elementKey),
+              multibindingId = createMapBindingId(mapKeyInfo.keyType, elementKey),
               originClassId = originClassId,
               replaces = replaces,
               contributionScopes = contributionScopes,

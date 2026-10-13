@@ -54,6 +54,7 @@ internal fun KaSession.toKaAnnotationSnapshot(annotation: KaAnnotation): KaAnnot
       explicitArguments.toSortedMap(compareBy { it.asString() }).map { (name, value) ->
         name to toValueSnapshot(value.expression)
       },
+      isPositional = false,
     )
   }
 
@@ -70,7 +71,10 @@ internal fun KaSession.toKaAnnotationSnapshot(annotation: KaAnnotation): KaAnnot
       continue
     }
 
-    if (!parameter.hasDefaultValue) continue
+    if (!parameter.hasDefaultValue) {
+      snapshots += parameter.name to KaAnnotationValueSnapshot.Absent
+      continue
+    }
     val kotlinDefault = (parameter.psi as? KtParameter)?.defaultValue
     val kotlinValue = kotlinDefault?.evaluate()?.value
     if (kotlinValue != null) {
@@ -117,7 +121,8 @@ internal fun KaSession.toKaAnnotationSnapshot(annotation: KaAnnotation): KaAnnot
         ?.filterIsInstance<PsiAnnotationMethod>()
         ?.firstOrNull()
         ?.defaultValue
-    javaDefault?.toValueSnapshot()?.let { snapshots += parameter.name to it }
+    snapshots +=
+      parameter.name to (javaDefault?.toValueSnapshot() ?: KaAnnotationValueSnapshot.Absent)
   }
   return KaAnnotationSnapshot(classId, snapshots)
 }
@@ -199,7 +204,7 @@ private fun PsiAnnotationMemberValue.toValueSnapshot(): KaAnnotationValueSnapsho
           attribute.value?.toValueSnapshot()?.let { name to it }
         }
       KaAnnotationValueSnapshot.Nested(
-        KaAnnotationSnapshot(ClassId.topLevel(FqName(qualifiedName)), values),
+        KaAnnotationSnapshot(ClassId.topLevel(FqName(qualifiedName)), values, isPositional = false),
       )
     }
     else -> {

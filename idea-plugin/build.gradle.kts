@@ -41,6 +41,31 @@ val propertyResolver =
     globalGradleLocalProperty = metroRootGradleProperty,
   )
 
+fun ideaPluginSigningProperty(name: String): Provider<String> =
+  providers
+    .environmentVariable(name)
+    .filter(String::isNotBlank)
+    .orElse(propertyResolver.optionalStringProvider(name).filter(String::isNotBlank))
+
+val ideaPluginPrivateKey = ideaPluginSigningProperty("METRO_IDEA_PLUGIN_PRIVATE_KEY")
+val ideaPluginPrivateKeyFile =
+  layout
+    .file(
+      ideaPluginSigningProperty("METRO_IDEA_PLUGIN_PRIVATE_KEY_FILE").map { path -> file(path) },
+    )
+    .filter { !ideaPluginPrivateKey.isPresent }
+val ideaPluginPrivateKeyPassword =
+  ideaPluginSigningProperty("METRO_IDEA_PLUGIN_PRIVATE_KEY_PASSWORD")
+val ideaPluginCertificateChain = ideaPluginSigningProperty("METRO_IDEA_PLUGIN_CERTIFICATE_CHAIN")
+val ideaPluginCertificateChainFile =
+  layout
+    .file(
+      ideaPluginSigningProperty("METRO_IDEA_PLUGIN_CERTIFICATE_CHAIN_FILE").map { path ->
+        file(path)
+      },
+    )
+    .filter { !ideaPluginCertificateChain.isPresent }
+
 val metroBootstrapVersion = propertyResolver.requiredStringProvider("METRO_BOOTSTRAP_VERSION").get()
 
 val explicitReleaseBuild =
@@ -121,9 +146,9 @@ val pluginVersion =
 
 val defaultPublishingChannels = isSnapshotVersion.map { snapshotVersion ->
   if (snapshotVersion) {
-    listOf("EAP")
+    listOf("eap")
   } else {
-    listOf("Stable")
+    listOf("default", "eap")
   }
 }
 
@@ -174,17 +199,12 @@ buildConfig {
       topLevelConstants = true
     }
   }
-  buildConfigField("String", "PLUGIN_ID", libs.versions.pluginId.map { "\"$it\"" })
-  buildConfigField("String", "VERSION", providers.provider { "\"$version\"" })
-  buildConfigField(
-    "String",
-    "BUGSNAG_KEY",
-    propertyResolver
-      .optionalStringProvider("MetroIntellijBugsnagKey")
-      .map { "\"$it\"" }
-      .orElse("\"\""),
-  )
-  buildConfigField("String", "GIT_SHA", gitSha.map { "\"$it\"" })
+
+  fun Provider<*>.mapToQuotedString() = map { "\"$it\"" }
+
+  buildConfigField("String", "PLUGIN_ID", libs.versions.pluginId.mapToQuotedString())
+  buildConfigField("String", "VERSION", pluginVersion.mapToQuotedString())
+  buildConfigField("String", "GIT_SHA", gitSha.mapToQuotedString())
 }
 
 val metroRuntime = configurations.dependencyScope("metroRuntime")
@@ -227,10 +247,14 @@ val shaded = configurations.dependencyScope("shaded")
 val coroutinesExclude =
   mapOf("group" to "org.jetbrains.kotlinx", "module" to "kotlinx-coroutines-core")
 
+// The IDE supplies Kotlin's standard library to plugins.
+val kotlinStdlibExclude = mapOf("group" to "org.jetbrains.kotlin", "module" to "kotlin-stdlib")
+
 val shadedClasspath =
   configurations.resolvable("shadedClasspath") {
     extendsFrom(shaded)
     exclude(coroutinesExclude)
+    exclude(kotlinStdlibExclude)
   }
 
 configurations.named("testImplementation") { exclude(coroutinesExclude) }
@@ -246,7 +270,7 @@ intellijPlatformTesting.runIde.register("runLocalIde") {
 
 dependencies {
   intellijPlatform {
-    intellijIdeaUltimate("2026.1.3")
+    intellijIdea("2026.2")
     bundledPlugin("org.jetbrains.kotlin")
     testFramework(TestFrameworkType.Platform)
     pluginVerifier()
@@ -259,7 +283,6 @@ dependencies {
     libFixture.get().compileOnlyConfigurationName,
     "dev.zacsweers.metro:runtime:$metroBootstrapVersion",
   )
-  implementation(libs.bugsnag) { exclude(group = "org.slf4j") }
   compileOnly("dev.zacsweers.metro:metro-common")
   compileOnly(libs.androidx.collection)
   compileOnly(libs.androidx.tracing)
@@ -286,7 +309,19 @@ tasks.processResources {
 tasks.jar {
   duplicatesStrategy = DuplicatesStrategy.EXCLUDE
   from(shadedClasspath.flatMap { it.elements }.map { files -> files.map { zipTree(it.asFile) } })
-  exclude("META-INF/*.DSA", "META-INF/*.RSA", "META-INF/*.SF")
+  exclude(
+    "META-INF/*.DSA",
+    "META-INF/*.RSA",
+    "META-INF/*.SF",
+    // Wire's desktop runtime does not use its Android Parcelable adapter.
+    "com/squareup/wire/AndroidMessage.class",
+    "com/squareup/wire/AndroidMessage\$*.class",
+    // These generated annotation implementations fail verifier checks and have no incoming
+    // references.
+    "kotlinx/serialization/json/JsonClassDiscriminator\$Impl.class",
+    "kotlinx/serialization/json/JsonIgnoreUnknownKeys\$Impl.class",
+    "kotlinx/serialization/json/JsonNames\$Impl.class",
+  )
 }
 
 intellijPlatform {
@@ -297,16 +332,16 @@ intellijPlatform {
     description.set("Additional IDE support and features for projects using Metro.")
 
     ideaVersion {
-      sinceBuild.set("261")
+      sinceBuild.set("262")
     }
   }
 
   signing {
-    keyStore.set(
-      layout.file(propertyResolver.optionalStringProvider("signing.secretKeyRingFile").map(::file)),
-    )
-    keyStorePassword.set(propertyResolver.optionalStringProvider("signing.password"))
-    keyStoreKeyAlias.set(propertyResolver.optionalStringProvider("signing.keyId"))
+    privateKey.set(ideaPluginPrivateKey)
+    privateKeyFile.set(ideaPluginPrivateKeyFile)
+    password.set(ideaPluginPrivateKeyPassword)
+    certificateChain.set(ideaPluginCertificateChain)
+    certificateChainFile.set(ideaPluginCertificateChainFile)
   }
 
   publishing {
@@ -323,17 +358,60 @@ intellijPlatform {
   }
 
   pluginVerification {
+    failureLevel.set(
+      listOf(
+        VerifyPluginTask.FailureLevel.COMPATIBILITY_PROBLEMS,
+        VerifyPluginTask.FailureLevel.INTERNAL_API_USAGES,
+        VerifyPluginTask.FailureLevel.OVERRIDE_ONLY_API_USAGES,
+        VerifyPluginTask.FailureLevel.MISSING_DEPENDENCIES,
+      ),
+    )
+
     ides {
-      create(IntelliJPlatformType.IntellijIdeaUltimate, "2026.1.3")
-      // Quail 1 is marketed as 2026.1.1, but the Android Studio release feed keys it as 2026.1.1.8.
-      create(IntelliJPlatformType.AndroidStudio, "2026.1.1.8")
+      create(IntelliJPlatformType.IntellijIdea, "2026.2")
+      create(IntelliJPlatformType.IntellijIdea, "2026.2.3")
+      create(IntelliJPlatformType.IntellijIdea, "263.6800.24")
+      create(IntelliJPlatformType.AndroidStudio, "2026.2.1.8")
     }
   }
 }
 
-tasks.withType<VerifyPluginTask>().configureEach {
-  setJvmArgs(jvmArgs.filterNot { it == "--sun-misc-unsafe-memory-access=allow" })
-}
+val validateIdeaPluginSigning =
+  tasks.register("validateIdeaPluginSigning") {
+    group = "intellij platform"
+    description = "Validates the credentials used to sign the IDEA plugin."
+
+    doLast {
+      check(ideaPluginPrivateKey.isPresent || ideaPluginPrivateKeyFile.isPresent) {
+        "Missing METRO_IDEA_PLUGIN_PRIVATE_KEY or METRO_IDEA_PLUGIN_PRIVATE_KEY_FILE"
+      }
+      ideaPluginPrivateKeyFile.orNull?.asFile?.let { privateKeyFile ->
+        check(privateKeyFile.isFile) {
+          "METRO_IDEA_PLUGIN_PRIVATE_KEY_FILE does not point to a regular file: $privateKeyFile"
+        }
+      }
+
+      check(ideaPluginPrivateKeyPassword.isPresent) {
+        "Missing METRO_IDEA_PLUGIN_PRIVATE_KEY_PASSWORD"
+      }
+
+      check(ideaPluginCertificateChain.isPresent || ideaPluginCertificateChainFile.isPresent) {
+        "Missing METRO_IDEA_PLUGIN_CERTIFICATE_CHAIN or METRO_IDEA_PLUGIN_CERTIFICATE_CHAIN_FILE"
+      }
+      ideaPluginCertificateChainFile.orNull?.asFile?.let { certificateChainFile ->
+        check(certificateChainFile.isFile) {
+          "METRO_IDEA_PLUGIN_CERTIFICATE_CHAIN_FILE does not point to a regular file: " +
+            certificateChainFile
+        }
+      }
+    }
+  }
+
+tasks.named("buildPlugin") { mustRunAfter(validateIdeaPluginSigning) }
+
+tasks.named("signPlugin") { dependsOn(validateIdeaPluginSigning) }
+
+tasks.named("publishPlugin") { dependsOn(validateIdeaPluginSigning) }
 
 tasks.test {
   dependsOn(metroRuntimeClasspath)

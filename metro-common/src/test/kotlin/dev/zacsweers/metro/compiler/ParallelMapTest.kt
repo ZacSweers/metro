@@ -460,6 +460,7 @@ class ParallelMapTest {
   fun `read failure keeps accepted results and drops the rest`() = runBlocking {
     withTimeout(10_000.milliseconds) {
       val secondAccepted = CompletableDeferred<Unit>()
+      val lastStarted = CompletableDeferred<Unit>()
       val lastStopped = CompletableDeferred<Unit>()
       val failure = IllegalStateException("Read failed")
       val accepted = mutableListOf<Int>()
@@ -472,11 +473,14 @@ class ParallelMapTest {
                 when (item) {
                   2 -> {
                     secondAccepted.await()
+                    // The last read has to be running before this fails, or it never starts.
+                    lastStarted.await()
                     throw failure
                   }
 
                   3 ->
                     try {
+                      lastStarted.complete(Unit)
                       awaitCancellation()
                     } finally {
                       lastStopped.complete(Unit)

@@ -5,6 +5,14 @@ package dev.zacsweers.metro.idea.index
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.graph.buildWrappedType
+import dev.zacsweers.metro.compiler.graph.identity.Nullability
+import dev.zacsweers.metro.compiler.graph.identity.ProjectionVariance
+import dev.zacsweers.metro.compiler.graph.identity.TypeArgumentIdentity
+import dev.zacsweers.metro.compiler.graph.identity.TypeArgumentNode
+import dev.zacsweers.metro.compiler.graph.identity.TypeIdentity
+import dev.zacsweers.metro.compiler.graph.identity.TypeNode
+import dev.zacsweers.metro.compiler.graph.identity.TypeReader
+import dev.zacsweers.metro.compiler.graph.identity.typeIdentity
 import dev.zacsweers.metro.compiler.graph.mapTypes
 import dev.zacsweers.metro.idea.model.KaAnnotationSnapshot
 import dev.zacsweers.metro.idea.model.KaContextualTypeKey
@@ -18,13 +26,18 @@ import org.jetbrains.kotlin.analysis.api.renderer.types.KaExpandedTypeRenderingM
 import org.jetbrains.kotlin.analysis.api.renderer.types.impl.KaTypeRendererForSource
 import org.jetbrains.kotlin.analysis.api.symbols.KaCallableSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaClassKind
+import org.jetbrains.kotlin.analysis.api.symbols.KaClassLikeSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedClassSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolModality
 import org.jetbrains.kotlin.analysis.api.types.KaClassErrorType
 import org.jetbrains.kotlin.analysis.api.types.KaClassType
+import org.jetbrains.kotlin.analysis.api.types.KaDefinitelyNotNullType
 import org.jetbrains.kotlin.analysis.api.types.KaErrorType
+import org.jetbrains.kotlin.analysis.api.types.KaFlexibleType
+import org.jetbrains.kotlin.analysis.api.types.KaIntersectionType
 import org.jetbrains.kotlin.analysis.api.types.KaType
 import org.jetbrains.kotlin.analysis.api.types.KaTypeArgumentWithVariance
+import org.jetbrains.kotlin.analysis.api.types.KaTypeParameterType
 import org.jetbrains.kotlin.analysis.api.types.KaTypeProjection
 import org.jetbrains.kotlin.analysis.api.types.KaUnresolvedClassTypeQualifier
 import org.jetbrains.kotlin.name.StandardClassIds
@@ -65,12 +78,19 @@ internal fun KaSession.optionalTypeKey(
   qualifier: KaAnnotationSnapshot?,
 ): KaTypeKey {
   val inner = innerType.fullyExpandedType
+  val innerSnapshot = typeSnapshot(inner)
+  val identity =
+    TypeIdentity.Class(
+      JAVA_OPTIONAL_CLASS_ID.asString(),
+      listOf(TypeArgumentIdentity.Projection(ProjectionVariance.Invariant, innerSnapshot.identity)),
+    )
   val snapshot =
     KaTypeSnapshot(
       "${JAVA_OPTIONAL_CLASS_ID.asFqNameString()}<${renderKeyType(inner)}>",
       "${JAVA_OPTIONAL_CLASS_ID.shortClassName.asString()}<${renderShortKeyType(inner)}>",
       JAVA_OPTIONAL_CLASS_ID,
-      listOf(KaTypeArgumentSnapshot.Typed(typeSnapshot(inner), Variance.INVARIANT)),
+      identity,
+      listOf(KaTypeArgumentSnapshot.Typed(innerSnapshot, Variance.INVARIANT)),
     )
   return KaTypeKey(snapshot, qualifier)
 }
@@ -84,6 +104,7 @@ internal fun KaSession.typeSnapshot(type: KaType): KaTypeSnapshot {
     renderKeyType(expanded),
     renderShortKeyType(expanded),
     classId,
+    typeIdentity(expanded),
     classType?.typeArguments.orEmpty().map { argument ->
       when (argument) {
         is KaTypeArgumentWithVariance ->
@@ -100,6 +121,79 @@ internal fun KaSession.typeSnapshot(type: KaType): KaTypeSnapshot {
         ?.name
         ?.takeUnless { it.isSpecial },
   )
+}
+
+/** Identity of [type]. Type aliases are expanded at every depth. */
+internal fun KaSession.typeIdentity(type: KaType): TypeIdentity =
+  KaTypeReader(this).typeIdentity(type)
+
+private class KaTypeReader(private val session: KaSession) : TypeReader<KaType> {
+  override fun read(type: KaType): TypeNode<KaType> =
+    with(session) {
+      when (val expanded = type.fullyExpandedType) {
+        is KaErrorType -> TypeNode.Unresolved(renderKeyType(expanded))
+        is KaClassType -> {
+          val arguments =
+            expanded.typeArguments.map { argument ->
+              when (argument) {
+                is KaTypeArgumentWithVariance ->
+                  TypeArgumentNode.Projection(
+                    argument.variance.toProjectionVariance(),
+                    argument.type,
+                  )
+                else -> TypeArgumentNode.Star
+              }
+            }
+          TypeNode.Class(expanded.classId.asString(), arguments, expanded.nullability())
+        }
+        is KaTypeParameterType -> typeParameterNode(expanded, expanded.nullability())
+        is KaDefinitelyNotNullType -> {
+          val original = expanded.original
+          if (original is KaTypeParameterType) {
+            typeParameterNode(original, Nullability.DefinitelyNotNull)
+          } else {
+            TypeNode.Unresolved(renderKeyType(expanded))
+          }
+        }
+        is KaFlexibleType -> TypeNode.Flexible(expanded.lowerBound, expanded.upperBound)
+        is KaIntersectionType -> TypeNode.Intersection(expanded.conjuncts)
+        else -> TypeNode.Unresolved(renderKeyType(expanded))
+      }
+    }
+
+  private fun KaSession.typeParameterNode(
+    type: KaTypeParameterType,
+    nullability: Nullability,
+  ): TypeNode<KaType> {
+    val symbol = type.symbol
+    val ownerId =
+      when (val owner = symbol.containingDeclaration) {
+        is KaClassLikeSymbol -> owner.classId?.asString().orEmpty()
+        is KaCallableSymbol -> owner.callableId?.toString().orEmpty()
+        else -> ""
+      }
+    return TypeNode.TypeParameter(
+      ownerId = ownerId,
+      // Names are unique within an owner, so the IDE doesn't track positions.
+      index = -1,
+      name = type.name.asString(),
+      nullability = nullability,
+    )
+  }
+
+  private fun KaType.nullability(): Nullability =
+    if (with(session) { isMarkedNullable }) {
+      Nullability.Nullable
+    } else {
+      Nullability.NotNull
+    }
+
+  private fun Variance.toProjectionVariance(): ProjectionVariance =
+    when (this) {
+      Variance.INVARIANT -> ProjectionVariance.Invariant
+      Variance.IN_VARIANCE -> ProjectionVariance.In
+      Variance.OUT_VARIANCE -> ProjectionVariance.Out
+    }
 }
 
 /** Rebuilds a concrete request inside its current, short-lived analysis session. */

@@ -16,11 +16,18 @@ public data class AggregatedGraphMetadata(
   val graphs: List<GraphMetadata>,
 )
 
-/** Metadata for a single dependency graph. */
+/**
+ * Metadata for a single dependency graph.
+ *
+ * Fields named `key` or ending in `Key` hold encoded type keys. Bindings and requests are matched
+ * by these. Display text lives in `renderedKey` fields.
+ */
 @Serializable
 @ExperimentalMetroGraphApi
 public data class GraphMetadata(
   val graph: String,
+  /** The graph's own type key. Matches the key of its instance binding. */
+  val key: String,
   val scopes: List<String>,
   val aggregationScopes: List<String>,
   /** Root entry points into the graph (accessors and injectors). */
@@ -34,12 +41,22 @@ public data class GraphMetadata(
   val bindings: List<BindingMetadata>,
   /** Decisions observed while the compiler assembled and resolved this graph. */
   val bindingExplanations: List<BindingExplanation> = emptyList(),
-  /** Original extension type when [graph] names its generated implementation. */
+  /** Type key of the original extension type when [graph] names its generated implementation. */
   val graphType: String? = null,
   /** Parent report's graph name for a graph extension. */
   val parentGraph: String? = null,
   /** Graph dependency instances supplied through Includes. */
-  val includedGraphKeys: List<String> = emptyList(),
+  val includedGraphs: List<IncludedGraphMetadata> = emptyList(),
+)
+
+/** A graph instance supplied through Includes. */
+@Serializable
+@ExperimentalMetroGraphApi
+public data class IncludedGraphMetadata(
+  /** Type key of the supplied instance. It can carry a qualifier. */
+  val key: String,
+  /** Name of the included graph's report. */
+  val graph: String,
 )
 
 /** Compiler-collected counters for a graph. */
@@ -101,8 +118,11 @@ public data class RootsMetadata(
 @Serializable
 @ExperimentalMetroGraphApi
 public data class AccessorMetadata(
+  /** Type key of the requested binding, without wrappers or defaults. */
   val key: String,
   val isDeferrable: Boolean = false,
+  /** Wrapper type of a deferrable request, such as "Provider" or "Lazy". */
+  val wrapperType: String? = null,
   /** Source property or function name. */
   val name: String? = null,
   val isProperty: Boolean = false,
@@ -113,12 +133,20 @@ public data class AccessorMetadata(
   /** Type that declares the source property or function. */
   val declaringType: String? = null,
   val origin: String? = null,
+  /** The compiler's rendering of the full request, for display. Defaults to [key]. */
+  val renderedKey: String = key,
 )
 
 /** Metadata for an injector function. */
 @Serializable
 @ExperimentalMetroGraphApi
-public data class InjectorMetadata(val key: String, val name: String? = null)
+public data class InjectorMetadata(
+  /** Type key of the members-injector binding this injector requests. */
+  val key: String,
+  val name: String? = null,
+  /** The compiler's rendering of [key], for display. Defaults to [key]. */
+  val renderedKey: String = key,
+)
 
 /** Graph extension information. */
 @Serializable
@@ -139,6 +167,8 @@ public data class ExtensionAccessorMetadata(
   val key: String,
   val name: String? = null,
   val isProperty: Boolean = false,
+  /** The compiler's rendering of [key], for display. Defaults to [key]. */
+  val renderedKey: String = key,
 )
 
 /** Metadata for an extension factory accessor. */
@@ -149,6 +179,8 @@ public data class ExtensionFactoryAccessorMetadata(
   val isSAM: Boolean = false,
   val name: String? = null,
   val isProperty: Boolean = false,
+  /** The compiler's rendering of [key], for display. Defaults to [key]. */
+  val renderedKey: String = key,
 )
 
 /** Metadata for a single binding within a graph. */
@@ -175,9 +207,11 @@ public data class BindingMetadata(
   val assistedTarget: AssistedTargetMetadata? = null,
   /** Whether this instance was supplied to the graph's creator. */
   val isGraphInput: Boolean? = null,
-  /** The graph type created by a graph extension factory. */
+  /** Type key of the graph created by a graph extension factory. */
   val extensionType: String? = null,
   val graphDependency: GraphDependencyMetadata? = null,
+  /** The compiler's rendering of [key], for display. Defaults to [key]. */
+  val renderedKey: String = key,
 )
 
 /** Source of a binding exposed by an included graph or inherited from a parent graph. */
@@ -213,6 +247,8 @@ public data class AssistedTargetMetadata(
   val isSynthetic: Boolean = false,
   /** Parameters injected at call time (not from the graph). */
   val assistedParameters: List<AssistedParameterMetadata> = emptyList(),
+  /** The compiler's rendering of [key], for display. Defaults to [key]. */
+  val renderedKey: String = key,
 )
 
 /** Metadata for an assisted parameter (injected at call time). */
@@ -224,10 +260,13 @@ public data class AssistedParameterMetadata(val key: String, val name: String)
 @Serializable
 @ExperimentalMetroGraphApi
 public data class DependencyMetadata(
+  /** Type key of the requested binding, without wrappers or defaults. */
   val key: String,
   val hasDefault: Boolean,
   /** Wrapper type if wrapped (e.g., "Provider", "Lazy"). Null if not wrapped. */
   val wrapperType: String? = null,
+  /** The compiler's rendering of the full request, for display. Defaults to [key]. */
+  val renderedKey: String = key,
 ) {
   /** True if wrapped in Provider/Lazy (breaks cycles). */
   val isDeferrable: Boolean

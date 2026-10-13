@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.fir
 
 import dev.zacsweers.metro.compiler.appendIterableWith
+import dev.zacsweers.metro.compiler.graph.identity.AnnotationIdentity
 import dev.zacsweers.metro.compiler.memoize
 import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.FirSession
@@ -28,7 +29,8 @@ internal class MetroFirAnnotation(
   private val session: FirSession,
   private val typeResolver: TypeResolveService? = null,
 ) {
-  private val cachedHashKey by memoize { fir.computeAnnotationHash(session, typeResolver) }
+  val identity: AnnotationIdentity by memoize { fir.annotationIdentity(session, typeResolver) }
+  private val cachedHashKey by memoize { identity.hashCode() }
   private val cachedToString by memoize {
     buildString { renderAsAnnotation(fir, session, typeResolver, simple = false) }
   }
@@ -41,9 +43,8 @@ internal class MetroFirAnnotation(
 
     other as MetroFirAnnotation
 
-    // Fast fail with hash, authoritative check with rendered string
     if (cachedHashKey != other.cachedHashKey) return false
-    return cachedToString == other.cachedToString
+    return identity == other.identity
   }
 
   override fun hashCode(): Int = cachedHashKey

@@ -126,12 +126,13 @@ internal sealed class MetroTreeNode(val parent: MetroTreeNode?) {
     override val identity: Any = text + grayText.orEmpty()
   }
 
+  /** [multibindingId] groups contributions. The row shows the contributed key's rendering. */
   class Multibinding(
     parent: MetroTreeNode,
-    multibindingId: String,
+    val multibindingId: String,
     val contributions: List<KaBinding>,
   ) : MetroTreeNode(parent) {
-    override val text: String = multibindingId
+    override val text: String = contributions.first().typeKey.render(short = false)
     override val grayText: String = "${contributions.size} contributions"
     override val icon: Icon = MetroIcons.MULTIBINDING
     override val identity: Any = multibindingId to contributions.map { it.treeIdentity() }
@@ -383,11 +384,11 @@ internal class MetroTreeStructure(
         ProgressManager.checkCanceled()
         it.multibindingId!!
       }
-      .toSortedMap()
       .map { (id, contributions) ->
         ProgressManager.checkCanceled()
         MetroTreeNode.Multibinding(node, id, contributions)
       }
+      .sortedWith(compareBy({ it.text }, { it.multibindingId }))
   }
 
   /**

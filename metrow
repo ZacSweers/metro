@@ -124,7 +124,7 @@ case "$1" in
            esac
        done
 
-       publish_args=()
+       publish_args=("--quiet")
        if [[ -n "$version" ]]; then
            publish_args+=("-PVERSION_NAME=${version}")
            echo "Publishing idea-plugin version $version..."
@@ -137,9 +137,9 @@ case "$1" in
        fi
 
        if [[ "$local" = true ]]; then
-           ./gradlew -p idea-plugin buildPlugin --quiet "${publish_args[@]}"
+           ./gradlew -p idea-plugin signPlugin verifyPluginSignature verifyPlugin "${publish_args[@]}"
        else
-           ./gradlew -p idea-plugin publishPlugin --quiet "${publish_args[@]}"
+           ./gradlew -p idea-plugin publishPlugin "${publish_args[@]}"
        fi
        ;;
 
@@ -372,7 +372,7 @@ case "$1" in
        echo ""
        echo "publish-idea-plugin options:"
        echo "  --version <version>  Specify IDE plugin version for publishing"
-       echo "  --local              Build the IDE plugin ZIP locally instead of publishing"
+       echo "  --local              Build, sign, and verify the IDE plugin ZIP for manual upload"
        echo "  --dry-run            Preview publish tasks without publishing"
        echo ""
        echo "check options:"

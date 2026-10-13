@@ -32,7 +32,7 @@ Metro IDE support for Kotlin dependency injection projects.
     <usageTypeProvider
         implementation="dev.zacsweers.metro.idea.usages.MetroUsageTypeProvider"
         order="first"/>
-    <errorHandler implementation="dev.zacsweers.metro.idea.MetroErrorHandler"/>
+    <errorHandler implementation="com.intellij.diagnostic.JetBrainsMarketplaceErrorReportSubmitter"/>
     <localInspection
         language="kotlin"
         shortName="MetroGraph"
@@ -95,6 +95,12 @@ Metro IDE support for Kotlin dependency injection projects.
         icon="dev.zacsweers.metro.idea.MetroIcons.METRO"
         factoryClass="dev.zacsweers.metro.idea.toolwindow.MetroToolWindowFactory"/>
   </extensions>
+
+  <projectListeners>
+    <listener
+        class="dev.zacsweers.metro.idea.MetroDaemonListener"
+        topic="com.intellij.codeInsight.daemon.DaemonCodeAnalyzer$DaemonListener"/>
+  </projectListeners>
 
   <actions>
     <action

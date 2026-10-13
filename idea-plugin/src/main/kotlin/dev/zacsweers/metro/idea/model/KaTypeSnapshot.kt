@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.idea.model
 
 import com.intellij.util.containers.Interner
+import dev.zacsweers.metro.compiler.graph.identity.TypeIdentity
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.types.Variance
@@ -10,17 +11,17 @@ import org.jetbrains.kotlin.types.Variance
 /**
  * A session-free snapshot of a [org.jetbrains.kotlin.analysis.api.types.KaType].
  *
- * [renderedType] and [shortType] serve as cache keys and UI text. [classId] identifies the class
- * for key matching. [typeArguments] keep the type navigable after the session ends, the way
+ * [identity] decides equality. [renderedType] and [shortType] are UI text. [classId] identifies the
+ * class for key matching. [typeArguments] keep the type navigable after the session ends, the way
  * `IrTypeKey` navigates its `IrType`.
  *
- * Equality is structural by [renderedType], so a snapshot can outlive the
- * [org.jetbrains.kotlin.analysis.api.KaSession] it was built in.
+ * The snapshot can outlive the [org.jetbrains.kotlin.analysis.api.KaSession] it was built in.
  */
 internal class KaTypeSnapshot(
   renderedType: String,
   shortType: String = renderedType,
   val classId: ClassId?,
+  val identity: TypeIdentity,
   val typeArguments: List<KaTypeArgumentSnapshot> = emptyList(),
   val isMarkedNullable: Boolean = false,
   val isError: Boolean = false,
@@ -34,10 +35,10 @@ internal class KaTypeSnapshot(
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
     if (other !is KaTypeSnapshot) return false
-    return renderedType == other.renderedType
+    return identity == other.identity
   }
 
-  override fun hashCode(): Int = renderedType.hashCode()
+  override fun hashCode(): Int = identity.hashCode()
 
   override fun toString(): String = renderedType
 
@@ -54,7 +55,7 @@ internal sealed interface KaTypeArgumentSnapshot {
     override val type: KaTypeSnapshot? = null
   }
 
-  class Typed(
+  data class Typed(
     override val type: KaTypeSnapshot,
     val variance: Variance,
   ) : KaTypeArgumentSnapshot

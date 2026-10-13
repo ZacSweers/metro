@@ -37,7 +37,7 @@ import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.job
-import org.jetbrains.kotlin.idea.k2.codeinsight.inspections.UnusedSymbolInspection
+import org.jetbrains.kotlin.idea.codeInsight.inspections.UnusedSymbolInspection
 import org.jetbrains.kotlin.psi.KtDeclaration
 import org.jetbrains.kotlin.psi.KtFile
 

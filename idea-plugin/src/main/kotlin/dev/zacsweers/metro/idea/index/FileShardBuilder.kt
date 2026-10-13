@@ -14,6 +14,7 @@ import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.circuit.CircuitClassIds
 import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.graph.computeMultibindingId
+import dev.zacsweers.metro.compiler.graph.identity.TypeIdentity
 import dev.zacsweers.metro.idea.annotationScopeKeys
 import dev.zacsweers.metro.idea.checkCanceledEvery
 import dev.zacsweers.metro.idea.hasAnyAnnotation
@@ -490,7 +491,14 @@ internal class FileShardBuilder(
   ) {
     val name = function.name?.capitalizeUS() ?: return
     val classId = ClassId(function.containingKtFile.packageFqName, Name.identifier(name))
-    val typeKey = KaTypeKey(KaTypeSnapshot(classId.asSingleFqName().asString(), name, classId))
+    val snapshot =
+      KaTypeSnapshot(
+        classId.asSingleFqName().asString(),
+        name,
+        classId,
+        TypeIdentity.Class(classId.asString()),
+      )
+    val typeKey = KaTypeKey(snapshot)
     val dependencies =
       symbol.valueParameters
         .onEach { checkCanceled() }

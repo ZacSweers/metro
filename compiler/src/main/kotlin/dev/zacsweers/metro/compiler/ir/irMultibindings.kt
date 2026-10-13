@@ -98,7 +98,7 @@ internal val IrOverridableDeclaration<*>.multibindingElementId: String
   }
 
 internal fun createMapBindingId(mapKey: IrType, elementTypeKey: IrTypeKey): String {
-  return createMapBindingId(mapKey.render(short = false), elementTypeKey)
+  return createMapBindingId(mapKey.typeIdentity(), elementTypeKey)
 }
 
 context(context: IrMetroContext)

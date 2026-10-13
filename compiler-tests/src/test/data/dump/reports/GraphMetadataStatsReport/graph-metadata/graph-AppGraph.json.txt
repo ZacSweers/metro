@@ -1,5 +1,6 @@
 {
   "graph": "AppGraph",
+  "key": "AppGraph",
   "scopes": [
     "@dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class)"
   ],
@@ -10,36 +11,42 @@
     "accessors": [
       {
         "key": "F",
+        "renderedKey": "F",
         "name": "f",
         "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "G",
+        "renderedKey": "G",
         "name": "g",
         "isProperty": true,
         "isDeferrable": false
       },
       {
-        "key": "kotlin.Int",
+        "key": "kotlin/Int",
+        "renderedKey": "kotlin.Int",
         "name": "number",
         "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "A",
+        "renderedKey": "A",
         "name": "a",
         "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "B",
+        "renderedKey": "B",
         "name": "b",
         "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "C",
+        "renderedKey": "C",
         "name": "c",
         "isProperty": true,
         "isDeferrable": false
@@ -170,6 +177,7 @@
   "bindings": [
     {
       "key": "A",
+      "renderedKey": "A",
       "bindingKind": "ConstructorInjected",
       "scope": "@dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class)",
       "isScoped": true,
@@ -181,6 +189,7 @@
     },
     {
       "key": "B",
+      "renderedKey": "B",
       "bindingKind": "ConstructorInjected",
       "scope": "@dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class)",
       "isScoped": true,
@@ -188,6 +197,7 @@
       "dependencies": [
         {
           "key": "A",
+          "renderedKey": "A",
           "hasDefault": false
         }
       ],
@@ -197,6 +207,7 @@
     },
     {
       "key": "C",
+      "renderedKey": "C",
       "bindingKind": "ConstructorInjected",
       "scope": "@dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class)",
       "isScoped": true,
@@ -204,6 +215,7 @@
       "dependencies": [
         {
           "key": "B",
+          "renderedKey": "B",
           "hasDefault": false
         }
       ],
@@ -213,6 +225,7 @@
     },
     {
       "key": "D",
+      "renderedKey": "D",
       "bindingKind": "ConstructorInjected",
       "scope": "@dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class)",
       "isScoped": true,
@@ -220,6 +233,7 @@
       "dependencies": [
         {
           "key": "C",
+          "renderedKey": "C",
           "hasDefault": false
         }
       ],
@@ -229,6 +243,7 @@
     },
     {
       "key": "E",
+      "renderedKey": "E",
       "bindingKind": "ConstructorInjected",
       "scope": "@dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class)",
       "isScoped": true,
@@ -236,6 +251,7 @@
       "dependencies": [
         {
           "key": "D",
+          "renderedKey": "D",
           "hasDefault": false
         }
       ],
@@ -245,6 +261,7 @@
     },
     {
       "key": "F",
+      "renderedKey": "F",
       "bindingKind": "ConstructorInjected",
       "scope": "@dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class)",
       "isScoped": true,
@@ -252,6 +269,7 @@
       "dependencies": [
         {
           "key": "E",
+          "renderedKey": "E",
           "hasDefault": false
         }
       ],
@@ -261,12 +279,14 @@
     },
     {
       "key": "G",
+      "renderedKey": "G",
       "bindingKind": "Provided",
       "isScoped": false,
       "nameHint": "provideG",
       "dependencies": [
         {
           "key": "F",
+          "renderedKey": "F",
           "hasDefault": false
         }
       ],
@@ -275,7 +295,8 @@
       "declaration": "provideG"
     },
     {
-      "key": "kotlin.Int",
+      "key": "kotlin/Int",
+      "renderedKey": "kotlin.Int",
       "bindingKind": "Provided",
       "isScoped": false,
       "nameHint": "provideInt",
@@ -309,13 +330,15 @@
             }
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "A"
         }
       ],
       "request": {
         "key": "A",
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "A"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -344,7 +367,8 @@
             }
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "A"
         }
       ],
       "request": {
@@ -359,7 +383,8 @@
           }
         },
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "A"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -388,13 +413,15 @@
             }
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "B"
         }
       ],
       "request": {
         "key": "B",
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "B"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -423,7 +450,8 @@
             }
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "B"
         }
       ],
       "request": {
@@ -438,7 +466,8 @@
           }
         },
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "B"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -467,13 +496,15 @@
             }
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "C"
         }
       ],
       "request": {
         "key": "C",
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "C"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -502,7 +533,8 @@
             }
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "C"
         }
       ],
       "request": {
@@ -517,7 +549,8 @@
           }
         },
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "C"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -546,7 +579,8 @@
             }
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "D"
         }
       ],
       "request": {
@@ -561,7 +595,8 @@
           }
         },
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "D"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -590,7 +625,8 @@
             }
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "E"
         }
       ],
       "request": {
@@ -605,7 +641,8 @@
           }
         },
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "E"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -634,13 +671,15 @@
             }
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "F"
         }
       ],
       "request": {
         "key": "F",
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "F"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -669,7 +708,8 @@
             }
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "F"
         }
       ],
       "request": {
@@ -684,7 +724,8 @@
           }
         },
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "F"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -713,13 +754,15 @@
             }
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "G"
         }
       ],
       "request": {
         "key": "G",
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "G"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -734,12 +777,12 @@
       "outcome": "selected",
       "candidates": [
         {
-          "id": "10:kotlin.Int|47:StatsModule.provideInt(StatsModule): kotlin.Int",
-          "key": "kotlin.Int",
+          "id": "10:kotlin/Int|47:StatsModule.provideInt(StatsModule): kotlin/Int",
+          "key": "kotlin/Int",
           "status": "selected",
           "reason": "selected_explicit",
           "declaration": {
-            "id": "StatsModule.provideInt(StatsModule): kotlin.Int",
+            "id": "StatsModule.provideInt(StatsModule): kotlin/Int",
             "label": "StatsModule.provideInt",
             "source": {
               "path": "GraphMetadataStatsReport.kt",
@@ -748,13 +791,15 @@
             }
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "kotlin.Int"
         }
       ],
       "request": {
-        "key": "kotlin.Int",
+        "key": "kotlin/Int",
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "kotlin.Int"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."

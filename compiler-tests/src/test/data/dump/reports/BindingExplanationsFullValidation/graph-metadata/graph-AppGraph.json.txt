@@ -1,11 +1,13 @@
 {
   "graph": "AppGraph",
+  "key": "AppGraph",
   "scopes": [],
   "aggregationScopes": [],
   "roots": {
     "accessors": [
       {
         "key": "RequestedValue",
+        "renderedKey": "RequestedValue",
         "name": "requestedValue",
         "isProperty": true,
         "isDeferrable": false
@@ -136,6 +138,7 @@
   "bindings": [
     {
       "key": "AppGraph",
+      "renderedKey": "AppGraph",
       "bindingKind": "BoundInstance",
       "isScoped": false,
       "nameHint": "AppGraphProvider",
@@ -147,12 +150,14 @@
     },
     {
       "key": "AppGraph.Impl",
+      "renderedKey": "AppGraph.Impl",
       "bindingKind": "Alias",
       "isScoped": false,
       "nameHint": "Impl",
       "dependencies": [
         {
           "key": "AppGraph",
+          "renderedKey": "AppGraph",
           "hasDefault": false
         }
       ],
@@ -161,12 +166,14 @@
     },
     {
       "key": "RequestedValue",
+      "renderedKey": "RequestedValue",
       "bindingKind": "Provided",
       "isScoped": false,
       "nameHint": "requestedValue",
       "dependencies": [
         {
           "key": "AppGraph",
+          "renderedKey": "AppGraph",
           "hasDefault": false
         }
       ],
@@ -176,12 +183,14 @@
     },
     {
       "key": "UnrequestedValue",
+      "renderedKey": "UnrequestedValue",
       "bindingKind": "Provided",
       "isScoped": false,
       "nameHint": "unrequestedValue",
       "dependencies": [
         {
           "key": "AppGraph",
+          "renderedKey": "AppGraph",
           "hasDefault": false
         }
       ],
@@ -214,13 +223,15 @@
             }
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "AppGraph"
         }
       ],
       "request": {
         "key": "AppGraph",
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "AppGraph"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -249,7 +260,8 @@
             }
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "AppGraph"
         }
       ],
       "request": {
@@ -264,7 +276,8 @@
           }
         },
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "AppGraph"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -293,7 +306,8 @@
             }
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "AppGraph"
         }
       ],
       "request": {
@@ -308,7 +322,8 @@
           }
         },
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "AppGraph"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -337,7 +352,8 @@
             }
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "RequestedValue"
         }
       ],
       "request": {
@@ -352,7 +368,8 @@
           }
         },
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "RequestedValue"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -372,7 +389,8 @@
           "status": "selected",
           "reason": "selected_generated",
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "AppGraph.Impl"
         },
         {
           "id": "14:RequestedValue|49:AppGraph.requestedValue(AppGraph): RequestedValue",
@@ -389,7 +407,8 @@
             }
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "RequestedValue"
         },
         {
           "id": "16:UnrequestedValue|53:AppGraph.unrequestedValue(AppGraph): UnrequestedValue",
@@ -406,7 +425,8 @@
             }
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "UnrequestedValue"
         },
         {
           "id": "8:AppGraph|8:AppGraph",
@@ -423,7 +443,8 @@
             }
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "AppGraph"
         }
       ],
       "details": [

@@ -1,5 +1,6 @@
 {
   "graph": "AppGraph",
+  "key": "AppGraph",
   "scopes": [
     "@dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class)"
   ],
@@ -10,54 +11,63 @@
     "accessors": [
       {
         "key": "Service",
+        "renderedKey": "Service",
         "name": "service",
         "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "PrioritizedService",
+        "renderedKey": "PrioritizedService",
         "name": "prioritizedService",
         "isProperty": true,
         "isDeferrable": false
       },
       {
-        "key": "kotlin.collections.Set<Handler>",
+        "key": "kotlin/collections/Set<Handler>",
+        "renderedKey": "kotlin.collections.Set<Handler>",
         "name": "handlers",
         "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "ExplicitValue",
+        "renderedKey": "ExplicitValue",
         "name": "explicitValue",
         "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "DefaultValue",
+        "renderedKey": "DefaultValue",
         "name": "defaultValue",
         "isProperty": true,
         "isDeferrable": false
       },
       {
-        "key": "java.util.Optional<kotlin.String>",
+        "key": "java/util/Optional<kotlin/String>",
+        "renderedKey": "java.util.Optional<kotlin.String>",
         "name": "optionalString",
         "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "MemberTarget",
+        "renderedKey": "MemberTarget",
         "name": "memberTarget",
         "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "FirstMapConsumer",
+        "renderedKey": "FirstMapConsumer",
         "name": "firstMapConsumer",
         "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "MapConsumerHolder",
+        "renderedKey": "MapConsumerHolder",
         "name": "mapConsumerHolder",
         "isProperty": true,
         "isDeferrable": false
@@ -69,6 +79,7 @@
     "accessors": [
       {
         "key": "ChildGraph",
+        "renderedKey": "ChildGraph",
         "name": "child",
         "isProperty": true
       }
@@ -239,13 +250,15 @@
   },
   "bindings": [
     {
-      "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"Handler\", \"-870559630\") Handler",
+      "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"Handler\",\"-870559630\") Handler",
+      "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"Handler\", \"-870559630\") Handler",
       "bindingKind": "Alias",
       "isScoped": false,
       "nameHint": "bindIntoSetAsHandler",
       "dependencies": [
         {
           "key": "KeptHandler",
+          "renderedKey": "KeptHandler",
           "hasDefault": false
         }
       ],
@@ -254,13 +267,15 @@
       "aliasTarget": "KeptHandler"
     },
     {
-      "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String_kotlin.Int\", \"1629395126\") kotlin.Int",
+      "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|kotlin/Int\",\"1629395126\") kotlin/Int",
+      "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin/String|kotlin/Int\", \"1629395126\") kotlin.Int",
       "bindingKind": "Provided",
       "isScoped": false,
       "nameHint": "mapValue",
       "dependencies": [
         {
           "key": "AppGraph",
+          "renderedKey": "AppGraph",
           "hasDefault": false
         }
       ],
@@ -269,6 +284,7 @@
     },
     {
       "key": "AppGraph",
+      "renderedKey": "AppGraph",
       "bindingKind": "BoundInstance",
       "isScoped": false,
       "nameHint": "AppGraphProvider",
@@ -279,12 +295,14 @@
     },
     {
       "key": "ChildGraph",
+      "renderedKey": "ChildGraph",
       "bindingKind": "GraphExtension",
       "isScoped": false,
       "nameHint": "ChildGraph",
       "dependencies": [
         {
           "key": "AppGraph",
+          "renderedKey": "AppGraph",
           "hasDefault": false
         }
       ],
@@ -293,12 +311,14 @@
     },
     {
       "key": "DefaultValue",
+      "renderedKey": "DefaultValue",
       "bindingKind": "ConstructorInjected",
       "isScoped": false,
       "nameHint": "DefaultValue",
       "dependencies": [
         {
-          "key": "kotlin.Int = ...",
+          "key": "kotlin/Int",
+          "renderedKey": "kotlin.Int = ...",
           "hasDefault": true
         }
       ],
@@ -307,12 +327,14 @@
     },
     {
       "key": "ExplicitValue",
+      "renderedKey": "ExplicitValue",
       "bindingKind": "Provided",
       "isScoped": false,
       "nameHint": "explicitValue",
       "dependencies": [
         {
           "key": "AppGraph",
+          "renderedKey": "AppGraph",
           "hasDefault": false
         }
       ],
@@ -321,12 +343,14 @@
     },
     {
       "key": "FirstMapConsumer",
+      "renderedKey": "FirstMapConsumer",
       "bindingKind": "ConstructorInjected",
       "isScoped": false,
       "nameHint": "FirstMapConsumer",
       "dependencies": [
         {
-          "key": "Map<kotlin.String, Provider<kotlin.Int>>",
+          "key": "kotlin/collections/Map<kotlin/String,kotlin/Int>",
+          "renderedKey": "Map<kotlin.String, Provider<kotlin.Int>>",
           "hasDefault": false,
           "wrapperType": "Provider"
         }
@@ -336,6 +360,7 @@
     },
     {
       "key": "HighPriorityService",
+      "renderedKey": "HighPriorityService",
       "bindingKind": "ConstructorInjected",
       "isScoped": false,
       "nameHint": "HighPriorityService",
@@ -345,6 +370,7 @@
     },
     {
       "key": "KeptHandler",
+      "renderedKey": "KeptHandler",
       "bindingKind": "ConstructorInjected",
       "isScoped": false,
       "nameHint": "KeptHandler",
@@ -353,33 +379,15 @@
       "declaration": "KeptHandler"
     },
     {
-      "key": "Map<kotlin.String, kotlin.Int>",
-      "bindingKind": "Multibinding",
-      "isScoped": false,
-      "nameHint": "mapOfStringToInt",
-      "dependencies": [
-        {
-          "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String_kotlin.Int\", \"1629395126\") kotlin.Int",
-          "hasDefault": false
-        }
-      ],
-      "isSynthetic": false,
-      "multibinding": {
-        "type": "MAP",
-        "allowEmpty": false,
-        "sources": [
-          "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String_kotlin.Int\", \"1629395126\") kotlin.Int"
-        ]
-      }
-    },
-    {
       "key": "MapConsumerHolder",
+      "renderedKey": "MapConsumerHolder",
       "bindingKind": "ConstructorInjected",
       "isScoped": false,
       "nameHint": "MapConsumerHolder",
       "dependencies": [
         {
           "key": "SecondMapConsumer",
+          "renderedKey": "SecondMapConsumer",
           "hasDefault": false
         }
       ],
@@ -388,12 +396,14 @@
     },
     {
       "key": "MemberTarget",
+      "renderedKey": "MemberTarget",
       "bindingKind": "ConstructorInjected",
       "isScoped": false,
       "nameHint": "MemberTarget",
       "dependencies": [
         {
-          "key": "dev.zacsweers.metro.MembersInjector<MemberTarget>",
+          "key": "dev/zacsweers/metro/MembersInjector<MemberTarget>",
+          "renderedKey": "dev.zacsweers.metro.MembersInjector<MemberTarget>",
           "hasDefault": false
         }
       ],
@@ -402,6 +412,7 @@
     },
     {
       "key": "ParentValue",
+      "renderedKey": "ParentValue",
       "bindingKind": "ConstructorInjected",
       "scope": "@dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class)",
       "isScoped": true,
@@ -412,12 +423,14 @@
     },
     {
       "key": "PrioritizedService",
+      "renderedKey": "PrioritizedService",
       "bindingKind": "Alias",
       "isScoped": false,
       "nameHint": "bindsAsPrioritizedService",
       "dependencies": [
         {
           "key": "HighPriorityService",
+          "renderedKey": "HighPriorityService",
           "hasDefault": false
         }
       ],
@@ -427,6 +440,7 @@
     },
     {
       "key": "ReplacementService",
+      "renderedKey": "ReplacementService",
       "bindingKind": "ConstructorInjected",
       "isScoped": false,
       "nameHint": "ReplacementService",
@@ -436,12 +450,14 @@
     },
     {
       "key": "SecondMapConsumer",
+      "renderedKey": "SecondMapConsumer",
       "bindingKind": "ConstructorInjected",
       "isScoped": false,
       "nameHint": "SecondMapConsumer",
       "dependencies": [
         {
-          "key": "Map<kotlin.String, Provider<kotlin.Int>>",
+          "key": "kotlin/collections/Map<kotlin/String,kotlin/Int>",
+          "renderedKey": "Map<kotlin.String, Provider<kotlin.Int>>",
           "hasDefault": false,
           "wrapperType": "Provider"
         }
@@ -451,12 +467,14 @@
     },
     {
       "key": "Service",
+      "renderedKey": "Service",
       "bindingKind": "Alias",
       "isScoped": false,
       "nameHint": "bindsAsService",
       "dependencies": [
         {
           "key": "ReplacementService",
+          "renderedKey": "ReplacementService",
           "hasDefault": false
         }
       ],
@@ -465,13 +483,15 @@
       "aliasTarget": "ReplacementService"
     },
     {
-      "key": "dev.zacsweers.metro.MembersInjector<MemberTarget>",
+      "key": "dev/zacsweers/metro/MembersInjector<MemberTarget>",
+      "renderedKey": "dev.zacsweers.metro.MembersInjector<MemberTarget>",
       "bindingKind": "MembersInjected",
       "isScoped": false,
       "nameHint": "MemberTargetMembersInjector",
       "dependencies": [
         {
-          "key": "kotlin.String",
+          "key": "kotlin/String",
+          "renderedKey": "kotlin.String",
           "hasDefault": false,
           "wrapperType": "MembersInjected"
         }
@@ -480,13 +500,15 @@
       "declaration": "MemberTarget"
     },
     {
-      "key": "java.util.Optional<kotlin.String>",
+      "key": "java/util/Optional<kotlin/String>",
+      "renderedKey": "java.util.Optional<kotlin.String>",
       "bindingKind": "CustomWrapper",
       "isScoped": false,
       "nameHint": "OptionalString",
       "dependencies": [
         {
-          "key": "kotlin.String = ...",
+          "key": "kotlin/String",
+          "renderedKey": "kotlin.String = ...",
           "hasDefault": true
         }
       ],
@@ -499,13 +521,15 @@
       }
     },
     {
-      "key": "kotlin.String",
+      "key": "kotlin/String",
+      "renderedKey": "kotlin.String",
       "bindingKind": "Provided",
       "isScoped": false,
       "nameHint": "text",
       "dependencies": [
         {
           "key": "AppGraph",
+          "renderedKey": "AppGraph",
           "hasDefault": false
         }
       ],
@@ -513,13 +537,37 @@
       "declaration": "text"
     },
     {
-      "key": "kotlin.collections.Set<Handler>",
+      "key": "kotlin/collections/Map<kotlin/String,kotlin/Int>",
+      "renderedKey": "Map<kotlin.String, kotlin.Int>",
+      "bindingKind": "Multibinding",
+      "isScoped": false,
+      "nameHint": "mapOfStringToInt",
+      "dependencies": [
+        {
+          "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|kotlin/Int\",\"1629395126\") kotlin/Int",
+          "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin/String|kotlin/Int\", \"1629395126\") kotlin.Int",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "multibinding": {
+        "type": "MAP",
+        "allowEmpty": false,
+        "sources": [
+          "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|kotlin/Int\",\"1629395126\") kotlin/Int"
+        ]
+      }
+    },
+    {
+      "key": "kotlin/collections/Set<Handler>",
+      "renderedKey": "kotlin.collections.Set<Handler>",
       "bindingKind": "Multibinding",
       "isScoped": false,
       "nameHint": "setOfHandler",
       "dependencies": [
         {
-          "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"Handler\", \"-870559630\") Handler",
+          "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"Handler\",\"-870559630\") Handler",
+          "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"Handler\", \"-870559630\") Handler",
           "hasDefault": false
         }
       ],
@@ -528,7 +576,7 @@
         "type": "SET",
         "allowEmpty": false,
         "sources": [
-          "@dev.zacsweers.metro.internal.MultibindingElement(\"Handler\", \"-870559630\") Handler"
+          "@dev/zacsweers/metro/internal/MultibindingElement(\"Handler\",\"-870559630\") Handler"
         ]
       }
     }
@@ -552,7 +600,8 @@
             "label": "LowPriorityService"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "PrioritizedService"
         },
         {
           "id": "ExcludedHandler.MetroContributionToAppScope",
@@ -569,7 +618,8 @@
               "label": "AppGraph"
             }
           ],
-          "details": []
+          "details": [],
+          "renderedKey": "ExcludedHandler.MetroContributionToAppScope"
         },
         {
           "id": "OriginalService.MetroContributionToAppScope",
@@ -586,7 +636,8 @@
               "label": "ReplacementService"
             }
           ],
-          "details": []
+          "details": [],
+          "renderedKey": "OriginalService.MetroContributionToAppScope"
         }
       ],
       "details": [
@@ -602,8 +653,8 @@
       "outcome": "selected",
       "candidates": [
         {
-          "id": "82:@dev.zacsweers.metro.internal.MultibindingElement(\"Handler\", \"-870559630\") Handler|11:KeptHandler",
-          "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"Handler\", \"-870559630\") Handler",
+          "id": "81:@dev/zacsweers/metro/internal/MultibindingElement(\"Handler\",\"-870559630\") Handler|11:KeptHandler",
+          "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"Handler\",\"-870559630\") Handler",
           "status": "selected",
           "reason": "selected_explicit",
           "declaration": {
@@ -611,13 +662,15 @@
             "label": "KeptHandler"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"Handler\", \"-870559630\") Handler"
         }
       ],
       "request": {
-        "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"Handler\", \"-870559630\") Handler",
+        "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"Handler\",\"-870559630\") Handler",
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"Handler\", \"-870559630\") Handler"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -632,22 +685,24 @@
       "outcome": "selected",
       "candidates": [
         {
-          "id": "102:@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String_kotlin.Int\", \"1629395126\") kotlin.Int|39:AppGraph.mapValue(AppGraph): kotlin.Int",
-          "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String_kotlin.Int\", \"1629395126\") kotlin.Int",
+          "id": "101:@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|kotlin/Int\",\"1629395126\") kotlin/Int|39:AppGraph.mapValue(AppGraph): kotlin/Int",
+          "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|kotlin/Int\",\"1629395126\") kotlin/Int",
           "status": "selected",
           "reason": "selected_explicit",
           "declaration": {
-            "id": "AppGraph.mapValue(AppGraph): kotlin.Int",
+            "id": "AppGraph.mapValue(AppGraph): kotlin/Int",
             "label": "AppGraph.mapValue"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin/String|kotlin/Int\", \"1629395126\") kotlin.Int"
         }
       ],
       "request": {
-        "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String_kotlin.Int\", \"1629395126\") kotlin.Int",
+        "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|kotlin/Int\",\"1629395126\") kotlin/Int",
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin/String|kotlin/Int\", \"1629395126\") kotlin.Int"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -671,13 +726,15 @@
             "label": "AppGraph"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "AppGraph"
         }
       ],
       "request": {
         "key": "AppGraph",
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "AppGraph"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -701,7 +758,8 @@
             "label": "AppGraph"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "AppGraph"
         }
       ],
       "request": {
@@ -711,7 +769,8 @@
           "label": "AppGraph.Impl.<get-child>"
         },
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "AppGraph"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -735,7 +794,8 @@
             "label": "AppGraph"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "AppGraph"
         }
       ],
       "request": {
@@ -745,7 +805,8 @@
           "label": "AppGraph.explicitValue.<this>"
         },
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "AppGraph"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -769,17 +830,19 @@
             "label": "AppGraph"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "AppGraph"
         }
       ],
       "request": {
         "key": "AppGraph",
         "declaration": {
-          "id": "AppGraph.mapValue(AppGraph): kotlin.Int#<this>",
+          "id": "AppGraph.mapValue(AppGraph): kotlin/Int#<this>",
           "label": "AppGraph.mapValue.<this>"
         },
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "AppGraph"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -803,17 +866,19 @@
             "label": "AppGraph"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "AppGraph"
         }
       ],
       "request": {
         "key": "AppGraph",
         "declaration": {
-          "id": "AppGraph.text(AppGraph): kotlin.String#<this>",
+          "id": "AppGraph.text(AppGraph): kotlin/String#<this>",
           "label": "AppGraph.text.<this>"
         },
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "AppGraph"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -837,7 +902,8 @@
             "label": "AppGraph.Impl.<get-child>"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "ChildGraph"
         }
       ],
       "request": {
@@ -847,7 +913,8 @@
           "label": "AppGraph.Impl.<get-child>"
         },
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "ChildGraph"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -871,13 +938,15 @@
             "label": "DefaultValue"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "DefaultValue"
         }
       ],
       "request": {
         "key": "DefaultValue",
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "DefaultValue"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -901,13 +970,15 @@
             "label": "AppGraph.explicitValue"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "ExplicitValue"
         }
       ],
       "request": {
         "key": "ExplicitValue",
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "ExplicitValue"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -931,13 +1002,15 @@
             "label": "FirstMapConsumer"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "FirstMapConsumer"
         }
       ],
       "request": {
         "key": "FirstMapConsumer",
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "FirstMapConsumer"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -961,7 +1034,8 @@
             "label": "HighPriorityService"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "HighPriorityService"
         }
       ],
       "request": {
@@ -971,7 +1045,8 @@
           "label": "HighPriorityService.MetroContributionToAppScope.bindsAsPrioritizedService.instance"
         },
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "HighPriorityService"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -995,7 +1070,8 @@
             "label": "KeptHandler"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "KeptHandler"
         }
       ],
       "request": {
@@ -1005,91 +1081,8 @@
           "label": "KeptHandler.MetroContributionToAppScope.bindIntoSetAsHandler.instance"
         },
         "hasDefault": false,
-        "isOptional": false
-      },
-      "details": [
-        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
-      ]
-    },
-    {
-      "context": {
-        "id": "8:AppGraph",
-        "label": "AppGraph"
-      },
-      "phase": "lookup",
-      "outcome": "selected",
-      "candidates": [
-        {
-          "id": "30:Map<kotlin.String, kotlin.Int>|9:generated",
-          "key": "Map<kotlin.String, kotlin.Int>",
-          "status": "selected",
-          "reason": "selected_multibinding",
-          "relatedDeclarations": [],
-          "details": []
-        },
-        {
-          "id": "49:kotlin.collections.Map<kotlin.String, kotlin.Int>|79:AppGraph.directMap(AppGraph): kotlin.collections.Map<kotlin.String, kotlin.Int>",
-          "key": "kotlin.collections.Map<kotlin.String, kotlin.Int>",
-          "status": "rejected",
-          "reason": "incompatible_map_value",
-          "declaration": {
-            "id": "AppGraph.directMap(AppGraph): kotlin.collections.Map<kotlin.String, kotlin.Int>",
-            "label": "AppGraph.directMap"
-          },
-          "relatedDeclarations": [],
-          "details": []
-        }
-      ],
-      "request": {
-        "key": "Map<kotlin.String, Provider<kotlin.Int>>",
-        "declaration": {
-          "id": "FirstMapConsumer.MetroFactory.declarationMirror(FirstMapConsumer.MetroFactory,kotlin.collections.Map<kotlin.String, kotlin.Function0<kotlin.Int>>): FirstMapConsumer#values",
-          "label": "FirstMapConsumer.MetroFactory.declarationMirror.values"
-        },
-        "hasDefault": false,
-        "isOptional": false
-      },
-      "details": [
-        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
-      ]
-    },
-    {
-      "context": {
-        "id": "8:AppGraph",
-        "label": "AppGraph"
-      },
-      "phase": "lookup",
-      "outcome": "selected",
-      "candidates": [
-        {
-          "id": "30:Map<kotlin.String, kotlin.Int>|9:generated",
-          "key": "Map<kotlin.String, kotlin.Int>",
-          "status": "selected",
-          "reason": "selected_multibinding",
-          "relatedDeclarations": [],
-          "details": []
-        },
-        {
-          "id": "49:kotlin.collections.Map<kotlin.String, kotlin.Int>|79:AppGraph.directMap(AppGraph): kotlin.collections.Map<kotlin.String, kotlin.Int>",
-          "key": "kotlin.collections.Map<kotlin.String, kotlin.Int>",
-          "status": "rejected",
-          "reason": "incompatible_map_value",
-          "declaration": {
-            "id": "AppGraph.directMap(AppGraph): kotlin.collections.Map<kotlin.String, kotlin.Int>",
-            "label": "AppGraph.directMap"
-          },
-          "relatedDeclarations": [],
-          "details": []
-        }
-      ],
-      "request": {
-        "key": "Map<kotlin.String, Provider<kotlin.Int>>",
-        "declaration": {
-          "id": "SecondMapConsumer.MetroFactory.declarationMirror(SecondMapConsumer.MetroFactory,kotlin.collections.Map<kotlin.String, kotlin.Function0<kotlin.Int>>): SecondMapConsumer#values",
-          "label": "SecondMapConsumer.MetroFactory.declarationMirror.values"
-        },
-        "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "KeptHandler"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -1113,13 +1106,15 @@
             "label": "MapConsumerHolder"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "MapConsumerHolder"
         }
       ],
       "request": {
         "key": "MapConsumerHolder",
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "MapConsumerHolder"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -1143,43 +1138,15 @@
             "label": "MemberTarget"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "MemberTarget"
         }
       ],
       "request": {
         "key": "MemberTarget",
         "hasDefault": false,
-        "isOptional": false
-      },
-      "details": [
-        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
-      ]
-    },
-    {
-      "context": {
-        "id": "8:AppGraph",
-        "label": "AppGraph"
-      },
-      "phase": "lookup",
-      "outcome": "selected",
-      "candidates": [
-        {
-          "id": "18:PrioritizedService|19:HighPriorityService",
-          "key": "PrioritizedService",
-          "status": "selected",
-          "reason": "selected_explicit",
-          "declaration": {
-            "id": "HighPriorityService",
-            "label": "HighPriorityService"
-          },
-          "relatedDeclarations": [],
-          "details": []
-        }
-      ],
-      "request": {
-        "key": "PrioritizedService",
-        "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "MemberTarget"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -1203,13 +1170,47 @@
             "label": "ParentValue"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "ParentValue"
         }
       ],
       "request": {
-        "key": "Provider<ParentValue>",
+        "key": "ParentValue",
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "Provider<ParentValue>"
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "18:PrioritizedService|19:HighPriorityService",
+          "key": "PrioritizedService",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "HighPriorityService",
+            "label": "HighPriorityService"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "PrioritizedService"
+        }
+      ],
+      "request": {
+        "key": "PrioritizedService",
+        "hasDefault": false,
+        "isOptional": false,
+        "renderedKey": "PrioritizedService"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -1233,7 +1234,8 @@
             "label": "ReplacementService"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "ReplacementService"
         }
       ],
       "request": {
@@ -1243,7 +1245,8 @@
           "label": "ReplacementService.MetroContributionToAppScope.bindsAsService.instance"
         },
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "ReplacementService"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -1267,7 +1270,8 @@
             "label": "SecondMapConsumer"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "SecondMapConsumer"
         }
       ],
       "request": {
@@ -1277,7 +1281,8 @@
           "label": "MapConsumerHolder.MetroFactory.declarationMirror.consumer"
         },
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "SecondMapConsumer"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -1301,13 +1306,15 @@
             "label": "ReplacementService"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "Service"
         }
       ],
       "request": {
         "key": "Service",
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "Service"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -1322,8 +1329,8 @@
       "outcome": "selected",
       "candidates": [
         {
-          "id": "49:dev.zacsweers.metro.MembersInjector<MemberTarget>|12:MemberTarget",
-          "key": "dev.zacsweers.metro.MembersInjector<MemberTarget>",
+          "id": "49:dev/zacsweers/metro/MembersInjector<MemberTarget>|12:MemberTarget",
+          "key": "dev/zacsweers/metro/MembersInjector<MemberTarget>",
           "status": "selected",
           "reason": "selected_generated",
           "declaration": {
@@ -1331,13 +1338,15 @@
             "label": "MemberTarget"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "dev.zacsweers.metro.MembersInjector<MemberTarget>"
         }
       ],
       "request": {
-        "key": "dev.zacsweers.metro.MembersInjector<MemberTarget>",
+        "key": "dev/zacsweers/metro/MembersInjector<MemberTarget>",
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "dev.zacsweers.metro.MembersInjector<MemberTarget>"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -1352,22 +1361,24 @@
       "outcome": "selected",
       "candidates": [
         {
-          "id": "33:java.util.Optional<kotlin.String>|80:OptionalBindings.BindsMirror.optionalString_opt(OptionalBindings): kotlin.String",
-          "key": "java.util.Optional<kotlin.String>",
+          "id": "33:java/util/Optional<kotlin/String>|80:OptionalBindings.BindsMirror.optionalString_opt(OptionalBindings): kotlin/String",
+          "key": "java/util/Optional<kotlin/String>",
           "status": "selected",
           "reason": "selected_optional",
           "declaration": {
-            "id": "OptionalBindings.BindsMirror.optionalString_opt(OptionalBindings): kotlin.String",
+            "id": "OptionalBindings.BindsMirror.optionalString_opt(OptionalBindings): kotlin/String",
             "label": "OptionalBindings.BindsMirror.optionalString_opt"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "java.util.Optional<kotlin.String>"
         }
       ],
       "request": {
-        "key": "java.util.Optional<kotlin.String>",
+        "key": "java/util/Optional<kotlin/String>",
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "java.util.Optional<kotlin.String>"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -1382,13 +1393,14 @@
       "outcome": "missing",
       "candidates": [],
       "request": {
-        "key": "kotlin.Int = ...",
+        "key": "kotlin/Int",
         "declaration": {
-          "id": "DefaultValue.MetroFactory.declarationMirror(DefaultValue.MetroFactory,kotlin.Int): DefaultValue#number",
+          "id": "DefaultValue.MetroFactory.declarationMirror(DefaultValue.MetroFactory,kotlin/Int): DefaultValue#number",
           "label": "DefaultValue.MetroFactory.declarationMirror.number"
         },
         "hasDefault": true,
-        "isOptional": true
+        "isOptional": true,
+        "renderedKey": "kotlin.Int = ..."
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -1403,26 +1415,60 @@
       "outcome": "selected",
       "candidates": [
         {
-          "id": "13:kotlin.String|38:AppGraph.text(AppGraph): kotlin.String",
-          "key": "kotlin.String",
+          "id": "13:kotlin/String|38:AppGraph.text(AppGraph): kotlin/String",
+          "key": "kotlin/String",
           "status": "selected",
           "reason": "selected_explicit",
           "declaration": {
-            "id": "AppGraph.text(AppGraph): kotlin.String",
+            "id": "AppGraph.text(AppGraph): kotlin/String",
             "label": "AppGraph.text"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "kotlin.String"
         }
       ],
       "request": {
-        "key": "kotlin.String",
+        "key": "kotlin/String",
+        "hasDefault": true,
+        "isOptional": true,
+        "renderedKey": "kotlin.String = ..."
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "13:kotlin/String|38:AppGraph.text(AppGraph): kotlin/String",
+          "key": "kotlin/String",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "AppGraph.text(AppGraph): kotlin/String",
+            "label": "AppGraph.text"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "kotlin.String"
+        }
+      ],
+      "request": {
+        "key": "kotlin/String",
         "declaration": {
-          "id": "MemberTarget.text: kotlin.String",
+          "id": "MemberTarget.text: kotlin/String",
           "label": "MemberTarget.text"
         },
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "kotlin.String"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -1437,48 +1483,110 @@
       "outcome": "selected",
       "candidates": [
         {
-          "id": "13:kotlin.String|38:AppGraph.text(AppGraph): kotlin.String",
-          "key": "kotlin.String",
-          "status": "selected",
-          "reason": "selected_explicit",
+          "id": "48:kotlin/collections/Map<kotlin/String,kotlin/Int>|78:AppGraph.directMap(AppGraph): kotlin/collections/Map<kotlin/String,kotlin/Int>",
+          "key": "kotlin/collections/Map<kotlin/String,kotlin/Int>",
+          "status": "rejected",
+          "reason": "incompatible_map_value",
           "declaration": {
-            "id": "AppGraph.text(AppGraph): kotlin.String",
-            "label": "AppGraph.text"
+            "id": "AppGraph.directMap(AppGraph): kotlin/collections/Map<kotlin/String,kotlin/Int>",
+            "label": "AppGraph.directMap"
           },
           "relatedDeclarations": [],
-          "details": []
-        }
-      ],
-      "request": {
-        "key": "kotlin.String = ...",
-        "hasDefault": true,
-        "isOptional": true
-      },
-      "details": [
-        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
-      ]
-    },
-    {
-      "context": {
-        "id": "8:AppGraph",
-        "label": "AppGraph"
-      },
-      "phase": "lookup",
-      "outcome": "selected",
-      "candidates": [
+          "details": [],
+          "renderedKey": "kotlin.collections.Map<kotlin.String, kotlin.Int>"
+        },
         {
-          "id": "31:kotlin.collections.Set<Handler>|9:generated",
-          "key": "kotlin.collections.Set<Handler>",
+          "id": "48:kotlin/collections/Map<kotlin/String,kotlin/Int>|9:generated",
+          "key": "kotlin/collections/Map<kotlin/String,kotlin/Int>",
           "status": "selected",
           "reason": "selected_multibinding",
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "Map<kotlin.String, kotlin.Int>"
         }
       ],
       "request": {
-        "key": "kotlin.collections.Set<Handler>",
+        "key": "kotlin/collections/Map<kotlin/String,kotlin/Int>",
+        "declaration": {
+          "id": "FirstMapConsumer.MetroFactory.declarationMirror(FirstMapConsumer.MetroFactory,kotlin/collections/Map<kotlin/String,kotlin/Function0<kotlin/Int>>): FirstMapConsumer#values",
+          "label": "FirstMapConsumer.MetroFactory.declarationMirror.values"
+        },
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "Map<kotlin.String, Provider<kotlin.Int>>"
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "48:kotlin/collections/Map<kotlin/String,kotlin/Int>|78:AppGraph.directMap(AppGraph): kotlin/collections/Map<kotlin/String,kotlin/Int>",
+          "key": "kotlin/collections/Map<kotlin/String,kotlin/Int>",
+          "status": "rejected",
+          "reason": "incompatible_map_value",
+          "declaration": {
+            "id": "AppGraph.directMap(AppGraph): kotlin/collections/Map<kotlin/String,kotlin/Int>",
+            "label": "AppGraph.directMap"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "kotlin.collections.Map<kotlin.String, kotlin.Int>"
+        },
+        {
+          "id": "48:kotlin/collections/Map<kotlin/String,kotlin/Int>|9:generated",
+          "key": "kotlin/collections/Map<kotlin/String,kotlin/Int>",
+          "status": "selected",
+          "reason": "selected_multibinding",
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "Map<kotlin.String, kotlin.Int>"
+        }
+      ],
+      "request": {
+        "key": "kotlin/collections/Map<kotlin/String,kotlin/Int>",
+        "declaration": {
+          "id": "SecondMapConsumer.MetroFactory.declarationMirror(SecondMapConsumer.MetroFactory,kotlin/collections/Map<kotlin/String,kotlin/Function0<kotlin/Int>>): SecondMapConsumer#values",
+          "label": "SecondMapConsumer.MetroFactory.declarationMirror.values"
+        },
+        "hasDefault": false,
+        "isOptional": false,
+        "renderedKey": "Map<kotlin.String, Provider<kotlin.Int>>"
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "31:kotlin/collections/Set<Handler>|9:generated",
+          "key": "kotlin/collections/Set<Handler>",
+          "status": "selected",
+          "reason": "selected_multibinding",
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "kotlin.collections.Set<Handler>"
+        }
+      ],
+      "request": {
+        "key": "kotlin/collections/Set<Handler>",
+        "hasDefault": false,
+        "isOptional": false,
+        "renderedKey": "kotlin.collections.Set<Handler>"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -1502,11 +1610,12 @@
             "label": "AppGraph.Impl.<get-child>"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "ChildGraph"
         },
         {
-          "id": "49:dev.zacsweers.metro.MembersInjector<MemberTarget>|12:MemberTarget",
-          "key": "dev.zacsweers.metro.MembersInjector<MemberTarget>",
+          "id": "49:dev/zacsweers/metro/MembersInjector<MemberTarget>|12:MemberTarget",
+          "key": "dev/zacsweers/metro/MembersInjector<MemberTarget>",
           "status": "selected",
           "reason": "selected_generated",
           "declaration": {
@@ -1514,7 +1623,8 @@
             "label": "MemberTarget"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "dev.zacsweers.metro.MembersInjector<MemberTarget>"
         }
       ],
       "details": [

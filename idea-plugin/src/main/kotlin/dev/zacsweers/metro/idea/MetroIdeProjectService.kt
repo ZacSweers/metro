@@ -19,7 +19,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.jetbrains.annotations.TestOnly
 import org.jetbrains.kotlin.idea.compiler.configuration.KotlinCommonCompilerArgumentsHolder
-import org.jetbrains.kotlin.idea.facet.getMergedCompilerArguments
+import org.jetbrains.kotlin.idea.facet.KotlinFacet
 import org.jetbrains.kotlin.name.ClassId
 
 private const val METRO_PLUGIN_OPTION_PREFIX = "plugin:$PLUGIN_ID:"
@@ -111,7 +111,7 @@ internal class MetroIdeAnnotationClassIds(private val options: MetroOptions) {
  * Options are cached per module because implicit usage checks can run frequently while
  * highlighting.
  *
- * @see org.jetbrains.kotlin.idea.facet.getMergedCompilerArguments
+ * @see org.jetbrains.kotlin.idea.facet.KotlinFacet
  * @see MetroCompilerSettingsTracker
  */
 @Service(Service.Level.PROJECT)
@@ -236,8 +236,11 @@ internal fun PsiElement.metroIdeState(): MetroIdeModuleState {
  * @see org.jetbrains.kotlin.idea.compilerPlugin.modifyCompilerArgumentsForPluginWithFacetSettings
  */
 private fun Module.metroPluginOptionStrings(): List<String> {
-  return KotlinCommonCompilerArgumentsHolder.getMergedCompilerArguments(this)
-    .pluginOptions
+  val facetSettings = KotlinFacet.get(this)?.configuration?.settings
+  val moduleArguments = facetSettings?.takeUnless { it.useProjectSettings }?.mergedCompilerArguments
+  val compilerArguments =
+    moduleArguments ?: KotlinCommonCompilerArgumentsHolder.getInstance(project).settings
+  return compilerArguments.pluginOptions
     .orEmpty()
     .filter { it.startsWith(METRO_PLUGIN_OPTION_PREFIX) }
     .sorted()

@@ -14,7 +14,8 @@ import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.platform.ide.progress.withBackgroundProgress
-import com.intellij.platform.util.progress.reportRawProgress
+import com.intellij.platform.util.progress.reportProgress
+import com.intellij.platform.util.progress.reportProgressScope
 import com.intellij.psi.PsiElement
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.idea.MetroDaemonRestartService
@@ -561,21 +562,44 @@ internal class MetroGraphValidationService(
     return captured.operation.phase("validation.compute") { phase ->
       try {
         val results = validateTraversal(captured.traversal, captured.workspace, phase, onProgress)
-        if (phase != null) {
-          val outcome =
-            when {
-              results.any { it is KaGraphValidationResult.InternalError } -> "internal_error"
-              results.any { it is KaGraphValidationResult.Incomplete } -> "incomplete"
-              else -> "completed"
-            }
-          phase.outcome(outcome)
-          captured.operation?.attribute("validation_result", outcome)
-        }
-        CompletedValidation(captured.traversal.requestPath, results, captured.workspace.finish())
+        completedValidationWithExtensions(captured, results, phase)
       } finally {
         captured.workspace.describe(captured.operation)
       }
     }
+  }
+
+  private suspend fun computeValidationWithExtensionsWithProgress(
+    captured: CapturedValidation,
+    onProgress: (GraphValidationProgress) -> Unit,
+  ): CompletedValidation<List<KaGraphValidationResult>> {
+    return captured.operation.phaseSuspend("validation.compute") { phase ->
+      try {
+        val results =
+          validateTraversalWithProgress(captured.traversal, captured.workspace, phase, onProgress)
+        completedValidationWithExtensions(captured, results, phase)
+      } finally {
+        captured.workspace.describe(captured.operation)
+      }
+    }
+  }
+
+  private fun completedValidationWithExtensions(
+    captured: CapturedValidation,
+    results: List<KaGraphValidationResult>,
+    phase: IdeTraceOperation?,
+  ): CompletedValidation<List<KaGraphValidationResult>> {
+    if (phase != null) {
+      val outcome =
+        when {
+          results.any { it is KaGraphValidationResult.InternalError } -> "internal_error"
+          results.any { it is KaGraphValidationResult.Incomplete } -> "incomplete"
+          else -> "completed"
+        }
+      phase.outcome(outcome)
+      captured.operation?.attribute("validation_result", outcome)
+    }
+    return CompletedValidation(captured.traversal.requestPath, results, captured.workspace.finish())
   }
 
   private fun validateTraversal(
@@ -602,6 +626,35 @@ internal class MetroGraphValidationService(
     return traversalResults
   }
 
+  private suspend fun validateTraversalWithProgress(
+    traversal: ValidationTraversal,
+    workspace: ValidationWorkspace,
+    operation: IdeTraceOperation?,
+    onProgress: (GraphValidationProgress) -> Unit,
+  ): List<KaGraphValidationResult> {
+    return reportProgress(traversal.inputs.size) { reporter ->
+      val traversalResults = ArrayList<KaGraphValidationResult>(traversal.inputs.size)
+      for ((index, input) in traversal.inputs.withIndex()) {
+        ProgressManager.checkCanceled()
+        val graphName =
+          input.context.graph.name ?: input.context.graph.classId?.asFqNameString() ?: "<unknown>"
+        val progress =
+          GraphValidationProgress(
+            requestPath = traversal.requestPath,
+            graphName = graphName,
+            completed = index,
+            total = traversal.inputs.size,
+          )
+        onProgress(progress)
+        traversalResults +=
+          reporter.itemStep(progress.message) {
+            validate(input, workspace, operation)
+          }
+      }
+      traversalResults
+    }
+  }
+
   /**
    * Captures under a cancellable read action, seals outside it, and delivers results on the EDT.
    */
@@ -614,22 +667,22 @@ internal class MetroGraphValidationService(
       ->
       val completed =
         withBackgroundProgress(project, progressTitle(context.graph)) {
-          reportRawProgress { reporter ->
-            val captured =
-              captureInputsAsync(request.operation) {
-                request.publishProgress(
-                  GraphValidationProgress(
-                    requestPath = context.path,
-                    graphName = graphDisplayName(context.graph),
-                    completed = 0,
-                    total = 1,
-                  ),
-                )
-                reporter.details("Validating ${graphDisplayName(context.graph)}")
-                reporter.fraction(0.0)
-                captureValidation(element, context, request.operation)
-              }
-            withContext(Dispatchers.Default) { computeValidation(captured) }
+          reportProgressScope(1) { reporter ->
+            reporter.itemStep("Validating ${graphDisplayName(context.graph)}") {
+              val captured =
+                captureInputsAsync(request.operation) {
+                  request.publishProgress(
+                    GraphValidationProgress(
+                      requestPath = context.path,
+                      graphName = graphDisplayName(context.graph),
+                      completed = 0,
+                      total = 1,
+                    ),
+                  )
+                  captureValidation(element, context, request.operation)
+                }
+              withContext(Dispatchers.Default) { computeValidation(captured) }
+            }
           }
         }
       if (publishCompletedValidationIfCurrent(request, completed)) {
@@ -653,20 +706,16 @@ internal class MetroGraphValidationService(
     return launchLatestValidation(requestPath, graph, includeExtensions = true) { request ->
       val completed =
         withBackgroundProgress(project, progressTitle(graph)) {
-          reportRawProgress { reporter ->
-            val captured =
-              captureInputsAsync(request.operation) {
-                val element =
-                  graph.pointer.element
-                    ?: throw CancellationException("Metro graph is no longer available")
-                captureValidation(element, graph, request.operation)
-              }
-            withContext(Dispatchers.Default) {
-              computeValidationWithExtensions(captured) { progress ->
-                request.publishProgress(progress)
-                reporter.details(progress.message)
-                reporter.fraction(progress.fraction)
-              }
+          val captured =
+            captureInputsAsync(request.operation) {
+              val element =
+                graph.pointer.element
+                  ?: throw CancellationException("Metro graph is no longer available")
+              captureValidation(element, graph, request.operation)
+            }
+          withContext(Dispatchers.Default) {
+            computeValidationWithExtensionsWithProgress(captured) { progress ->
+              request.publishProgress(progress)
             }
           }
         }
@@ -699,12 +748,10 @@ internal class MetroGraphValidationService(
       val completed =
         if (showProgress) {
           withBackgroundProgress(project, progressTitle(context.graph)) {
-            reportRawProgress { reporter ->
-              computeContextWithExtensions(context, allowIndexBuild, request.operation) { progress
-                ->
+            val captured = captureContextWithExtensions(context, allowIndexBuild, request.operation)
+            withContext(Dispatchers.Default) {
+              computeValidationWithExtensionsWithProgress(captured) { progress ->
                 request.publishProgress(progress)
-                reporter.details(progress.message)
-                reporter.fraction(progress.fraction)
               }
             }
           }
@@ -731,21 +778,28 @@ internal class MetroGraphValidationService(
     operation: IdeTraceOperation?,
     onProgress: (GraphValidationProgress) -> Unit,
   ): CompletedValidation<List<KaGraphValidationResult>> {
-    val captured =
-      captureInputsAsync(operation) {
-        val element =
-          context.contextPointer.element
-            ?: throw CancellationException("Metro graph context is no longer available")
-        captureValidation(
-          element,
-          context,
-          operation,
-          includeExtensions = true,
-          allowIndexBuild = allowIndexBuild,
-        )
-      }
+    val captured = captureContextWithExtensions(context, allowIndexBuild, operation)
     return withContext(Dispatchers.Default) {
       computeValidationWithExtensions(captured, onProgress)
+    }
+  }
+
+  private suspend fun captureContextWithExtensions(
+    context: GraphContext,
+    allowIndexBuild: Boolean,
+    operation: IdeTraceOperation?,
+  ): CapturedValidation {
+    return captureInputsAsync(operation) {
+      val element =
+        context.contextPointer.element
+          ?: throw CancellationException("Metro graph context is no longer available")
+      captureValidation(
+        element,
+        context,
+        operation,
+        includeExtensions = true,
+        allowIndexBuild = allowIndexBuild,
+      )
     }
   }
 

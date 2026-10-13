@@ -3,6 +3,9 @@
 package dev.zacsweers.metro.compiler.graph
 
 import dev.drewhamilton.poko.Poko
+import dev.zacsweers.metro.compiler.graph.identity.AnnotationIdentity
+import dev.zacsweers.metro.compiler.graph.identity.TypeIdentity
+import dev.zacsweers.metro.compiler.graph.identity.TypeKeyIdentity
 import dev.zacsweers.metro.compiler.memoize
 
 @Poko
@@ -10,6 +13,10 @@ internal class StringTypeKey(override val type: String, override val qualifier: 
   BaseTypeKey<String, String, StringTypeKey> {
 
   private val cachedRender by memoize { render(short = false, includeQualifier = true) }
+
+  override val identity: TypeKeyIdentity by memoize {
+    TypeKeyIdentity(TypeIdentity.Class(type), qualifier?.let(::AnnotationIdentity))
+  }
 
   override fun copy(type: String, qualifier: String?): StringTypeKey =
     StringTypeKey(type, qualifier)

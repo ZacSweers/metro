@@ -14,16 +14,14 @@ public fun GraphMetadata.analysisEdges(): List<AnalysisEdge> = buildList {
   val bindingKeys = bindings.mapTo(mutableSetOf()) { it.key }
   for (binding in bindings) {
     for (dependency in binding.dependencies) {
-      val target = unwrapTypeKey(dependency.key)
-      if (target in bindingKeys) {
-        add(AnalysisEdge(binding.key, target, !dependency.isDeferrable))
+      if (dependency.key in bindingKeys) {
+        add(AnalysisEdge(binding.key, dependency.key, !dependency.isDeferrable))
       }
     }
   }
   for (accessor in roots?.accessors.orEmpty()) {
-    val target = unwrapTypeKey(accessor.key)
-    if (target in bindingKeys) {
-      add(AnalysisEdge(graph, target, eager = false))
+    if (accessor.key in bindingKeys) {
+      add(AnalysisEdge(key, accessor.key, eager = false))
     }
   }
 }

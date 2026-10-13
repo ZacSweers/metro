@@ -19,6 +19,7 @@ import com.intellij.psi.SmartPsiElementPointer
 import dev.zacsweers.metro.idea.GraphContextPinService
 import dev.zacsweers.metro.idea.MetroNavigationService
 import dev.zacsweers.metro.idea.MetroSettings
+import dev.zacsweers.metro.idea.navigateMetroTarget
 import dev.zacsweers.metro.idea.presentableName
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtDeclaration
@@ -173,7 +174,8 @@ class MetroCodeVisionProvider : DaemonBoundCodeVisionProvider {
       if (editor.isDisposed) return@resolveTargets
       when {
         elements.isEmpty() -> {}
-        elements.size == 1 -> (elements.single() as? Navigatable)?.navigate(true)
+        elements.size == 1 ->
+          (elements.single() as? Navigatable)?.navigateMetroTarget(requestFocus = true)
         else -> PsiTargetNavigator(elements.toTypedArray()).navigate(editor, popupTitle)
       }
     }

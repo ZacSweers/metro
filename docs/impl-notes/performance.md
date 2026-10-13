@@ -171,7 +171,9 @@ When several accessors request the same key and return type, the first accessor 
 
 ### Graph extension reuse
 
-Each graph fingerprints its bindings by declaration and the fingerprints of their dependencies. When a graph extension's binding has the same fingerprint as the nearest ancestor that binds that key, the extension calls the ancestor's property and skips building its own. A child multibinding that adds contributions gets a different fingerprint, so it's built separately.
+`BindingPropertyContext` fingerprints each binding's declaration and resolved dependencies. A child reuses a property from the nearest ancestor that binds the key when the fingerprints match and the ancestor has a property for the same contextual key. Added contributions or overridden contribution dependencies keep the collection in the child. `Map<K, V>` and `Map<K, Provider<V>>` require separate properties.
+
+When the parent exposes `Set<Adapter>`, a single child can obtain that set from the parent's collection getter when constructing an unscoped `TrackingHandler`. Each injection creates a new handler and a new set.
 
 When two or more child graphs build the same binding, their nearest common ancestor builds it once in a getter that they all call.
 
@@ -200,7 +202,9 @@ A binding that C, D, and E all build goes in A. One that only C and D build goes
 
 An ancestor can only build a binding if it declares the binding the same way. If B adds a contribution to a multibinding, C and D share B's version, and E builds A's version itself.
 
-A single child reading a binding never moves it into a parent. Each child works out how many ancestors in a row could build its binding the same way, including every dependency. It reports the read to those ancestors while its graph is sealed, so this adds no separate pass over the bindings. Ancestors count reads per direct child and keep the binding once two children report it.
+Each child works out how many ancestors in a row could build its binding the same way, including every dependency. It reports the read to those ancestors while its graph is sealed, so this adds no separate pass over the bindings. Ancestors count reads per direct child.
+
+On the first child request, `reserveSharedRead` keeps a getter if the parent already uses the binding. A second child request keeps the binding in the parent even if the parent has no other use for it.
 
 ### Graph and contribution caches
 

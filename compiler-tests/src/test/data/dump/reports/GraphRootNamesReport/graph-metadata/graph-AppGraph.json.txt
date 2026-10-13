@@ -1,35 +1,41 @@
 {
   "graph": "AppGraph",
+  "key": "AppGraph",
   "scopes": [],
   "aggregationScopes": [],
   "roots": {
     "accessors": [
       {
         "key": "Value",
+        "renderedKey": "Value",
         "name": "value",
         "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "Value",
+        "renderedKey": "Value",
         "name": "value",
         "isProperty": false,
         "isDeferrable": false
       },
       {
         "key": "Value",
+        "renderedKey": "Value",
         "name": "inheritedValue",
         "isProperty": false,
         "isDeferrable": false
       },
       {
         "key": "Value",
+        "renderedKey": "Value",
         "name": "inherited",
         "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "Value",
+        "renderedKey": "Value",
         "name": "sourceValue",
         "isProperty": true,
         "isDeferrable": false
@@ -37,7 +43,8 @@
     ],
     "injectors": [
       {
-        "key": "dev.zacsweers.metro.MembersInjector<Target>",
+        "key": "dev/zacsweers/metro/MembersInjector<Target>",
+        "renderedKey": "dev.zacsweers.metro.MembersInjector<Target>",
         "name": "inject"
       }
     ]
@@ -165,6 +172,7 @@
   "bindings": [
     {
       "key": "Value",
+      "renderedKey": "Value",
       "bindingKind": "ConstructorInjected",
       "isScoped": false,
       "nameHint": "Value",
@@ -173,13 +181,15 @@
       "declaration": "Value"
     },
     {
-      "key": "dev.zacsweers.metro.MembersInjector<Target>",
+      "key": "dev/zacsweers/metro/MembersInjector<Target>",
+      "renderedKey": "dev.zacsweers.metro.MembersInjector<Target>",
       "bindingKind": "MembersInjected",
       "isScoped": false,
       "nameHint": "TargetMembersInjector",
       "dependencies": [
         {
           "key": "Value",
+          "renderedKey": "Value",
           "hasDefault": false,
           "wrapperType": "MembersInjected"
         }
@@ -207,13 +217,15 @@
             "label": "Value"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "Value"
         }
       ],
       "request": {
         "key": "Value",
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "Value"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -237,17 +249,19 @@
             "label": "Value"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "Value"
         }
       ],
       "request": {
         "key": "Value",
         "declaration": {
-          "id": "Target.MetroMembersInjector.Companion.injectValue(Target.MetroMembersInjector.Companion,Target,Value): kotlin.Unit#value",
+          "id": "Target.MetroMembersInjector.Companion.injectValue(Target.MetroMembersInjector.Companion,Target,Value): kotlin/Unit#value",
           "label": "Target.MetroMembersInjector.Companion.injectValue.value"
         },
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "Value"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -262,22 +276,24 @@
       "outcome": "selected",
       "candidates": [
         {
-          "id": "43:dev.zacsweers.metro.MembersInjector<Target>|55:AppGraph.Impl.inject(AppGraph.Impl,Target): kotlin.Unit",
-          "key": "dev.zacsweers.metro.MembersInjector<Target>",
+          "id": "43:dev/zacsweers/metro/MembersInjector<Target>|55:AppGraph.Impl.inject(AppGraph.Impl,Target): kotlin/Unit",
+          "key": "dev/zacsweers/metro/MembersInjector<Target>",
           "status": "selected",
           "reason": "selected_generated",
           "declaration": {
-            "id": "AppGraph.Impl.inject(AppGraph.Impl,Target): kotlin.Unit",
+            "id": "AppGraph.Impl.inject(AppGraph.Impl,Target): kotlin/Unit",
             "label": "AppGraph.Impl.inject"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "dev.zacsweers.metro.MembersInjector<Target>"
         }
       ],
       "request": {
-        "key": "dev.zacsweers.metro.MembersInjector<Target>",
+        "key": "dev/zacsweers/metro/MembersInjector<Target>",
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "dev.zacsweers.metro.MembersInjector<Target>"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."

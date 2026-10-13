@@ -100,7 +100,8 @@ private fun captureExplanation(explanation: BindingExplanation): MetroBindingExp
         val snapshot =
           BindingExplanationCandidate(
             id = sources.candidateId(candidate.binding, source),
-            key = candidate.binding.typeKey.render(short = false),
+            key = candidate.binding.typeKey.identity.encoded,
+            renderedKey = candidate.binding.typeKey.render(short = false),
             status = status,
             reason = candidate.reasonCode,
             declaration = source,
@@ -136,7 +137,8 @@ private fun captureExplanation(explanation: BindingExplanation): MetroBindingExp
       candidates = candidates.map { it.snapshot },
       request =
         BindingExplanationRequest(
-          key = consumer.contextKey.render(short = false),
+          key = consumer.contextKey.typeKey.identity.encoded,
+          renderedKey = consumer.contextKey.render(short = false),
           declaration = sources.declaration(consumer.pointer, requestName),
           hasDefault = consumer.contextKey.hasDefault,
           isOptional = consumer.isOptional,
