@@ -8428,7 +8428,7 @@
 </ul>
 <h3 id="enhancements">Enhancements<a class="headerlink" href="#enhancements" title="Permanent link">&para;</a></h3>
 <ul>
-<li><strong>[IR]</strong> Reduce generated code in graph extensions by reusing existing parent bindings when their contributions and resolved dependencies are unchanged.</li>
+<li><strong>[IR]</strong> Reduce generated code in graph extensions by reusing existing parent bindings when their contributions and resolved dependencies are unchanged. Objects constructed in a single extension can receive sets and maps from parent getters when the parent already uses those collections.</li>
 <li><strong>[IR]</strong> Graphs no longer generate a private getter for a multibinding that only one site reads. That site builds the collection itself.</li>
 <li>Reads from graph extensions that reuse the multibinding count too.</li>
 <li>Multibindings with more than 25 contributions also keep a getter so they don&rsquo;t crowd their reader&rsquo;s method. You can configure that threshold with the new <code>multibinding-getter-threshold</code> compiler option.</li>
@@ -8459,6 +8459,7 @@
 <li><strong>[IR]</strong> Fix <code>MissingRuntimeCoroutines</code> errors for injected top-level functions pointing at <code>0:0</code> in a generated file. They&rsquo;re now reported on the function.</li>
 <li><strong>[IR]</strong> Fix declaration parents for copied default argument lambdas and callable references, including references inside generated provider wrappers.</li>
 <li><strong>[IR]</strong> Include extension receivers in generated lambda function types, including set and map builder callbacks.</li>
+<li><strong>[IR]</strong> Fix a compiler crash when injecting a provider of a single-entry <code>Map&lt;Class&lt;*&gt;, V&gt;</code> with <code>enableKClassToClassMapKeyInterop</code> enabled.</li>
 <li><strong>[IR]</strong> Fix IR diagnostic reporting on Kotlin <code>2.5.0-dev-10106</code>.</li>
 <li><strong>[IR]</strong> Fix graphs storing an <code>@Includes</code> graph parameter in two fields when the included graph has graph extensions.</li>
 <li><strong>[IR]</strong> Fix runtime tracing passing a contextual type that matches the binding&rsquo;s type. It&rsquo;s now <code>null</code> as documented.</li>
