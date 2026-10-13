@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791786354613,
+  "lastUpdate": 1791871573244,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -25592,6 +25592,62 @@ window.BENCHMARK_DATA = {
             "value": 14721.030999999999,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -2.02%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "6198d91f~1",
+          "message": "[before] Fix duplicated multibinding builders (#2957)",
+          "timestamp": "2026-10-13T05:09:00Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/6198d91faac300ed1d09f1eaad84b256cdfc536d"
+        },
+        "date": 1791871573244,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 17328.421,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "6198d91faac300ed1d09f1eaad84b256cdfc536d",
+          "message": "[after] Fix duplicated multibinding builders (#2957)",
+          "timestamp": "2026-10-13T05:09:00Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/6198d91faac300ed1d09f1eaad84b256cdfc536d"
+        },
+        "date": 1791871573245,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 17380.243,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +0.30%"
           }
         ]
       }
