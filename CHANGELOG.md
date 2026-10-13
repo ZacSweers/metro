@@ -15,7 +15,7 @@ Changelog
 
 ### Enhancements
 
-- **[IR]** Reduce generated code in graph extensions by reusing existing parent bindings when their contributions and resolved dependencies are unchanged.
+- **[IR]** Reduce generated code in graph extensions by reusing existing parent bindings when their contributions and resolved dependencies are unchanged. Objects constructed in a single extension can receive sets and maps from parent getters when the parent already uses those collections.
 - **[IR]** Graphs no longer generate a private getter for a multibinding that only one site reads. That site builds the collection itself.
   - Reads from graph extensions that reuse the multibinding count too.
   - Multibindings with more than 25 contributions also keep a getter so they don't crowd their reader's method. You can configure that threshold with the new `multibinding-getter-threshold` compiler option.
@@ -45,6 +45,7 @@ Changelog
 - **[IR]** Fix `MissingRuntimeCoroutines` errors for injected top-level functions pointing at `0:0` in a generated file. They're now reported on the function.
 - **[IR]** Fix declaration parents for copied default argument lambdas and callable references, including references inside generated provider wrappers.
 - **[IR]** Include extension receivers in generated lambda function types, including set and map builder callbacks.
+- **[IR]** Fix a compiler crash when injecting a provider of a single-entry `Map<Class<*>, V>` with `enableKClassToClassMapKeyInterop` enabled.
 - **[IR]** Fix IR diagnostic reporting on Kotlin `2.5.0-dev-10106`.
 - **[IR]** Fix graphs storing an `@Includes` graph parameter in two fields when the included graph has graph extensions.
 - **[IR]** Fix runtime tracing passing a contextual type that matches the binding's type. It's now `null` as documented.

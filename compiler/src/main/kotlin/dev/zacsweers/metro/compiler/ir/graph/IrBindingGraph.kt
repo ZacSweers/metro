@@ -352,7 +352,7 @@ internal class IrBindingGraph(
   /** How many ancestors in a row declare each binding the same way, cached by key. */
   private val sharedDepths = mutableMapOf<IrTypeKey, Int>()
 
-  /** Bindings this graph reads directly that the parent might build for it. */
+  /** Bindings this graph reads that the parent might build for it. */
   private val parentReadCandidates = mutableSetOf<IrTypeKey>()
 
   /**
@@ -515,19 +515,25 @@ internal class IrBindingGraph(
   operator fun contains(key: IrTypeKey): Boolean = key in realGraph
 
   /**
-   * Records bindings this graph reads directly that the parent declares the same way.
+   * Records bindings this graph reads that the parent declares the same way.
    *
-   * Reads from another such binding aren't recorded. The parent's copy of that binding does those
-   * reads instead.
+   * Reads from another sharing candidate are usually handled by the parent's copy of that binding.
+   * Multibindings remain candidates because the consumer might stay local even if the parent reads
+   * the collection.
    */
   private fun recordParentReadCandidate(
     callingBinding: IrBinding?,
     contextKey: IrContextualTypeKey,
     binding: IrBinding,
   ) {
-    if (!isWorthSharing(binding)) return
-    val callerIsShared = callingBinding != null && isWorthSharing(callingBinding)
-    if (callerIsShared) return
+    if (!isWorthSharing(binding)) {
+      return
+    }
+    val callerCanShare = callingBinding != null && isWorthSharing(callingBinding)
+    val isMultibinding = binding is IrBinding.Multibinding
+    if (callerCanShare && !isMultibinding) {
+      return
+    }
     parentReadCandidates += contextKey.typeKey
   }
 

@@ -3278,6 +3278,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       }
 
       @Test
+      @TestMetadata("SingleEntryClassMapProviderCanBeInjected.kt")
+      public void testSingleEntryClassMapProviderCanBeInjected() {
+        run("SingleEntryClassMapProviderCanBeInjected.kt");
+      }
+
+      @Test
       @TestMetadata("SourceMemberInjectionTakesPrecedenceOverDaggerInjector.kt")
       public void testSourceMemberInjectionTakesPrecedenceOverDaggerInjector() {
         run("SourceMemberInjectionTakesPrecedenceOverDaggerInjector.kt");
@@ -3523,6 +3529,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       @TestMetadata("MixedClassKClassMapKeyInterop.kt")
       public void testMixedClassKClassMapKeyInterop() {
         run("MixedClassKClassMapKeyInterop.kt");
+      }
+
+      @Test
+      @TestMetadata("SingleEntryClassMapProviderCanBeInjected.kt")
+      public void testSingleEntryClassMapProviderCanBeInjected() {
+        run("SingleEntryClassMapProviderCanBeInjected.kt");
       }
     }
 

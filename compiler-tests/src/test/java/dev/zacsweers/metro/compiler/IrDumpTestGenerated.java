@@ -394,6 +394,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
       }
 
       @Test
+      @TestMetadata("DaggerSingleChildReusesParentMultibindingDependencies.kt")
+      public void testDaggerSingleChildReusesParentMultibindingDependencies() {
+        run("DaggerSingleChildReusesParentMultibindingDependencies.kt");
+      }
+
+      @Test
       @TestMetadata("NestedChildrenHoistToNearestSharedParent.kt")
       public void testNestedChildrenHoistToNearestSharedParent() {
         run("NestedChildrenHoistToNearestSharedParent.kt");
@@ -403,6 +409,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
       @TestMetadata("SingleChildBindingIsNotHoisted.kt")
       public void testSingleChildBindingIsNotHoisted() {
         run("SingleChildBindingIsNotHoisted.kt");
+      }
+
+      @Test
+      @TestMetadata("SingleChildReusesParentMultibindingDependencies.kt")
+      public void testSingleChildReusesParentMultibindingDependencies() {
+        run("SingleChildReusesParentMultibindingDependencies.kt");
       }
     }
 

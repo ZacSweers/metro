@@ -1,0 +1,677 @@
+class Activity {
+  lateinit var handler: Handler
+    get
+    set
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroMembersInjector : MembersInjector<Activity> {
+    private /* final field */ val handler: Provider<Handler> = handler
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(handler: Provider<Handler>): MembersInjector<Activity> {
+        return MetroMembersInjector(handler = handler)
+      }
+
+      @JvmStatic
+      @JsStatic
+      fun injectHandler(@Assisted instance: Activity, handler: Handler) {
+        return instance.#handler = handler
+      }
+
+    }
+
+    private constructor(handler: Provider<Handler>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override fun injectMembers(instance: Activity) {
+      MetroMembersInjector/* companion */.injectHandler(instance = instance, handler = <this>.#handler.invoke())
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+class ChildValue : Value {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  object MetroFactory : Factory<ChildValue> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun create(): MetroFactory {
+      return MetroFactory
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun newInstance(): ChildValue {
+      return ChildValue()
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): ChildValue {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): ChildValue {
+      return MetroFactory.newInstance()
+    }
+
+  }
+
+  @Inject
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+class FirstAdapter : Adapter {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  object MetroFactory : Factory<FirstAdapter> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun create(): MetroFactory {
+      return MetroFactory
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun newInstance(): FirstAdapter {
+      return FirstAdapter()
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): FirstAdapter {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): FirstAdapter {
+      return MetroFactory.newInstance()
+    }
+
+  }
+
+  @Inject
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+class ParentValue : Value {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  object MetroFactory : Factory<ParentValue> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun create(): MetroFactory {
+      return MetroFactory
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun newInstance(): ParentValue {
+      return ParentValue()
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): ParentValue {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): ParentValue {
+      return MetroFactory.newInstance()
+    }
+
+  }
+
+  @Inject
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+class SecondAdapter : Adapter {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  object MetroFactory : Factory<SecondAdapter> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun create(): MetroFactory {
+      return MetroFactory
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun newInstance(): SecondAdapter {
+      return SecondAdapter()
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): SecondAdapter {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): SecondAdapter {
+      return MetroFactory.newInstance()
+    }
+
+  }
+
+  @Inject
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+class ThirdAdapter : Adapter {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  object MetroFactory : Factory<ThirdAdapter> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun create(): MetroFactory {
+      return MetroFactory
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun newInstance(): ThirdAdapter {
+      return ThirdAdapter()
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): ThirdAdapter {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): ThirdAdapter {
+      return MetroFactory.newInstance()
+    }
+
+  }
+
+  @Inject
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+class TrackingHandler : Handler {
+  val adapters: Set<@JvmSuppressWildcards Adapter>
+    field = adapters
+    get
+
+  val values: Map<String, Value>
+    field = values
+    get
+
+  val providers: Map<String, @JvmSuppressWildcards Provider<Value>>
+    field = providers
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<TrackingHandler> {
+    private /* final field */ val adapters: Provider<Set<Adapter>> = adapters
+    private /* final field */ val values: Provider<Map<String, Value>> = values
+    private /* final field */ val providers: Provider<Map<String, Provider<Value>>> = providers
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(adapters: Provider<Set<Adapter>>, values: Provider<Map<String, Value>>, providers: Provider<Map<String, Provider<Value>>>): MetroFactory {
+        return MetroFactory(adapters = adapters, values = values, providers = providers)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(adapters: Set<@JvmSuppressWildcards Adapter>, values: Map<String, Value>, providers: Map<String, @JvmSuppressWildcards Provider<Value>>): TrackingHandler {
+        return TrackingHandler(adapters = adapters, values = values, providers = providers)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(adapters: Provider<Set<Adapter>>, values: Provider<Map<String, Value>>, providers: Provider<Map<String, Provider<Value>>>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(adapters: Set<@JvmSuppressWildcards Adapter>, values: Map<String, Value>, providers: Map<String, @JvmSuppressWildcards Provider<Value>>): TrackingHandler {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): TrackingHandler {
+      return MetroFactory/* companion */.newInstance(adapters = <this>.#adapters.invoke(), values = <this>.#values.invoke(), providers = <this>.#providers.invoke())
+    }
+
+  }
+
+  @Inject
+  constructor(adapters: Set<@JvmSuppressWildcards Adapter>, values: Map<String, Value>, providers: Map<String, @JvmSuppressWildcards Provider<Value>>) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+interface Adapter {
+}
+
+@Component(modules = [ParentBindings::class])
+interface AppGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : AppGraph {
+    private val parentValueProvider: Provider<ParentValue>
+      field = create()
+
+    @DependencyGraph
+    private class ChildGraphImpl : ChildGraph {
+      private val appGraphImpl: Impl
+        field = appGraphImpl
+
+      private class FactoryImpl : ChildGraph.Factory {
+        package /* final field */ val AppGraphImpl: Impl = AppGraphImpl
+        constructor(AppGraphImpl: Impl) /* primary */ {
+          super/*Any*/()
+          /* <init>() */
+
+        }
+
+        override fun create(): ChildGraph {
+          return ChildGraphImpl(appGraphImpl = <this>.#AppGraphImpl)
+        }
+
+      }
+
+      @DependencyGraph(bindingContainers = [ChildBindings::class])
+      private class GrandchildGraphImpl : GrandchildGraph {
+        private val childGraphImpl: ChildGraphImpl
+          field = childGraphImpl
+
+        private val childValueProvider: Provider<ChildValue>
+          field = create()
+
+        private class FactoryImpl : GrandchildGraph.Factory {
+          package /* final field */ val ChildGraphImpl: ChildGraphImpl = ChildGraphImpl
+          constructor(ChildGraphImpl: ChildGraphImpl) /* primary */ {
+            super/*Any*/()
+            /* <init>() */
+
+          }
+
+          override fun create(): GrandchildGraph {
+            return GrandchildGraphImpl(childGraphImpl = <this>.#ChildGraphImpl)
+          }
+
+        }
+
+        constructor(childGraphImpl: ChildGraphImpl) /* primary */ {
+          super/*Any*/()
+          /* <init>() */
+
+        }
+
+        override val handler: Handler
+          override get(): Handler {
+            return TrackingHandler(adapters = { // BLOCK
+              buildSet<Adapter>(capacity = 3, builderAction = local fun MutableSet<Adapter>.<anonymous>() {
+                $receiver.add(element = FirstAdapter())
+                $receiver.add(element = SecondAdapter())
+                $receiver.add(element = ThirdAdapter())
+              }
+)
+            }, values = buildMap<String, Value>(capacity = 2, builderAction = local fun MutableMap<String, Value>.<anonymous>() {
+              $receiver.put(key = "parent", value = <this>.#childGraphImpl.#appGraphImpl.#parentValueProvider.invoke())
+              $receiver.put(key = "child", value = <this>.#childValueProvider.invoke())
+            }
+), providers = buildMap<String, Provider<Value>>(capacity = 2, builderAction = local fun MutableMap<String, Provider<Value>>.<anonymous>() {
+              $receiver.put(key = "parent", value = asJavaxProvider<Value>(/* <this> = <this>.#childGraphImpl.#appGraphImpl.#parentValueProvider */))
+              $receiver.put(key = "child", value = asJavaxProvider<Value>(/* <this> = <this>.#childValueProvider */))
+            }
+))
+          }
+
+      }
+
+      constructor(appGraphImpl: Impl) /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      override fun inject(activity: Activity) {
+        injectHandler(instance = activity, handler = TrackingHandler(adapters = <this>.#appGraphImpl.<get-setOfAdapter>(), values = <this>.#appGraphImpl.<get-mapOfStringToValue>(), providers = <this>.#appGraphImpl.<get-mapOfStringToValue2>()))
+      }
+
+      override val grandchildFactory: GrandchildGraph.Factory
+        override get(): GrandchildGraph.Factory {
+          return AppGraph.Impl.ChildGraphImpl.GrandchildGraphImpl.FactoryImpl(ChildGraphImpl = <this>)
+        }
+
+    }
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override val adapters: Set<Adapter>
+      override get(): Set<Adapter> {
+        return <this>.<get-setOfAdapter>()
+      }
+
+    override val childFactory: ChildGraph.Factory
+      override get(): ChildGraph.Factory {
+        return AppGraph.Impl.ChildGraphImpl.FactoryImpl(AppGraphImpl = <this>)
+      }
+
+    private val mapOfStringToValue: Map<String, Value>
+      private get(): Map<String, Value> {
+        return buildMap<String, Value>(capacity = 1, builderAction = local fun MutableMap<String, Value>.<anonymous>() {
+          $receiver.put(key = "parent", value = <this>.#parentValueProvider.invoke())
+        }
+)
+      }
+
+    private val mapOfStringToValue2: Map<String, Provider<Value>>
+      private get(): Map<String, Provider<Value>> {
+        return buildMap<String, Provider<Value>>(capacity = 1, builderAction = local fun MutableMap<String, Provider<Value>>.<anonymous>() {
+          $receiver.put(key = "parent", value = asJavaxProvider<Value>(/* <this> = <this>.#parentValueProvider */))
+        }
+)
+      }
+
+    override val providers: Map<String, Provider<Value>>
+      override get(): Map<String, Provider<Value>> {
+        return <this>.<get-mapOfStringToValue2>()
+      }
+
+    private val setOfAdapter: Set<Adapter>
+      private get(): Set<Adapter> {
+        return { // BLOCK
+          buildSet<Adapter>(capacity = 2, builderAction = local fun MutableSet<Adapter>.<anonymous>() {
+            $receiver.add(element = FirstAdapter())
+            $receiver.add(element = SecondAdapter())
+          }
+)
+        }
+      }
+
+    override val values: Map<String, Value>
+      override get(): Map<String, Value> {
+        return <this>.<get-mapOfStringToValue>()
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
+    operator fun invoke(): AppGraph {
+      return Impl()
+    }
+
+  }
+
+  abstract val adapters: Set<Adapter>
+    abstract get
+
+  abstract val childFactory: ChildGraph.Factory
+    abstract get
+
+  abstract val providers: Map<String, Provider<Value>>
+    abstract get
+
+  abstract val values: Map<String, Value>
+    abstract get
+
+}
+
+@Module
+interface ChildBindings {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @ComptimeOnly
+  abstract class BindsMirror {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @Binds
+    @IntoSet
+    @CallableMetadata(callableName = "third", propertyName = "", startOffset = 1772, endOffset = 1814)
+    fun third_intoset(instance: ThirdAdapter): Adapter {
+      return error(message = "Never called")
+    }
+
+    @Binds
+    @IntoMap
+    @StringKey(value = "child")
+    @CallableMetadata(callableName = "value", propertyName = "", startOffset = 1902, endOffset = 1940)
+    fun value3033723257_intomap(instance: ChildValue): Value {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Binds
+  @IntoSet
+  @ComptimeOnly
+  fun third(instance: ThirdAdapter): Adapter {
+    return error(message = "Never called")
+  }
+
+  @Binds
+  @IntoMap
+  @StringKey(value = "child")
+  @ComptimeOnly
+  fun value(instance: ChildValue): Value {
+    return error(message = "Never called")
+  }
+
+}
+
+@Subcomponent
+interface ChildGraph {
+  @Subcomponent.Factory
+  interface Factory {
+    abstract fun create(): ChildGraph
+
+  }
+
+  abstract fun inject(activity: Activity)
+
+  abstract val grandchildFactory: GrandchildGraph.Factory
+    abstract get
+
+}
+
+@Subcomponent(modules = [ChildBindings::class])
+interface GrandchildGraph {
+  @Subcomponent.Factory
+  interface Factory {
+    abstract fun create(): GrandchildGraph
+
+  }
+
+  abstract val handler: Handler
+    abstract get
+
+}
+
+interface Handler {
+}
+
+@Module
+interface ParentBindings {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @ComptimeOnly
+  abstract class BindsMirror {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @Binds
+    @IntoSet
+    @CallableMetadata(callableName = "first", propertyName = "", startOffset = 967, endOffset = 1009)
+    fun first_intoset(instance: FirstAdapter): Adapter {
+      return error(message = "Never called")
+    }
+
+    @Binds
+    @CallableMetadata(callableName = "handler", propertyName = "", startOffset = 873, endOffset = 920)
+    fun handler(instance: TrackingHandler): Handler {
+      return error(message = "Never called")
+    }
+
+    @Binds
+    @IntoSet
+    @CallableMetadata(callableName = "second", propertyName = "", startOffset = 1056, endOffset = 1100)
+    fun second_intoset(instance: SecondAdapter): Adapter {
+      return error(message = "Never called")
+    }
+
+    @Binds
+    @IntoMap
+    @StringKey(value = "parent")
+    @CallableMetadata(callableName = "value", propertyName = "", startOffset = 1189, endOffset = 1228)
+    fun value3601747883_intomap(instance: ParentValue): Value {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Binds
+  @IntoSet
+  @ComptimeOnly
+  fun first(instance: FirstAdapter): Adapter {
+    return error(message = "Never called")
+  }
+
+  @Binds
+  @ComptimeOnly
+  fun handler(instance: TrackingHandler): Handler {
+    return error(message = "Never called")
+  }
+
+  @Binds
+  @IntoSet
+  @ComptimeOnly
+  fun second(instance: SecondAdapter): Adapter {
+    return error(message = "Never called")
+  }
+
+  @Binds
+  @IntoMap
+  @StringKey(value = "parent")
+  @ComptimeOnly
+  fun value(instance: ParentValue): Value {
+    return error(message = "Never called")
+  }
+
+}
+
+interface Value {
+}
+
