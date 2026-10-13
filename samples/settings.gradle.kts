@@ -19,7 +19,7 @@ pluginManagement {
   }
   plugins {
     id("com.gradle.develocity") version "4.6.0"
-    id("com.android.settings") version "9.2.1"
+    id("com.android.settings") version "9.1.1"
   }
 }
 
@@ -55,7 +55,7 @@ plugins {
 }
 
 android {
-  compileSdk = 36
+  compileSdk = 37
   targetSdk = 36
   minSdk = 28
 }

@@ -99,8 +99,7 @@ constructor(private val project: Project, objects: ObjectFactory) {
           macosArm64()
           iosSimulatorArm64()
           iosArm64()
-          iosX64()
-          @Suppress("DEPRECATION") macosX64()
+          linuxX64()
         } else {
           // Tier 1
           macosArm64()
@@ -117,11 +116,11 @@ constructor(private val project: Project, objects: ObjectFactory) {
 
           // Tier 3
           mingwX64()
-          iosX64()
-          @Suppress("DEPRECATION") macosX64()
-          @Suppress("DEPRECATION") tvosX64()
-          @Suppress("DEPRECATION") watchosX64()
           if (!requiresAndroidXDeps) {
+            iosX64()
+            @Suppress("DEPRECATION") macosX64()
+            @Suppress("DEPRECATION") tvosX64()
+            @Suppress("DEPRECATION") watchosX64()
             androidNativeArm32()
             androidNativeArm64()
             androidNativeX86()
