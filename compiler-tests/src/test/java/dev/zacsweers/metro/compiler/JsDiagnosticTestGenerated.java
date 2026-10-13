@@ -1069,6 +1069,18 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("LifecycleFailure.kt")
+    public void testLifecycleFailure() {
+      run("LifecycleFailure.kt");
+    }
+
+    @Test
+    @TestMetadata("LifecycleGraph.kt")
+    public void testLifecycleGraph() {
+      run("LifecycleGraph.kt");
+    }
+
+    @Test
     @TestMetadata("MissingBinding.kt")
     public void testMissingBinding() {
       run("MissingBinding.kt");
@@ -1398,6 +1410,122 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
       public void testUnnecessaryMemberInjectShouldErrorInSeparateModule() {
         run("UnnecessaryMemberInjectShouldErrorInSeparateModule.kt");
       }
+    }
+  }
+
+  @Nested
+  @TestMetadata("compiler-tests/src/test/data/diagnostic/lifecycle")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Lifecycle {
+    private void run(String fileName) {
+      runTest("compiler-tests/src/test/data/diagnostic/lifecycle/" + fileName);
+    }
+
+    @Test
+    public void testAllFilesPresentInLifecycle() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/lifecycle"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit", "_reports");
+    }
+
+    @Test
+    @TestMetadata("BothCloseableInterfaces.kt")
+    public void testBothCloseableInterfaces() {
+      run("BothCloseableInterfaces.kt");
+    }
+
+    @Test
+    @TestMetadata("CallbackDeclarations.kt")
+    public void testCallbackDeclarations() {
+      run("CallbackDeclarations.kt");
+    }
+
+    @Test
+    @TestMetadata("CallbackOverrides.kt")
+    public void testCallbackOverrides() {
+      run("CallbackOverrides.kt");
+    }
+
+    @Test
+    @TestMetadata("CallbackParameterSuspendRequired.kt")
+    public void testCallbackParameterSuspendRequired() {
+      run("CallbackParameterSuspendRequired.kt");
+    }
+
+    @Test
+    @TestMetadata("CloseOnlyBinding.kt")
+    public void testCloseOnlyBinding() {
+      run("CloseOnlyBinding.kt");
+    }
+
+    @Test
+    @TestMetadata("DirectCalls.kt")
+    public void testDirectCalls() {
+      run("DirectCalls.kt");
+    }
+
+    @Test
+    @TestMetadata("DynamicGraphInitSuspendRequired.kt")
+    public void testDynamicGraphInitSuspendRequired() {
+      run("DynamicGraphInitSuspendRequired.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphExtensionInitSuspendRequired.kt")
+    public void testGraphExtensionInitSuspendRequired() {
+      run("GraphExtensionInitSuspendRequired.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphInitSuspendRequired.kt")
+    public void testGraphInitSuspendRequired() {
+      run("GraphInitSuspendRequired.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphRequirements.kt")
+    public void testGraphRequirements() {
+      run("GraphRequirements.kt");
+    }
+
+    @Test
+    @TestMetadata("MissingBindingInCallbackParameter.kt")
+    public void testMissingBindingInCallbackParameter() {
+      run("MissingBindingInCallbackParameter.kt");
+    }
+
+    @Test
+    @TestMetadata("MissingCloseableGraphMergedInIr.kt")
+    public void testMissingCloseableGraphMergedInIr() {
+      run("MissingCloseableGraphMergedInIr.kt");
+    }
+
+    @Test
+    @TestMetadata("SuspendCloseCallbackInCloseableGraph.kt")
+    public void testSuspendCloseCallbackInCloseableGraph() {
+      run("SuspendCloseCallbackInCloseableGraph.kt");
+    }
+
+    @Test
+    @TestMetadata("SuspendCloseRequired.kt")
+    public void testSuspendCloseRequired() {
+      run("SuspendCloseRequired.kt");
+    }
+
+    @Test
+    @TestMetadata("SuspendCloseableGraphWithoutRuntimeCoroutines.kt")
+    public void testSuspendCloseableGraphWithoutRuntimeCoroutines() {
+      run("SuspendCloseableGraphWithoutRuntimeCoroutines.kt");
+    }
+
+    @Test
+    @TestMetadata("SuspendLifecycleRequiresSuspendProviders.kt")
+    public void testSuspendLifecycleRequiresSuspendProviders() {
+      run("SuspendLifecycleRequiresSuspendProviders.kt");
+    }
+
+    @Test
+    @TestMetadata("UnscopedLifecycleParameter.kt")
+    public void testUnscopedLifecycleParameter() {
+      run("UnscopedLifecycleParameter.kt");
     }
   }
 

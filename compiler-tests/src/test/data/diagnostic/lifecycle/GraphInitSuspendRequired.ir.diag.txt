@@ -1,0 +1,18 @@
+/GraphInitSuspendRequired.kt:9:11: error: [Metro/GraphInitSuspendRequired] @OnGraphInit NoFactoryGraph.start is a suspend function, so
+    creating 'NoFactoryGraph' suspends. Declare a graph factory whose function is suspend and create
+    'NoFactoryGraph' with it.
+
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#graphinitsuspendrequired
+
+
+/GraphInitSuspendRequired.kt:17:36: warning: [Metro/UnscopedLifecycleParameter] Unscoped Database is injected into parameter 'database' of
+    @OnGraphInit SyncFactoryGraph.migrate. This instance may be discarded after the callback.
+
+  help: request () -> Database or Lazy<Database> to resolve Database explicitly
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#unscopedlifecycleparameter
+
+
+/GraphInitSuspendRequired.kt:21:9: error: [Metro/GraphInitSuspendRequired] @OnGraphInit SyncFactoryGraph.migrate is a suspend function, so
+    creating 'SyncFactoryGraph' suspends. Make 'create' a suspend function.
+
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#graphinitsuspendrequired

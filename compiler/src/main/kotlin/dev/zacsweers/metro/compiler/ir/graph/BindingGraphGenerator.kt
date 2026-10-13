@@ -561,6 +561,14 @@ internal class BindingGraphGenerator(
       }
     }
 
+    trace("Process lifecycle callbacks") {
+      for (root in node.lifecycle.parameters) {
+        graph.addLifecycleRoot(root, IrBindingStack.Entry.lifecycleCallbackParameterAt(root))
+        // Record a lookup for IC
+        trackFunctionCall(node.sourceGraph, root.metroFunction.lifecycleCallbackDeclaration)
+      }
+    }
+
     trace("Process extensions") {
       for ((key, accessors) in node.graphExtensions) {
         accessors.forEach { accessor ->

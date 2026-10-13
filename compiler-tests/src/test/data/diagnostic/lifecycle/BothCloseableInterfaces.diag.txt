@@ -1,0 +1,1 @@
+/BothCloseableInterfaces.kt:6:1: error: 'AppGraph' inherits conflicting members: 'fun close(): Unit' defined in 'dev.zacsweers.metro.CloseableGraph', 'suspend fun close(): Unit' defined in 'dev.zacsweers.metro.SuspendCloseableGraph'.

@@ -54,7 +54,9 @@ internal fun metroDiagnosticsForFile(
         if (related.isNotEmpty()) {
           related
         } else {
-          val request = diagnostic.stack.firstOrNull { isProjectSource(it.pointer) }?.pointer
+          val anchor = diagnostic.anchor?.takeIf(::isProjectSource)
+          val request =
+            anchor ?: diagnostic.stack.firstOrNull { isProjectSource(it.pointer) }?.pointer
           // Binary child diagnostics remain visible at the source compilation that creates them.
           listOfNotNull(request ?: fallback)
         }

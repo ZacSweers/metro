@@ -177,10 +177,11 @@ The compiler's core graph logic lives in `metro-common` (`dev.zacsweers.metro.co
 | `KaBindingLookup`   | `BindingLookup`        |
 | `KaBindingStack`    | `IrBindingStack`       |
 | `KaBinding`         | `IrBinding`            |
+| `KaGraphLifecycleValidator` | `IrGraphLifecycleValidator` |
 
-- `graph/KaBindingGraph.kt`: one instance per seal. Feeds roots (accessors and injector keys)
-  into `MutableBindingGraph.seal`, which produces missing bindings, duplicates, and cycle
-  classification. Shared structural validation checks duplicate map keys, empty multibindings,
+- `graph/KaBindingGraph.kt`: one instance per seal. Feeds roots (accessors, injector keys, and
+  lifecycle callback parameters) into `MutableBindingGraph.seal`, which produces missing
+  bindings, duplicates, and cycle classification. Shared structural validation checks duplicate map keys, empty multibindings,
   scopes, and assisted targets without allocating compiler-side metadata wrappers for each
   binding. Lookup state is cleared after sealing.
 - `graph/KaBindingLookup.kt`: pull-based binding resolution. Only keys reachable from roots are
@@ -204,6 +205,7 @@ The compiler's core graph logic lives in `metro-common` (`dev.zacsweers.metro.co
   diagnostics. Witness provenance is built only when a diagnostic needs it and reused across
   requests. The adapter contains no suspend validation policy. Suspend parity fixtures cover valid
   transitive/deferred paths and representative failures.
+- `graph/KaGraphLifecycleValidator.kt`: runs the shared graph lifecycle checks after suspend validation. Callback parameters are graph requests whose `lifecycleCallback` names their callback. An overriding callback replaces the one it overrides, like an abstract accessor override. Each sealed extension hands its parent a lifecycle summary, and the parent checks how it creates that extension. Lifecycle diagnostics carry an explicit anchor, such as a callback parameter or a factory function.
 
 Explicit actions and opt-in pinned-graph validation submit requests to the same service. Index builds
 and highlighting passes perform no sealing. The pinned-graph service owns its debounce and running

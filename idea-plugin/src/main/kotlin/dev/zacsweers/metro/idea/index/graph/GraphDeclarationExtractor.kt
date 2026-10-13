@@ -20,6 +20,7 @@ import dev.zacsweers.metro.idea.index.typeKey
 import dev.zacsweers.metro.idea.model.ConsumerEntry
 import dev.zacsweers.metro.idea.model.GraphDeclarationId
 import dev.zacsweers.metro.idea.model.GraphExtensionFactoryAccessor
+import dev.zacsweers.metro.idea.model.GraphFactoryFunction
 import dev.zacsweers.metro.idea.model.GraphReference
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
@@ -82,6 +83,7 @@ internal class GraphDeclarationExtractor(
       val extensionCreations = mutableSetOf<GraphReference>()
       val extensionFactories = mutableListOf<GraphExtensionFactoryAccessor>()
       val injectedMemberOwnerIds = mutableSetOf<ClassId>()
+      var factoryFunction: GraphFactoryFunction? = null
       val memberTarget =
         GraphMemberTarget(
           graphId,
@@ -117,6 +119,9 @@ internal class GraphDeclarationExtractor(
                 includeInstanceBindings = onInstanceBinding != null,
               )
             for (binding in graphInputs.instanceBindings) onInstanceBinding?.invoke(binding)
+            if (factoryFunction == null) {
+              factoryFunction = graphInputs.function
+            }
             graphInputs.cacheDependencies.forEach(onDeclarationFile)
             includedBindingContainers += graphInputs.bindingContainers
             includedDependencies += graphInputs.graphDependencies
@@ -187,6 +192,9 @@ internal class GraphDeclarationExtractor(
         supertypeDeclarations = supertypeDeclarations,
         extensionFactories = extensionFactories,
         memberOverrides = memberTarget.memberOverrides,
+        lifecycleCallbacks = memberTarget.lifecycleCallbacks,
+        extensionCreationSites = memberTarget.extensionCreationSites,
+        factoryFunction = factoryFunction,
       )
     }
 

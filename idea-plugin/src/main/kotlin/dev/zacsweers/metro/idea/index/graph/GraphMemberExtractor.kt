@@ -7,11 +7,14 @@ import com.intellij.psi.PsiFile
 import com.intellij.psi.SmartPointerManager
 import com.intellij.psi.SmartPsiElementPointer
 import dev.zacsweers.metro.compiler.MetroOptions
+import dev.zacsweers.metro.compiler.graph.GraphLifecyclePhase
 import dev.zacsweers.metro.idea.checkCanceledEvery
+import dev.zacsweers.metro.idea.graphLifecyclePhase
 import dev.zacsweers.metro.idea.hasAnyAnnotation
 import dev.zacsweers.metro.idea.index.CallableBindingView
 import dev.zacsweers.metro.idea.index.GraphInterfaceBinding
 import dev.zacsweers.metro.idea.index.GraphInterfaceSurface
+import dev.zacsweers.metro.idea.index.assistedFactoryFunction
 import dev.zacsweers.metro.idea.index.bindingData
 import dev.zacsweers.metro.idea.index.bindsOptionalOfAnnotations
 import dev.zacsweers.metro.idea.index.callableBindingView
@@ -29,7 +32,9 @@ import dev.zacsweers.metro.idea.model.ContributionEntry
 import dev.zacsweers.metro.idea.model.GraphCallableReference
 import dev.zacsweers.metro.idea.model.GraphCallableSignature
 import dev.zacsweers.metro.idea.model.GraphDeclarationId
+import dev.zacsweers.metro.idea.model.GraphExtensionCreationSiteEntry
 import dev.zacsweers.metro.idea.model.GraphExtensionFactoryAccessor
+import dev.zacsweers.metro.idea.model.GraphLifecycleCallbackEntry
 import dev.zacsweers.metro.idea.model.GraphMemberOverride
 import dev.zacsweers.metro.idea.model.GraphReference
 import dev.zacsweers.metro.idea.model.KaBinding
@@ -192,6 +197,8 @@ internal class GraphMemberExtractor(
         extensionFactories,
         injectedMemberOwnerIds,
         memberOverrides = target.memberOverrides,
+        lifecycleCallbacks = target.lifecycleCallbacks,
+        extensionCreationSites = target.extensionCreationSites,
       )
     }
 
@@ -277,6 +284,7 @@ internal class GraphMemberExtractor(
         overriddenDeclarations = overriddenDeclarations,
         isOptional = callable.isOptionalConsumer(options),
         isAbstract = callable.modality == KaSymbolModality.ABSTRACT,
+        isLifecycleCallback = callable.graphLifecyclePhase() != null,
       )
   }
 
@@ -307,6 +315,14 @@ internal class GraphMemberExtractor(
     if (callable !is KaNamedFunctionSymbol && callable !is KaPropertySymbol) return
     if (view.receiver != null) return
     recordAnnotations(this, callable, psi)
+    // Lifecycle callbacks have bodies, so they're handled before the abstract-only check.
+    val lifecyclePhase = callable.graphLifecyclePhase()
+    if (lifecyclePhase != null) {
+      if (callable is KaNamedFunctionSymbol) {
+        addLifecycleCallback(view, callable, psi, target, lifecyclePhase)
+      }
+      return
+    }
     val isOptionalAccessor = callable.isOptionalConsumer(options)
     if (callable.modality != KaSymbolModality.ABSTRACT && !isOptionalAccessor) return
     val isMultibindingAccessor = callable.hasAnyAnnotation(options.multibindsAnnotations)
@@ -324,6 +340,17 @@ internal class GraphMemberExtractor(
         val factoryOwner =
           graphExtensionFactoryOwner(view, target.factoryContext, options, onDeclarationFile)
         target.extensionCreations += factoryOwner ?: returnType.graphReference()
+        val accessorName = callable.callableId?.callableName
+        if (accessorName != null) {
+          target.extensionCreationSites +=
+            GraphExtensionCreationSiteEntry(
+              ptr(psi),
+              returnType.graphReference(),
+              accessorName.asString(),
+              isFactory = factoryOwner != null,
+              isSuspend = (callable as? KaNamedFunctionSymbol)?.isSuspend == true,
+            )
+        }
         return
       }
       if (returnClass.hasAnyAnnotation(options.graphExtensionFactoryAnnotations)) {
@@ -337,6 +364,9 @@ internal class GraphMemberExtractor(
             typeKey(extensionType, null),
             extensionType.graphReference(),
           )
+        factoryCreationSite(returnType, extensionType, psi)?.let {
+          target.extensionCreationSites += it
+        }
         addGraphAccessor(view, psi, target, isOptionalAccessor)
         return
       }
@@ -355,6 +385,65 @@ internal class GraphMemberExtractor(
     }
     if (view.returnType.isUnitType) return
     addGraphAccessor(view, psi, target, isOptionalAccessor)
+  }
+
+  /** Each callback parameter requests its key from the graph, like an accessor does. */
+  private fun KaSession.addLifecycleCallback(
+    view: CallableBindingView,
+    function: KaNamedFunctionSymbol,
+    psi: KtElement,
+    target: GraphMemberTarget,
+    phase: GraphLifecyclePhase,
+  ) {
+    val declaringClassId = function.callableId?.classId ?: return
+    val callback =
+      GraphLifecycleCallbackEntry(
+        ptr(psi),
+        phase,
+        declaringClassId,
+        function.name.asString(),
+        function.isSuspend,
+      )
+    target.lifecycleCallbacks += callback
+    for (parameter in view.valueParameters) {
+      checkCanceled()
+      val source = parameter.symbol.psi as? KtElement ?: continue
+      recordAnnotations(this, parameter.symbol, source)
+      recordRequestedType(this, parameter.returnType)
+      val site = consumedSite(parameter.returnType, parameter.symbol, options)
+      target.consumers +=
+        ConsumerEntry(
+          ptr(source),
+          site.contextKey,
+          site.isAbstractType,
+          site.multibindingId,
+          site.typeClassId,
+          graphId = target.graphId,
+          graphRequestKind = ConsumerEntry.GraphRequestKind.LIFECYCLE_CALLBACK,
+          isSuspend = function.isSuspend,
+          lifecycleCallback = callback,
+        )
+    }
+  }
+
+  /** An accessor that returns an extension factory creates the extension with the factory. */
+  private fun KaSession.factoryCreationSite(
+    factoryType: KaClassType,
+    extensionType: KaClassType,
+    accessor: KtElement,
+  ): GraphExtensionCreationSiteEntry? {
+    val function = assistedFactoryFunction(factoryType)?.symbol as? KaNamedFunctionSymbol
+    if (function == null) {
+      return null
+    }
+    val source = function.psi as? KtElement ?: accessor
+    return GraphExtensionCreationSiteEntry(
+      ptr(source),
+      extensionType.graphReference(),
+      function.name.asString(),
+      isFactory = true,
+      isSuspend = function.isSuspend,
+    )
   }
 
   private fun KaSession.addGraphAccessor(

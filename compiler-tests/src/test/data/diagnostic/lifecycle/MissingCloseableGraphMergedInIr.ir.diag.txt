@@ -1,0 +1,4 @@
+/MissingCloseableGraphMergedInIr.kt:12:69: error: [Metro/MissingCloseableGraph] 'AppGraph' has @OnGraphInit or @OnGraphClose callbacks, so it must
+    implement CloseableGraph or SuspendCloseableGraph.
+
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingcloseablegraph

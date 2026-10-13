@@ -131,6 +131,26 @@ internal interface IrBindingStack :
       }
 
       /*
+      Database is injected at @OnGraphClose
+             [AppGraph] AppGraph.closeDatabase(database)
+       */
+      fun lifecycleCallbackParameterAt(root: LifecycleCallbackParameter): Entry {
+        val parameter = root.sourceParameter
+        return Entry(
+          contextKey = root.contextKey,
+          usage = "is injected at ${root.phase.annotationName}",
+          graphContext = null,
+          declaration = parameter,
+          isSynthetic = true,
+          graphContextProvider = {
+            val declaration = root.metroFunction.lifecycleCallbackDeclaration
+            val targetFqName = declaration.parentAsClass.kotlinFqName
+            "$targetFqName.${declaration.name.asString()}(${parameter.name.asString()})"
+          },
+        )
+      }
+
+      /*
       com.slack.circuit.star.Example1
        */
       fun contributedToMultibinding(

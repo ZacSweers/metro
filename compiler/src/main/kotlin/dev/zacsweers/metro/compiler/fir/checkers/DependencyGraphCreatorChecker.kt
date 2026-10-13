@@ -14,6 +14,7 @@ import dev.zacsweers.metro.compiler.fir.diagnosticString
 import dev.zacsweers.metro.compiler.fir.isBindingContainer
 import dev.zacsweers.metro.compiler.fir.isIntrinsicType
 import dev.zacsweers.metro.compiler.fir.isResolved
+import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.render
 import dev.zacsweers.metro.compiler.fir.scopeAnnotations
 import dev.zacsweers.metro.compiler.fir.shouldCheckRuntimeTracingGraphInputs
@@ -21,6 +22,7 @@ import dev.zacsweers.metro.compiler.fir.singleAbstractFunction
 import dev.zacsweers.metro.compiler.fir.toClassSymbolCompat
 import dev.zacsweers.metro.compiler.fir.validateApiDeclaration
 import dev.zacsweers.metro.compiler.flatMapToSet
+import dev.zacsweers.metro.compiler.graph.SuspendDiagnosticMessages
 import dev.zacsweers.metro.compiler.isPlatformType
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.trace
@@ -38,6 +40,7 @@ import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.declarations.utils.classId
+import org.jetbrains.kotlin.fir.declarations.utils.isSuspend
 import org.jetbrains.kotlin.fir.resolve.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.types.coneType
@@ -105,6 +108,14 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
       ) {
         return
       }
+
+    if (createFunction.isSuspend && !session.metroFirBuiltIns.options.enableSuspendProviders) {
+      reporter.reportOn(
+        createFunction.source ?: declaration.source,
+        MetroDiagnostics.SUSPEND_PROVIDERS_NOT_ENABLED,
+        SuspendDiagnosticMessages.SUSPEND_PROVIDERS_NOT_ENABLED,
+      )
+    }
 
     val targetGraph = createFunction.resolvedReturnType.toClassSymbolCompat(session)
     val targetGraphAnnotation =

@@ -1,0 +1,8 @@
+/MissingBindingInCallbackParameter.kt:10:21: error: [Metro/MissingBinding] No binding found for Database
+
+  trace (in AppGraph):
+      Database is injected at @OnGraphClose AppGraph.closeDatabase(database)
+
+  help: ensure Database has an @Inject constructor or is provided by an @Provides or @Binds
+        declaration visible to AppGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding

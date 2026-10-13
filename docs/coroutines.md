@@ -168,7 +168,7 @@ The initialization check follows structured child coroutines and indirect calls 
 
 Scoped suspend bindings use `dev.zacsweers.metro:runtime-coroutines`, which must be available at compile time and runtime. The Gradle plugin adds it automatically. If automatic dependency management is disabled, follow the [manual dependency setup](installation.md#manual-dependency-management). If the artifact is missing, Metro reports a compile-time error with the dependency to add.
 
-Metro caches the value but does not close it. The application remains responsible for releasing resources when they are no longer needed.
+Metro caches the value but does not close it. The application remains responsible for releasing resources when they are no longer needed. An `@OnGraphClose` callback can release them when the graph closes. See [Graph Lifecycle](graph-lifecycle.md).
 
 ## Execution context
 

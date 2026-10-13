@@ -437,6 +437,7 @@ internal class MetroGraphValidationService(
     // results still carry their reservations, so cache hits stay correct. Each child resolves
     // through its own declaration module so per-module options and library views apply.
     val reservations = mutableListOf<ReservedParentKey>()
+    val extensionLifecycles = mutableListOf<KaGraphLifecycleSummary>()
     var childFailed = false
     var incompleteChild: KaGraphValidationResult.Incomplete? = null
     for (child in input.children) {
@@ -448,6 +449,7 @@ internal class MetroGraphValidationService(
             reservations +=
               ReservedParentKey(reservedKey, childResult.context.graph.pointer, binding)
           }
+          childResult.lifecycle?.let { extensionLifecycles += it }
         }
         is KaGraphValidationResult.Incomplete -> {
           if (incompleteChild == null) incompleteChild = childResult
@@ -484,6 +486,7 @@ internal class MetroGraphValidationService(
                   input.options,
                   input.sources,
                   reservations,
+                  extensionLifecycles,
                 ) { parentContext ->
                   input.parents[parentContext.path]
                 }

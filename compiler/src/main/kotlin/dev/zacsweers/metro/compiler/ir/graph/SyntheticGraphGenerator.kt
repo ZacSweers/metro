@@ -554,6 +554,8 @@ internal class SyntheticGraphGenerator(
             anno1.isMultibinds != anno2.isMultibinds ||
             anno1.isBindsOptionalOf != anno2.isBindsOptionalOf ||
             anno1.isOptionalBinding != anno2.isOptionalBinding ||
+            anno1.isOnGraphInit != anno2.isOnGraphInit ||
+            anno1.isOnGraphClose != anno2.isOnGraphClose ||
             anno1.qualifier != anno2.qualifier
         ) {
           annotationClashes +=

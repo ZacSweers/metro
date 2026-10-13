@@ -119,6 +119,54 @@ public class MetroTraceContext(
   }
 
   /**
+   * Traces a graph lifecycle [block], such as a graph's init callbacks or one close callback.
+   *
+   * @param name the visible section name.
+   * @param phase the lifecycle phase, either `init` or `close`.
+   * @param callable the callback name without the graph prefix, or null for a whole phase.
+   */
+  public inline fun <T> traceLifecycle(
+    name: String,
+    phase: String,
+    callable: String?,
+    crossinline block: () -> T,
+  ): T {
+    return tracer.trace(
+      category = category,
+      name = name,
+      metadataBlock = {
+        addMetadataEntry("metro.graph", graphName)
+        addMetadataEntry("metro.graph_path", graphPath)
+        addMetadataEntry("metro.lifecycle_phase", phase)
+        callable?.let { addMetadataEntry("metro.callable", it) }
+      },
+    ) {
+      block()
+    }
+  }
+
+  /** Suspending version of [traceLifecycle] that stays attached to the calling coroutine. */
+  public suspend inline fun <T> traceLifecycleSuspend(
+    name: String,
+    phase: String,
+    callable: String?,
+    crossinline block: suspend () -> T,
+  ): T {
+    return tracer.traceCoroutine(
+      category = category,
+      name = name,
+      metadataBlock = {
+        addMetadataEntry("metro.graph", graphName)
+        addMetadataEntry("metro.graph_path", graphPath)
+        addMetadataEntry("metro.lifecycle_phase", phase)
+        callable?.let { addMetadataEntry("metro.callable", it) }
+      },
+    ) {
+      block()
+    }
+  }
+
+  /**
    * Emits a zero-duration event with Metro-specific metadata.
    *
    * The visible event [name] describes the generated graph entry point. [callable] records the

@@ -8,7 +8,7 @@ The primary entry points in Metro are *dependency graphs*. These are interfaces 
 !!! tip
     “Accessors” in Metro are synonymous with Dagger’s [provision methods](https://dagger.dev/api/latest/dagger/Component.html#provision-methods).
 
-Accessors and member injections act as roots, from which the dependency graph is resolved. Dependencies can be provided via conventional `@Provides` functions in graphs or their supertypes, constructor-injected classes, or accessed from graph dependencies.
+Accessors and member injections act as roots, from which the dependency graph is resolved. [Lifecycle callback](graph-lifecycle.md) parameters are roots too. Dependencies can be provided via conventional `@Provides` functions in graphs or their supertypes, constructor-injected classes, or accessed from graph dependencies.
 
 ```kotlin
 @DependencyGraph
@@ -141,6 +141,8 @@ Graph extensions must be either an interface or an abstract class and are annota
 Metro's compiler plugin will build, validate, and implement this graph at compile-time _when the parent graph is generated_. This means that graph extensions are not available until the parent graph is generated.
 
 Graph extensions can be chained and implicitly inherit their parents' scopes.
+
+Closeable graphs close the graph extensions they create when they close. See [Graph Lifecycle](graph-lifecycle.md#graph-extensions).
 
 ### Creating Graph Extensions
 
@@ -738,7 +740,7 @@ Metro applies several optimizations to generated graph code to reduce class size
 
 #### Unused binding elimination
 
-By default, Metro removes bindings that are not reachable from any accessor or member injector function. This reduces the size of generated code and avoids unnecessary initialization work.
+By default, Metro removes bindings that are not reachable from any accessor, member injector function, or [lifecycle callback](graph-lifecycle.md) parameter. This reduces the size of generated code and avoids unnecessary initialization work.
 
 ```kotlin
 @DependencyGraph

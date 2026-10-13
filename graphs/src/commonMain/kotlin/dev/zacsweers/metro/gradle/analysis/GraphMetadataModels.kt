@@ -69,6 +69,7 @@ public data class GraphStatsMetadata(
   val optionalBindings: Int = 0,
   val accessors: Int = 0,
   val injectors: Int = 0,
+  val lifecycleCallbacks: Int = 0,
   val graphExtensionAccessors: Int = 0,
   val graphExtensionFactories: Int = 0,
   val includedGraphs: Int = 0,
@@ -112,6 +113,8 @@ public data class RootsMetadata(
   val accessors: List<AccessorMetadata> = emptyList(),
   /** Injector functions that inject dependencies into targets. */
   val injectors: List<InjectorMetadata> = emptyList(),
+  /** `@OnGraphInit` and `@OnGraphClose` callbacks. Their parameters are graph requests. */
+  val lifecycleCallbacks: List<LifecycleCallbackMetadata> = emptyList(),
 )
 
 /** Metadata for an accessor property or function. */
@@ -146,6 +149,28 @@ public data class InjectorMetadata(
   val name: String? = null,
   /** The compiler's rendering of [key], for display. Defaults to [key]. */
   val renderedKey: String = key,
+)
+
+/** Metadata for an `@OnGraphInit` or `@OnGraphClose` callback. */
+@Serializable
+@ExperimentalMetroGraphApi
+public data class LifecycleCallbackMetadata(
+  /** `init` or `close`. */
+  val phase: String,
+  val name: String,
+  /** Type that declares the callback. */
+  val declaringType: String? = null,
+  val isSuspend: Boolean = false,
+  val parameters: List<LifecycleCallbackParameterMetadata> = emptyList(),
+)
+
+/** A lifecycle callback parameter and the key it requests. */
+@Serializable
+@ExperimentalMetroGraphApi
+public data class LifecycleCallbackParameterMetadata(
+  val name: String,
+  val key: String,
+  val isDeferrable: Boolean = false,
 )
 
 /** Graph extension information. */

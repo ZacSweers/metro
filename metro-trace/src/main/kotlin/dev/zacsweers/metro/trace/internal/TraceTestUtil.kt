@@ -65,6 +65,23 @@ public class MetroTraceTestScope(
     assertRecordedEvent(MetroTraceEventType.Span, name, metadata)
   }
 
+  /** Flushes tracing and asserts the next generated Metro graph lifecycle span. */
+  public fun assertLifecycleTrace(
+    name: String,
+    graph: String,
+    path: String,
+    phase: String,
+    callable: String? = null,
+  ) {
+    val metadata = buildMap {
+      put("metro.graph", graph)
+      put("metro.graph_path", path)
+      put("metro.lifecycle_phase", phase)
+      callable?.let { put("metro.callable", it) }
+    }
+    assertRecordedEvent(MetroTraceEventType.Span, name, metadata)
+  }
+
   /** Flushes tracing and asserts the next generated Metro instant event. */
   public fun assertInstant(
     name: String,

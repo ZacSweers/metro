@@ -204,6 +204,34 @@ internal fun CodeInsightTestFixture.configureMetroFile(
   return configureByText(fileName, text) as KtFile
 }
 
+/**
+ * Declares the graph lifecycle runtime APIs as project sources. IDE tests resolve Metro from the
+ * pinned bootstrap runtime, which predates them.
+ */
+internal fun CodeInsightTestFixture.addGraphLifecycleRuntime() {
+  val path = "metro/GraphLifecycle.kt"
+  if (findFileInTempDir(path) != null) return
+  addFileToProject(
+    path,
+    """
+    package dev.zacsweers.metro
+
+    interface CloseableGraph : AutoCloseable {
+      override fun close()
+    }
+
+    interface SuspendCloseableGraph {
+      suspend fun close()
+    }
+
+    @Target(AnnotationTarget.FUNCTION) annotation class OnGraphInit
+
+    @Target(AnnotationTarget.FUNCTION) annotation class OnGraphClose
+    """
+      .trimIndent(),
+  )
+}
+
 /** Waits outside the fixture's EDT read action for the current index generation. */
 internal fun MetroResolutionService.awaitIndex(element: PsiElement): BindingIndex {
   return awaitCurrentIndex(element.project) { index(element) }

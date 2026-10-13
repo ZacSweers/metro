@@ -8,6 +8,8 @@ import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
 public enum class SuspendGraphRequestKind {
   ACCESSOR,
   MEMBERS_INJECTOR,
+  /** A parameter of an `@OnGraphInit` or `@OnGraphClose` callback. */
+  LIFECYCLE_CALLBACK,
   OTHER,
 }
 
@@ -25,6 +27,10 @@ public data class SuspendGraphRequest<ContextualTypeKey, Source>(
   val source: Source,
   val kind: SuspendGraphRequestKind,
   val isSuspend: Boolean = false,
+  /** For lifecycle callback requests, the callback, such as `@OnGraphInit AppGraph.migrate`. */
+  val callbackName: String? = null,
+  /** For lifecycle callback requests, the parameter name. */
+  val parameterName: String? = null,
 )
 
 /** Metadata needed to validate one multibinding without inspecting frontend-native types. */
@@ -89,6 +95,7 @@ public enum class SuspendValidationIssueKind {
   BLOCKING_WRAPPER,
   MEMBER_INJECTION,
   ASSISTED_FACTORY_SUSPEND_REQUIRED,
+  LIFECYCLE_CALLBACK_SUSPEND_REQUIRED,
   MISSING_RUNTIME_COROUTINES,
 }
 

@@ -1,0 +1,25 @@
+/CallbackDeclarations.kt:6:20: error: @OnGraphInit callbacks must have a body. Metro calls them but doesn't implement them.
+
+/CallbackDeclarations.kt:8:36: error: @OnGraphInit callbacks must return Unit.
+
+/CallbackDeclarations.kt:10:28: error: @OnGraphInit callbacks must be public or protected so generated graphs can call them.
+
+/CallbackDeclarations.kt:12:24: error: @OnGraphInit callbacks can't have type parameters.
+
+/CallbackDeclarations.kt:14:20: error: @OnGraphInit callbacks can't have extension receivers.
+
+/CallbackDeclarations.kt:16:34: error: A function can't be both an @OnGraphInit and an @OnGraphClose callback.
+
+/CallbackDeclarations.kt:18:39: error: @OnGraphInit callbacks can't have other Metro binding annotations.
+
+/CallbackDeclarations.kt:20:34: error: @OnGraphClose callback parameters can't be optional or have default values.
+
+/CallbackDeclarations.kt:22:40: error: @OnGraphClose callback parameters can't be @Assisted.
+
+/CallbackDeclarations.kt:25:18: error: @OnGraphInit callbacks must be declared in an interface or abstract class that a graph extends.
+
+/CallbackDeclarations.kt:28:20: error: @OnGraphInit callbacks must be declared in an interface or abstract class that a graph extends.
+
+/CallbackDeclarations.kt:32:20: error: @OnGraphInit callbacks must be declared in an interface or abstract class that a graph extends.
+
+/CallbackDeclarations.kt:38:29: error: @OnGraphInit callbacks must be public or protected so generated graphs can call them.

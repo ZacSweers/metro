@@ -268,7 +268,10 @@ public class SuspendBindingValidator<
     }
   }
 
-  /** Validates each accessor directly so accessors sharing a contextual key are all checked. */
+  /**
+   * Validates each accessor and lifecycle callback parameter directly so requests sharing a
+   * contextual key are all checked.
+   */
   private fun validateGraphRequests(
     analysis: SuspendBindingAnalysisResult<TypeKey, ContextualTypeKey>,
     suspendMultibindings: Set<TypeKey>,
@@ -276,7 +279,9 @@ public class SuspendBindingValidator<
   ) {
     for (request in requests) {
       checkCanceled()
-      if (request.kind != SuspendGraphRequestKind.ACCESSOR) continue
+      val isAccessor = request.kind == SuspendGraphRequestKind.ACCESSOR
+      val isLifecycleCallback = request.kind == SuspendGraphRequestKind.LIFECYCLE_CALLBACK
+      if (!isAccessor && !isLifecycleCallback) continue
       val contextKey = request.contextKey
       if (contextKey.typeKey !in analysis.suspendKeys) continue
       // Suspend multibindings have already been reported with a more specific message.
@@ -293,6 +298,20 @@ public class SuspendBindingValidator<
       if (request.isSuspend || contextKey.isSuspendCapableBoundary) continue
 
       val typeRender = contextKey.typeKey.render(short = true)
+      if (isLifecycleCallback) {
+        issues +=
+          issue(
+            kind = SuspendValidationIssueKind.LIFECYCLE_CALLBACK_SUSPEND_REQUIRED,
+            id = MetroDiagnosticId.LIFECYCLE_CALLBACK_SUSPEND_REQUIRED,
+            title =
+              "Parameter '${request.parameterName}' of ${request.callbackName} depends on suspend " +
+                "bindings, so the callback must be a suspend function or request " +
+                "`${suspendProviderRender(typeRender)}` instead.",
+            site = SuspendValidationSite.GraphRequest(request),
+            path = analysis.pathFrom(contextKey.typeKey) { it.typeKey },
+          )
+        continue
+      }
       issues +=
         issue(
           kind = SuspendValidationIssueKind.NON_SUSPEND_ACCESSOR,

@@ -1,0 +1,4 @@
+parity.lifecycle.failure.AppGraph
+parity.lifecycle.failure.Cache
+parity.lifecycle.failure.Database
+parity.lifecycle.failure.Request

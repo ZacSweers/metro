@@ -215,6 +215,64 @@ public enum class MetroDiagnosticId(
     classpath. Add `dev.zacsweers.metro:runtime-coroutines` to the compile and runtime classpath.
     """,
   ),
+  LIFECYCLE_CALLBACK_SUSPEND_REQUIRED(
+    "Metro/LifecycleCallbackSuspendRequired",
+    "A lifecycle callback parameter needs a suspend context.",
+    """
+    An `@OnGraphInit` or `@OnGraphClose` callback requests a binding that depends on suspend
+    bindings, but the callback isn't a `suspend` function. Make the callback `suspend`, or request
+    the parameter as `suspend () -> T` and call it where the value is needed.
+    """,
+  ),
+  GRAPH_INIT_SUSPEND_REQUIRED(
+    "Metro/GraphInitSuspendRequired",
+    "A graph's initialization suspends but its creator isn't a suspend function.",
+    """
+    A graph's `@OnGraphInit` callbacks need a suspend context. A callback is a `suspend` function or
+    one of its parameters depends on suspend bindings. Creating the graph then has to suspend too.
+    Declare a `@DependencyGraph.Factory` or `@GraphExtension.Factory` whose function is `suspend` and
+    create the graph through it.
+    """,
+  ),
+  MISSING_CLOSEABLE_GRAPH(
+    "Metro/MissingCloseableGraph",
+    "A graph has lifecycle callbacks but isn't closeable.",
+    """
+    `@OnGraphInit` and `@OnGraphClose` callbacks only run on graphs that opt in to lifecycle
+    management. The callbacks can come from the graph itself or from interfaces it extends,
+    including contributed ones. Make the graph implement `CloseableGraph`, or
+    `SuspendCloseableGraph` if its cleanup suspends.
+    """,
+  ),
+  SUSPEND_CLOSE_REQUIRED(
+    "Metro/SuspendCloseRequired",
+    "Closing a CloseableGraph would need to suspend.",
+    """
+    A `CloseableGraph` closes synchronously, but its cleanup needs a suspend context. An
+    `@OnGraphClose` callback is a `suspend` function, a callback parameter depends on suspend
+    bindings, or the graph tracks a graph extension that implements `SuspendCloseableGraph`.
+    Implement `SuspendCloseableGraph` instead.
+    """,
+  ),
+  UNSCOPED_LIFECYCLE_PARAMETER(
+    "Metro/UnscopedLifecycleParameter",
+    "A lifecycle callback parameter requests an unscoped binding.",
+    """
+    An `@OnGraphInit` or `@OnGraphClose` parameter requests an unscoped binding directly. The callback
+    can get a new instance that's discarded afterward, or a different instance than other consumers.
+    Request `() -> T` or `Lazy<T>` to resolve it explicitly, or scope the binding. If a temporary
+    instance is intended, suppress this with `@Suppress("UNSCOPED_LIFECYCLE_PARAMETER")`.
+    """,
+  ),
+  CLOSE_ONLY_BINDING(
+    "Metro/CloseOnlyBinding",
+    "A binding is only reachable from close callbacks.",
+    """
+    An `@OnGraphClose` parameter requests a binding that nothing else in the graph uses, including
+    init callbacks and graph extensions. Resolving it during close can create it for the first time
+    just to clean it up. If that's intended, suppress this with `@Suppress("CLOSE_ONLY_BINDING")`.
+    """,
+  ),
   GENERIC(
     "Metro/Error",
     "A general Metro graph validation error.",

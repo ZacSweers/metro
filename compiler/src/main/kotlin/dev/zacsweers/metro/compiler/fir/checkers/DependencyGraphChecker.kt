@@ -14,6 +14,7 @@ import dev.zacsweers.metro.compiler.fir.callableSymbols
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
+import dev.zacsweers.metro.compiler.fir.implements
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isEffectivelyOpen
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
@@ -66,6 +67,7 @@ import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.isNothing
 import org.jetbrains.kotlin.fir.types.isUnit
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.StandardClassIds
 
 // TODO
@@ -226,6 +228,12 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
     val implementedGraphExtensionCreators =
       graphExtensionFactorySupertypes.values.mapToSet { it.classId }
 
+    val isCloseable = declaration.implements(classIds.closeableGraph, session)
+    val isSuspendCloseable = declaration.implements(classIds.suspendCloseableGraph, session)
+    val hasCloseableSupertype = isCloseable || isSuspendCloseable
+    var hasLifecycleCallbacks = false
+    var suspendCloseCallback: FirCallableSymbol<*>? = null
+
     val matchingContext =
       context.session.expectActualMatchingContextFactory.create(
         context.session,
@@ -236,6 +244,21 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
     fun walkCallables() {
       for (callable in declaration.symbol.callableSymbols()) {
         val annotations = callable.metroAnnotations()
+
+        // LifecycleCallbackChecker validates the callbacks themselves.
+        if (annotations.isLifecycleCallback) {
+          hasLifecycleCallbacks = true
+          val isSuspendClose = annotations.isOnGraphClose && callable.isSuspend
+          if (isSuspendClose && suspendCloseCallback == null) {
+            suspendCloseCallback = callable
+          }
+          continue
+        }
+
+        if (callable.isCloseFunction()) {
+          checkCloseFunction(declaration, callable, hasCloseableSupertype)
+          continue
+        }
 
         val isEffectivelyOpen = with(session.compatContext) { callable.isEffectivelyOpen() }
 
@@ -532,7 +555,74 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
     }
 
     session.trace({ "Walk callables" }) { walkCallables() }
+
+    val graphName = declaration.classId.shortClassName.asString()
+    if (hasLifecycleCallbacks && !hasCloseableSupertype) {
+      reporter.reportOn(
+        declaration.source,
+        MetroDiagnostics.MISSING_CLOSEABLE_GRAPH,
+        "'$graphName' has @OnGraphInit or @OnGraphClose callbacks, so it must implement CloseableGraph or SuspendCloseableGraph.",
+      )
+    }
+    if (isSuspendCloseable && !session.metroFirBuiltIns.options.enableSuspendProviders) {
+      reporter.reportOn(
+        declaration.source,
+        MetroDiagnostics.SUSPEND_PROVIDERS_NOT_ENABLED,
+        SuspendDiagnosticMessages.SUSPEND_PROVIDERS_NOT_ENABLED,
+      )
+    }
+    val suspendCallback = suspendCloseCallback
+    if (isCloseable && !isSuspendCloseable && suspendCallback != null) {
+      val isDeclaredHere = suspendCallback.callableId?.classId == declaration.classId
+      reporter.reportOn(
+        if (isDeclaredHere) suspendCallback.source else declaration.source,
+        MetroDiagnostics.SUSPEND_CLOSE_REQUIRED,
+        "'${suspendCallback.callableId?.callableName}' is a suspend @OnGraphClose callback, so '$graphName' must implement SuspendCloseableGraph instead of CloseableGraph.",
+      )
+    }
   }
+
+  /** A zero-parameter `close()` member, which is the one closeable graphs get from Metro. */
+  private fun FirCallableSymbol<*>.isCloseFunction(): Boolean {
+    if (this !is FirNamedFunctionSymbol) return false
+    if (name != CLOSE) return false
+    val hasExtraParameters = valueParameterSymbols.isNotEmpty() || receiverParameterSymbol != null
+    if (hasExtraParameters) return false
+    return resolvedReturnType.isUnit
+  }
+
+  context(context: CheckerContext, reporter: DiagnosticReporter)
+  private fun checkCloseFunction(
+    declaration: FirClass,
+    callable: FirCallableSymbol<*>,
+    hasCloseableSupertype: Boolean,
+  ) {
+    val function = callable as FirNamedFunctionSymbol
+    val graphName = declaration.classId.shortClassName.asString()
+    val isDeclaredHere = function.callableId.classId == declaration.classId
+    if (hasCloseableSupertype) {
+      if (!function.hasBody) return
+      val message =
+        if (isDeclaredHere) {
+          "Metro generates close() for closeable graphs. Move this cleanup into an @OnGraphClose callback."
+        } else {
+          "'$graphName' inherits an implementation of close() from '${function.callableId.classId?.shortClassName}'. Metro generates close() for closeable graphs, so move that cleanup into an @OnGraphClose callback."
+        }
+      reporter.reportOn(
+        if (isDeclaredHere) function.source else declaration.source,
+        MetroDiagnostics.GRAPH_LIFECYCLE_ERROR,
+        message,
+      )
+    } else if (!function.hasBody) {
+      reporter.reportOn(
+        if (isDeclaredHere) function.source else declaration.source,
+        MetroDiagnostics.GRAPH_LIFECYCLE_ERROR,
+        "'$graphName' has an abstract close() function. Implement CloseableGraph or SuspendCloseableGraph so Metro generates it.",
+      )
+    }
+  }
+
+  private val CLOSE = Name.identifier("close")
 
   context(context: CheckerContext, reporter: DiagnosticReporter)
   private fun validateGraphExtension(

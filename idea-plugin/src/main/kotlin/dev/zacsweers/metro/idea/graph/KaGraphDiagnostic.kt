@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea.graph
 
+import com.intellij.psi.PsiElement
+import com.intellij.psi.SmartPsiElementPointer
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnostic
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
 import dev.zacsweers.metro.compiler.diagnostics.MetroSeverity
@@ -15,6 +17,8 @@ internal class KaGraphDiagnostic(
   val stack: List<KaBindingStack.Entry>,
   /** The bindings this diagnostic is about, such as the sources of a duplicate. */
   val related: List<KaBinding> = emptyList(),
+  /** Where the editor highlights this diagnostic when it isn't the first stack entry. */
+  val anchor: SmartPsiElementPointer<out PsiElement>? = null,
 ) {
   val id: MetroDiagnosticId
     get() = diagnostic.id

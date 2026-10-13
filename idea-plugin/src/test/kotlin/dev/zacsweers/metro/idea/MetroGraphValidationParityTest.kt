@@ -235,6 +235,33 @@ class MetroGraphValidationParityTest : BasePlatformTestCase() {
     )
   }
 
+  fun testGraphLifecycleMatchesCompiler() {
+    val options = mapOf("enable-suspend-providers" to "true")
+    assertParity(
+      ParityCase(
+        fixtureName = "LifecycleGraph",
+        graphPath = listOf("parity.lifecycle.AppGraph"),
+        metadataReport = "LifecycleGraph/graph-metadata/graph-parity-lifecycle-AppGraph.json.txt",
+        populatedReport = "LifecycleGraph/keys-populated/parity/lifecycle/AppGraph/Impl.txt",
+        validatedReport = "LifecycleGraph/keys-validated/parity/lifecycle/AppGraph/Impl.txt",
+        deferredReport = "LifecycleGraph/keys-deferred/parity/lifecycle/AppGraph/Impl.txt",
+        metroOptions = options,
+        usesGraphLifecycle = true,
+      ),
+    )
+    assertParity(
+      ParityCase(
+        fixtureName = "LifecycleFailure",
+        graphPath = listOf("parity.lifecycle.failure.AppGraph"),
+        populatedReport =
+          "LifecycleFailure/keys-populated/parity/lifecycle/failure/AppGraph/Impl.txt",
+        diagnosticReport = "LifecycleFailure.ir.diag.txt",
+        metroOptions = options,
+        usesGraphLifecycle = true,
+      ),
+    )
+  }
+
   private fun failureCase(
     fixtureName: String,
     packageName: String,
@@ -257,6 +284,9 @@ class MetroGraphValidationParityTest : BasePlatformTestCase() {
   private fun assertParity(case: ParityCase) {
     project.setMetroOptions(*case.metroOptions.map { it.key to it.value }.toTypedArray())
     val runComparison = {
+      if (case.usesGraphLifecycle) {
+        myFixture.addGraphLifecycleRuntime()
+      }
       val source = compilerContracts.source(case)
       val file =
         myFixture.configureByText(case.sourceFile ?: "${case.fixtureName}.kt", source) as KtFile

@@ -1,0 +1,40 @@
+/SuspendCloseRequired.kt:15:11: error: [Metro/SuspendCloseRequired] 'AppGraph' closes 'SuspendChild', which implements
+    SuspendCloseableGraph, so 'AppGraph' must implement SuspendCloseableGraph instead of
+    CloseableGraph.
+
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#suspendcloserequired
+
+
+/SuspendCloseRequired.kt:25:35: warning: [Metro/CloseOnlyBinding] Database is reachable only from @OnGraphClose callbacks in
+    SuspendingParameterGraph. Resolving parameter 'database' of
+    SuspendingParameterGraph.closeDatabase may create Database for the first time during graph
+    close.
+
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#closeonlybinding
+
+
+/SuspendCloseRequired.kt:25:35: error: [Metro/LifecycleCallbackSuspendRequired] Parameter 'database' of @OnGraphClose SuspendingParameterGraph.closeDatabase depends on suspend bindings, so the callback must be a suspend function or request `suspend () -> Database` instead.
+
+Trace:
+    Database is injected at @OnGraphClose
+        [SuspendingParameterGraph] SuspendingParameterGraph.closeDatabase(database) // ❌ needs suspend support
+    Database is provided at
+        [SuspendingParameterGraph] suspend SuspendingParameterGraph.provideDatabase(…)
+
+/SuspendCloseRequired.kt:25:35: error: [Metro/SuspendCloseRequired] Parameter 'database' of @OnGraphClose
+    SuspendingParameterGraph.closeDatabase depends on suspend bindings, so
+    'SuspendingParameterGraph' must implement SuspendCloseableGraph instead of CloseableGraph.
+
+  trace (in SuspendingParameterGraph):
+      Database is provided at suspend SuspendingParameterGraph.provideDatabase(…)
+      Database is injected at @OnGraphClose SuspendingParameterGraph.closeDatabase(database)
+
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#suspendcloserequired
+
+
+/SuspendCloseRequired.kt:25:35: warning: [Metro/UnscopedLifecycleParameter] Unscoped Database is injected into parameter 'database' of
+    @OnGraphClose SuspendingParameterGraph.closeDatabase. This instance may be discarded after the
+    callback.
+
+  help: request () -> Database or Lazy<Database> to resolve Database explicitly
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#unscopedlifecycleparameter

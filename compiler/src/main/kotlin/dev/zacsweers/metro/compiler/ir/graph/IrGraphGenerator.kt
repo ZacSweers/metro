@@ -304,6 +304,18 @@ internal class IrGraphGenerator(
           )
         }
 
+      val lifecycleGenerator =
+        IrGraphLifecycleGenerator(
+          context = metroContext,
+          graphClass = graphClass,
+          node = node,
+          bindingGraph = bindingGraph,
+          parentGraphParam = parentGraphParam,
+          parentGraphInstanceProperty = parentGraphInstanceProperty,
+          traceContextProperty = traceContextProperty,
+        )
+      trace("Setup lifecycle property") { lifecycleGenerator.addLifecycleProperty() }
+
       // Included graph dependencies can need local provider fields for child graph access. Those
       // provider initializers need the runtime trace context, so they run after the trace context
       // property exists.
@@ -374,6 +386,9 @@ internal class IrGraphGenerator(
         }
       }
 
+      // Init callbacks run after ordinary initialization, so they go last.
+      constructorStatements += lifecycleGenerator.constructorTailStatements()
+
       // Add extra constructor statements
       trace("Finalize constructor body") {
         with(ctor) {
@@ -383,9 +398,11 @@ internal class IrGraphGenerator(
             constructorStatements.forEach { statement -> +statement(thisReceiverParameter) }
           }
         }
+        lifecycleGenerator.addParentOpenCheck(ctor)
       }
 
       trace("Implement overrides") { node.implementOverrides(expressionGeneratorFactory) }
+      trace("Implement lifecycle") { lifecycleGenerator.implement(expressionGeneratorFactory) }
 
       if (!graphClass.origin.isSyntheticGeneratedGraph) {
         trace("Generate Metro metadata") {
@@ -1129,7 +1146,8 @@ internal class IrGraphGenerator(
       // MembersInjector instances, so their dependencies are scalar accesses
       val injectorRoots = mutableSetOf<IrContextualTypeKey>()
 
-      // Collect roots (accessors + injectors) for refcount tracking
+      // Collect roots (accessors + injectors + lifecycle callback parameters) for refcount
+      // tracking. Callback parameters are like accessor requests but don't host binding code.
       val roots = buildList {
         node.accessors.mapTo(this) { it.contextKey }
         for (injector in node.injectors) {
@@ -1137,13 +1155,14 @@ internal class IrGraphGenerator(
           injectorRoots.add(injector.contextKey)
         }
       }
+      val nonAccessorRoots = node.lifecycle.parameters.mapTo(mutableSetOf()) { it.contextKey }
       BindingPropertyCollector(
           metroContext = metroContext,
           graph = bindingGraph,
           sortedKeys = sealResult.sortedKeys,
           roots = roots,
           injectorRoots = injectorRoots,
-          extraKeeps = bindingGraph.keeps(),
+          extraKeeps = bindingGraph.keeps() + nonAccessorRoots,
           deferredTypes = sealResult.deferredTypes,
           reachableKeys = sealResult.reachableKeys,
           reuseBinding = { bindingPropertyContext.reusableBinding(it) != null },
@@ -2294,6 +2313,12 @@ internal var IrClass.parentGraphInstanceProperty: IrProperty? by irAttribute(cop
 
 /** Stores the generated runtime trace context property for graph extension child contexts. */
 internal var IrClass.runtimeTraceContextProperty: IrProperty? by irAttribute(copyByDefault = false)
+
+/**
+ * Whether this graph's init callbacks need a suspend context. When they do, whatever creates the
+ * graph calls its suspend init function after the constructor returns.
+ */
+internal var IrClass.lifecycleInitSuspends: Boolean? by irAttribute(copyByDefault = false)
 
 /**
  * Stores the pre-computed ancestor graph property chains for extension graphs. Maps ancestor graph

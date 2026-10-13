@@ -9,8 +9,10 @@ import dev.zacsweers.metro.idea.model.BindingContainerEntry
 import dev.zacsweers.metro.idea.model.ConsumerEntry
 import dev.zacsweers.metro.idea.model.ContributionEntry
 import dev.zacsweers.metro.idea.model.DynamicGraphCall
+import dev.zacsweers.metro.idea.model.GraphExtensionCreationSiteEntry
 import dev.zacsweers.metro.idea.model.GraphExtensionFactoryAccessor
 import dev.zacsweers.metro.idea.model.GraphInterfaceContribution
+import dev.zacsweers.metro.idea.model.GraphLifecycleCallbackEntry
 import dev.zacsweers.metro.idea.model.GraphMemberOverride
 import dev.zacsweers.metro.idea.model.GraphReference
 import dev.zacsweers.metro.idea.model.KaAnnotationSnapshot
@@ -132,6 +134,8 @@ internal class GraphInterfaceSurface(
   val extensionFactories: List<GraphExtensionFactoryAccessor>,
   val injectedMemberOwnerIds: Set<ClassId>,
   val memberOverrides: List<GraphMemberOverride> = emptyList(),
+  val lifecycleCallbacks: List<GraphLifecycleCallbackEntry> = emptyList(),
+  val extensionCreationSites: List<GraphExtensionCreationSiteEntry> = emptyList(),
 ) {
   fun forGraph(graph: KaGraphDeclaration): GraphInterfaceContribution {
     val graphBindings = bindings.map { binding ->
@@ -154,6 +158,8 @@ internal class GraphInterfaceSurface(
       consumers = consumers.map { it.withGraphOwner(graph.declarationId, contribution) },
       injectedMemberOwnerIds = injectedMemberOwnerIds,
       memberOverrides = memberOverrides,
+      lifecycleCallbacks = lifecycleCallbacks,
+      extensionCreationSites = extensionCreationSites,
     )
   }
 }

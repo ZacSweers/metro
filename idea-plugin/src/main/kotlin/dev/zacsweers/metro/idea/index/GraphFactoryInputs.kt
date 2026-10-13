@@ -11,6 +11,7 @@ import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.idea.hasAnyAnnotation
 import dev.zacsweers.metro.idea.model.ConsumerEntry
 import dev.zacsweers.metro.idea.model.GraphDeclarationId
+import dev.zacsweers.metro.idea.model.GraphFactoryFunction
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaTypeKey
 import dev.zacsweers.metro.idea.model.canonicalContextKey
@@ -35,6 +36,8 @@ internal class GraphFactoryInputs(
   val inputs: List<FactoryInputEntry>,
   val cacheDependencies: Set<PsiFile>,
   val instanceBindings: List<KaBinding.BoundInstance> = emptyList(),
+  /** The factory function that creates the graph. */
+  val function: GraphFactoryFunction? = null,
 ) {
   companion object {
     val EMPTY = GraphFactoryInputs(emptySet(), emptySet(), emptyList(), emptySet())
@@ -63,6 +66,7 @@ internal fun KaClassSymbol.graphFactoryInputs(
         .toList()
     val function = abstractFunctions.singleOrNull() ?: return@with GraphFactoryInputs.EMPTY
     val callable = callableBindingView(function) ?: return@with GraphFactoryInputs.EMPTY
+    val factoryFunction = graphFactoryFunction(callable, pointerManager)
 
     val bindingContainers = linkedSetOf<KaTypeKey>()
     val graphDependencies = linkedSetOf<KaTypeKey>()
@@ -123,8 +127,22 @@ internal fun KaClassSymbol.graphFactoryInputs(
       inputs,
       cacheDependencies,
       instanceBindings,
+      factoryFunction,
     )
   }
+
+private fun KaClassSymbol.graphFactoryFunction(
+  callable: CallableBindingView,
+  pointerManager: SmartPointerManager,
+): GraphFactoryFunction? {
+  val function = callable.symbol as? KaNamedFunctionSymbol ?: return null
+  val source = function.psi as? KtElement ?: psi as? KtElement ?: return null
+  return GraphFactoryFunction(
+    pointerManager.createSmartPsiElementPointer(source),
+    function.name.asString(),
+    function.isSuspend,
+  )
+}
 
 private fun KaSession.includedGraphDependency(
   dependencyType: KaClassType,

@@ -38,6 +38,13 @@ public class ClassIds(private val options: MetroOptions = MetroOptions()) {
 
   internal val graphPrivateAnnotation = MetroClassIds.graphPrivate
 
+  // Graph lifecycle
+  internal val onGraphInitAnnotation = MetroClassIds.onGraphInit
+  internal val onGraphCloseAnnotation = MetroClassIds.onGraphClose
+  internal val closeableGraph = MetroClassIds.closeableGraph
+  internal val suspendCloseableGraph = MetroClassIds.suspendCloseableGraph
+  internal val closeableGraphs = setOf(closeableGraph, suspendCloseableGraph)
+
   internal val exposeImplBindingAnnotation = MetroClassIds.exposeImplBinding
 
   internal val contributionProviderExclusionAnnotations =

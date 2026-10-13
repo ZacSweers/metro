@@ -5,6 +5,7 @@ package dev.zacsweers.metro.idea.model
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
 import com.intellij.psi.SmartPsiElementPointer
+import dev.zacsweers.metro.compiler.graph.GraphLifecyclePhase
 import dev.zacsweers.metro.compiler.graph.MergeContribution
 import dev.zacsweers.metro.compiler.graph.identity.TypeIdentity
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModule
@@ -53,10 +54,16 @@ internal class ConsumerEntry(
   val isOptional: Boolean = false,
   /** Exact implicit interface contribution that must survive in the owning graph path. */
   val graphContribution: GraphReference? = null,
+  /** The lifecycle callback whose parameter makes this graph request. */
+  val lifecycleCallback: GraphLifecycleCallbackEntry? = null,
 ) {
   val sourceIdentity: BindingIndex.SourcePointerIdentity? = sourcePointerIdentity(pointer)
   val injectedMemberSourceIdentity: BindingIndex.SourcePointerIdentity? =
     injectedMemberPointer?.let(::sourcePointerIdentity)
+
+  /** The member that makes this graph request. Overriding that member replaces the request. */
+  val graphRequestIdentity: BindingIndex.SourcePointerIdentity?
+    get() = lifecycleCallback?.sourceIdentity ?: sourceIdentity
 
   val key: KaTypeKey
     get() = contextKey.typeKey
@@ -80,12 +87,14 @@ internal class ConsumerEntry(
       isSuspend = isSuspend,
       isOptional = isOptional,
       graphContribution = contribution.declarationId,
+      lifecycleCallback = lifecycleCallback,
     )
   }
 
   enum class GraphRequestKind {
     ACCESSOR,
     MEMBERS_INJECTOR,
+    LIFECYCLE_CALLBACK,
   }
 }
 
@@ -174,6 +183,12 @@ internal class KaGraphDeclaration(
   val contributedInterfaces: List<GraphInterfaceContribution> = emptyList(),
   /** Written member overrides that determine which inherited graph requests remain active. */
   val memberOverrides: List<GraphMemberOverride> = emptyList(),
+  /** Lifecycle callbacks declared by this graph and its written supertypes. */
+  val lifecycleCallbacks: List<GraphLifecycleCallbackEntry> = emptyList(),
+  /** Written accessors and factory functions that create graph extensions. */
+  val extensionCreationSites: List<GraphExtensionCreationSiteEntry> = emptyList(),
+  /** The function of this graph's nested factory, when it has one. */
+  val factoryFunction: GraphFactoryFunction? = null,
 ) {
   val sourceIdentity: BindingIndex.SourcePointerIdentity? = sourcePointerIdentity(pointer)
   val declarationId: GraphDeclarationId = GraphDeclarationId(classId, pointer.virtualFile)
@@ -206,6 +221,9 @@ internal class KaGraphDeclaration(
       extensionFactories = extensionFactories,
       contributedInterfaces = interfaces,
       memberOverrides = memberOverrides,
+      lifecycleCallbacks = lifecycleCallbacks,
+      extensionCreationSites = extensionCreationSites,
+      factoryFunction = factoryFunction,
     )
   }
 }
@@ -300,13 +318,53 @@ internal class GraphCallableReference(
   val sourceIdentity: BindingIndex.SourcePointerIdentity? = sourcePointerIdentity(pointer)
 }
 
-/** A graph member and its overridden declarations. Abstract members keep their own requests. */
+/**
+ * A graph member and its overridden declarations. Abstract members and lifecycle callbacks keep
+ * their own requests.
+ */
 internal class GraphMemberOverride(
   val declaration: GraphCallableReference,
   val overriddenDeclarations: List<GraphCallableReference>,
   val isOptional: Boolean,
   val isAbstract: Boolean,
+  val isLifecycleCallback: Boolean = false,
 )
+
+/** An `@OnGraphInit` or `@OnGraphClose` function on a graph or one of its supertypes. */
+internal class GraphLifecycleCallbackEntry(
+  val pointer: SmartPsiElementPointer<out KtElement>,
+  val phase: GraphLifecyclePhase,
+  val declaringClassId: ClassId,
+  val functionName: String,
+  val isSuspend: Boolean,
+) {
+  val sourceIdentity: BindingIndex.SourcePointerIdentity? = sourcePointerIdentity(pointer)
+
+  /** The declaring type and function, like `AppGraph.shutdown`. */
+  val name: String
+    get() = "${declaringClassId.shortClassName.asString()}.$functionName"
+}
+
+/** The function on a graph factory that creates the graph. */
+internal class GraphFactoryFunction(
+  val pointer: SmartPsiElementPointer<out KtElement>,
+  val name: String,
+  val isSuspend: Boolean,
+)
+
+/** A graph accessor or factory function that creates one of the graph's extensions. */
+internal class GraphExtensionCreationSiteEntry(
+  val pointer: SmartPsiElementPointer<out KtElement>,
+  /** The graph extension class this site creates. */
+  val extension: GraphReference,
+  /** The accessor or factory function name. */
+  val name: String,
+  /** False for an accessor that returns the graph extension directly. */
+  val isFactory: Boolean,
+  val isSuspend: Boolean,
+) {
+  val sourceIdentity: BindingIndex.SourcePointerIdentity? = sourcePointerIdentity(pointer)
+}
 
 /** A real graph accessor whose result is an extension factory. */
 internal class GraphExtensionFactoryAccessor(
@@ -329,6 +387,8 @@ internal class GraphInterfaceContribution(
   val consumers: List<ConsumerEntry>,
   val injectedMemberOwnerIds: Set<ClassId>,
   val memberOverrides: List<GraphMemberOverride> = emptyList(),
+  val lifecycleCallbacks: List<GraphLifecycleCallbackEntry> = emptyList(),
+  val extensionCreationSites: List<GraphExtensionCreationSiteEntry> = emptyList(),
 )
 
 /** The effective interface surface of one graph in a concrete parent path and root module. */
@@ -340,6 +400,9 @@ internal class GraphComposition(
   val contributions: List<ContributionEntry>,
   val accessors: List<ConsumerEntry>,
   val injectedMemberOwnerIds: Set<ClassId>,
+  /** Callbacks that still run after overrides replace the ones they override. */
+  val lifecycleCallbacks: List<GraphLifecycleCallbackEntry> = emptyList(),
+  val extensionCreationSites: List<GraphExtensionCreationSiteEntry> = emptyList(),
 )
 
 /** A concrete graph path, ordered from the graph itself through its ancestors. */

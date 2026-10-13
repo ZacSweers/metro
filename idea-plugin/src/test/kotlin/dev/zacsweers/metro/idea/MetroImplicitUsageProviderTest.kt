@@ -124,6 +124,29 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
     )
   }
 
+  fun testMarksLifecycleCallbacksAsImplicitlyUsed() {
+    myFixture.addGraphLifecycleRuntime()
+    val declarations =
+      myFixture
+        .configureMetroFile(
+          """
+          @DependencyGraph
+          interface AppGraph : CloseableGraph {
+            @OnGraphInit fun start() {}
+
+            @OnGraphClose fun stop() {}
+
+            fun helper() {}
+          }
+          """,
+        )
+        .declarationsIncludingNested()
+
+    assertTrue(declarations.function("start").isMetroImplicitUsage())
+    assertTrue(declarations.function("stop").isMetroImplicitUsage())
+    assertFalse(declarations.function("helper").isMetroImplicitUsage())
+  }
+
   fun testDoesNotMarkMetroDeclarationsWhenPluginIsNotConfigured() {
     project.clearMetroOptions()
     val declarations = kotlinFileDeclarations()
