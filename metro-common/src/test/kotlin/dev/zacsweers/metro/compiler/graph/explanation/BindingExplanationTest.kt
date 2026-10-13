@@ -23,7 +23,8 @@ class BindingExplanationTest {
         outcome = BindingExplanationOutcome.SELECTED,
         request =
           BindingExplanationRequest(
-            "@Named(\"app\") Service",
+            key = "@test/Named(\"app\") test/Service",
+            renderedKey = "@Named(\"app\") Service",
             hasDefault = true,
             isOptional = true,
           ),
@@ -31,7 +32,8 @@ class BindingExplanationTest {
           listOf(
             BindingExplanationCandidate(
               id = "selected",
-              key = "@Named(\"app\") Service",
+              key = "@test/Named(\"app\") test/Service",
+              renderedKey = "@Named(\"app\") Service",
               status = BindingCandidateStatus.SELECTED,
               reason = BindingReason.SELECTED_EXPLICIT,
               declaration = declaration,
@@ -39,7 +41,8 @@ class BindingExplanationTest {
             ),
             BindingExplanationCandidate(
               id = "alternative",
-              key = "Service",
+              key = "test/Service",
+              renderedKey = "Service",
               status = BindingCandidateStatus.REJECTED,
               reason = BindingReason.QUALIFIER_MISMATCH,
               relatedDeclarations = listOf(declaration),
@@ -90,7 +93,7 @@ class BindingExplanationTest {
   fun `minimal snapshots decode without optional fields`() {
     val snapshot =
       Json.decodeFromString<BindingExplanation>(
-        """{"context":{"id":"graph","label":"AppGraph"},"phase":"lookup","outcome":"missing","candidates":[],"request":{"key":"Service"}}""",
+        """{"context":{"id":"graph","label":"AppGraph"},"phase":"lookup","outcome":"missing","candidates":[],"request":{"key":"test/Service","renderedKey":"Service"}}""",
       )
 
     val request = checkNotNull(snapshot.request)

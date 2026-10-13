@@ -600,6 +600,7 @@ private class GraphDebugReport(
         value.values.joinToString(prefix = "[", postfix = "]", transform = ::annotationValue)
       is KaAnnotationValueSnapshot.Nested -> annotation(value.annotation)
       KaAnnotationValueSnapshot.Unsupported -> "<unsupported>"
+      KaAnnotationValueSnapshot.Absent -> "<absent>"
     }
 
   private fun classId(classId: ClassId?): String =

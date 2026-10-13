@@ -3228,7 +3228,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
     val analyticsParam = index.consumerEntryAt(declarations.parameter("analytics"))!!
     assertEquals("kotlin.collections.Set<test.Analytics>", analyticsParam.key.renderedType)
-    assertEquals("test.Analytics", analyticsParam.multibindingId)
+    assertEquals("test/Analytics", analyticsParam.multibindingId)
 
     // Contributions keep their element key, mirroring the compiler's @MultibindingElement model
     val contributors = index.bindingsFor(analyticsParam)
@@ -3252,7 +3252,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       "kotlin.collections.Map<kotlin.String, test.Service>",
       handlersParam.key.renderedType,
     )
-    assertEquals("kotlin.String_test.Service", handlersParam.multibindingId)
+    assertEquals("kotlin/String|test/Service", handlersParam.multibindingId)
 
     val contributors = index.bindingsFor(handlersParam)
     assertEquals(2, contributors.size)

@@ -3,6 +3,8 @@
 package dev.zacsweers.metro.idea.model
 
 import dev.zacsweers.metro.compiler.graph.BaseTypeKey
+import dev.zacsweers.metro.compiler.graph.compareTypeKeys
+import dev.zacsweers.metro.compiler.graph.identity.TypeKeyIdentity
 
 /** The Analysis API analog of the compiler's `FirTypeKey`/`IrTypeKey`. */
 internal class KaTypeKey(
@@ -11,6 +13,8 @@ internal class KaTypeKey(
 ) : BaseTypeKey<KaTypeSnapshot, KaAnnotationSnapshot, KaTypeKey> {
   val renderedType: String
     get() = type.renderedType
+
+  override val identity: TypeKeyIdentity = TypeKeyIdentity(type.identity, qualifier?.identity)
 
   override fun copy(type: KaTypeSnapshot, qualifier: KaAnnotationSnapshot?): KaTypeKey {
     return KaTypeKey(type, qualifier)
@@ -33,15 +37,12 @@ internal class KaTypeKey(
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
     if (other !is KaTypeKey) return false
-    return renderedType == other.renderedType && qualifier == other.qualifier
+    return identity == other.identity
   }
 
-  override fun hashCode(): Int = 31 * renderedType.hashCode() + (qualifier?.hashCode() ?: 0)
+  override fun hashCode(): Int = identity.hashCode()
 
   override fun toString(): String = render(short = false)
 
-  override fun compareTo(other: KaTypeKey): Int {
-    if (this == other) return 0
-    return toString().compareTo(other.toString())
-  }
+  override fun compareTo(other: KaTypeKey): Int = compareTypeKeys(this, other)
 }

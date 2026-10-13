@@ -30,7 +30,7 @@ public object BindingExplanationRenderer {
     }
     val request = explanation.request
     if (request != null) {
-      appendLine("Request: ${request.key}")
+      appendLine("Request: ${request.renderedKey}")
       request.declaration?.let { declaration ->
         append("Requested by: ").append(declaration.label)
         declaration.source?.let { append(" (").append(it.path).append(')') }
@@ -50,12 +50,12 @@ public object BindingExplanationRenderer {
         BindingCandidateStatus.CONFLICT -> "Selected"
         BindingCandidateStatus.REJECTED -> "Alternative"
       }
-    return "$status: ${candidate.declaration?.label ?: candidate.key}"
+    return "$status: ${candidate.declaration?.label ?: candidate.renderedKey}"
   }
 
   public fun candidateDetails(candidate: BindingExplanationCandidate): String = buildString {
     appendLine(candidateLabel(candidate))
-    appendLine(candidate.key)
+    appendLine(candidate.renderedKey)
     appendLine()
     append(reason(candidate.reason))
     for (declaration in candidate.relatedDeclarations) {

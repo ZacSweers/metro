@@ -4,6 +4,8 @@ package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.graph.BaseTypeKey
+import dev.zacsweers.metro.compiler.graph.compareTypeKeys
+import dev.zacsweers.metro.compiler.graph.identity.TypeKeyIdentity
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -25,6 +27,10 @@ private constructor(
 ) : BaseTypeKey<IrType, IrAnnotation, IrTypeKey> {
 
   val classId by memoize { type.rawTypeOrNull()?.classId }
+
+  override val identity: TypeKeyIdentity by memoize {
+    TypeKeyIdentity(type.typeIdentity(), qualifier?.identity)
+  }
 
   private var cachedRender: String? = null
   private var cachedHashCode: Int = 0
@@ -108,10 +114,9 @@ private constructor(
     return result
   }
 
-  // Optimized comparison that just uses natural sorting based on the cached render
   override fun compareTo(other: IrTypeKey): Int {
     if (this === other) return 0
-    return toString().compareTo(other.toString())
+    return compareTypeKeys(this, other)
   }
 
   override fun equals(other: Any?): Boolean {

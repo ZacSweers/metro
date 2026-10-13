@@ -10,6 +10,7 @@ import com.intellij.psi.SmartPointerManager
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import dev.zacsweers.metro.compiler.graph.WrappedType
+import dev.zacsweers.metro.compiler.graph.identity.TypeIdentity
 import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.index.SourceClassDependencies
 import dev.zacsweers.metro.idea.index.restoreClassType
@@ -205,7 +206,13 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
     val pointers = SmartPointerManager.getInstance(project)
     val builder = SourceClassDependencies.Builder(pointers)
     // Inferred errors can hide the missing class behind another function's return type.
-    val opaqueError = KaTypeSnapshot("<inferred error>", classId = null, isError = true)
+    val opaqueError =
+      KaTypeSnapshot(
+        "<inferred error>",
+        classId = null,
+        identity = TypeIdentity.Unresolved("<inferred error>"),
+        isError = true,
+      )
     assertTrue(
       builder.recordErrorTypes(opaqueError, graph, pointers.createSmartPsiElementPointer(graph)),
     )
@@ -398,7 +405,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
     // Multibinding ids are deduced from the requested key itself
     val setDep = entry.dependencies[1]
     assertEquals("kotlin.collections.Set<test.Analytics>", setDep.typeKey.renderedType)
-    assertEquals("test.Analytics", setDep.multibindingId())
+    assertEquals("test/Analytics", setDep.multibindingId())
   }
 
   fun testTypeSnapshotsRestoreStarsVarianceAndNullability() = allowAnalysisOnEdt {
@@ -534,7 +541,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
     assertTrue(providerParam.contextKey.wrappedType is WrappedType.Provider)
 
     val setParam = index.consumerEntryAt(declarations.parameter("analytics"))!!
-    assertEquals("test.Analytics", setParam.multibindingId)
+    assertEquals("test/Analytics", setParam.multibindingId)
     assertEquals(
       setParam.multibindingId,
       setParam.contextKey.multibindingId(),
@@ -556,7 +563,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
     assertEquals(listOf("binds"), serviceBindings.map { it.label })
 
     // Multibinding contributions resolve by multibinding id
-    val contributions = index.multibindingContributions("test.Analytics", queryContext)
+    val contributions = index.multibindingContributions("test/Analytics", queryContext)
     assertEquals(1, contributions.size)
     assertEquals("multibinding contribution", contributions.single().label)
 

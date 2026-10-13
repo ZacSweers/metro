@@ -46,6 +46,8 @@ public data class DominatorNode(
   val bindingKind: String,
   val dominatedCount: Int,
   val dominatedKeys: List<String>,
+  /** The compiler's rendering of [key], for display. */
+  val renderedKey: String = key,
 )
 
 /** Result of betweenness centrality analysis. */
@@ -61,6 +63,8 @@ public data class CentralityScore(
   val bindingKind: String,
   val betweennessCentrality: Double,
   val normalizedCentrality: Double,
+  /** The compiler's rendering of [key], for display. */
+  val renderedKey: String = key,
 )
 
 /** Result of fan-in/fan-out analysis. */
@@ -84,6 +88,8 @@ public data class FanScore(
   val fanOut: Int,
   val dependents: List<String>,
   val dependencies: List<String>,
+  /** The compiler's rendering of [key], for display. */
+  val renderedKey: String = key,
 )
 
 /** Result of paths-to-root analysis. Contains shortest paths from each node to the graph root. */

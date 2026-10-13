@@ -12,6 +12,7 @@ import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.graph.IrBinding
 import dev.zacsweers.metro.compiler.ir.locationOrNull
 import dev.zacsweers.metro.compiler.ir.render
+import dev.zacsweers.metro.compiler.ir.typeIdentity
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrFunction
@@ -55,11 +56,11 @@ private fun IrDeclarationWithName.bindingDeclarationId(): String =
       buildString {
         append(kotlinFqName.asString())
         append('(')
-        append(parameters.joinToString(",") { it.type.render(short = false) })
+        append(parameters.joinToString(",") { it.type.typeIdentity().encoded })
         append("): ")
-        append(returnType.render(short = false))
+        append(returnType.typeIdentity().encoded)
       }
-    is IrProperty -> "${declarationFqName()}: ${getter?.returnType?.render(short = false)}"
+    is IrProperty -> "${declarationFqName()}: ${getter?.returnType?.typeIdentity()?.encoded}"
     else -> declarationFqName()
   }
 
@@ -87,14 +88,14 @@ internal fun IrBinding.bindingExplanationCandidate(
       is IrBinding.ConstructorInjected -> explicitBinding?.function ?: reportableDeclaration
       else -> reportableDeclaration
     }?.bindingExplanationDeclaration()
-  val key = contextualTypeKey.render(short = false, includeQualifier = true)
   return BindingExplanationCandidate(
-    id = bindingExplanationId(key, declaration?.id ?: "generated"),
-    key = key,
+    id = bindingExplanationId(typeKey.identity.encoded, declaration?.id ?: "generated"),
+    key = typeKey.identity.encoded,
+    renderedKey = contextualTypeKey.render(short = false, includeQualifier = true),
     status = if (conflict) BindingCandidateStatus.CONFLICT else BindingCandidateStatus.SELECTED,
     reason = selectedReason,
     declaration = declaration,
-    ownerGraphId = owner?.let { ownerGraphIds[it] ?: it.render(short = false) },
+    ownerGraphId = owner?.let { ownerGraphIds[it] ?: it.identity.encoded },
   )
 }
 

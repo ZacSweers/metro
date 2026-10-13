@@ -26,10 +26,14 @@ internal class KaContextualTypeKey(
     includeQualifier: Boolean,
     useRelativeClassNames: Boolean,
   ): String {
-    return wrappedType.render { snapshot ->
-      if (snapshot == typeKey.type) {
-        typeKey.render(short, includeQualifier, useRelativeClassNames)
-      } else if (short || useRelativeClassNames) {
+    val qualifier =
+      if (includeQualifier) {
+        typeKey.qualifier?.render(short, useRelativeClassNames)
+      } else {
+        null
+      }
+    return wrappedType.render(qualifier) { snapshot ->
+      if (short || useRelativeClassNames) {
         snapshot.shortType
       } else {
         snapshot.renderedType
@@ -57,7 +61,7 @@ internal fun KaContextualTypeKey.multibindingId(): String? {
     wrappedType.innerTypesSequence.filterIsInstance<WrappedType.Map<KaTypeSnapshot>>().firstOrNull()
   if (mapNode != null) {
     val valueKey = typeKey.copy(type = mapNode.valueType.canonicalType())
-    return createMapBindingId(mapNode.keyType.renderedType, valueKey)
+    return createMapBindingId(mapNode.keyType.identity, valueKey)
   }
   if (typeKey.type.classId != StandardClassIds.Set) return null
   // Set contributions keep their declared element type, including provider and lazy wrappers.

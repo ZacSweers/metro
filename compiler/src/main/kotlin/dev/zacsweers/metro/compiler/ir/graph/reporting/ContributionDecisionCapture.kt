@@ -45,7 +45,8 @@ internal class ContributionDecisionCapture(
     decisions +=
       BindingExplanationCandidate(
         id = name,
-        key = name,
+        key = id.asString(),
+        renderedKey = name,
         status = BindingCandidateStatus.REJECTED,
         reason = reason,
         declaration = BindingDeclaration(sourceName, sourceName),

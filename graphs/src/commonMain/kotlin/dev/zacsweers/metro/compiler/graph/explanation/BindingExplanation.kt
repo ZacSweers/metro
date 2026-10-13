@@ -33,10 +33,13 @@ public data class BindingExplanationContext(val id: String, val label: String)
 @Serializable
 @ExperimentalMetroGraphApi
 public data class BindingExplanationRequest(
+  /** Type key of the requested binding, without wrappers or defaults. */
   val key: String,
   val declaration: BindingDeclaration? = null,
   val hasDefault: Boolean = false,
   val isOptional: Boolean = false,
+  /** The full request, including wrappers, for display. Defaults to [key]. */
+  val renderedKey: String = key,
 )
 
 /**
@@ -56,6 +59,8 @@ public data class BindingExplanationCandidate(
    */
   val relatedDeclarations: List<BindingDeclaration> = emptyList(),
   val details: List<String> = emptyList(),
+  /** The candidate's key rendered for display. Defaults to [key]. */
+  val renderedKey: String = key,
 )
 
 /**

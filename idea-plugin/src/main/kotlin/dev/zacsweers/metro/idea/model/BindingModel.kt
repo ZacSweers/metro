@@ -6,6 +6,7 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
 import com.intellij.psi.SmartPsiElementPointer
 import dev.zacsweers.metro.compiler.graph.MergeContribution
+import dev.zacsweers.metro.compiler.graph.identity.TypeIdentity
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModule
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
@@ -213,7 +214,12 @@ internal class KaGraphDeclaration(
 internal fun KaGraphDeclaration.graphTypeKey(): KaTypeKey? {
   val classId = classId ?: return null
   val snapshot =
-    KaTypeSnapshot(classId.asFqNameString(), classId.shortClassName.asString(), classId)
+    KaTypeSnapshot(
+      classId.asFqNameString(),
+      classId.shortClassName.asString(),
+      classId,
+      TypeIdentity.Class(classId.asString()),
+    )
   return KaTypeKey(snapshot)
 }
 
