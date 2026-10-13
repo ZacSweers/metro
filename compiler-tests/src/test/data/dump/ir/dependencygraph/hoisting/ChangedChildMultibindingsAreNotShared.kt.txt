@@ -65,7 +65,7 @@ interface AppGraph : ChildA.Factory, ChildB.Factory {
       return ChildBImpl(appGraphImpl = <this>)
     }
 
-    @MultibindingElement(bindingId = "kotlin.String", elementId = "-1837640912")
+    @MultibindingElement(bindingId = "kotlin/String", elementId = "-1837640912")
     private val provideOne: String
       private get(): String {
         return <this>.provideOne(int = <this>.provideInt())
@@ -331,3 +331,4 @@ interface ChildB {
     abstract get
 
 }
+

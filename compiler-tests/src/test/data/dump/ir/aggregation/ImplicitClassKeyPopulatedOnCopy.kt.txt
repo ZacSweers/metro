@@ -57,8 +57,8 @@ class ExplicitKeyImpl : Base {
       @Binds
       @IntoMap
       @ClassKey(value = Base::class)
-      @CallableMetadata(callableName = "bindIntoMapAsBase413204625", propertyName = "", startOffset = -1, endOffset = -1)
-      fun bindIntoMapAsBase413204625413204625_intomap(instance: ExplicitKeyImpl): Base {
+      @CallableMetadata(callableName = "bindIntoMapAsBase1608760132", propertyName = "", startOffset = -1, endOffset = -1)
+      fun bindIntoMapAsBase16087601321608760132_intomap(instance: ExplicitKeyImpl): Base {
         return error(message = "Never called")
       }
 
@@ -68,7 +68,7 @@ class ExplicitKeyImpl : Base {
     @Binds
     @ClassKey(value = Base::class)
     @ComptimeOnly
-    fun bindIntoMapAsBase413204625(instance: ExplicitKeyImpl): Base {
+    fun bindIntoMapAsBase1608760132(instance: ExplicitKeyImpl): Base {
       return error(message = "Never called")
     }
 
@@ -139,8 +139,8 @@ class ImplicitKeyImpl : Base {
       @Binds
       @IntoMap
       @ClassKey(value = ImplicitKeyImpl::class)
-      @CallableMetadata(callableName = "bindIntoMapAsBase3780519993", propertyName = "", startOffset = -1, endOffset = -1)
-      fun bindIntoMapAsBase37805199931477711176_intomap(instance: ImplicitKeyImpl): Base {
+      @CallableMetadata(callableName = "bindIntoMapAsBase3376306442", propertyName = "", startOffset = -1, endOffset = -1)
+      fun bindIntoMapAsBase33763064422881765543_intomap(instance: ImplicitKeyImpl): Base {
         return error(message = "Never called")
       }
 
@@ -150,7 +150,7 @@ class ImplicitKeyImpl : Base {
     @Binds
     @ClassKey(value = ImplicitKeyImpl::class)
     @ComptimeOnly
-    fun bindIntoMapAsBase3780519993(instance: ImplicitKeyImpl): Base {
+    fun bindIntoMapAsBase3376306442(instance: ImplicitKeyImpl): Base {
       return error(message = "Never called")
     }
 

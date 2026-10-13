@@ -1,5 +1,6 @@
 {
   "graph": "AppGraph.Impl.ChildGraphImpl",
+  "key": "AppGraph.Impl.ChildGraphImpl",
   "graphType": "ChildGraph",
   "parentGraph": "AppGraph",
   "scopes": [],
@@ -8,12 +9,14 @@
     "accessors": [
       {
         "key": "FirstParentConsumer",
+        "renderedKey": "FirstParentConsumer",
         "name": "first",
         "isProperty": true,
         "isDeferrable": false
       },
       {
         "key": "SecondParentConsumer",
+        "renderedKey": "SecondParentConsumer",
         "name": "second",
         "isProperty": true,
         "isDeferrable": false
@@ -190,6 +193,7 @@
   "bindings": [
     {
       "key": "AppGraph",
+      "renderedKey": "AppGraph",
       "bindingKind": "BoundInstance",
       "isScoped": false,
       "nameHint": "parent",
@@ -200,12 +204,14 @@
     },
     {
       "key": "AppGraph.Impl",
+      "renderedKey": "AppGraph.Impl",
       "bindingKind": "Alias",
       "isScoped": false,
       "nameHint": "Impl",
       "dependencies": [
         {
           "key": "AppGraph",
+          "renderedKey": "AppGraph",
           "hasDefault": false
         }
       ],
@@ -214,12 +220,14 @@
     },
     {
       "key": "FirstParentConsumer",
+      "renderedKey": "FirstParentConsumer",
       "bindingKind": "ConstructorInjected",
       "isScoped": false,
       "nameHint": "FirstParentConsumer",
       "dependencies": [
         {
           "key": "ParentValue",
+          "renderedKey": "ParentValue",
           "hasDefault": false
         }
       ],
@@ -228,6 +236,7 @@
     },
     {
       "key": "ParentValue",
+      "renderedKey": "ParentValue",
       "bindingKind": "GraphDependency",
       "isScoped": false,
       "nameHint": "ChildGraphImplParentValue",
@@ -239,6 +248,7 @@
       "dependencies": [
         {
           "key": "AppGraph.Impl",
+          "renderedKey": "AppGraph.Impl",
           "hasDefault": false
         }
       ],
@@ -246,12 +256,14 @@
     },
     {
       "key": "SecondParentConsumer",
+      "renderedKey": "SecondParentConsumer",
       "bindingKind": "ConstructorInjected",
       "isScoped": false,
       "nameHint": "SecondParentConsumer",
       "dependencies": [
         {
           "key": "ParentValue",
+          "renderedKey": "ParentValue",
           "hasDefault": false
         }
       ],
@@ -278,7 +290,8 @@
             "label": "LowPriorityService"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "PrioritizedService"
         }
       ],
       "details": [
@@ -304,13 +317,15 @@
           },
           "ownerGraphId": "8:AppGraph",
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "AppGraph"
         }
       ],
       "request": {
         "key": "AppGraph",
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "AppGraph"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -330,13 +345,15 @@
           "status": "selected",
           "reason": "selected_generated",
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "AppGraph.Impl"
         }
       ],
       "request": {
         "key": "AppGraph.Impl",
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "AppGraph.Impl"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -360,13 +377,15 @@
             "label": "FirstParentConsumer"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "FirstParentConsumer"
         }
       ],
       "request": {
         "key": "FirstParentConsumer",
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "FirstParentConsumer"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -391,7 +410,8 @@
           },
           "ownerGraphId": "8:AppGraph",
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "ParentValue"
         }
       ],
       "request": {
@@ -401,7 +421,8 @@
           "label": "FirstParentConsumer.MetroFactory.declarationMirror.parentValue"
         },
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "ParentValue"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -426,7 +447,8 @@
           },
           "ownerGraphId": "8:AppGraph",
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "ParentValue"
         }
       ],
       "request": {
@@ -436,7 +458,8 @@
           "label": "SecondParentConsumer.MetroFactory.declarationMirror.parentValue"
         },
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "ParentValue"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -460,13 +483,15 @@
             "label": "SecondParentConsumer"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "SecondParentConsumer"
         }
       ],
       "request": {
         "key": "SecondParentConsumer",
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "SecondParentConsumer"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."

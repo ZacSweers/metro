@@ -411,12 +411,12 @@ interface AppGraph {
               }
 )
             }, values = buildMap<String, Value>(capacity = 2, builderAction = local fun MutableMap<String, Value>.<anonymous>() {
-              $receiver.put(key = "parent", value = <this>.#childGraphImpl.#appGraphImpl.#parentValueProvider.invoke())
               $receiver.put(key = "child", value = <this>.#childValueProvider.invoke())
+              $receiver.put(key = "parent", value = <this>.#childGraphImpl.#appGraphImpl.#parentValueProvider.invoke())
             }
 ), providers = buildMap<String, Function0<Value>>(capacity = 2, builderAction = local fun MutableMap<String, Function0<Value>>.<anonymous>() {
-              $receiver.put(key = "parent", value = <this>.#childGraphImpl.#appGraphImpl.#parentValueProvider)
               $receiver.put(key = "child", value = <this>.#childValueProvider)
+              $receiver.put(key = "parent", value = <this>.#childGraphImpl.#appGraphImpl.#parentValueProvider)
             }
 ))
           }
@@ -547,7 +547,7 @@ interface ChildBindings {
     @IntoMap
     @StringKey(value = "child")
     @CallableMetadata(callableName = "value", propertyName = "", startOffset = 1486, endOffset = 1524)
-    fun value3217349418_intomap(instance: ChildValue): Value {
+    fun value575685273_intomap(instance: ChildValue): Value {
       return error(message = "Never called")
     }
 
@@ -636,7 +636,7 @@ interface ParentBindings {
     @IntoMap
     @StringKey(value = "parent")
     @CallableMetadata(callableName = "value", propertyName = "", startOffset = 865, endOffset = 904)
-    fun value3785374044_intomap(instance: ParentValue): Value {
+    fun value182087931_intomap(instance: ParentValue): Value {
       return error(message = "Never called")
     }
 

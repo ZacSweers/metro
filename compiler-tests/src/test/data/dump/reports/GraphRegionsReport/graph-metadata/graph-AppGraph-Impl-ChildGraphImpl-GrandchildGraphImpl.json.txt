@@ -1,5 +1,6 @@
 {
   "graph": "AppGraph.Impl.ChildGraphImpl.GrandchildGraphImpl",
+  "key": "AppGraph.Impl.ChildGraphImpl.GrandchildGraphImpl",
   "graphType": "GrandchildGraph",
   "parentGraph": "AppGraph.Impl.ChildGraphImpl",
   "scopes": [],
@@ -8,6 +9,7 @@
     "accessors": [
       {
         "key": "Value",
+        "renderedKey": "Value",
         "name": "value",
         "isProperty": true,
         "isDeferrable": false
@@ -138,6 +140,7 @@
   "bindings": [
     {
       "key": "AppGraph",
+      "renderedKey": "AppGraph",
       "bindingKind": "BoundInstance",
       "isScoped": false,
       "nameHint": "parent",
@@ -148,6 +151,7 @@
     },
     {
       "key": "AppGraph.Impl.ChildGraphImpl",
+      "renderedKey": "AppGraph.Impl.ChildGraphImpl",
       "bindingKind": "BoundInstance",
       "isScoped": false,
       "nameHint": "parent",
@@ -158,6 +162,7 @@
     },
     {
       "key": "Cache",
+      "renderedKey": "Cache",
       "bindingKind": "GraphDependency",
       "isScoped": false,
       "nameHint": "GrandchildGraphImplCache",
@@ -169,6 +174,7 @@
       "dependencies": [
         {
           "key": "AppGraph.Impl.ChildGraphImpl",
+          "renderedKey": "AppGraph.Impl.ChildGraphImpl",
           "hasDefault": false
         }
       ],
@@ -176,16 +182,19 @@
     },
     {
       "key": "Value",
+      "renderedKey": "Value",
       "bindingKind": "ConstructorInjected",
       "isScoped": false,
       "nameHint": "Value",
       "dependencies": [
         {
           "key": "Cache",
+          "renderedKey": "Cache",
           "hasDefault": false
         },
         {
-          "key": "kotlin.String",
+          "key": "kotlin/String",
+          "renderedKey": "kotlin.String",
           "hasDefault": false
         }
       ],
@@ -193,7 +202,8 @@
       "declaration": "Value"
     },
     {
-      "key": "kotlin.String",
+      "key": "kotlin/String",
+      "renderedKey": "kotlin.String",
       "bindingKind": "GraphDependency",
       "isScoped": false,
       "nameHint": "GrandchildGraphImplString",
@@ -205,6 +215,7 @@
       "dependencies": [
         {
           "key": "AppGraph",
+          "renderedKey": "AppGraph",
           "hasDefault": false
         }
       ],
@@ -231,13 +242,15 @@
           },
           "ownerGraphId": "8:AppGraph",
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "AppGraph"
         }
       ],
       "request": {
         "key": "AppGraph",
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "AppGraph"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -262,13 +275,15 @@
           },
           "ownerGraphId": "8:AppGraph|28:AppGraph.Impl.ChildGraphImpl",
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "AppGraph.Impl.ChildGraphImpl"
         }
       ],
       "request": {
         "key": "AppGraph.Impl.ChildGraphImpl",
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "AppGraph.Impl.ChildGraphImpl"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -293,17 +308,19 @@
           },
           "ownerGraphId": "8:AppGraph",
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "Cache"
         }
       ],
       "request": {
         "key": "Cache",
         "declaration": {
-          "id": "Value.MetroFactory.declarationMirror(Value.MetroFactory,Cache,kotlin.String): Value#cache",
+          "id": "Value.MetroFactory.declarationMirror(Value.MetroFactory,Cache,kotlin/String): Value#cache",
           "label": "Value.MetroFactory.declarationMirror.cache"
         },
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "Cache"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -327,13 +344,15 @@
             "label": "Value"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "Value"
         }
       ],
       "request": {
         "key": "Value",
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "Value"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -348,23 +367,25 @@
       "outcome": "selected",
       "candidates": [
         {
-          "id": "13:kotlin.String|9:generated",
-          "key": "kotlin.String",
+          "id": "13:kotlin/String|9:generated",
+          "key": "kotlin/String",
           "status": "selected",
           "reason": "selected_parent",
           "ownerGraphId": "8:AppGraph",
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "kotlin.String"
         }
       ],
       "request": {
-        "key": "kotlin.String",
+        "key": "kotlin/String",
         "declaration": {
-          "id": "Value.MetroFactory.declarationMirror(Value.MetroFactory,Cache,kotlin.String): Value#endpoint",
+          "id": "Value.MetroFactory.declarationMirror(Value.MetroFactory,Cache,kotlin/String): Value#endpoint",
           "label": "Value.MetroFactory.declarationMirror.endpoint"
         },
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "kotlin.String"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."

@@ -547,7 +547,7 @@ interface ChildBindings {
     @IntoMap
     @StringKey(value = "child")
     @CallableMetadata(callableName = "value", propertyName = "", startOffset = 1902, endOffset = 1940)
-    fun value3033723257_intomap(instance: ChildValue): Value {
+    fun value1397031272_intomap(instance: ChildValue): Value {
       return error(message = "Never called")
     }
 
@@ -636,7 +636,7 @@ interface ParentBindings {
     @IntoMap
     @StringKey(value = "parent")
     @CallableMetadata(callableName = "value", propertyName = "", startOffset = 1189, endOffset = 1228)
-    fun value3601747883_intomap(instance: ParentValue): Value {
+    fun value4168977420_intomap(instance: ParentValue): Value {
       return error(message = "Never called")
     }
 

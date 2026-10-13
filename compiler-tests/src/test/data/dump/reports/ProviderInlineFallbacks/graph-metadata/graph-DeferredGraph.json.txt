@@ -1,14 +1,17 @@
 {
   "graph": "DeferredGraph",
+  "key": "DeferredGraph",
   "scopes": [],
   "aggregationScopes": [],
   "roots": {
     "accessors": [
       {
-        "key": "Provider<Settings>",
+        "key": "Settings",
+        "renderedKey": "Provider<Settings>",
         "name": "settingsProvider",
         "isProperty": true,
-        "isDeferrable": true
+        "isDeferrable": true,
+        "wrapperType": "Provider"
       }
     ],
     "injectors": []
@@ -136,6 +139,7 @@
   "bindings": [
     {
       "key": "Settings",
+      "renderedKey": "Settings",
       "bindingKind": "Provided",
       "isScoped": false,
       "nameHint": "provideSettings",
@@ -163,13 +167,15 @@
             "label": "SettingsProviders.provideSettings"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "Settings"
         }
       ],
       "request": {
-        "key": "Provider<Settings>",
+        "key": "Settings",
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "Provider<Settings>"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."

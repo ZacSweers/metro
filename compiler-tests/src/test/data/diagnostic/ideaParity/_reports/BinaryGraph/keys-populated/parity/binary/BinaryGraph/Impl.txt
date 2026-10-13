@@ -1,4 +1,4 @@
-@dev.zacsweers.metro.internal.MultibindingElement("libtest.LibAnalytics", "483501658") libtest.LibAnalytics
+@dev.zacsweers.metro.internal.MultibindingElement("libtest/LibAnalytics", "483501658") libtest.LibAnalytics
 kotlin.collections.Set<libtest.LibAnalytics>
 libtest.LibAnalyticsImpl
 libtest.LibClientWithDeps

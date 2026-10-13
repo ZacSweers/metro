@@ -1,13 +1,15 @@
 {
   "graph": "parity.extension.scoped.AppGraph.Impl.ChildGraphImpl",
-  "graphType": "parity.extension.scoped.ChildGraph",
+  "key": "parity/extension/scoped/AppGraph.Impl.ChildGraphImpl",
+  "graphType": "parity/extension/scoped/ChildGraph",
   "parentGraph": "parity.extension.scoped.AppGraph",
   "scopes": [],
   "aggregationScopes": [],
   "roots": {
     "accessors": [
       {
-        "key": "parity.extension.scoped.ChildThing",
+        "key": "parity/extension/scoped/ChildThing",
+        "renderedKey": "parity.extension.scoped.ChildThing",
         "name": "childThing",
         "isProperty": true,
         "isDeferrable": false
@@ -137,7 +139,8 @@
   },
   "bindings": [
     {
-      "key": "parity.extension.scoped.AppGraph",
+      "key": "parity/extension/scoped/AppGraph",
+      "renderedKey": "parity.extension.scoped.AppGraph",
       "bindingKind": "BoundInstance",
       "isScoped": false,
       "nameHint": "parent",
@@ -147,45 +150,51 @@
       "declaration": "AppGraph"
     },
     {
-      "key": "parity.extension.scoped.AppGraph.Impl",
+      "key": "parity/extension/scoped/AppGraph.Impl",
+      "renderedKey": "parity.extension.scoped.AppGraph.Impl",
       "bindingKind": "Alias",
       "isScoped": false,
       "nameHint": "Impl",
       "dependencies": [
         {
-          "key": "parity.extension.scoped.AppGraph",
+          "key": "parity/extension/scoped/AppGraph",
+          "renderedKey": "parity.extension.scoped.AppGraph",
           "hasDefault": false
         }
       ],
       "isSynthetic": true,
-      "aliasTarget": "parity.extension.scoped.AppGraph"
+      "aliasTarget": "parity/extension/scoped/AppGraph"
     },
     {
-      "key": "parity.extension.scoped.Cache",
+      "key": "parity/extension/scoped/Cache",
+      "renderedKey": "parity.extension.scoped.Cache",
       "bindingKind": "GraphDependency",
       "isScoped": false,
       "nameHint": "ChildGraphImplCache",
       "graphDependency": {
-        "ownerKey": "parity.extension.scoped.AppGraph.Impl",
+        "ownerKey": "parity/extension/scoped/AppGraph.Impl",
         "ownerGraph": "parity.extension.scoped.AppGraph",
         "fromParent": true
       },
       "dependencies": [
         {
-          "key": "parity.extension.scoped.AppGraph.Impl",
+          "key": "parity/extension/scoped/AppGraph.Impl",
+          "renderedKey": "parity.extension.scoped.AppGraph.Impl",
           "hasDefault": false
         }
       ],
       "isSynthetic": false
     },
     {
-      "key": "parity.extension.scoped.ChildThing",
+      "key": "parity/extension/scoped/ChildThing",
+      "renderedKey": "parity.extension.scoped.ChildThing",
       "bindingKind": "ConstructorInjected",
       "isScoped": false,
       "nameHint": "ChildThing",
       "dependencies": [
         {
-          "key": "parity.extension.scoped.Cache",
+          "key": "parity/extension/scoped/Cache",
+          "renderedKey": "parity.extension.scoped.Cache",
           "hasDefault": false
         }
       ],
@@ -196,30 +205,32 @@
   "bindingExplanations": [
     {
       "context": {
-        "id": "32:parity.extension.scoped.AppGraph|52:parity.extension.scoped.AppGraph.Impl.ChildGraphImpl",
+        "id": "32:parity/extension/scoped/AppGraph|52:parity/extension/scoped/AppGraph.Impl.ChildGraphImpl",
         "label": "parity.extension.scoped.AppGraph -> parity.extension.scoped.AppGraph.Impl.ChildGraphImpl"
       },
       "phase": "lookup",
       "outcome": "selected",
       "candidates": [
         {
-          "id": "32:parity.extension.scoped.AppGraph|32:parity.extension.scoped.AppGraph",
-          "key": "parity.extension.scoped.AppGraph",
+          "id": "32:parity/extension/scoped/AppGraph|32:parity.extension.scoped.AppGraph",
+          "key": "parity/extension/scoped/AppGraph",
           "status": "selected",
           "reason": "selected_parent",
           "declaration": {
             "id": "parity.extension.scoped.AppGraph",
             "label": "parity.extension.scoped.AppGraph"
           },
-          "ownerGraphId": "32:parity.extension.scoped.AppGraph",
+          "ownerGraphId": "32:parity/extension/scoped/AppGraph",
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "parity.extension.scoped.AppGraph"
         }
       ],
       "request": {
-        "key": "parity.extension.scoped.AppGraph",
+        "key": "parity/extension/scoped/AppGraph",
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "parity.extension.scoped.AppGraph"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -227,25 +238,27 @@
     },
     {
       "context": {
-        "id": "32:parity.extension.scoped.AppGraph|52:parity.extension.scoped.AppGraph.Impl.ChildGraphImpl",
+        "id": "32:parity/extension/scoped/AppGraph|52:parity/extension/scoped/AppGraph.Impl.ChildGraphImpl",
         "label": "parity.extension.scoped.AppGraph -> parity.extension.scoped.AppGraph.Impl.ChildGraphImpl"
       },
       "phase": "lookup",
       "outcome": "selected",
       "candidates": [
         {
-          "id": "37:parity.extension.scoped.AppGraph.Impl|9:generated",
-          "key": "parity.extension.scoped.AppGraph.Impl",
+          "id": "37:parity/extension/scoped/AppGraph.Impl|9:generated",
+          "key": "parity/extension/scoped/AppGraph.Impl",
           "status": "selected",
           "reason": "selected_generated",
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "parity.extension.scoped.AppGraph.Impl"
         }
       ],
       "request": {
-        "key": "parity.extension.scoped.AppGraph.Impl",
+        "key": "parity/extension/scoped/AppGraph.Impl",
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "parity.extension.scoped.AppGraph.Impl"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -253,34 +266,36 @@
     },
     {
       "context": {
-        "id": "32:parity.extension.scoped.AppGraph|52:parity.extension.scoped.AppGraph.Impl.ChildGraphImpl",
+        "id": "32:parity/extension/scoped/AppGraph|52:parity/extension/scoped/AppGraph.Impl.ChildGraphImpl",
         "label": "parity.extension.scoped.AppGraph -> parity.extension.scoped.AppGraph.Impl.ChildGraphImpl"
       },
       "phase": "lookup",
       "outcome": "selected",
       "candidates": [
         {
-          "id": "29:parity.extension.scoped.Cache|29:parity.extension.scoped.Cache",
-          "key": "parity.extension.scoped.Cache",
+          "id": "29:parity/extension/scoped/Cache|29:parity.extension.scoped.Cache",
+          "key": "parity/extension/scoped/Cache",
           "status": "selected",
           "reason": "selected_parent",
           "declaration": {
             "id": "parity.extension.scoped.Cache",
             "label": "parity.extension.scoped.Cache"
           },
-          "ownerGraphId": "32:parity.extension.scoped.AppGraph",
+          "ownerGraphId": "32:parity/extension/scoped/AppGraph",
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "parity.extension.scoped.Cache"
         }
       ],
       "request": {
-        "key": "parity.extension.scoped.Cache",
+        "key": "parity/extension/scoped/Cache",
         "declaration": {
-          "id": "parity.extension.scoped.ChildThing.MetroFactory.declarationMirror(parity.extension.scoped.ChildThing.MetroFactory,parity.extension.scoped.Cache): parity.extension.scoped.ChildThing#cache",
+          "id": "parity.extension.scoped.ChildThing.MetroFactory.declarationMirror(parity/extension/scoped/ChildThing.MetroFactory,parity/extension/scoped/Cache): parity/extension/scoped/ChildThing#cache",
           "label": "parity.extension.scoped.ChildThing.MetroFactory.declarationMirror.cache"
         },
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "parity.extension.scoped.Cache"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -288,15 +303,15 @@
     },
     {
       "context": {
-        "id": "32:parity.extension.scoped.AppGraph|52:parity.extension.scoped.AppGraph.Impl.ChildGraphImpl",
+        "id": "32:parity/extension/scoped/AppGraph|52:parity/extension/scoped/AppGraph.Impl.ChildGraphImpl",
         "label": "parity.extension.scoped.AppGraph -> parity.extension.scoped.AppGraph.Impl.ChildGraphImpl"
       },
       "phase": "lookup",
       "outcome": "selected",
       "candidates": [
         {
-          "id": "34:parity.extension.scoped.ChildThing|34:parity.extension.scoped.ChildThing",
-          "key": "parity.extension.scoped.ChildThing",
+          "id": "34:parity/extension/scoped/ChildThing|34:parity.extension.scoped.ChildThing",
+          "key": "parity/extension/scoped/ChildThing",
           "status": "selected",
           "reason": "selected_implicit",
           "declaration": {
@@ -304,13 +319,15 @@
             "label": "parity.extension.scoped.ChildThing"
           },
           "relatedDeclarations": [],
-          "details": []
+          "details": [],
+          "renderedKey": "parity.extension.scoped.ChildThing"
         }
       ],
       "request": {
-        "key": "parity.extension.scoped.ChildThing",
+        "key": "parity/extension/scoped/ChildThing",
         "hasDefault": false,
-        "isOptional": false
+        "isOptional": false,
+        "renderedKey": "parity.extension.scoped.ChildThing"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."

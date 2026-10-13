@@ -1363,9 +1363,21 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
     }
 
     @Test
+    @TestMetadata("QualifiersThatRenderAlikeStayDistinct.kt")
+    public void testQualifiersThatRenderAlikeStayDistinct() {
+      run("QualifiersThatRenderAlikeStayDistinct.kt");
+    }
+
+    @Test
     @TestMetadata("QualifiersWithEnumsWork.kt")
     public void testQualifiersWithEnumsWork() {
       run("QualifiersWithEnumsWork.kt");
+    }
+
+    @Test
+    @TestMetadata("QualifiersWithSameSimpleNameStayDistinct.kt")
+    public void testQualifiersWithSameSimpleNameStayDistinct() {
+      run("QualifiersWithSameSimpleNameStayDistinct.kt");
     }
 
     @Test
@@ -2810,6 +2822,12 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
     @TestMetadata("PrimeMultibindingMapEnumKey.kt")
     public void testPrimeMultibindingMapEnumKey() {
       run("PrimeMultibindingMapEnumKey.kt");
+    }
+
+    @Test
+    @TestMetadata("QualifiedMultibindingsAcrossModules.kt")
+    public void testQualifiedMultibindingsAcrossModules() {
+      run("QualifiedMultibindingsAcrossModules.kt");
     }
 
     @Test

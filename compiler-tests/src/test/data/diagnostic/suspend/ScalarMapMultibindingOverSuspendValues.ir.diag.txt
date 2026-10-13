@@ -3,5 +3,5 @@
 Trace:
     Map<String, Int> is requested at
         [ExampleGraph] ExampleGraph.values() // ❌ needs suspend support
-    @MultibindingElement("kotlin.String_kotlin.Int", "1020704780") Int is provided at
+    @MultibindingElement("kotlin/String|kotlin/Int", "1020704780") Int is provided at
         [ExampleGraph] suspend ExampleGraph.provideOne(…)
