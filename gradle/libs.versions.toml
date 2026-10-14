@@ -13,15 +13,15 @@
 # limitations under the License.
 
 [versions]
-agp = "9.0.1"
-android-compileSdk = "36"
-androidx-lifecycle = "2.10.0"
+agp = "9.1.1"
+android-compileSdk = "37"
+androidx-lifecycle = "2.11.0"
 androidx-lint-gradle = "1.0.0"
-annotation = "1.10.0"
+annotation = "1.11.0"
 anvil = "0.5.4"
 circuit = "0.39.0"
-compose-jb = "1.10.3"
-jetbrains-lifecycle-navigation3 = "2.10.0"
+compose-jb = "1.12.1"
+jetbrains-lifecycle-navigation3 = "2.11.0"
 jetbrains-navigation3 = "1.1.2"
 dagger = "2.60.1"
 gjf = "1.35.0"
@@ -94,7 +94,7 @@ androidx-activity = "androidx.activity:activity-compose:1.13.0"
 androidx-annotation = { module = "androidx.annotation:annotation", version.ref = "annotation" }
 androidx-appcompat = "androidx.appcompat:appcompat:1.8.0"
 androidx-collection = "androidx.collection:collection:1.7.0"
-androidx-core = "androidx.core:core-ktx:1.18.0"
+androidx-core = "androidx.core:core-ktx:1.19.1"
 androidx-fragment = "androidx.fragment:fragment-ktx:1.9.1"
 androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "androidx-lifecycle" }
 androidx-lint-gradle = { module = "androidx.lint:lint-gradle", version.ref = "androidx-lint-gradle" }
@@ -154,8 +154,8 @@ guice-assistedInject = "com.google.inject.extensions:guice-assistedinject:7.0.0"
 javaxInject = "javax.inject:javax.inject:1"
 jakartaInject = "jakarta.inject:jakarta.inject-api:2.0.1"
 
-jetbrains-lifecycle-viewmodel = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel:2.10.0"
-jetbrains-lifecycle-viewmodel-compose = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose:2.10.0"
+jetbrains-lifecycle-viewmodel = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel:2.11.0"
+jetbrains-lifecycle-viewmodel-compose = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose:2.11.0"
 jetbrains-lifecycle-viewmodel-navigation3 = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-navigation3", version.ref = "jetbrains-lifecycle-navigation3" }
 jetbrains-navigation3-ui = { module = "org.jetbrains.androidx.navigation3:navigation3-ui", version.ref = "jetbrains-navigation3" }
 

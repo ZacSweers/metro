@@ -6,6 +6,7 @@ Changelog
 
 ### New
 
+- **[metrox-viewmodel-compose]** Add support for `linuxX64`.
 - **[FIR]** Add the `diagnostic-level` compiler option to change the severity of Metro diagnostics reported in FIR. It works like kotlinc's `-Xwarning-level` but can also lower errors and use IDE-only levels. See [changing diagnostic severity](docs/validation-and-error-reporting.md#changing-diagnostic-severity).
 - **[FIR/IC]** Add the `function-inject-annotations-override` compiler option to use dedicated annotations for top-level function injection. See [custom function injection annotations](docs/injection-types.md#custom-function-injection-annotations).
 - **[Gradle]** Add opt-in checks to find Metro contributions hidden from a graph's compile classpath. Run `checkMainMetroHiddenDependencies` (i.e., on CI). It writes a report and fails if it finds hidden contributions.
@@ -57,6 +58,10 @@ Changelog
 
 ### Changes
 
+- Build against Android SDK `37` and AGP `9.1.1`.
+- Update Lifecycle dependencies to `2.11.0` and JetBrains Compose to `1.12.1`.
+- **[metrox-viewmodel/metrox-viewmodel-compose]** Drop Apple x86_64 targets removed by upstream dependencies. `metrox-viewmodel` drops `iosX64`, `macosX64`, `tvosX64`, and `watchosX64`. `metrox-viewmodel-compose` drops `iosX64` and `macosX64`.
+- Update `androidx.annotation` to `1.11.0` and `androidx.core` to `1.19.1`.
 - **[compat]** Test against Kotlin `2.5.0-dev-10106`.
 - **[FIR/interop]** Report a `@MapKey` on a class with no Metro contribution annotation as a dedicated `MAP_KEY_WITHOUT_CONTRIBUTES_INTO_MAP` error. If another tool binds the class into a map, lower it to a warning with the `diagnostic-level` compiler option.
 - **[FIR/IR/IC]** Enable `omit-redundant-mirrors` by default on Kotlin 2.4.0 and newer to omit generated declaration mirrors when compiler metadata and declaration finders provide the same information. It remains disabled by default on older Kotlin versions. Disable it with `compilerOptions.disable("omit-redundant-mirrors")` in the `metro` DSL.

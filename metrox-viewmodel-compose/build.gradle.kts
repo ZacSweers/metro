@@ -31,12 +31,12 @@ kotlin {
         api(libs.kotlin.stdlib)
       }
     }
-    commonTest { dependencies { api(libs.compose.ui.test) } }
     jvmTest {
       dependencies {
         implementation(libs.junit)
         implementation(libs.truth)
         implementation(compose.desktop.currentOs)
+        implementation(libs.compose.ui.test)
         implementation(libs.compose.ui.test.junit4)
       }
     }
