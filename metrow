@@ -17,14 +17,14 @@ run_gradle_all() {
         subprojects=("${ALL_SUBPROJECTS[@]}")
     fi
 
-    # Run on root project
+    # Stop on the first failure even when a caller checks this function's status.
     # shellcheck disable=SC2086  # Word splitting is intentional
-    ./gradlew $cmd
+    ./gradlew $cmd || return $?
 
     # Run on each subproject
     for project in "${subprojects[@]}"; do
         # shellcheck disable=SC2086
-        ./gradlew -p "$project" $cmd
+        ./gradlew -p "$project" $cmd || return $?
     done
 }
 
@@ -59,6 +59,21 @@ run_tests() {
     # We have to regen package locks because the kotlin yarn/node/etc build tooling is brittle
     ./gradlew -p samples kotlinWasmUpgradePackageLock kotlinUpgradePackageLock --rerun-tasks --no-build-cache --no-configuration-cache --quiet
     ./gradlew -p samples :integration-tests:allTests --quiet
+}
+
+# Time one regen command and keep its output visible. Failures stop regeneration.
+regen_step() {
+    local label="$1"
+    local start=$SECONDS
+    shift
+    echo "$label..."
+    if "$@"; then
+        echo "  $label: done ($((SECONDS - start))s)"
+    else
+        local status=$?
+        echo "  $label: failed ($((SECONDS - start))s)" >&2
+        return "$status"
+    fi
 }
 
 case "$1" in
@@ -246,6 +261,7 @@ case "$1" in
        version=""
        locks_only=false
        release_baselines=false
+       refresh_manifests=false
 
        while [[ $# -gt 1 ]]; do
            case "$2" in
@@ -259,6 +275,10 @@ case "$1" in
                    ;;
                --release-baselines)
                    release_baselines=true
+                   shift
+                   ;;
+               --refresh-manifests)
+                   refresh_manifests=true
                    shift
                    ;;
                *)
@@ -278,40 +298,118 @@ case "$1" in
            version_flag="-Pmetro.testCompilerVersion=$version"
        fi
 
-       # Annoyingly, the apiDump and package lock tasks have caching issues
-       # https://youtrack.jetbrains.com/issue/KT-69684
-       rm -rf kotlin-js-store samples/kotlin-js-store
-
+       regen_start=$SECONDS
        if [[ "$locks_only" = false ]]; then
-           echo "Applying formatting and API gen..."
-           find . -type d -name "api" -exec find {} -name "*.api" -delete \;
+           echo "Regenerating project files..."
+           regen_step "Removing generated API files" find . -type d -name "api" -exec find {} -name "*.api" -delete \;
 
-           run_gradle_all "clean --quiet"
-           kempt format --all
+           regen_step "Cleaning all builds" run_gradle_all "clean --quiet --console=plain"
+           regen_step "Formatting sources" kempt format --all
 
            # apiDump only exists in root project
-           echo "Running apiDump..."
+           # apiDump has caching issues: https://youtrack.jetbrains.com/issue/KT-69684
            # shellcheck disable=SC2086  # Word splitting is intentional so empty version_flag drops out
-           ./gradlew apiDump --rerun-tasks --no-build-cache --no-configuration-cache --quiet $version_flag
+           regen_step "Generating API signatures" ./gradlew apiDump --rerun-tasks --no-build-cache --no-configuration-cache --quiet --console=plain $version_flag
 
-           echo "Generating diagnostics docs, dependency guard baselines..."
-           ./gradlew :compiler:generateDiagnosticsDocs dependencyGuardBaseline --quiet
+           regen_step "Generating diagnostics documentation and dependency baselines" ./gradlew :compiler:generateDiagnosticsDocs dependencyGuardBaseline --quiet --console=plain
 
            if [[ "$release_baselines" = true ]]; then
-               echo "Promoting Metalava release baselines..."
-               ./gradlew metalavaGenerateSignature metalavaGenerateSignatureRelease --quiet
+               regen_step "Promoting Metalava release baselines" ./gradlew metalavaGenerateSignature metalavaGenerateSignatureRelease --quiet --console=plain
            fi
        else
            echo "Regenerating package locks only..."
        fi
 
-       # Yarn locks only in root and samples
-       echo "Upgrading root package locks..."
-       # shellcheck disable=SC2086
-       ./gradlew kotlinWasmUpgradePackageLock kotlinUpgradePackageLock --rerun-tasks --no-build-cache --no-configuration-cache --quiet $version_flag
-       echo "Upgrading samples package locks..."
-       # shellcheck disable=SC2086
-       ./gradlew -p samples kotlinWasmUpgradePackageLock kotlinUpgradePackageLock --rerun-tasks --no-build-cache --no-configuration-cache --quiet $version_flag
+       roots=("build/js" "build/wasm" "samples/build/js" "samples/build/wasm")
+       stores=("kotlin-js-store" "kotlin-js-store/wasm" "samples/kotlin-js-store" "samples/kotlin-js-store/wasm")
+       labels=("Root JS" "Root Wasm" "Samples JS" "Samples Wasm")
+       version_file="build/metrow-package-lock-version"
+       if [[ "$version" != "$(cat "$version_file" 2>/dev/null || true)" ]]; then
+           refresh_manifests=true
+       fi
+       manifests_current=true
+       for root in "${roots[@]}"; do
+           if ! workspaces=$(jq -r '.workspaces[]' "$root/package.json" 2>/dev/null); then
+               manifests_current=false
+               continue
+           fi
+           while IFS= read -r workspace; do
+               if [[ ! -f "$root/$workspace/package.json" ]]; then
+                   manifests_current=false
+               fi
+           done <<< "$workspaces"
+       done
+
+       # Newer build configuration requires Gradle to regenerate its npm manifests.
+       while IFS= read -r -d '' input; do
+           for root in "${roots[@]}"; do
+               if [[ "$input" -nt "$root/package.json" ]]; then
+                   manifests_current=false
+               fi
+           done
+       done < <(git ls-files -z --cached --others --exclude-standard -- '*.gradle' '*.gradle.kts' '*gradle.properties' '*.toml' 'build-logic/**' 'buildSrc/**')
+
+       if [[ "$refresh_manifests" = true || "$manifests_current" = false ]]; then
+           # shellcheck disable=SC2086  # An empty version_flag contributes no argument.
+           regen_step "Refreshing root JS/Wasm npm manifests" ./gradlew rootPackageJson wasmRootPackageJson --rerun-tasks --no-build-cache --no-configuration-cache --quiet --console=plain $version_flag
+           # shellcheck disable=SC2086
+           regen_step "Refreshing samples JS/Wasm npm manifests" ./gradlew -p samples rootPackageJson wasmRootPackageJson --rerun-tasks --no-build-cache --no-configuration-cache --quiet --console=plain $version_flag
+           # Record the refresh even when Gradle preserves identical manifest contents.
+           for root in "${roots[@]}"; do
+               touch "$root/package.json"
+           done
+           # Returning from an explicit compiler version also needs fresh manifests.
+           printf '%s\n' "$version" > "$version_file"
+       else
+           echo "Reusing current JS/Wasm npm manifests."
+       fi
+
+       # Resolve in temporary directories so npm failures preserve the tracked locks.
+       lock_dir=$(mktemp -d)
+       trap 'rm -rf "$lock_dir"' EXIT
+       lock_start=$SECONDS
+       pids=()
+       echo "Resolving four package locks in parallel..."
+       for i in "${!roots[@]}"; do
+           root="${roots[$i]}"
+           while IFS= read -r manifest; do
+               mkdir -p "$lock_dir/$(dirname "$manifest")"
+               cp "$manifest" "$lock_dir/$manifest"
+           done < <(find "$root" -name node_modules -prune -o -name package.json -print)
+           (
+               start=$SECONDS
+               if (cd "$lock_dir/$root" && npm install --package-lock-only --ignore-scripts --no-audit --no-fund --no-progress --include=dev --include=peer --include=optional) > "$lock_dir/$i.log" 2>&1; then
+                   echo "  ${labels[$i]}: done ($((SECONDS - start))s)"
+               else
+                   echo "  ${labels[$i]}: failed ($((SECONDS - start))s)"
+                   exit 1
+               fi
+           ) &
+           pids+=("$!")
+       done
+       failed=false
+       failed_jobs=()
+       for i in "${!pids[@]}"; do
+           if ! wait "${pids[$i]}"; then
+               failed=true
+               failed_jobs+=("$i")
+           fi
+       done
+       if [[ "$failed" = true ]]; then
+           # Print failed job logs after every job finishes so diagnostics stay together.
+           for i in "${failed_jobs[@]}"; do
+               echo "${labels[$i]} npm output:" >&2
+               cat "$lock_dir/$i.log" >&2
+           done
+           echo "Package lock regeneration failed."
+           exit 1
+       fi
+       for i in "${!roots[@]}"; do
+           mkdir -p "${stores[$i]}"
+           cp "$lock_dir/${roots[$i]}/package-lock.json" "${stores[$i]}/package-lock.json"
+       done
+       echo "Regenerated all four package locks in $((SECONDS - lock_start))s."
+       echo "Regeneration complete ($((SECONDS - regen_start))s)."
        ;;
 
    "gen-compat")
@@ -386,6 +484,7 @@ case "$1" in
        echo "regen options:"
        echo "  --version <version>  Regenerate against a specific compiler version"
        echo "  --locks-only         Only regenerate package locks (skip format/apiDump/clean)"
+       echo "  --refresh-manifests  Force Gradle to refresh the JS/Wasm npm manifests"
        echo "  --release-baselines  Promote the current APIs to Metalava's release baselines"
        echo ""
        echo "trace options:"
