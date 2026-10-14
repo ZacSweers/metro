@@ -63,6 +63,7 @@ Changelog
 - **[Gradle]** `enableTopLevelFunctionInjection` is **disabled by default** for now on **all** Kotlin versions because it makes incremental builds recompile more files. If you use top-level function injection, enable it with `enableTopLevelFunctionInjection.set(true)` in the `metro` DSL. See [incremental compilation perf docs](docs/performance.md#incremental-compilation).
 - Test Android Studio Rabbit 1 (`2026.2.1.8`).
 - Test IntelliJ `2026.2.3`.
+- Update to androidx.tracing `2.0.4`.
 
 ### Contributors
 
