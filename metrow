@@ -378,7 +378,8 @@ case "$1" in
            done < <(find "$root" -name node_modules -prune -o -name package.json -print)
            (
                start=$SECONDS
-               if (cd "$lock_dir/$root" && npm install --package-lock-only --ignore-scripts --no-audit --no-fund --no-progress --include=dev --include=peer --include=optional) > "$lock_dir/$i.log" 2>&1; then
+               # Keep committed tarball URLs on the public registry for CI.
+               if (cd "$lock_dir/$root" && npm install --registry=https://registry.npmjs.org --package-lock-only --ignore-scripts --no-audit --no-fund --no-progress --include=dev --include=peer --include=optional) > "$lock_dir/$i.log" 2>&1; then
                    echo "  ${labels[$i]}: done ($((SECONDS - start))s)"
                else
                    echo "  ${labels[$i]}: failed ($((SECONDS - start))s)"
