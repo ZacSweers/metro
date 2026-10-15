@@ -313,17 +313,32 @@ if $DRY_RUN; then
     echo "  4. Run ./metrow regen"
     echo "  5. Run ./scripts/update-compatibility-docs.sh"
     echo "  6. Commit: 'Prepare for release $NEW_VERSION.'"
-    echo "  7. Tag: $NEW_VERSION"
-    echo "  8. Run ./metrow publish"
-    echo "  9. Update gradle.properties to $NEXT_SNAPSHOT_VERSION"
+    next_step=7
     if is_stable_version "$NEW_VERSION"; then
-        echo "  10. Run ./metrow regen --release-baselines"
-    else
-        echo "  10. Run ./metrow regen (retain stable release baselines)"
+        echo "  $next_step. Run ./metrow publish-idea-plugin --local --version $NEW_VERSION"
+        next_step=$((next_step + 1))
     fi
-    echo "  11. Commit: 'Prepare next development version.'"
-    echo "  12. Push main and $NEW_VERSION to origin ($ORIGIN_URL)"
-    echo "  13. Create GitHub release:"
+    echo "  $next_step. Tag: $NEW_VERSION"
+    next_step=$((next_step + 1))
+    echo "  $next_step. Run ./metrow publish"
+    next_step=$((next_step + 1))
+    if is_stable_version "$NEW_VERSION"; then
+        echo "  $next_step. Run ./metrow publish-idea-plugin --version $NEW_VERSION"
+        next_step=$((next_step + 1))
+    fi
+    echo "  $next_step. Update gradle.properties to $NEXT_SNAPSHOT_VERSION"
+    next_step=$((next_step + 1))
+    if is_stable_version "$NEW_VERSION"; then
+        echo "  $next_step. Run ./metrow regen --release-baselines"
+    else
+        echo "  $next_step. Run ./metrow regen (retain stable release baselines)"
+    fi
+    next_step=$((next_step + 1))
+    echo "  $next_step. Commit: 'Prepare next development version.'"
+    next_step=$((next_step + 1))
+    echo "  $next_step. Push main and $NEW_VERSION to origin ($ORIGIN_URL)"
+    next_step=$((next_step + 1))
+    echo "  $next_step. Create GitHub release:"
     echo "      gh release create $NEW_VERSION --repo $REPO --verify-tag --title $NEW_VERSION --notes-file <notes-file> --generate-notes --notes-start-tag $PREVIOUS_VERSION"
     exit 0
 fi
@@ -349,10 +364,19 @@ promote_changelog "$CHANGELOG_FILE" "$NEW_VERSION"
 ./scripts/update-compatibility-docs.sh
 
 git commit -am "Prepare for release $NEW_VERSION."
+
+if is_stable_version "$NEW_VERSION"; then
+    ./metrow publish-idea-plugin --local --version "$NEW_VERSION"
+fi
+
 git tag -a "$NEW_VERSION" -m "Version $NEW_VERSION"
 
 # Publish
 ./metrow publish
+
+if is_stable_version "$NEW_VERSION"; then
+    ./metrow publish-idea-plugin --version "$NEW_VERSION"
+fi
 
 # Prepare next snapshot
 echo "Setting next snapshot version $NEXT_SNAPSHOT_VERSION"

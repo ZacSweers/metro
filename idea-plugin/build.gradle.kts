@@ -329,7 +329,9 @@ intellijPlatform {
     id.set("dev.zacsweers.metro.idea")
     name.set("Metro")
     version.set(pluginVersion)
-    description.set("Additional IDE support and features for projects using Metro.")
+    description.set(
+      providers.fileContents(layout.projectDirectory.file("marketplace-description.html")).asText,
+    )
 
     ideaVersion {
       sinceBuild.set("262")
