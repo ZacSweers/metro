@@ -1528,16 +1528,7 @@ private constructor(
     return index(module, IndexRequestMode.CACHE_ONLY)
   }
 
-  /** Returns the distinct current indexes that can contain an exact Find Usages target. */
-  internal fun usageIndexes(element: PsiElement): List<BindingIndex> {
-    val module = ModuleUtilCore.findModuleForPsiElement(element)
-    if (module != null) return currentIndex(element).asUsageIndexList()
-    return distinctUsageIndexes { currentIndex(it) }
-  }
-
-  /**
-   * Cache-only counterpart to [usageIndexes] used before deciding whether a usage build is needed.
-   */
+  /** Returns current cached indexes for a Find Usages target without requesting a build. */
   internal fun cachedUsageIndexes(element: PsiElement): List<BindingIndex> {
     val module = ModuleUtilCore.findModuleForPsiElement(element)
     if (module != null) return cachedIndex(element).asUsageIndexList()

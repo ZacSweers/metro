@@ -4,6 +4,7 @@ package dev.zacsweers.metro.idea.usages
 
 import com.intellij.find.findUsages.CustomUsageSearcher
 import com.intellij.find.findUsages.FindUsagesOptions
+import com.intellij.openapi.application.readAction
 import com.intellij.openapi.application.smartReadAction
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
@@ -54,9 +55,6 @@ class MetroUsageSearcher : CustomUsageSearcher() {
     processor: Processor<in Usage>,
     options: FindUsagesOptions,
   ) {
-    val project = element.project
-    if (DumbService.isDumb(project)) return
-
     val usages = runBlockingCancellable { collectMetroUsages(element, options) }
     for (usage in usages) {
       if (!processor.process(usage)) return
@@ -197,15 +195,11 @@ internal fun BindingIndex.metroUsageRelations(
   }
 }
 
-private fun BindingIndex.hasMetroUsageTarget(target: KtDeclaration): Boolean {
-  return bindingEntriesAt(target).isNotEmpty() || consumerEntriesAt(target).isNotEmpty()
-}
-
 internal suspend fun collectMetroUsages(
   element: PsiElement,
   options: FindUsagesOptions,
 ): List<Usage> {
-  val project = element.project
+  val project = readAction { element.project }
   if (DumbService.isDumb(project)) return emptyList()
   val result = retryCancelledIndexBuild {
     smartReadAction(project) { collectMetroUsagesInReadAction(element, options) }
@@ -223,19 +217,7 @@ private fun collectMetroUsagesInReadAction(
   val project = target.project
   val pinnedPath = project.service<GraphContextPinService>().pinnedPath
   val resolutionService = project.service<MetroResolutionService>()
-  val cachedIndexes = resolutionService.cachedUsageIndexes(target)
-  val indexes =
-    if (cachedIndexes.any { it.hasMetroUsageTarget(target) }) {
-      cachedIndexes
-    } else {
-      if (!target.hasPotentialMetroContext()) {
-        return CollectedMetroUsages(
-          cacheEntry = target.metroUsageCacheEntry(pinnedPath, emptyList()),
-          usages = emptyList(),
-        )
-      }
-      resolutionService.usageIndexes(target)
-    }
+  val indexes = resolutionService.cachedUsageIndexes(target)
 
   val searchSession = options.fastTrack?.searchSession
   val searchKey =

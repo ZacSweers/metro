@@ -114,6 +114,8 @@ results to that context. With no pin, Find Usages combines results from all appl
 Plain classes and interfaces that are not indexed binding sources or injection sites use Kotlin's
 standard Find Usages behavior.
 
+Find Usages uses current cached graph data and never starts or waits for a graph refresh. If graph data is missing or stale, Metro relationships are omitted and ordinary Kotlin usages remain available. Refresh the graph data and search again to include Metro relationships.
+
 > TODO: Add a screenshot of Find Usages showing the Injected at and Provided by groups alongside an ordinary Kotlin usage.
 
 ### Code Vision
@@ -160,8 +162,7 @@ projects, automatic refresh can be disabled in Metro's project settings. Editor 
 tool window then keep using the last loaded graph data. Decorations follow declarations as they move
 and disappear when their declarations can no longer be identified safely.
 
-The tool window shows a stale-data warning until you click **Refresh** or reenable automatic refresh
-to bring it up to date. Validation, Find Usages, and graph debug export still request current data.
+The tool window shows a stale-data warning until you click **Refresh** or reenable automatic refresh to bring it up to date. Validation and graph debug export still request current data.
 
 Calls to `createDynamicGraph` and `createDynamicGraphFactory` appear as separate graph contexts at
 their call sites. Each context uses the call's concrete binding containers to override bindings,

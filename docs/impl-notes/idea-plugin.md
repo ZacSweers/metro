@@ -99,12 +99,7 @@ constants, including directory moves, conservatively rebuild all source shards. 
 compiler settings are checked once per queued batch. Directory changes add newly relevant files as a
 batch.
 
-The current generation serves validation, Find Usages, and debug export. The presentation generation
-serves editor decorations and the graph browser. Automatic refresh advances both. Manual refresh mode
-retains the presentation generation while explicit operations can build current data. **Refresh** or
-reenabling automatic refresh brings editor presentation up to date, including after an explicit query
-refreshed current data in manual mode. A generation records the inputs it used, so a late worker
-cannot publish over newer work.
+The current generation serves validation, Find Usages, and debug export. Find Usages reads cached current data and never requests a build. The presentation generation serves editor decorations and the graph browser. Automatic refresh advances both. Manual refresh mode retains the presentation generation while explicit operations can build current data. **Refresh** or reenabling automatic refresh brings editor presentation up to date, including after an explicit query refreshed current data in manual mode. A generation records the inputs it used, so a late worker cannot publish over newer work.
 
 Analysis API work runs in cancellable background smart reads. Graph query results and lookup tables
 are built from captured data outside read actions where possible. Explicit callers wait for a missing

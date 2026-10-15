@@ -7,6 +7,7 @@ import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
 import com.intellij.openapi.progress.EmptyProgressIndicator
 import com.intellij.openapi.progress.ProgressManager
+import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.LocalSearchScope
@@ -18,16 +19,22 @@ import com.intellij.testFramework.DumbModeTestUtils
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.testFramework.runInEdtAndWait
+import com.intellij.usageView.UsageInfo
 import com.intellij.usages.Usage
 import com.intellij.usages.impl.rules.UsageWithType
 import com.intellij.usages.rules.PsiElementUsage
 import com.intellij.util.Processor
+import dev.zacsweers.metro.idea.index.AutomaticRefreshWindow
 import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.usages.MetroFindUsagesHandlerFactory
 import dev.zacsweers.metro.idea.usages.MetroUsageSearcher
 import dev.zacsweers.metro.idea.usages.collectMetroUsages
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.jetbrains.kotlin.psi.KtDeclaration
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
@@ -74,6 +81,7 @@ class MetroFindUsagesTest : BasePlatformTestCase() {
         }
         """,
       )
+    project.service<MetroResolutionService>().awaitIndex(file)
     val declarations = file.declarationsIncludingNested()
     val provideDependency = declarations.function("provideDependency")
 
@@ -177,6 +185,7 @@ class MetroFindUsagesTest : BasePlatformTestCase() {
         }
         """,
       )
+    project.service<MetroResolutionService>().awaitIndex(file)
     val declarations = file.declarationsIncludingNested()
 
     assertEquals(
@@ -206,6 +215,7 @@ class MetroFindUsagesTest : BasePlatformTestCase() {
         }
         """,
       )
+    project.service<MetroResolutionService>().awaitIndex(file)
     val declarations = file.declarationsIncludingNested()
     val service = declarations.klass("Service")
 
@@ -237,6 +247,7 @@ class MetroFindUsagesTest : BasePlatformTestCase() {
         @Inject class Consumer(val service: ServiceImpl)
         """,
       )
+    project.service<MetroResolutionService>().awaitIndex(file)
     val service = file.declarationsIncludingNested().klass("ServiceImpl")
 
     val usageTree = myFixture.getUsageViewTreeTextRepresentation(service)
@@ -247,6 +258,120 @@ class MetroFindUsagesTest : BasePlatformTestCase() {
       1,
       Regex("service: ServiceImpl").findAll(usageTree).count(),
     )
+  }
+
+  fun testOrdinaryKotlinUsagesDoNotBuildAColdIndexInManualMode() {
+    val resolution = useManualRefresh()
+    val file = configureInjectedService()
+    val target = file.declarationsIncludingNested().klass("Service")
+    assertColdSearchDoesNotBuildIndex(resolution, target)
+  }
+
+  fun testOrdinaryKotlinUsagesDoNotBuildAColdIndexInAutomaticMode() {
+    val resolution = useManualRefresh()
+    val window = AutomaticRefreshWindow(nowMillis = { 0L })
+    window.changed()
+    resolution.setAutomaticRefreshWindowForTest(window)
+    MetroSettings.getInstance(project).state.automaticallyRefreshGraphData = true
+    resolution.settingsChanged()
+    val file =
+      myFixture.addFileToProject(
+        "test/AutomaticUsages.kt",
+        """
+        package test
+
+        import dev.zacsweers.metro.Inject
+
+        @Inject class Service
+        @Inject class Consumer(val service: Service)
+        """
+          .trimIndent(),
+      ) as KtFile
+    val target = file.declarationsIncludingNested().klass("Service")
+    assertColdSearchDoesNotBuildIndex(resolution, target)
+  }
+
+  fun testOrdinaryKotlinUsagesDoNotRebuildAStaleIndexInManualMode() {
+    val resolution = useManualRefresh()
+    val file = configureInjectedService()
+    val target = file.declarationsIncludingNested().klass("Service")
+    resolution.awaitIndex(file)
+    val initialTree = myFixture.getUsageViewTreeTextRepresentation(target)
+    assertTrue(initialTree, "Injected at" in initialTree)
+    val builds = AtomicInteger()
+    resolution.setResolutionCandidatePreparedObserver { builds.incrementAndGet() }
+    try {
+      val document = checkNotNull(PsiDocumentManager.getInstance(project).getDocument(file))
+      WriteCommandAction.runWriteCommandAction(project) {
+        document.insertString(document.textLength, "\n\n@Inject class Added")
+      }
+      PsiDocumentManager.getInstance(project).commitAllDocuments()
+      awaitCoordinator(resolution)
+      assertTrue(resolution.cachedUsageIndexes(target).isEmpty())
+
+      assertOrdinaryUsageTree(target)
+
+      awaitCoordinator(resolution)
+      assertEquals(0, builds.get())
+      assertTrue(resolution.cachedUsageIndexes(target).isEmpty())
+      assertNull(resolution.indexBuildProgress.value)
+    } finally {
+      resolution.setResolutionCandidatePreparedObserver(null)
+    }
+  }
+
+  fun testOrdinaryKotlinUsagesFinishWhileAManualRefreshIsPaused() {
+    val resolution = useManualRefresh()
+    val file = configureInjectedService()
+    val target = file.declarationsIncludingNested().klass("Service")
+    val handler =
+      checkNotNull(MetroFindUsagesHandlerFactory().createFindUsagesHandler(target, false))
+    val options =
+      handler.findUsagesOptions.apply { searchScope = GlobalSearchScope.projectScope(project) }
+    val prepared = CompletableFuture<Unit>()
+    val release = CountDownLatch(1)
+    val indicator = EmptyProgressIndicator()
+    var search: CompletableFuture<List<UsageInfo>>? = null
+    resolution.setResolutionCandidatePreparedObserver {
+      prepared.complete(Unit)
+      check(release.await(60, TimeUnit.SECONDS))
+    }
+    try {
+      checkNotNull(resolution.refreshGraphData())
+      PlatformTestUtil.waitForFuture(prepared, 30_000)
+      assertTrue(resolution.isExplicitGraphRefreshPending)
+      search = CompletableFuture.supplyAsync {
+        val usages = mutableListOf<UsageInfo>()
+        ProgressManager.getInstance()
+          .runProcess(
+            {
+              handler.processElementUsages(
+                target,
+                Processor { usage ->
+                  usages += usage
+                  true
+                },
+                options,
+              )
+            },
+            indicator,
+          )
+        usages.toList()
+      }
+
+      PlatformTestUtil.waitForFuture(search, 30_000)
+      val usages = search.join()
+      assertEquals(1, usages.size)
+      assertEquals("Service", usages.single().element?.text)
+      assertEquals(1L, release.count)
+      assertTrue(resolution.isExplicitGraphRefreshPending)
+    } finally {
+      release.countDown()
+      resolution.setResolutionCandidatePreparedObserver(null)
+      indicator.cancel()
+      search?.let { PlatformTestUtil.waitForFuture(it.handle { _, _ -> Unit }, 30_000) }
+      awaitCoordinator(resolution)
+    }
   }
 
   fun testCustomSearcherReusesThePreparedCollection() {
@@ -354,6 +479,7 @@ class MetroFindUsagesTest : BasePlatformTestCase() {
         fun unrelated() = Unit
         """,
       )
+    project.service<MetroResolutionService>().awaitIndex(file)
     val declarations = file.declarationsIncludingNested()
     val provider = declarations.function("provideService")
 
@@ -420,6 +546,57 @@ class MetroFindUsagesTest : BasePlatformTestCase() {
     val options = FindUsagesOptions(project).apply { searchScope = scope }
     usages += runBlocking { collectMetroUsages(target, options) }
     return foundUsages(usages)
+  }
+
+  private fun useManualRefresh(): MetroResolutionService {
+    MetroSettings.getInstance(project).state.automaticallyRefreshGraphData = false
+    val resolution = project.service<MetroResolutionService>()
+    resolution.settingsChanged()
+    awaitCoordinator(resolution)
+    return resolution
+  }
+
+  private fun configureInjectedService(): KtFile {
+    return myFixture.configureMetroFile(
+      """
+      @Inject class <caret>Service
+      @Inject class Consumer(val service: Service)
+      """,
+    )
+  }
+
+  private fun assertOrdinaryUsageTree(target: PsiElement) {
+    val usageTree = myFixture.getUsageViewTreeTextRepresentation(target)
+    assertEquals(usageTree, 1, Regex("service: Service").findAll(usageTree).count())
+    assertFalse(usageTree, "Injected at" in usageTree)
+  }
+
+  private fun assertColdSearchDoesNotBuildIndex(
+    resolution: MetroResolutionService,
+    target: PsiElement,
+  ) {
+    awaitCoordinator(resolution)
+    val builds = AtomicInteger()
+    resolution.setResolutionCandidatePreparedObserver { builds.incrementAndGet() }
+    try {
+      assertTrue(resolution.cachedUsageIndexes(target).isEmpty())
+
+      assertOrdinaryUsageTree(target)
+
+      awaitCoordinator(resolution)
+      assertEquals(0, builds.get())
+      assertTrue(resolution.cachedUsageIndexes(target).isEmpty())
+      assertNull(resolution.indexBuildProgress.value)
+    } finally {
+      resolution.setResolutionCandidatePreparedObserver(null)
+    }
+  }
+
+  private fun awaitCoordinator(resolution: MetroResolutionService) {
+    val completion = CompletableFuture.runAsync {
+      runBlocking { withTimeout(30_000) { resolution.awaitCoordinatorBarrier() } }
+    }
+    PlatformTestUtil.waitForFuture(completion, 30_000)
   }
 
   private fun foundUsages(usages: List<Usage>): List<FoundUsage> {
