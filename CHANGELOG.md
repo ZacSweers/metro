@@ -59,7 +59,7 @@ Changelog
 ### Changes
 
 - Build against Android SDK `37` and AGP `9.1.1`.
-- Update Lifecycle dependencies to `2.11.0` and JetBrains Compose to `1.12.1`.
+- Update Lifecycle dependencies to `2.11.0` and JetBrains Compose to `1.12.2`.
 - **[metrox-viewmodel/metrox-viewmodel-compose]** Drop Apple x86_64 targets removed by upstream dependencies. `metrox-viewmodel` drops `iosX64`, `macosX64`, `tvosX64`, and `watchosX64`. `metrox-viewmodel-compose` drops `iosX64` and `macosX64`.
 - Update `androidx.annotation` to `1.11.0` and `androidx.core` to `1.19.1`.
 - **[compat]** Test against Kotlin `2.5.0-dev-10106`.
