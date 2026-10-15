@@ -2795,6 +2795,12 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("MapKeyOnPlainInterfaceAccessor.kt")
+    public void testMapKeyOnPlainInterfaceAccessor() {
+      run("MapKeyOnPlainInterfaceAccessor.kt");
+    }
+
+    @Test
     @TestMetadata("MapLazyValues.kt")
     public void testMapLazyValues() {
       run("MapLazyValues.kt");

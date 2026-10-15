@@ -3068,6 +3068,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
       }
 
       @Test
+      @TestMetadata("DaggerMapKeyOnPlainInterfaceAccessor.kt")
+      public void testDaggerMapKeyOnPlainInterfaceAccessor() {
+        run("DaggerMapKeyOnPlainInterfaceAccessor.kt");
+      }
+
+      @Test
       @TestMetadata("DaggerMemberInjectorCanBeLoaded.kt")
       public void testDaggerMemberInjectorCanBeLoaded() {
         run("DaggerMemberInjectorCanBeLoaded.kt");
@@ -3752,6 +3758,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
     @TestMetadata("LazyMemberInjectedBindings.kt")
     public void testLazyMemberInjectedBindings() {
       run("LazyMemberInjectedBindings.kt");
+    }
+
+    @Test
+    @TestMetadata("MapKeyOnPlainInterfaceAccessor.kt")
+    public void testMapKeyOnPlainInterfaceAccessor() {
+      run("MapKeyOnPlainInterfaceAccessor.kt");
     }
 
     @Test
