@@ -2342,6 +2342,12 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
       }
 
       @Test
+      @TestMetadata("QualifiedOptionalBindingIgnoresScopedUnqualifiedClass.kt")
+      public void testQualifiedOptionalBindingIgnoresScopedUnqualifiedClass() {
+        run("QualifiedOptionalBindingIgnoresScopedUnqualifiedClass.kt");
+      }
+
+      @Test
       @TestMetadata("RequiredAnnotationWorksWhenPresent.kt")
       public void testRequiredAnnotationWorksWhenPresent() {
         run("RequiredAnnotationWorksWhenPresent.kt");
