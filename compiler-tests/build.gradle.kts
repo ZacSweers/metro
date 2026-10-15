@@ -294,6 +294,7 @@ dependencies {
   anvilRuntimeClasspath(libs.anvil.annotations.optional)
 
   daggerRuntimeClasspath(libs.dagger.runtime)
+  daggerRuntimeClasspath(libs.guava)
 
   hiltCoreClasspath(libs.hilt.core)
 
