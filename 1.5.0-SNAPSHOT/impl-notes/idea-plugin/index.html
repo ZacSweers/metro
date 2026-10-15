@@ -2128,12 +2128,7 @@ Unrelated shards and dependency state are reused. Changes to otherwise untracked
 constants, including directory moves, conservatively rebuild all source shards. Project roots and<br />
 compiler settings are checked once per queued batch. Directory changes add newly relevant files as a<br />
 batch.</p>
-<p>The current generation serves validation, Find Usages, and debug export. The presentation generation<br />
-serves editor decorations and the graph browser. Automatic refresh advances both. Manual refresh mode<br />
-retains the presentation generation while explicit operations can build current data. <strong>Refresh</strong> or<br />
-reenabling automatic refresh brings editor presentation up to date, including after an explicit query<br />
-refreshed current data in manual mode. A generation records the inputs it used, so a late worker<br />
-cannot publish over newer work.</p>
+<p>The current generation serves validation, Find Usages, and debug export. Find Usages reads cached current data and never requests a build. The presentation generation serves editor decorations and the graph browser. Automatic refresh advances both. Manual refresh mode retains the presentation generation while explicit operations can build current data. <strong>Refresh</strong> or reenabling automatic refresh brings editor presentation up to date, including after an explicit query refreshed current data in manual mode. A generation records the inputs it used, so a late worker cannot publish over newer work.</p>
 <p>Analysis API work runs in cancellable background smart reads. Graph query results and lookup tables<br />
 are built from captured data outside read actions where possible. Explicit callers wait for a missing<br />
 generation outside their read action, then retry against the published result. Presentation requests<br />
