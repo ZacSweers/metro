@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.ir.transformers
 
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
+import dev.zacsweers.metro.compiler.CompanionMode
 import dev.zacsweers.metro.compiler.ExitProcessingException
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.Origins
@@ -35,14 +36,13 @@ import dev.zacsweers.metro.compiler.ir.ParentContext
 import dev.zacsweers.metro.compiler.ir.ParentContextReader
 import dev.zacsweers.metro.compiler.ir.RuntimeTracingAvailability
 import dev.zacsweers.metro.compiler.ir.UsedKeyCollector
-import dev.zacsweers.metro.compiler.ir.addMetadataVisibleDefaultConstructor
-import dev.zacsweers.metro.compiler.ir.addMetroImplMarkerAnnotation
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.chunkSupertypesIfNeeded
 import dev.zacsweers.metro.compiler.ir.computePromotedParents
+import dev.zacsweers.metro.compiler.ir.copyParameterDefaultValues
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
-import dev.zacsweers.metro.compiler.ir.getOrCreateMetadataVisibleHiddenNestedClass
+import dev.zacsweers.metro.compiler.ir.getOrCreateGraphFactoryImplClassShell
 import dev.zacsweers.metro.compiler.ir.graph.BindingGraphGenerator
 import dev.zacsweers.metro.compiler.ir.graph.BindingLookupCache
 import dev.zacsweers.metro.compiler.ir.graph.BindingPropertyContext
@@ -59,18 +59,19 @@ import dev.zacsweers.metro.compiler.ir.graph.generatedGraphExtensionData
 import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.irCallConstructorWithSameParameters
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
+import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.metroDumpKotlinLike
 import dev.zacsweers.metro.compiler.ir.metroGraphOrFail
 import dev.zacsweers.metro.compiler.ir.nestedClassOrNull
+import dev.zacsweers.metro.compiler.ir.overriddenSymbolsSequence
 import dev.zacsweers.metro.compiler.ir.padForConsole
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.render
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireNestedClass
-import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.resolveOverriddenTypeIfAny
 import dev.zacsweers.metro.compiler.ir.stubExpressionBody
 import dev.zacsweers.metro.compiler.ir.supportsTracing
@@ -80,6 +81,7 @@ import dev.zacsweers.metro.compiler.ir.toUnknownLocationContext
 import dev.zacsweers.metro.compiler.ir.trackClassLookup
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
 import dev.zacsweers.metro.compiler.isGraphImpl
+import dev.zacsweers.metro.compiler.isSyntheticGeneratedGraph
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.parallelMap
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -87,11 +89,10 @@ import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.diagnosticTag
 import dev.zacsweers.metro.compiler.tracing.trace
 import java.util.concurrent.ForkJoinPool
-import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.builders.irBlockBody
-import org.jetbrains.kotlin.ir.builders.irCallConstructor
+import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -103,17 +104,18 @@ import org.jetbrains.kotlin.ir.overrides.FakeOverrideBuilderStrategy
 import org.jetbrains.kotlin.ir.overrides.IrFakeOverrideBuilder
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.defaultType
-import org.jetbrains.kotlin.ir.util.addFakeOverrides
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.file
+import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.getAllSuperclasses
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isInterface
-import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.kotlinFqName
+import org.jetbrains.kotlin.ir.util.nonDispatchParameters
+import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.properties
 import org.jetbrains.kotlin.name.ClassId
@@ -984,84 +986,197 @@ internal class DependencyGraphTransformer(
     exitProcessing()
   }
 
+  /** Completes root graph creator bodies for the selected companion mode. */
   private fun implementCreatorFunctions(
     sourceGraph: IrClass,
     creator: GraphNode.Creator?,
     metroGraph: IrClass,
   ) {
-    // NOTE: may not have a companion object if this graph is a contributed graph, which has no
-    // static creators
-    val companionObject = sourceGraph.companionObject() ?: return
-    val factoryCreator = creator?.expectAsOrNull<GraphNode.Creator.Factory>()
-    if (factoryCreator != null) {
-      // TODO would be nice if we could just class delegate to the `Impl` object
-      val implementFactoryFunction: IrClass.() -> Unit = {
-        val ownerClass = this
-        val samName = factoryCreator.function.name.asString()
-        requireSimpleFunction(samName).owner.apply {
-          if (isFakeOverride) {
-            finalizeFakeOverride(ownerClass.thisReceiverOrFail)
-          }
-          val createFunction = this
-          body =
-            pluginContext.createIrBuilder(symbol).run {
-              irExprBodySafe(
-                irCallConstructorWithSameParameters(
-                  source = createFunction,
-                  constructor = metroGraph.primaryConstructor!!.symbol,
-                ),
-              )
-            }
-        }
-      }
-
-      // Implement the factory's `Impl` class if present
-      val factoryImpl = factoryCreator.type.graphFactoryImplClass().apply(implementFactoryFunction)
-
-      if (
-        factoryCreator.type.isInterface &&
-          companionObject.implements(factoryCreator.type.classIdOrFail)
-      ) {
-        // Implement the interface creator function directly in this companion object
-        companionObject.implementFactoryFunction()
+    // Graph extensions have no static creators and may have no companion object. Dynamic graphs
+    // implement their creators elsewhere.
+    if (sourceGraph.origin.isSyntheticGeneratedGraph) {
+      return
+    }
+    val mode = options.companionMode
+    val generatesCompanionCreators = mode.generatesCompanionCreators
+    val companion =
+      if (generatesCompanionCreators) {
+        sourceGraph.companionObject()
       } else {
-        companionObject.apply {
-          // Implement a factory() function that returns the factory impl instance
-          requireSimpleFunction(Symbols.StringNames.FACTORY).owner.apply {
-            if (origin == Origins.MetroGraphFactoryCompanionGetter) {
-              if (isFakeOverride) {
-                finalizeFakeOverride(companionObject.thisReceiverOrFail)
-              }
-              body =
-                pluginContext.createIrBuilder(symbol).run {
-                  irExprBodySafe(
-                    if (factoryImpl.isObject) {
-                      irGetObject(factoryImpl.symbol)
-                    } else {
-                      irCallConstructor(factoryImpl.primaryConstructor!!.symbol, emptyList())
-                    },
-                  )
-                }
-            }
-          }
-        }
+        null
       }
-    } else {
-      // Generate a no-arg invoke() function
-      companionObject.apply {
-        requireSimpleFunction(Symbols.StringNames.INVOKE).owner.apply {
-          if (isFakeOverride) {
-            finalizeFakeOverride(companionObject.thisReceiverOrFail)
-          }
-          body =
-            pluginContext.createIrBuilder(symbol).run {
-              irExprBodySafe(irCallConstructor(metroGraph.primaryConstructor!!.symbol, emptyList()))
-            }
-        }
+    val factoryCreator = creator?.expectAsOrNull<GraphNode.Creator.Factory>()
+
+    // The hidden factory remains available in every mode for first-class factory intrinsics.
+    val factoryImpl = factoryCreator?.type?.graphFactoryImplClass()
+    val companionCreator =
+      if (factoryCreator != null && factoryImpl != null) {
+        implementGraphFactoryCreators(factoryCreator, factoryImpl, companion, metroGraph)
+      } else {
+        companion
+          ?.functions
+          ?.single { it.origin == Origins.MetroGraphCreatorsObjectInvokeDeclaration }
+          ?.also { implementGraphConstructorCall(it, metroGraph) }
       }
+
+    if (mode.generatesBlockCreators) {
+      implementCompanionBlockCreator(
+        sourceGraph,
+        factoryCreator,
+        factoryImpl,
+        companionCreator,
+        metroGraph,
+      )
+    }
+    companion?.dumpToMetroLog()
+  }
+
+  /** Implements the hidden factory and, when there is one, the companion's creator. */
+  private fun implementGraphFactoryCreators(
+    creator: GraphNode.Creator.Factory,
+    factoryImpl: IrClass,
+    companion: IrClass?,
+    metroGraph: IrClass,
+  ): IrSimpleFunction? {
+    // IR-generated factory objects inherit the SAM as a fake override.
+    val factoryOverride =
+      factoryImpl.functions.single {
+        it.origin == Origins.MetroGraphCreatorsObjectInvokeDeclaration ||
+          creator.function.symbol in it.overriddenSymbolsSequence()
+      }
+    implementGraphConstructorCall(factoryOverride, metroGraph)
+    if (companion == null) {
+      return null
     }
 
-    companionObject.dumpToMetroLog()
+    val companionImplementsFactory =
+      creator.type.isInterface && companion.implements(creator.type.classIdOrFail)
+    if (companionImplementsFactory) {
+      // TODO: Check whether the companion can delegate to the `Impl` object.
+      val companionCreator =
+        companion.functions.single {
+          it.origin == Origins.MetroGraphCreatorsObjectInvokeDeclaration
+        }
+      implementGraphConstructorCall(companionCreator, metroGraph)
+      return companionCreator
+    }
+
+    val factoryGetter =
+      companion.functions.single {
+        it.name == Symbols.Names.factory && it.nonDispatchParameters.isEmpty()
+      }
+    // User-defined factory() bodies stay intact.
+    if (factoryGetter.origin == Origins.MetroGraphFactoryCompanionGetter) {
+      factoryGetter.body =
+        pluginContext.createIrBuilder(factoryGetter.symbol).run {
+          irExprBodySafe(irGetObject(factoryImpl.symbol))
+        }
+    }
+    return factoryGetter
+  }
+
+  /** Finalizes inherited factory methods before giving them a graph constructor body. */
+  private fun implementGraphConstructorCall(function: IrSimpleFunction, metroGraph: IrClass) {
+    if (function.isFakeOverride) {
+      function.finalizeFakeOverride(function.parentAsClass.thisReceiverOrFail)
+    }
+    function.body =
+      pluginContext.createIrBuilder(function.symbol).run {
+        irExprBodySafe(
+          irCallConstructorWithSameParameters(function, metroGraph.primaryConstructor!!.symbol),
+        )
+      }
+  }
+
+  /** Completes the receiverless creator declared by modes that require companion blocks. */
+  private fun implementCompanionBlockCreator(
+    sourceGraph: IrClass,
+    factoryCreator: GraphNode.Creator.Factory?,
+    factoryImpl: IrClass?,
+    companionCreator: IrSimpleFunction?,
+    metroGraph: IrClass,
+  ) {
+    val staticCreator =
+      sourceGraph.functions.single {
+        it.origin == Origins.MetroGraphCreatorsObjectInvokeDeclaration ||
+          it.origin == Origins.MetroGraphFactoryCompanionGetter
+      }
+    val constructsGraph = staticCreator.origin == Origins.MetroGraphCreatorsObjectInvokeDeclaration
+
+    if (options.companionMode == CompanionMode.COMPATIBILITY) {
+      val canonicalFunction =
+        checkNotNull(companionCreator) {
+          "Compatibility mode needs a companion creator on ${sourceGraph.kotlinFqName}"
+        }
+      val canonicalCompanion = canonicalFunction.parentAsClass
+      if (factoryCreator != null && constructsGraph) {
+        copyGraphCreatorDefaults(staticCreator, factoryCreator, canonicalCompanion)
+      }
+
+      // Compatibility creators delegate to the companion's creator.
+      staticCreator.body =
+        pluginContext.createIrBuilder(staticCreator.symbol).run {
+          irExprBodySafe(
+            irInvoke(
+              callee = canonicalFunction.symbol,
+              dispatchReceiver = irGetObject(canonicalCompanion.symbol),
+              args = staticCreator.nonDispatchParameters.map { irGet(it) },
+              typeArgs = staticCreator.typeParameters.map { it.defaultType },
+            ),
+          )
+        }
+    } else if (constructsGraph) {
+      if (factoryCreator != null) {
+        val hiddenFactory =
+          checkNotNull(factoryImpl) {
+            "No hidden factory found for ${factoryCreator.type.kotlinFqName}"
+          }
+        copyGraphCreatorDefaults(staticCreator, factoryCreator, hiddenFactory)
+      }
+      implementGraphConstructorCall(staticCreator, metroGraph)
+    } else {
+      // Abstract-class factories expose factory() and return the hidden factory singleton.
+      val hiddenFactory =
+        checkNotNull(factoryImpl) { "No hidden factory found for ${sourceGraph.kotlinFqName}" }
+      staticCreator.body =
+        pluginContext.createIrBuilder(staticCreator.symbol).run {
+          irExprBodySafe(irGetObject(hiddenFactory.symbol))
+        }
+    }
+
+    // Kotlin's class serializer omits FIR extension members in the static scope.
+    metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(staticCreator)
+  }
+
+  /** Copies factory defaults whose instance references must use the generated singleton. */
+  private fun copyGraphCreatorDefaults(
+    staticCreator: IrSimpleFunction,
+    factoryCreator: GraphNode.Creator.Factory,
+    receiver: IrClass,
+  ) {
+    val targetParameters = staticCreator.regularParameters
+    if (targetParameters.none { it.defaultValue != null }) {
+      return
+    }
+    val factoryFunction = factoryCreator.function
+    val declarations =
+      sequenceOf(factoryFunction) + factoryFunction.overriddenSymbolsSequence().map { it.owner }
+    for (declaration in declarations) {
+      if (declaration.fileOrNull?.module != staticCreator.fileOrNull?.module) {
+        continue
+      }
+      copyParameterDefaultValues(
+        providerFunction = declaration,
+        sourceMetroParameters = factoryCreator.parameters,
+        sourceParameters = declaration.regularParameters,
+        targetParameters = targetParameters,
+        containerParameter = null,
+        preserveAllDefaults = true,
+        receiverExpression = {
+          pluginContext.createIrBuilder(staticCreator.symbol).irGetObject(receiver.symbol)
+        },
+      )
+    }
   }
 
   private fun IrClass.graphFactoryImplClass(): IrClass {
@@ -1070,28 +1185,10 @@ internal class DependencyGraphTransformer(
     }
 
     return if (options.generateClassesInIr) {
-      getOrCreateGraphFactoryImplShell()
+      getOrCreateGraphFactoryImplClassShell()
     } else {
       requireNestedClass(Symbols.Names.Impl)
     }
-  }
-
-  context(context: IrMetroContext)
-  private fun IrClass.getOrCreateGraphFactoryImplShell(): IrClass {
-    return getOrCreateMetadataVisibleHiddenNestedClass(
-        name = Symbols.Names.Impl,
-        origin = Origins.GraphFactoryImplClassDeclaration,
-        kind = ClassKind.OBJECT,
-        superTypesProvider = {
-          listOf(this@getOrCreateGraphFactoryImplShell.symbol.defaultType)
-        },
-        copyTypeParameters = false,
-      )
-      .apply {
-        addMetroImplMarkerAnnotation()
-        addMetadataVisibleDefaultConstructor()
-        addFakeOverrides(context.irTypeSystemContext)
-      }
   }
 }
 

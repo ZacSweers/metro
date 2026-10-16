@@ -40,6 +40,7 @@ import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirExtension
 import org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrar
 import org.jetbrains.kotlin.fir.plugin.SimpleFunctionBuildingContext
+import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
@@ -810,6 +811,31 @@ public interface CompatContext {
     message = "The 2.5.0-dev-6460 adapter reads LanguageFeature.CompanionBlocks",
   )
   public fun LanguageVersionSettings.companionBlocksEnabledCompat(): Boolean = false
+
+  /** Whether this callable is declared in a companion block. */
+  @CompatApi(
+    since = "2.5.0-dev-6460",
+    reason = CompatApi.Reason.COMPAT,
+    message =
+      "The 2.5.0-dev-6460 adapter reads FirCallableSymbol.isCompanionBlockMember. Older adapters report false.",
+  )
+  public val FirCallableSymbol<*>.isCompanionBlockMemberCompat: Boolean
+    get() = false
+
+  /**
+   * Returns a copy of this generated function as a companion-block member of [owner]. The copy
+   * keeps the function's symbol. This takes [FirFunction] because the named-function type has
+   * different names across supported compilers.
+   */
+  @CompatApi(
+    since = "2.5.0-dev-6460",
+    reason = CompatApi.Reason.COMPAT,
+    message =
+      "Companion-block functions require a receiverless FIR copy, static status, and containingClassForStaticMemberAttr. Implemented by the 2.5.0-dev-6460 adapter.",
+  )
+  public fun FirFunction.markAsCompanionBlockMemberCompat(owner: FirClassSymbol<*>): FirFunction {
+    error("Companion-block generation requires Kotlin 2.5.0-dev-6460 or later.")
+  }
 }
 
 private data class FactoryData(

@@ -263,7 +263,7 @@ FILE fqName:<root> fileName:/GeneratedCompanionSupertypes.kt
           VALUE_PARAMETER kind:Regular name:instance index:1 type:<root>.MarkerContribution
           annotations:
             Binds
-            CallableMetadata(callableName = "bindsAsMarkerBinding", propertyName = "", startOffset = -1, endOffset = -1, newInstanceName = <null>)
+            CallableMetadata(callableName = "bindsAsMarkerBinding", propertyName = "", startOffset = -1, endOffset = -1, newInstanceName = <null>, isCompanionBlockMember = <null>)
           BLOCK_BODY
             RETURN type=kotlin.Nothing from='public final fun bindsAsMarkerBinding (instance: <root>.MarkerContribution): <root>.MarkerBinding declared in <root>.MarkerContribution.MetroContributionToDevzacsweersmetroappScopeocf15.BindsMirror'
               CALL 'public final fun error (message: kotlin.Any): kotlin.Nothing declared in kotlin' type=kotlin.Nothing origin=null
@@ -386,7 +386,7 @@ FILE fqName:<root> fileName:/GeneratedCompanionSupertypes.kt
       thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:<root>.ProviderContributionContributions.ToAppScope
       CLASS GENERATED[dev.zacsweers.metro.compiler.fir.Keys.ProviderFactoryClassDeclaration] OBJECT name:ProvidesProviderContributionMetroFactory modality:FINAL visibility:public superTypes:[dev.zacsweers.metro.internal.Factory<<root>.ProviderBinding>]
         annotations:
-          CallableMetadata(callableName = "providesProviderContribution", propertyName = "", startOffset = -1, endOffset = -1, newInstanceName = "providesProviderContribution")
+          CallableMetadata(callableName = "providesProviderContribution", propertyName = "", startOffset = -1, endOffset = -1, newInstanceName = "providesProviderContribution", isCompanionBlockMember = <null>)
         thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:<root>.ProviderContributionContributions.ToAppScope.ProvidesProviderContributionMetroFactory
         CONSTRUCTOR GENERATED[dev.zacsweers.metro.compiler.fir.Keys.ProviderFactoryClassDeclaration] visibility:private returnType:<root>.ProviderContributionContributions.ToAppScope.ProvidesProviderContributionMetroFactory [primary]
           BLOCK_BODY
@@ -548,7 +548,7 @@ FILE fqName:<root> fileName:/GeneratedCompanionSupertypes.kt
     thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:<root>.Bindings
     CLASS GENERATED[dev.zacsweers.metro.compiler.fir.Keys.ProviderFactoryClassDeclaration] CLASS name:ProvideStringMetroFactory modality:FINAL visibility:public superTypes:[dev.zacsweers.metro.internal.Factory<kotlin.String>]
       annotations:
-        CallableMetadata(callableName = "provideString", propertyName = "", startOffset = 231, endOffset = 287, newInstanceName = "provideString")
+        CallableMetadata(callableName = "provideString", propertyName = "", startOffset = 231, endOffset = 287, newInstanceName = "provideString", isCompanionBlockMember = <null>)
       thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:<root>.Bindings.ProvideStringMetroFactory
       FIELD name:value type:dev.zacsweers.metro.Provider<kotlin.Int> visibility:private [final]
         EXPRESSION_BODY

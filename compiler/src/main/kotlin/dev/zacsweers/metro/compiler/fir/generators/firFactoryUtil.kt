@@ -16,14 +16,19 @@ import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
 import dev.zacsweers.metro.compiler.fir.wrapInProviderIfNecessary
 import dev.zacsweers.metro.compiler.symbols.Symbols
+import org.jetbrains.kotlin.descriptors.ClassKind
+import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.containingClassForStaticMemberAttr
 import org.jetbrains.kotlin.fir.declarations.FirConstructor
+import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
+import org.jetbrains.kotlin.fir.declarations.FirFunction
+import org.jetbrains.kotlin.fir.declarations.FirProperty
+import org.jetbrains.kotlin.fir.declarations.FirResolvedDeclarationStatus
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
 import org.jetbrains.kotlin.fir.declarations.builder.buildTypeParameterCopy
 import org.jetbrains.kotlin.fir.declarations.origin
-import org.jetbrains.kotlin.fir.declarations.utils.isAbstract
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.MemberGenerationContext
@@ -31,20 +36,25 @@ import org.jetbrains.kotlin.fir.plugin.createConstructor
 import org.jetbrains.kotlin.fir.resolve.ScopeSession
 import org.jetbrains.kotlin.fir.resolve.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.resolve.substitution.substitutorByMap
+import org.jetbrains.kotlin.fir.scopes.ProcessorAction
+import org.jetbrains.kotlin.fir.scopes.ScopeFunctionRequiresPrewarm
 import org.jetbrains.kotlin.fir.scopes.collectAllFunctions
 import org.jetbrains.kotlin.fir.scopes.collectAllProperties
+import org.jetbrains.kotlin.fir.scopes.processOverriddenFunctionsAndSelf
 import org.jetbrains.kotlin.fir.scopes.unsubstitutedScope
 import org.jetbrains.kotlin.fir.symbols.SymbolInternals
+import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
-import org.jetbrains.kotlin.fir.symbols.impl.FirFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirTypeParameterSymbol
 import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.constructType
+import org.jetbrains.kotlin.fir.unwrapSubstitutionOverrides
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.Name
 
 internal fun FirDeclarationGenerationExtension.buildFactoryConstructor(
   context: MemberGenerationContext,
@@ -225,7 +235,18 @@ internal fun MetroFirValueParameter.canonicalProviderClassId(
   }
 }
 
-internal fun FirClassSymbol<*>.findSamFunction(session: FirSession): FirFunctionSymbol<*>? {
+/**
+ * Returns the name of a graph's generated creator. A graph without a factory gets `invoke()`. A
+ * creator that implements the factory's [sam] uses its name. Other factories get `factory()`.
+ */
+internal fun graphCreatorName(factory: FirClassSymbol<*>?, sam: FirNamedFunctionSymbol?): Name =
+  when {
+    factory == null -> Symbols.Names.invoke
+    sam != null -> sam.name
+    else -> Symbols.Names.factory
+  }
+
+internal fun FirClassSymbol<*>.findSamFunction(session: FirSession): FirNamedFunctionSymbol? {
   return collectAbstractFunctions(session, exitOnAbstractProperties = true)?.singleOrNull()
 }
 
@@ -233,15 +254,65 @@ internal fun FirClassSymbol<*>.collectAbstractFunctions(
   session: FirSession,
   exitOnAbstractProperties: Boolean = false,
 ): Collection<FirNamedFunctionSymbol>? {
-  val scope =
-    unsubstitutedScope(
-      session,
-      ScopeSession(),
-      withForcedTypeCalculator = false,
-      memberRequiredPhase = null,
-    )
+  val scope = factoryScope(session)
   if (exitOnAbstractProperties) {
-    if (scope.collectAllProperties().any { it.isAbstract }) return null
+    if (scope.collectAllProperties().any { it.isAbstractBeforeStatus() }) return null
   }
-  return scope.collectAllFunctions().filter { it.isAbstract }
+  return scope.collectAllFunctions().filter { it.isAbstractBeforeStatus() }
 }
+
+/**
+ * Returns whether this member is abstract, even before FIR resolves its status. A companion-block
+ * function with a creator's name makes FIR request the creator during status resolution. Until
+ * then, an interface member without a body is abstract unless it declares another modality.
+ */
+@OptIn(SymbolInternals::class)
+private fun FirCallableSymbol<*>.isAbstractBeforeStatus(): Boolean {
+  val status = rawStatus
+  if (status is FirResolvedDeclarationStatus) {
+    return status.modality == Modality.ABSTRACT
+  }
+  val declaredModality = status.modality
+  if (declaredModality != null) {
+    return declaredModality == Modality.ABSTRACT
+  }
+  val owner = getContainingClassSymbol() as? FirClassSymbol<*>
+  val isInterfaceMember = owner?.classKind == ClassKind.INTERFACE
+  val hasBody =
+    when (val declaration = fir) {
+      is FirFunction -> declaration.body != null
+      is FirProperty -> declaration.initializer != null || declaration.getter?.body != null
+      else -> true
+    }
+  return isInterfaceMember && !hasBody
+}
+
+/** Only defaults declared in this compilation have expressions that a static creator can copy. */
+@OptIn(ScopeFunctionRequiresPrewarm::class)
+internal fun FirClassSymbol<*>.sourceFactoryDefaults(
+  sam: FirNamedFunctionSymbol,
+  session: FirSession,
+): Set<Int> = buildSet {
+  val scope = factoryScope(session)
+  // Populate this scope's override links before following the SAM to its source declaration.
+  scope.processFunctionsByName(sam.name) {}
+  scope.processOverriddenFunctionsAndSelf(sam) { symbol ->
+    val declaration = symbol.unwrapSubstitutionOverrides()
+    if (declaration.origin is FirDeclarationOrigin.Source) {
+      declaration.valueParameterSymbols.forEachIndexed { index, parameter ->
+        if (parameter.hasDefaultValue) {
+          add(index)
+        }
+      }
+    }
+    ProcessorAction.NEXT
+  }
+}
+
+private fun FirClassSymbol<*>.factoryScope(session: FirSession) =
+  unsubstitutedScope(
+    session,
+    ScopeSession(),
+    withForcedTypeCalculator = false,
+    memberRequiredPhase = null,
+  )

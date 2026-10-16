@@ -8,8 +8,10 @@ Changelog
 
 - **[metrox-viewmodel-compose]** Add support for `linuxX64`.
 - **[FIR]** Add the `diagnostic-level` compiler option to change the severity of Metro diagnostics reported in FIR. It works like kotlinc's `-Xwarning-level` but can also lower errors and use IDE-only levels. See [changing diagnostic severity](docs/validation-and-error-reporting.md#changing-diagnostic-severity).
+- **[FIR]** In `companion-block` and `compatibility` modes, report graph creator conflicts with companion-block functions and companion methods annotated with `@JvmStatic` or `@JsStatic`.
 - **[FIR/IC]** Add the `function-inject-annotations-override` compiler option to use dedicated annotations for top-level function injection. See [custom function injection annotations](docs/injection-types.md#custom-function-injection-annotations).
 - **[FIR/IR]** Support context parameters and extension receivers on `@Provides` functions and properties. Both are dependencies and can be qualified.
+- **[FIR/IR]** Support companion-block `@Provides` functions and properties on Kotlin `2.5.0-Beta1` and later. Use `companion-mode` to configure generated graph creators, factory helpers, and member-injection helpers. See [companion-block configuration](docs/installation.md#companion-blocks-and-generated-apis).
 - **[Gradle]** Add opt-in checks to find Metro contributions hidden from a graph's compile classpath. Run `checkMainMetroHiddenDependencies` (i.e., on CI). It writes a report and fails if it finds hidden contributions.
   - Supports JVM and Android compilations, including JVM targets in KMP. See [checking for hidden contributions](docs/aggregation.md#checking-for-hidden-contributions).
   - Also checks Hilt aggregation metadata when Hilt interop is enabled.
