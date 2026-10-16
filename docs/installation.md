@@ -133,6 +133,8 @@ To enable it, do the following:
 
 Note that support is unstable and subject to change.
 
+Editor resolution of companion-block declarations requires an IDE-bundled Kotlin compiler that supports them.
+
 ## Manual dependency management
 
 The Metro Gradle plugin normally adds the dependencies needed by each Metro-enabled compilation. To manage them yourself, disable automatic dependency management in the Metro DSL:

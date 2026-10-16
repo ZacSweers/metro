@@ -2337,9 +2337,11 @@ private constructor(
       is KtTypeAlias -> true
       is KtProperty if declaration.hasModifier(KtTokens.CONST_KEYWORD) -> true
       is KtClassOrObject -> {
-        for (nested in declaration.declarations) {
+        for (nested in declaration.membersIncludingCompanionBlocks()) {
           ProgressManager.checkCanceled()
-          if (hasSharedSemanticDeclarations(nested)) return true
+          if (hasSharedSemanticDeclarations(nested)) {
+            return true
+          }
         }
         false
       }

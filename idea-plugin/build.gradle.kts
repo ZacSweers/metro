@@ -236,7 +236,10 @@ val libFixture =
   }
 
 tasks.named<KotlinJvmCompile>("compileLibFixtureKotlin") {
-  compilerOptions.freeCompilerArgs.add("-Xcontext-parameters")
+  compilerOptions.freeCompilerArgs.addAll(
+    "-Xcompanion-blocks-and-extensions",
+    "-Xcontext-parameters",
+  )
 }
 
 val libFixtureJar =
