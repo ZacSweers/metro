@@ -1152,7 +1152,8 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       valueDescription = CompanionMode.entries.joinToString(" | ", "<", ">") { it.cliValue },
       description =
         "Controls where Metro generates graph creators and factory and member-injection helpers. " +
-          "The companion-block and compatibility modes need Kotlin's companion-blocks feature.",
+          "The companion-block and compatibility modes need Kotlin's companion-blocks feature " +
+          "and generate-classes-in-ir=true.",
       valueMapper = { CompanionMode.parse(it).name },
     ),
   );

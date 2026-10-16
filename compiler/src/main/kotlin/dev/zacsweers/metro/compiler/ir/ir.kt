@@ -1398,7 +1398,14 @@ internal fun assignConstructorParamsToFields(
   }
 }
 
-internal fun IrBuilderWithScope.dispatchReceiverFor(function: IrFunction): IrExpression {
+/**
+ * Returns the receiver for calling [function]. Returns null when [function] has no dispatch
+ * receiver, like a companion-block member.
+ */
+internal fun IrBuilderWithScope.dispatchReceiverFor(function: IrFunction): IrExpression? {
+  if (function.dispatchReceiverParameter == null) {
+    return null
+  }
   val parent = function.parentAsClass
   return if (parent.isObject) {
     irGetObject(parent.symbol)
@@ -2042,10 +2049,24 @@ internal fun IrClass.addMetroImplMarkerAnnotation() {
 /**
  * Adds `@JvmStatic` and `@JsStatic` to [function] when [MetroOptions.generateStaticAnnotations] is
  * enabled and the annotations are available on the current classpath.
+ *
+ * Receiverless class functions are already static. In compatibility mode, the receiverless bridge
+ * is the static entry point. A static companion helper would clash with it on the JVM.
  */
 context(context: IrMetroContext)
 internal fun addStaticAnnotations(function: IrFunction) {
-  if (!context.options.generateStaticAnnotations) return
+  if (!context.options.generateStaticAnnotations) {
+    return
+  }
+  val owner = function.parent as? IrClass
+  if (owner?.isCompanion == true && context.options.companionMode.addsStaticHelperBridges) {
+    return
+  }
+  val isReceiverlessClassFunction =
+    owner?.isObject == false && function.dispatchReceiverParameter == null
+  if (isReceiverlessClassFunction) {
+    return
+  }
   context.metroSymbols.jvmStaticAnnotationConstructor?.let { ctor ->
     function.addAnnotationCompat(buildAnnotation(function.symbol, ctor))
   }
@@ -3018,11 +3039,12 @@ internal val IrConstructorCall.annotationClass: IrClass
 
 /**
  * Returns the container that can hold static-ish declarations.
- * - If Java -> this
- * - If Kotlin ->
- *     - If isObject -> this
- *     - Companion object -> it
- *     - else -> error
+ * - Java -> `this`
+ * - Kotlin, in order:
+ *     - Object -> `this`
+ *     - Has a companion object -> that companion object
+ *     - Has a receiverless function (including a companion-block member) -> `this`
+ *     - Otherwise -> report a compiler bug
  */
 internal fun IrClass.requireStaticIshDeclarationContainer(): IrClass {
   return staticIshDeclarationContainerOrNull()
@@ -3033,17 +3055,26 @@ internal fun IrClass.requireStaticIshDeclarationContainer(): IrClass {
 
 /**
  * Returns the container that can hold static-ish declarations.
- * - If Java -> this
- * - If Kotlin ->
- *     - If isObject -> this
- *     - Companion object -> it
- *     - else null
+ * - Java -> `this`
+ * - Kotlin, in order:
+ *     - Object -> `this`
+ *     - Has a companion object -> that companion object
+ *     - Has a receiverless function (including a companion-block member) -> `this`
+ *     - Otherwise -> `null`
  */
 internal fun IrClass.staticIshDeclarationContainerOrNull(): IrClass? {
-  return when {
-    isFromJava() -> this
-    kind.isObject -> this
-    else -> companionObject()
+  if (isFromJava() || kind.isObject) {
+    return this
+  }
+  val companion = companionObject()
+  if (companion != null) {
+    return companion
+  }
+  val hasReceiverlessFunction = functions.any { it.dispatchReceiverParameter == null }
+  return if (hasReceiverlessFunction) {
+    this
+  } else {
+    null
   }
 }
 
