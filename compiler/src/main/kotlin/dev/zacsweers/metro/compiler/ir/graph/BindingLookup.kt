@@ -32,6 +32,8 @@ import dev.zacsweers.metro.compiler.ir.asMemberOf
 import dev.zacsweers.metro.compiler.ir.declarationMirrorFunctionOrNull
 import dev.zacsweers.metro.compiler.ir.deepRemapperFor
 import dev.zacsweers.metro.compiler.ir.graph.expressions.IrOptionalExpressionGenerator
+import dev.zacsweers.metro.compiler.ir.graph.expressions.OptionalKind
+import dev.zacsweers.metro.compiler.ir.graph.expressions.optionalKind
 import dev.zacsweers.metro.compiler.ir.graph.expressions.optionalType
 import dev.zacsweers.metro.compiler.ir.graph.reporting.BindingDecisionCapture
 import dev.zacsweers.metro.compiler.ir.mapKeyType
@@ -490,6 +492,20 @@ internal class BindingLookup(
   }
 
   /**
+   * `@BindsOptionalOf` declarations are registered under their `java.util.Optional` key. Like
+   * Dagger, the same declaration also binds Guava's `Optional`, so Guava keys look up the Java key.
+   */
+  context(context: IrMetroContext)
+  private fun IrTypeKey.bindsOptionalOfKey(): IrTypeKey {
+    if (type.optionalKind() != OptionalKind.GUAVA) {
+      return this
+    }
+    val wrappedType = (type as IrSimpleType).arguments.single().typeOrFail
+    val javaOptionalType = context.metroSymbols.javaOptional.typeWith(wrappedType)
+    return copy(type = javaOptionalType, originalType = javaOptionalType)
+  }
+
+  /**
    * Lazily creates an optional binding for the given type key if it has a @BindsOptionalOf
    * declaration. Returns null if there is no declaration for this type key.
    */
@@ -501,7 +517,7 @@ internal class BindingLookup(
     }
 
     // Check if we have a @BindsOptionalOf declaration
-    val callables = optionalBindingDeclarations[typeKey] ?: return null
+    val callables = optionalBindingDeclarations[typeKey.bindsOptionalOfKey()] ?: return null
 
     // Get the first callable for metadata
     val callable = callables.first()

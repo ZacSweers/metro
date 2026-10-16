@@ -154,6 +154,7 @@ internal class Symbols(
     val GraphFactoryInvokeFunctionMarkerClass =
       ClassId(FqNames.metroRuntimeInternalPackage, "GraphFactoryInvokeFunctionMarker".asName())
     val HasMemberInjections = MetroClassIds.hasMemberInjections
+    val GuavaOptional = ClassId(FqName("com.google.common.base"), Names.Optional)
     val JavaOptional = ClassId(FqNames.javaUtil, Names.Optional)
     val JavaLangClass = ClassId(FqName("java.lang"), "Class".asName())
     val JvmField = JvmStandardClassIds.Annotations.JvmField
@@ -937,6 +938,15 @@ internal class Symbols(
   val javaOptionalEmpty: IrFunctionSymbol by lazy { javaOptional.requireSimpleFunction("empty") }
 
   val javaOptionalOf: IrFunctionSymbol by lazy { javaOptional.requireSimpleFunction("of") }
+
+  // Only reached when a graph requests Guava's Optional, so Guava is on the classpath.
+  val guavaOptional: IrClassSymbol by lazy { builtinsFinder.findClass(ClassIds.GuavaOptional)!! }
+
+  val guavaOptionalAbsent: IrFunctionSymbol by lazy {
+    guavaOptional.requireSimpleFunction("absent")
+  }
+
+  val guavaOptionalOf: IrFunctionSymbol by lazy { guavaOptional.requireSimpleFunction("of") }
 
   val dependencyGraphAnnotations
     get() = classIds.dependencyGraphAnnotations

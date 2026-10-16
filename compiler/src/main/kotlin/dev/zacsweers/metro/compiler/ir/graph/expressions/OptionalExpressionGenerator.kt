@@ -50,6 +50,10 @@ internal object IrOptionalExpressionGenerator : IrWrappedTypeGenerator {
         callee = context.metroSymbols.javaOptionalEmpty
         typeHint = context.metroSymbols.javaOptional.typeWith(type)
       }
+      GUAVA -> {
+        callee = context.metroSymbols.guavaOptionalAbsent
+        typeHint = context.metroSymbols.guavaOptional.typeWith(type)
+      }
     }
     return irInvoke(callee = callee, typeArgs = listOf(type), typeHint = typeHint)
   }
@@ -68,6 +72,10 @@ internal object IrOptionalExpressionGenerator : IrWrappedTypeGenerator {
         callee = context.metroSymbols.javaOptionalOf
         typeHint = context.metroSymbols.javaOptional.typeWith(type)
       }
+      GUAVA -> {
+        callee = context.metroSymbols.guavaOptionalOf
+        typeHint = context.metroSymbols.guavaOptional.typeWith(type)
+      }
     }
     return irInvoke(
       callee = callee,
@@ -82,6 +90,7 @@ internal fun IrType.optionalKind(): OptionalKind? {
   val classId = rawTypeOrNull()?.classId ?: return null
   return when (classId) {
     Symbols.ClassIds.JavaOptional -> OptionalKind.JAVA
+    Symbols.ClassIds.GuavaOptional -> OptionalKind.GUAVA
     else -> null
   }
 }
@@ -101,5 +110,5 @@ internal fun IrType.optionalType(declaration: IrDeclaration?): IrType? {
 
 internal enum class OptionalKind(val classId: ClassId) {
   JAVA(Symbols.ClassIds.JavaOptional),
-  // Other types would go here
+  GUAVA(Symbols.ClassIds.GuavaOptional),
 }
