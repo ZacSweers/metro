@@ -33,6 +33,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider as wrapTypeInPr
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
+import dev.zacsweers.metro.compiler.ir.requireStaticIshDeclarationContainer
 import dev.zacsweers.metro.compiler.ir.toIrType
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.metro.compiler.letIf
@@ -56,7 +57,6 @@ import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.allParameters
-import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.hasAnnotation
@@ -676,8 +676,7 @@ private constructor(
                 bindingKind = bindingKind,
               )
           } else {
-            val injectorCreatorClass =
-              if (injectorClass.isObject) injectorClass else injectorClass.companionObject()!!
+            val injectorCreatorClass = injectorClass.requireStaticIshDeclarationContainer()
             val createFunction =
               injectorCreatorClass.requireSimpleFunction(Symbols.StringNames.CREATE)
             val args =
