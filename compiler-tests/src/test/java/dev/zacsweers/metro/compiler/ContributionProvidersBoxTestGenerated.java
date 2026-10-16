@@ -3020,9 +3020,21 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
       }
 
       @Test
+      @TestMetadata("BindsOptionalOfBindsJavaAndGuavaOptional.kt")
+      public void testBindsOptionalOfBindsJavaAndGuavaOptional() {
+        run("BindsOptionalOfBindsJavaAndGuavaOptional.kt");
+      }
+
+      @Test
       @TestMetadata("BindsOptionalOfGuavaOptional.kt")
       public void testBindsOptionalOfGuavaOptional() {
         run("BindsOptionalOfGuavaOptional.kt");
+      }
+
+      @Test
+      @TestMetadata("BindsOptionalOfGuavaOptionalInGraphExtension.kt")
+      public void testBindsOptionalOfGuavaOptionalInGraphExtension() {
+        run("BindsOptionalOfGuavaOptionalInGraphExtension.kt");
       }
 
       @Test
