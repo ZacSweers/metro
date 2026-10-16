@@ -75,6 +75,59 @@ metro-compiler = { module = "dev.zacsweers.metro:compiler", version.ref = "metro
 metro-runtime = { module = "dev.zacsweers.metro:runtime", version.ref = "metro" }
 ```
 
+## Companion blocks
+
+Kotlin 2.5 introduces experimental companion blocks. A `companion { }` block declares static members directly in a class or interface, so you don't need a companion object to hold them. On Kotlin 2.5.0-Beta1 and later, you can put `@Provides` functions and properties in these blocks.
+
+```kotlin
+@BindingContainer
+interface AppBindings {
+  companion {
+    @Provides fun endpoint(): String = "https://example.com"
+  }
+}
+```
+
+Companion blocks are off by default. Enable them with Kotlin's `-Xcompanion-blocks` or `-Xcompanion-blocks-and-extensions` option in every compilation that uses them.
+
+!!! warning
+    Kotlin 2.5.0-Beta1 has a [JVM bytecode issue](https://youtrack.jetbrains.com/issue/KT-85853) with backing fields in interface companion blocks. Until it's fixed, give properties in interface companion blocks a getter, like `val endpoint: String get() = "..."`. Properties in class companion blocks can use backing fields.
+
+### Generated creators and helpers
+
+Metro generates graph creators, like the `AppGraph()` call for a graph without a factory. It also generates helper functions for its factory and member injector classes. By default, all of these live on companion objects, even after you enable companion blocks. To move them into companion blocks, set Metro's `companion-mode` option:
+
+```kotlin
+kotlin {
+  compilerOptions {
+    freeCompilerArgs.add("-Xcompanion-blocks")
+  }
+}
+
+metro.compilerOptions {
+  put("companion-mode", "companion-block")
+}
+```
+
+`companion-mode` accepts the values below. They're case-insensitive, and you can use hyphens or underscores.
+
+| Mode | What Metro generates |
+|---|---|
+| `companion-object` (default) | Graph creators and helpers on companion objects. A graph's companion object implements its factory interface or has a `factory()` function. |
+| `companion-block` | Graph creators and helpers as companion-block members. Metro skips companion objects that only existed to hold them. |
+| `compatibility` | The `companion-object` APIs, plus companion-block functions that delegate to them. |
+| `none` | No graph creators. Factory and member-injection helpers stay on companion objects. Create graphs with `createGraph()` and `createGraphFactory()`. |
+
+The `companion-block` and `compatibility` modes need companion blocks enabled. They also need the `generate-classes-in-ir=true` option. The Metro Gradle plugin turns it on by default for Kotlin versions that support companion blocks.
+
+Creator names come from your graph's factory. If an interface factory declares `fun build(...)`, you call `AppGraph.build(...)`. A graph without a factory uses `AppGraph()`. A graph with an abstract class factory uses `AppGraph.factory()`.
+
+Metro generates some factories as objects. Kotlin doesn't allow companion blocks in objects, so these factories keep their helpers on the object in every mode.
+
+### Libraries
+
+If other projects use your graphs or call Metro's generated helpers, set `companion-mode` explicitly. The mode decides which APIs your library publishes. To migrate a published library, start with `compatibility`. Existing calls like `AppGraph.Companion.build(...)` keep working, and so does code that uses a graph's companion object as its factory. Projects that call companion-block members also need companion blocks enabled.
+
 ## IDE Support
 
 The K2 Kotlin IntelliJ plugin supports running third party FIR plugins in the IDE, but this feature is hidden behind a flag. Some Metro features can take advantage of this, namely diagnostic reporting directly in the IDE and some opt-in features to see generated declarations. 

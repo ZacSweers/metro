@@ -3,7 +3,9 @@
 package dev.zacsweers.metro.compiler.fir.checkers
 
 import dev.zacsweers.metro.compiler.ClassIds
+import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.compat.CompatContext
+import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
 import dev.zacsweers.metro.compiler.fir.additionalScopesArgument
@@ -14,9 +16,13 @@ import dev.zacsweers.metro.compiler.fir.callableSymbols
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
+import dev.zacsweers.metro.compiler.fir.generators.findSamFunction
+import dev.zacsweers.metro.compiler.fir.generators.graphCreatorName
+import dev.zacsweers.metro.compiler.fir.hasOrigin
 import dev.zacsweers.metro.compiler.fir.implements
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isEffectivelyOpen
+import dev.zacsweers.metro.compiler.fir.isGraphFactory
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.nestedClasses
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
@@ -48,14 +54,18 @@ import org.jetbrains.kotlin.fir.analysis.checkers.directOverriddenSymbolsSafe
 import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.constructors
+import org.jetbrains.kotlin.fir.declarations.getAnnotationByClassId
+import org.jetbrains.kotlin.fir.declarations.processAllDeclarations
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.declarations.utils.classId
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
+import org.jetbrains.kotlin.fir.declarations.utils.isInterface
 import org.jetbrains.kotlin.fir.declarations.utils.isOverride
 import org.jetbrains.kotlin.fir.declarations.utils.isSuspend
 import org.jetbrains.kotlin.fir.dispatchReceiverClassLookupTagOrNull
 import org.jetbrains.kotlin.fir.dispatchReceiverClassTypeOrNull
 import org.jetbrains.kotlin.fir.expectActualMatchingContextFactory
+import org.jetbrains.kotlin.fir.moduleData
 import org.jetbrains.kotlin.fir.resolve.firClassLike
 import org.jetbrains.kotlin.fir.resolve.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
@@ -70,7 +80,11 @@ import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.isNothing
 import org.jetbrains.kotlin.fir.types.isUnit
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.JsStandardClassIds
+import org.jetbrains.kotlin.name.JvmStandardClassIds
 import org.jetbrains.kotlin.name.StandardClassIds
+import org.jetbrains.kotlin.platform.isJs
+import org.jetbrains.kotlin.platform.jvm.isJvm
 
 // TODO
 //  - if graph is scoped, check that accessors have matching scopes
@@ -110,6 +124,9 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
 
     val dependencyGraphAnno = dependencyGraphAnnos.first()
     val graphAnnotationClassId = dependencyGraphAnno.toAnnotationClassIdSafe(session) ?: return
+    if (graphAnnotationClassId in classIds.dependencyGraphAnnotations) {
+      checkStaticCreatorCollisions(declaration)
+    }
     if (
       graphAnnotationClassId in classIds.dependencyGraphAnnotations &&
         session.shouldCheckRuntimeTracingGraphInputs()
@@ -547,12 +564,15 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
    *
    * Metro generates `factory()` when the graph factory is an abstract class or the companion
    * doesn't implement it. A user declaration with the same signature would clash with it. Other
-   * `factory` overloads are fine.
+   * `factory` overloads are fine. Modes without companion creators don't generate it.
    */
   @OptIn(DirectDeclarationsAccess::class)
   context(context: CheckerContext, reporter: DiagnosticReporter)
   private fun checkCompanionFactoryAccessor(declaration: FirClass) {
     val session = context.session
+    if (!session.metroFirBuiltIns.options.companionMode.generatesCompanionCreators) {
+      return
+    }
     val nestedClasses = declaration.symbol.nestedClasses()
     val companion = nestedClasses.firstOrNull { it.isCompanion } ?: return
     val creator =
@@ -666,5 +686,133 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
     matchingContext: FirExpectActualMatchingContext,
   ): Boolean {
     return with(matchingContext) { this@isFakeOverride.isFakeOverride(containingClass) }
+  }
+
+  /** Reports static functions that share a generated graph creator's platform signature. */
+  context(context: CheckerContext, reporter: DiagnosticReporter, compatContext: CompatContext)
+  private fun checkStaticCreatorCollisions(graph: FirClass) {
+    val session = context.session
+    val companionMode = session.metroFirBuiltIns.options.companionMode
+    if (!companionMode.generatesBlockCreators) {
+      return
+    }
+
+    val nestedClasses = graph.symbol.nestedClasses()
+    val factory = nestedClasses.firstOrNull { it.isGraphFactory(session) }
+    val sam =
+      if (factory?.isInterface == true) {
+        factory.findSamFunction(session) ?: return
+      } else {
+        null
+      }
+
+    val creatorName = graphCreatorName(factory, sam)
+
+    val creatorParameters =
+      if (sam != null) {
+        val contextParameterTypes = sam.contextParameterSymbols.map { it.resolvedReturnType }
+        val valueParameterTypes = sam.valueParameterSymbols.map { it.resolvedReturnType }
+        contextParameterTypes + valueParameterTypes
+      } else {
+        emptyList()
+      }
+
+    val platform = session.moduleData.platform
+    val isJvm = platform.isJvm()
+    val (staticAnnotation, nameAnnotation) =
+      when {
+        isJvm -> Symbols.ClassIds.JvmStatic to JvmStandardClassIds.Annotations.JvmName
+        platform.isJs() -> Symbols.ClassIds.JsStatic to JsStandardClassIds.Annotations.JsName
+        else -> null to null
+      }
+
+    // The instance member scope excludes source declarations in companion blocks.
+    val candidates = mutableListOf<FirNamedFunctionSymbol>()
+    graph.processAllDeclarations(session) { symbol ->
+      if (
+        symbol is FirNamedFunctionSymbol &&
+          with(compatContext) { symbol.isCompanionBlockMemberCompat }
+      ) {
+        candidates += symbol
+      }
+    }
+
+    if (staticAnnotation != null) {
+      val companion = nestedClasses.firstOrNull { it.isCompanion }
+      val functions =
+        companion?.callableSymbols().orEmpty().filterIsInstance<FirNamedFunctionSymbol>()
+      for (function in functions) {
+        if (function.getAnnotationByClassId(staticAnnotation, session) != null) {
+          candidates += function
+        }
+      }
+    }
+
+    for (function in candidates) {
+      val isGeneratedCreator =
+        function.hasOrigin(
+          Keys.MetroGraphCreatorsObjectInvokeDeclaration,
+          Keys.MetroGraphFactoryCompanionGetter,
+        )
+      if (isGeneratedCreator) {
+        continue
+      }
+
+      val source = function.source ?: continue
+      val renamed = nameAnnotation?.let { function.getAnnotationByClassId(it, session) }
+      val emittedName =
+        with(compatContext) { renamed?.getStringArgumentCompat("name".asName(), session) }
+      // Kotlin resolves block members by source name. Platforms use the @JvmName or @JsName.
+      val isBlockMember = with(compatContext) { function.isCompanionBlockMemberCompat }
+      val hasSourceConflict = isBlockMember && function.name == creatorName
+      val platformName = emittedName ?: function.name.asString()
+      val hasPlatformNameConflict = platformName == creatorName.asString()
+      val sharesCreatorName = hasSourceConflict || hasPlatformNameConflict
+      if (!sharesCreatorName) {
+        continue
+      }
+
+      val platformParameters = buildList {
+        addAll(function.contextParameterSymbols.map { it.resolvedReturnType })
+        function.resolvedReceiverType?.let { add(it) }
+        addAll(function.valueParameterSymbols.map { it.resolvedReturnType })
+      }
+      // This compares Kotlin types. The JVM backend reports clashes that only appear after erasure.
+      val hasSameParameters = platformParameters == creatorParameters
+      if (!hasSameParameters) {
+        continue
+      }
+
+      val graphName = graph.classId.relativeClassName.asString()
+      val location =
+        if (isBlockMember) {
+          "companion block"
+        } else {
+          "companion object"
+        }
+      val creatorLocation =
+        if (isBlockMember) {
+          "the same companion block"
+        } else {
+          "$graphName's companion block"
+        }
+      val renamedNote =
+        if (emittedName != null) {
+          val platformNameLabel =
+            if (isJvm) {
+              "JVM name"
+            } else {
+              "JS name"
+            }
+          " (with $platformNameLabel `$emittedName`)"
+        } else {
+          ""
+        }
+      reporter.reportOn(
+        source,
+        MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
+        "Function `${function.name}`$renamedNote in $graphName's $location has the same platform signature as the graph creator `$creatorName` that Metro generates in $creatorLocation. Change its name or parameters, or use a different `companion-mode`.",
+      )
+    }
   }
 }

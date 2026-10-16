@@ -1,0 +1,1 @@
+/AbstractContainerInstanceProvider.kt:7:17: error: Abstract binding containers cannot contain @Provides callables ('Providers' is an interface). Either convert it to an object class or move these declarations to its companion object.

@@ -1,0 +1,7 @@
+/AnnotatedStaticCreatorCollision.kt:17:9: error: 'build' hides member of supertype 'Factory' and needs an 'override' modifier.
+
+/AnnotatedStaticCreatorCollision.kt:17:9: error: Function `build` in NamedFactoryGraph's companion object has the same platform signature as the graph creator `build` that Metro generates in NamedFactoryGraph's companion block. Change its name or parameters, or use a different `companion-mode`.
+
+/AnnotatedStaticCreatorCollision.kt:25:18: error: Function `invoke` in AppGraph's companion object has the same platform signature as the graph creator `invoke` that Metro generates in AppGraph's companion block. Change its name or parameters, or use a different `companion-mode`.
+
+/AnnotatedStaticCreatorCollision.kt:33:9: error: Function `manualInvoke` (with JVM name `invoke`) in RenamedGraph's companion object has the same platform signature as the graph creator `invoke` that Metro generates in RenamedGraph's companion block. Change its name or parameters, or use a different `companion-mode`.
