@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792186197382,
+  "lastUpdate": 1792188649935,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -25760,6 +25760,62 @@ window.BENCHMARK_DATA = {
             "value": 17099.44,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -3.75%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "falqadi",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "falqadi",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "30208e5b~1",
+          "message": "[before] Don't resolve a qualified request from an unqualif",
+          "timestamp": "2026-10-16T17:13:18-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/30208e5bc9be08ac9fb70d34f76687aae33c77ff"
+        },
+        "date": 1792188649935,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 17774.184,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "falqadi",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "falqadi",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "30208e5bc9be08ac9fb70d34f76687aae33c77ff",
+          "message": "[after] Don't resolve a qualified request from an unqualif",
+          "timestamp": "2026-10-16T17:13:18-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/30208e5bc9be08ac9fb70d34f76687aae33c77ff"
+        },
+        "date": 1792188649936,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18310.114,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +3.02%"
           }
         ]
       }
