@@ -36,6 +36,7 @@ Changelog
 
 ### Fixes
 
+- **[FIR]** Only report a `@MapKey` without `@IntoMap` on binding declarations and on members of graphs, binding containers, and `@ContributesTo` interfaces. Map keys on members of other classes are left alone, since another tool may consume them.
 - **[FIR]** Reduce redundant lookups when discovering contributed graph extension factories.
 - **[FIR]** Fix accessor override status on Kotlin `2.5.0-dev-10106`.
 - **[FIR/IC]** Avoid unnecessary recompilation of independent injected classes when generating contribution hints.

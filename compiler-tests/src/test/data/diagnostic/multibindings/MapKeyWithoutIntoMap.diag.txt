@@ -1,0 +1,5 @@
+/MapKeyWithoutIntoMap.kt:15:3: error: `@MapKey` annotations are only allowed on `@IntoMap` declarations.
+
+/MapKeyWithoutIntoMap.kt:21:3: error: `@MapKey` annotations are only allowed on `@IntoMap` declarations.
+
+/MapKeyWithoutIntoMap.kt:26:3: error: `@MapKey` annotations are only allowed on `@IntoMap` declarations.

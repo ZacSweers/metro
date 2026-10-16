@@ -1709,6 +1709,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("MapKeyWithoutIntoMap.kt")
+    public void testMapKeyWithoutIntoMap() {
+      run("MapKeyWithoutIntoMap.kt");
+    }
+
+    @Test
     @TestMetadata("MissingBindingFunctionType.kt")
     public void testMissingBindingFunctionType() {
       run("MissingBindingFunctionType.kt");

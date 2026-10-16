@@ -10,6 +10,8 @@ import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.diagnosticString
 import dev.zacsweers.metro.compiler.fir.hasImplicitClassKey
+import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.fir.isBindingContainer
 import dev.zacsweers.metro.compiler.fir.isOrImplements
 import dev.zacsweers.metro.compiler.fir.mapKeyClassValueExpression
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
@@ -33,6 +35,7 @@ import org.jetbrains.kotlin.fir.declarations.FirPropertyAccessor
 import org.jetbrains.kotlin.fir.declarations.FirValueParameter
 import org.jetbrains.kotlin.fir.declarations.utils.isEnumClass
 import org.jetbrains.kotlin.fir.declarations.utils.isOverride
+import org.jetbrains.kotlin.fir.resolve.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.types.ConeStarProjection
 import org.jetbrains.kotlin.fir.types.ConeTypeProjection
 import org.jetbrains.kotlin.fir.types.classLikeLookupTagIfAny
@@ -86,6 +89,10 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
 
     // Must check this early
     if (!annotations.isIntoMap && annotations.mapKey != null) {
+      // Another tool may own a map key on a member that never reaches a graph.
+      if (!declaration.isPartOfGraph(annotations)) {
+        return
+      }
       reporter.reportOn(
         annotations.mapKey.fir.source ?: source,
         MetroDiagnostics.MULTIBINDS_ERROR,
@@ -328,6 +335,36 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
 
     return false
   }
+
+  /**
+   * A map key without `@IntoMap` is an error on binding declarations and on members of graphs,
+   * binding containers, and contributed interfaces. Members of any other class are left alone.
+   */
+  context(context: CheckerContext)
+  private fun FirCallableDeclaration.isPartOfGraph(
+    annotations: MetroAnnotations<MetroFirAnnotation>,
+  ): Boolean {
+    if (annotations.isBindingDeclaration) {
+      return true
+    }
+    val containingClass = getContainingClassSymbol() ?: return true
+    val session = context.session
+    if (containingClass.isBindingContainer(session)) {
+      return true
+    }
+    val classIds = session.classIds
+    val isInGraph = containingClass.isAnnotatedWithAny(session, classIds.graphLikeAnnotations)
+    val isContributed =
+      containingClass.isAnnotatedWithAny(session, classIds.contributesToAnnotations)
+    return isInGraph || isContributed
+  }
+
+  private val MetroAnnotations<*>.isBindingDeclaration: Boolean
+    get() {
+      val isProvidesOrBinds = isProvides || isBinds
+      val isMultibinding = isMultibinds || isIntoSet || isElementsIntoSet
+      return isProvidesOrBinds || isMultibinding || isBindsOptionalOf
+    }
 }
 
 /**
