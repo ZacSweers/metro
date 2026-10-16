@@ -1481,6 +1481,18 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("MapKeyWithoutIntoMapCanBeLowered.kt")
+    public void testMapKeyWithoutIntoMapCanBeLowered() {
+      run("MapKeyWithoutIntoMapCanBeLowered.kt");
+    }
+
+    @Test
+    @TestMetadata("MapKeyWithoutIntoMapCanBeSuppressed.kt")
+    public void testMapKeyWithoutIntoMapCanBeSuppressed() {
+      run("MapKeyWithoutIntoMapCanBeSuppressed.kt");
+    }
+
+    @Test
     @TestMetadata("MissingBindingFunctionType.kt")
     public void testMissingBindingFunctionType() {
       run("MissingBindingFunctionType.kt");

@@ -3068,6 +3068,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       }
 
       @Test
+      @TestMetadata("DaggerMapKeyOnPlainInterfaceAccessorWithLoweredDiagnostic.kt")
+      public void testDaggerMapKeyOnPlainInterfaceAccessorWithLoweredDiagnostic() {
+        run("DaggerMapKeyOnPlainInterfaceAccessorWithLoweredDiagnostic.kt");
+      }
+
+      @Test
       @TestMetadata("DaggerMemberInjectorCanBeLoaded.kt")
       public void testDaggerMemberInjectorCanBeLoaded() {
         run("DaggerMemberInjectorCanBeLoaded.kt");
@@ -3752,6 +3758,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     @TestMetadata("LazyMemberInjectedBindings.kt")
     public void testLazyMemberInjectedBindings() {
       run("LazyMemberInjectedBindings.kt");
+    }
+
+    @Test
+    @TestMetadata("MapKeyOnPlainInterfaceAccessorWithLoweredDiagnostic.kt")
+    public void testMapKeyOnPlainInterfaceAccessorWithLoweredDiagnostic() {
+      run("MapKeyOnPlainInterfaceAccessorWithLoweredDiagnostic.kt");
     }
 
     @Test

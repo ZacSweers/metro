@@ -36,6 +36,7 @@ Changelog
 
 ### Fixes
 
+- **[FIR]** Report a `@MapKey` on a member with no binding annotation as a dedicated `MAP_KEY_WITHOUT_INTO_MAP` error. If another tool binds the member into a map, lower it with the `diagnostic-level` compiler option or `@Suppress`. Binding declarations like `@Provides` keep the existing error.
 - **[FIR]** Reduce redundant lookups when discovering contributed graph extension factories.
 - **[FIR]** Fix accessor override status on Kotlin `2.5.0-dev-10106`.
 - **[FIR/IC]** Avoid unnecessary recompilation of independent injected classes when generating contribution hints.

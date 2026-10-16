@@ -1,0 +1,1 @@
+/MapKeyWithoutIntoMapCanBeSuppressed.kt:9:3: error: `@MapKey` annotations are only allowed on `@IntoMap` declarations. If another tool binds this declaration into a map, lower this error with the `diagnostic-level` compiler option, like `MAP_KEY_WITHOUT_INTO_MAP:warning`.

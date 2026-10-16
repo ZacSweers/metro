@@ -2795,6 +2795,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     }
 
     @Test
+    @TestMetadata("MapKeyOnPlainInterfaceAccessorWithLoweredDiagnostic.kt")
+    public void testMapKeyOnPlainInterfaceAccessorWithLoweredDiagnostic() {
+      run("MapKeyOnPlainInterfaceAccessorWithLoweredDiagnostic.kt");
+    }
+
+    @Test
     @TestMetadata("MapLazyValues.kt")
     public void testMapLazyValues() {
       run("MapLazyValues.kt");
