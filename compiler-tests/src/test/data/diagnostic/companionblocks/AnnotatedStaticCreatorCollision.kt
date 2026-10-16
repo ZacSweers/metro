@@ -1,0 +1,33 @@
+// MIN_COMPILER_VERSION: 2.5.0-dev-7307
+// METRO_JVM_ONLY
+// COMPANION_MODE: COMPATIBILITY
+// GENERATE_CLASSES_IN_IR: true
+
+@DependencyGraph
+interface NamedFactoryGraph {
+  @DependencyGraph.Factory
+  fun interface Factory {
+    fun build(@Provides value: Int): NamedFactoryGraph
+  }
+
+  companion object {
+    @JvmStatic
+    fun <!DEPENDENCY_GRAPH_ERROR, VIRTUAL_MEMBER_HIDDEN!>build<!>(value: Int): NamedFactoryGraph = error("user implementation")
+  }
+}
+
+@DependencyGraph
+interface AppGraph {
+  companion object {
+    @JvmStatic
+    operator fun <!DEPENDENCY_GRAPH_ERROR!>invoke<!>(): AppGraph = error("user implementation")
+  }
+}
+
+@DependencyGraph
+interface RenamedGraph {
+  companion object {
+    @JvmStatic @JvmName("invoke")
+    fun <!DEPENDENCY_GRAPH_ERROR!>manualInvoke<!>(): RenamedGraph = error("user implementation")
+  }
+}
