@@ -63,6 +63,7 @@ import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtParameter
 import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.kotlin.psi.KtPropertyAccessor
+import org.jetbrains.kotlin.psi.psiUtil.containingClassOrObject
 
 // Dagger interop: `@BindsOptionalOf fun foo(): Foo` makes `java.util.Optional<Foo>` available,
 // mirroring the compiler's IrBinding.CustomWrapper. Only active when Dagger runtime interop is on.
@@ -180,6 +181,14 @@ internal class CallableBindingView(
   val dependencyParameters: List<CallableParameterView> = contextParameters + valueParameters
 }
 
+/** Checks whether a callable belongs to its enclosing class's static scope. */
+internal fun KaSession.isStaticMember(symbol: KaCallableSymbol): Boolean {
+  val declaration = symbol.psi as? KtCallableDeclaration ?: return false
+  val owner = declaration.containingClassOrObject?.symbol as? KaClassSymbol ?: return false
+  val name = declaration.nameAsName ?: return false
+  return owner.staticDeclaredMemberScope.callables(name).any { it == symbol }
+}
+
 /**
  * Named functions and Kotlin properties expose context parameters across supported IDE versions.
  */
@@ -214,7 +223,9 @@ internal fun KaSession.callableBindingView(
   val sourceSymbol = signature.symbol.fakeOverrideOriginal
   val sourceParameters = (sourceSymbol as? KaNamedFunctionSymbol)?.valueParameters.orEmpty()
   val signatureParameters = (signature as? KaFunctionSignature<*>)?.valueParameters.orEmpty()
-  if (sourceParameters.size != signatureParameters.size) return null
+  if (sourceParameters.size != signatureParameters.size) {
+    return null
+  }
 
   val receiver =
     sourceSymbol.receiverParameter?.let { sourceReceiver ->

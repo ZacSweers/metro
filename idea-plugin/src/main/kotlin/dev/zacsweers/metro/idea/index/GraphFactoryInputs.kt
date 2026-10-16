@@ -220,6 +220,22 @@ internal fun KaSession.bindingContainerInput(
     }
   }
 
+  // Static providers don't need a container instance.
+  val staticMembers =
+    (containerType.symbol as? KaClassSymbol)?.staticDeclaredMemberScope?.callables.orEmpty()
+  for (symbol in staticMembers) {
+    addIncludedContainerCallable(
+      callableBindingView(symbol),
+      containerKey,
+      options,
+      pointerManager,
+      bindings,
+      consumers,
+      cacheDependencies,
+      requiresContainerInstance = false,
+    )
+  }
+
   val containerPsi = containerType.symbol.psi as? KtClassOrObject
   val companions =
     containerPsi
