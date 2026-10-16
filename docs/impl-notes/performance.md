@@ -173,6 +173,8 @@ When several accessors request the same key and return type, the first accessor 
 
 `BindingPropertyContext` fingerprints each binding's declaration and resolved dependencies. A child reuses a property from the nearest ancestor that binds the key when the fingerprints match and the ancestor has a property for the same contextual key. Added contributions or overridden contribution dependencies keep the collection in the child. `Map<K, V>` and `Map<K, Provider<V>>` require separate properties.
 
+Collections whose contributions have defaulted parameters or `@BindsOptionalOf` dependencies can also reuse parent getters. For `Adapter(exporter: Exporter? = null)`, both graphs must leave `Exporter?` absent or resolve it to the same binding.
+
 When the parent exposes `Set<Adapter>`, a single child can obtain that set from the parent's collection getter when constructing an unscoped `TrackingHandler`. Each injection creates a new handler and a new set.
 
 When two or more child graphs build the same binding, their nearest common ancestor builds it once in a getter that they all call.

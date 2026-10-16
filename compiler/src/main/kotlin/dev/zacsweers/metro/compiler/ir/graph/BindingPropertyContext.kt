@@ -86,10 +86,7 @@ internal class BindingPropertyContext(
     val source = binding.sourceDeclaration() ?: return null
     val dependencyFingerprints =
       binding.dependencies.map { dependency ->
-        if (dependency.hasDefault) {
-          return null
-        }
-        known[dependency.typeKey] ?: return null
+        dependencyFingerprint(dependency, known) ?: return null
       }
     return BindingFingerprint.Built(
       kind = binding::class,
@@ -97,6 +94,26 @@ internal class BindingPropertyContext(
       dependencies = binding.dependencies,
       dependencyFingerprints = dependencyFingerprints,
     )
+  }
+
+  private fun dependencyFingerprint(
+    dependency: IrContextualTypeKey,
+    known: Map<IrTypeKey, BindingFingerprint>,
+  ): BindingFingerprint? {
+    val fingerprint = known[dependency.typeKey]
+    if (fingerprint != null) {
+      return fingerprint
+    }
+    if (!dependency.hasDefault) {
+      return null
+    }
+    val binding = bindingGraph.findBinding(dependency.typeKey)
+    val isAbsent = binding == null || binding is IrBinding.Absent
+    return if (isAbsent) {
+      BindingFingerprint.Absent
+    } else {
+      null
+    }
   }
 
   /**
@@ -119,6 +136,7 @@ internal class BindingPropertyContext(
       is IrBinding.ObjectClass -> type
       // Contributions are the multibinding's dependencies.
       is IrBinding.Multibinding -> typeKey
+      is IrBinding.CustomWrapper -> wrapperKey to allowsAbsent
       else -> null
     }
 
@@ -273,6 +291,9 @@ internal class BindingPropertyContext(
 
 /** How a binding's value is produced, including everything it depends on. */
 private sealed interface BindingFingerprint {
+  /** A dependency with no resolved binding. */
+  data object Absent : BindingFingerprint
+
   /** An instance owned by [owner] and shared with its descendants. */
   data class Shared(val owner: IrTypeKey) : BindingFingerprint
 
