@@ -180,15 +180,23 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
   }
 
   private fun FirCallableSymbol<*>.asProviderCallable(owner: FirClassSymbol<*>): ProviderCallable? {
-    val instanceReceiver = if (owner.classKind.isObject) null else owner.defaultType()
+    val isCompanionBlockMember = isCompanionBlockMemberCompat
+    val instanceReceiver =
+      if (owner.classKind.isObject || isCompanionBlockMember) {
+        null
+      } else {
+        owner.defaultType()
+      }
     val params =
       when (this) {
-        is FirPropertySymbol -> emptyList()
+        is FirPropertySymbol -> contextParameterSymbols.map { MetroFirValueParameter(session, it) }
         is FirNamedFunctionSymbol ->
-          this.valueParameterSymbols.map { MetroFirValueParameter(session, it) }
+          (contextParameterSymbols + valueParameterSymbols).map {
+            MetroFirValueParameter(session, it)
+          }
         else -> return null
       }
-    return ProviderCallable(owner, this, instanceReceiver, params)
+    return ProviderCallable(owner, this, instanceReceiver, params, isCompanionBlockMember)
   }
 
   private fun buildCallableMetadataAnnotation(sourceCallable: ProviderCallable): FirAnnotation {
@@ -264,6 +272,17 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
             setType = true,
             prefix = null,
           )
+        if (sourceCallable.isCompanionBlockMember) {
+          mapping[Name.identifier("isCompanionBlockMember")] =
+            buildLiteralExpression(
+              source = null,
+              kind = ConstantValueKind.Boolean,
+              value = true,
+              annotations = null,
+              setType = true,
+              prefix = null,
+            )
+        }
       }
     }
   }
@@ -273,14 +292,18 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
     val symbol: FirCallableSymbol<*>,
     val instanceReceiver: ConeClassLikeType?,
     val valueParameters: List<MetroFirValueParameter>,
+    /** Source companion-block members don't need an instance receiver. */
+    val isCompanionBlockMember: Boolean,
   ) {
     val callableId = CallableId(owner.classId, symbol.name)
     val name = symbol.name
     val shouldGenerateObject by memoize {
-      instanceReceiver == null && (isProperty || valueParameters.isEmpty())
+      val hasReceiverDependency = instanceReceiver != null || symbol.receiverParameterSymbol != null
+      val hasDependencies = hasReceiverDependency || valueParameters.isNotEmpty()
+      // A factory with copied type parameters can't be an object.
+      val hasCopiedTypeParameters = owner.typeParameterSymbols.isNotEmpty()
+      !hasDependencies && !hasCopiedTypeParameters
     }
-    private val isProperty
-      get() = symbol is FirPropertySymbol
 
     val returnType
       get() = symbol.resolvedReturnType

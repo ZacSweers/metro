@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
+import dev.zacsweers.metro.compiler.CompanionMode
 import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.asName
@@ -18,6 +19,7 @@ import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.addChild
+import org.jetbrains.kotlin.ir.util.addFakeOverrides
 import org.jetbrains.kotlin.ir.util.copyTypeParametersFrom
 import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
 import org.jetbrains.kotlin.ir.util.nestedClasses
@@ -78,7 +80,7 @@ internal fun IrClass.createMetadataVisibleHiddenNestedClass(
 
 context(context: IrMetroContext)
 internal fun IrClass.getOrCreateGraphImplClassShell(): IrClass {
-  nestedClassOrNull(Origins.GraphImplClassDeclaration)?.let {
+  metroGraphOrNull?.let {
     return it
   }
 
@@ -112,7 +114,13 @@ internal fun IrClass.getOrCreateGraphImplClassShell(): IrClass {
       context.metadataDeclarationRegistrarCompat.registerClassAsMetadataVisible(this)
       if (primaryConstructor == null) {
         addConstructor {
-          visibility = DescriptorVisibilities.PRIVATE
+          // Cross-module creation intrinsics need a callable constructor in NONE mode.
+          visibility =
+            if (context.options.companionMode == CompanionMode.NONE) {
+              DescriptorVisibilities.PUBLIC
+            } else {
+              DescriptorVisibilities.PRIVATE
+            }
           isPrimary = true
           origin = Origins.Default
         }
@@ -155,4 +163,22 @@ internal fun IrClass.addMetadataVisibleDefaultConstructor() {
     visibility = DescriptorVisibilities.PRIVATE
     context.metadataDeclarationRegistrarCompat.registerConstructorAsMetadataVisible(this)
   }
+}
+
+/** Creates the hidden factory header before intrinsics or graph generation need its instance. */
+context(context: IrMetroContext)
+internal fun IrClass.getOrCreateGraphFactoryImplClassShell(): IrClass {
+  val factoryClass = this
+  return getOrCreateMetadataVisibleHiddenNestedClass(
+      name = Symbols.Names.Impl,
+      origin = Origins.GraphFactoryImplClassDeclaration,
+      kind = ClassKind.OBJECT,
+      superTypesProvider = { listOf(factoryClass.symbol.defaultType) },
+      copyTypeParameters = false,
+    )
+    .apply {
+      addMetroImplMarkerAnnotation()
+      addMetadataVisibleDefaultConstructor()
+      addFakeOverrides(context.irTypeSystemContext)
+    }
 }

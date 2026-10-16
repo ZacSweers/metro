@@ -71,6 +71,52 @@ settings:
 metro-compiler = { module = "dev.zacsweers.metro:compiler", version.ref = "metro" }
 ```
 
+## Companion blocks and generated APIs
+
+Metro supports `@Provides` functions and properties in companion blocks on Kotlin 2.5.0-dev-6460 or later. Enable Kotlin's `-Xcompanion-blocks` or `-Xcompanion-blocks-and-extensions` option for each compilation that uses companion blocks.
+
+```kotlin
+@BindingContainer
+interface AppBindings {
+  companion {
+    @Provides fun endpoint(): String = "https://example.com"
+  }
+}
+```
+
+Kotlin's companion features are experimental in 2.5.0-Beta1. This version has a JVM bytecode issue for backing fields in interface companion blocks. Use getter-only properties in interface containers. Class containers can use backing fields.
+
+The `companion-mode` compiler option controls graph creators, factory helpers, and member-injection helpers. Enabling Kotlin's companion-block feature leaves Metro's default mode unchanged. Set the mode in Metro's Gradle configuration:
+
+```kotlin
+kotlin {
+  compilerOptions {
+    freeCompilerArgs.add("-Xcompanion-blocks")
+  }
+}
+
+metro.compilerOptions {
+  put("companion-mode", "companion-block")
+}
+```
+
+Mode values are case-insensitive and accept hyphens or underscores.
+
+| Mode | Generated APIs |
+|---|---|
+| `COMPANION_OBJECT` | Keeps graph companions and their factory contracts. Factory and member-injection helpers use companions. This is the default. |
+| `COMPANION_BLOCK` | Generates static graph creators, factory helpers, and member-injection helpers. Omits companions used only for those APIs. |
+| `COMPATIBILITY` | Keeps the companion APIs and adds static functions that delegate to them. |
+| `NONE` | Omits graph-level creators. Required factory and member-injection helpers use companions. `createGraph` and `createGraphFactory` remain available. |
+
+`COMPANION_BLOCK` and `COMPATIBILITY` require Kotlin 2.5.0-Beta1 or later, enabled companion blocks, and IR generation of hidden class implementations (`generate-classes-in-ir=true`). The Metro Gradle plugin enables IR class generation by default for Kotlin versions that support companion blocks.
+
+Singleton factory objects keep their object-based helpers because Kotlin prohibits companion blocks inside objects.
+
+Creator names follow the declared factory method. An interface factory with `fun build(...)` exposes `AppGraph.build(...)`. A factoryless graph exposes `AppGraph()`. An abstract-class factory exposes `AppGraph.factory()`.
+
+When migrating published graph or helper APIs, choose the mode explicitly. `COMPATIBILITY` preserves explicit companion calls and companion-as-factory values. Consumers must enable companion blocks to access exposed block members.
+
 ## IDE Support
 
 The K2 Kotlin IntelliJ plugin supports running third party FIR plugins in the IDE, but this feature is hidden behind a flag. Some Metro features can take advantage of this, namely diagnostic reporting directly in the IDE and some opt-in features to see generated declarations. 

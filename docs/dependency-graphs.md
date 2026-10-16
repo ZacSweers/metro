@@ -112,6 +112,8 @@ val messageGraph =
     .create("Hello, world!")
 ```
 
+A companion-block creator exposes factory defaults declared in the graph's compilation. If the factory inherits a default from a compiled dependency, call the factory returned by `createGraphFactory()` to use that default.
+
 ## Scoping
 
 _See [Scopes](scopes.md) for more details on scopes!_
