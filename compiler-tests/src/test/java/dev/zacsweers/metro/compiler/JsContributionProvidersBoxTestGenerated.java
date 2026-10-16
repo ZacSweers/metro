@@ -2008,6 +2008,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
       }
 
       @Test
+      @TestMetadata("QualifiedOptionalBindingIgnoresScopedUnqualifiedClass.kt")
+      public void testQualifiedOptionalBindingIgnoresScopedUnqualifiedClass() {
+        run("QualifiedOptionalBindingIgnoresScopedUnqualifiedClass.kt");
+      }
+
+      @Test
       @TestMetadata("RequiredAnnotationWorksWhenPresent.kt")
       public void testRequiredAnnotationWorksWhenPresent() {
         run("RequiredAnnotationWorksWhenPresent.kt");

@@ -6,7 +6,7 @@ FROM eclipse-temurin:25-jdk AS android-sdk-version
 COPY gradle/libs.versions.toml /tmp/libs.versions.toml
 
 RUN set -eux; \
-    android_compile_sdk="$(sed -n 's/^[[:space:]]*android-compileSdk[[:space:]]*=[[:space:]]*"\([0-9][0-9]*\)"[[:space:]]*$/\1/p' /tmp/libs.versions.toml)"; \
+    android_compile_sdk="$(sed -nE 's/^[[:space:]]*android-compileSdk[[:space:]]*=[[:space:]]*"([0-9]+(\.[0-9]+)?)"[[:space:]]*$/\1/p' /tmp/libs.versions.toml)"; \
     test -n "${android_compile_sdk}"; \
     printf '%s\n' "${android_compile_sdk}" > /android-compile-sdk
 
@@ -33,8 +33,22 @@ RUN set -eux; \
 
 COPY --from=android-sdk-version /android-compile-sdk /tmp/android-compile-sdk
 
+# sdkmanager requires an exact package path from its package list.
+# Treat an omitted minor API level as zero when matching published package names.
 RUN set -eux; \
     android_compile_sdk="$(cat /tmp/android-compile-sdk)"; \
-    rm /tmp/android-compile-sdk; \
+    sdkmanager --list --channel=3 > /tmp/android-sdk-packages; \
+    sdkmanager_platform="$(awk -v sdk="${android_compile_sdk}" \
+        'BEGIN { split(sdk, requested, ".") } \
+         $1 ~ /^platforms;android-[0-9]+(\.[0-9]+)?$/ { \
+             split($1, path, "-"); \
+             split(path[2], available, "."); \
+             if (available[1] == requested[1] && available[2] + 0 == requested[2] + 0) { \
+                 print $1; \
+                 exit; \
+             } \
+         }' /tmp/android-sdk-packages)"; \
+    test -n "${sdkmanager_platform}"; \
+    rm /tmp/android-compile-sdk /tmp/android-sdk-packages; \
     yes | sdkmanager --licenses > /dev/null; \
-    sdkmanager "platform-tools" "platforms;android-${android_compile_sdk}" "build-tools;${ANDROID_BUILD_TOOLS}"
+    sdkmanager --channel=3 "platform-tools" "${sdkmanager_platform}" "build-tools;${ANDROID_BUILD_TOOLS}"

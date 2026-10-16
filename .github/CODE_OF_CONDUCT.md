@@ -71,6 +71,8 @@ and de-fluff _before_ opening the PR.
 * Using AI to generate speculative feature requests or design proposals you haven't
   thought through yourself
 
+Maintainers may ask you to stop using an LLM for your PRs if they deem it to be overused or counterproductive.
+
 ## Enforcement Responsibilities
 
 Community leaders are responsible for clarifying and enforcing our standards of

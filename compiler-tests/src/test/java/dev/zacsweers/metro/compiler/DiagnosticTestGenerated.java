@@ -711,6 +711,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("QualifiedRequestIsNotSatisfiedByUnqualifiedInjectClass.kt")
+    public void testQualifiedRequestIsNotSatisfiedByUnqualifiedInjectClass() {
+      run("QualifiedRequestIsNotSatisfiedByUnqualifiedInjectClass.kt");
+    }
+
+    @Test
     @TestMetadata("RuntimeTracingRequiresGraphFactory.kt")
     public void testRuntimeTracingRequiresGraphFactory() {
       run("RuntimeTracingRequiresGraphFactory.kt");

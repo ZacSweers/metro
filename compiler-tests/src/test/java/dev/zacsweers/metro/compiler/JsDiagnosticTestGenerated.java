@@ -583,6 +583,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("QualifiedRequestIsNotSatisfiedByUnqualifiedInjectClass.kt")
+    public void testQualifiedRequestIsNotSatisfiedByUnqualifiedInjectClass() {
+      run("QualifiedRequestIsNotSatisfiedByUnqualifiedInjectClass.kt");
+    }
+
+    @Test
     @TestMetadata("RuntimeTracingRequiresGraphFactory.kt")
     public void testRuntimeTracingRequiresGraphFactory() {
       run("RuntimeTracingRequiresGraphFactory.kt");
