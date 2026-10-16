@@ -36,7 +36,6 @@ Changelog
 
 ### Fixes
 
-- **[FIR]** Report a `@MapKey` on a member with no binding annotation as a dedicated `MAP_KEY_WITHOUT_INTO_MAP` error. If another tool binds the member into a map, lower it with the `diagnostic-level` compiler option or `@Suppress`. Binding declarations like `@Provides` keep the existing error.
 - **[FIR]** Reduce redundant lookups when discovering contributed graph extension factories.
 - **[FIR]** Fix accessor override status on Kotlin `2.5.0-dev-10106`.
 - **[FIR/IC]** Avoid unnecessary recompilation of independent injected classes when generating contribution hints.
@@ -65,6 +64,7 @@ Changelog
 - Update `androidx.annotation` to `1.11.0` and `androidx.core` to `1.19.1`.
 - **[compat]** Test against Kotlin `2.5.0-dev-10106`.
 - **[FIR/interop]** Report a `@MapKey` on a class with no Metro contribution annotation as a dedicated `MAP_KEY_WITHOUT_CONTRIBUTES_INTO_MAP` error. If another tool binds the class into a map, lower it to a warning with the `diagnostic-level` compiler option.
+- **[FIR]** Report a `@MapKey` on a member with no binding annotation as a dedicated `MAP_KEY_WITHOUT_INTO_MAP` error. If another tool binds the member into a map, lower it with the `diagnostic-level` compiler option or `@Suppress`. Binding declarations like `@Provides` keep the existing error.
 - **[FIR/IR/IC]** Enable `omit-redundant-mirrors` by default on Kotlin 2.4.0 and newer to omit generated declaration mirrors when compiler metadata and declaration finders provide the same information. It remains disabled by default on older Kotlin versions. Disable it with `compilerOptions.disable("omit-redundant-mirrors")` in the `metro` DSL.
 - **[Gradle]** `enableTopLevelFunctionInjection` is **disabled by default** for now on **all** Kotlin versions because it makes incremental builds recompile more files. If you use top-level function injection, enable it with `enableTopLevelFunctionInjection.set(true)` in the `metro` DSL. See [incremental compilation perf docs](docs/performance.md#incremental-compilation).
 - Test Android Studio Rabbit 1 (`2026.2.1.8`).
