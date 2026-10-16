@@ -124,6 +124,7 @@ internal class ParentContextSnapshot(
     val ownerGraphKey: IrTypeKey,
     val receiverParameter: IrValueParameter,
     val isSuspend: (IrTypeKey) -> Boolean,
+    val isLifecycleScoped: (IrTypeKey) -> Boolean,
   )
 
   /** Information about a level for scope matching. */
@@ -198,6 +199,7 @@ internal class ParentContextSnapshot(
         ownerGraphKey = ownership.ownerGraphKey,
         receiverParameter = ownership.receiverParameter,
         isSuspend = ownership.isSuspend(key),
+        isLifecycleScoped = ownership.isLifecycleScoped(key),
       )
     }
 
@@ -211,6 +213,7 @@ internal class ParentContextSnapshot(
             ownerGraphKey = ownership.ownerGraphKey,
             receiverParameter = ownership.receiverParameter,
             isSuspend = ownership.isSuspend(key),
+            isLifecycleScoped = ownership.isLifecycleScoped(key),
           )
         }
       }
@@ -311,6 +314,8 @@ internal class ParentContext(
     val receiverParameter: IrValueParameter,
     /** Whether resolving the underlying binding requires a suspend context in the owner graph. */
     val isSuspend: Boolean,
+    /** Includes supplied instances, which lifecycle callbacks reuse. */
+    val isLifecycleScoped: Boolean,
   )
 
   /**
@@ -380,6 +385,7 @@ internal class ParentContext(
   private data class Level(
     val node: GraphNode,
     val isSuspend: (IrTypeKey) -> Boolean,
+    val isLifecycleScoped: (IrTypeKey) -> Boolean,
     val declaresSameBinding: (IrBinding) -> Boolean,
     val deltaProvided: MutableSet<IrTypeKey> = mutableSetOf(),
     /** Tracks which contextual keys were used (preserving instance vs provider distinction) */
@@ -488,6 +494,7 @@ internal class ParentContext(
         ownerGraphKey = providerLevel.node.typeKey,
         receiverParameter = providerLevel.node.metroGraphOrFail.thisReceiverOrFail,
         isSuspend = providerLevel.isSuspend(key),
+        isLifecycleScoped = providerLevel.isLifecycleScoped(key),
       )
     }
 
@@ -515,6 +522,7 @@ internal class ParentContext(
             ownerGraphKey = level.node.typeKey,
             receiverParameter = level.node.metroGraphOrFail.thisReceiverOrFail,
             isSuspend = level.isSuspend(key),
+            isLifecycleScoped = level.isLifecycleScoped(key),
           )
         }
       }
@@ -542,10 +550,11 @@ internal class ParentContext(
   fun pushParentGraph(
     node: GraphNode,
     isSuspend: (IrTypeKey) -> Boolean,
+    isLifecycleScoped: (IrTypeKey) -> Boolean,
     declaresSameBinding: (IrBinding) -> Boolean,
   ) {
     val idx = levels.size
-    val level = Level(node, isSuspend, declaresSameBinding)
+    val level = Level(node, isSuspend, isLifecycleScoped, declaresSameBinding)
     levels.addLast(level)
     parentScopes.addAll(node.scopes)
     _graphPrivateKeys.addAll(node.graphPrivateKeys)
@@ -631,6 +640,7 @@ internal class ParentContext(
           ownerGraphKey = level.node.typeKey,
           receiverParameter = level.node.metroGraphOrFail.thisReceiverOrFail,
           isSuspend = level.isSuspend,
+          isLifecycleScoped = level.isLifecycleScoped,
         )
     }
 
@@ -642,6 +652,7 @@ internal class ParentContext(
           ownerGraphKey = currentLevel.node.typeKey,
           receiverParameter = currentLevel.node.metroGraphOrFail.thisReceiverOrFail,
           isSuspend = currentLevel.isSuspend,
+          isLifecycleScoped = currentLevel.isLifecycleScoped,
         )
       for (key in pending) {
         keyOwnership[key] = currentOwnership
@@ -657,6 +668,7 @@ internal class ParentContext(
             ownerGraphKey = level.node.typeKey,
             receiverParameter = level.node.metroGraphOrFail.thisReceiverOrFail,
             isSuspend = level.isSuspend,
+            isLifecycleScoped = level.isLifecycleScoped,
           ),
       )
     }

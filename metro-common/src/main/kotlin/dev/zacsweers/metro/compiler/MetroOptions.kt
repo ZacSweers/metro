@@ -64,6 +64,10 @@ public object MetroClassIds {
     metroRuntimePackage.child(Name.identifier("internal"))
 
   public val dependencyGraph: ClassId = metroRuntimePackage.classId("DependencyGraph")
+  public val closeableGraph: ClassId = metroRuntimePackage.classId("CloseableGraph")
+  public val suspendCloseableGraph: ClassId = metroRuntimePackage.classId("SuspendCloseableGraph")
+  public val onGraphInit: ClassId = metroRuntimePackage.classId("OnGraphInit")
+  public val onGraphClose: ClassId = metroRuntimePackage.classId("OnGraphClose")
   public val dependencyGraphFactory: ClassId = dependencyGraph.nested("Factory")
   public val assisted: ClassId = metroRuntimePackage.classId("Assisted")
   public val assistedFactory: ClassId = metroRuntimePackage.classId("AssistedFactory")

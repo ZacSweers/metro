@@ -13,6 +13,7 @@ import dev.zacsweers.metro.compiler.ir.createAndAddTemporaryVariable
 import dev.zacsweers.metro.compiler.ir.getOrCreateGraphImplClassShell
 import dev.zacsweers.metro.compiler.ir.graph.IrDynamicGraphGenerator
 import dev.zacsweers.metro.compiler.ir.graph.generatedDynamicGraphData
+import dev.zacsweers.metro.compiler.ir.graph.initializeGraph
 import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.metroGraphOrFail
@@ -132,9 +133,11 @@ internal class CreateGraphTransformer(
               rawType.metroGraphOrFail
             }
           withIrBuilder(expression.symbol) {
-            irCallConstructor(
-              graphImpl.primaryConstructor!!.symbol,
-              type.expectAsOrNull<IrSimpleType>()?.arguments.orEmpty().map { it.typeOrFail },
+            initializeGraph(
+              irCallConstructor(
+                graphImpl.primaryConstructor!!.symbol,
+                type.expectAsOrNull<IrSimpleType>()?.arguments.orEmpty().map { it.typeOrFail },
+              ),
             )
           }
         } else {
@@ -213,17 +216,29 @@ internal class CreateGraphTransformer(
           val containers = containerExpressions.mapIndexed { index, value ->
             createAndAddTemporaryVariable(value, nameHint = "container$index")
           }
-          +irCallConstructor(constructor, emptyList()).apply {
-            argumentOrder.forEachIndexed { index, sourceIndex ->
-              arguments[index] = irGet(containers[sourceIndex])
+          val construction =
+            irCallConstructor(constructor, emptyList()).apply {
+              argumentOrder.forEachIndexed { index, sourceIndex ->
+                arguments[index] = irGet(containers[sourceIndex])
+              }
             }
+          +if (isFactory) {
+            construction
+          } else {
+            initializeGraph(construction)
           }
         }
       } else {
-        irCallConstructor(constructor, emptyList()).apply {
-          containerExpressions.forEachIndexed { index, value ->
-            arguments[index] = value
+        val construction =
+          irCallConstructor(constructor, emptyList()).apply {
+            containerExpressions.forEachIndexed { index, value ->
+              arguments[index] = value
+            }
           }
+        if (isFactory) {
+          construction
+        } else {
+          initializeGraph(construction)
         }
       }
     }

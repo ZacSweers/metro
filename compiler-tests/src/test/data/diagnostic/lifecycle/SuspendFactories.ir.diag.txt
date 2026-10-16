@@ -1,0 +1,7 @@
+/SuspendFactories.kt:10:28: error: [Metro/GraphLifecycle] Initialization callback 'initialize' suspends. Declare a graph factory with a suspend SAM.
+
+/SuspendFactories.kt:15:28: error: [Metro/GraphLifecycle] Initialization callback 'initialize' suspends. Declare a graph factory with a suspend SAM.
+
+/SuspendFactories.kt:25:29: error: [Metro/GraphLifecycle] Suspending close callbacks require SuspendCloseableGraph.
+
+/SuspendFactories.kt:34:11: error: [Metro/GraphLifecycle] A CloseableGraph parent cannot own a SuspendCloseableGraph child. Make the parent implement SuspendCloseableGraph.

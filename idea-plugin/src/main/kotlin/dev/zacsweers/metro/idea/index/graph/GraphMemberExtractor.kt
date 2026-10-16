@@ -6,6 +6,7 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.SmartPointerManager
 import com.intellij.psi.SmartPsiElementPointer
+import dev.zacsweers.metro.compiler.MetroClassIds
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.idea.checkCanceledEvery
 import dev.zacsweers.metro.idea.hasAnyAnnotation
@@ -18,6 +19,7 @@ import dev.zacsweers.metro.idea.index.callableBindingView
 import dev.zacsweers.metro.idea.index.consumedSite
 import dev.zacsweers.metro.idea.index.dependencyConsumer
 import dev.zacsweers.metro.idea.index.isOptionalConsumer
+import dev.zacsweers.metro.idea.index.lifecycleSuppressions
 import dev.zacsweers.metro.idea.index.memberInjectOwners
 import dev.zacsweers.metro.idea.index.memberInjectSites
 import dev.zacsweers.metro.idea.index.nonAccessorCallableAnnotations
@@ -29,7 +31,9 @@ import dev.zacsweers.metro.idea.model.ContributionEntry
 import dev.zacsweers.metro.idea.model.GraphCallableReference
 import dev.zacsweers.metro.idea.model.GraphCallableSignature
 import dev.zacsweers.metro.idea.model.GraphDeclarationId
+import dev.zacsweers.metro.idea.model.GraphExtensionCreation
 import dev.zacsweers.metro.idea.model.GraphExtensionFactoryAccessor
+import dev.zacsweers.metro.idea.model.GraphLifecycleCallback
 import dev.zacsweers.metro.idea.model.GraphMemberOverride
 import dev.zacsweers.metro.idea.model.GraphReference
 import dev.zacsweers.metro.idea.model.KaBinding
@@ -192,6 +196,9 @@ internal class GraphMemberExtractor(
         extensionFactories,
         injectedMemberOwnerIds,
         memberOverrides = target.memberOverrides,
+        lifecycleCallbacks = target.lifecycleCallbacks,
+        closeImplementations = target.closeImplementations,
+        synchronousExtensionCreations = target.synchronousExtensionCreations,
       )
     }
 
@@ -271,12 +278,16 @@ internal class GraphMemberExtractor(
       return
     }
 
+    val isCallback =
+      callable.hasAnyAnnotation(setOf(MetroClassIds.onGraphInit, MetroClassIds.onGraphClose))
+    val isClose = callable.name.asString() == "close" && view.valueParameters.isEmpty()
     target.memberOverrides +=
       GraphMemberOverride(
         declaration = graphCallableReference(view, psi),
         overriddenDeclarations = overriddenDeclarations,
         isOptional = callable.isOptionalConsumer(options),
         isAbstract = callable.modality == KaSymbolModality.ABSTRACT,
+        isLifecycle = isCallback || isClose,
       )
   }
 
@@ -305,8 +316,67 @@ internal class GraphMemberExtractor(
   ) {
     val callable = view.symbol
     if (callable !is KaNamedFunctionSymbol && callable !is KaPropertySymbol) return
-    if (view.receiver != null) return
     recordAnnotations(this, callable, psi)
+    if (callable is KaNamedFunctionSymbol) {
+      val onInit = callable.hasAnyAnnotation(setOf(MetroClassIds.onGraphInit))
+      val onClose = callable.hasAnyAnnotation(setOf(MetroClassIds.onGraphClose))
+      if (onInit || onClose) {
+        val implementedUnit =
+          callable.modality != KaSymbolModality.ABSTRACT && view.returnType.isUnitType
+        val hasReceiver = view.receiver != null || callable.contextParameters.isNotEmpty()
+        val invalidParameters = hasReceiver || callable.typeParameters.isNotEmpty()
+        target.lifecycleCallbacks +=
+          GraphLifecycleCallback(
+            ptr(psi),
+            onInit,
+            onClose,
+            callable.isSuspend,
+            isImplementedUnit = implementedUnit,
+            hasInvalidParameters = invalidParameters,
+          )
+        if (!implementedUnit || invalidParameters) {
+          return
+        }
+        for (parameter in view.valueParameters) {
+          val source = parameter.symbol.psi as? KtElement ?: continue
+          val site = consumedSite(parameter.returnType, parameter.symbol, options)
+          recordAnnotations(this, parameter.symbol, source)
+          recordRequestedType(this, parameter.returnType)
+          val phases = buildList {
+            if (onInit) {
+              add(ConsumerEntry.GraphRequestKind.INIT_CALLBACK)
+            }
+            if (onClose) {
+              add(ConsumerEntry.GraphRequestKind.CLOSE_CALLBACK)
+            }
+          }
+          for (phase in phases) {
+            target.consumers +=
+              ConsumerEntry(
+                ptr(source),
+                site.contextKey,
+                site.isAbstractType,
+                site.multibindingId,
+                site.typeClassId,
+                graphId = target.graphId,
+                graphRequestKind = phase,
+                isSuspend = callable.isSuspend,
+                isOptional = parameter.symbol.isOptionalConsumer(options),
+                lifecycleOwner = ptr(psi),
+                lifecycleSuppressions = lifecycleSuppressions(source),
+              )
+          }
+        }
+        return
+      }
+      val isClose = callable.name.asString() == "close" && view.valueParameters.isEmpty()
+      if (isClose && callable.modality != KaSymbolModality.ABSTRACT) {
+        target.closeImplementations += ptr(psi)
+      }
+    }
+    if (view.receiver != null) {
+      return
+    }
     val isOptionalAccessor = callable.isOptionalConsumer(options)
     if (callable.modality != KaSymbolModality.ABSTRACT && !isOptionalAccessor) return
     val isMultibindingAccessor = callable.hasAnyAnnotation(options.multibindsAnnotations)
@@ -324,6 +394,11 @@ internal class GraphMemberExtractor(
         val factoryOwner =
           graphExtensionFactoryOwner(view, target.factoryContext, options, onDeclarationFile)
         target.extensionCreations += factoryOwner ?: returnType.graphReference()
+        val synchronousCreation = (callable as? KaNamedFunctionSymbol)?.isSuspend != true
+        if (synchronousCreation && view.valueParameters.isEmpty()) {
+          target.synchronousExtensionCreations +=
+            GraphExtensionCreation(ptr(psi), returnType.graphReference())
+        }
         return
       }
       if (returnClass.hasAnyAnnotation(options.graphExtensionFactoryAnnotations)) {

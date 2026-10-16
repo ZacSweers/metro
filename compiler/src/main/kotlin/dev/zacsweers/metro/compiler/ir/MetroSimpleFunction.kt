@@ -4,8 +4,10 @@ package dev.zacsweers.metro.compiler.ir
 
 import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.MetroAnnotations
+import dev.zacsweers.metro.compiler.MetroClassIds
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.util.callableId
+import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.name.CallableId
 
 /** Simple holder with resolved annotations to save us lookups. */
@@ -26,6 +28,23 @@ internal class MetroSimpleFunction(
 
 internal val MetroSimpleFunction.isAccessorCandidate: Boolean
   get() {
+    val lifecycle =
+      ir.overriddenSymbolsSequence().any {
+        it.owner.isAnnotatedWithAny(setOf(MetroClassIds.onGraphInit, MetroClassIds.onGraphClose))
+      }
+    if (lifecycle) {
+      return false
+    }
+    val lifecycleClose =
+      ir.name.asString() == "close" &&
+        ir.overriddenSymbolsSequence().any {
+          val owner = it.owner.parent as? org.jetbrains.kotlin.ir.declarations.IrClass
+          owner?.classId == MetroClassIds.closeableGraph ||
+            owner?.classId == MetroClassIds.suspendCloseableGraph
+        }
+    if (lifecycleClose) {
+      return false
+    }
     return ir.visibility.isVisibleOutside() &&
       ir.regularParameters.isEmpty() &&
       !annotations.isBinds &&

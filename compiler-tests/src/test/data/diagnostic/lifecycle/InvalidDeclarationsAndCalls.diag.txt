@@ -1,0 +1,15 @@
+/InvalidDeclarationsAndCalls.kt:13:16: error: [Metro/GraphLifecycle] Overrides must repeat @OnGraphInit.
+
+/InvalidDeclarationsAndCalls.kt:14:21: error: [Metro/GraphLifecycle] Lifecycle callbacks must be implemented member functions returning Unit.
+
+/InvalidDeclarationsAndCalls.kt:15:20: error: [Metro/GraphLifecycle] Lifecycle callbacks must be implemented member functions returning Unit.
+
+/InvalidDeclarationsAndCalls.kt:16:16: error: [Metro/GraphLifecycle] Metro generates close(). Put cleanup in an @OnGraphClose callback.
+
+/InvalidDeclarationsAndCalls.kt:20:5: error: [Metro/GraphLifecycle] Lifecycle callbacks cannot be called directly.
+
+/InvalidDeclarationsAndCalls.kt:25:3: error: [Metro/GraphLifecycle] Lifecycle callbacks cannot be called directly.
+
+/InvalidDeclarationsAndCalls.kt:26:19: error: [Metro/GraphLifecycle] Callable references to lifecycle callbacks are prohibited.
+
+/InvalidDeclarationsAndCalls.kt:30:18: error: [Metro/GraphLifecycle] Lifecycle callbacks must be implemented member functions returning Unit.

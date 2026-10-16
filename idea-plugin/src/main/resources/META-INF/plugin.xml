@@ -49,6 +49,14 @@ Metro IDE support for Kotlin dependency injection projects.
         enabledByDefault="true"
         level="WARNING"
         implementationClass="dev.zacsweers.metro.idea.diagnostics.MetroGraphWarningInspection"/>
+    <localInspection
+        language="kotlin"
+        shortName="MetroGraphLifecycle"
+        displayName="Metro graph lifecycle declarations and calls"
+        groupName="Metro"
+        enabledByDefault="true"
+        level="ERROR"
+        implementationClass="dev.zacsweers.metro.idea.diagnostics.MetroGraphLifecycleInspection"/>
     <intentionAction>
       <className>dev.zacsweers.metro.idea.intentions.injection.MakeClassInjectableIntention</className>
       <category>Metro</category>

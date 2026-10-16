@@ -85,3 +85,5 @@ internal fun dev_zacsweers_metro_AppScope(contributed: LibHiddenImpl) {}
 fun libtest_LibOriginScope(contributed: libtest.LibOriginOriginalBindings) {}
 
 fun libtest_LibOriginScope(contributed: libtest.LibOriginReplacementProviders.ToScope) {}
+
+fun libtest_LibLifecycleScope(contributed: libtest.LibLifecycleCallbacks) {}

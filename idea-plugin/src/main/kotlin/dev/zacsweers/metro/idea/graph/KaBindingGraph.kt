@@ -86,6 +86,8 @@ internal class KaBindingGraph(
   private val graphName = graph.classId?.asFqNameString() ?: graph.name ?: "<unknown>"
   private val graphConsumers = session.accessorsFor(queryContext)
   private val diagnostics = mutableListOf<KaGraphDiagnostic>()
+  private val lifecycleValidator =
+    KaGraphLifecycleValidator(session, queryContext, options, graphConsumers, sources, ::report)
   private var suspendKeys: Set<KaTypeKey> = emptySet()
   private val pendingEmptyMultibindings = mutableListOf<KaBinding.Multibinding>()
   private var reportedLazyFactorySites: MutableSet<LazyFactorySite>? = null
@@ -156,6 +158,7 @@ internal class KaBindingGraph(
   }
 
   fun seal(): KaGraphValidationResult.Completed {
+    lifecycleValidator.validateDeclarations()
     val keeps = LinkedHashMap<KaContextualTypeKey, KaBindingStack.Entry>()
     val extensions = session.extensionsOf(queryContext)
     if (extensions.isNotEmpty()) {
@@ -351,6 +354,7 @@ internal class KaBindingGraph(
         reportStructuralIssue(issue, stack, diagnosticRoutes, rootsByTypeKey)
       }
     }
+    lifecycleValidator.validateBindings(bindings, adjacency, reservations.map { it.key })
     suspendKeys =
       KaSuspendBindingValidator(
           graph = graph,
@@ -360,6 +364,7 @@ internal class KaBindingGraph(
           graphConsumers = graphConsumers,
           bindings = bindings,
           runtimeCoroutinesAvailable = graph.runtimeCoroutinesAvailable,
+          suspendCloseable = lifecycleValidator.composition.isSuspendCloseable,
           report = ::reportSuspendDiagnostic,
         )
         .validate()

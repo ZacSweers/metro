@@ -1,0 +1,1 @@
+/MissingCoroutineRuntime.kt:10:11: error: [Metro/MissingRuntimeCoroutines] Add `dev.zacsweers.metro:runtime-coroutines` to the compile and runtime classpath.

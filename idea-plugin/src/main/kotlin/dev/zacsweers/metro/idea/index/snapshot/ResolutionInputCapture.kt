@@ -94,6 +94,7 @@ internal class ResolutionInputCapture(
       for (consumer in consumers) {
         capture(consumer.pointer, captureAnchorSignature = true)
         consumer.injectedMemberPointer?.let { pointer -> capture(pointer) }
+        consumer.lifecycleOwner?.let { pointer -> capture(pointer) }
       }
       for (graph in graphs) {
         capture(graph.pointer, captureAnchorSignature = true)
@@ -107,6 +108,7 @@ internal class ResolutionInputCapture(
           for (binding in contribution.bindings) captureBinding(binding)
           for (consumer in contribution.consumers) {
             capture(consumer.pointer, captureAnchorSignature = true)
+            consumer.lifecycleOwner?.let { pointer -> capture(pointer) }
           }
           for (factory in contribution.extensionFactories) capture(factory.pointer)
           for (memberOverride in contribution.memberOverrides) {

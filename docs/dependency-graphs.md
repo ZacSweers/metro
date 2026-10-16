@@ -30,6 +30,8 @@ val graph = createGraph<AppGraph>()
 
 Graphs are relatively cheap and should be used freely.
 
+Graphs can also run startup and cleanup callbacks and close owned child extensions. See [Graph Lifecycle](graph-lifecycle.md) for the experimental APIs and ownership rules.
+
 ## Inputs
 
 Runtime inputs can be provided via a `@DependencyGraph.Factory` interface that returns the target graph. These parameters must be annotated with either `@Provides` or `@Includes`.

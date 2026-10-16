@@ -129,6 +129,7 @@ nav:
       - 'Differences': differences.md
   - 'Docs':
       - 'Dependency Graphs': dependency-graphs.md
+      - 'Graph Lifecycle': graph-lifecycle.md
       - 'Provides': provides.md
       - 'Injection Types': injection-types.md
       - 'Scopes': scopes.md

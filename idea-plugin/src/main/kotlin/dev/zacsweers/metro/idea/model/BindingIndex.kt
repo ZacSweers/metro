@@ -352,6 +352,9 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
         java.util.Collections.newSetFromMap(IdentityHashMap<KaBinding, Boolean>())
       val bindingIdentities = hashSetOf<Any>()
       val accessors = mutableListOf<ConsumerEntry>()
+      val lifecycleCallbacks = mutableListOf<GraphLifecycleCallback>()
+      val closeImplementations = mutableListOf<SmartPsiElementPointer<out KtElement>>()
+      val synchronousExtensionCreations = mutableListOf<GraphExtensionCreation>()
       val accessorIdentities = hashSetOf<Any>()
       var supersededDeclarations: MutableSet<SourcePointerIdentity>? = null
 
@@ -379,7 +382,7 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
             continue
           }
           // A fake override can still point at the concrete declaration itself.
-          if (!memberOverride.isAbstract) {
+          if (!memberOverride.isAbstract && !memberOverride.isLifecycle) {
             declaration.sourceIdentity?.let(identities::add)
           }
           // Abstract overrides retain their own request with its narrowed type and qualifiers.
@@ -412,6 +415,9 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
         if (consumer.graphContribution == null) addAccessor(consumer)
       }
       addMemberOverrides(graph.memberOverrides)
+      lifecycleCallbacks += graph.lifecycleCallbacks
+      closeImplementations += graph.closeImplementations
+      synchronousExtensionCreations += graph.synchronousExtensionCreations
       for (candidate in graph.contributedInterfaces) {
         ProgressManager.checkCanceled()
         val reference = candidate.contribution.declarationId ?: continue
@@ -427,6 +433,9 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
         factories += candidate.extensionFactories
         memberOwners += candidate.injectedMemberOwnerIds
         addMemberOverrides(candidate.memberOverrides)
+        lifecycleCallbacks += candidate.lifecycleCallbacks
+        closeImplementations += candidate.closeImplementations
+        synchronousExtensionCreations += candidate.synchronousExtensionCreations
         for ((bindingIndex, binding) in candidate.bindings.withIndex()) {
           checkCanceledEvery(bindingIndex)
           if (hasWrittenBinding(binding, graph)) continue
@@ -460,6 +469,15 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
           selectedContributions.toList(),
           accessors.toList(),
           memberOwners.toSet(),
+          lifecycleCallbacks
+            .filter { it.sourceIdentity !in supersededRequests }
+            .distinctBy { it.sourceIdentity },
+          closeImplementations
+            .filter { sourcePointerIdentity(it) !in supersededRequests }
+            .distinctBy { sourcePointerIdentity(it) },
+          synchronousExtensionCreations
+            .filter { sourcePointerIdentity(it.pointer) !in supersededRequests }
+            .distinctBy { sourcePointerIdentity(it.pointer) },
         ),
         selection,
         contributionIds.toSet(),
@@ -1334,7 +1352,10 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
     val graphId = consumer.graphId
     if (graphId != null) {
       if (graphId !in context.graphIds) return false
-      if (consumer.graphRequestKind == null || consumer.isOptional) return true
+      val isOptionalAccessor = consumer.isOptional && consumer.lifecycleOwner == null
+      if (consumer.graphRequestKind == null || isOptionalAccessor) {
+        return true
+      }
       val selected = selectedGraphComposition(structure, graphId) ?: return false
       return !isSupersededGraphRequest(consumer, selected.supersededRequests)
     }
@@ -1568,13 +1589,14 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
     supersededRequests: Set<SourcePointerIdentity>,
   ): Boolean {
     // Optional concrete accessors remain eligible for a binding that replaces their default.
-    if (consumer.graphRequestKind == null || consumer.isOptional) {
+    val isOptionalAccessor = consumer.isOptional && consumer.lifecycleOwner == null
+    if (consumer.graphRequestKind == null || isOptionalAccessor) {
       return false
     }
     if (supersededRequests.isEmpty()) {
       return false
     }
-    val source = consumer.sourceIdentity ?: return false
+    val source = consumer.lifecycleOwnerIdentity ?: consumer.sourceIdentity ?: return false
     return source in supersededRequests
   }
 

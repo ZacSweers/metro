@@ -581,7 +581,8 @@ private data class ConsumerOwnershipKey(
 /** Matches regenerated graph consumers to the ownership retained by their source summary. */
 private fun ConsumerEntry.ownershipKey(graphId: GraphDeclarationId): ConsumerOwnershipKey {
   val sourceFile = pointer.virtualFile
-  val needsDeclarationIdentity = graphRequestKind != null && !isOptional
+  val isOptionalAccessor = isOptional && lifecycleOwner == null
+  val needsDeclarationIdentity = graphRequestKind != null && !isOptionalAccessor
   val declaration = if (needsDeclarationIdentity || sourceFile == null) pointer else null
   return ConsumerOwnershipKey(
     graphId,

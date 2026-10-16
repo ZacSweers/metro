@@ -35,6 +35,7 @@ internal class KaSuspendBindingValidator(
   private val graphConsumers: List<ConsumerEntry>,
   private val bindings: ScatterMap<KaTypeKey, KaBinding>,
   private val runtimeCoroutinesAvailable: Boolean,
+  private val suspendCloseable: Boolean,
   private val report: (MetroDiagnostic, KaBindingStack, List<KaBinding>) -> Unit,
 ) {
   private val suspendBindingAnalysis = SuspendBindingAnalysis(bindings::get)
@@ -46,7 +47,9 @@ internal class KaSuspendBindingValidator(
         source = consumer,
         kind =
           when (consumer.graphRequestKind) {
-            ConsumerEntry.GraphRequestKind.ACCESSOR -> SuspendGraphRequestKind.ACCESSOR
+            ConsumerEntry.GraphRequestKind.ACCESSOR,
+            ConsumerEntry.GraphRequestKind.INIT_CALLBACK,
+            ConsumerEntry.GraphRequestKind.CLOSE_CALLBACK -> SuspendGraphRequestKind.ACCESSOR
             ConsumerEntry.GraphRequestKind.MEMBERS_INJECTOR ->
               SuspendGraphRequestKind.MEMBERS_INJECTOR
             null -> SuspendGraphRequestKind.OTHER
@@ -69,6 +72,7 @@ internal class KaSuspendBindingValidator(
           suspendProvidersEnabled = options.enableSuspendProviders,
           functionProvidersEnabled = options.enableFunctionProviders,
           runtimeCoroutinesAvailable = runtimeCoroutinesAvailable,
+          runtimeCoroutinesAlreadyRequired = suspendCloseable,
           checkCanceled = ProgressManager::checkCanceled,
         )
         .validate()
