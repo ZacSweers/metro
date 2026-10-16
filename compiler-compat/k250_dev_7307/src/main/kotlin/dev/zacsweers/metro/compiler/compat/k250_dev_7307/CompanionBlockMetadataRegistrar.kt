@@ -10,7 +10,10 @@ import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.util.isObject
 
-/** Repairs companion-block metadata after registering IR-generated declarations. */
+/**
+ * Repairs companion-block metadata after registering IR-generated declarations
+ * ([KT-90383](https://youtrack.jetbrains.com/issue/KT-90383)).
+ */
 internal class CompanionBlockMetadataRegistrar(
   private val delegate: IrGeneratedDeclarationsRegistrarCompat,
 ) : IrGeneratedDeclarationsRegistrarCompat by delegate {
