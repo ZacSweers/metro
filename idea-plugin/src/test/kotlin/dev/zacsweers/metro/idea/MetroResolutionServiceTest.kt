@@ -2910,6 +2910,28 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     assertFalse(original == changed)
   }
 
+  fun testSharedDeclarationFingerprintKeepsCompanionBlockConstantImports() {
+    val source =
+      """
+      package test
+      import first.VALUE
+      class Qualifiers {
+        companion {
+          const val NAME = VALUE
+        }
+      }
+      """
+        .trimIndent()
+    val factory = KtPsiFactory(project)
+    val original = sharedDeclarationFingerprint(factory.createFile(source))
+    assertTrue(original, original.contains("Qualifiers.const val NAME = VALUE"))
+    val changed =
+      sharedDeclarationFingerprint(
+        factory.createFile(source.replace("first.VALUE", "second.VALUE")),
+      )
+    assertFalse(original == changed)
+  }
+
   fun testSharedDeclarationFingerprintKeepsMalformedImports() {
     val source = "package test\nimport first.Missing as\nconst val NAME = \"unchanged\""
     val factory = KtPsiFactory(project)

@@ -18,6 +18,7 @@ import dev.zacsweers.metro.idea.index.callableBindingView
 import dev.zacsweers.metro.idea.index.consumedSite
 import dev.zacsweers.metro.idea.index.dependencyConsumer
 import dev.zacsweers.metro.idea.index.isOptionalConsumer
+import dev.zacsweers.metro.idea.index.isStaticProvider
 import dev.zacsweers.metro.idea.index.memberInjectOwners
 import dev.zacsweers.metro.idea.index.memberInjectSites
 import dev.zacsweers.metro.idea.index.nonAccessorCallableAnnotations
@@ -92,10 +93,25 @@ internal class GraphMemberExtractor(
       recordGraphMemberOverride(view, psi, target)
       // Binary graph declarations have no project-source annotation sweep for their providers.
       if (view.symbol.origin == KaSymbolOrigin.LIBRARY && psi is KtDeclaration) {
-        val ownerDependency = target.factoryContext?.let { typeKey(it, null).canonicalContextKey() }
+        val ownerDependency =
+          if (isStaticProvider(view.symbol)) {
+            null
+          } else {
+            target.factoryContext?.let { typeKey(it, null).canonicalContextKey() }
+          }
         processInheritedBindingCallable(psi, view, target, ownerDependency)
       }
       indexGraphCallable(view, psi, target)
+    }
+
+  /** Static providers use the graph's binding scope and don't depend on an owner instance. */
+  fun indexStaticBindings(
+    session: KaSession,
+    owner: KaClassSymbol,
+    target: GraphMemberTarget,
+  ) =
+    with(session) {
+      indexBindingCallables(owner.staticDeclaredMemberScope.callables, target)
     }
 
   /** Companion providers belong to the graph and use Kotlin's existing companion instance. */
@@ -110,16 +126,26 @@ internal class GraphMemberExtractor(
       if (graphClassId != null) {
         for (superType in companion.defaultType.allSupertypes) {
           checkCanceled()
-          if ((superType as? KaClassType)?.classId == graphClassId) return@with
+          if ((superType as? KaClassType)?.classId == graphClassId) {
+            return@with
+          }
         }
       }
-      for (callable in companion.declaredMemberScope.callables) {
-        checkCanceled()
-        val declaration = callable.psi as? KtDeclaration ?: continue
-        declaration.containingFile?.let(onDeclarationFile)
-        processInheritedBindingCallable(declaration, callableBindingView(callable), target)
-      }
+      indexBindingCallables(companion.declaredMemberScope.callables, target)
     }
+
+  /** Records scope providers without adding a graph owner dependency. */
+  private fun KaSession.indexBindingCallables(
+    callables: Sequence<KaCallableSymbol>,
+    target: GraphMemberTarget,
+  ) {
+    for (callable in callables) {
+      checkCanceled()
+      val declaration = callable.psi as? KtDeclaration ?: continue
+      declaration.containingFile?.let(onDeclarationFile)
+      processInheritedBindingCallable(declaration, callableBindingView(callable), target)
+    }
+  }
 
   /** Class-literal containers contribute binary providers without adding graph accessors. */
   fun indexContainerBindings(
@@ -140,6 +166,10 @@ internal class GraphMemberExtractor(
         }
       }
       val declaration = containerType.symbol.psi as? KtClassOrObject ?: return@with
+      val containerClass = containerType.symbol as? KaClassSymbol
+      if (containerClass?.origin == KaSymbolOrigin.LIBRARY) {
+        indexStaticBindings(this, containerClass, target)
+      }
       for (companion in declaration.declarations.filterIsInstance<KtObjectDeclaration>()) {
         checkCanceled()
         if (!companion.isCompanion()) continue
@@ -207,6 +237,9 @@ internal class GraphMemberExtractor(
       // The source annotation sweep never sees library files, so a library supertype's binding
       // callables index here through their decompiled declarations
       val isLibrary = superClass.origin == KaSymbolOrigin.LIBRARY
+      if (target.bindingTemplates != null || isLibrary) {
+        indexStaticBindings(this, superClass, target)
+      }
       val bindingCallableIds =
         options.providesAnnotations +
           options.bindsAnnotations +
@@ -423,7 +456,7 @@ internal class GraphMemberExtractor(
       addedBinding = true
     }
     if (!addedBinding) return
-    for (parameter in callable.valueParameters) {
+    for (parameter in callable.dependencyParameters) {
       checkCanceled()
       val source = parameter.symbol.psi as? KtElement ?: continue
       addConsumer(
@@ -462,9 +495,9 @@ internal class GraphMemberExtractor(
         return true
       }
     }
-    return callable.valueParameters.indices.any { index ->
-      val inherited = callable.valueParameters[index]
-      val declared = declaration.valueParameters[index]
+    return callable.dependencyParameters.indices.any { index ->
+      val inherited = callable.dependencyParameters[index]
+      val declared = declaration.dependencyParameters[index]
       typeKey(inherited.returnType, null) != typeKey(declared.returnType, null)
     }
   }
