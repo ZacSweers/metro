@@ -51,12 +51,14 @@ import org.jetbrains.kotlin.incremental.components.ExpectActualTracker
 import org.jetbrains.kotlin.test.TargetBackend
 import org.jetbrains.kotlin.test.builders.TestConfigurationBuilder
 import org.jetbrains.kotlin.test.cli.CliDirectives
+import org.jetbrains.kotlin.test.directives.LanguageSettingsDirectives.LANGUAGE
 import org.jetbrains.kotlin.test.directives.model.singleOrZeroValue
 import org.jetbrains.kotlin.test.model.TestModule
 import org.jetbrains.kotlin.test.services.EnvironmentConfigurator
 import org.jetbrains.kotlin.test.services.TestServices
 import org.jetbrains.kotlin.test.services.defaultsProvider
 import org.jetbrains.kotlin.test.services.temporaryDirectoryManager
+import org.junit.jupiter.api.Assumptions.assumeTrue
 
 fun TestConfigurationBuilder.configurePlugin(
   compatContext: CompatContext = CompatContext.create(),
@@ -70,6 +72,11 @@ fun TestConfigurationBuilder.configurePlugin(
 
   useDirectives(MetroDirectives, CliDirectives)
   configureTestPhaseCompat()
+  forTestsMatching("*/companionblocks/*") {
+    // Skip before Kotlin parses module-level language directives.
+    assumeTrue(compatContext.supportsCompanionBlocks, "Compiler does not support companion blocks")
+    defaultDirectives { LANGUAGE + "+CompanionBlocks" }
+  }
 
   useCustomRuntimeClasspathProviders(::MetroRuntimeClassPathProvider)
 
@@ -98,6 +105,9 @@ class MetroExtensionRegistrarConfigurator(
     val options = MetroOptions.buildOptions {
       // Set non-annotation properties (only when directive is present or value is non-default)
       enabled = MetroDirectives.DISABLE_METRO !in module.directives
+      module.directives.singleOrZeroValue(MetroDirectives.COMPANION_MODE)?.let {
+        companionMode = it
+      }
       enablePrivateProviderProperties =
         MetroDirectives.ENABLE_PRIVATE_PROVIDER_PROPERTIES in module.directives
       generateAssistedFactories = MetroDirectives.GENERATE_ASSISTED_FACTORIES in module.directives
