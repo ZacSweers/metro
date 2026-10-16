@@ -11,8 +11,13 @@ import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.fileForTopLevelPluginDeclarations
 
-/** Adapts IR APIs to Kotlin 2.5.0-dev-7307. */
+/**
+ * Adapts IR APIs to Kotlin 2.5.0-dev-7307. Metro's companion-block support starts with this
+ * adapter, which Kotlin 2.5.0-Beta1 uses.
+ */
 public class CompatContextImpl : CompatContext by DelegateType() {
+  override val supportsCompanionBlocks: Boolean = true
+
   override fun IrFile.clearTopLevelPluginFileMarkerCompat() {
     fileForTopLevelPluginDeclarations = false
   }

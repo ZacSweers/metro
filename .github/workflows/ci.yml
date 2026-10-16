@@ -314,6 +314,9 @@ jobs:
       fail-fast: false
       matrix:
         suite: ${{ fromJSON(github.ref != 'refs/heads/main' && '["smoke"]' || '["standard", "fast-init", "contribution-providers"]') }}
+    env:
+      # PR smoke tests use the default compiler. Main runs the full JS suites with the latest compiler.
+      METRO_TEST_COMPILER_VERSION: ${{ matrix.suite == 'smoke' && needs.generate-matrix.outputs.default_kotlin_version || needs.generate-matrix.outputs.latest_kotlin_version }}
     permissions:
       checks: write
 
@@ -328,12 +331,16 @@ jobs:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
       - name: Generate tests
-        run: ./scripts/run-ci-gradle.sh :compiler-tests:generateTests --quiet ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+        run: |
+          ./scripts/run-ci-gradle.sh :compiler-tests:generateTests --quiet \
+            "-Pmetro.testCompilerVersion=$METRO_TEST_COMPILER_VERSION" \
+            ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
 
       - name: Run JS box smoke tests
         if: matrix.suite == 'smoke'
         run: |
           ./scripts/run-ci-gradle.sh :compiler-tests:test --quiet \
+            "-Pmetro.testCompilerVersion=$METRO_TEST_COMPILER_VERSION" \
             --tests 'dev.zacsweers.metro.compiler.JsBoxTestGenerated$Inject$Assisted.testBasicAssistedInject' \
             --tests 'dev.zacsweers.metro.compiler.JsBoxTestGenerated$Multibindings.testMapProviderLazyValues' \
             --tests 'dev.zacsweers.metro.compiler.JsBoxTestGenerated$Suspend.testMixedSuspendChain' \
@@ -354,18 +361,21 @@ jobs:
         if: matrix.suite == 'standard'
         run: |
           ./scripts/run-ci-gradle.sh :compiler-tests:test --quiet \
+            "-Pmetro.testCompilerVersion=$METRO_TEST_COMPILER_VERSION" \
             --tests 'dev.zacsweers.metro.compiler.JsBoxTestGenerated*'
 
       - name: Run FastInit JS box tests
         if: matrix.suite == 'fast-init'
         run: |
           ./scripts/run-ci-gradle.sh :compiler-tests:test --quiet \
+            "-Pmetro.testCompilerVersion=$METRO_TEST_COMPILER_VERSION" \
             --tests 'dev.zacsweers.metro.compiler.JsFastInitBoxTestGenerated*'
 
       - name: Run contribution provider JS box tests
         if: matrix.suite == 'contribution-providers'
         run: |
           ./scripts/run-ci-gradle.sh :compiler-tests:test --quiet \
+            "-Pmetro.testCompilerVersion=$METRO_TEST_COMPILER_VERSION" \
             --tests 'dev.zacsweers.metro.compiler.JsContributionProvidersBoxTestGenerated*'
 
       - name: (Fail-only) Upload reports
