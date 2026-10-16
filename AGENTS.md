@@ -132,6 +132,9 @@ For Compose-heavy JS tests that exhaust the default 2g heap, use `-Pmetro.compil
 ## Git
 
 - Name branches `z/camelCaseTopic`, like `z/diagnosticLevel`. Never commit directly on `main`.
+- Create feature branches with `git switch --no-track -c <feature-branch> <base-ref>`. Keep the upstream unset until the feature branch is published.
+- Publish feature branches with `git push --set-upstream <remote> HEAD:refs/heads/<feature-branch>`. The local branch and its upstream must have the same name. Feature branches must never track `main`.
+- Before any commit or push, verify the current branch, working tree, upstream, push destination, and remote URL. Pushes to `main` require explicit user authorization.
 
 ## Working Style
 
