@@ -792,6 +792,24 @@ public interface CompatContext {
     message = "IrAnnotation arguments moved from getValueArgument(Name) to argumentMapping",
   )
   public fun IrConstructorCall.getAnnotationArgumentCompat(name: Name): IrExpression?
+
+  /** Whether Metro supports companion blocks with this adapter. */
+  @CompatApi(
+    since = "2.5.0-dev-7307",
+    reason = CompatApi.Reason.COMPAT,
+    message =
+      "Metro's companion-block support starts with the 2.5.0-dev-7307 adapter (Kotlin 2.5.0-Beta1). Older adapters report false.",
+  )
+  public val supportsCompanionBlocks: Boolean
+    get() = false
+
+  /** Checks whether companion blocks are enabled for this compilation. */
+  @CompatApi(
+    since = "2.5.0-dev-6460",
+    reason = CompatApi.Reason.COMPAT,
+    message = "The 2.5.0-dev-6460 adapter reads LanguageFeature.CompanionBlocks",
+  )
+  public fun LanguageVersionSettings.companionBlocksEnabledCompat(): Boolean = false
 }
 
 private data class FactoryData(

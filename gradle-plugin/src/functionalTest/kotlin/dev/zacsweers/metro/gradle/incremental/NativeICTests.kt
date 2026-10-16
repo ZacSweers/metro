@@ -24,7 +24,15 @@ class NativeICTests : BaseIncrementalCompilationTest(KmpTarget.NATIVE_HOST) {
     )
 
     val fixture =
-      object : MetroProject(additionalGradleProperties = listOf("kotlin.incremental.native=true")) {
+      object :
+        MetroProject(
+          additionalGradleProperties =
+            listOf(
+              "kotlin.incremental.native=true",
+              // Native linking runs in the Gradle daemon and needs more metaspace.
+              "org.gradle.jvmargs=-Xmx2g -Dfile.encoding=UTF-8 -XX:+HeapDumpOnOutOfMemoryError -XX:MaxMetaspaceSize=1g",
+            ),
+        ) {
         override fun buildGradleProject() = multiModuleProject {
           root {
             sources(appGraphAndMain)
