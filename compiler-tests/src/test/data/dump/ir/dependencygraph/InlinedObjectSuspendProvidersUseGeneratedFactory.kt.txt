@@ -51,7 +51,7 @@ interface AppGraph {
 @BindingContainer
 object Bindings {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideObject", propertyName = "", startOffset = 118, endOffset = 178, newInstanceName = "provideObject")
+  @CallableMetadata(callableName = "provideObject", propertyName = "", startOffset = 118, endOffset = 178, newInstanceName = "provideObject", isCompanionBlockMember = false)
   object ProvideObjectMetroFactory : Factory<InlinedObject> {
     private constructor() /* primary */ {
       super/*Any*/()

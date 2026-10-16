@@ -23,6 +23,8 @@ import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isObject
+import org.jetbrains.kotlin.ir.util.isStatic
+import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.name.ClassId
 
@@ -162,6 +164,12 @@ private fun createGraphProto(
               when (factory) {
                 is ProviderFactory.Metro -> factory.companionMode.toProto()
                 is ProviderFactory.Dagger -> CompanionModeProto.COMPANION_OBJECT
+              },
+            is_companion_block_member =
+              when (factory) {
+                is ProviderFactory.Metro ->
+                  !factory.function.parentAsClass.isObject && factory.function.isStatic
+                is ProviderFactory.Dagger -> false
               },
           )
         }

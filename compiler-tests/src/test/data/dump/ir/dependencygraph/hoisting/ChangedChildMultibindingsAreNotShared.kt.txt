@@ -90,7 +90,7 @@ interface AppGraph : ChildA.Factory, ChildB.Factory {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 591, endOffset = 626, newInstanceName = "provideInt")
+  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 591, endOffset = 626, newInstanceName = "provideInt", isCompanionBlockMember = false)
   class ProvideIntMetroFactory : Factory<Int> {
     private /* final field */ val instance: AppGraph = instance
     companion object Companion {
@@ -137,7 +137,7 @@ interface AppGraph : ChildA.Factory, ChildB.Factory {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideOne", propertyName = "", startOffset = 630, endOffset = 693, newInstanceName = "provideOne")
+  @CallableMetadata(callableName = "provideOne", propertyName = "", startOffset = 630, endOffset = 693, newInstanceName = "provideOne", isCompanionBlockMember = false)
   class ProvideOneMetroFactory : Factory<String> {
     private /* final field */ val instance: AppGraph = instance
     private /* final field */ val int2: Provider<Int> = int
@@ -201,7 +201,7 @@ interface AppGraph : ChildA.Factory, ChildB.Factory {
 @GraphExtension
 interface ChildA {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideA", propertyName = "", startOffset = 183, endOffset = 230, newInstanceName = "provideA")
+  @CallableMetadata(callableName = "provideA", propertyName = "", startOffset = 183, endOffset = 230, newInstanceName = "provideA", isCompanionBlockMember = false)
   class ProvideAMetroFactory : Factory<String> {
     private /* final field */ val instance: ChildA = instance
     companion object Companion {
@@ -268,7 +268,7 @@ interface ChildA {
 @GraphExtension
 interface ChildB {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideB", propertyName = "", startOffset = 383, endOffset = 430, newInstanceName = "provideB")
+  @CallableMetadata(callableName = "provideB", propertyName = "", startOffset = 383, endOffset = 430, newInstanceName = "provideB", isCompanionBlockMember = false)
   class ProvideBMetroFactory : Factory<String> {
     private /* final field */ val instance: ChildB = instance
     companion object Companion {

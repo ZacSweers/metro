@@ -63,7 +63,7 @@ interface ExampleGraph {
 @Module
 class ModuleWithInternal {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 155, endOffset = 200, newInstanceName = "provideInt")
+  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 155, endOffset = 200, newInstanceName = "provideInt", isCompanionBlockMember = false)
   class ProvideIntMetroFactory : Factory<Int> {
     private /* final field */ val instance: ModuleWithInternal = instance
     companion object Companion {

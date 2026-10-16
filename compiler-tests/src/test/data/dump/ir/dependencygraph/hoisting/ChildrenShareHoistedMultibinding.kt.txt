@@ -83,7 +83,7 @@ interface AppGraph : ChildA.Factory, ChildB.Factory {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 499, endOffset = 534, newInstanceName = "provideInt")
+  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 499, endOffset = 534, newInstanceName = "provideInt", isCompanionBlockMember = false)
   class ProvideIntMetroFactory : Factory<Int> {
     private /* final field */ val instance: AppGraph = instance
     companion object Companion {
@@ -130,7 +130,7 @@ interface AppGraph : ChildA.Factory, ChildB.Factory {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideOne", propertyName = "", startOffset = 538, endOffset = 601, newInstanceName = "provideOne")
+  @CallableMetadata(callableName = "provideOne", propertyName = "", startOffset = 538, endOffset = 601, newInstanceName = "provideOne", isCompanionBlockMember = false)
   class ProvideOneMetroFactory : Factory<String> {
     private /* final field */ val instance: AppGraph = instance
     private /* final field */ val int2: Provider<Int> = int
@@ -179,7 +179,7 @@ interface AppGraph : ChildA.Factory, ChildB.Factory {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideTwo", propertyName = "", startOffset = 605, endOffset = 668, newInstanceName = "provideTwo")
+  @CallableMetadata(callableName = "provideTwo", propertyName = "", startOffset = 605, endOffset = 668, newInstanceName = "provideTwo", isCompanionBlockMember = false)
   class ProvideTwoMetroFactory : Factory<String> {
     private /* final field */ val instance: AppGraph = instance
     private /* final field */ val int2: Provider<Int> = int
