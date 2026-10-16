@@ -1680,6 +1680,12 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
       }
 
       @Test
+      @TestMetadata("DefaultDependenciesPreserveChildBindings.kt")
+      public void testDefaultDependenciesPreserveChildBindings() {
+        run("DefaultDependenciesPreserveChildBindings.kt");
+      }
+
+      @Test
       @TestMetadata("ExplicitRedundantTransitiveContainersStillWork.kt")
       public void testExplicitRedundantTransitiveContainersStillWork() {
         run("ExplicitRedundantTransitiveContainersStillWork.kt");

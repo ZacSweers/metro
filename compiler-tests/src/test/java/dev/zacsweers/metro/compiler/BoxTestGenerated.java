@@ -2014,6 +2014,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("DefaultDependenciesPreserveChildBindings.kt")
+      public void testDefaultDependenciesPreserveChildBindings() {
+        run("DefaultDependenciesPreserveChildBindings.kt");
+      }
+
+      @Test
       @TestMetadata("ExplicitRedundantTransitiveContainersStillWork.kt")
       public void testExplicitRedundantTransitiveContainersStillWork() {
         run("ExplicitRedundantTransitiveContainersStillWork.kt");
@@ -3233,6 +3239,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       @TestMetadata("NestedSuspendWrapperInterop.kt")
       public void testNestedSuspendWrapperInterop() {
         run("NestedSuspendWrapperInterop.kt");
+      }
+
+      @Test
+      @TestMetadata("OptionalDependenciesPreserveChildBindings.kt")
+      public void testOptionalDependenciesPreserveChildBindings() {
+        run("OptionalDependenciesPreserveChildBindings.kt");
       }
 
       @Test

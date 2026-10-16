@@ -1,0 +1,697 @@
+class Adapter {
+  @Named(name = "absent")
+  val absent: Optional<Exporter>
+    field = absent
+    get
+
+  @Named(name = "present")
+  val present: Optional<Exporter>
+    field = present
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<Adapter> {
+    private /* final field */ val absent: Provider<Optional<Exporter>> = absent
+    private /* final field */ val present: Provider<Optional<Exporter>> = present
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(@Named(name = "absent") absent: Provider<Optional<Exporter>>, @Named(name = "present") present: Provider<Optional<Exporter>>): MetroFactory {
+        return MetroFactory(absent = absent, present = present)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(@Named(name = "absent") absent: Optional<Exporter>, @Named(name = "present") present: Optional<Exporter>): Adapter {
+        return Adapter(absent = absent, present = present)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(absent: Provider<Optional<Exporter>>, present: Provider<Optional<Exporter>>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(@Named(name = "absent") absent: Optional<Exporter>, @Named(name = "present") present: Optional<Exporter>): Adapter {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Adapter {
+      return MetroFactory/* companion */.newInstance(absent = <this>.#absent.invoke(), present = <this>.#present.invoke())
+    }
+
+  }
+
+  @Inject
+  constructor(@Named(name = "absent") absent: Optional<Exporter>, @Named(name = "present") present: Optional<Exporter>) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+class Consumer {
+  val adapters: Provider<Set<@JvmSuppressWildcards Adapter>>
+    field = adapters
+    get
+
+  val providers: Map<String, @JvmSuppressWildcards Provider<Adapter>>
+    field = providers
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<Consumer> {
+    private /* final field */ val adapters: Provider<Set<Adapter>> = adapters
+    private /* final field */ val providers: Provider<Map<String, Provider<Adapter>>> = providers
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(adapters: Provider<Set<Adapter>>, providers: Provider<Map<String, Provider<Adapter>>>): MetroFactory {
+        return MetroFactory(adapters = adapters, providers = providers)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(adapters: Provider<Set<@JvmSuppressWildcards Adapter>>, providers: Map<String, @JvmSuppressWildcards Provider<Adapter>>): Consumer {
+        return Consumer(adapters = adapters, providers = providers)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(adapters: Provider<Set<Adapter>>, providers: Provider<Map<String, Provider<Adapter>>>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(adapters: Provider<Set<@JvmSuppressWildcards Adapter>>, providers: Map<String, @JvmSuppressWildcards Provider<Adapter>>): Consumer {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Consumer {
+      return MetroFactory/* companion */.newInstance(adapters = asJavaxProvider<Set<Adapter>>(/* <this> = <this>.#adapters */), providers = <this>.#providers.invoke())
+    }
+
+  }
+
+  @Inject
+  constructor(adapters: Provider<Set<@JvmSuppressWildcards Adapter>>, providers: Map<String, @JvmSuppressWildcards Provider<Adapter>>) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+data class Exporter {
+  val name: String
+    field = name
+    get
+
+  constructor(name: String) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+  operator fun component1(): String {
+    return <this>.#name
+  }
+
+  fun copy(name: String = <this>.#name): Exporter {
+    return Exporter(name = name)
+  }
+
+  override operator fun equals(other: Any?): Boolean {
+    when {
+      EQEQEQ(arg0 = <this>, arg1 = other) -> return true
+    }
+    when {
+      other !is Exporter -> return false
+    }
+    val tmp0_other_with_cast: Exporter = other /*as Exporter */
+    when {
+      EQEQ(arg0 = <this>.#name, arg1 = tmp0_other_with_cast.#name).not() -> return false
+    }
+    return true
+  }
+
+  override fun hashCode(): Int {
+    return <this>.#name.hashCode()
+  }
+
+  override fun toString(): String {
+    return "Exporter(" + "name=" + <this>.#name + ")"
+  }
+
+}
+
+@Component(modules = [Bindings::class])
+interface AppGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : AppGraph {
+    private val adapterProvider: Provider<Adapter>
+      field = create(absent = providerOf<Optional<Exporter>>(value = empty<Exporter>()), present = local fun <anonymous>(): Optional<Exporter> {
+        return of<Exporter>(p0 = Bindings/* companion */.exporter())
+      }
+ /*-> Provider<Optional<Exporter>> */)
+
+    @DependencyGraph
+    private class ChildGraphImpl : ChildGraph {
+      private val appGraphImpl: Impl
+        field = appGraphImpl
+
+      private class FactoryImpl : ChildGraph.Factory {
+        package /* final field */ val AppGraphImpl: Impl = AppGraphImpl
+        constructor(AppGraphImpl: Impl) /* primary */ {
+          super/*Any*/()
+          /* <init>() */
+
+        }
+
+        override fun create(): ChildGraph {
+          return ChildGraphImpl(appGraphImpl = <this>.#AppGraphImpl)
+        }
+
+      }
+
+      @DependencyGraph(bindingContainers = [ChildBindings::class])
+      private class ChangedGrandchildImpl : ChangedGrandchild {
+        private val childGraphImpl: ChildGraphImpl
+          field = childGraphImpl
+
+        private val adapterProvider: Provider<Adapter>
+          field = create(absent = local fun <anonymous>(): Optional<Exporter> {
+            return of<Exporter>(p0 = ChildBindings.absentExporter())
+          }
+ /*-> Provider<Optional<Exporter>> */, present = local fun <anonymous>(): Optional<Exporter> {
+            return of<Exporter>(p0 = ChildBindings.presentExporter())
+          }
+ /*-> Provider<Optional<Exporter>> */)
+
+        private class FactoryImpl : ChangedGrandchild.Factory {
+          package /* final field */ val ChildGraphImpl: ChildGraphImpl = ChildGraphImpl
+          constructor(ChildGraphImpl: ChildGraphImpl) /* primary */ {
+            super/*Any*/()
+            /* <init>() */
+
+          }
+
+          override fun create(): ChangedGrandchild {
+            return ChangedGrandchildImpl(childGraphImpl = <this>.#ChildGraphImpl)
+          }
+
+        }
+
+        @DependencyGraph
+        private class UnchangedGrandchildImpl : UnchangedGrandchild {
+          private val changedGrandchildImpl: ChangedGrandchildImpl
+            field = changedGrandchildImpl
+
+          private class FactoryImpl : UnchangedGrandchild.Factory {
+            package /* final field */ val ChangedGrandchildImpl: ChangedGrandchildImpl = ChangedGrandchildImpl
+            constructor(ChangedGrandchildImpl: ChangedGrandchildImpl) /* primary */ {
+              super/*Any*/()
+              /* <init>() */
+
+            }
+
+            override fun create(): UnchangedGrandchild {
+              return UnchangedGrandchildImpl(changedGrandchildImpl = <this>.#ChangedGrandchildImpl)
+            }
+
+          }
+
+          constructor(changedGrandchildImpl: ChangedGrandchildImpl) /* primary */ {
+            super/*Any*/()
+            /* <init>() */
+
+          }
+
+          override val consumer: Consumer
+            override get(): Consumer {
+              return <this>.#changedGrandchildImpl.<get-consumer2>()
+            }
+
+        }
+
+        constructor(childGraphImpl: ChildGraphImpl) /* primary */ {
+          super/*Any*/()
+          /* <init>() */
+
+        }
+
+        override val consumer: Consumer
+          override get(): Consumer {
+            return <this>.<get-consumer2>()
+          }
+
+        private val consumer2: Consumer
+          private get(): Consumer {
+            return Consumer(adapters = asJavaxProvider<Set<Adapter>>(/* <this> = <this>.<get-setOfAdapterProvider>() */), providers = <this>.<get-mapOfStringToAdapter>())
+          }
+
+        private val mapOfStringToAdapter: Map<String, Provider<Adapter>>
+          private get(): Map<String, Provider<Adapter>> {
+            return buildMap<String, Provider<Adapter>>(capacity = 1, builderAction = local fun MutableMap<String, Provider<Adapter>>.<anonymous>() {
+              $receiver.put(key = "adapter", value = asJavaxProvider<Adapter>(/* <this> = <this>.#adapterProvider */))
+            }
+)
+          }
+
+        private val setOfAdapterProvider: Provider<Set<Adapter>>
+          private get(): Provider<Set<Adapter>> {
+            return singleton<Adapter>(provider = <this>.#adapterProvider)
+          }
+
+        override val unchangedFactory: UnchangedGrandchild.Factory
+          override get(): UnchangedGrandchild.Factory {
+            return AppGraph.Impl.ChildGraphImpl.ChangedGrandchildImpl.UnchangedGrandchildImpl.FactoryImpl(ChangedGrandchildImpl = <this>)
+          }
+
+      }
+
+      @DependencyGraph
+      private class UnchangedGrandchildImpl : UnchangedGrandchild {
+        private val childGraphImpl: ChildGraphImpl
+          field = childGraphImpl
+
+        private class FactoryImpl : UnchangedGrandchild.Factory {
+          package /* final field */ val ChildGraphImpl: ChildGraphImpl = ChildGraphImpl
+          constructor(ChildGraphImpl: ChildGraphImpl) /* primary */ {
+            super/*Any*/()
+            /* <init>() */
+
+          }
+
+          override fun create(): UnchangedGrandchild {
+            return UnchangedGrandchildImpl(childGraphImpl = <this>.#ChildGraphImpl)
+          }
+
+        }
+
+        constructor(childGraphImpl: ChildGraphImpl) /* primary */ {
+          super/*Any*/()
+          /* <init>() */
+
+        }
+
+        override val consumer: Consumer
+          override get(): Consumer {
+            return <this>.#childGraphImpl.<get-consumer2>()
+          }
+
+      }
+
+      constructor(appGraphImpl: Impl) /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      override val changedFactory: ChangedGrandchild.Factory
+        override get(): ChangedGrandchild.Factory {
+          return AppGraph.Impl.ChildGraphImpl.ChangedGrandchildImpl.FactoryImpl(ChildGraphImpl = <this>)
+        }
+
+      override val consumer: Consumer
+        override get(): Consumer {
+          return <this>.<get-consumer2>()
+        }
+
+      private val consumer2: Consumer
+        private get(): Consumer {
+          return Consumer(adapters = asJavaxProvider<Set<Adapter>>(/* <this> = <this>.#appGraphImpl.<get-setOfAdapterProvider>() */), providers = <this>.#appGraphImpl.<get-mapOfStringToAdapter>())
+        }
+
+      private val factoryFactory: UnchangedGrandchild.Factory
+        private get(): UnchangedGrandchild.Factory {
+          return AppGraph.Impl.ChildGraphImpl.UnchangedGrandchildImpl.FactoryImpl(ChildGraphImpl = <this>)
+        }
+
+      override val unchangedFactory: UnchangedGrandchild.Factory
+        override get(): UnchangedGrandchild.Factory {
+          return <this>.<get-factoryFactory>()
+        }
+
+    }
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override val adapters: Provider<Set<@JvmSuppressWildcards Adapter>>
+      override get(): Provider<Set<@JvmSuppressWildcards Adapter>> {
+        return asJavaxProvider<Set<Adapter>>(/* <this> = <this>.<get-setOfAdapterProvider>() */)
+      }
+
+    override val childFactory: ChildGraph.Factory
+      override get(): ChildGraph.Factory {
+        return AppGraph.Impl.ChildGraphImpl.FactoryImpl(AppGraphImpl = <this>)
+      }
+
+    private val mapOfStringToAdapter: Map<String, Provider<Adapter>>
+      private get(): Map<String, Provider<Adapter>> {
+        return buildMap<String, Provider<Adapter>>(capacity = 1, builderAction = local fun MutableMap<String, Provider<Adapter>>.<anonymous>() {
+          $receiver.put(key = "adapter", value = asJavaxProvider<Adapter>(/* <this> = <this>.#adapterProvider */))
+        }
+)
+      }
+
+    override val providers: Map<String, @JvmSuppressWildcards Provider<Adapter>>
+      override get(): Map<String, @JvmSuppressWildcards Provider<Adapter>> {
+        return <this>.<get-mapOfStringToAdapter>()
+      }
+
+    private val setOfAdapterProvider: Provider<Set<Adapter>>
+      private get(): Provider<Set<Adapter>> {
+        return singleton<Adapter>(provider = <this>.#adapterProvider)
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
+    operator fun invoke(): AppGraph {
+      return Impl()
+    }
+
+  }
+
+  abstract val adapters: Provider<Set<@JvmSuppressWildcards Adapter>>
+    abstract get
+
+  abstract val childFactory: ChildGraph.Factory
+    abstract get
+
+  abstract val providers: Map<String, @JvmSuppressWildcards Provider<Adapter>>
+    abstract get
+
+}
+
+@Module
+interface Bindings {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @ComptimeOnly
+  abstract class BindsMirror {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @BindsOptionalOf
+    @Named(name = "absent")
+    @CallableMetadata(callableName = "absentExporter", propertyName = "", startOffset = 871, endOffset = 901)
+    fun absentExporter1495970229_opt(): Exporter {
+      return error(message = "Never called")
+    }
+
+    @Binds
+    @IntoSet
+    @CallableMetadata(callableName = "adapter", propertyName = "", startOffset = 653, endOffset = 692)
+    fun adapter_intoset(instance: Adapter): Adapter {
+      return error(message = "Never called")
+    }
+
+    @Binds
+    @IntoMap
+    @StringKey(value = "adapter")
+    @CallableMetadata(callableName = "mappedAdapter", propertyName = "", startOffset = 782, endOffset = 827)
+    fun mappedAdapter782188955_intomap(instance: Adapter): Adapter {
+      return error(message = "Never called")
+    }
+
+    @BindsOptionalOf
+    @Named(name = "present")
+    @CallableMetadata(callableName = "presentExporter", propertyName = "", startOffset = 946, endOffset = 977)
+    fun presentExporter755831917_opt(): Exporter {
+      return error(message = "Never called")
+    }
+
+  }
+
+  companion object Companion {
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    @CallableMetadata(callableName = "exporter", propertyName = "", startOffset = 1004, endOffset = 1084, newInstanceName = "exporter")
+    object ExporterMetroFactory : Factory<Exporter> {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(): ExporterMetroFactory {
+        return ExporterMetroFactory
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun exporter(): Exporter {
+        return Bindings/* companion */.exporter()
+      }
+
+      @Named(name = "present")
+      @ComptimeOnly
+      @HiddenFromObjC
+      fun declarationMirror(): Exporter {
+        return error(message = "Never called")
+      }
+
+      @HiddenFromObjC
+      override operator fun invoke(): Exporter {
+        return ExporterMetroFactory.exporter()
+      }
+
+    }
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @Provides
+    @Named(name = "present")
+    fun exporter(): Exporter {
+      return Exporter(name = "parent")
+    }
+
+  }
+
+  @BindsOptionalOf
+  @Named(name = "absent")
+  @ComptimeOnly
+  fun absentExporter(): Exporter {
+    return error(message = "Never called")
+  }
+
+  @Binds
+  @IntoSet
+  @ComptimeOnly
+  fun adapter(instance: Adapter): Adapter {
+    return error(message = "Never called")
+  }
+
+  @Binds
+  @IntoMap
+  @StringKey(value = "adapter")
+  @ComptimeOnly
+  fun mappedAdapter(instance: Adapter): Adapter {
+    return error(message = "Never called")
+  }
+
+  @BindsOptionalOf
+  @Named(name = "present")
+  @ComptimeOnly
+  fun presentExporter(): Exporter {
+    return error(message = "Never called")
+  }
+
+}
+
+@Subcomponent(modules = [ChildBindings::class])
+interface ChangedGrandchild {
+  @Subcomponent.Factory
+  interface Factory {
+    abstract fun create(): ChangedGrandchild
+
+  }
+
+  abstract val consumer: Consumer
+    abstract get
+
+  abstract val unchangedFactory: UnchangedGrandchild.Factory
+    abstract get
+
+}
+
+@Subcomponent
+interface ChildGraph {
+  @Subcomponent.Factory
+  interface Factory {
+    abstract fun create(): ChildGraph
+
+  }
+
+  abstract val changedFactory: ChangedGrandchild.Factory
+    abstract get
+
+  abstract val consumer: Consumer
+    abstract get
+
+  abstract val unchangedFactory: UnchangedGrandchild.Factory
+    abstract get
+
+}
+
+@Subcomponent
+interface UnchangedGrandchild {
+  @Subcomponent.Factory
+  interface Factory {
+    abstract fun create(): UnchangedGrandchild
+
+  }
+
+  abstract val consumer: Consumer
+    abstract get
+
+}
+
+@Module
+object ChildBindings {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "absentExporter", propertyName = "", startOffset = 1809, endOffset = 1900, newInstanceName = "absentExporter")
+  object AbsentExporterMetroFactory : Factory<Exporter> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun create(): AbsentExporterMetroFactory {
+      return AbsentExporterMetroFactory
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun absentExporter(): Exporter {
+      return ChildBindings.absentExporter()
+    }
+
+    @Named(name = "absent")
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): Exporter {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Exporter {
+      return AbsentExporterMetroFactory.absentExporter()
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "presentExporter", propertyName = "", startOffset = 1903, endOffset = 1997, newInstanceName = "presentExporter")
+  object PresentExporterMetroFactory : Factory<Exporter> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun create(): PresentExporterMetroFactory {
+      return PresentExporterMetroFactory
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun presentExporter(): Exporter {
+      return ChildBindings.presentExporter()
+    }
+
+    @Named(name = "present")
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): Exporter {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Exporter {
+      return PresentExporterMetroFactory.presentExporter()
+    }
+
+  }
+
+  private constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+  @Provides
+  @Named(name = "absent")
+  fun absentExporter(): Exporter {
+    return Exporter(name = "child-absent")
+  }
+
+  @Provides
+  @Named(name = "present")
+  fun presentExporter(): Exporter {
+    return Exporter(name = "child-present")
+  }
+
+}
