@@ -13,7 +13,7 @@ interface ExampleGraph {
 
   @Provides
   fun provideDescription(@OptionalBinding @Marker tracker: Tracker = Tracker()): String {
-    return "tracker=" + tracker.javaClass.simpleName
+    return "tracker=" + tracker::class.simpleName
   }
 }
 

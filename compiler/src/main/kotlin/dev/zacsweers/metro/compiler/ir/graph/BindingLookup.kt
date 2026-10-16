@@ -894,6 +894,17 @@ internal class BindingLookup(
 
       val classAnnotations = irClass.metroAnnotations(context.metroSymbols.classIds)
 
+      // A class only satisfies a qualified key when it carries that same qualifier.
+      val requestQualifier = key.qualifier
+      val isQualifiedRequest = requestQualifier != null
+      val qualifierMatches = requestQualifier == classAnnotations.qualifier
+      if (isQualifiedRequest && !qualifierMatches) {
+        if (contextKey.hasDefault) {
+          return@getOrPut setOf(IrBinding.Absent(key))
+        }
+        return@getOrPut emptySet()
+      }
+
       if (irClass.isObject) {
         irClass.declarationMirrorFunctionOrNull()?.let {
           // We don't actually call this function but it stores information about qualifier/scope
