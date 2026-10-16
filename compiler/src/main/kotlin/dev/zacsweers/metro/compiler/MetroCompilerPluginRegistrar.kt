@@ -119,6 +119,13 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
         )
         return
       }
+      if (!options.generateClassesInIr) {
+        messageCollector.report(
+          CompilerMessageSeverity.ERROR,
+          "$modeOption requires generate-classes-in-ir=true.",
+        )
+        return
+      }
     }
 
     if (options.maxIrErrorsCount < 1) {
