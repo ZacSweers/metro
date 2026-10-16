@@ -26,7 +26,7 @@
       
       
       <link rel="icon" href="../site-assets/img/favicon.ico">
-      <meta name="generator" content="zensical-0.0.70">
+      <meta name="generator" content="zensical-0.0.71">
     
     
       
@@ -8477,6 +8477,7 @@
 <li><strong>[metrox-viewmodel/metrox-viewmodel-compose]</strong> Drop Apple x86_64 targets removed by upstream dependencies. <code>metrox-viewmodel</code> drops <code>iosX64</code>, <code>macosX64</code>, <code>tvosX64</code>, and <code>watchosX64</code>. <code>metrox-viewmodel-compose</code> drops <code>iosX64</code> and <code>macosX64</code>.</li>
 <li>Update <code>androidx.annotation</code> to <code>1.11.0</code> and <code>androidx.core</code> to <code>1.19.1</code>.</li>
 <li><strong>[compat]</strong> Test against Kotlin <code>2.5.0-dev-10106</code>.</li>
+<li><strong>[FIR]</strong> Report a <code>@MapKey</code> on a member with no binding annotation as a dedicated <code>MAP_KEY_WITHOUT_INTO_MAP</code> error. If another tool binds the member into a map, lower it with the <code>diagnostic-level</code> compiler option or <code>@Suppress</code>. Binding declarations like <code>@Provides</code> keep the existing error.</li>
 <li><strong>[FIR/interop]</strong> Report a <code>@MapKey</code> on a class with no Metro contribution annotation as a dedicated <code>MAP_KEY_WITHOUT_CONTRIBUTES_INTO_MAP</code> error. If another tool binds the class into a map, lower it to a warning with the <code>diagnostic-level</code> compiler option.</li>
 <li><strong>[FIR/IR/IC]</strong> Enable <code>omit-redundant-mirrors</code> by default on Kotlin 2.4.0 and newer to omit generated declaration mirrors when compiler metadata and declaration finders provide the same information. It remains disabled by default on older Kotlin versions. Disable it with <code>compilerOptions.disable("omit-redundant-mirrors")</code> in the <code>metro</code> DSL.</li>
 <li><strong>[Gradle]</strong> <code>enableTopLevelFunctionInjection</code> is <strong>disabled by default</strong> for now on <strong>all</strong> Kotlin versions because it makes incremental builds recompile more files. If you use top-level function injection, enable it with <code>enableTopLevelFunctionInjection.set(true)</code> in the <code>metro</code> DSL. See <a href="../docs/performance/#incremental-compilation">incremental compilation perf docs</a>.</li>
