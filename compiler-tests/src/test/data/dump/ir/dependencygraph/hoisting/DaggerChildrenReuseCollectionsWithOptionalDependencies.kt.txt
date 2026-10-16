@@ -1,10 +1,8 @@
 class Adapter {
-  @Named(name = "absent")
   val absent: Optional<Exporter>
     field = absent
     get
 
-  @Named(name = "present")
   val present: Optional<Exporter>
     field = present
     get
@@ -440,14 +438,14 @@ interface Bindings {
 
     @BindsOptionalOf
     @Named(name = "absent")
-    @CallableMetadata(callableName = "absentExporter", propertyName = "", startOffset = 871, endOffset = 901)
+    @CallableMetadata(callableName = "absentExporter", propertyName = "", startOffset = 913, endOffset = 943)
     fun absentExporter1495970229_opt(): Exporter {
       return error(message = "Never called")
     }
 
     @Binds
     @IntoSet
-    @CallableMetadata(callableName = "adapter", propertyName = "", startOffset = 653, endOffset = 692)
+    @CallableMetadata(callableName = "adapter", propertyName = "", startOffset = 695, endOffset = 734)
     fun adapter_intoset(instance: Adapter): Adapter {
       return error(message = "Never called")
     }
@@ -455,14 +453,14 @@ interface Bindings {
     @Binds
     @IntoMap
     @StringKey(value = "adapter")
-    @CallableMetadata(callableName = "mappedAdapter", propertyName = "", startOffset = 782, endOffset = 827)
+    @CallableMetadata(callableName = "mappedAdapter", propertyName = "", startOffset = 824, endOffset = 869)
     fun mappedAdapter782188955_intomap(instance: Adapter): Adapter {
       return error(message = "Never called")
     }
 
     @BindsOptionalOf
     @Named(name = "present")
-    @CallableMetadata(callableName = "presentExporter", propertyName = "", startOffset = 946, endOffset = 977)
+    @CallableMetadata(callableName = "presentExporter", propertyName = "", startOffset = 988, endOffset = 1019)
     fun presentExporter755831917_opt(): Exporter {
       return error(message = "Never called")
     }
@@ -471,7 +469,7 @@ interface Bindings {
 
   companion object Companion {
     @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-    @CallableMetadata(callableName = "exporter", propertyName = "", startOffset = 1004, endOffset = 1084, newInstanceName = "exporter")
+    @CallableMetadata(callableName = "exporter", propertyName = "", startOffset = 1046, endOffset = 1126, newInstanceName = "exporter")
     object ExporterMetroFactory : Factory<Exporter> {
       private constructor() /* primary */ {
         super/*Any*/()
@@ -603,7 +601,7 @@ interface UnchangedGrandchild {
 @Module
 object ChildBindings {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "absentExporter", propertyName = "", startOffset = 1809, endOffset = 1900, newInstanceName = "absentExporter")
+  @CallableMetadata(callableName = "absentExporter", propertyName = "", startOffset = 1851, endOffset = 1942, newInstanceName = "absentExporter")
   object AbsentExporterMetroFactory : Factory<Exporter> {
     private constructor() /* primary */ {
       super/*Any*/()
@@ -640,7 +638,7 @@ object ChildBindings {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "presentExporter", propertyName = "", startOffset = 1903, endOffset = 1997, newInstanceName = "presentExporter")
+  @CallableMetadata(callableName = "presentExporter", propertyName = "", startOffset = 1945, endOffset = 2039, newInstanceName = "presentExporter")
   object PresentExporterMetroFactory : Factory<Exporter> {
     private constructor() /* primary */ {
       super/*Any*/()
@@ -695,3 +693,4 @@ object ChildBindings {
   }
 
 }
+

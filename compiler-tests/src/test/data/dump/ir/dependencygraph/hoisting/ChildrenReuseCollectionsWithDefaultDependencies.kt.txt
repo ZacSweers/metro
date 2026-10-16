@@ -5,12 +5,10 @@ private var fallbackCalls: Int
 
 @Inject
 class Adapter {
-  @Named(name = "absent")
   val absent: Exporter?
     field = absent
     get
 
-  @Named(name = "present")
   val present: Exporter?
     field = present
     get
@@ -368,7 +366,7 @@ interface AppGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "exporter", propertyName = "", startOffset = 989, endOffset = 1063, newInstanceName = "exporter")
+  @CallableMetadata(callableName = "exporter", propertyName = "", startOffset = 1031, endOffset = 1105, newInstanceName = "exporter")
   class ExporterMetroFactory : Factory<Exporter?> {
     private /* final field */ val instance: AppGraph = instance
     companion object Companion {
@@ -452,7 +450,7 @@ interface Bindings {
 
     @Binds
     @IntoSet
-    @CallableMetadata(callableName = "adapter", propertyName = "", startOffset = 593, endOffset = 632)
+    @CallableMetadata(callableName = "adapter", propertyName = "", startOffset = 635, endOffset = 674)
     fun adapter_intoset(instance: Adapter): Adapter {
       return error(message = "Never called")
     }
@@ -460,7 +458,7 @@ interface Bindings {
     @Binds
     @IntoMap
     @StringKey(value = "adapter")
-    @CallableMetadata(callableName = "mappedAdapter", propertyName = "", startOffset = 673, endOffset = 718)
+    @CallableMetadata(callableName = "mappedAdapter", propertyName = "", startOffset = 715, endOffset = 760)
     fun mappedAdapter1742666380_intomap(instance: Adapter): Adapter {
       return error(message = "Never called")
     }
@@ -487,7 +485,7 @@ interface Bindings {
 @GraphExtension
 interface ChangedGrandchild {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "absentExporter", propertyName = "", startOffset = 1391, endOffset = 1476, newInstanceName = "absentExporter")
+  @CallableMetadata(callableName = "absentExporter", propertyName = "", startOffset = 1433, endOffset = 1518, newInstanceName = "absentExporter")
   class AbsentExporterMetroFactory : Factory<Exporter?> {
     private /* final field */ val instance: ChangedGrandchild = instance
     companion object Companion {
@@ -535,7 +533,7 @@ interface ChangedGrandchild {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "presentExporter", propertyName = "", startOffset = 1479, endOffset = 1567, newInstanceName = "presentExporter")
+  @CallableMetadata(callableName = "presentExporter", propertyName = "", startOffset = 1521, endOffset = 1609, newInstanceName = "presentExporter")
   class PresentExporterMetroFactory : Factory<Exporter?> {
     private /* final field */ val instance: ChangedGrandchild = instance
     companion object Companion {
@@ -630,3 +628,4 @@ private fun fallbackExporter(): Exporter {
   } /*~> Unit */
   return Exporter(name = "fallback")
 }
+

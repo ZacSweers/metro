@@ -6,9 +6,12 @@ import javax.inject.Provider
 data class Exporter(val name: String)
 
 class Adapter @javax.inject.Inject constructor(
-  @Named("absent") val absent: Optional<Exporter>,
-  @Named("present") val present: Optional<Exporter>,
-)
+  @Named("absent") absent: Optional<Exporter>,
+  @Named("present") present: Optional<Exporter>,
+) {
+  val absent = absent
+  val present = present
+}
 
 class Consumer @javax.inject.Inject constructor(
   val adapters: Provider<Set<@JvmSuppressWildcards Adapter>>,

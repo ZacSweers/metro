@@ -3,9 +3,12 @@ data class Exporter(val name: String)
 
 @Inject
 class Adapter(
-  @Named("absent") val absent: Exporter? = fallbackExporter(),
-  @Named("present") val present: Exporter? = fallbackExporter(),
-)
+  @Named("absent") absent: Exporter? = fallbackExporter(),
+  @Named("present") present: Exporter? = fallbackExporter(),
+) {
+  val absent = absent
+  val present = present
+}
 
 private var fallbackCalls = 0
 private fun fallbackExporter(): Exporter {
