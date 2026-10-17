@@ -23,6 +23,9 @@ import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.config.languageVersionSettings
 import org.jetbrains.kotlin.incremental.components.ExpectActualTracker
 
+/** Kotlin 2.5.0-Beta1 maps to this compiler adapter. */
+private val MIN_COMPANION_MODE_COMPILER_VERSION = KotlinToolingVersion("2.5.0-dev-7307")
+
 public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
 
   public override val pluginId: String = PLUGIN_ID
@@ -100,11 +103,11 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
     }
 
     if (options.companionMode.requiresCompanionBlocks) {
-      if (!compatContext.supportsCompanionBlocks) {
+      val supportsCompanionMode = version != null && version >= MIN_COMPANION_MODE_COMPILER_VERSION
+      if (!supportsCompanionMode || !compatContext.supportsCompanionBlocks) {
         messageCollector.report(
           CompilerMessageSeverity.ERROR,
-          "companion-mode=${options.companionMode.name} requires " +
-            "Kotlin 2.5.0-dev-6460 or later.",
+          "companion-mode=${options.companionMode.name} requires Kotlin 2.5.0-Beta1 or later.",
         )
         return
       }
@@ -117,6 +120,13 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
           CompilerMessageSeverity.ERROR,
           "companion-mode=${options.companionMode.name} requires " +
             "-Xcompanion-blocks or -Xcompanion-blocks-and-extensions.",
+        )
+        return
+      }
+      if (!options.generateClassesInIr) {
+        messageCollector.report(
+          CompilerMessageSeverity.ERROR,
+          "companion-mode=${options.companionMode.name} requires generate-classes-in-ir=true.",
         )
         return
       }

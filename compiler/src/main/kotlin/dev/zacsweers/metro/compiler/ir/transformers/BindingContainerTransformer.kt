@@ -6,9 +6,11 @@ import dev.zacsweers.metro.ContributesIntoSet
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.binding
+import dev.zacsweers.metro.compiler.CompanionMode
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Origins
+import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.compat.propertyIfAccessorCompat
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
@@ -72,9 +74,11 @@ import dev.zacsweers.metro.compiler.ir.requireDeclarationMirrorFunction
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.requireStaticIshDeclarationContainer
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
+import dev.zacsweers.metro.compiler.ir.staticIshDeclarationContainerOrNull
 import dev.zacsweers.metro.compiler.ir.subcomponentsArgument
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.toClassReferences
+import dev.zacsweers.metro.compiler.ir.toCompanionMode
 import dev.zacsweers.metro.compiler.ir.toProto
 import dev.zacsweers.metro.compiler.ir.transformIfIntoMultibinding
 import dev.zacsweers.metro.compiler.ir.typeRemapperFor
@@ -143,6 +147,7 @@ import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isFakeOverride
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.isPropertyAccessor
+import org.jetbrains.kotlin.ir.util.isStatic
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.packageFqName
@@ -592,12 +597,8 @@ internal class BindingContainerTransformer(
             signatureFunction = signatureFunction,
             annotations = reference.annotations,
             isPropertyAccessor = reference.isPropertyAccessor,
-            newInstanceName =
-              if (signatureCarrier == SignatureCarrier.CREATOR_FUNCTION) {
-                reference.name
-              } else {
-                sourceFunction.name
-              },
+            // Both signature carriers refer to the same generated helper.
+            newInstanceName = bytecodeFunction.name,
           )
         } else if (backingField != null) {
           if (useCreatorSignatureCarrier) {
@@ -768,14 +769,7 @@ internal class BindingContainerTransformer(
     factoryParameters: Parameters,
     useCreatorSignatureCarrier: Boolean,
   ): IrSimpleFunction {
-    // If this is an object, we can generate directly into this object
-    val isObject = factoryCls.kind == ClassKind.OBJECT
-    val classToGenerateCreatorsIn =
-      if (isObject) {
-        factoryCls
-      } else {
-        factoryCls.companionObject()!!
-      }
+    val classToGenerateCreatorsIn = factoryCls.factoryHelperDeclarationContainer()
 
     // Generate create()
     @Suppress("RETURN_VALUE_NOT_USED")
@@ -848,6 +842,7 @@ internal class BindingContainerTransformer(
         }
       }
 
+    generateCompatibilityBridges(factoryCls)
     return newInstanceFunction
   }
 
@@ -969,6 +964,7 @@ internal class BindingContainerTransformer(
       callableMetadata,
       inlinedValue = entry.inlinedValueIfEnabled(),
       computeInlinedValue = false,
+      companionMode = entry.companion_mode.toCompanionMode(),
     ) ?: exitProcessing()
   }
 
@@ -1242,11 +1238,18 @@ internal class BindingContainerTransformer(
     entry: ProviderFactoryProto,
   ): ProviderFactory.Metro? {
     val providesFunction = findProvidesForInvisibleFactory(container, entry.callable_name)
+    val companionMode = entry.companion_mode.toCompanionMode()
+    val staticHelpers = !entry.is_object && companionMode.usesStaticHelpers
 
     val existingFactory = container.lookupClass(classId)?.owner
     val stub =
       existingFactory
-        ?: createContributionProviderFactoryStub(container, classId, isObject = entry.is_object)
+        ?: createContributionProviderFactoryStub(
+          container,
+          classId,
+          isObject = entry.is_object,
+          companionMode = companionMode,
+        )
 
     val mirrorFunction =
       if (existingFactory != null) {
@@ -1280,13 +1283,34 @@ internal class BindingContainerTransformer(
     }
     val sourceAnnotations = sourceFunction.metroAnnotations(metroSymbols.classIds)
 
-    // Add creator functions to the stub so IrMetroFactory can find them
-    if (existingFactory == null) {
+    // FIR can export an invisible factory header while its IR-generated helpers stay invisible.
+    val helperContainer =
+      if (staticHelpers || entry.is_object) {
+        stub
+      } else {
+        stub.staticIshDeclarationContainerOrNull()
+      }
+
+    val hasCreateHelper =
+      helperContainer?.functions?.any {
+        it.name == Symbols.Names.create && (!staticHelpers || it.isStatic)
+      } == true
+
+    val newInstanceName = entry.new_instance_name.asName()
+
+    val hasNewInstanceHelper =
+      helperContainer?.functions?.any {
+        it.name == newInstanceName && (!staticHelpers || it.isStatic)
+      } == true
+
+    // IrMetroFactory needs these creator functions on the stub.
+    if (!hasCreateHelper || !hasNewInstanceHelper) {
       generateStubCreatorFunctions(
         factoryClass = stub,
         callableName = entry.callable_name,
         returnType = sourceFunction.returnType,
         sourceFunction = sourceFunction,
+        companionMode = companionMode,
       )
     }
 
@@ -1297,7 +1321,7 @@ internal class BindingContainerTransformer(
         signatureCallableId = mirrorFunction.callableId,
         annotations = sourceAnnotations,
         isPropertyAccessor = entry.property_name.isNotEmpty(),
-        newInstanceName = Name.identifier(entry.new_instance_name),
+        newInstanceName = newInstanceName,
         function = sourceFunction,
         signatureFunction = mirrorFunction,
       )
@@ -1316,6 +1340,7 @@ internal class BindingContainerTransformer(
       clazz = stub,
       signatureFunction = mirrorFunction,
       signatureCarrier = SignatureCarrier.MIRROR_FUNCTION,
+      companionMode = companionMode,
       sourceAnnotations = sourceAnnotations,
       callableMetadata = callableMetadata,
       realDeclaration = originClass ?: providesFunction,
@@ -1353,6 +1378,7 @@ internal class BindingContainerTransformer(
     parentClass: IrClass,
     classId: ClassId,
     isObject: Boolean,
+    companionMode: CompanionMode = CompanionMode.COMPANION_OBJECT,
   ): IrClass {
     val classKind = if (isObject) ClassKind.OBJECT else ClassKind.CLASS
 
@@ -1373,8 +1399,8 @@ internal class BindingContainerTransformer(
 
         if (isObject) {
           addDefaultConstructor().apply { visibility = DescriptorVisibilities.PRIVATE }
-        } else {
-          // Non-objects need a companion for create()/newInstance() static methods
+        } else if (!companionMode.usesStaticHelpers) {
+          // The companion owns the create() and newInstance() helpers.
           val factoryCls = this
           pluginContext.irFactory
             .buildClass {
@@ -1403,13 +1429,19 @@ internal class BindingContainerTransformer(
     reference: CallableReference,
   ): IrClass {
     val isObject = reference.parameters.allParameters.isEmpty()
-    return createContributionProviderFactoryStub(parentClass, generatedClassId, isObject).also {
-      it.addCallableMetadataAnnotation(reference)
-      if (options.generateClassesInIr) {
-        metadataDeclarationRegistrarCompat.registerClassAsMetadataVisible(it)
+    return createContributionProviderFactoryStub(
+        parentClass,
+        generatedClassId,
+        isObject,
+        options.companionMode,
+      )
+      .also {
+        it.addCallableMetadataAnnotation(reference)
+        if (options.generateClassesInIr) {
+          metadataDeclarationRegistrarCompat.registerClassAsMetadataVisible(it)
+        }
+        parentClass.declarations.add(it)
       }
-      parentClass.declarations.add(it)
-    }
   }
 
   private fun IrClass.addCallableMetadataAnnotation(reference: CallableReference) {

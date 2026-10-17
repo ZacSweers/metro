@@ -1152,8 +1152,8 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       valueDescription = "<companion-object | companion-block | compatibility | none>",
       description =
         "Controls generated graph creators and factory/injector helper APIs. " +
-          "Companion-block and compatibility require " +
-          "Kotlin's companion-blocks feature to be enabled.",
+          "Companion-block and compatibility require Kotlin's companion-blocks feature and " +
+          "generate-classes-in-ir=true.",
       valueMapper = { CompanionMode.parse(it).name },
     ),
   );
