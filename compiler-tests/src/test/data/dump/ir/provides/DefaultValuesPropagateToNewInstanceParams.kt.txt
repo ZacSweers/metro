@@ -1,6 +1,6 @@
 interface IntProvider {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 55, endOffset = 141, newInstanceName = "provideInt")
+  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 55, endOffset = 141, newInstanceName = "provideInt", isCompanionBlockMember = false)
   class ProvideIntMetroFactory : Factory<Int> {
     private /* final field */ val instance: IntProvider = instance
     private /* final field */ val stringValue: Provider<String?> = stringValue

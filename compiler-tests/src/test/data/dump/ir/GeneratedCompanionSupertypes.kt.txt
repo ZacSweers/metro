@@ -204,52 +204,6 @@ class MarkerContribution : MarkerBinding {
 @ContributesBinding(scope = AppScope::class)
 @Inject
 class ProviderContribution : ProviderBinding {
-  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class MetroFactory : Factory<ProviderContribution> {
-    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-    companion object Companion {
-      private constructor() /* primary */ {
-        super/*Any*/()
-        /* <init>() */
-
-      }
-
-      @HiddenFromObjC
-      @JvmStatic
-      @JsStatic
-      fun create(): MetroFactory {
-        return MetroFactory()
-      }
-
-      @HiddenFromObjC
-      @JvmStatic
-      @JsStatic
-      fun newInstance(): ProviderContribution {
-        return ProviderContribution()
-      }
-
-    }
-
-    @HiddenFromObjC
-    private constructor() /* primary */ {
-      super/*Any*/()
-      /* <init>() */
-
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun declarationMirror(): ProviderContribution {
-      return error(message = "Never called")
-    }
-
-    @HiddenFromObjC
-    override operator fun invoke(): ProviderContribution {
-      return MetroFactory/* companion */.newInstance()
-    }
-
-  }
-
   constructor() /* primary */ {
     super/*Any*/()
     /* <init>() */
@@ -266,7 +220,7 @@ abstract class ProviderContributionContributions {
   @ContributesTo(scope = AppScope::class)
   @Origin(value = ProviderContribution::class, context = "contribution_provider")
   object ToAppScope {
-    @CallableMetadata(callableName = "providesProviderContribution", propertyName = "", startOffset = -1, endOffset = -1, newInstanceName = "providesProviderContribution")
+    @CallableMetadata(callableName = "providesProviderContribution", propertyName = "", startOffset = -1, endOffset = -1, newInstanceName = "providesProviderContribution", isCompanionBlockMember = false)
     object ProvidesProviderContributionMetroFactory : Factory<ProviderBinding> {
       private constructor() /* primary */ {
         super/*Any*/()
@@ -330,7 +284,7 @@ fun interface AssistedTargetFactory {
       @JvmStatic
       @JsStatic
       fun create(delegateFactory: AssistedTarget.MetroFactory): Provider<AssistedTargetFactory> {
-        return InstanceFactory/* companion */.invoke<AssistedTargetFactory>(value = Impl(delegateFactory = delegateFactory))
+        return providerOf<AssistedTargetFactory>(value = Impl(delegateFactory = delegateFactory))
       }
 
     }
@@ -359,7 +313,7 @@ interface ProviderBinding {
 
 @BindingContainer
 object Bindings {
-  @CallableMetadata(callableName = "provideString", propertyName = "", startOffset = 231, endOffset = 287, newInstanceName = "provideString")
+  @CallableMetadata(callableName = "provideString", propertyName = "", startOffset = 231, endOffset = 287, newInstanceName = "provideString", isCompanionBlockMember = false)
   class ProvideStringMetroFactory : Factory<String> {
     private /* final field */ val value: Provider<Int> = value
     companion object Companion {

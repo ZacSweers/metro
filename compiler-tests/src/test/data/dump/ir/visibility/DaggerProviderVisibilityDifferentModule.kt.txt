@@ -5,7 +5,7 @@ package test
 @Module
 class InternalModule {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 362, endOffset = 407, newInstanceName = "provideInt")
+  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 362, endOffset = 407, newInstanceName = "provideInt", isCompanionBlockMember = false)
   class ProvideIntMetroFactory : Factory<Int> {
     private /* final field */ val instance: InternalModule = instance
     companion object Companion {
