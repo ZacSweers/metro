@@ -92,6 +92,9 @@ internal class GraphDeclarationExtractor(
           factoryContext = classSymbol.defaultType as? KaClassType,
         )
       indexClassLiteralContainers(this, containerIds, memberTarget)
+      if (classSymbol.origin == KaSymbolOrigin.LIBRARY) {
+        graphMembers.indexStaticBindings(this, classSymbol, memberTarget)
+      }
 
       for (member in ktClass.declarations) {
         checkCanceled()
