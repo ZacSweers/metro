@@ -346,14 +346,14 @@ internal class IrBindingGraph(
       findSuspendCycleKey = ::findSuspendCycleKey,
       onExistingBinding = decisionCapture?.let { capture -> capture::reused },
       onDependencyResolved = if (parentReader != null) ::recordParentReadCandidate else null,
-      onSortedKey = if (parentReader != null) ::resolveSharedParentRead else null,
+      onSortedKey = if (parentReader != null) ::recordAncestorBuild else null,
     )
+
+  /** This graph's reads grouped by dependency and the bindings that consume it. */
+  private val parentReadCandidates = mutableMapOf<IrContextualTypeKey, MutableSet<IrTypeKey?>>()
 
   /** How many ancestors in a row declare each binding the same way, cached by key. */
   private val sharedDepths = mutableMapOf<IrTypeKey, Int>()
-
-  /** Bindings this graph reads that the parent might build for it. */
-  private val parentReadCandidates = mutableSetOf<IrTypeKey>()
 
   /**
    * Bindings at least the nearest parent could build the same way, including their dependencies.
@@ -371,13 +371,20 @@ internal class IrBindingGraph(
    */
   private val reservedContextKeys = mutableSetOf<IrContextualTypeKey>()
 
-  /** How many child graphs could share this graph's binding for each key. */
-  private val sharedReadCounts = mutableMapOf<IrTypeKey, Int>()
+  /** Each direct child records its consumers once per binding. */
+  private val sharedReads = mutableMapOf<IrTypeKey, ChildBindingReads>()
 
   // Thin immutable view over the internal bindings
   fun bindingsSnapshot(): ScatterMap<IrTypeKey, IrBinding> = realGraph.bindings
 
-  fun keeps(): Set<IrContextualTypeKey> = extraKeeps.keys
+  fun keeps(): Set<IrContextualTypeKey> = buildSet {
+    addAll(extraKeeps.keys)
+    for ((key, reads) in sharedReads) {
+      if (reads.childCount > 1) {
+        add(IrContextualTypeKey(key))
+      }
+    }
+  }
 
   fun inheritedAccessors(): List<GraphAccessor> = inheritedAccessorRoots
 
@@ -457,18 +464,20 @@ internal class IrBindingGraph(
     reservedContextKeys.add(contextKey)
   }
 
-  /**
-   * Records that a child graph could reuse this graph's binding for [key]. If this graph builds the
-   * binding anyway, the reservation gives it a getter the child reuses. Once a second child records
-   * it, this graph keeps the binding even if it doesn't read it itself.
-   */
-  fun reserveSharedRead(key: IrTypeKey) {
-    val contextKey = IrContextualTypeKey(key)
-    reserveContextKey(contextKey)
-    val count = (sharedReadCounts[key] ?: 0) + 1
-    sharedReadCounts[key] = count
-    if (count == 2) {
-      keep(contextKey, IrBindingStack.Entry.simpleTypeRef(contextKey))
+  /** Records one child's reads of a binding and the bindings that consume it. */
+  fun reserveSharedRead(key: IrTypeKey, consumers: Set<IrTypeKey?>) {
+    val reads = sharedReads.getOrPut(key) { ChildBindingReads() }
+    reads.childCount++
+    reads.consumers.addAll(consumers)
+  }
+
+  /** A child can reuse its consumer's getter if this graph builds that consumer too. */
+  private fun reserveUncoveredSharedReads(reachableKeys: Set<IrTypeKey>) {
+    sharedReads.entries.removeAll { (_, reads) ->
+      reads.consumers.all { consumer -> consumer != null && consumer in reachableKeys }
+    }
+    for (key in sharedReads.keys) {
+      reserveContextKey(IrContextualTypeKey(key))
     }
   }
 
@@ -526,32 +535,36 @@ internal class IrBindingGraph(
 
   operator fun contains(key: IrTypeKey): Boolean = key in realGraph
 
-  /**
-   * Records bindings this graph reads that the parent declares the same way.
-   *
-   * Reads from another sharing candidate are usually handled by the parent's copy of that binding.
-   * Multibindings remain candidates because the consumer might stay local even if the parent reads
-   * the collection.
-   */
   private fun recordParentReadCandidate(
     callingBinding: IrBinding?,
     contextKey: IrContextualTypeKey,
     binding: IrBinding,
   ) {
-    if (!isWorthSharing(binding)) {
-      return
+    val isWorthSharing = binding.dependencies.isNotEmpty() && sharedDepth(binding) > 0
+    if (isWorthSharing) {
+      parentReadCandidates.getOrPut(contextKey) { mutableSetOf() }.add(callingBinding?.typeKey)
     }
-    val callerCanShare = callingBinding != null && isWorthSharing(callingBinding)
-    val isMultibinding = binding is IrBinding.Multibinding
-    if (callerCanShare && !isMultibinding) {
-      return
-    }
-    parentReadCandidates += contextKey.typeKey
   }
 
-  /** Bindings without dependencies are cheaper to build in place. */
-  private fun isWorthSharing(binding: IrBinding): Boolean =
-    binding.dependencies.isNotEmpty() && sharedDepth(binding) > 0
+  private fun recordSharedParentReads() {
+    val rootKeys = accessors.keys + injectors.keys + keeps()
+    for ((contextKey, consumers) in parentReadCandidates) {
+      val build = ancestorBuilds[contextKey.typeKey] ?: continue
+      for (consumer in consumers) {
+        // Dropped hoists aren't roots when reporting reads to the next ancestor.
+        if (consumer == null && contextKey !in rootKeys) {
+          continue
+        }
+        val consumerBuild = ancestorBuilds[consumer]
+        parentReader!!.markShared(
+          build.target,
+          build.depth,
+          consumerBuild?.target,
+          consumerBuild?.depth ?: 0,
+        )
+      }
+    }
+  }
 
   private fun sharedDepth(binding: IrBinding): Int =
     sharedDepths.getOrPut(binding.typeKey) {
@@ -569,10 +582,9 @@ internal class IrBindingGraph(
    * Runs for each key in sorted order, so dependencies are resolved first. An ancestor can only
    * build a binding if it can build every dependency too. Otherwise building it there could fail.
    *
-   * Alias reads are reported as the binding they alias, since property collection counts them that
-   * way.
+   * Aliases use the target binding's key so its reads are counted together.
    */
-  private fun resolveSharedParentRead(key: IrTypeKey) {
+  private fun recordAncestorBuild(key: IrTypeKey) {
     val binding = realGraph.bindings[key] ?: return
     val depth = ancestorBuildDepth(binding)
     if (depth == 0) return
@@ -583,9 +595,6 @@ internal class IrBindingGraph(
         key
       }
     ancestorBuilds[key] = AncestorBuild(target, depth)
-    if (key in parentReadCandidates) {
-      parentReader!!.markShared(target, depth)
-    }
   }
 
   /**
@@ -678,7 +687,12 @@ internal class IrBindingGraph(
 
         realGraph.prepareSeal(
           roots = roots,
-          keep = extraKeeps,
+          keep =
+            buildMap {
+              for (key in keeps()) {
+                put(key, extraKeeps[key] ?: IrBindingStack.Entry.simpleTypeRef(key))
+              }
+            },
           shrinkUnusedBindings = metroContext.options.shrinkUnusedBindings,
           onPopulated = {
             writeDiagnostic(
@@ -727,6 +741,9 @@ internal class IrBindingGraph(
       _bindingLookup = null
       return BindingGraphResult.ERROR
     }
+
+    reserveUncoveredSharedReads(reachableKeys)
+    recordSharedParentReads()
 
     writeDiagnostic("keys-validated", "${node.metroGraphOrFail.classIdOrFail.safePathString}.txt") {
       sortedKeys.joinToString(separator = "\n")
@@ -1875,3 +1892,9 @@ private val IrBinding.parentToken: ParentContext.Token?
 
 private val IrBinding.isParentOwned: Boolean
   get() = parentToken != null
+
+/** A null consumer requires a getter for the dependency itself. */
+private class ChildBindingReads {
+  var childCount: Int = 0
+  val consumers = mutableSetOf<IrTypeKey?>()
+}

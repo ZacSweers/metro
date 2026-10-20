@@ -17,19 +17,23 @@ import org.jetbrains.kotlin.ir.expressions.IrExpression
 /** Tracks one child graph's parent requests. Reads and writes stay on the main compiler thread. */
 internal class UsedKeyCollector {
   private val usedKeys = mutableSetOf<IrContextualTypeKey>()
-  private val sharedKeys = mutableSetOf<IrTypeKey>()
+  private val sharedReads = mutableMapOf<IrTypeKey, MutableSet<IrTypeKey?>>()
 
   fun record(contextKey: IrContextualTypeKey) {
     usedKeys.add(contextKey)
   }
 
-  fun recordShared(key: IrTypeKey) {
-    sharedKeys.add(key)
+  /** A null consumer requires a getter for the dependency itself. */
+  fun recordShared(key: IrTypeKey, consumer: IrTypeKey?) {
+    if (consumer == key) {
+      return
+    }
+    sharedReads.getOrPut(key) { mutableSetOf() }.add(consumer)
   }
 
   fun keys(): Set<IrContextualTypeKey> = usedKeys.toSet()
 
-  fun sharedKeys(): Set<IrTypeKey> = sharedKeys.toSet()
+  fun sharedReads(): Map<IrTypeKey, Set<IrTypeKey?>> = sharedReads.mapValues { it.value.toSet() }
 }
 
 private enum class ParentContextLookupMode {
@@ -90,9 +94,10 @@ internal interface ParentContextReader {
 
   /**
    * Records that this graph reads [key] and the nearest [depth] ancestor graphs can build it the
-   * same way. An ancestor builds it once when more than one of its child graphs records it.
+   * same way. The consumer can be built by the nearest [consumerDepth] ancestors. A null consumer
+   * means the child needs a getter for the dependency itself.
    */
-  fun markShared(key: IrTypeKey, depth: Int) {}
+  fun markShared(key: IrTypeKey, depth: Int, consumer: IrTypeKey?, consumerDepth: Int) {}
 }
 
 /**
@@ -268,10 +273,21 @@ internal class ParentContextSnapshot(
         }
       }
 
-      override fun markShared(key: IrTypeKey, depth: Int) {
-        collector.recordShared(key)
+      override fun markShared(
+        key: IrTypeKey,
+        depth: Int,
+        consumer: IrTypeKey?,
+        consumerDepth: Int,
+      ) {
+        val sharedConsumer =
+          if (consumerDepth > 0) {
+            consumer
+          } else {
+            null
+          }
+        collector.recordShared(key, sharedConsumer)
         if (depth > 1) {
-          ancestorReader?.markShared(key, depth - 1)
+          ancestorReader?.markShared(key, depth - 1, sharedConsumer, consumerDepth - 1)
         }
       }
 

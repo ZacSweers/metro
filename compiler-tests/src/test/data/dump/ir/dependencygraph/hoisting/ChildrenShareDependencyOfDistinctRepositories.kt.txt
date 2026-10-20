@@ -1,0 +1,744 @@
+class ActivityRepository1 {
+  val trackingHandler: TrackingHandler
+    field = trackingHandler
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<ActivityRepository1> {
+    private /* final field */ val trackingHandler: Provider<TrackingHandler> = trackingHandler
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(trackingHandler: Provider<TrackingHandler>): MetroFactory {
+        return MetroFactory(trackingHandler = trackingHandler)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(trackingHandler: TrackingHandler): ActivityRepository1 {
+        return ActivityRepository1(trackingHandler = trackingHandler)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(trackingHandler: Provider<TrackingHandler>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(trackingHandler: TrackingHandler): ActivityRepository1 {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): ActivityRepository1 {
+      return MetroFactory/* companion */.newInstance(trackingHandler = <this>.#trackingHandler.invoke())
+    }
+
+  }
+
+  @Inject
+  constructor(trackingHandler: TrackingHandler) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+class ActivityRepository2 {
+  val trackingHandler: TrackingHandler
+    field = trackingHandler
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<ActivityRepository2> {
+    private /* final field */ val trackingHandler: Provider<TrackingHandler> = trackingHandler
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(trackingHandler: Provider<TrackingHandler>): MetroFactory {
+        return MetroFactory(trackingHandler = trackingHandler)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(trackingHandler: TrackingHandler): ActivityRepository2 {
+        return ActivityRepository2(trackingHandler = trackingHandler)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(trackingHandler: Provider<TrackingHandler>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(trackingHandler: TrackingHandler): ActivityRepository2 {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): ActivityRepository2 {
+      return MetroFactory/* companion */.newInstance(trackingHandler = <this>.#trackingHandler.invoke())
+    }
+
+  }
+
+  @Inject
+  constructor(trackingHandler: TrackingHandler) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+class ActivityRepository3 {
+  val trackingHandler: TrackingHandler
+    field = trackingHandler
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<ActivityRepository3> {
+    private /* final field */ val trackingHandler: Provider<TrackingHandler> = trackingHandler
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(trackingHandler: Provider<TrackingHandler>): MetroFactory {
+        return MetroFactory(trackingHandler = trackingHandler)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(trackingHandler: TrackingHandler): ActivityRepository3 {
+        return ActivityRepository3(trackingHandler = trackingHandler)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(trackingHandler: Provider<TrackingHandler>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(trackingHandler: TrackingHandler): ActivityRepository3 {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): ActivityRepository3 {
+      return MetroFactory/* companion */.newInstance(trackingHandler = <this>.#trackingHandler.invoke())
+    }
+
+  }
+
+  @Inject
+  constructor(trackingHandler: TrackingHandler) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+class ChildTrackingAdapter : TrackingAdapter {
+  val logger: Logger
+    field = logger
+    get
+
+  constructor(logger: Logger) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+class DefaultTrackingAdapter : TrackingAdapter {
+  val logger: Logger
+    field = logger
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<DefaultTrackingAdapter> {
+    private /* final field */ val logger: Provider<Logger> = logger
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(logger: Provider<Logger>): MetroFactory {
+        return MetroFactory(logger = logger)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(logger: Logger): DefaultTrackingAdapter {
+        return DefaultTrackingAdapter(logger = logger)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(logger: Provider<Logger>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(logger: Logger): DefaultTrackingAdapter {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): DefaultTrackingAdapter {
+      return MetroFactory/* companion */.newInstance(logger = <this>.#logger.invoke())
+    }
+
+  }
+
+  @Inject
+  constructor(logger: Logger) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+class DefaultTrackingDataSource : TrackingDataSource {
+  val logger: Logger
+    field = logger
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<DefaultTrackingDataSource> {
+    private /* final field */ val logger: Provider<Logger> = logger
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(logger: Provider<Logger>): MetroFactory {
+        return MetroFactory(logger = logger)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(logger: Logger): DefaultTrackingDataSource {
+        return DefaultTrackingDataSource(logger = logger)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(logger: Provider<Logger>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(logger: Logger): DefaultTrackingDataSource {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): DefaultTrackingDataSource {
+      return MetroFactory/* companion */.newInstance(logger = <this>.#logger.invoke())
+    }
+
+  }
+
+  @Inject
+  constructor(logger: Logger) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+class DefaultTrackingHandler : TrackingHandler {
+  val adapter: TrackingAdapter
+    field = adapter
+    get
+
+  val dataSource: TrackingDataSource
+    field = dataSource
+    get
+
+  val logger: Logger
+    field = logger
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<DefaultTrackingHandler> {
+    private /* final field */ val adapter: Provider<TrackingAdapter> = adapter
+    private /* final field */ val dataSource: Provider<TrackingDataSource> = dataSource
+    private /* final field */ val logger: Provider<Logger> = logger
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(adapter: Provider<TrackingAdapter>, dataSource: Provider<TrackingDataSource>, logger: Provider<Logger>): MetroFactory {
+        return MetroFactory(adapter = adapter, dataSource = dataSource, logger = logger)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(adapter: TrackingAdapter, dataSource: TrackingDataSource, logger: Logger): DefaultTrackingHandler {
+        return DefaultTrackingHandler(adapter = adapter, dataSource = dataSource, logger = logger)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(adapter: Provider<TrackingAdapter>, dataSource: Provider<TrackingDataSource>, logger: Provider<Logger>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(adapter: TrackingAdapter, dataSource: TrackingDataSource, logger: Logger): DefaultTrackingHandler {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): DefaultTrackingHandler {
+      return MetroFactory/* companion */.newInstance(adapter = <this>.#adapter.invoke(), dataSource = <this>.#dataSource.invoke(), logger = <this>.#logger.invoke())
+    }
+
+  }
+
+  @Inject
+  constructor(adapter: TrackingAdapter, dataSource: TrackingDataSource, logger: Logger) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@SingleIn(scope = AppScope::class)
+class Logger {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  object MetroFactory : Factory<Logger> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun create(): MetroFactory {
+      return MetroFactory
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun newInstance(): Logger {
+      return Logger()
+    }
+
+    @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): Logger {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Logger {
+      return MetroFactory.newInstance()
+    }
+
+  }
+
+  @Inject
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@GraphExtension
+interface ActivitySubComponent1 {
+  abstract val repository: ActivityRepository1
+    abstract get
+
+}
+
+@GraphExtension
+interface ActivitySubComponent2 {
+  abstract val repository: ActivityRepository2
+    abstract get
+
+}
+
+@GraphExtension
+interface ActivitySubComponent3 {
+  abstract val repository: ActivityRepository3
+    abstract get
+
+}
+
+@DependencyGraph(scope = AppScope::class, bindingContainers = [TrackingModule::class])
+interface AppComponent {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : AppComponent {
+    private val loggerProvider: Provider<Logger>
+      field = provider<Provider<Logger>, Logger>(delegate = create())
+
+    @DependencyGraph
+    private class ActivitySubComponent1Impl : ActivitySubComponent1 {
+      private val appComponentImpl: Impl
+        field = appComponentImpl
+
+      constructor(appComponentImpl: Impl) /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      override val repository: ActivityRepository1
+        override get(): ActivityRepository1 {
+          return ActivityRepository1(trackingHandler = <this>.#appComponentImpl.<get-defaultTrackingHandler>())
+        }
+
+    }
+
+    @DependencyGraph
+    private class ActivitySubComponent3Impl : ActivitySubComponent3 {
+      private val appComponentImpl: Impl
+        field = appComponentImpl
+
+      constructor(appComponentImpl: Impl) /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      override val repository: ActivityRepository3
+        override get(): ActivityRepository3 {
+          return ActivityRepository3(trackingHandler = <this>.#appComponentImpl.<get-defaultTrackingHandler>())
+        }
+
+    }
+
+    @DependencyGraph
+    private class OverridingChildImpl : OverridingChild {
+      private val appComponentImpl: Impl
+        field = appComponentImpl
+
+      constructor(appComponentImpl: Impl) /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      override val repository: ActivityRepository1
+        override get(): ActivityRepository1 {
+          return ActivityRepository1(trackingHandler = DefaultTrackingHandler(adapter = <this>.adapter(logger = <this>.#appComponentImpl.#loggerProvider.invoke()), dataSource = <this>.#appComponentImpl.<get-defaultTrackingDataSource>(), logger = <this>.#appComponentImpl.#loggerProvider.invoke()))
+        }
+
+    }
+
+    @DependencyGraph
+    private class RepositoryBranchImpl : RepositoryBranch {
+      private val appComponentImpl: Impl
+        field = appComponentImpl
+
+      @DependencyGraph
+      private class ActivitySubComponent2Impl : ActivitySubComponent2 {
+        private val repositoryBranchImpl: RepositoryBranchImpl
+          field = repositoryBranchImpl
+
+        constructor(repositoryBranchImpl: RepositoryBranchImpl) /* primary */ {
+          super/*Any*/()
+          /* <init>() */
+
+        }
+
+        override val repository: ActivityRepository2
+          override get(): ActivityRepository2 {
+            return ActivityRepository2(trackingHandler = <this>.#repositoryBranchImpl.#appComponentImpl.<get-defaultTrackingHandler>())
+          }
+
+      }
+
+      constructor(appComponentImpl: Impl) /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      override val child2: ActivitySubComponent2
+        override get(): ActivitySubComponent2 {
+          return ActivitySubComponent2Impl(repositoryBranchImpl = <this>)
+        }
+
+    }
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override val branch: RepositoryBranch
+      override get(): RepositoryBranch {
+        return RepositoryBranchImpl(appComponentImpl = <this>)
+      }
+
+    override val child1: ActivitySubComponent1
+      override get(): ActivitySubComponent1 {
+        return ActivitySubComponent1Impl(appComponentImpl = <this>)
+      }
+
+    override val child3: ActivitySubComponent3
+      override get(): ActivitySubComponent3 {
+        return ActivitySubComponent3Impl(appComponentImpl = <this>)
+      }
+
+    private val defaultTrackingDataSource: DefaultTrackingDataSource
+      private get(): DefaultTrackingDataSource {
+        return DefaultTrackingDataSource(logger = <this>.#loggerProvider.invoke())
+      }
+
+    private val defaultTrackingHandler: DefaultTrackingHandler
+      private get(): DefaultTrackingHandler {
+        return DefaultTrackingHandler(adapter = DefaultTrackingAdapter(logger = <this>.#loggerProvider.invoke()), dataSource = <this>.<get-defaultTrackingDataSource>(), logger = <this>.#loggerProvider.invoke())
+      }
+
+    override val overridingChild: OverridingChild
+      override get(): OverridingChild {
+        return OverridingChildImpl(appComponentImpl = <this>)
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
+    operator fun invoke(): AppComponent {
+      return Impl()
+    }
+
+  }
+
+  abstract val branch: RepositoryBranch
+    abstract get
+
+  abstract val child1: ActivitySubComponent1
+    abstract get
+
+  abstract val child3: ActivitySubComponent3
+    abstract get
+
+  abstract val overridingChild: OverridingChild
+    abstract get
+
+}
+
+@GraphExtension
+interface OverridingChild {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "adapter", propertyName = "", startOffset = 1790, endOffset = 1875, newInstanceName = "adapter")
+  class AdapterMetroFactory : Factory<TrackingAdapter> {
+    private /* final field */ val instance: OverridingChild = instance
+    private /* final field */ val logger: Provider<Logger> = logger
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(instance: OverridingChild, logger: Provider<Logger>): AdapterMetroFactory {
+        return AdapterMetroFactory(instance = instance, logger = logger)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun adapter(instance: OverridingChild, logger: Logger): TrackingAdapter {
+        return instance.adapter(logger = logger)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(instance: OverridingChild, logger: Provider<Logger>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(logger: Logger): TrackingAdapter {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): TrackingAdapter {
+      return AdapterMetroFactory/* companion */.adapter(instance = <this>.#instance, logger = <this>.#logger.invoke())
+    }
+
+  }
+
+  @Provides
+  fun adapter(logger: Logger): TrackingAdapter {
+    return ChildTrackingAdapter(logger = logger)
+  }
+
+  abstract val repository: ActivityRepository1
+    abstract get
+
+}
+
+@GraphExtension
+interface RepositoryBranch {
+  abstract val child2: ActivitySubComponent2
+    abstract get
+
+}
+
+interface TrackingAdapter {
+}
+
+interface TrackingDataSource {
+}
+
+interface TrackingHandler {
+}
+
+@BindingContainer
+interface TrackingModule {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @ComptimeOnly
+  abstract class BindsMirror {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @Binds
+    @CallableMetadata(callableName = "adapter", propertyName = "", startOffset = 724, endOffset = 786)
+    fun adapter(instance: DefaultTrackingAdapter): TrackingAdapter {
+      return error(message = "Never called")
+    }
+
+    @Binds
+    @CallableMetadata(callableName = "dataSource", propertyName = "", startOffset = 796, endOffset = 867)
+    fun dataSource(instance: DefaultTrackingDataSource): TrackingDataSource {
+      return error(message = "Never called")
+    }
+
+    @Binds
+    @CallableMetadata(callableName = "handler", propertyName = "", startOffset = 652, endOffset = 714)
+    fun handler(instance: DefaultTrackingHandler): TrackingHandler {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Binds
+  @ComptimeOnly
+  fun adapter(instance: DefaultTrackingAdapter): TrackingAdapter {
+    return error(message = "Never called")
+  }
+
+  @Binds
+  @ComptimeOnly
+  fun dataSource(instance: DefaultTrackingDataSource): TrackingDataSource {
+    return error(message = "Never called")
+  }
+
+  @Binds
+  @ComptimeOnly
+  fun handler(instance: DefaultTrackingHandler): TrackingHandler {
+    return error(message = "Never called")
+  }
+
+}
+

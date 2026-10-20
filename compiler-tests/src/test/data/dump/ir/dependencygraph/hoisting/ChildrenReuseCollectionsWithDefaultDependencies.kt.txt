@@ -234,20 +234,10 @@ interface AppGraph {
 
         private val consumer2: Consumer
           private get(): Consumer {
-            return Consumer(adapters = <this>.<get-setOfAdapterProvider>(), providers = <this>.<get-mapOfStringToAdapter>())
-          }
-
-        private val mapOfStringToAdapter: Map<String, Function0<Adapter>>
-          private get(): Map<String, Function0<Adapter>> {
-            return buildMap<String, Function0<Adapter>>(capacity = 1, builderAction = local fun MutableMap<String, Function0<Adapter>>.<anonymous>() {
+            return Consumer(adapters = singleton<Adapter>(provider = <this>.#adapterProvider), providers = buildMap<String, Function0<Adapter>>(capacity = 1, builderAction = local fun MutableMap<String, Function0<Adapter>>.<anonymous>() {
               $receiver.put(key = "adapter", value = <this>.#adapterProvider)
             }
-)
-          }
-
-        private val setOfAdapterProvider: Provider<Set<Adapter>>
-          private get(): Provider<Set<Adapter>> {
-            return singleton<Adapter>(provider = <this>.#adapterProvider)
+))
           }
 
         override val unchanged: UnchangedGrandchild

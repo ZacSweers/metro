@@ -156,7 +156,7 @@ private data class ExtensionValidationTask(
   val validation: ValidationResult,
   val usedContextKeys: Set<IrContextualTypeKey>,
   /** Bindings the child reads that this parent could build the same way. */
-  val sharedKeys: Set<IrTypeKey>,
+  val sharedReads: Map<IrTypeKey, Set<IrTypeKey?>>,
 )
 
 @Inject
@@ -513,7 +513,7 @@ internal class DependencyGraphTransformer(
               isDirectExtension = key in directExtensions,
               validation = childValidationResults[index],
               usedContextKeys = collectors[index].keys(),
-              sharedKeys = collectors[index].sharedKeys(),
+              sharedReads = collectors[index].sharedReads(),
             )
           }
 
@@ -557,8 +557,8 @@ internal class DependencyGraphTransformer(
             bindingGraph.reserveContextKey(contextKey)
           }
 
-          for (key in task.sharedKeys) {
-            bindingGraph.reserveSharedRead(key)
+          for ((key, consumers) in task.sharedReads) {
+            bindingGraph.reserveSharedRead(key, consumers)
           }
         }
 

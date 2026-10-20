@@ -177,7 +177,7 @@ Collections whose contributions have defaulted parameters or `@BindsOptionalOf` 
 
 When the parent exposes `Set<Adapter>`, a single child can obtain that set from the parent's collection getter when constructing an unscoped `TrackingHandler`. Each injection creates a new handler and a new set.
 
-When two or more child graphs build the same binding, their nearest common ancestor builds it once in a getter that they all call.
+When two or more child graphs use the same binding, their nearest common ancestor generates its construction code in a getter that they all call. Each call still creates a new instance for an unscoped binding.
 
 ```kotlin
 // Before
@@ -204,9 +204,11 @@ A binding that C, D, and E all build goes in A. One that only C and D build goes
 
 An ancestor can only build a binding if it declares the binding the same way. If B adds a contribution to a multibinding, C and D share B's version, and E builds A's version itself.
 
-Each child works out how many ancestors in a row could build its binding the same way, including every dependency. It reports the read to those ancestors while its graph is sealed, so this adds no separate pass over the bindings. Ancestors count reads per direct child.
+Each child works out how many ancestors in a row could build its binding the same way, including every dependency. It reports every eligible dependency to those ancestors while its graph is sealed. Ancestors count reads per direct child.
 
-On the first child request, `reserveSharedRead` keeps a getter if the parent already uses the binding. A second child request keeps the binding in the parent even if the parent has no other use for it.
+For example, three children can construct different repositories that all depend on `TrackingHandler`. The parent generates a handler getter even when each repository stays in its own child and the parent has no handler accessor.
+
+A binding requested by two children is kept while the parent resolves its graph. The parent then checks which consumers it builds. Children can reuse those consumers' getters, so their dependencies don't need separate getters. Dependencies whose consumers stay in the children keep their own getters. A single child can also reuse a dependency getter when the parent already builds that dependency.
 
 ### Graph and contribution caches
 

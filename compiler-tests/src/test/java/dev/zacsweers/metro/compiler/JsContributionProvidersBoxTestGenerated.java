@@ -1668,6 +1668,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
       }
 
       @Test
+      @TestMetadata("ChildrenShareDependencyOfDistinctRepositories.kt")
+      public void testChildrenShareDependencyOfDistinctRepositories() {
+        run("ChildrenShareDependencyOfDistinctRepositories.kt");
+      }
+
+      @Test
       @TestMetadata("ChildrenShareHoistedBindings.kt")
       public void testChildrenShareHoistedBindings() {
         run("ChildrenShareHoistedBindings.kt");

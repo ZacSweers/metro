@@ -388,6 +388,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
       }
 
       @Test
+      @TestMetadata("ChildrenShareDependencyOfDistinctRepositories.kt")
+      public void testChildrenShareDependencyOfDistinctRepositories() {
+        run("ChildrenShareDependencyOfDistinctRepositories.kt");
+      }
+
+      @Test
       @TestMetadata("ChildrenShareHoistedBinding.kt")
       public void testChildrenShareHoistedBinding() {
         run("ChildrenShareHoistedBinding.kt");
@@ -403,6 +409,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
       @TestMetadata("DaggerChildrenReuseCollectionsWithOptionalDependencies.kt")
       public void testDaggerChildrenReuseCollectionsWithOptionalDependencies() {
         run("DaggerChildrenReuseCollectionsWithOptionalDependencies.kt");
+      }
+
+      @Test
+      @TestMetadata("DaggerChildrenShareDependencyOfDistinctRepositories.kt")
+      public void testDaggerChildrenShareDependencyOfDistinctRepositories() {
+        run("DaggerChildrenShareDependencyOfDistinctRepositories.kt");
       }
 
       @Test
