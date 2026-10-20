@@ -8433,7 +8433,7 @@
 <li><strong>[IR]</strong> Graphs no longer generate a private getter for a multibinding that only one site reads. That site builds the collection itself.</li>
 <li>Reads from graph extensions that reuse the multibinding count too.</li>
 <li>Multibindings with more than 25 contributions also keep a getter so they don&rsquo;t crowd their reader&rsquo;s method. You can configure that threshold with the new <code>multibinding-getter-threshold</code> compiler option.</li>
-<li><strong>[IR]</strong> When several graph extensions build the same binding as their parent, like an unscoped class or a multibinding the parent never reads, the parent now builds it once in a shared getter and the extensions call it. Extensions at different depths share it through their nearest common ancestor.</li>
+<li><strong>[IR]</strong> When several graph extensions use the same binding, their nearest common ancestor now generates its construction code in a shared getter. This also applies when different classes in those extensions depend on the binding. Unscoped bindings still create a new instance on each call.</li>
 <li><strong>[IR]</strong> When several accessors request the same key and return type, the first accessor holds the binding&rsquo;s code and the others call through to it.</li>
 <li><strong>[IR]</strong> Graphs no longer store themselves in a field. Code that needs the graph reads <code>this</code>, or the graph reference that a shard or switching provider already holds.</li>
 <li><strong>[IR]</strong> Generated code wraps instances in providers with <code>providerOf()</code>. On JVM that&rsquo;s one static call. <code>InstanceFactory.invoke()</code> also loaded its companion and boxed the value class.</li>
