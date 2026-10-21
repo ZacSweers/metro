@@ -71,6 +71,7 @@ Changelog
 - Test Android Studio Rabbit 1 (`2026.2.1.8`).
 - Test IntelliJ `2026.2.3`.
 - Update to androidx.tracing `2.0.4`.
+- Test against Kotlin `2.5.0-Beta2`.
 
 ### Contributors
 
