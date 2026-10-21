@@ -535,24 +535,38 @@ internal class IrBindingGraph(
 
   operator fun contains(key: IrTypeKey): Boolean = key in realGraph
 
+  /** Defaulted requests can't use [BindingPropertyContext.reusableBinding]. */
   private fun recordParentReadCandidate(
     callingBinding: IrBinding?,
     contextKey: IrContextualTypeKey,
     binding: IrBinding,
   ) {
+    if (contextKey.hasDefault) {
+      return
+    }
     val isWorthSharing = binding.dependencies.isNotEmpty() && sharedDepth(binding) > 0
     if (isWorthSharing) {
       parentReadCandidates.getOrPut(contextKey) { mutableSetOf() }.add(callingBinding?.typeKey)
     }
   }
 
-  private fun recordSharedParentReads() {
-    val rootKeys = accessors.keys + injectors.keys + keeps()
+  /** Reports reachable reads that an ancestor can build. */
+  private fun recordSharedParentReads(reachableKeys: Set<IrTypeKey>) {
+    if (parentReadCandidates.isEmpty()) {
+      return
+    }
+    val rootKeys = buildRootKeys()
     for ((contextKey, consumers) in parentReadCandidates) {
       val build = ancestorBuilds[contextKey.typeKey] ?: continue
       for (consumer in consumers) {
         // Dropped hoists aren't roots when reporting reads to the next ancestor.
-        if (consumer == null && contextKey !in rootKeys) {
+        val isReachableRead =
+          if (consumer == null) {
+            contextKey in rootKeys
+          } else {
+            consumer in reachableKeys
+          }
+        if (!isReachableRead) {
           continue
         }
         val consumerBuild = ancestorBuilds[consumer]
@@ -564,6 +578,15 @@ internal class IrBindingGraph(
         )
       }
     }
+  }
+
+  /** Inherited multibinding accessors validate child graphs but don't generate child code. */
+  private fun buildRootKeys(): Set<IrContextualTypeKey> = buildSet {
+    for (accessor in node.accessors) {
+      add(accessor.contextKey)
+    }
+    addAll(injectors.keys)
+    addAll(keeps())
   }
 
   private fun sharedDepth(binding: IrBinding): Int =
@@ -743,7 +766,7 @@ internal class IrBindingGraph(
     }
 
     reserveUncoveredSharedReads(reachableKeys)
-    recordSharedParentReads()
+    recordSharedParentReads(reachableKeys)
 
     writeDiagnostic("keys-validated", "${node.metroGraphOrFail.classIdOrFail.safePathString}.txt") {
       sortedKeys.joinToString(separator = "\n")

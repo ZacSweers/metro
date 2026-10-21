@@ -400,6 +400,10 @@ internal class BindingPropertyCollector(
         if (isGraphExtension) node.scalarRefCount + node.factoryRefCount else node.scalarRefCount
 
       fun needsSharedGetter(): Boolean {
+        // A child reservation needs another scalar read to share construction.
+        if (effectiveScalarRefCount == 0) {
+          return false
+        }
         val isReadMoreThanOnce = effectiveScalarRefCount > 1
         // The first accessor holds the code and the others call it.
         val accessorHoldsCode = node.isHostedByAccessor && !isGraphExtension
