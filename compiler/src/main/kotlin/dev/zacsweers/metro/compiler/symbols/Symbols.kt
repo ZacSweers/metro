@@ -497,6 +497,7 @@ internal class Symbols(
       .findFunctions(CallableId(FqNames.metroRuntimeInternalPackage, "closeSuspendGraph".asName()))
       .single()
   }
+  val requireOpenGraph by lazy { graphLifecycleState.requireSimpleFunction("requireOpen") }
   val closeGraphLifecycle by lazy { graphLifecycleState.requireSimpleFunction("close") }
 
   private val doubleCheck: IrClassSymbol by lazy {

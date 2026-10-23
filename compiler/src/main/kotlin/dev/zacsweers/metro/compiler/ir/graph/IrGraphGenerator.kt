@@ -401,11 +401,20 @@ internal class IrGraphGenerator(
         }
       finishLifecycleCreators(suspendInit)
 
+      val parentStateField = parentGraphParam?.type?.rawTypeOrNull()?.lifecycleStateField
+
       // Add extra constructor statements
       trace("Finalize constructor body") {
         with(ctor) {
           val originalBody = checkNotNull(body)
           buildBlockBody {
+            if (parentStateField != null) {
+              +irInvoke(
+                callee = metroSymbols.requireOpenGraph,
+                dispatchReceiver =
+                  irGetField(irGet(checkNotNull(parentGraphParam)), parentStateField),
+              )
+            }
             +originalBody.statements
             constructorStatements.forEach { statement -> +statement(thisReceiverParameter) }
             if (

@@ -12,6 +12,11 @@ import kotlin.concurrent.atomics.ExperimentalAtomicApi
 public class GraphLifecycleState {
   private val closed = AtomicBoolean(false)
 
+  /** Rejects extension creation after this graph has claimed cleanup. */
+  public fun requireOpen() {
+    check(!closed.load()) { "Cannot create an extension of a closed graph." }
+  }
+
   /** Claims cleanup for either the synchronous or the suspend runtime. */
   public fun claimClose(): Boolean = closed.compareAndSet(false, true)
 
