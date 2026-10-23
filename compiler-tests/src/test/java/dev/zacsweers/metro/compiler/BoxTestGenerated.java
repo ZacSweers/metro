@@ -4247,6 +4247,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("GraphLifecycleSuspendClose.kt")
+    public void testGraphLifecycleSuspendClose() {
+      run("GraphLifecycleSuspendClose.kt");
+    }
+
+    @Test
     @TestMetadata("IncludedGraphSuspendAccessor.kt")
     public void testIncludedGraphSuspendAccessor() {
       run("IncludedGraphSuspendAccessor.kt");

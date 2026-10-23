@@ -12,9 +12,12 @@ import kotlin.concurrent.atomics.ExperimentalAtomicApi
 public class GraphLifecycleState {
   private val closed = AtomicBoolean(false)
 
+  /** Claims cleanup for either the synchronous or the suspend runtime. */
+  public fun claimClose(): Boolean = closed.compareAndSet(false, true)
+
   /** Claims cleanup before resolving any callback arguments. Recursive calls return immediately. */
   public fun close(callbacks: () -> Unit) {
-    if (closed.compareAndSet(false, true)) {
+    if (claimClose()) {
       callbacks()
     }
   }

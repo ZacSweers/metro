@@ -4247,6 +4247,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("GraphLifecycleSuspendClose.kt")
+    public void testGraphLifecycleSuspendClose() {
+      run("GraphLifecycleSuspendClose.kt");
+    }
+
+    @Test
     @TestMetadata("IncludedGraphSuspendAccessor.kt")
     public void testIncludedGraphSuspendAccessor() {
       run("IncludedGraphSuspendAccessor.kt");

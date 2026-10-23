@@ -438,7 +438,7 @@ internal class IrGraphGenerator(
         graphClass.lifecycleStateField = state.backingField
         close.buildBlockBody {
           val callbacks =
-            irLambda(close, null, emptyList(), irBuiltIns.unitType) {
+            irLambda(close, null, emptyList(), irBuiltIns.unitType, suspend = close.isSuspend) {
               +lifecycleCalls(
                 GraphLifecyclePhase.CLOSE,
                 node,
@@ -447,11 +447,16 @@ internal class IrGraphGenerator(
                 expressionGeneratorFactory,
               )
             }
-          +irInvoke(
-            callee = metroSymbols.closeGraphLifecycle,
-            dispatchReceiver = irGetField(irGet(receiver), state.backingField!!),
-            args = listOf(callbacks),
-          )
+          val lifecycle = irGetField(irGet(receiver), state.backingField!!)
+          if (close.isSuspend) {
+            +irInvoke(callee = metroSymbols.closeSuspendGraph, args = listOf(lifecycle, callbacks))
+          } else {
+            +irInvoke(
+              callee = metroSymbols.closeGraphLifecycle,
+              dispatchReceiver = lifecycle,
+              args = listOf(callbacks),
+            )
+          }
         }
       }
 
