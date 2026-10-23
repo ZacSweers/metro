@@ -132,6 +132,42 @@ Is functionally equivalent to writing the below.
 interface AppGraph
 ```
 
+## Graph lifecycle
+
+Opt in to `ExperimentalMetroApi` and extend `CloseableGraph` to give a graph startup and cleanup callbacks. Metro injects each callback’s parameters before it calls the function. Use a scoped binding or a factory input when the callbacks need the same instance.
+
+```kotlin
+@OptIn(ExperimentalMetroApi::class)
+@DependencyGraph
+interface SessionGraph : CloseableGraph {
+  @OnGraphInit fun start(connection: Connection) { connection.open() }
+  @OnGraphClose fun stop(connection: Connection) { connection.close() }
+
+  @DependencyGraph.Factory
+  fun interface Factory {
+    fun create(@Provides connection: Connection): SessionGraph
+  }
+}
+```
+
+The factory runs init callbacks after it initializes graph storage. It returns the graph when startup succeeds. Callbacks run sequentially in unspecified order. If startup fails or is cancelled, the caller handles resources acquired during partial startup.
+
+Contributed interfaces can declare callbacks. The assembled graph must implement a lifecycle interface. Give each callback a body and a `Unit` return type. Repeat its annotation on overrides. Metro invokes each effective callback once, including through diamond inheritance. Only Metro can invoke these functions. Direct calls, annotated `super` calls, and callable references are compile errors. Metro implements `close()`.
+
+The first call to `close()` marks the graph closed. It closes owned extensions before resolving any parent callback parameters. Later calls return immediately, even during cleanup. The first failure stops cleanup and reaches the caller. The graph stays closed. Ordinary dependency requests still work after close. Creating an extension through the parent or a previously obtained factory fails.
+
+A lifecycle parent owns the lifecycle extensions it creates. Independently closing a child removes it from the parent. Graphs passed through factory inputs keep their existing owner. The caller also owns the tracer when runtime tracing is enabled.
+
+An eager unscoped callback parameter can create a fresh instance. A binding reachable only during close can be created for the first time during cleanup. The compiler reports these separately. See the [diagnostics reference](diagnostics.md#unscopedlifecycleparameter).
+
+### Suspending callbacks
+
+Enable `metro { enableSuspendProviders.set(true) }` for a suspend callback, a suspend lifecycle factory, or `SuspendCloseableGraph`. An eager request for a suspending binding requires a suspend callback. A synchronous callback can accept `suspend () -> T` or `SuspendLazy<T>` to defer that request.
+
+Suspending startup requires an explicit factory with a suspend creation function. Obtain the factory synchronously and call its creation function from a suspend context. This also applies to dynamic graphs and extension factories. Expose the child factory or implement its suspend creation function on the parent.
+
+For suspending cleanup, extend `SuspendCloseableGraph` from `runtime-coroutines`. The Gradle plugin adds the artifact when suspend provider support is enabled. A graph with synchronous startup can still use a synchronous factory. Its suspend `close()` protects child and callback cleanup from caller cancellation. A suspend parent can own either kind of lifecycle child. A synchronous parent can own synchronous lifecycle children.
+
 ## Graph Extensions
 
 Dependency graphs can be extended via _graph extensions_. As the name implies, graph extensions _extend_ a parent graph they are declared for and contain a superset of bindings that includes both the parent graph(s) as well as their own. These are similar in functionality to Dagger's _Subcomponents_.
