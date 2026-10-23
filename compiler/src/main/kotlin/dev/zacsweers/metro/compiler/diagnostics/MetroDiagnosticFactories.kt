@@ -21,6 +21,7 @@ internal val MetroDiagnosticId.factory: KtDiagnosticFactory1<String>
       MetroDiagnosticId.EMPTY_MULTIBINDING -> MetroDiagnostics.EMPTY_MULTIBINDING
       MetroDiagnosticId.UNSCOPED_LIFECYCLE_PARAMETER ->
         MetroDiagnostics.UNSCOPED_LIFECYCLE_PARAMETER
+      MetroDiagnosticId.CLOSE_ONLY_BINDING -> MetroDiagnostics.CLOSE_ONLY_BINDING
       MetroDiagnosticId.SUSPICIOUS_UNUSED_MULTIBINDING ->
         MetroDiagnostics.SUSPICIOUS_UNUSED_MULTIBINDING
       MetroDiagnosticId.INCOMPATIBLY_SCOPED_BINDINGS -> MetroDiagnostics.INCOMPATIBLE_SCOPE

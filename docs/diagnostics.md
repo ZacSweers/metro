@@ -12,6 +12,7 @@ Diagnostics rendering is controlled by the `diagnosticsRenderMode` Gradle option
 | Diagnostic | Summary |
 |------------|---------|
 | [`Metro/AssistedFactorySuspendRequired`](#assistedfactorysuspendrequired) | An assisted factory creates a target that depends on suspend bindings. |
+| [`Metro/CloseOnlyBinding`](#closeonlybinding) | A binding can first be created during graph cleanup. |
 | [`Metro/DependencyCycle`](#dependencycycle) | A binding cycle has no deferred edge. |
 | [`Metro/DuplicateBinding`](#duplicatebinding) | Multiple bindings match the same type key. |
 | [`Metro/DuplicateMapKeys`](#duplicatemapkeys) | Multiple map contributions use the same key. |
@@ -42,6 +43,14 @@ Diagnostics rendering is controlled by the `diagnosticsRenderMode` Gradle option
 **Summary:** An assisted factory creates a target that depends on suspend bindings.
 
 An `@AssistedFactory` creates a type whose non-assisted dependencies include suspend bindings. The factory function must await them. Declare the factory function as a `suspend` function so the generated implementation can await the suspend dependencies.
+
+## CloseOnlyBinding
+
+**Diagnostic:** `Metro/CloseOnlyBinding`
+
+**Summary:** A binding can first be created during graph cleanup.
+
+Only close callbacks request this binding. Resolving a close callback parameter can create it during cleanup. Graph inputs and accessors of included dependencies are exempt.
 
 ## DependencyCycle
 

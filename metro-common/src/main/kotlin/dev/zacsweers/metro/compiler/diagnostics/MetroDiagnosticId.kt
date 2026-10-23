@@ -69,6 +69,11 @@ public enum class MetroDiagnosticId(
     "A lifecycle callback requests an unscoped instance.",
     "A callback can receive a fresh instance on every request. Scope the binding to share it with the graph. Request a provider or lazy value to control when it is created.",
   ),
+  CLOSE_ONLY_BINDING(
+    "Metro/CloseOnlyBinding",
+    "A binding can first be created during graph cleanup.",
+    "Only close callbacks request this binding. Resolving a close callback parameter can create it during cleanup. Graph inputs and accessors of included dependencies are exempt.",
+  ),
   SUSPICIOUS_UNUSED_MULTIBINDING(
     "Metro/SuspiciousUnusedMultibinding",
     "A multibinding has contributions but is never requested.",

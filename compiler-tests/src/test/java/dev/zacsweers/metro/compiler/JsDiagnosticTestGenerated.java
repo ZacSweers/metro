@@ -511,6 +511,18 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("GraphLifecycleCloseOnly.kt")
+    public void testGraphLifecycleCloseOnly() {
+      run("GraphLifecycleCloseOnly.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleCloseOnlyRetained.kt")
+    public void testGraphLifecycleCloseOnlyRetained() {
+      run("GraphLifecycleCloseOnlyRetained.kt");
+    }
+
+    @Test
     @TestMetadata("GraphLifecycleDeclarations.kt")
     public void testGraphLifecycleDeclarations() {
       run("GraphLifecycleDeclarations.kt");

@@ -17,6 +17,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.BINDS_OPTIONAL_OF_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.BINDS_OPTIONAL_OF_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CANNOT_HAVE_INJECT_IN_MULTIPLE_TARGETS
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CANNOT_HAVE_MULTIPLE_INJECTED_CONSTRUCTORS
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CLOSE_ONLY_BINDING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CONFLICTING_ANNOTATION_ROLES
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CONFLICTING_PROVIDES_SCOPE
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CONTRIBUTES_TO_COULD_BE_BINDING_CONTAINER
@@ -219,6 +220,7 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val MULTIBINDS_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val MULTIBINDS_OVERRIDE_ERROR by error0<KtElement>(OVERRIDE_MODIFIER)
   val UNSCOPED_LIFECYCLE_PARAMETER by warning1<KtElement, String>()
+  val CLOSE_ONLY_BINDING by warning1<KtElement, String>()
   val SUSPICIOUS_UNUSED_MULTIBINDING by warning1<KtElement, String>(OVERRIDE_MODIFIER)
   val MAP_KEY_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val MAP_KEY_TYPE_PARAM_ERROR by error1<KtElement, String>(TYPE_PARAMETERS_LIST)
@@ -420,6 +422,7 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
         put(MULTIBINDS_ERROR, "{0}", STRING)
         put(MULTIBINDS_OVERRIDE_ERROR, "Multibinding contributors cannot be overrides.")
         put(UNSCOPED_LIFECYCLE_PARAMETER, "{0}", STRING)
+        put(CLOSE_ONLY_BINDING, "{0}", STRING)
         put(SUSPICIOUS_UNUSED_MULTIBINDING, "{0}", STRING)
         put(MAP_KEY_ERROR, "{0}", STRING)
         put(MAP_KEY_TYPE_PARAM_ERROR, "{0}", STRING)
