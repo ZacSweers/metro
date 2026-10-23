@@ -377,6 +377,30 @@ internal class IrGraphGenerator(
         }
       }
 
+      val suspendInit =
+        node.suspendInit?.let {
+          addFunction(
+              propertyNameAllocator.newName("metroInit"),
+              irBuiltIns.unitType,
+              visibility = DescriptorVisibilities.INTERNAL,
+            )
+            .apply {
+              isSuspend = true
+              val receiver = thisReceiverParameter.copyTo(this)
+              setDispatchReceiver(receiver)
+              buildBlockBody {
+                +lifecycleCalls(
+                  GraphLifecyclePhase.INIT,
+                  node,
+                  bindingGraph,
+                  receiver,
+                  expressionGeneratorFactory,
+                )
+              }
+            }
+        }
+      finishLifecycleCreators(suspendInit)
+
       // Add extra constructor statements
       trace("Finalize constructor body") {
         with(ctor) {
@@ -384,7 +408,10 @@ internal class IrGraphGenerator(
           buildBlockBody {
             +originalBody.statements
             constructorStatements.forEach { statement -> +statement(thisReceiverParameter) }
-            if (node.lifecycleCallbacks.any { it.phase == GraphLifecyclePhase.INIT }) {
+            if (
+              suspendInit == null &&
+                node.lifecycleCallbacks.any { it.phase == GraphLifecyclePhase.INIT }
+            ) {
               +lifecycleCalls(
                 GraphLifecyclePhase.INIT,
                 node,

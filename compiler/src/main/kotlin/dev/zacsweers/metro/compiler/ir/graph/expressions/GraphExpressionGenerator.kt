@@ -20,6 +20,7 @@ import dev.zacsweers.metro.compiler.ir.graph.GraphSuspendFactoryGenerator
 import dev.zacsweers.metro.compiler.ir.graph.IrBinding
 import dev.zacsweers.metro.compiler.ir.graph.IrBindingGraph
 import dev.zacsweers.metro.compiler.ir.graph.IrGraphExtensionGenerator
+import dev.zacsweers.metro.compiler.ir.graph.awaitGraphInit
 import dev.zacsweers.metro.compiler.ir.graph.generatedGraphExtensionData
 import dev.zacsweers.metro.compiler.ir.graph.sharding.ShardExpressionContext
 import dev.zacsweers.metro.compiler.ir.irGetProperty
@@ -807,6 +808,7 @@ private constructor(
                 arguments[i + 1] = irGet(functionParams[i])
               }
             }
+            .awaitGraphInit(extensionImpl, binding.accessor.isSuspend)
             .toTargetType(
               actual = AccessType.INSTANCE,
               contextualTypeKey = contextualTypeKey,

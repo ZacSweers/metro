@@ -12,8 +12,54 @@ import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.irBlock
 import org.jetbrains.kotlin.ir.builders.irGet
+import org.jetbrains.kotlin.ir.builders.irTemporary
+import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrExpression
+import org.jetbrains.kotlin.ir.irAttribute
+
+/** Factory bodies can be built before the contributed callbacks are known. */
+private var IrClass.pendingLifecycleCreators: MutableList<(IrSimpleFunction) -> Unit>? by
+  irAttribute(copyByDefault = false)
+private var IrClass.lifecycleInitializer: IrSimpleFunction? by irAttribute(copyByDefault = false)
+
+/** Patches the graph's suspend factory bodies once its initialization code is available. */
+internal fun IrClass.finishLifecycleCreators(initializer: IrSimpleFunction?) {
+  lifecycleInitializer = initializer
+  if (initializer != null) {
+    pendingLifecycleCreators?.forEach { it(initializer) }
+  }
+  pendingLifecycleCreators = null
+}
+
+/** A suspending creator returns the constructed instance after its init callbacks finish. */
+context(scope: IrBuilderWithScope)
+internal fun IrExpression.awaitGraphInit(graph: IrClass, suspendCreator: Boolean): IrExpression {
+  if (!suspendCreator) {
+    return this
+  }
+  val construction = this
+  val result = scope.irBlock(resultType = type) { +construction }
+  fun insertInit(initializer: IrSimpleFunction) {
+    result.statements[0] =
+      scope.irBlock(resultType = construction.type) {
+        val instance = irTemporary(construction, "graph")
+        +irInvoke(dispatchReceiver = irGet(instance), callee = initializer.symbol)
+        +irGet(instance)
+      }
+  }
+  val initializer = graph.lifecycleInitializer
+  if (initializer != null) {
+    insertInit(initializer)
+  } else {
+    val creators =
+      graph.pendingLifecycleCreators
+        ?: mutableListOf<(IrSimpleFunction) -> Unit>().also { graph.pendingLifecycleCreators = it }
+    creators += ::insertInit
+  }
+  return result
+}
 
 /** Resolves each argument immediately before invoking its callback. */
 context(context: IrMetroContext)

@@ -245,6 +245,60 @@ internal class GraphNodes(
     private var hasGraphExtensions = false
     private var hasErrors = false
 
+    /** Contributions and dynamic replacements are visible only on the assembled graph. */
+    private fun validateLifecycle(node: GraphNode.Local) {
+      val close = node.lifecycleClose ?: return
+      val suspendClose =
+        node.lifecycleCallbacks.firstOrNull {
+          it.phase == GraphLifecyclePhase.CLOSE && it.function.isSuspend
+        }
+      fun fail(message: String) {
+        reportCompat(
+          graphDeclaration.sourceGraphIfMetroGraph,
+          MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
+          message,
+        )
+        exitProcessing()
+      }
+      if (suspendClose != null && !close.isSuspend) {
+        fail(
+          "Suspend close callback '${suspendClose.declaration.name}' requires SuspendCloseableGraph.",
+        )
+      }
+      val factory = node.originalCreator ?: node.creator as? GraphNode.Creator.Factory
+      val dynamic = node.metroGraph?.generatedDynamicGraphData
+      val factorySam =
+        if (dynamic == null) {
+          factory?.function
+        } else {
+          dynamic.factoryImpl
+            ?.superTypes
+            ?.singleOrNull()
+            ?.classOrNull
+            ?.owner
+            ?.singleAbstractFunction()
+        }
+      val needsFlag = close.isSuspend || node.lifecycleCallbacks.any { it.function.isSuspend }
+      if (!options.enableSuspendProviders && (needsFlag || factorySam?.isSuspend == true)) {
+        fail("Suspending graph lifecycle operations require enableSuspendProviders.")
+      }
+      val init = node.suspendInit ?: return
+      if (factorySam?.isSuspend != true) {
+        fail(
+          "Init callback '${init.declaration.name}' requires a graph factory with a suspend creation function.",
+        )
+      }
+      val parent = node.parentGraph as? GraphNode.Local ?: return
+      val key = node.metroGraph?.generatedGraphExtensionData?.typeKey ?: return
+      for (accessor in parent.graphExtensions[key].orEmpty()) {
+        if (!accessor.isFactory && !accessor.accessor.ir.isSuspend) {
+          fail(
+            "Creating this extension invokes suspend callback '${init.declaration.name}'. Expose its factory or implement its suspend creation function.",
+          )
+        }
+      }
+    }
+
     private fun computeDeclaredScopes(): Set<IrAnnotation> {
       return buildSet {
         val implicitScope =
@@ -1433,6 +1487,8 @@ internal class GraphNodes(
                 computePublishedBindsKeys(graphPrivateKeys, bindsCallables)
               },
           )
+
+        validateLifecycle(graphNode)
 
         // Check after creating a node for access to recursive allDependencies
         trace("Check scope overlap with parents") {

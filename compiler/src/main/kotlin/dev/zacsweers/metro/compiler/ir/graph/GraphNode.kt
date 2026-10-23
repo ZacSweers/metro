@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.ir.graph
 
 import dev.zacsweers.metro.compiler.BitField
 import dev.zacsweers.metro.compiler.Origins
+import dev.zacsweers.metro.compiler.graph.GraphLifecyclePhase
 import dev.zacsweers.metro.compiler.graph.explanation.BindingExplanationCandidate
 import dev.zacsweers.metro.compiler.ir.BindsCallable
 import dev.zacsweers.metro.compiler.ir.BindsOptionalOfCallable
@@ -210,6 +211,9 @@ internal sealed class GraphNode {
     val contributionDecisions: List<BindingExplanationCandidate> = emptyList(),
   ) : GraphNode() {
     val hasExtensions = graphExtensions.isNotEmpty()
+    val suspendInit = lifecycleCallbacks.firstOrNull {
+      it.phase == GraphLifecyclePhase.INIT && it.function.isSuspend
+    }
 
     override val directlyProvidedKeys: Set<IrTypeKey> by memoize {
       buildSet {

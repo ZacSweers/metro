@@ -276,7 +276,10 @@ public class SuspendBindingValidator<
   ) {
     for (request in requests) {
       checkCanceled()
-      if (request.kind != SuspendGraphRequestKind.ACCESSOR) continue
+      val lifecycle = request.kind == SuspendGraphRequestKind.LIFECYCLE_PARAMETER
+      if (!lifecycle && request.kind != SuspendGraphRequestKind.ACCESSOR) {
+        continue
+      }
       val contextKey = request.contextKey
       if (contextKey.typeKey !in analysis.suspendKeys) continue
       // Suspend multibindings have already been reported with a more specific message.
@@ -298,9 +301,13 @@ public class SuspendBindingValidator<
           kind = SuspendValidationIssueKind.NON_SUSPEND_ACCESSOR,
           id = MetroDiagnosticId.SUSPEND_BINDING_FROM_NON_SUSPEND_ACCESSOR,
           title =
-            "$typeRender bindings must be a suspend function or " +
-              "${suspendProviderRender(typeRender)} because it depends on suspend bindings and " +
-              "requires a suspend context.",
+            if (lifecycle) {
+              "This callback must be suspend to receive $typeRender. It depends on a suspend binding."
+            } else {
+              "$typeRender bindings must be a suspend function or " +
+                "${suspendProviderRender(typeRender)} because it depends on suspend bindings and " +
+                "requires a suspend context."
+            },
           site = SuspendValidationSite.GraphRequest(request),
           path = analysis.pathFrom(contextKey.typeKey) { it.typeKey },
         )

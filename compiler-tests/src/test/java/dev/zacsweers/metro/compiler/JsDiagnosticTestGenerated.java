@@ -1931,6 +1931,24 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("GraphLifecycleEagerParameter.kt")
+    public void testGraphLifecycleEagerParameter() {
+      run("GraphLifecycleEagerParameter.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecyclePropertyCreation.kt")
+    public void testGraphLifecyclePropertyCreation() {
+      run("GraphLifecyclePropertyCreation.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleStartupFactory.kt")
+    public void testGraphLifecycleStartupFactory() {
+      run("GraphLifecycleStartupFactory.kt");
+    }
+
+    @Test
     @TestMetadata("IncludedGraphDeferredAccessorFromNonSuspendAccessor.kt")
     public void testIncludedGraphDeferredAccessorFromNonSuspendAccessor() {
       run("IncludedGraphDeferredAccessorFromNonSuspendAccessor.kt");
