@@ -50,6 +50,12 @@ public class ReportsTestGenerated extends AbstractReportsTest {
   }
 
   @Test
+  @TestMetadata("GraphLifecycleReport.kt")
+  public void testGraphLifecycleReport() {
+    run("GraphLifecycleReport.kt");
+  }
+
+  @Test
   @TestMetadata("GraphMetadataStatsReport.kt")
   public void testGraphMetadataStatsReport() {
     run("GraphMetadataStatsReport.kt");
@@ -325,6 +331,34 @@ public class ReportsTestGenerated extends AbstractReportsTest {
             }
           }
         }
+      }
+    }
+  }
+
+  @Nested
+  @TestMetadata("compiler-tests/src/test/data/dump/reports/GraphLifecycleReport")
+  @TestDataPath("$PROJECT_ROOT")
+  public class GraphLifecycleReport {
+    private void run(String fileName) {
+      runTest("compiler-tests/src/test/data/dump/reports/GraphLifecycleReport/" + fileName);
+    }
+
+    @Test
+    public void testAllFilesPresentInGraphLifecycleReport() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/GraphLifecycleReport"), Pattern.compile("^(.+)\\.kt$"), null, true);
+    }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/dump/reports/GraphLifecycleReport/graph-metadata")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Graph_metadata {
+      private void run(String fileName) {
+        runTest("compiler-tests/src/test/data/dump/reports/GraphLifecycleReport/graph-metadata/" + fileName);
+      }
+
+      @Test
+      public void testAllFilesPresentInGraph_metadata() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/GraphLifecycleReport/graph-metadata"), Pattern.compile("^(.+)\\.kt$"), null, true);
       }
     }
   }
