@@ -651,6 +651,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("GraphLifecycleUnscoped.kt")
+    public void testGraphLifecycleUnscoped() {
+      run("GraphLifecycleUnscoped.kt");
+    }
+
+    @Test
     @TestMetadata("GraphPrivateAccessorIsAnError.kt")
     public void testGraphPrivateAccessorIsAnError() {
       run("GraphPrivateAccessorIsAnError.kt");

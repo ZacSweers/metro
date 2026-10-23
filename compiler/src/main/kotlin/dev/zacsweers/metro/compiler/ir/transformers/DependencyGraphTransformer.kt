@@ -57,6 +57,7 @@ import dev.zacsweers.metro.compiler.ir.graph.IrGraphGenerator
 import dev.zacsweers.metro.compiler.ir.graph.awaitGraphInit
 import dev.zacsweers.metro.compiler.ir.graph.expressions.BindingExpressionDecorator
 import dev.zacsweers.metro.compiler.ir.graph.generatedGraphExtensionData
+import dev.zacsweers.metro.compiler.ir.graph.reportLifecycleWarnings
 import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.irCallConstructorWithSameParameters
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
@@ -332,6 +333,7 @@ internal class DependencyGraphTransformer(
         validationResult.sealResult
       } else {
         // Parent properties must exist before child implementations can reference them.
+        reportLifecycleWarnings(validationResult)
         generateDependencyGraph(validationResult, parentBindingContext = null)
         validationResult.sealResult
       }

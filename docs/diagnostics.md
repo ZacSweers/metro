@@ -32,6 +32,7 @@ Diagnostics rendering is controlled by the `diagnosticsRenderMode` Gradle option
 | [`Metro/SuspendProvidersNotEnabled`](#suspendprovidersnotenabled) | A suspend binding is used while suspend providers are disabled. |
 | [`Metro/SuspiciousUnusedMultibinding`](#suspiciousunusedmultibinding) | A multibinding has contributions but is never requested. |
 | [`Metro/UnprocessedUpstreamDeclaration`](#unprocessedupstreamdeclaration) | An upstream declaration does not appear to have been processed by Metro. |
+| [`Metro/UnscopedLifecycleParameter`](#unscopedlifecycleparameter) | A lifecycle callback requests an unscoped instance. |
 | [`Metro/UnusedGraphInputs`](#unusedgraphinputs) | A graph input is unused and can be removed. |
 
 ## AssistedFactorySuspendRequired
@@ -205,6 +206,14 @@ Contributions exist for a multibinding that nothing in the graph requests. This 
 Metro was asked to use an injected declaration from another module or compilation unit, but that declaration does not appear to have been processed by Metro. This usually means Metro was enabled only in the downstream module while the referenced declaration lives upstream.
 
 Enable Metro in the upstream module too. If this happens while using framework interop, make sure the upstream module also runs that framework's code generation when Metro relies on its generated code.
+
+## UnscopedLifecycleParameter
+
+**Diagnostic:** `Metro/UnscopedLifecycleParameter`
+
+**Summary:** A lifecycle callback requests an unscoped instance.
+
+A callback can receive a fresh instance on every request. Scope the binding to share it with the graph. Request a provider or lazy value to control when it is created.
 
 ## UnusedGraphInputs
 

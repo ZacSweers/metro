@@ -523,6 +523,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("GraphLifecycleUnscoped.kt")
+    public void testGraphLifecycleUnscoped() {
+      run("GraphLifecycleUnscoped.kt");
+    }
+
+    @Test
     @TestMetadata("GraphPrivateAccessorIsAnError.kt")
     public void testGraphPrivateAccessorIsAnError() {
       run("GraphPrivateAccessorIsAnError.kt");

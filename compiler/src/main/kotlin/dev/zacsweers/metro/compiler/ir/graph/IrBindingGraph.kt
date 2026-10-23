@@ -1921,7 +1921,7 @@ private fun IrBinding.Provided.isFromGeneratedContributionImpl(): ClassId? {
 private class AncestorBuild(val target: IrTypeKey, val depth: Int)
 
 /** The token for bindings a child graph reads from an ancestor graph's instance. */
-private val IrBinding.parentToken: ParentContext.Token?
+internal val IrBinding.parentToken: ParentContext.Token?
   get() =
     when (this) {
       is IrBinding.GraphDependency -> token
