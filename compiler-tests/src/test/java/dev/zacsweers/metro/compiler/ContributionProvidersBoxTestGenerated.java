@@ -4483,6 +4483,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
     }
 
     @Test
+    @TestMetadata("GraphLifecycleTracing.kt")
+    public void testGraphLifecycleTracing() {
+      run("GraphLifecycleTracing.kt");
+    }
+
+    @Test
     @TestMetadata("RuntimeTracingBasic.kt")
     public void testRuntimeTracingBasic() {
       run("RuntimeTracingBasic.kt");

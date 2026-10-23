@@ -453,7 +453,8 @@ internal class IrGraphGenerator(
             constructorStatements.forEach { statement -> +statement(thisReceiverParameter) }
             if (
               suspendInit == null &&
-                node.lifecycleCallbacks.any { it.phase == GraphLifecyclePhase.INIT }
+                (node.lifecycleCallbacks.any { it.phase == GraphLifecyclePhase.INIT } ||
+                  (node.lifecycleClose != null && traceContextProperty != null))
             ) {
               +lifecycleCalls(
                 GraphLifecyclePhase.INIT,
@@ -483,23 +484,24 @@ internal class IrGraphGenerator(
               irBuiltIns.unitType,
               suspend = close.isSuspend,
             ) { cleanup ->
-              val owned = irGet(cleanup.parameters.single())
-              if (close.isSuspend) {
-                +irInvoke(callee = metroSymbols.closeSuspendChildren, args = listOf(owned))
-              } else {
-                +irInvoke(
-                  callee = metroSymbols.closeGraphChildren,
-                  dispatchReceiver = irGetField(irGet(receiver), state.backingField!!),
-                  args = listOf(owned),
-                )
-              }
               +lifecycleCalls(
                 GraphLifecyclePhase.CLOSE,
                 node,
                 bindingGraph,
                 receiver,
                 expressionGeneratorFactory,
-              )
+              ) {
+                val owned = irGet(cleanup.parameters.single())
+                if (close.isSuspend) {
+                  irInvoke(callee = metroSymbols.closeSuspendChildren, args = listOf(owned))
+                } else {
+                  irInvoke(
+                    callee = metroSymbols.closeGraphChildren,
+                    dispatchReceiver = irGetField(irGet(receiver), state.backingField!!),
+                    args = listOf(owned),
+                  )
+                }
+              }
             }
           val lifecycle = irGetField(irGet(receiver), state.backingField!!)
           if (close.isSuspend) {
