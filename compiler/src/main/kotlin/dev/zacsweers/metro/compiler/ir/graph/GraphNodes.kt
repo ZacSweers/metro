@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.ir.graph
 import androidx.collection.MutableScatterMap
 import dev.zacsweers.metro.compiler.BitFieldBuilder
 import dev.zacsweers.metro.compiler.MetroAnnotations
+import dev.zacsweers.metro.compiler.MetroClassIds
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.compat.propertyIfAccessorCompat
 import dev.zacsweers.metro.compiler.diagnostics.DiagnosticHeadlines
@@ -24,6 +25,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.getOrInit
 import dev.zacsweers.metro.compiler.getValue
+import dev.zacsweers.metro.compiler.graph.GraphLifecyclePhase
 import dev.zacsweers.metro.compiler.graph.toTraceSection
 import dev.zacsweers.metro.compiler.graph.withEntry
 import dev.zacsweers.metro.compiler.ir.BindsCallable
@@ -50,6 +52,7 @@ import dev.zacsweers.metro.compiler.ir.classReferenceArrayArgument
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.deepRemapperFor
 import dev.zacsweers.metro.compiler.ir.excludedClasses
+import dev.zacsweers.metro.compiler.ir.extensionReceiverParameterCompat
 import dev.zacsweers.metro.compiler.ir.findInjectableConstructor
 import dev.zacsweers.metro.compiler.ir.graph.reporting.contributionDecisions
 import dev.zacsweers.metro.compiler.ir.isAccessorCandidate
@@ -119,6 +122,7 @@ import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.primaryConstructor
+import org.jetbrains.kotlin.ir.util.resolveFakeOverrideMaybeAbstract
 import org.jetbrains.kotlin.name.ClassId
 
 internal class GraphNodes(
@@ -206,6 +210,8 @@ internal class GraphNodes(
   ) : IrMetroContext by nodeCache, TraceScope by traceScope {
     private val metroGraph = metroGraph ?: graphDeclaration.metroGraphOrNull
     private val metroDeclarations: MetroDeclarations = nodeCache.metroDeclarations
+    private val lifecycleCallbacks = mutableListOf<LifecycleCallback>()
+    private var lifecycleClose: IrSimpleFunction? = null
     private val accessors = mutableListOf<GraphAccessor>()
     private val bindsFunctions = mutableListOf<Pair<MetroSimpleFunction, IrContextualTypeKey>>()
     private val bindsCallables = mutableMapOf<IrTypeKey, MutableList<BindsCallable>>()
@@ -746,6 +752,27 @@ internal class GraphNodes(
           ) {
             continue
           }
+          if (declaration is IrSimpleFunction && declaration.name.asString() == "close") {
+            val isClose =
+              declaration.regularParameters.isEmpty() &&
+                declaration.extensionReceiverParameterCompat == null
+            val lifecycleGraph =
+              isClose &&
+                supertypes.any { it.classOrNull?.owner?.classId in MetroClassIds.lifecycleGraphs }
+            if (lifecycleGraph) {
+              val target = declaration.resolveFakeOverrideMaybeAbstract()
+              if (target != null && target.modality != Modality.ABSTRACT) {
+                reportCompat(
+                  graphDeclaration.sourceGraphIfMetroGraph,
+                  MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
+                  "Metro implements close(). Put cleanup in an @OnGraphClose callback.",
+                )
+                exitProcessing()
+              }
+              lifecycleClose = declaration
+              continue
+            }
+          }
           val annotations = metroAnnotationsOf(declaration)
           if (annotations.isProvides) continue
 
@@ -844,7 +871,24 @@ internal class GraphNodes(
                 }
               }
 
-              if (hasDefaultImplementation && !isOptionalBinding) continue
+              if (hasDefaultImplementation && !isOptionalBinding) {
+                val target = declaration.resolveFakeOverrideMaybeAbstract()
+                if (target != null && target.isAnnotatedWithAny(MetroClassIds.lifecycleCallbacks)) {
+                  val parameters =
+                    target.regularParameters.zip(declaration.regularParameters) {
+                      source,
+                      substituted ->
+                      LifecycleParameter(source, IrContextualTypeKey.from(source, substituted.type))
+                    }
+                  for (phase in GraphLifecyclePhase.entries) {
+                    if (target.hasAnnotation(phase.annotation)) {
+                      lifecycleCallbacks +=
+                        LifecycleCallback(phase, declaration, target, parameters)
+                    }
+                  }
+                }
+                continue
+              }
 
               // Report qualifier mismatch error if found
               if (qualifierMismatchData != null) {
@@ -1141,6 +1185,15 @@ internal class GraphNodes(
 
       val creator = trace("Build creator") { buildCreator(diagnosticTag) }
 
+      if (lifecycleCallbacks.isNotEmpty() && lifecycleClose == null) {
+        reportCompat(
+          graphDeclaration.sourceGraphIfMetroGraph,
+          MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
+          "Graphs with lifecycle callbacks must implement CloseableGraph or SuspendCloseableGraph.",
+        )
+        exitProcessing()
+      }
+
       // For synthetic graph extensions, also track the original factory creator
       // This allows referencing original parameter declarations for reporting unused inputs
       val originalCreator =
@@ -1355,6 +1408,8 @@ internal class GraphNodes(
             supertypes = supertypes.toList(),
             includedGraphNodes = includedGraphNodes,
             graphExtensions = graphExtensions,
+            lifecycleCallbacks = lifecycleCallbacks,
+            lifecycleClose = lifecycleClose,
             scopes = scopes,
             aggregationScopes = aggregationScopes,
             bindsCallables = bindsCallables,

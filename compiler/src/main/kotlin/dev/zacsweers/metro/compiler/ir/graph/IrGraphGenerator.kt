@@ -1143,7 +1143,9 @@ internal class IrGraphGenerator(
           sortedKeys = sealResult.sortedKeys,
           roots = roots,
           injectorRoots = injectorRoots,
-          extraKeeps = bindingGraph.keeps(),
+          extraKeeps =
+            bindingGraph.keeps().toList() +
+              node.lifecycleCallbacks.flatMap { callback -> callback.parameters.map { it.key } },
           deferredTypes = sealResult.deferredTypes,
           reachableKeys = sealResult.reachableKeys,
           reuseBinding = { bindingPropertyContext.reusableBinding(it) != null },

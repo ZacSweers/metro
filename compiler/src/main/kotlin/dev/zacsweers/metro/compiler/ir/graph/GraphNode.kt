@@ -175,6 +175,8 @@ internal sealed class GraphNode {
     override val supertypes: List<IrType>,
     override val includedGraphNodes: Map<IrTypeKey, GraphNode>,
     val graphExtensions: Map<IrTypeKey, List<GraphExtensionAccessor>>,
+    val lifecycleCallbacks: List<LifecycleCallback>,
+    val lifecycleClose: IrSimpleFunction?,
     override val scopes: Set<IrAnnotation>,
     override val aggregationScopes: Set<ClassId>,
     override val providerFactories: Map<IrTypeKey, List<ProviderFactory>>,

@@ -362,6 +362,7 @@ internal class IrBindingGraph(
 
   // TODO hoist accessors up and visit in seal?
   private val accessors = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
+  private val lifecycleRoots = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
   private val inheritedAccessorRoots = mutableListOf<GraphAccessor>()
   private val injectors = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
   private val extraKeeps = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
@@ -395,6 +396,19 @@ internal class IrBindingGraph(
     if (accessor.declaringGraph != null) {
       inheritedAccessorRoots.add(accessor)
     }
+  }
+
+  /** Resolves a parameter at its declaration. Multiple callbacks can share this dependency. */
+  fun addLifecycleRoot(callback: LifecycleCallback, parameter: LifecycleParameter) {
+    recordRuntimeCoroutinesUse(parameter.key)
+    lifecycleRoots.putGraphRoot(
+      parameter.key,
+      IrBindingStack.Entry.injectedAt(
+        parameter.key,
+        callback.declaration,
+        parameter.source,
+      ),
+    )
   }
 
   fun addInjector(key: IrContextualTypeKey, entry: IrBindingStack.Entry) {
@@ -586,6 +600,7 @@ internal class IrBindingGraph(
       add(accessor.contextKey)
     }
     addAll(injectors.keys)
+    addAll(lifecycleRoots.keys)
     addAll(keeps())
   }
 
@@ -706,6 +721,7 @@ internal class IrBindingGraph(
         val roots = buildMap {
           putAll(accessors)
           putAll(injectors)
+          putAll(lifecycleRoots)
         }
 
         realGraph.prepareSeal(
