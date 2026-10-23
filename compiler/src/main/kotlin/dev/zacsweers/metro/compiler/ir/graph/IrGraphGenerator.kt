@@ -44,6 +44,7 @@ import dev.zacsweers.metro.compiler.ir.instanceFactory
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irGetProperty
 import dev.zacsweers.metro.compiler.ir.irInvoke
+import dev.zacsweers.metro.compiler.ir.irLambda
 import dev.zacsweers.metro.compiler.ir.lookupClass
 import dev.zacsweers.metro.compiler.ir.metroGraphOrFail
 import dev.zacsweers.metro.compiler.ir.metroMetadata
@@ -86,6 +87,7 @@ import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.builders.irDelegatingConstructorCall
 import org.jetbrains.kotlin.ir.builders.irExprBody
 import org.jetbrains.kotlin.ir.builders.irGet
+import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irInt
 import org.jetbrains.kotlin.ir.builders.irNull
@@ -397,7 +399,33 @@ internal class IrGraphGenerator(
 
       node.lifecycleClose?.let { close ->
         close.finalizeFakeOverride(thisReceiverParameter)
-        close.buildBlockBody {}
+        val receiver = close.dispatchReceiverParameter!!
+        val stateType = metroSymbols.graphLifecycleState.defaultType
+        val state =
+          addSimpleInstanceProperty(
+            propertyNameAllocator.newName("metroLifecycle"),
+            IrTypeKey(stateType),
+          ) {
+            irCallConstructor(metroSymbols.graphLifecycleState.constructors.single(), emptyList())
+          }
+        graphClass.lifecycleStateField = state.backingField
+        close.buildBlockBody {
+          val callbacks =
+            irLambda(close, null, emptyList(), irBuiltIns.unitType) {
+              +lifecycleCalls(
+                GraphLifecyclePhase.CLOSE,
+                node,
+                bindingGraph,
+                receiver,
+                expressionGeneratorFactory,
+              )
+            }
+          +irInvoke(
+            callee = metroSymbols.closeGraphLifecycle,
+            dispatchReceiver = irGetField(irGet(receiver), state.backingField!!),
+            args = listOf(callbacks),
+          )
+        }
       }
 
       trace("Implement overrides") { node.implementOverrides(expressionGeneratorFactory) }
@@ -2307,6 +2335,8 @@ internal class IrGraphGenerator(
  * This is used by child extensions to build the ancestor property chain for accessing grandparent
  * bindings.
  */
+internal var IrClass.lifecycleStateField: IrField? by irAttribute(copyByDefault = false)
+
 internal var IrClass.parentGraphInstanceProperty: IrProperty? by irAttribute(copyByDefault = false)
 
 /** Stores the generated runtime trace context property for graph extension child contexts. */

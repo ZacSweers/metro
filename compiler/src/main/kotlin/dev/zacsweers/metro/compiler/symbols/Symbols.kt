@@ -487,6 +487,13 @@ internal class Symbols(
       .first()
   }
 
+  val graphLifecycleState by lazy {
+    builtinsFinder.findClass(
+      ClassId(FqNames.metroRuntimeInternalPackage, "GraphLifecycleState".asName()),
+    )!!
+  }
+  val closeGraphLifecycle by lazy { graphLifecycleState.requireSimpleFunction("close") }
+
   private val doubleCheck: IrClassSymbol by lazy {
     builtinsFinder.findClass(ClassId(metroRuntimeInternal.packageFqName, "DoubleCheck".asName()))!!
   }

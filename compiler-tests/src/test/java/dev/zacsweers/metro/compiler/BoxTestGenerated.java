@@ -1475,6 +1475,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("GraphLifecycleClose.kt")
+    public void testGraphLifecycleClose() {
+      run("GraphLifecycleClose.kt");
+    }
+
+    @Test
     @TestMetadata("GraphLifecycleInit.kt")
     public void testGraphLifecycleInit() {
       run("GraphLifecycleInit.kt");
