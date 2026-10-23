@@ -2159,6 +2159,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("GraphLifecycleChildContract.kt")
+    public void testGraphLifecycleChildContract() {
+      run("GraphLifecycleChildContract.kt");
+    }
+
+    @Test
     @TestMetadata("GraphLifecycleEagerParameter.kt")
     public void testGraphLifecycleEagerParameter() {
       run("GraphLifecycleEagerParameter.kt");

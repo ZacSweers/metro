@@ -497,6 +497,15 @@ internal class Symbols(
       .findFunctions(CallableId(FqNames.metroRuntimeInternalPackage, "closeSuspendGraph".asName()))
       .single()
   }
+  val closeSuspendChildren by lazy {
+    builtinsFinder
+      .findFunctions(
+        CallableId(FqNames.metroRuntimeInternalPackage, "closeSuspendChildren".asName()),
+      )
+      .single()
+  }
+  val registerGraphChild by lazy { graphLifecycleState.requireSimpleFunction("register") }
+  val closeGraphChildren by lazy { graphLifecycleState.requireSimpleFunction("closeChildren") }
   val requireOpenGraph by lazy { graphLifecycleState.requireSimpleFunction("requireOpen") }
   val closeGraphLifecycle by lazy { graphLifecycleState.requireSimpleFunction("close") }
 

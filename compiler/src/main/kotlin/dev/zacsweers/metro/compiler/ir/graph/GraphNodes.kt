@@ -282,13 +282,19 @@ internal class GraphNodes(
       if (!options.enableSuspendProviders && (needsFlag || factorySam?.isSuspend == true)) {
         fail("Suspending graph lifecycle operations require enableSuspendProviders.")
       }
+      val parent = node.parentGraph as? GraphNode.Local
+      if (close.isSuspend && parent?.lifecycleClose?.isSuspend == false) {
+        fail("A CloseableGraph cannot own a SuspendCloseableGraph extension.")
+      }
       val init = node.suspendInit ?: return
       if (factorySam?.isSuspend != true) {
         fail(
           "Init callback '${init.declaration.name}' requires a graph factory with a suspend creation function.",
         )
       }
-      val parent = node.parentGraph as? GraphNode.Local ?: return
+      if (parent == null) {
+        return
+      }
       val key = node.metroGraph?.generatedGraphExtensionData?.typeKey ?: return
       for (accessor in parent.graphExtensions[key].orEmpty()) {
         if (!accessor.isFactory && !accessor.accessor.ir.isSuspend) {

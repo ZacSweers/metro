@@ -377,6 +377,39 @@ internal class IrGraphGenerator(
         }
       }
 
+      val lifecycleProperty =
+        node.lifecycleClose?.let {
+          val stateType = metroSymbols.graphLifecycleState.defaultType
+          addSimpleInstanceProperty(
+            propertyNameAllocator.newName("metroLifecycle"),
+            IrTypeKey(stateType),
+          ) {
+            irCallConstructor(metroSymbols.graphLifecycleState.constructors.single(), emptyList())
+          }
+        }
+      graphClass.lifecycleStateField = lifecycleProperty?.backingField
+
+      val parentStateField = parentGraphParam?.type?.rawTypeOrNull()?.lifecycleStateField
+      fun IrBuilderWithScope.parentState(receiver: IrValueParameter): IrExpression {
+        if (parentStateField == null) {
+          return irNull()
+        }
+        val parent =
+          irGetField(irGet(receiver), checkNotNull(parentGraphInstanceProperty?.backingField))
+        return irGetField(parent, parentStateField)
+      }
+      val registerChild = lifecycleProperty != null && parentStateField != null
+      fun IrBuilderWithScope.register(receiver: IrValueParameter): IrExpression =
+        irInvoke(
+          callee = metroSymbols.registerGraphChild,
+          dispatchReceiver = parentState(receiver),
+          args =
+            listOf(
+              irGet(receiver),
+              irGetField(irGet(receiver), checkNotNull(lifecycleProperty?.backingField)),
+            ),
+        )
+
       val suspendInit =
         node.suspendInit?.let {
           addFunction(
@@ -396,12 +429,13 @@ internal class IrGraphGenerator(
                   receiver,
                   expressionGeneratorFactory,
                 )
+                if (registerChild) {
+                  +register(receiver)
+                }
               }
             }
         }
       finishLifecycleCreators(suspendInit)
-
-      val parentStateField = parentGraphParam?.type?.rawTypeOrNull()?.lifecycleStateField
 
       // Add extra constructor statements
       trace("Finalize constructor body") {
@@ -429,6 +463,9 @@ internal class IrGraphGenerator(
                 expressionGeneratorFactory,
               )
             }
+            if (suspendInit == null && registerChild) {
+              +register(thisReceiverParameter)
+            }
           }
         }
       }
@@ -436,18 +473,26 @@ internal class IrGraphGenerator(
       node.lifecycleClose?.let { close ->
         close.finalizeFakeOverride(thisReceiverParameter)
         val receiver = close.dispatchReceiverParameter!!
-        val stateType = metroSymbols.graphLifecycleState.defaultType
-        val state =
-          addSimpleInstanceProperty(
-            propertyNameAllocator.newName("metroLifecycle"),
-            IrTypeKey(stateType),
-          ) {
-            irCallConstructor(metroSymbols.graphLifecycleState.constructors.single(), emptyList())
-          }
-        graphClass.lifecycleStateField = state.backingField
+        val state = checkNotNull(lifecycleProperty)
         close.buildBlockBody {
           val callbacks =
-            irLambda(close, null, emptyList(), irBuiltIns.unitType, suspend = close.isSuspend) {
+            irLambda(
+              close,
+              null,
+              listOf(irBuiltIns.listClass.typeWith(irBuiltIns.anyType)),
+              irBuiltIns.unitType,
+              suspend = close.isSuspend,
+            ) { cleanup ->
+              val owned = irGet(cleanup.parameters.single())
+              if (close.isSuspend) {
+                +irInvoke(callee = metroSymbols.closeSuspendChildren, args = listOf(owned))
+              } else {
+                +irInvoke(
+                  callee = metroSymbols.closeGraphChildren,
+                  dispatchReceiver = irGetField(irGet(receiver), state.backingField!!),
+                  args = listOf(owned),
+                )
+              }
               +lifecycleCalls(
                 GraphLifecyclePhase.CLOSE,
                 node,
@@ -458,12 +503,15 @@ internal class IrGraphGenerator(
             }
           val lifecycle = irGetField(irGet(receiver), state.backingField!!)
           if (close.isSuspend) {
-            +irInvoke(callee = metroSymbols.closeSuspendGraph, args = listOf(lifecycle, callbacks))
+            +irInvoke(
+              callee = metroSymbols.closeSuspendGraph,
+              args = listOf(lifecycle, irGet(receiver), parentState(receiver), callbacks),
+            )
           } else {
             +irInvoke(
               callee = metroSymbols.closeGraphLifecycle,
               dispatchReceiver = lifecycle,
-              args = listOf(callbacks),
+              args = listOf(irGet(receiver), parentState(receiver), callbacks),
             )
           }
         }

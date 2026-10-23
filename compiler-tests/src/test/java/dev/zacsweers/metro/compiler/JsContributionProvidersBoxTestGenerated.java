@@ -865,6 +865,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     }
 
     @Test
+    @TestMetadata("GraphLifecycleInitBytecode.kt")
+    public void testGraphLifecycleInitBytecode() {
+      run("GraphLifecycleInitBytecode.kt");
+    }
+
+    @Test
     @TestMetadata("SwitchingProvidersGenerateTableSwitch.kt")
     public void testSwitchingProvidersGenerateTableSwitch() {
       run("SwitchingProvidersGenerateTableSwitch.kt");
@@ -3266,6 +3272,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     @TestMetadata("GraphExtensionParentSuspendBinding.kt")
     public void testGraphExtensionParentSuspendBinding() {
       run("GraphExtensionParentSuspendBinding.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleChildren.kt")
+    public void testGraphLifecycleChildren() {
+      run("GraphLifecycleChildren.kt");
     }
 
     @Test
