@@ -3263,6 +3263,12 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
     }
 
     @Test
+    @TestMetadata("GraphLifecycleFactory.kt")
+    public void testGraphLifecycleFactory() {
+      run("GraphLifecycleFactory.kt");
+    }
+
+    @Test
     @TestMetadata("IncludedGraphSuspendAccessor.kt")
     public void testIncludedGraphSuspendAccessor() {
       run("IncludedGraphSuspendAccessor.kt");

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.checkers
 
+import dev.zacsweers.metro.compiler.MetroClassIds
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
@@ -11,9 +12,11 @@ import dev.zacsweers.metro.compiler.fir.bindingContainerErrorMessage
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.diagnosticString
+import dev.zacsweers.metro.compiler.fir.implements
 import dev.zacsweers.metro.compiler.fir.isBindingContainer
 import dev.zacsweers.metro.compiler.fir.isIntrinsicType
 import dev.zacsweers.metro.compiler.fir.isResolved
+import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.render
 import dev.zacsweers.metro.compiler.fir.scopeAnnotations
 import dev.zacsweers.metro.compiler.fir.shouldCheckRuntimeTracingGraphInputs
@@ -38,6 +41,7 @@ import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.declarations.utils.classId
+import org.jetbrains.kotlin.fir.declarations.utils.isSuspend
 import org.jetbrains.kotlin.fir.resolve.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.types.coneType
@@ -107,6 +111,15 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
       }
 
     val targetGraph = createFunction.resolvedReturnType.toClassSymbolCompat(session)
+    if (createFunction.isSuspend && !session.metroFirBuiltIns.options.enableSuspendProviders) {
+      if (MetroClassIds.lifecycleGraphs.any { targetGraph?.implements(it, session) == true }) {
+        reporter.reportOn(
+          createFunction.source,
+          MetroDiagnostics.SUSPEND_PROVIDERS_NOT_ENABLED,
+          "Suspend lifecycle factories require enableSuspendProviders.",
+        )
+      }
+    }
     val targetGraphAnnotation =
       targetGraph
         ?.resolvedCompilerAnnotationsWithClassIds

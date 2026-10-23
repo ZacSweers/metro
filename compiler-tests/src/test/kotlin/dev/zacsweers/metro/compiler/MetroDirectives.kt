@@ -118,6 +118,8 @@ object MetroDirectives : SimpleDirectivesContainer() {
     directive(
       "Enable experimental suspend provider support and add Metro's runtime-coroutines artifact.",
     )
+  val WITH_RUNTIME_COROUTINES by
+    directive("Include runtime-coroutines when the compiler flag is off.")
   val WITHOUT_RUNTIME_COROUTINES by
     directive("Do not add Metro's runtime-coroutines artifact when suspend providers are enabled.")
   val DESUGARED_PROVIDER_SEVERITY by
@@ -272,6 +274,7 @@ object MetroDirectives : SimpleDirectivesContainer() {
   }
 
   fun includeMetroRuntimeCoroutines(directives: RegisteredDirectives): Boolean {
-    return ENABLE_SUSPEND_PROVIDERS in directives && WITHOUT_RUNTIME_COROUTINES !in directives
+    val include = ENABLE_SUSPEND_PROVIDERS in directives || WITH_RUNTIME_COROUTINES in directives
+    return include && WITHOUT_RUNTIME_COROUTINES !in directives
   }
 }

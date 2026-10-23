@@ -1,3 +1,5 @@
+// WITH_RUNTIME_COROUTINES
+
 interface Callbacks {
   @OnGraphInit fun <!DEPENDENCY_GRAPH_ERROR!>missingBody<!>()
   @OnGraphClose fun <!DEPENDENCY_GRAPH_ERROR!>wrongReturn<!>(): Int = 1
@@ -14,4 +16,12 @@ interface SubCallbacks : Callbacks {
 
 @DependencyGraph interface SyncCallbacks : CloseableGraph {
   @OnGraphInit suspend fun <!SUSPEND_PROVIDERS_NOT_ENABLED!>start<!>() {}
+}
+
+@DependencyGraph interface <!SUSPEND_PROVIDERS_NOT_ENABLED!>SuspendCleanup<!> : SuspendCloseableGraph
+
+@DependencyGraph interface SuspendFactoryOnly : CloseableGraph {
+  @DependencyGraph.Factory fun interface Factory {
+    suspend fun <!SUSPEND_PROVIDERS_NOT_ENABLED!>create<!>(): SuspendFactoryOnly
+  }
 }
