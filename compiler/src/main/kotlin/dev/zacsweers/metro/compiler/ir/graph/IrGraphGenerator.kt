@@ -11,6 +11,7 @@ import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.compat.propertyIfAccessorCompat
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.expectAs
+import dev.zacsweers.metro.compiler.graph.GraphLifecyclePhase
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
@@ -381,8 +382,22 @@ internal class IrGraphGenerator(
           buildBlockBody {
             +originalBody.statements
             constructorStatements.forEach { statement -> +statement(thisReceiverParameter) }
+            if (node.lifecycleCallbacks.any { it.phase == GraphLifecyclePhase.INIT }) {
+              +lifecycleCalls(
+                GraphLifecyclePhase.INIT,
+                node,
+                bindingGraph,
+                thisReceiverParameter,
+                expressionGeneratorFactory,
+              )
+            }
           }
         }
+      }
+
+      node.lifecycleClose?.let { close ->
+        close.finalizeFakeOverride(thisReceiverParameter)
+        close.buildBlockBody {}
       }
 
       trace("Implement overrides") { node.implementOverrides(expressionGeneratorFactory) }

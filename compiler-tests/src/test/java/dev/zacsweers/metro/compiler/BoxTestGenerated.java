@@ -1475,6 +1475,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("GraphLifecycleInit.kt")
+    public void testGraphLifecycleInit() {
+      run("GraphLifecycleInit.kt");
+    }
+
+    @Test
     @TestMetadata("GraphPrivateIntraGraphUsageWorks.kt")
     public void testGraphPrivateIntraGraphUsageWorks() {
       run("GraphPrivateIntraGraphUsageWorks.kt");
