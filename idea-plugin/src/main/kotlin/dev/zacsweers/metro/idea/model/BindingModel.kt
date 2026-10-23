@@ -5,6 +5,7 @@ package dev.zacsweers.metro.idea.model
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
 import com.intellij.psi.SmartPsiElementPointer
+import dev.zacsweers.metro.compiler.graph.GraphLifecyclePhase
 import dev.zacsweers.metro.compiler.graph.MergeContribution
 import dev.zacsweers.metro.compiler.graph.identity.TypeIdentity
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModule
@@ -53,6 +54,8 @@ internal class ConsumerEntry(
   val isOptional: Boolean = false,
   /** Exact implicit interface contribution that must survive in the owning graph path. */
   val graphContribution: GraphReference? = null,
+  /** Keeps override selection on the callback and diagnostics on the parameter. */
+  val lifecycleDeclaration: GraphCallableReference? = null,
 ) {
   val sourceIdentity: BindingIndex.SourcePointerIdentity? = sourcePointerIdentity(pointer)
   val injectedMemberSourceIdentity: BindingIndex.SourcePointerIdentity? =
@@ -80,12 +83,15 @@ internal class ConsumerEntry(
       isSuspend = isSuspend,
       isOptional = isOptional,
       graphContribution = contribution.declarationId,
+      lifecycleDeclaration = lifecycleDeclaration,
     )
   }
 
   enum class GraphRequestKind {
     ACCESSOR,
     MEMBERS_INJECTOR,
+    LIFECYCLE_INIT,
+    LIFECYCLE_CLOSE,
   }
 }
 
@@ -174,6 +180,7 @@ internal class KaGraphDeclaration(
   val contributedInterfaces: List<GraphInterfaceContribution> = emptyList(),
   /** Written member overrides that determine which inherited graph requests remain active. */
   val memberOverrides: List<GraphMemberOverride> = emptyList(),
+  val suspendFactory: Boolean = false,
 ) {
   val sourceIdentity: BindingIndex.SourcePointerIdentity? = sourcePointerIdentity(pointer)
   val declarationId: GraphDeclarationId = GraphDeclarationId(classId, pointer.virtualFile)
@@ -306,6 +313,7 @@ internal class GraphMemberOverride(
   val overriddenDeclarations: List<GraphCallableReference>,
   val isOptional: Boolean,
   val isAbstract: Boolean,
+  val lifecyclePhases: Set<GraphLifecyclePhase> = emptySet(),
 )
 
 /** A real graph accessor whose result is an extension factory. */
@@ -340,6 +348,7 @@ internal class GraphComposition(
   val contributions: List<ContributionEntry>,
   val accessors: List<ConsumerEntry>,
   val injectedMemberOwnerIds: Set<ClassId>,
+  val lifecycleCallbacks: List<GraphMemberOverride> = emptyList(),
 )
 
 /** A concrete graph path, ordered from the graph itself through its ancestors. */

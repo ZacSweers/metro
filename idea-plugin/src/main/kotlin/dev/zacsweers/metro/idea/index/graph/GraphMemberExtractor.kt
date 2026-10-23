@@ -6,7 +6,9 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.SmartPointerManager
 import com.intellij.psi.SmartPsiElementPointer
+import dev.zacsweers.metro.compiler.MetroClassIds
 import dev.zacsweers.metro.compiler.MetroOptions
+import dev.zacsweers.metro.compiler.graph.GraphLifecyclePhase
 import dev.zacsweers.metro.idea.checkCanceledEvery
 import dev.zacsweers.metro.idea.hasAnyAnnotation
 import dev.zacsweers.metro.idea.index.CallableBindingView
@@ -266,8 +268,9 @@ internal class GraphMemberExtractor(
       recordAnnotations(this, original, declaration)
       overriddenDeclarations += graphCallableReference(callableBindingView(original), declaration)
     }
-    // Members that override nothing need no extra surface metadata or composition work.
-    if (overriddenDeclarations.isEmpty()) {
+    // A parameterless callback still takes part in graph validation.
+    val phases = lifecyclePhasesOf(callable)
+    if (overriddenDeclarations.isEmpty() && phases.isEmpty()) {
       return
     }
 
@@ -277,6 +280,7 @@ internal class GraphMemberExtractor(
         overriddenDeclarations = overriddenDeclarations,
         isOptional = callable.isOptionalConsumer(options),
         isAbstract = callable.modality == KaSymbolModality.ABSTRACT,
+        lifecyclePhases = phases,
       )
   }
 
@@ -297,6 +301,19 @@ internal class GraphMemberExtractor(
     return GraphCallableReference(ptr(psi), signature)
   }
 
+  private fun KaSession.lifecyclePhasesOf(symbol: KaCallableSymbol): Set<GraphLifecyclePhase> {
+    if (!symbol.hasAnyAnnotation(MetroClassIds.lifecycleCallbacks)) {
+      return emptySet()
+    }
+    return symbol.annotations.mapNotNullTo(mutableSetOf()) { annotation ->
+      when (annotation.classId) {
+        MetroClassIds.onGraphInit -> GraphLifecyclePhase.INIT
+        MetroClassIds.onGraphClose -> GraphLifecyclePhase.CLOSE
+        else -> null
+      }
+    }
+  }
+
   /** The same callable classification is used for written and contributed graph supertypes. */
   private fun KaSession.indexGraphCallable(
     view: CallableBindingView,
@@ -307,6 +324,35 @@ internal class GraphMemberExtractor(
     if (callable !is KaNamedFunctionSymbol && callable !is KaPropertySymbol) return
     if (view.receiver != null) return
     recordAnnotations(this, callable, psi)
+    val phases = lifecyclePhasesOf(callable)
+    if (callable is KaNamedFunctionSymbol && phases.isNotEmpty()) {
+      val declaration = graphCallableReference(view, psi)
+      for (parameter in view.valueParameters) {
+        val source = parameter.symbol.psi as? KtElement ?: psi
+        val site = consumedSite(parameter.returnType, parameter.symbol, options)
+        recordRequestedType(this, parameter.returnType)
+        for (phase in phases) {
+          target.consumers +=
+            ConsumerEntry(
+              ptr(source),
+              site.contextKey,
+              site.isAbstractType,
+              site.multibindingId,
+              site.typeClassId,
+              graphId = target.graphId,
+              graphRequestKind =
+                if (phase == GraphLifecyclePhase.INIT) {
+                  ConsumerEntry.GraphRequestKind.LIFECYCLE_INIT
+                } else {
+                  ConsumerEntry.GraphRequestKind.LIFECYCLE_CLOSE
+                },
+              isSuspend = callable.isSuspend,
+              lifecycleDeclaration = declaration,
+            )
+        }
+      }
+      return
+    }
     val isOptionalAccessor = callable.isOptionalConsumer(options)
     if (callable.modality != KaSymbolModality.ABSTRACT && !isOptionalAccessor) return
     val isMultibindingAccessor = callable.hasAnyAnnotation(options.multibindsAnnotations)

@@ -353,6 +353,7 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
       val bindingIdentities = hashSetOf<Any>()
       val accessors = mutableListOf<ConsumerEntry>()
       val accessorIdentities = hashSetOf<Any>()
+      val callbacks = mutableListOf<GraphMemberOverride>()
       var supersededDeclarations: MutableSet<SourcePointerIdentity>? = null
 
       fun addMemberOverrides(overrides: List<GraphMemberOverride>) {
@@ -379,7 +380,9 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
             continue
           }
           // A fake override can still point at the concrete declaration itself.
-          if (!memberOverride.isAbstract) {
+          if (memberOverride.lifecyclePhases.isNotEmpty()) {
+            callbacks += memberOverride
+          } else if (!memberOverride.isAbstract) {
             declaration.sourceIdentity?.let(identities::add)
           }
           // Abstract overrides retain their own request with its narrowed type and qualifiers.
@@ -460,6 +463,9 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
           selectedContributions.toList(),
           accessors.toList(),
           memberOwners.toSet(),
+          callbacks
+            .distinctBy { it.declaration.sourceIdentity }
+            .filter { it.declaration.sourceIdentity !in supersededRequests },
         ),
         selection,
         contributionIds.toSet(),
@@ -1574,7 +1580,8 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
     if (supersededRequests.isEmpty()) {
       return false
     }
-    val source = consumer.sourceIdentity ?: return false
+    val source =
+      consumer.lifecycleDeclaration?.sourceIdentity ?: consumer.sourceIdentity ?: return false
     return source in supersededRequests
   }
 

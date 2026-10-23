@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.idea.index.snapshot
 
 import com.intellij.openapi.vfs.VirtualFile
+import dev.zacsweers.metro.compiler.graph.GraphLifecyclePhase
 import dev.zacsweers.metro.idea.index.BindingData
 import dev.zacsweers.metro.idea.index.FactoryInputEntry
 import dev.zacsweers.metro.idea.index.FileShard
@@ -51,6 +52,7 @@ private fun FileShard.librarySignature(): SourceLibraryShardSignature {
         graph.extensionCreations,
         graph.extensionFactories.map(::extensionFactoryLibrarySignature),
         graph.memberOverrides.map(::memberOverrideLibrarySignature),
+        graph.suspendFactory,
         graph.injectedMemberOwnerIds,
         graph.daggerAnvilInteropEnabled,
         graph.pointer.element != null,
@@ -147,6 +149,7 @@ private fun memberOverrideLibrarySignature(
     memberOverride.overriddenDeclarations.map(::callableLibrarySignature),
     memberOverride.isOptional,
     memberOverride.isAbstract,
+    memberOverride.lifecyclePhases,
   )
 }
 
@@ -279,6 +282,7 @@ private data class GraphLibrarySignature(
   val extensionCreations: Set<GraphReference>,
   val extensionFactories: List<ExtensionFactoryLibrarySignature>,
   val memberOverrides: List<GraphMemberOverrideLibrarySignature>,
+  val suspendFactory: Boolean,
   val injectedMemberOwnerIds: Set<ClassId>,
   val daggerAnvilInteropEnabled: Boolean,
   val pointerIsValid: Boolean,
@@ -332,6 +336,7 @@ private data class GraphMemberOverrideLibrarySignature(
   val overriddenDeclarations: List<GraphCallableLibrarySignature>,
   val isOptional: Boolean,
   val isAbstract: Boolean,
+  val lifecyclePhases: Set<GraphLifecyclePhase>,
 )
 
 private data class GraphInterfaceLibrarySignature(

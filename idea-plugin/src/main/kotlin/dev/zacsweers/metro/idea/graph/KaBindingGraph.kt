@@ -22,6 +22,7 @@ import dev.zacsweers.metro.compiler.graph.BindingGraphValidator
 import dev.zacsweers.metro.compiler.graph.DiagnosticRoutes
 import dev.zacsweers.metro.compiler.graph.ErrorReporter
 import dev.zacsweers.metro.compiler.graph.GraphAdjacency
+import dev.zacsweers.metro.compiler.graph.GraphLifecyclePhase
 import dev.zacsweers.metro.compiler.graph.GraphValidationIssue
 import dev.zacsweers.metro.compiler.graph.MissingBindingHints
 import dev.zacsweers.metro.compiler.graph.MultibindingKind
@@ -156,6 +157,7 @@ internal class KaBindingGraph(
   }
 
   fun seal(): KaGraphValidationResult.Completed {
+    validateLifecycleDeclarations()
     val keeps = LinkedHashMap<KaContextualTypeKey, KaBindingStack.Entry>()
     val extensions = session.extensionsOf(queryContext)
     if (extensions.isNotEmpty()) {
@@ -275,6 +277,49 @@ internal class KaBindingGraph(
   // The bindings the in-flight report is about, attached to the next reported diagnostic. The
   // shared core builds the diagnostic itself, so this is the only seam to carry them through.
   private var pendingRelated: List<KaBinding> = emptyList()
+
+  /** Checks the effective declarations even when a callback has no parameter roots. */
+  private fun validateLifecycleDeclarations() {
+    val surface = session.index.graphComposition(session, queryContext)
+    val markers = surface.supertypeKeys.mapNotNull { it.type.classId } + graph.supertypeIds
+    val suspendClose = MetroClassIds.suspendCloseableGraph in markers
+    val lifecycle = suspendClose || MetroClassIds.closeableGraph in markers
+    val graphKey = graph.graphTypeKey()?.canonicalContextKey() ?: return
+    fun error(id: MetroDiagnosticId, message: String, source: KaSourcePointer) {
+      val stack = KaBindingStack(graph)
+      stack.push(KaBindingStack.Entry(graphKey, pointer = source))
+      report(MetroDiagnostic(id, MetroSeverity.ERROR, textOf(message)), stack)
+    }
+    if (lifecycle && !options.enableSuspendProviders) {
+      if (suspendClose || graph.suspendFactory) {
+        error(
+          MetroDiagnosticId.SUSPEND_PROVIDERS_NOT_ENABLED,
+          "Suspending graph lifecycle operations require enableSuspendProviders.",
+          graph.pointer,
+        )
+      }
+    }
+    for (callback in surface.lifecycleCallbacks) {
+      val declaration = callback.declaration
+      val signature = declaration.signature
+      val message =
+        when {
+          !lifecycle -> "Lifecycle callbacks require CloseableGraph or SuspendCloseableGraph."
+          callback.isAbstract -> "A lifecycle callback must have a body."
+          signature.returnType.classId != org.jetbrains.kotlin.name.StandardClassIds.Unit ->
+            "A lifecycle callback must return Unit."
+          signature.isSuspend && !options.enableSuspendProviders ->
+            "A suspend lifecycle callback requires enableSuspendProviders."
+          !signature.isSuspend -> continue
+          GraphLifecyclePhase.INIT in callback.lifecyclePhases && !graph.suspendFactory ->
+            "Suspending graph initialization requires a suspend factory."
+          GraphLifecyclePhase.CLOSE in callback.lifecyclePhases && !suspendClose ->
+            "A suspend close callback requires SuspendCloseableGraph."
+          else -> continue
+        }
+      error(MetroDiagnosticId.INVALID_BINDING, message, declaration.pointer)
+    }
+  }
 
   override fun report(diagnostic: MetroDiagnostic, stack: KaBindingStack) {
     diagnostics += KaGraphDiagnostic(diagnostic, stack.entries.toList(), pendingRelated)

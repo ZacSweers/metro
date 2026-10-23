@@ -82,6 +82,7 @@ internal class GraphDeclarationExtractor(
       val extensionCreations = mutableSetOf<GraphReference>()
       val extensionFactories = mutableListOf<GraphExtensionFactoryAccessor>()
       val injectedMemberOwnerIds = mutableSetOf<ClassId>()
+      var suspendFactory = false
       val memberTarget =
         GraphMemberTarget(
           graphId,
@@ -117,6 +118,7 @@ internal class GraphDeclarationExtractor(
                 includeInstanceBindings = onInstanceBinding != null,
               )
             for (binding in graphInputs.instanceBindings) onInstanceBinding?.invoke(binding)
+            suspendFactory = graphInputs.isSuspend
             graphInputs.cacheDependencies.forEach(onDeclarationFile)
             includedBindingContainers += graphInputs.bindingContainers
             includedDependencies += graphInputs.graphDependencies
@@ -187,6 +189,7 @@ internal class GraphDeclarationExtractor(
         supertypeDeclarations = supertypeDeclarations,
         extensionFactories = extensionFactories,
         memberOverrides = memberTarget.memberOverrides,
+        suspendFactory = suspendFactory,
       )
     }
 
