@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.fir.checkers
 
 import dev.zacsweers.metro.compiler.ClassIds
+import dev.zacsweers.metro.compiler.MetroClassIds
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
@@ -14,6 +15,8 @@ import dev.zacsweers.metro.compiler.fir.callableSymbols
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
+import dev.zacsweers.metro.compiler.fir.implements
+import dev.zacsweers.metro.compiler.fir.implementsAny
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isEffectivelyOpen
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
@@ -233,8 +236,34 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
         allowedWritingMemberExpectForActualMapping = true,
       )
 
+    val suspendLifecycle = declaration.implements(MetroClassIds.suspendCloseableGraph, session)
+    if (suspendLifecycle && !session.metroFirBuiltIns.options.enableSuspendProviders) {
+      reporter.reportOn(
+        declaration.source,
+        MetroDiagnostics.SUSPEND_PROVIDERS_NOT_ENABLED,
+        "SuspendCloseableGraph requires enableSuspendProviders.",
+      )
+    }
+
     fun walkCallables() {
       for (callable in declaration.symbol.callableSymbols()) {
+        if (callable is FirNamedFunctionSymbol && callable.name.asString() == "close") {
+          val isClose =
+            callable.valueParameterSymbols.isEmpty() && callable.receiverParameterSymbol == null
+          if (isClose && declaration.implementsAny(session, MetroClassIds.lifecycleGraphs)) {
+            if (callable.hasBody) {
+              reporter.reportOn(
+                declaration.source,
+                MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
+                "Metro implements close(). Put cleanup in an @OnGraphClose callback.",
+              )
+            }
+            continue
+          }
+        }
+        if (callable.isAnnotatedWithAny(session, MetroClassIds.lifecycleCallbacks)) {
+          continue
+        }
         val annotations = callable.metroAnnotations()
 
         val isEffectivelyOpen = with(session.compatContext) { callable.isEffectivelyOpen() }
