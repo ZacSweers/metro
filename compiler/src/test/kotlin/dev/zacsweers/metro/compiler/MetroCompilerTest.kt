@@ -418,6 +418,9 @@ abstract class MetroCompilerTest {
                 this@toPluginOptions.generateStaticAnnotations,
               )
             }
+            COMPANION_MODE -> {
+              processor.option(entry.raw.cliOption, this@toPluginOptions.companionMode)
+            }
             MEMBER_NAMING_STRATEGY -> {
               processor.option(entry.raw.cliOption, this@toPluginOptions.memberNamingStrategy)
             }

@@ -95,7 +95,8 @@
     "enableRuntimeTracing": false,
     "memberNamingStrategy": "DESCRIPTIVE",
     "maxGeneratedClassNameLength": 233,
-    "diagnosticLevels": {}
+    "diagnosticLevels": {},
+    "companionMode": "COMPANION_OBJECT"
   },
   "stats": {
     "providerFactories": 2,

@@ -1144,6 +1144,18 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = true,
       valueMapper = ::parseDiagnosticLevel,
     ),
+  ),
+  COMPANION_MODE(
+    RawMetroOption(
+      name = "companion-mode",
+      defaultValue = CompanionMode.COMPANION_OBJECT.name,
+      valueDescription = "<companion-object | companion-block | compatibility | none>",
+      description =
+        "Controls generated graph creators and factory/injector helper APIs. " +
+          "Companion-block and compatibility require " +
+          "Kotlin's companion-blocks feature to be enabled.",
+      valueMapper = { CompanionMode.parse(it).name },
+    ),
   );
 
   public companion object {
@@ -1349,6 +1361,8 @@ public class MetroOptions(
     MetroOption.MAX_GENERATED_CLASS_NAME_LENGTH.raw.defaultValue.expectAs(),
   public val diagnosticLevels: Map<String, DiagnosticSeverity> =
     MetroOption.DIAGNOSTIC_LEVEL.raw.defaultValue.expectAs(),
+  public val companionMode: CompanionMode =
+    CompanionMode.parse(MetroOption.COMPANION_MODE.raw.defaultValue.expectAs()),
 ) {
   @Transient
   public val providerTypes: Set<ClassId> = buildSet {
@@ -1700,6 +1714,7 @@ public class MetroOptions(
     public var enableRuntimeTracing: Boolean = base.enableRuntimeTracing
     public var memberNamingStrategy: MemberNamingStrategy = base.memberNamingStrategy
     public var maxGeneratedClassNameLength: Int = base.maxGeneratedClassNameLength
+    public var companionMode: CompanionMode = base.companionMode
 
     public fun debug(debug: Boolean): Builder = apply {
       this.debug = debug
@@ -2074,6 +2089,7 @@ public class MetroOptions(
           maxGeneratedClassNameLength = value.expectAs()
         MetroOption.DIAGNOSTIC_LEVEL ->
           diagnosticLevels.putAll(value.expectAs<Map<String, DiagnosticSeverity>>())
+        MetroOption.COMPANION_MODE -> companionMode = CompanionMode.parse(value.expectAs())
       }
     }
 
@@ -2167,6 +2183,7 @@ public class MetroOptions(
         memberNamingStrategy = memberNamingStrategy,
         maxGeneratedClassNameLength = maxGeneratedClassNameLength,
         diagnosticLevels = diagnosticLevels,
+        companionMode = companionMode,
       )
     }
 

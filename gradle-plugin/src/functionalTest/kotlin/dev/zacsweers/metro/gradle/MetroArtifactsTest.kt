@@ -524,7 +524,8 @@ class MetroArtifactsTest {
                 "enableRuntimeTracing": false,
                 "memberNamingStrategy": "DESCRIPTIVE",
                 "maxGeneratedClassNameLength": $DEFAULT_MAX_GENERATED_CLASS_NAME_LENGTH,
-                "diagnosticLevels": {}
+                "diagnosticLevels": {},
+                "companionMode": "COMPANION_OBJECT"
               },
               "stats": {
                 "providerFactories": 1,
