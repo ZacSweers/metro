@@ -84,7 +84,7 @@ interface AppBindings {
 }
 ```
 
-Kotlin's companion features are experimental in 2.5.0-Beta1. This version has a JVM bytecode issue for backing fields in interface companion blocks. Use getter-only properties in interface containers. Class containers can use backing fields.
+Kotlin's companion features are experimental in 2.5.0-Beta1. This version has a [JVM bytecode issue](https://youtrack.jetbrains.com/issue/KT-85853) for backing fields in interface companion blocks. Use getter-only properties in interface containers. Class containers can use backing fields.
 
 The `companion-mode` compiler option controls graph creators, factory helpers, and member-injection helpers. Enabling Kotlin's companion-block feature leaves Metro's default mode unchanged. Set the mode in Metro's Gradle configuration:
 
