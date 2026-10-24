@@ -429,9 +429,10 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
         it in injectFactoryClassIdsToSymbols || it in membersInjectorClassIdsToSymbols
       }
     ) {
-      // It's a generated factory/injector, give it a companion object if it isn't going to be an
-      // object
-      if (classSymbol.classKind == ClassKind.OBJECT) {
+      // A generated factory or injector needs a companion object unless it's an object or uses
+      // static helpers.
+      val generatesStaticHelpers = session.metroFirBuiltIns.options.companionMode.usesStaticHelpers
+      if (classSymbol.classKind == ClassKind.OBJECT || generatesStaticHelpers) {
         emptySet()
       } else {
         setOf(SpecialNames.DEFAULT_NAME_FOR_COMPANION_OBJECT)

@@ -24,7 +24,7 @@ import org.jetbrains.kotlin.ir.declarations.createEmptyExternalPackageFragment a
 import org.jetbrains.kotlin.name.FqName
 
 /**
- * Adapts package fragments, source locations, and companion feature checks to Kotlin
+ * Adapts source locations, diagnostic severity, package fragments, and companion APIs to Kotlin
  * 2.5.0-dev-6460.
  */
 public class CompatContextImpl : CompatContext by DelegateType() {
