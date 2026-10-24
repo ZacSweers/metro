@@ -204,52 +204,6 @@ class MarkerContribution : MarkerBinding {
 @ContributesBinding(scope = AppScope::class)
 @Inject
 class ProviderContribution : ProviderBinding {
-  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  class MetroFactory : Factory<ProviderContribution> {
-    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-    companion object Companion {
-      private constructor() /* primary */ {
-        super/*Any*/()
-        /* <init>() */
-
-      }
-
-      @HiddenFromObjC
-      @JvmStatic
-      @JsStatic
-      fun create(): MetroFactory {
-        return MetroFactory()
-      }
-
-      @HiddenFromObjC
-      @JvmStatic
-      @JsStatic
-      fun newInstance(): ProviderContribution {
-        return ProviderContribution()
-      }
-
-    }
-
-    @HiddenFromObjC
-    private constructor() /* primary */ {
-      super/*Any*/()
-      /* <init>() */
-
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun declarationMirror(): ProviderContribution {
-      return error(message = "Never called")
-    }
-
-    @HiddenFromObjC
-    override operator fun invoke(): ProviderContribution {
-      return MetroFactory/* companion */.newInstance()
-    }
-
-  }
-
   constructor() /* primary */ {
     super/*Any*/()
     /* <init>() */
@@ -330,7 +284,7 @@ fun interface AssistedTargetFactory {
       @JvmStatic
       @JsStatic
       fun create(delegateFactory: AssistedTarget.MetroFactory): Provider<AssistedTargetFactory> {
-        return InstanceFactory/* companion */.invoke<AssistedTargetFactory>(value = Impl(delegateFactory = delegateFactory))
+        return providerOf<AssistedTargetFactory>(value = Impl(delegateFactory = delegateFactory))
       }
 
     }

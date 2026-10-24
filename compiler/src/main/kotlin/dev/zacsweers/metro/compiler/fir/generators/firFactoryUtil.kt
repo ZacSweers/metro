@@ -20,6 +20,7 @@ import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.containingClassForStaticMemberAttr
 import org.jetbrains.kotlin.fir.declarations.FirConstructor
+import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
 import org.jetbrains.kotlin.fir.declarations.builder.buildTypeParameterCopy
 import org.jetbrains.kotlin.fir.declarations.origin
@@ -31,18 +32,21 @@ import org.jetbrains.kotlin.fir.plugin.createConstructor
 import org.jetbrains.kotlin.fir.resolve.ScopeSession
 import org.jetbrains.kotlin.fir.resolve.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.resolve.substitution.substitutorByMap
+import org.jetbrains.kotlin.fir.scopes.ProcessorAction
+import org.jetbrains.kotlin.fir.scopes.ScopeFunctionRequiresPrewarm
 import org.jetbrains.kotlin.fir.scopes.collectAllFunctions
 import org.jetbrains.kotlin.fir.scopes.collectAllProperties
+import org.jetbrains.kotlin.fir.scopes.processOverriddenFunctionsAndSelf
 import org.jetbrains.kotlin.fir.scopes.unsubstitutedScope
 import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
-import org.jetbrains.kotlin.fir.symbols.impl.FirFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirTypeParameterSymbol
 import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.constructType
+import org.jetbrains.kotlin.fir.unwrapSubstitutionOverrides
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 
@@ -225,7 +229,7 @@ internal fun MetroFirValueParameter.canonicalProviderClassId(
   }
 }
 
-internal fun FirClassSymbol<*>.findSamFunction(session: FirSession): FirFunctionSymbol<*>? {
+internal fun FirClassSymbol<*>.findSamFunction(session: FirSession): FirNamedFunctionSymbol? {
   return collectAbstractFunctions(session, exitOnAbstractProperties = true)?.singleOrNull()
 }
 
@@ -233,15 +237,39 @@ internal fun FirClassSymbol<*>.collectAbstractFunctions(
   session: FirSession,
   exitOnAbstractProperties: Boolean = false,
 ): Collection<FirNamedFunctionSymbol>? {
-  val scope =
-    unsubstitutedScope(
-      session,
-      ScopeSession(),
-      withForcedTypeCalculator = false,
-      memberRequiredPhase = null,
-    )
+  val scope = factoryScope(session)
   if (exitOnAbstractProperties) {
     if (scope.collectAllProperties().any { it.isAbstract }) return null
   }
   return scope.collectAllFunctions().filter { it.isAbstract }
 }
+
+/** Only defaults declared in this compilation have expressions that a static creator can copy. */
+@OptIn(ScopeFunctionRequiresPrewarm::class)
+internal fun FirClassSymbol<*>.sourceFactoryDefaults(
+  sam: FirNamedFunctionSymbol,
+  session: FirSession,
+): Set<Int> = buildSet {
+  val scope = factoryScope(session)
+  // Populate this scope's override links before following the SAM to its source declaration.
+  scope.processFunctionsByName(sam.name) {}
+  scope.processOverriddenFunctionsAndSelf(sam) { symbol ->
+    val declaration = symbol.unwrapSubstitutionOverrides()
+    if (declaration.origin is FirDeclarationOrigin.Source) {
+      declaration.valueParameterSymbols.forEachIndexed { index, parameter ->
+        if (parameter.hasDefaultValue) {
+          add(index)
+        }
+      }
+    }
+    ProcessorAction.NEXT
+  }
+}
+
+private fun FirClassSymbol<*>.factoryScope(session: FirSession) =
+  unsubstitutedScope(
+    session,
+    ScopeSession(),
+    withForcedTypeCalculator = false,
+    memberRequiredPhase = null,
+  )

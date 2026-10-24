@@ -326,6 +326,14 @@ jobs:
             --tests 'dev.zacsweers.metro.compiler.JsFastInitBoxTestGenerated$Dependencygraph$Sharding.testSwitchingSuspendProvidersWithShards' \
             ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
 
+      - name: Run companion-block JS box smoke test
+        if: github.ref != 'refs/heads/main' && matrix.compiler == 'latest'
+        run: |
+          ./scripts/run-ci-gradle.sh :compiler-tests:test --quiet \
+            "-Pmetro.testCompilerVersion=$METRO_TEST_COMPILER_VERSION" \
+            --tests 'dev.zacsweers.metro.compiler.JsBoxTestGenerated$Companionblocks.testGraphBlockInheritedFactory' \
+            -Dorg.gradle.configuration-cache.read-only=true
+
       - name: Run Wasm contribution hint smoke tests
         if: github.ref != 'refs/heads/main' && matrix.compiler == 'latest'
         run: |
