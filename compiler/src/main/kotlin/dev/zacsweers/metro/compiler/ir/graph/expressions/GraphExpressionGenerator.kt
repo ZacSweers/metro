@@ -1169,9 +1169,10 @@ private constructor(
     )
 
   /**
-   * The source callable's parameters in call order, the same decomposition
-   * [generateBindingArguments] uses to map args (dispatch receiver for non-object provides, context
-   * params, extension receiver, regular params; assisted excluded).
+   * Returns the source callable's dependencies in call order. That's the dispatch receiver of an
+   * instance provider, then context parameters, the extension receiver, and regular parameters.
+   * [generateBindingArguments] and nested suspend factories both use this order. Assisted
+   * parameters are left out because the caller supplies them.
    */
   private fun callOrderedParams(targetParams: Parameters, binding: IrBinding): List<Parameter> =
     buildList {
@@ -1291,17 +1292,7 @@ private constructor(
     with(scope) {
       // TODO clean all this up
       val params = function.parameters()
-      var paramsToMap = buildList {
-        if (
-          binding is IrBinding.Provided &&
-            targetParams.dispatchReceiverParameter?.type?.rawTypeOrNull()?.isObject != true
-        ) {
-          targetParams.dispatchReceiverParameter?.let(::add)
-        }
-        addAll(targetParams.contextParameters.filterNot { it.isAssisted })
-        targetParams.extensionReceiverParameter?.let(::add)
-        addAll(targetParams.regularParameters.filterNot { it.isAssisted })
-      }
+      var paramsToMap = callOrderedParams(targetParams, binding)
 
       // Handle case where function has more parameters than the binding
       // This can happen when parameters are inherited from ancestor classes

@@ -2899,6 +2899,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     }
 
     @Test
+    @TestMetadata("ContextParameterProviders.kt")
+    public void testContextParameterProviders() {
+      run("ContextParameterProviders.kt");
+    }
+
+    @Test
     @TestMetadata("DefaultValuesPropagateToNewInstanceParams.kt")
     public void testDefaultValuesPropagateToNewInstanceParams() {
       run("DefaultValuesPropagateToNewInstanceParams.kt");

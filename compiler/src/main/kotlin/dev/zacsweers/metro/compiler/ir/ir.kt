@@ -179,7 +179,6 @@ import org.jetbrains.kotlin.ir.util.hasShape
 import org.jetbrains.kotlin.ir.util.isFromJava
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.isPropertyAccessor
-import org.jetbrains.kotlin.ir.util.isStatic
 import org.jetbrains.kotlin.ir.util.isTopLevelDeclaration
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
@@ -429,10 +428,12 @@ internal fun IrGeneratorContext.createIrBuilder(symbol: IrSymbol): DeclarationIr
   return DeclarationIrBuilder(this, symbol, symbol.owner.startOffset, symbol.owner.endOffset)
 }
 
+/**
+ * Invokes [callee]. [args] fill the remaining parameters in [IrFunction.parameters] order. When
+ * [contextArgs] is null, context parameters also come from [args]. Object dispatch receivers are
+ * inferred, so leave them out of [args].
+ */
 internal fun IrBuilderWithScope.irInvoke(
-  /**
-   * If null, this will be secondarily analyzed to see if [callee] is static or a companion object
-   */
   dispatchReceiver: IrExpression? = null,
   extensionReceiver: IrExpression? = null,
   callee: IrFunctionSymbol,
@@ -442,12 +443,19 @@ internal fun IrBuilderWithScope.irInvoke(
   args: List<IrExpression?> = emptyList(),
 ): IrMemberAccessExpression<*> {
   assert(callee.isBound) { "Symbol $callee expected to be bound" }
+  val target = callee.owner
+  check(dispatchReceiver == null || target.dispatchReceiverParameter != null) {
+    "Dispatch receiver supplied for receiverless function ${target.kotlinFqName}"
+  }
+  check(extensionReceiver == null || target.extensionReceiverParameterCompat != null) {
+    "Extension receiver supplied for function ${target.kotlinFqName} without an extension receiver"
+  }
   val objectReceiverExpression =
     when {
       dispatchReceiver != null -> dispatchReceiver
-      callee.owner.isStatic -> null
+      target.dispatchReceiverParameter == null -> null
       else -> {
-        callee.owner.dispatchReceiverParameter?.type?.rawTypeOrNull()?.let {
+        target.dispatchReceiverParameter?.type?.rawTypeOrNull()?.let {
           if (it.isObject) {
             irGetObject(it.symbol)
           } else {
@@ -459,7 +467,12 @@ internal fun IrBuilderWithScope.irInvoke(
   // Calls to `@JvmStatic` object members can skip the object instance on JVM.
   val staticCallee = jvmStaticCalleeOrNull(callee, objectReceiverExpression)
   return irInvokeResolved(
-    finalReceiverExpression = if (staticCallee != null) null else objectReceiverExpression,
+    finalReceiverExpression =
+      if (staticCallee != null) {
+        null
+      } else {
+        objectReceiverExpression
+      },
     extensionReceiver = extensionReceiver,
     callee = staticCallee ?: callee,
     typeHint = typeHint,
@@ -490,7 +503,7 @@ private fun IrBuilderWithScope.irInvokeResolved(
   contextArgs: List<IrExpression?>?,
   args: List<IrExpression?>,
 ): IrMemberAccessExpression<*> {
-
+  val target = callee.owner
   val call =
     when {
       typeHint != null -> irCall(callee, type = typeHint)
@@ -509,24 +522,49 @@ private fun IrBuilderWithScope.irInvokeResolved(
     }
   }
 
-  var argSize = args.size
-  if (finalReceiverExpression != null) argSize++
-  if (!contextArgs.isNullOrEmpty()) argSize += contextArgs.size
-  if (extensionReceiver != null) argSize++
-  check(callee.owner.parameters.size == argSize) {
+  var argSize = args.size + (contextArgs?.size ?: 0)
+  if (finalReceiverExpression != null) {
+    argSize++
+  }
+  if (extensionReceiver != null) {
+    argSize++
+  }
+  val hasExpectedContextArgs =
+    contextArgs == null || target.contextParameters.size == contextArgs.size
+  check(target.parameters.size == argSize && hasExpectedContextArgs) {
     """
-      Expected ${callee.owner.parameters.size} arguments but got $argSize for function: ${callee.owner.kotlinFqName}
-      Expected: ${callee.owner.allParameters.joinToKotlinLike(", ")}
+      Expected ${target.parameters.size} arguments but got $argSize for function: ${target.kotlinFqName}
+      Expected: ${target.allParameters.joinToKotlinLike(", ")}
       Actual: receiver=${finalReceiverExpression?.dumpKotlinLike()} contextArgs=${contextArgs?.joinToKotlinLike(", ")} extension=${extensionReceiver?.dumpKotlinLike()} args=${args.joinToKotlinLike(", ")}
     """
       .trimIndent()
   }
 
-  var index = 0
-  finalReceiverExpression?.let { call.arguments[index++] = it }
-  contextArgs?.forEach { call.arguments[index++] = it }
-  extensionReceiver?.let { call.arguments[index++] = it }
-  args.forEach { call.arguments[index++] = it }
+  // Place each argument by parameter kind. Positional placement breaks when context parameters
+  // come from [args] and an extension receiver is passed separately.
+  var argumentIndex = 0
+  var contextIndex = 0
+  for (parameter in target.parameters) {
+    val argument =
+      when (parameter.kind) {
+        IrParameterKind.DispatchReceiver -> finalReceiverExpression ?: args[argumentIndex++]
+        IrParameterKind.ExtensionReceiver -> extensionReceiver ?: args[argumentIndex++]
+        IrParameterKind.Context ->
+          if (contextArgs != null) {
+            contextArgs[contextIndex++]
+          } else {
+            args[argumentIndex++]
+          }
+        IrParameterKind.Regular -> args[argumentIndex++]
+      }
+    val isReceiver =
+      parameter.kind == IrParameterKind.DispatchReceiver ||
+        parameter.kind == IrParameterKind.ExtensionReceiver
+    if (isReceiver) {
+      checkNotNull(argument) { "Missing ${parameter.kind} for function ${target.kotlinFqName}" }
+    }
+    call.arguments[parameter.indexInParameters] = argument
+  }
   return call
 }
 

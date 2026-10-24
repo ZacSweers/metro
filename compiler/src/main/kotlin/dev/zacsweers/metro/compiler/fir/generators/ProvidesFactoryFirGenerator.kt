@@ -181,11 +181,14 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
 
   private fun FirCallableSymbol<*>.asProviderCallable(owner: FirClassSymbol<*>): ProviderCallable? {
     val instanceReceiver = if (owner.classKind.isObject) null else owner.defaultType()
+    // Context parameters come first, like they do in the source declaration.
     val params =
       when (this) {
-        is FirPropertySymbol -> emptyList()
+        is FirPropertySymbol -> contextParameterSymbols.map { MetroFirValueParameter(session, it) }
         is FirNamedFunctionSymbol ->
-          this.valueParameterSymbols.map { MetroFirValueParameter(session, it) }
+          (contextParameterSymbols + valueParameterSymbols).map {
+            MetroFirValueParameter(session, it)
+          }
         else -> return null
       }
     return ProviderCallable(owner, this, instanceReceiver, params)
@@ -276,11 +279,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
   ) {
     val callableId = CallableId(owner.classId, symbol.name)
     val name = symbol.name
-    val shouldGenerateObject by memoize {
-      instanceReceiver == null && (isProperty || valueParameters.isEmpty())
-    }
-    private val isProperty
-      get() = symbol is FirPropertySymbol
+    val shouldGenerateObject by memoize { instanceReceiver == null && valueParameters.isEmpty() }
 
     val returnType
       get() = symbol.resolvedReturnType

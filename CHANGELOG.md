@@ -40,6 +40,7 @@ Changelog
 - **[FIR]** Fix accessor override status on Kotlin `2.5.0-dev-10106`.
 - **[FIR/IC]** Avoid unnecessary recompilation of independent injected classes when generating contribution hints.
 - **[FIR/interop]** Fix duplicate class errors during caused by Hilt interop generating hints for upstream modules.
+- **[FIR/IR]** Fix compiler crashes for `@Provides` functions and properties with context parameters.
 - **[FIR/IR/interop]** Fix incremental builds not updating graphs when an upstream Hilt `@AggregatedDeps` marker changes or is removed.
 - **[FIR/IR/Gradle]** Fix false self-loop errors in `analyzeMetroGraph` when one qualified map depends on another.
 - **[IR]** Fix a qualified request resolving to an unqualified `@Inject` class. A qualified optional binding now uses its default, and other qualified requests report a missing binding.

@@ -2899,6 +2899,12 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
     }
 
     @Test
+    @TestMetadata("ContextParameterProviders.kt")
+    public void testContextParameterProviders() {
+      run("ContextParameterProviders.kt");
+    }
+
+    @Test
     @TestMetadata("DefaultValuesPropagateToNewInstanceParams.kt")
     public void testDefaultValuesPropagateToNewInstanceParams() {
       run("DefaultValuesPropagateToNewInstanceParams.kt");
