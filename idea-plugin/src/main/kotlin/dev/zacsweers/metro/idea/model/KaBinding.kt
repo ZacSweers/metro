@@ -316,6 +316,8 @@ internal sealed interface KaBinding :
     val accessorIsSuspend: Boolean,
     /** Whether this node stands in for a binding scoped to an ancestor graph. */
     val isParentScoped: Boolean = false,
+    /** The actual parent binding can be an unscoped private alias. */
+    val isLifecycleScoped: Boolean = isParentScoped,
     /** Collection information survives parent delegation for duplicate map-key checks. */
     override val multibindingId: String? = null,
     override val mapKeyValue: String? = null,

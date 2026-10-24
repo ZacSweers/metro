@@ -17,6 +17,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.BINDS_OPTIONAL_OF_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.BINDS_OPTIONAL_OF_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CANNOT_HAVE_INJECT_IN_MULTIPLE_TARGETS
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CANNOT_HAVE_MULTIPLE_INJECTED_CONSTRUCTORS
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CLOSE_ONLY_BINDING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CONFLICTING_ANNOTATION_ROLES
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CONFLICTING_PROVIDES_SCOPE
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CONTRIBUTES_TO_COULD_BE_BINDING_CONTAINER
@@ -40,6 +41,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.FUNCTION_INJECT_TYPE_PA
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.GRAPH_CREATORS_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.GRAPH_CREATORS_VARARG_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.GRAPH_DEPENDENCY_CYCLE
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.GRAPH_LIFECYCLE_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INCOMPATIBLE_OVERRIDES
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INCOMPATIBLE_RETURN_TYPES
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.INCOMPATIBLE_SCOPE
@@ -110,6 +112,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUSPICIOUS_OBJECT_INJEC
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUSPICIOUS_SET_INTO_SET
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUSPICIOUS_UNUSED_MULTIBINDING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.UNPROCESSED_UPSTREAM_DECLARATION
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.UNSCOPED_LIFECYCLE_PARAMETER
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.UNSUPPORTED_SUSPEND_MAP_VALUE
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.UNUSED_GRAPH_INPUT_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.UNUSED_GRAPH_INPUT_WARNING
@@ -267,6 +270,9 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val MEMBER_INJECTION_OVER_SUSPEND_BINDING by error1<KtElement, String>(NAME_IDENTIFIER)
   val ASSISTED_FACTORY_SUSPEND_REQUIRED by error1<KtElement, String>(NAME_IDENTIFIER)
   val MULTIBINDING_OVER_SUSPEND_BINDINGS by error1<KtElement, String>(NAME_IDENTIFIER)
+  val GRAPH_LIFECYCLE_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
+  val UNSCOPED_LIFECYCLE_PARAMETER by warning1<KtElement, String>(NAME_IDENTIFIER)
+  val CLOSE_ONLY_BINDING by warning1<KtElement, String>(NAME_IDENTIFIER)
   val METRO_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val METRO_TRACE_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val METRO_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
@@ -456,6 +462,9 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
         )
 
         // IR diagnostics
+        put(GRAPH_LIFECYCLE_ERROR, "{0}", TO_STRING)
+        put(UNSCOPED_LIFECYCLE_PARAMETER, "{0}", TO_STRING)
+        put(CLOSE_ONLY_BINDING, "{0}", TO_STRING)
         put(METRO_ERROR, "{0}", TO_STRING)
         put(METRO_TRACE_ERROR, "{0}", TO_STRING)
         put(METRO_WARNING, "{0}", TO_STRING)

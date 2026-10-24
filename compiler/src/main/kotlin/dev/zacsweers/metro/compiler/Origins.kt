@@ -6,6 +6,8 @@ import dev.zacsweers.metro.compiler.fir.Keys
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 
 internal object Origins {
+  val GraphLifecycle: IrDeclarationOrigin =
+    IrDeclarationOrigin.GeneratedByPlugin(Keys.GraphLifecycle)
   val Default: IrDeclarationOrigin = IrDeclarationOrigin.GeneratedByPlugin(Keys.Default)
   val InstanceParameter: IrDeclarationOrigin =
     IrDeclarationOrigin.GeneratedByPlugin(Keys.InstanceParameter)

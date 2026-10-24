@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.generators
 
+import dev.zacsweers.metro.compiler.MetroClassIds
 import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.compat.CompatContext
@@ -36,6 +37,7 @@ import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
 import org.jetbrains.kotlin.fir.declarations.utils.isInterface
 import org.jetbrains.kotlin.fir.declarations.utils.isLocal
 import org.jetbrains.kotlin.fir.declarations.utils.isOperator
+import org.jetbrains.kotlin.fir.declarations.utils.isSuspend
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.MemberGenerationContext
@@ -51,6 +53,7 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
+import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.constructType
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
@@ -344,6 +347,13 @@ internal class DependencyGraphFirGenerator(session: FirSession, compatContext: C
     } else if (classSymbol.hasOrigin(Keys.GraphImplClassDeclaration)) {
       // `Impl`, generate a constructor
       names += SpecialNames.INIT
+      val graph = classSymbol.requireContainingClassSymbol() as? FirClassSymbol<*> ?: return names
+      val supportsLifecycle =
+        graph.implements(MetroClassIds.closeableGraph, session) ||
+          graph.implements(MetroClassIds.suspendCloseableGraph, session)
+      if (supportsLifecycle) {
+        names += Keys.GraphLifecycle.initializeName
+      }
     }
 
     if (names.isNotEmpty()) {
@@ -423,6 +433,23 @@ internal class DependencyGraphFirGenerator(session: FirSession, compatContext: C
     log("Generating function $callableId")
     val owner = context?.owner ?: return emptyList()
 
+    if (callableId.callableName == Keys.GraphLifecycle.initializeName) {
+      val graph = owner.requireContainingClassSymbol()
+      val creator = graphObject(graph)?.findCreator(session, "lifecycle initializer", ::log)
+      val suspendInit = creator?.classSymbol?.findSamFunction(session)?.isSuspend == true
+      return listOf(
+        createMemberFunction(
+            owner,
+            Keys.GraphLifecycle,
+            callableId.callableName,
+            session.builtinTypes.unitType.coneType,
+          ) {
+            status { isSuspend = suspendInit }
+          }
+          .symbol as FirNamedFunctionSymbol,
+      )
+    }
+
     val generateSAMFunction: (FirClassSymbol<*>, FirFunctionSymbol<*>) -> FirNamedFunctionSymbol =
       { target, function ->
         log("Generating creator SAM ${function.callableId} in ${target.classId}")
@@ -435,6 +462,7 @@ internal class DependencyGraphFirGenerator(session: FirSession, compatContext: C
             status {
               isOverride = !owner.isCompanion
               isOperator = function.isOperator
+              isSuspend = function.isSuspend
             }
             log("Generating ${function.valueParameterSymbols.size} parameters?")
             for (parameter in function.valueParameterSymbols) {

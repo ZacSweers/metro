@@ -163,6 +163,9 @@ internal class IrGraphGenerator(
         for (property in node.metroGraphOrFail.properties) {
           reserveName(property.name.asString())
         }
+        for (field in node.metroGraphOrFail.declarations.filterIsInstance<IrField>()) {
+          reserveName(field.name.asString())
+        }
       }
     }
 
@@ -386,6 +389,7 @@ internal class IrGraphGenerator(
       }
 
       trace("Implement overrides") { node.implementOverrides(expressionGeneratorFactory) }
+      implementGraphLifecycle(node, bindingGraph, expressionGeneratorFactory)
 
       if (!graphClass.origin.isSyntheticGeneratedGraph) {
         trace("Generate Metro metadata") {

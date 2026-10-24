@@ -1,0 +1,3 @@
+/DeferredWarnings.kt:22:15: warning: [Metro/CloseOnlyBinding] Resource is reachable only from @OnGraphClose callbacks in CloseOnlyGraph. Resolving parameter 'provider' may create Resource for the first time during close.
+
+/DeferredWarnings.kt:22:49: warning: [Metro/CloseOnlyBinding] Resource is reachable only from @OnGraphClose callbacks in CloseOnlyGraph. Resolving parameter 'lazy' may create Resource for the first time during close.

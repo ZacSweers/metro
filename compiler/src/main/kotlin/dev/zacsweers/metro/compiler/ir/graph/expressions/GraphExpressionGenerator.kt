@@ -21,6 +21,7 @@ import dev.zacsweers.metro.compiler.ir.graph.IrBinding
 import dev.zacsweers.metro.compiler.ir.graph.IrBindingGraph
 import dev.zacsweers.metro.compiler.ir.graph.IrGraphExtensionGenerator
 import dev.zacsweers.metro.compiler.ir.graph.generatedGraphExtensionData
+import dev.zacsweers.metro.compiler.ir.graph.initializeGraph
 import dev.zacsweers.metro.compiler.ir.graph.sharding.ShardExpressionContext
 import dev.zacsweers.metro.compiler.ir.irGetProperty
 import dev.zacsweers.metro.compiler.ir.irInvoke
@@ -795,18 +796,21 @@ private constructor(
           }
 
           val ctor = extensionImpl.primaryConstructor!!
-          irCallConstructor(ctor.symbol, node.sourceGraph.typeParameters.map { it.defaultType })
-            .apply {
-              // If this function has parameters, they're factory instance params and need to be
-              // passed on
-              val functionParams = binding.accessor.regularParameters
+          initializeGraph(
+              irCallConstructor(ctor.symbol, node.sourceGraph.typeParameters.map { it.defaultType })
+                .apply {
+                  // If this function has parameters, they're factory instance params and need to be
+                  // passed on
+                  val functionParams = binding.accessor.regularParameters
 
-              // First param is always the parent graph (extension graphs are static nested classes)
-              arguments[0] = irGet(thisReceiver)
-              for (i in 0 until functionParams.size) {
-                arguments[i + 1] = irGet(functionParams[i])
-              }
-            }
+                  // First param is always the parent graph (extension graphs are static nested
+                  // classes)
+                  arguments[0] = irGet(thisReceiver)
+                  for (i in 0 until functionParams.size) {
+                    arguments[i + 1] = irGet(functionParams[i])
+                  }
+                },
+            )
             .toTargetType(
               actual = AccessType.INSTANCE,
               contextualTypeKey = contextualTypeKey,

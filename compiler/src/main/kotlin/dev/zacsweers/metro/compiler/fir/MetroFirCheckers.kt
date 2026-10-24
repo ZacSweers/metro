@@ -17,6 +17,9 @@ import dev.zacsweers.metro.compiler.fir.checkers.DefaultBindingChecker
 import dev.zacsweers.metro.compiler.fir.checkers.DependencyGraphChecker
 import dev.zacsweers.metro.compiler.fir.checkers.DependencyGraphCreatorChecker
 import dev.zacsweers.metro.compiler.fir.checkers.FunctionInjectionChecker
+import dev.zacsweers.metro.compiler.fir.checkers.GraphLifecycleCallChecker
+import dev.zacsweers.metro.compiler.fir.checkers.GraphLifecycleChecker
+import dev.zacsweers.metro.compiler.fir.checkers.GraphLifecycleReferenceChecker
 import dev.zacsweers.metro.compiler.fir.checkers.InjectConstructorChecker
 import dev.zacsweers.metro.compiler.fir.checkers.InteropAnnotationChecker
 import dev.zacsweers.metro.compiler.fir.checkers.MapKeyChecker
@@ -30,6 +33,7 @@ import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirDeclarationChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.ExpressionCheckers
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirAnnotationChecker
+import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirCallableReferenceAccessChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirExpressionChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirFunctionCallChecker
 import org.jetbrains.kotlin.fir.analysis.extensions.FirAdditionalCheckersExtension
@@ -65,7 +69,12 @@ internal class MetroFirCheckers(
 
       override val callableDeclarationCheckers: Set<FirCallableDeclarationChecker>
         get() =
-          setOf(BindingContainerCallableChecker, MultibindsChecker, FunctionInjectionChecker)
+          setOf(
+              BindingContainerCallableChecker,
+              MultibindsChecker,
+              FunctionInjectionChecker,
+              GraphLifecycleChecker,
+            )
             .withDiagnosticLevels()
     }
 
@@ -84,7 +93,12 @@ internal class MetroFirCheckers(
         }
 
       override val functionCallCheckers: Set<FirFunctionCallChecker>
-        get() = setOf(CreateGraphChecker, AsContributionChecker).withDiagnosticLevels()
+        get() =
+          setOf(CreateGraphChecker, AsContributionChecker, GraphLifecycleCallChecker)
+            .withDiagnosticLevels()
+
+      override val callableReferenceAccessCheckers: Set<FirCallableReferenceAccessChecker>
+        get() = setOf(GraphLifecycleReferenceChecker).withDiagnosticLevels()
     }
 
   @JvmName("declarationCheckersWithDiagnosticLevels")

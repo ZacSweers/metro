@@ -421,6 +421,28 @@ internal class Symbols(
     builtinsFinder.findClass(ClassIds.metroTraceContext)
   }
 
+  val atomicBoolean: IrClassSymbol by lazy {
+    builtinsFinder.findClass(ClassId.topLevel(FqName("kotlin.concurrent.atomics.AtomicBoolean")))!!
+  }
+
+  val compositeCloseable: IrClassSymbol by lazy {
+    builtinsFinder.findClass(
+      ClassId(FqNames.metroRuntimeInternalPackage, "CompositeCloseable".asName()),
+    )!!
+  }
+
+  val compositeSuspendCloseable: IrClassSymbol? by lazy {
+    builtinsFinder.findClass(
+      ClassId(FqNames.metroRuntimeInternalPackage, "CompositeSuspendCloseable".asName()),
+    )
+  }
+
+  val runGraphClose: IrSimpleFunctionSymbol? by lazy {
+    builtinsFinder
+      .findFunctions(CallableId(FqNames.metroRuntimeInternalPackage, "runGraphClose".asName()))
+      .singleOrNull()
+  }
+
   val metroTraceContextTrace: IrSimpleFunctionSymbol? by lazy {
     metroTraceContext?.owner?.functions?.single { it.name.asString() == "trace" }?.symbol
   }

@@ -44,5 +44,9 @@ internal val MetroDiagnosticId.factory: KtDiagnosticFactory1<String>
       MetroDiagnosticId.MULTIBINDING_OVER_SUSPEND_BINDINGS ->
         MetroDiagnostics.MULTIBINDING_OVER_SUSPEND_BINDINGS
       MetroDiagnosticId.MISSING_RUNTIME_COROUTINES -> MetroDiagnostics.MISSING_RUNTIME_COROUTINES
+      MetroDiagnosticId.GRAPH_LIFECYCLE -> MetroDiagnostics.GRAPH_LIFECYCLE_ERROR
+      MetroDiagnosticId.UNSCOPED_LIFECYCLE_PARAMETER ->
+        MetroDiagnostics.UNSCOPED_LIFECYCLE_PARAMETER
+      MetroDiagnosticId.CLOSE_ONLY_BINDING -> MetroDiagnostics.CLOSE_ONLY_BINDING
       MetroDiagnosticId.GENERIC -> MetroDiagnostics.METRO_ERROR
     }

@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.ir.graph
 
 import dev.zacsweers.metro.compiler.BitField
+import dev.zacsweers.metro.compiler.MetroClassIds
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.graph.explanation.BindingExplanationCandidate
 import dev.zacsweers.metro.compiler.ir.BindsCallable
@@ -16,6 +17,7 @@ import dev.zacsweers.metro.compiler.ir.MultibindsCallable
 import dev.zacsweers.metro.compiler.ir.ProviderFactory
 import dev.zacsweers.metro.compiler.ir.metroGraphOrNull
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
+import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.mapToSet
@@ -206,7 +208,20 @@ internal sealed class GraphNode {
     var proto: DependencyGraphProto? = null,
     /** Actual contribution removals retained for this graph's optional report. */
     val contributionDecisions: List<BindingExplanationCandidate> = emptyList(),
+    val lifecycleCallbacks: List<LifecycleCallback> = emptyList(),
   ) : GraphNode() {
+    val isSuspendCloseable: Boolean by memoize {
+      MetroClassIds.suspendCloseableGraph in supertypeClassIds
+    }
+    val isCloseable: Boolean by memoize {
+      isSuspendCloseable || MetroClassIds.closeableGraph in supertypeClassIds
+    }
+    val lifecycleParameters: List<LifecycleParameter> by memoize {
+      lifecycleCallbacks.flatMap { it.roots }
+    }
+    val requiresSuspendInit: Boolean by memoize {
+      lifecycleCallbacks.any { it.onInit && it.metroFunction.ir.isSuspend }
+    }
     val hasExtensions = graphExtensions.isNotEmpty()
 
     override val directlyProvidedKeys: Set<IrTypeKey> by memoize {

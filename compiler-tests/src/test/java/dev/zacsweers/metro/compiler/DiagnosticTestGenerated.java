@@ -1636,6 +1636,92 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
   }
 
   @Nested
+  @TestMetadata("compiler-tests/src/test/data/diagnostic/lifecycle")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Lifecycle {
+    private void run(String fileName) {
+      runTest("compiler-tests/src/test/data/diagnostic/lifecycle/" + fileName);
+    }
+
+    @Test
+    public void testAllFilesPresentInLifecycle() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/lifecycle"), Pattern.compile("^(.+)\\.kt$"), null, true, "_reports");
+    }
+
+    @Test
+    @TestMetadata("DeferredWarnings.kt")
+    public void testDeferredWarnings() {
+      run("DeferredWarnings.kt");
+    }
+
+    @Test
+    @TestMetadata("DynamicSuspendReplacement.kt")
+    public void testDynamicSuspendReplacement() {
+      run("DynamicSuspendReplacement.kt");
+    }
+
+    @Test
+    @TestMetadata("InvalidDeclarationsAndCalls.kt")
+    public void testInvalidDeclarationsAndCalls() {
+      run("InvalidDeclarationsAndCalls.kt");
+    }
+
+    @Test
+    @TestMetadata("MissingBinding.kt")
+    public void testMissingBinding() {
+      run("MissingBinding.kt");
+    }
+
+    @Test
+    @TestMetadata("MissingCoroutineRuntime.kt")
+    public void testMissingCoroutineRuntime() {
+      run("MissingCoroutineRuntime.kt");
+    }
+
+    @Test
+    @TestMetadata("RequiresCloseableGraph.kt")
+    public void testRequiresCloseableGraph() {
+      run("RequiresCloseableGraph.kt");
+    }
+
+    @Test
+    @TestMetadata("SuspendConfiguration.kt")
+    public void testSuspendConfiguration() {
+      run("SuspendConfiguration.kt");
+    }
+
+    @Test
+    @TestMetadata("SuspendFactories.kt")
+    public void testSuspendFactories() {
+      run("SuspendFactories.kt");
+    }
+
+    @Test
+    @TestMetadata("SuspendPropertyCreation.kt")
+    public void testSuspendPropertyCreation() {
+      run("SuspendPropertyCreation.kt");
+    }
+
+    @Test
+    @TestMetadata("UnprocessedCallbacks.kt")
+    public void testUnprocessedCallbacks() {
+      run("UnprocessedCallbacks.kt");
+    }
+
+    @Test
+    @TestMetadata("WarningOwnership.kt")
+    public void testWarningOwnership() {
+      run("WarningOwnership.kt");
+    }
+
+    @Test
+    @TestMetadata("Warnings.kt")
+    public void testWarnings() {
+      run("Warnings.kt");
+    }
+  }
+
+  @Nested
   @TestMetadata("compiler-tests/src/test/data/diagnostic/multibindings")
   @TestDataPath("$PROJECT_ROOT")
   public class Multibindings {

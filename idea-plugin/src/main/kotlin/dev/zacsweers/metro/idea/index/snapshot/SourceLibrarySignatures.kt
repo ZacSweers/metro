@@ -8,6 +8,7 @@ import dev.zacsweers.metro.idea.index.FactoryInputEntry
 import dev.zacsweers.metro.idea.index.FileShard
 import dev.zacsweers.metro.idea.index.GraphInterfaceSurface
 import dev.zacsweers.metro.idea.index.writtenClassBudgetKey
+import dev.zacsweers.metro.idea.model.BindingIndex.SourcePointerIdentity
 import dev.zacsweers.metro.idea.model.ConsumerEntry
 import dev.zacsweers.metro.idea.model.ContributionEntry
 import dev.zacsweers.metro.idea.model.DynamicGraphId
@@ -15,6 +16,7 @@ import dev.zacsweers.metro.idea.model.GraphCallableReference
 import dev.zacsweers.metro.idea.model.GraphCallableSignature
 import dev.zacsweers.metro.idea.model.GraphDeclarationId
 import dev.zacsweers.metro.idea.model.GraphExtensionFactoryAccessor
+import dev.zacsweers.metro.idea.model.GraphLifecycleCallback
 import dev.zacsweers.metro.idea.model.GraphMemberOverride
 import dev.zacsweers.metro.idea.model.GraphReference
 import dev.zacsweers.metro.idea.model.KaAnnotationSnapshot
@@ -22,6 +24,7 @@ import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaContextualTypeKey
 import dev.zacsweers.metro.idea.model.KaTypeKey
 import dev.zacsweers.metro.idea.model.KaTypeSnapshot
+import dev.zacsweers.metro.idea.model.sourcePointerIdentity
 import org.jetbrains.kotlin.name.ClassId
 
 /**
@@ -51,6 +54,11 @@ private fun FileShard.librarySignature(): SourceLibraryShardSignature {
         graph.extensionCreations,
         graph.extensionFactories.map(::extensionFactoryLibrarySignature),
         graph.memberOverrides.map(::memberOverrideLibrarySignature),
+        graph.lifecycleCallbacks.map(::lifecycleLibrarySignature),
+        graph.closeImplementations.map(::sourcePointerIdentity),
+        graph.factoryIsSuspend,
+        graph.lifecycleSuppressions,
+        graph.synchronousExtensionCreations.map { it.extension },
         graph.injectedMemberOwnerIds,
         graph.daggerAnvilInteropEnabled,
         graph.pointer.element != null,
@@ -113,6 +121,8 @@ private fun consumerLibrarySignature(consumer: ConsumerEntry): ConsumerLibrarySi
     consumer.graphRequestKind,
     consumer.isSuspend,
     consumer.isOptional,
+    consumer.lifecycleOwnerIdentity,
+    consumer.lifecycleSuppressions,
   )
 }
 
@@ -147,6 +157,7 @@ private fun memberOverrideLibrarySignature(
     memberOverride.overriddenDeclarations.map(::callableLibrarySignature),
     memberOverride.isOptional,
     memberOverride.isAbstract,
+    memberOverride.isLifecycle,
   )
 }
 
@@ -189,6 +200,9 @@ private fun graphInterfaceLibrarySignature(
     surface.extensionCreations,
     surface.extensionFactories.map(::extensionFactoryLibrarySignature),
     surface.memberOverrides.map(::memberOverrideLibrarySignature),
+    surface.lifecycleCallbacks.map(::lifecycleLibrarySignature),
+    surface.closeImplementations.map(::sourcePointerIdentity),
+    surface.synchronousExtensionCreations.map { it.extension },
     surface.injectedMemberOwnerIds,
   )
 }
@@ -279,6 +293,11 @@ private data class GraphLibrarySignature(
   val extensionCreations: Set<GraphReference>,
   val extensionFactories: List<ExtensionFactoryLibrarySignature>,
   val memberOverrides: List<GraphMemberOverrideLibrarySignature>,
+  val lifecycleCallbacks: List<LifecycleLibrarySignature>,
+  val closeImplementations: List<SourcePointerIdentity?>,
+  val factoryIsSuspend: Boolean,
+  val lifecycleSuppressions: Set<String>,
+  val synchronousExtensionCreations: List<GraphReference>,
   val injectedMemberOwnerIds: Set<ClassId>,
   val daggerAnvilInteropEnabled: Boolean,
   val pointerIsValid: Boolean,
@@ -311,6 +330,8 @@ private data class ConsumerLibrarySignature(
   val graphRequestKind: ConsumerEntry.GraphRequestKind?,
   val isSuspend: Boolean,
   val isOptional: Boolean,
+  val lifecycleOwner: SourcePointerIdentity?,
+  val lifecycleSuppressions: Set<String>,
 )
 
 private data class ExtensionFactoryLibrarySignature(
@@ -332,6 +353,7 @@ private data class GraphMemberOverrideLibrarySignature(
   val overriddenDeclarations: List<GraphCallableLibrarySignature>,
   val isOptional: Boolean,
   val isAbstract: Boolean,
+  val isLifecycle: Boolean,
 )
 
 private data class GraphInterfaceLibrarySignature(
@@ -343,6 +365,9 @@ private data class GraphInterfaceLibrarySignature(
   val extensionCreations: Set<GraphReference>,
   val extensionFactories: List<ExtensionFactoryLibrarySignature>,
   val memberOverrides: List<GraphMemberOverrideLibrarySignature>,
+  val lifecycleCallbacks: List<LifecycleLibrarySignature>,
+  val closeImplementations: List<SourcePointerIdentity?>,
+  val synchronousExtensionCreations: List<GraphReference>,
   val injectedMemberOwnerIds: Set<ClassId>,
 )
 
@@ -420,3 +445,23 @@ private data class FactoryInputLibrarySignature(
   val writtenBindingKeys: List<KaTypeKey>,
   val bindings: List<BindingLibrarySignature>,
 )
+
+private data class LifecycleLibrarySignature(
+  val source: SourcePointerIdentity?,
+  val onInit: Boolean,
+  val onClose: Boolean,
+  val isSuspend: Boolean,
+  val isImplementedUnit: Boolean,
+  val hasInvalidParameters: Boolean,
+)
+
+private fun lifecycleLibrarySignature(callback: GraphLifecycleCallback): LifecycleLibrarySignature {
+  return LifecycleLibrarySignature(
+    callback.sourceIdentity,
+    callback.onInit,
+    callback.onClose,
+    callback.isSuspend,
+    callback.isImplementedUnit,
+    callback.hasInvalidParameters,
+  )
+}

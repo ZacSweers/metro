@@ -9,8 +9,10 @@ import dev.zacsweers.metro.idea.model.BindingContainerEntry
 import dev.zacsweers.metro.idea.model.ConsumerEntry
 import dev.zacsweers.metro.idea.model.ContributionEntry
 import dev.zacsweers.metro.idea.model.DynamicGraphCall
+import dev.zacsweers.metro.idea.model.GraphExtensionCreation
 import dev.zacsweers.metro.idea.model.GraphExtensionFactoryAccessor
 import dev.zacsweers.metro.idea.model.GraphInterfaceContribution
+import dev.zacsweers.metro.idea.model.GraphLifecycleCallback
 import dev.zacsweers.metro.idea.model.GraphMemberOverride
 import dev.zacsweers.metro.idea.model.GraphReference
 import dev.zacsweers.metro.idea.model.KaAnnotationSnapshot
@@ -132,6 +134,9 @@ internal class GraphInterfaceSurface(
   val extensionFactories: List<GraphExtensionFactoryAccessor>,
   val injectedMemberOwnerIds: Set<ClassId>,
   val memberOverrides: List<GraphMemberOverride> = emptyList(),
+  val lifecycleCallbacks: List<GraphLifecycleCallback> = emptyList(),
+  val closeImplementations: List<SmartPsiElementPointer<out KtElement>> = emptyList(),
+  val synchronousExtensionCreations: List<GraphExtensionCreation> = emptyList(),
 ) {
   fun forGraph(graph: KaGraphDeclaration): GraphInterfaceContribution {
     val graphBindings = bindings.map { binding ->
@@ -154,6 +159,9 @@ internal class GraphInterfaceSurface(
       consumers = consumers.map { it.withGraphOwner(graph.declarationId, contribution) },
       injectedMemberOwnerIds = injectedMemberOwnerIds,
       memberOverrides = memberOverrides,
+      lifecycleCallbacks = lifecycleCallbacks,
+      closeImplementations = closeImplementations,
+      synchronousExtensionCreations = synchronousExtensionCreations,
     )
   }
 }

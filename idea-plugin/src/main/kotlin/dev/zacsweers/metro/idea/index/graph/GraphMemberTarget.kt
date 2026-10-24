@@ -2,14 +2,18 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea.index.graph
 
+import com.intellij.psi.SmartPsiElementPointer
 import dev.zacsweers.metro.idea.index.GraphInterfaceBinding
 import dev.zacsweers.metro.idea.model.ConsumerEntry
 import dev.zacsweers.metro.idea.model.GraphDeclarationId
+import dev.zacsweers.metro.idea.model.GraphExtensionCreation
 import dev.zacsweers.metro.idea.model.GraphExtensionFactoryAccessor
+import dev.zacsweers.metro.idea.model.GraphLifecycleCallback
 import dev.zacsweers.metro.idea.model.GraphMemberOverride
 import dev.zacsweers.metro.idea.model.GraphReference
 import org.jetbrains.kotlin.analysis.api.types.KaClassType
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.psi.KtElement
 
 /** Accumulates graph members while the owning Analysis API session is active. */
 internal class GraphMemberTarget(
@@ -22,4 +26,7 @@ internal class GraphMemberTarget(
   /** The session-local receiver preserves an inherited factory SAM's annotated subtype. */
   val factoryContext: KaClassType? = null,
   val memberOverrides: MutableList<GraphMemberOverride> = mutableListOf(),
+  val lifecycleCallbacks: MutableList<GraphLifecycleCallback> = mutableListOf(),
+  val closeImplementations: MutableList<SmartPsiElementPointer<out KtElement>> = mutableListOf(),
+  val synchronousExtensionCreations: MutableList<GraphExtensionCreation> = mutableListOf(),
 )

@@ -36,7 +36,12 @@ private constructor(
   private val declarations: List<BindingIndexResolutionInputs>,
   private val lazyRequests: Map<KaContextualTypeKey, LazyRequestSources>,
 ) {
-  fun name(consumer: ConsumerEntry): String? = declaration(consumer.pointer)?.name
+  fun name(consumer: ConsumerEntry): String? {
+    val name = declaration(consumer.pointer)?.name ?: return null
+    val owner = consumer.lifecycleOwner ?: return name
+    val callback = declaration(owner)?.name ?: return name
+    return "$callback.$name"
+  }
 
   fun location(binding: KaBinding): String? = declaration(binding.pointer)?.location
 

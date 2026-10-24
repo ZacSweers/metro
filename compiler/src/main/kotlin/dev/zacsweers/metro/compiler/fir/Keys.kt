@@ -5,6 +5,10 @@ package dev.zacsweers.metro.compiler.fir
 import org.jetbrains.kotlin.GeneratedDeclarationKey
 
 internal object Keys {
+  data object GraphLifecycle : GeneratedDeclarationKey() {
+    val initializeName = org.jetbrains.kotlin.name.Name.identifier("\$metroInitialize")
+  }
+
   data object Default : GeneratedDeclarationKey() {
     override fun toString() = "Default"
   }

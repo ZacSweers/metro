@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.fir.checkers
 
 import dev.zacsweers.metro.compiler.ClassIds
+import dev.zacsweers.metro.compiler.MetroClassIds
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
@@ -14,6 +15,7 @@ import dev.zacsweers.metro.compiler.fir.callableSymbols
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
+import dev.zacsweers.metro.compiler.fir.implements
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isEffectivelyOpen
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
@@ -235,6 +237,23 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
 
     fun walkCallables() {
       for (callable in declaration.symbol.callableSymbols()) {
+        if (
+          callable.isAnnotatedWithAny(
+            session,
+            setOf(MetroClassIds.onGraphInit, MetroClassIds.onGraphClose),
+          )
+        ) {
+          continue
+        }
+        val isClose =
+          callable.name.asString() == "close" &&
+            (callable as? FirNamedFunctionSymbol)?.valueParameterSymbols?.isEmpty() == true
+        val closeable =
+          declaration.symbol.implements(MetroClassIds.closeableGraph, session) ||
+            declaration.symbol.implements(MetroClassIds.suspendCloseableGraph, session)
+        if (isClose && closeable) {
+          continue
+        }
         val annotations = callable.metroAnnotations()
 
         val isEffectivelyOpen = with(session.compatContext) { callable.isEffectivelyOpen() }

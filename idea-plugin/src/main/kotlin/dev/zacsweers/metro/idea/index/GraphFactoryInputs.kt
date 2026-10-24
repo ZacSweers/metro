@@ -35,6 +35,7 @@ internal class GraphFactoryInputs(
   val inputs: List<FactoryInputEntry>,
   val cacheDependencies: Set<PsiFile>,
   val instanceBindings: List<KaBinding.BoundInstance> = emptyList(),
+  val isSuspend: Boolean = false,
 ) {
   companion object {
     val EMPTY = GraphFactoryInputs(emptySet(), emptySet(), emptyList(), emptySet())
@@ -123,6 +124,7 @@ internal fun KaClassSymbol.graphFactoryInputs(
       inputs,
       cacheDependencies,
       instanceBindings,
+      isSuspend = (callable.symbol as? KaNamedFunctionSymbol)?.isSuspend == true,
     )
   }
 

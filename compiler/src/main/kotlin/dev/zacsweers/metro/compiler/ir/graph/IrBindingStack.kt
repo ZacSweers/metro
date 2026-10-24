@@ -170,12 +170,18 @@ internal interface IrBindingStack :
         isSynthetic: Boolean = false,
         isSignatureFunction: Boolean = false,
         diagnosticNotes: List<Note> = emptyList(),
+        annotation: String? = null,
       ): Entry {
         return Entry(
           contextKey = contextKey,
           displayTypeKey = displayTypeKey,
           diagnosticNotes = diagnosticNotes,
-          usage = "is injected at",
+          usage =
+            if (annotation == null) {
+              "is injected at"
+            } else {
+              "is injected at $annotation"
+            },
           graphContext = null,
           declaration = declaration,
           isSynthetic = isSynthetic,

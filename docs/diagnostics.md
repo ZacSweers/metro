@@ -12,11 +12,13 @@ Diagnostics rendering is controlled by the `diagnosticsRenderMode` Gradle option
 | Diagnostic | Summary |
 |------------|---------|
 | [`Metro/AssistedFactorySuspendRequired`](#assistedfactorysuspendrequired) | An assisted factory creates a target that depends on suspend bindings. |
+| [`Metro/CloseOnlyBinding`](#closeonlybinding) | A binding is reachable only from graph close callbacks. |
 | [`Metro/DependencyCycle`](#dependencycycle) | A binding cycle has no deferred edge. |
 | [`Metro/DuplicateBinding`](#duplicatebinding) | Multiple bindings match the same type key. |
 | [`Metro/DuplicateMapKeys`](#duplicatemapkeys) | Multiple map contributions use the same key. |
 | [`Metro/EmptyMultibinding`](#emptymultibinding) | A declared multibinding has no contributions. |
 | [`Metro/Error`](#error) | A general Metro graph validation error. |
+| [`Metro/GraphLifecycle`](#graphlifecycle) | A graph lifecycle declaration or invocation is invalid. |
 | [`Metro/IncompatibleOverrides`](#incompatibleoverrides) | Merged declarations conflict in their binding roles. |
 | [`Metro/IncompatibleReturnTypes`](#incompatiblereturntypes) | Merged declarations have incompatible return types. |
 | [`Metro/IncompatiblyScopedBindings`](#incompatiblyscopedbindings) | A graph uses bindings with incompatible scopes. |
@@ -32,6 +34,7 @@ Diagnostics rendering is controlled by the `diagnosticsRenderMode` Gradle option
 | [`Metro/SuspendProvidersNotEnabled`](#suspendprovidersnotenabled) | A suspend binding is used while suspend providers are disabled. |
 | [`Metro/SuspiciousUnusedMultibinding`](#suspiciousunusedmultibinding) | A multibinding has contributions but is never requested. |
 | [`Metro/UnprocessedUpstreamDeclaration`](#unprocessedupstreamdeclaration) | An upstream declaration does not appear to have been processed by Metro. |
+| [`Metro/UnscopedLifecycleParameter`](#unscopedlifecycleparameter) | A lifecycle callback directly requests an unscoped binding. |
 | [`Metro/UnusedGraphInputs`](#unusedgraphinputs) | A graph input is unused and can be removed. |
 
 ## AssistedFactorySuspendRequired
@@ -41,6 +44,14 @@ Diagnostics rendering is controlled by the `diagnosticsRenderMode` Gradle option
 **Summary:** An assisted factory creates a target that depends on suspend bindings.
 
 An `@AssistedFactory` creates a type whose non-assisted dependencies include suspend bindings. The factory function must await them. Declare the factory function as a `suspend` function so the generated implementation can await the suspend dependencies.
+
+## CloseOnlyBinding
+
+**Diagnostic:** `Metro/CloseOnlyBinding`
+
+**Summary:** A binding is reachable only from graph close callbacks.
+
+Resolving a callback parameter may create this binding for the first time during close. Requests through providers and lazy values also count for this warning. Requests from ordinary accessors, initialization callbacks, and child graphs count as uses outside close. Supplied graph inputs and `@Includes` accessors are exempt. Request the binding during initialization if startup should create it, or suppress `CLOSE_ONLY_BINDING` when this behavior is intentional.
 
 ## DependencyCycle
 
@@ -81,6 +92,16 @@ A `Set` or `Map` multibinding is declared or requested, but no binding contribut
 **Summary:** A general Metro graph validation error.
 
 Metro reported a graph validation error that does not have a dedicated diagnostic ID. The diagnostic message contains the specific failure and any available fix guidance.
+
+## GraphLifecycle
+
+**Diagnostic:** `Metro/GraphLifecycle`
+
+**Summary:** A graph lifecycle declaration or invocation is invalid.
+
+Lifecycle callbacks must be implemented member functions that return `Unit`. The assembled graph must implement `CloseableGraph` or `SuspendCloseableGraph`. Overrides must repeat each lifecycle annotation. Metro invokes callbacks during initialization and close, so direct calls and callable references are prohibited. Metro also generates the graph's zero-argument `close()` implementation.
+
+Suspend lifecycle behavior requires `enableSuspendProviders`. Suspending initialization requires a factory with a suspend SAM. A synchronous closeable parent cannot own a child with suspending cleanup.
 
 ## IncompatibleOverrides
 
@@ -205,6 +226,14 @@ Contributions exist for a multibinding that nothing in the graph requests. This 
 Metro was asked to use an injected declaration from another module or compilation unit, but that declaration does not appear to have been processed by Metro. This usually means Metro was enabled only in the downstream module while the referenced declaration lives upstream.
 
 Enable Metro in the upstream module too. If this happens while using framework interop, make sure the upstream module also runs that framework's code generation when Metro relies on its generated code.
+
+## UnscopedLifecycleParameter
+
+**Diagnostic:** `Metro/UnscopedLifecycleParameter`
+
+**Summary:** A lifecycle callback directly requests an unscoped binding.
+
+A scalar callback parameter can create a temporary instance that differs from instances used elsewhere in the graph. Scope the binding, request a provider or lazy value to resolve it explicitly, or suppress `UNSCOPED_LIFECYCLE_PARAMETER` when the temporary instance is intentional. Supplied graph inputs count as scoped.
 
 ## UnusedGraphInputs
 

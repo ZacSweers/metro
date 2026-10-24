@@ -14,6 +14,29 @@ public enum class MetroDiagnosticId(
   public val brief: String,
   public val explanation: String,
 ) {
+  GRAPH_LIFECYCLE(
+    "Metro/GraphLifecycle",
+    "A graph lifecycle declaration or invocation is invalid.",
+    """
+    Lifecycle callbacks must be implemented member functions that return `Unit`. The assembled graph must implement `CloseableGraph` or `SuspendCloseableGraph`. Overrides must repeat each lifecycle annotation. Metro invokes callbacks during initialization and close, so direct calls and callable references are prohibited. Metro also generates the graph's zero-argument `close()` implementation.
+
+    Suspend lifecycle behavior requires `enableSuspendProviders`. Suspending initialization requires a factory with a suspend SAM. A synchronous closeable parent cannot own a child with suspending cleanup.
+    """,
+  ),
+  UNSCOPED_LIFECYCLE_PARAMETER(
+    "Metro/UnscopedLifecycleParameter",
+    "A lifecycle callback directly requests an unscoped binding.",
+    """
+    A scalar callback parameter can create a temporary instance that differs from instances used elsewhere in the graph. Scope the binding, request a provider or lazy value to resolve it explicitly, or suppress `UNSCOPED_LIFECYCLE_PARAMETER` when the temporary instance is intentional. Supplied graph inputs count as scoped.
+    """,
+  ),
+  CLOSE_ONLY_BINDING(
+    "Metro/CloseOnlyBinding",
+    "A binding is reachable only from graph close callbacks.",
+    """
+    Resolving a callback parameter may create this binding for the first time during close. Requests through providers and lazy values also count for this warning. Requests from ordinary accessors, initialization callbacks, and child graphs count as uses outside close. Supplied graph inputs and `@Includes` accessors are exempt. Request the binding during initialization if startup should create it, or suppress `CLOSE_ONLY_BINDING` when this behavior is intentional.
+    """,
+  ),
   MISSING_BINDING(
     "Metro/MissingBinding",
     "No binding satisfies a requested type.",

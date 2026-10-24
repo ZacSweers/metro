@@ -53,6 +53,8 @@ import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.ParentContext
 import dev.zacsweers.metro.compiler.ir.ParentContextReader
 import dev.zacsweers.metro.compiler.ir.annotationsIn
+import dev.zacsweers.metro.compiler.ir.contextParameters
+import dev.zacsweers.metro.compiler.ir.extensionReceiverParameterCompat
 import dev.zacsweers.metro.compiler.ir.getAnnotation
 import dev.zacsweers.metro.compiler.ir.graph.reporting.BindingDecisionCapture
 import dev.zacsweers.metro.compiler.ir.hasErrorTypes
@@ -96,6 +98,7 @@ import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.isAny
 import org.jetbrains.kotlin.ir.types.isMarkedNullable
+import org.jetbrains.kotlin.ir.types.isUnit
 import org.jetbrains.kotlin.ir.types.makeNotNull
 import org.jetbrains.kotlin.ir.types.makeNullable
 import org.jetbrains.kotlin.ir.types.typeOrFail
@@ -167,7 +170,8 @@ internal class IrBindingGraph(
   private var transitivelySuspendKeys: Set<IrTypeKey> = emptySet()
 
   /** Whether reachable codegen needs APIs from the optional runtime-coroutines artifact. */
-  private var requiresRuntimeCoroutines = false
+  private var requiresRuntimeCoroutines = node.isSuspendCloseable
+  private var lifecycleChildUses: Set<IrTypeKey> = emptySet()
 
   /** Empty multibindings are identified during sealing and reported after topology is available. */
   private val pendingEmptyMultibindings = mutableListOf<IrBinding.Multibinding>()
@@ -215,6 +219,23 @@ internal class IrBindingGraph(
           )
           .also { parentSuspendBindingAnalysis = it }
     return analysis.isSuspend(typeKey)
+  }
+
+  /** Reads the owning binding before child validation, including supplied instances and aliases. */
+  internal fun isLifecycleScopedForChild(typeKey: IrTypeKey): Boolean {
+    var binding = findBinding(typeKey, allowLookup = true)
+    val visited = mutableSetOf<IrTypeKey>()
+    while (binding is IrBinding.Alias && visited.add(binding.typeKey)) {
+      binding = findBinding(binding.aliasedType, allowLookup = true)
+    }
+    return binding?.isLifecycleScoped() == true
+  }
+
+  private fun IrBinding.isLifecycleScoped(): Boolean {
+    if (this is IrBinding.GraphDependency && token != null) {
+      return token.isLifecycleScoped
+    }
+    return isScoped() || this is IrBinding.BoundInstance
   }
 
   private sealed interface PendingDiagnostic {
@@ -362,6 +383,7 @@ internal class IrBindingGraph(
 
   // TODO hoist accessors up and visit in seal?
   private val accessors = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
+  private val lifecycleParameters = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
   private val inheritedAccessorRoots = mutableListOf<GraphAccessor>()
   private val injectors = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
   private val extraKeeps = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
@@ -395,6 +417,19 @@ internal class IrBindingGraph(
     if (accessor.declaringGraph != null) {
       inheritedAccessorRoots.add(accessor)
     }
+  }
+
+  fun addLifecycleParameter(root: LifecycleParameter) {
+    recordRuntimeCoroutinesUse(root.contextKey)
+    val entry =
+      IrBindingStack.Entry.injectedAt(
+        root.contextKey,
+        root.metroFunction.ir,
+        root.parameter.asValueParameter,
+        declaration = root.parameter.ir,
+        annotation = root.annotation,
+      )
+    lifecycleParameters.putGraphRoot(root.contextKey, entry)
   }
 
   fun addInjector(key: IrContextualTypeKey, entry: IrBindingStack.Entry) {
@@ -701,11 +736,13 @@ internal class IrBindingGraph(
     childGraphScopes: List<ChildGraphScopeInfo> = emptyList(),
     onError: (List<GraphError>) -> Unit,
   ): PreparedSeal {
+    lifecycleChildUses = childGraphScopes.flatMapToSet { it.reachableKeys }
     val prepared =
       trace("prepare graph seal") {
         val roots = buildMap {
           putAll(accessors)
           putAll(injectors)
+          putAll(lifecycleParameters)
         }
 
         realGraph.prepareSeal(
@@ -1483,17 +1520,196 @@ internal class IrBindingGraph(
       }
       structuralValidator.validate(binding, onIssue = reportIssue)
     }
+    validateGraphLifecycle(bindings, adjacency)
     if (!suspendProvidersEnabled) {
-      for ((contextKey, metroFunction) in node.accessors) {
+      for (root in node.accessors + node.lifecycleParameters) {
+        val contextKey = root.contextKey
+        val metroFunction = root.metroFunction
         if (metroFunction.ir.isSuspend || contextKey.wrappedType.containsSuspendWrapper()) {
           hasDisabledSuspendProviderUse = true
         }
       }
+      val suspendLifecycle =
+        node.isSuspendCloseable || node.lifecycleCallbacks.any { it.metroFunction.ir.isSuspend }
+      if (suspendLifecycle) {
+        hasDisabledSuspendProviderUse = true
+      }
       if (hasDisabledSuspendProviderUse) reportSuspendProvidersNotEnabled()
       return
     }
-    if (hasDirectSuspendBinding) {
+    if (hasDirectSuspendBinding || node.lifecycleCallbacks.isNotEmpty()) {
       validateSuspendBindings(bindings, roots, adjacency)
+    }
+  }
+
+  private fun validateGraphLifecycle(
+    bindings: ScatterMap<IrTypeKey, IrBinding>,
+    adjacency: GraphAdjacency<IrTypeKey>,
+  ) {
+    val callbacks = node.lifecycleCallbacks
+    if (callbacks.isNotEmpty() && !node.isCloseable) {
+      reportError(
+        node.sourceGraph.sourceGraphIfMetroGraph,
+        "[Metro/GraphLifecycle] The assembled graph must implement CloseableGraph or SuspendCloseableGraph to declare lifecycle callbacks.",
+        MetroDiagnostics.GRAPH_LIFECYCLE_ERROR,
+      )
+    }
+    if (node.isCloseable) {
+      val closeFunction = node.metroGraphOrFail.graphLifecycleGeneration?.close
+      val implementedClose =
+        closeFunction?.overriddenSymbolsSequence()?.firstOrNull { !it.owner.isFakeOverride }?.owner
+      if (
+        implementedClose != null &&
+          implementedClose.modality != org.jetbrains.kotlin.descriptors.Modality.ABSTRACT
+      ) {
+        reportError(
+          sequenceOf(implementedClose, node.sourceGraph.sourceGraphIfMetroGraph),
+          "[Metro/GraphLifecycle] Metro generates close(). Put cleanup in an @OnGraphClose callback.",
+          MetroDiagnostics.GRAPH_LIFECYCLE_ERROR,
+        )
+      }
+    }
+    val suspendFactory =
+      node.metroGraphOrFail.graphLifecycleGeneration?.initialize?.isSuspend == true
+    for (callback in callbacks) {
+      val function = callback.metroFunction.ir
+      val implementedUnit =
+        function.modality != org.jetbrains.kotlin.descriptors.Modality.ABSTRACT &&
+          function.returnType.isUnit()
+      if (!implementedUnit) {
+        reportError(
+          sequenceOf(callback.declaration, node.sourceGraph.sourceGraphIfMetroGraph),
+          "[Metro/GraphLifecycle] Lifecycle callbacks must be implemented member functions returning Unit.",
+          MetroDiagnostics.GRAPH_LIFECYCLE_ERROR,
+        )
+      }
+      val hasReceiver =
+        function.extensionReceiverParameterCompat != null || function.contextParameters.isNotEmpty()
+      if (hasReceiver || function.typeParameters.isNotEmpty()) {
+        reportError(
+          sequenceOf(callback.declaration, node.sourceGraph.sourceGraphIfMetroGraph),
+          "[Metro/GraphLifecycle] Lifecycle callbacks cannot declare receivers or type parameters.",
+          MetroDiagnostics.GRAPH_LIFECYCLE_ERROR,
+        )
+      }
+      if (callback.onInit && function.isSuspend && !suspendFactory) {
+        reportError(
+          sequenceOf(
+            function.originalDeclarationIfOverride(),
+            node.sourceGraph.sourceGraphIfMetroGraph,
+          ),
+          "[Metro/GraphLifecycle] Initialization callback '${function.name}' suspends. Declare a graph factory with a suspend SAM.",
+          MetroDiagnostics.GRAPH_LIFECYCLE_ERROR,
+        )
+      }
+      if (callback.onClose && function.isSuspend && !node.isSuspendCloseable) {
+        reportError(
+          sequenceOf(
+            function.originalDeclarationIfOverride(),
+            node.sourceGraph.sourceGraphIfMetroGraph,
+          ),
+          "[Metro/GraphLifecycle] Suspending close callbacks require SuspendCloseableGraph.",
+          MetroDiagnostics.GRAPH_LIFECYCLE_ERROR,
+        )
+      }
+    }
+    val parent = node.parentGraph as? GraphNode.Local
+    val synchronousParent = parent?.isCloseable == true && !parent.isSuspendCloseable
+    if (synchronousParent && node.isSuspendCloseable) {
+      reportError(
+        node.sourceGraph.sourceGraphIfMetroGraph,
+        "[Metro/GraphLifecycle] A CloseableGraph parent cannot own a SuspendCloseableGraph child. Make the parent implement SuspendCloseableGraph.",
+        MetroDiagnostics.GRAPH_LIFECYCLE_ERROR,
+      )
+    }
+    if (node.requiresSuspendInit && parent != null) {
+      val extension = node.contributedGraphTypeKey
+      val accessors = parent.graphExtensions[extension].orEmpty()
+      for (accessor in accessors) {
+        val synchronousCreation = accessor.isSimpleAccessor && !accessor.accessor.ir.isSuspend
+        if (synchronousCreation) {
+          reportError(
+            sequenceOf(
+              accessor.accessor.ir.originalDeclarationIfOverride(),
+              parent.sourceGraph.sourceGraphIfMetroGraph,
+            ),
+            "[Metro/GraphLifecycle] A child with suspending initialization must be created through a suspend factory SAM or suspend function.",
+            MetroDiagnostics.GRAPH_LIFECYCLE_ERROR,
+          )
+        }
+      }
+    }
+
+    fun reachableFrom(roots: Iterable<IrTypeKey>): Set<IrTypeKey> {
+      val visited = mutableSetOf<IrTypeKey>()
+      val pending = ArrayDeque<IrTypeKey>()
+      pending.addAll(roots)
+      while (pending.isNotEmpty()) {
+        val key = pending.removeFirst()
+        if (visited.add(key)) {
+          pending.addAll(adjacency.forward[key].orEmpty())
+        }
+      }
+      return visited
+    }
+    fun resolveAlias(key: IrTypeKey): IrBinding? {
+      var binding = bindings[key]
+      val visited = mutableSetOf<IrTypeKey>()
+      while (binding is IrBinding.Alias && visited.add(binding.typeKey)) {
+        binding = bindings[binding.aliasedType]
+      }
+      return binding
+    }
+    val ordinaryRoots =
+      node.accessors.map { it.contextKey.typeKey } +
+        node.injectors.map { it.contextKey.typeKey } +
+        node.lifecycleParameters.filter { it.onInit }.map { it.contextKey.typeKey } +
+        lifecycleChildUses
+    val usedOutsideClose = reachableFrom(ordinaryRoots)
+    for (root in node.lifecycleParameters) {
+      val binding = resolveAlias(root.contextKey.typeKey) ?: continue
+      val unscopedScalar = !root.contextKey.isWrapped
+      val unscopedBinding = !binding.isLifecycleScoped()
+      if (unscopedScalar && unscopedBinding) {
+        val callback = root.parameter.ir?.parent ?: root.metroFunction.ir
+        reportCompat(
+          sequenceOf(
+            root.parameter.ir?.originalDeclarationIfOverride(),
+            node.sourceGraph.sourceGraphIfMetroGraph,
+          ),
+          MetroDiagnostics.UNSCOPED_LIFECYCLE_PARAMETER,
+          "[Metro/UnscopedLifecycleParameter] Unscoped ${binding.typeKey.render(short = true)} is injected into parameter '${root.parameter.name}' of ${root.annotation} ${callback.kotlinFqName}. Scope the binding or request a provider or lazy value to resolve it explicitly.",
+        )
+      }
+      if (!root.onClose) {
+        continue
+      }
+      val closeOnlyBindings =
+        reachableFrom(listOf(root.contextKey.typeKey))
+          .mapNotNull(::resolveAlias)
+          .distinctBy { it.typeKey }
+          .filter { resolved ->
+            val external =
+              resolved is IrBinding.BoundInstance || resolved is IrBinding.GraphDependency
+            resolved.typeKey !in usedOutsideClose && !external
+          }
+      if (closeOnlyBindings.isNotEmpty()) {
+        val names = closeOnlyBindings.joinToString { it.typeKey.render(short = true) }
+        val subject =
+          if (closeOnlyBindings.size == 1) {
+            "$names is"
+          } else {
+            "$names are"
+          }
+        reportCompat(
+          sequenceOf(
+            root.parameter.ir?.originalDeclarationIfOverride(),
+            node.sourceGraph.sourceGraphIfMetroGraph,
+          ),
+          MetroDiagnostics.CLOSE_ONLY_BINDING,
+          "[Metro/CloseOnlyBinding] $subject reachable only from @OnGraphClose callbacks in ${node.sourceGraph.sourceGraphIfMetroGraph.name}. Resolving parameter '${root.parameter.name}' may create $names for the first time during close.",
+        )
+      }
     }
   }
 

@@ -1,0 +1,3 @@
+/main.kt:25:11: error: [Metro/GraphLifecycle] Lifecycle callbacks must be implemented member functions returning Unit.
+
+/main.kt:28:11: error: [Metro/GraphLifecycle] Lifecycle callbacks must be implemented member functions returning Unit.

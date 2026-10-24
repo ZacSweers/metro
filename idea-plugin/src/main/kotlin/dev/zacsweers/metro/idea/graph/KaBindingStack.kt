@@ -68,7 +68,7 @@ internal class KaBindingStack(override val graph: KaGraphDeclaration) :
       ): Entry {
         return Entry(
           contextKey = contextKey,
-          usage = "is requested at",
+          usage = consumer.lifecycleAnnotation?.let { "is injected at @$it" } ?: "is requested at",
           graphContext = name?.let { "$graph.$it" },
           pointer = consumer.pointer,
           isSynthetic = true,
