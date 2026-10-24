@@ -30,7 +30,10 @@ constructor(private val delegate: CompatContext = DelegateType()) : CompatContex
     at(declaration).report(factory, a)
   }
 
-  /** Installs metadata repair at the Kotlin 2.5.0-Beta1 compatibility boundary. */
+  /**
+   * Installs metadata repair at the Kotlin 2.5.0-Beta1 compatibility boundary
+   * ([KT-90383](https://youtrack.jetbrains.com/issue/KT-90383)).
+   */
   override fun createIrGeneratedDeclarationsRegistrar(
     pluginContext: IrPluginContext,
   ): IrGeneratedDeclarationsRegistrarCompat {
