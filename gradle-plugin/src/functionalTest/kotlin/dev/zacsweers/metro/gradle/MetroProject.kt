@@ -247,8 +247,18 @@ abstract class MetroProject(
       dependencyResolutionManagement =
         DependencyResolutionManagement(metroRepositories(Repository.DEFAULT))
     }
+    val compilationProperties =
+      if (multiplatform && testSeparateCompilation) {
+        listOf("kotlin.kmp.separateCompilation=true")
+      } else {
+        emptyList()
+      }
+    // Per-fixture properties are last so focused experiments can override this test mode.
     gradleProperties =
-      gradleProperties.plus(METRO_TESTKIT_GRADLE_PROPERTIES).plus(additionalGradleProperties)
+      gradleProperties
+        .plus(METRO_TESTKIT_GRADLE_PROPERTIES)
+        .plus(compilationProperties)
+        .plus(additionalGradleProperties)
   }
 
   private fun metroRepositories(defaults: List<Repository>): Repositories =
@@ -322,6 +332,8 @@ abstract class MetroProject(
    * Returns the `kotlin { ... }` targets block written into multiplatform projects. Override to
    * scope down the target set; the default emits every [KmpTarget] entry so a single project can be
    * exercised against the full parameter matrix.
+   *
+   * Kotlin 2.5.0-Beta1 can lose a single-target producer's common declarations in separate mode.
    */
   protected open fun multiplatformTargetsBlock(): String = buildString {
     appendLine("kotlin {")
@@ -333,6 +345,9 @@ abstract class MetroProject(
   }
 
   private companion object {
+    private val testSeparateCompilation =
+      System.getProperty("metro.functionalTestSeparateCompilation", "false").toBooleanStrict()
+
     // The Gradle test task forwards these opt-in CI experiments to each generated fixture.
     private val testkitConfigurationCache =
       System.getProperty("metro.testkitConfigurationCache")?.toBooleanStrict()
