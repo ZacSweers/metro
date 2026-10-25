@@ -65,6 +65,14 @@ public interface BaseBindingStack<
     public val trailingComment: String?
       get() = null
 
+    /**
+     * Optional label that starts the compact request chain under a diagnostic headline, such as
+     * `AppGraph.closeDatabase(database)`. An entry with a label shows the chain even when it's the
+     * only entry in the trace.
+     */
+    public val chainRoot: String?
+      get() = null
+
     public fun render(graph: FqName, short: Boolean): String {
       return buildString {
         append(displayTypeKey.render(short))
