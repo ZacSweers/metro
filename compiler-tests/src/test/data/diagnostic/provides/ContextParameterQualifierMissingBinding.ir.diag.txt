@@ -1,0 +1,15 @@
+/ContextParameterQualifierMissingBinding.kt:9:11: error: [Metro/MissingBinding] No binding found for @Named("missing") String
+
+  AppGraph.length -> Int -> @Named("missing") String
+
+  trace (in AppGraph):
+      @Named("missing") String is injected at Providers.provideLength(…, value)
+      Int is requested at AppGraph.length
+
+  similar bindings:
+      - String (Different qualifier. Type: Provided) -
+        ContextParameterQualifierMissingBinding.kt:18:13
+
+  help: ensure @Named("missing") String has an @Inject constructor or is provided by an @Provides or
+        @Binds declaration visible to AppGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding

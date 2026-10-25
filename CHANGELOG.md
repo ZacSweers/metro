@@ -9,6 +9,7 @@ Changelog
 - **[metrox-viewmodel-compose]** Add support for `linuxX64`.
 - **[FIR]** Add the `diagnostic-level` compiler option to change the severity of Metro diagnostics reported in FIR. It works like kotlinc's `-Xwarning-level` but can also lower errors and use IDE-only levels. See [changing diagnostic severity](docs/validation-and-error-reporting.md#changing-diagnostic-severity).
 - **[FIR/IC]** Add the `function-inject-annotations-override` compiler option to use dedicated annotations for top-level function injection. See [custom function injection annotations](docs/injection-types.md#custom-function-injection-annotations).
+- **[FIR/IR]** Support context parameters and extension receivers on `@Provides` functions and properties. Both are dependencies and can be qualified.
 - **[Gradle]** Add opt-in checks to find Metro contributions hidden from a graph's compile classpath. Run `checkMainMetroHiddenDependencies` (i.e., on CI). It writes a report and fails if it finds hidden contributions.
   - Supports JVM and Android compilations, including JVM targets in KMP. See [checking for hidden contributions](docs/aggregation.md#checking-for-hidden-contributions).
   - Also checks Hilt aggregation metadata when Hilt interop is enabled.
@@ -40,7 +41,6 @@ Changelog
 - **[FIR]** Fix accessor override status on Kotlin `2.5.0-dev-10106`.
 - **[FIR/IC]** Avoid unnecessary recompilation of independent injected classes when generating contribution hints.
 - **[FIR/interop]** Fix duplicate class errors during caused by Hilt interop generating hints for upstream modules.
-- **[FIR/IR]** Fix compiler crashes for `@Provides` functions and properties with context parameters.
 - **[FIR/IR/interop]** Fix incremental builds not updating graphs when an upstream Hilt `@AggregatedDeps` marker changes or is removed.
 - **[FIR/IR/Gradle]** Fix false self-loop errors in `analyzeMetroGraph` when one qualified map depends on another.
 - **[IR]** Fix a qualified request resolving to an unqualified `@Inject` class. A qualified optional binding now uses its default, and other qualified requests report a missing binding.

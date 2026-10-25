@@ -1,0 +1,9 @@
+/ProvidesReceiverAndContextParameterValidation.kt:11:24: warning: `@Provides` extension functions just returning `this` should be annotated with `@Binds` instead for these. See https://zacsweers.github.io/metro/latest/bindings/#binds for more information.
+
+/ProvidesReceiverAndContextParameterValidation.kt:13:17: error: Assisted parameters are not supported for `@Provides` methods. Create a concrete assisted-injected factory class instead.
+
+/ProvidesReceiverAndContextParameterValidation.kt:15:17: error: @OptionalBinding-annotated parameters must have a default value.
+
+/ProvidesReceiverAndContextParameterValidation.kt:18:11: error: Assisted parameters are not supported for `@Provides` methods. Create a concrete assisted-injected factory class instead.
+
+/ProvidesReceiverAndContextParameterValidation.kt:22:35: error: @OptionalBinding-annotated parameters must have a default value.

@@ -3871,6 +3871,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("ContextParameterProviderQualifiers.kt")
+    public void testContextParameterProviderQualifiers() {
+      run("ContextParameterProviderQualifiers.kt");
+    }
+
+    @Test
     @TestMetadata("ContextParameterProviders.kt")
     public void testContextParameterProviders() {
       run("ContextParameterProviders.kt");
@@ -3886,6 +3892,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     @TestMetadata("ExplicitlyPrivateProviderAnnotationsArePropagated.kt")
     public void testExplicitlyPrivateProviderAnnotationsArePropagated() {
       run("ExplicitlyPrivateProviderAnnotationsArePropagated.kt");
+    }
+
+    @Test
+    @TestMetadata("ExtensionReceiverProviders.kt")
+    public void testExtensionReceiverProviders() {
+      run("ExtensionReceiverProviders.kt");
     }
 
     @Test

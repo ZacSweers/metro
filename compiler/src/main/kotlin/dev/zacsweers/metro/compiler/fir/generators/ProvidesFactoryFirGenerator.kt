@@ -279,7 +279,11 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
   ) {
     val callableId = CallableId(owner.classId, symbol.name)
     val name = symbol.name
-    val shouldGenerateObject by memoize { instanceReceiver == null && valueParameters.isEmpty() }
+    val shouldGenerateObject by memoize {
+      // Instance and extension receivers are both dependencies of the factory.
+      val hasReceiver = instanceReceiver != null || symbol.receiverParameterSymbol != null
+      !hasReceiver && valueParameters.isEmpty()
+    }
 
     val returnType
       get() = symbol.resolvedReturnType

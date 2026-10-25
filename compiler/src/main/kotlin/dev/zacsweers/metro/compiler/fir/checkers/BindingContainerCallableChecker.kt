@@ -35,6 +35,7 @@ import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.descriptors.EffectiveVisibility
 import org.jetbrains.kotlin.descriptors.Visibilities
+import org.jetbrains.kotlin.descriptors.annotations.AnnotationUseSiteTarget
 import org.jetbrains.kotlin.descriptors.isObject
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
@@ -53,10 +54,12 @@ import org.jetbrains.kotlin.fir.declarations.FirConstructor
 import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.FirProperty
 import org.jetbrains.kotlin.fir.declarations.FirPropertyAccessor
+import org.jetbrains.kotlin.fir.declarations.FirReceiverParameter
 import org.jetbrains.kotlin.fir.declarations.FirValueParameter
 import org.jetbrains.kotlin.fir.declarations.getAnnotationByClassId
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClass
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
+import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.declarations.utils.effectiveVisibility
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
 import org.jetbrains.kotlin.fir.declarations.utils.isConst
@@ -635,15 +638,7 @@ internal object BindingContainerCallableChecker :
             )
             return
           }
-
-          if (annotations.isProvides) {
-            reporter.reportOn(
-              source,
-              MetroDiagnostics.PROVIDES_ERROR,
-              "`@Provides` $name may not be extension $name. Use `@Binds` instead for these. See https://zacsweers.github.io/metro/latest/bindings/#binds for more information.",
-            )
-            return
-          }
+          // Other `@Provides` extensions are allowed. Their receiver is a dependency.
         }
       }
 
@@ -712,42 +707,93 @@ internal object BindingContainerCallableChecker :
           }
         }
 
-        if (
+        val isNamedFunction =
           declaration is FirFunction &&
             with(session.compatContext) { declaration.isNamedFunction() }
-        ) {
-          for (parameter in declaration.valueParameters) {
-            val annotations = parameter.symbol.metroAnnotations()
-
-            val assistedAnnotation = annotations.assisted
-            if (assistedAnnotation != null) {
-              reporter.reportOn(
-                assistedAnnotation.fir.source ?: parameter.source ?: source,
-                MetroDiagnostics.PROVIDES_ERROR,
-                "Assisted parameters are not supported for `@Provides` methods. Create a concrete assisted-injected factory class instead.",
-              )
-              return
-            }
-
-            // Check for lazy-wrapped assisted factories in provides function parameters
-            if (
-              validateInjectionSiteType(
-                session,
-                parameter.returnTypeRef,
-                annotations.qualifier,
-                parameter.source ?: source,
-                isOptionalBinding = annotations.isOptionalBinding,
-                hasDefault = parameter.symbol.hasDefaultValue,
-              )
-            ) {
-              continue
-            }
+        // Context parameters and value parameters are both dependencies.
+        val dependencyParameters = buildList {
+          addAll(declaration.contextParameters)
+          if (isNamedFunction) {
+            addAll((declaration as FirFunction).valueParameters)
           }
+        }
+        for (parameter in dependencyParameters) {
+          val annotations = parameter.symbol.metroAnnotations()
+
+          val assistedAnnotation = annotations.assisted
+          if (assistedAnnotation != null) {
+            reporter.reportOn(
+              assistedAnnotation.fir.source ?: parameter.source ?: source,
+              MetroDiagnostics.PROVIDES_ERROR,
+              "Assisted parameters are not supported for `@Provides` methods. Create a concrete assisted-injected factory class instead.",
+            )
+            return
+          }
+
+          // Check for lazy-wrapped assisted factories in provides function parameters
+          if (
+            validateInjectionSiteType(
+              session,
+              parameter.returnTypeRef,
+              annotations.qualifier,
+              parameter.source ?: source,
+              isOptionalBinding = annotations.isOptionalBinding,
+              hasDefault = parameter.symbol.hasDefaultValue,
+            )
+          ) {
+            continue
+          }
+        }
+
+        val receiver = declaration.receiverParameter
+        if (receiver != null) {
+          validateProvidesReceiver(declaration, receiver, source)
         }
       }
     }
 
     session.trace({ "Validate binding declaration" }) { validateBindingDeclaration() }
+  }
+
+  /** Validates a `@Provides` extension receiver like any other injection site. */
+  context(context: CheckerContext, reporter: DiagnosticReporter)
+  private fun validateProvidesReceiver(
+    declaration: FirCallableDeclaration,
+    receiver: FirReceiverParameter,
+    source: KtSourceElement?,
+  ) {
+    val session = context.session
+    val classIds = session.classIds
+    // `@receiver:` annotations can live on the receiver or on the declaration.
+    val receiverAnnotations =
+      receiver.annotations +
+        declaration.annotations.filter { it.useSiteTarget == AnnotationUseSiteTarget.RECEIVER }
+    val receiverSource = receiver.source ?: source
+
+    val assistedAnnotation = receiverAnnotations.firstOrNull {
+      it.toAnnotationClassIdSafe(session) in classIds.assistedAnnotations
+    }
+    if (assistedAnnotation != null) {
+      reporter.reportOn(
+        assistedAnnotation.source ?: receiverSource,
+        MetroDiagnostics.PROVIDES_ERROR,
+        "Assisted parameters are not supported for `@Provides` methods. Create a concrete assisted-injected factory class instead.",
+      )
+      return
+    }
+
+    val isOptionalBinding = receiverAnnotations.any {
+      it.toAnnotationClassIdSafe(session) in classIds.optionalBindingAnnotations
+    }
+    val qualifier = FirTypeKey.from(session, receiver, declaration).qualifier
+    validateInjectionSiteType(
+      session,
+      receiver.typeRef,
+      qualifier,
+      receiverSource,
+      isOptionalBinding = isOptionalBinding,
+      hasDefault = false,
+    )
   }
 
   private fun FirCallableDeclaration.multibindingAnnotationSource(

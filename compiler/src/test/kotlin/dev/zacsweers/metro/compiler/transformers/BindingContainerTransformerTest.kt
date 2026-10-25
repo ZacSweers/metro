@@ -3,7 +3,6 @@
 package dev.zacsweers.metro.compiler.transformers
 
 import com.google.common.truth.Truth.assertThat
-import com.tschuchort.compiletesting.KotlinCompilation.ExitCode
 import com.tschuchort.compiletesting.SourceFile
 import dev.zacsweers.metro.compiler.ExampleGraph
 import dev.zacsweers.metro.compiler.MetroCompilerTest
@@ -315,7 +314,7 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
   }
 
   @Test
-  fun `function with receivers are not currently supported`() {
+  fun `function provider with an extension receiver`() {
     val result =
       compile(
         source(
@@ -328,15 +327,14 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
           """
             .trimIndent(),
         ),
-        expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
 
-    result.assertDiagnostics(
-      """
-      e: ExampleGraph.kt:9:22 `@Provides` functions may not be extension functions. Use `@Binds` instead for these. See https://zacsweers.github.io/metro/latest/bindings/#binds for more information.
-      """
-        .trimIndent(),
-    )
+    val graph = result.ExampleGraph.generatedImpl().createGraphWithNoArgs()
+    val providesFactoryClass = result.ExampleGraph.providesFactoryClass("provideValue")
+
+    // The receiver follows the graph instance
+    val providedValue = providesFactoryClass.provideValueAs<Int>("provideValue", graph, "Hello")
+    assertThat(providedValue).isEqualTo(5)
   }
 
   @Test

@@ -3871,6 +3871,12 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
     }
 
     @Test
+    @TestMetadata("ContextParameterProviderQualifiers.kt")
+    public void testContextParameterProviderQualifiers() {
+      run("ContextParameterProviderQualifiers.kt");
+    }
+
+    @Test
     @TestMetadata("ContextParameterProviders.kt")
     public void testContextParameterProviders() {
       run("ContextParameterProviders.kt");
@@ -3886,6 +3892,12 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
     @TestMetadata("ExplicitlyPrivateProviderAnnotationsArePropagated.kt")
     public void testExplicitlyPrivateProviderAnnotationsArePropagated() {
       run("ExplicitlyPrivateProviderAnnotationsArePropagated.kt");
+    }
+
+    @Test
+    @TestMetadata("ExtensionReceiverProviders.kt")
+    public void testExtensionReceiverProviders() {
+      run("ExtensionReceiverProviders.kt");
     }
 
     @Test

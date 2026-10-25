@@ -2899,6 +2899,12 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("ContextParameterProviderQualifiers.kt")
+    public void testContextParameterProviderQualifiers() {
+      run("ContextParameterProviderQualifiers.kt");
+    }
+
+    @Test
     @TestMetadata("ContextParameterProviders.kt")
     public void testContextParameterProviders() {
       run("ContextParameterProviders.kt");
@@ -2914,6 +2920,12 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
     @TestMetadata("ExplicitlyPrivateProviderAnnotationsArePropagated.kt")
     public void testExplicitlyPrivateProviderAnnotationsArePropagated() {
       run("ExplicitlyPrivateProviderAnnotationsArePropagated.kt");
+    }
+
+    @Test
+    @TestMetadata("ExtensionReceiverProviders.kt")
+    public void testExtensionReceiverProviders() {
+      run("ExtensionReceiverProviders.kt");
     }
 
     @Test

@@ -1579,6 +1579,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("ContextParameterQualifierMissingBinding.kt")
+    public void testContextParameterQualifierMissingBinding() {
+      run("ContextParameterQualifierMissingBinding.kt");
+    }
+
+    @Test
     @TestMetadata("DaggerReusable_IsUnsupported.kt")
     public void testDaggerReusable_IsUnsupported() {
       run("DaggerReusable_IsUnsupported.kt");
@@ -1657,18 +1663,6 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     }
 
     @Test
-    @TestMetadata("ProvidesCannotHaveReceivers_AbstractClass.kt")
-    public void testProvidesCannotHaveReceivers_AbstractClass() {
-      run("ProvidesCannotHaveReceivers_AbstractClass.kt");
-    }
-
-    @Test
-    @TestMetadata("ProvidesCannotHaveReceivers_Interface.kt")
-    public void testProvidesCannotHaveReceivers_Interface() {
-      run("ProvidesCannotHaveReceivers_Interface.kt");
-    }
-
-    @Test
     @TestMetadata("ProvidesCannotLiveInObjects.kt")
     public void testProvidesCannotLiveInObjects() {
       run("ProvidesCannotLiveInObjects.kt");
@@ -1717,6 +1711,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("ProvidesReceiverAndContextParameterValidation.kt")
+    public void testProvidesReceiverAndContextParameterValidation() {
+      run("ProvidesReceiverAndContextParameterValidation.kt");
+    }
+
+    @Test
     @TestMetadata("ProvidesShouldBePrivate_InAbstractClass.kt")
     public void testProvidesShouldBePrivate_InAbstractClass() {
       run("ProvidesShouldBePrivate_InAbstractClass.kt");
@@ -1726,12 +1726,6 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     @TestMetadata("ProvidesShouldBePrivate_InInterface.kt")
     public void testProvidesShouldBePrivate_InInterface() {
       run("ProvidesShouldBePrivate_InInterface.kt");
-    }
-
-    @Test
-    @TestMetadata("ProvidesWithExtensionsAndNonThisReturningBodiesShouldError.kt")
-    public void testProvidesWithExtensionsAndNonThisReturningBodiesShouldError() {
-      run("ProvidesWithExtensionsAndNonThisReturningBodiesShouldError.kt");
     }
 
     @Test
