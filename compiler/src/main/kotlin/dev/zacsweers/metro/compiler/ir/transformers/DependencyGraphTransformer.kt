@@ -56,6 +56,7 @@ import dev.zacsweers.metro.compiler.ir.graph.IrGraphExtensionGenerator
 import dev.zacsweers.metro.compiler.ir.graph.IrGraphGenerator
 import dev.zacsweers.metro.compiler.ir.graph.expressions.BindingExpressionDecorator
 import dev.zacsweers.metro.compiler.ir.graph.generatedGraphExtensionData
+import dev.zacsweers.metro.compiler.ir.graph.irInitializedGraph
 import dev.zacsweers.metro.compiler.ir.graphFactoryGetterOrNull
 import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.irCallConstructorWithSameParameters
@@ -956,6 +957,7 @@ internal class DependencyGraphTransformer(
             .plus(node.injectors.map { it.metroFunction.ir })
             .plus(node.bindsCallables.values.flatten().map { it.callableMetadata.function })
             .plus(node.graphExtensions.flatMap { it.value }.map { it.accessor.ir })
+            .plus(listOfNotNull(node.lifecycleClose))
             .filterNot { it.isExternalParent }
             .forEach { function ->
               with(function) {
@@ -1129,7 +1131,8 @@ internal class DependencyGraphTransformer(
 
   /**
    * Gives a graph creator a body that calls the graph's constructor. Inherited factory methods are
-   * finalized first.
+   * finalized first. A suspend creator also runs the graph's suspend init callbacks before it
+   * returns the graph.
    */
   private fun implementGraphConstructorCall(function: IrSimpleFunction, metroGraph: IrClass) {
     if (function.isFakeOverride) {
@@ -1138,7 +1141,12 @@ internal class DependencyGraphTransformer(
     function.body =
       pluginContext.createIrBuilder(function.symbol).run {
         irExprBodySafe(
-          irCallConstructorWithSameParameters(function, metroGraph.primaryConstructor!!.symbol),
+          irInitializedGraph(
+            graph = metroGraph,
+            construction =
+              irCallConstructorWithSameParameters(function, metroGraph.primaryConstructor!!.symbol),
+            isSuspendCreator = function.isSuspend,
+          ),
         )
       }
   }

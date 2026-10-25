@@ -174,6 +174,10 @@ internal sealed class GraphNode {
     override val supertypes: List<IrType>,
     override val includedGraphNodes: Map<IrTypeKey, GraphNode>,
     val graphExtensions: Map<IrTypeKey, List<GraphExtensionAccessor>>,
+    /** Init and close callbacks in declaration order. */
+    val lifecycleCallbacks: List<LifecycleCallback>,
+    /** The `close()` that Metro implements. Null when the graph isn't closeable. */
+    val lifecycleClose: IrSimpleFunction?,
     override val scopes: Set<IrAnnotation>,
     override val aggregationScopes: Set<ClassId>,
     override val providerFactories: Map<IrTypeKey, List<ProviderFactory>>,

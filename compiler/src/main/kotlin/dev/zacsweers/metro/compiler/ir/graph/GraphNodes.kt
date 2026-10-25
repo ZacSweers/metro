@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.ir.graph
 import androidx.collection.MutableScatterMap
 import dev.zacsweers.metro.compiler.BitFieldBuilder
 import dev.zacsweers.metro.compiler.MetroAnnotations
+import dev.zacsweers.metro.compiler.MetroClassIds
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.compat.propertyIfAccessorCompat
 import dev.zacsweers.metro.compiler.diagnostics.DiagnosticHeadlines
@@ -24,6 +25,9 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.getOrInit
 import dev.zacsweers.metro.compiler.getValue
+import dev.zacsweers.metro.compiler.graph.GraphLifecyclePhase
+import dev.zacsweers.metro.compiler.graph.LifecycleDiagnosticMessages
+import dev.zacsweers.metro.compiler.graph.SuspendDiagnosticMessages
 import dev.zacsweers.metro.compiler.graph.toTraceSection
 import dev.zacsweers.metro.compiler.graph.withEntry
 import dev.zacsweers.metro.compiler.ir.BindsCallable
@@ -119,6 +123,7 @@ import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.primaryConstructor
+import org.jetbrains.kotlin.ir.util.resolveFakeOverrideMaybeAbstract
 import org.jetbrains.kotlin.name.ClassId
 
 internal class GraphNodes(
@@ -206,6 +211,8 @@ internal class GraphNodes(
   ) : IrMetroContext by nodeCache, TraceScope by traceScope {
     private val metroGraph = metroGraph ?: graphDeclaration.metroGraphOrNull
     private val metroDeclarations: MetroDeclarations = nodeCache.metroDeclarations
+    private val lifecycleCallbacks = mutableListOf<LifecycleCallback>()
+    private var lifecycleClose: IrSimpleFunction? = null
     private val accessors = mutableListOf<GraphAccessor>()
     private val bindsFunctions = mutableListOf<Pair<MetroSimpleFunction, IrContextualTypeKey>>()
     private val bindsCallables = mutableMapOf<IrTypeKey, MutableList<BindsCallable>>()
@@ -238,6 +245,138 @@ internal class GraphNodes(
 
     private var hasGraphExtensions = false
     private var hasErrors = false
+
+    private val isCloseableGraph = supertypes.any {
+      it.classOrNull?.owner?.classId in MetroClassIds.lifecycleGraphs
+    }
+
+    /** True for the `close()` that Metro implements on this closeable graph. */
+    private fun IrSimpleFunction.isGeneratedClose(): Boolean = isCloseableGraph && hasCloseSignature
+
+    /**
+     * FIR checks lifecycle declarations on the graphs it sees in full. Synthetic graphs (graph
+     * extensions and dynamic graphs) and graphs that merge contributions in IR can gain callbacks
+     * that FIR never saw, so IR repeats those checks for them.
+     */
+    private val needsIrLifecycleChecks: Boolean
+      get() {
+        val sourceGraph = graphDeclaration.sourceGraphIfMetroGraph
+        val mergesContributionsInIr =
+          options.generateClassesInIr ||
+            sourceGraph.hasAnnotation(Symbols.ClassIds.mergeContributionsInIr)
+        return graphDeclaration.origin.isSyntheticGeneratedGraph || mergesContributionsInIr
+      }
+
+    /**
+     * Records [declaration] as a callback of this graph when its original has lifecycle
+     * annotations. Returns false for any other function.
+     */
+    private fun addLifecycleCallbacks(declaration: IrSimpleFunction): Boolean {
+      val original = declaration.resolveFakeOverrideMaybeAbstract() ?: return false
+      val isCallback = GraphLifecyclePhase.entries.any { original.hasAnnotation(it.annotation) }
+      if (!isCallback) {
+        return false
+      }
+      val phases =
+        GraphLifecyclePhase.entries.filterTo(LinkedHashSet()) {
+          original.hasAnnotation(it.annotation)
+        }
+      checkOverriddenQualifiers(original)
+      // The original declares the parameters. The graph's member has their types as seen here.
+      val parameters =
+        original.regularParameters.mapIndexed { index, source ->
+          val type = declaration.regularParameters[index].type
+          val key = IrContextualTypeKey.from(source, type, original.parameterHasMetroDefault(index))
+          LifecycleParameter(source, key)
+        }
+      lifecycleCallbacks += LifecycleCallback(phases, declaration, original, parameters)
+      return true
+    }
+
+    /** Runs the FIR lifecycle checks again for graphs that FIR didn't see in full. */
+    private fun validateLifecycle(node: GraphNode.Local) {
+      if (!needsIrLifecycleChecks) {
+        return
+      }
+      val graphName = graphDeclaration.sourceGraphIfMetroGraph.name.asString()
+      fun fail(message: String): Nothing {
+        reportCompat(
+          graphDeclaration.sourceGraphIfMetroGraph,
+          MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
+          message,
+        )
+        exitProcessing()
+      }
+
+      val close = node.lifecycleClose
+      if (close == null) {
+        if (node.lifecycleCallbacks.isNotEmpty()) {
+          fail(LifecycleDiagnosticMessages.graphMustBeCloseable(graphName))
+        }
+        return
+      }
+
+      // Suspend callbacks, a suspend close(), and a suspend factory all need suspend support.
+      val creationFunction = node.creationFunction()
+      val createsOrClosesSuspending = close.isSuspend || creationFunction?.isSuspend == true
+      val hasSuspendCallback = node.lifecycleCallbacks.any { it.graphFunction.isSuspend }
+      val usesSuspendLifecycle = createsOrClosesSuspending || hasSuspendCallback
+      if (usesSuspendLifecycle && !options.enableSuspendProviders) {
+        reportCompat(
+          graphDeclaration.sourceGraphIfMetroGraph,
+          MetroDiagnostics.SUSPEND_PROVIDERS_NOT_ENABLED,
+          SuspendDiagnosticMessages.SUSPEND_PROVIDERS_NOT_ENABLED,
+        )
+        exitProcessing()
+      }
+
+      // Only SuspendCloseableGraph has a close() that can await a suspend callback.
+      val suspendClose =
+        node.lifecycleCallbacks.firstOrNull {
+          GraphLifecyclePhase.CLOSE in it.phases && it.graphFunction.isSuspend
+        }
+      if (suspendClose != null && !close.isSuspend) {
+        fail(
+          LifecycleDiagnosticMessages.suspendCloseNeedsSuspendGraph(
+            graphName,
+            suspendClose.original.name.asString(),
+          ),
+        )
+      }
+
+      // A parent closes its extensions from its own close(), which can't await a suspend one.
+      val parent = node.parentGraph as? GraphNode.Local
+      val parentClosesSynchronously = parent?.lifecycleClose?.isSuspend == false
+      if (parentClosesSynchronously && close.isSuspend) {
+        val parentName = checkNotNull(parent).sourceGraph.name.asString()
+        fail(LifecycleDiagnosticMessages.syncParentCannotCloseSuspendChild(parentName, graphName))
+      }
+
+      // Suspend init runs inside a suspend creation function, so the graph needs one.
+      val suspendInit = node.metroGraphOrFail.suspendInitCallback() ?: return
+      if (creationFunction?.isSuspend != true) {
+        fail(
+          LifecycleDiagnosticMessages.suspendInitNeedsSuspendFactory(
+            graphName,
+            suspendInit.name.asString(),
+          ),
+        )
+      }
+    }
+
+    /**
+     * The function that creates this graph, if it has a factory. Dynamic graphs implement the
+     * factory of the graph they replace.
+     */
+    private fun GraphNode.Local.creationFunction(): IrSimpleFunction? {
+      val dynamicFactory = metroGraph?.generatedDynamicGraphData?.factoryImpl
+      if (dynamicFactory != null) {
+        val factoryType = dynamicFactory.superTypes.singleOrNull()?.classOrNull?.owner
+        return factoryType?.singleAbstractFunction()
+      }
+      val factory = originalCreator ?: creator as? GraphNode.Creator.Factory
+      return factory?.function
+    }
 
     private fun computeDeclaredScopes(): Set<IrAnnotation> {
       return buildSet {
@@ -498,13 +637,57 @@ internal class GraphNodes(
           is IrProperty -> overriddenDeclaration as IrDeclarationWithName
         }
 
+      addQualifierMismatch(
+        type = type,
+        declarationName = "${declaration.fqNameWhenAvailable}",
+        actualQualifier = expectedQualifier,
+        overriddenName = "${declWithName.fqNameWhenAvailable}",
+        expectedQualifier = overriddenQualifier,
+      )
+    }
+
+    /**
+     * Records each parameter of [callback] that drops or changes the qualifier of the matching
+     * parameter in a callback it overrides. Kotlin doesn't inherit parameter annotations, so an
+     * override repeats them like accessors and injectors do. An override can still add a qualifier.
+     */
+    private fun checkOverriddenQualifiers(callback: IrSimpleFunction) {
+      for ((index, parameter) in callback.regularParameters.withIndex()) {
+        val qualifier = parameter.qualifierAnnotation()
+        for (overridden in callback.overriddenSymbolsSequence()) {
+          val overriddenFunction = overridden.owner
+          val overriddenParameter = overriddenFunction.regularParameters.getOrNull(index)
+          val overriddenQualifier = overriddenParameter?.qualifierAnnotation() ?: continue
+          if (qualifier == overriddenQualifier) {
+            continue
+          }
+          addQualifierMismatch(
+            type = "lifecycle callback parameter",
+            declarationName = callback.parameterSignature(index),
+            actualQualifier = qualifier,
+            overriddenName = overriddenFunction.parameterSignature(index),
+            expectedQualifier = overriddenQualifier,
+          )
+          // One report per parameter is enough, even if several overridden callbacks disagree.
+          break
+        }
+      }
+    }
+
+    private fun addQualifierMismatch(
+      type: String,
+      declarationName: String,
+      actualQualifier: IrAnnotation?,
+      overriddenName: String,
+      expectedQualifier: IrAnnotation?,
+    ) {
       qualifierMismatches +=
         QualifierMismatchEntry(
           type = type,
-          declarationFqName = "${declaration.fqNameWhenAvailable}",
-          actualQualifier = expectedQualifier?.let { "'$it'" } ?: "absent",
-          overriddenSymbolFqName = "${declWithName.fqNameWhenAvailable}",
-          expectedQualifier = overriddenQualifier?.let { "'$it'" } ?: "none",
+          declarationFqName = declarationName,
+          actualQualifier = actualQualifier?.let { "'$it'" } ?: "absent",
+          overriddenSymbolFqName = overriddenName,
+          expectedQualifier = expectedQualifier?.let { "'$it'" } ?: "none",
         )
       hasErrors = true
     }
@@ -746,6 +929,28 @@ internal class GraphNodes(
           ) {
             continue
           }
+          // Metro implements close() on closeable graphs, so it's neither an accessor nor user
+          // code.
+          if (declaration is IrSimpleFunction && declaration.isGeneratedClose()) {
+            val implementation = declaration.resolveFakeOverrideMaybeAbstract()
+            val isImplemented =
+              implementation != null && implementation.modality != Modality.ABSTRACT
+            if (isImplemented && needsIrLifecycleChecks) {
+              reportCompat(
+                graphDeclaration.sourceGraphIfMetroGraph,
+                MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
+                LifecycleDiagnosticMessages.CLOSE_IS_GENERATED,
+              )
+              exitProcessing()
+            }
+            lifecycleClose = declaration
+            continue
+          }
+          // Callbacks are found by their annotations first. A final callback inherited from another
+          // module has no IR body, so the override checks below would take it for an accessor.
+          if (declaration is IrSimpleFunction && addLifecycleCallbacks(declaration)) {
+            continue
+          }
           val annotations = metroAnnotationsOf(declaration)
           if (annotations.isProvides) continue
 
@@ -844,7 +1049,9 @@ internal class GraphNodes(
                 }
               }
 
-              if (hasDefaultImplementation && !isOptionalBinding) continue
+              if (hasDefaultImplementation && !isOptionalBinding) {
+                continue
+              }
 
               // Report qualifier mismatch error if found
               if (qualifierMismatchData != null) {
@@ -1356,6 +1563,8 @@ internal class GraphNodes(
             supertypes = supertypes.toList(),
             includedGraphNodes = includedGraphNodes,
             graphExtensions = graphExtensions,
+            lifecycleCallbacks = lifecycleCallbacks,
+            lifecycleClose = lifecycleClose,
             scopes = scopes,
             aggregationScopes = aggregationScopes,
             bindsCallables = bindsCallables,
@@ -1379,6 +1588,8 @@ internal class GraphNodes(
                 computePublishedBindsKeys(graphPrivateKeys, bindsCallables)
               },
           )
+
+        validateLifecycle(graphNode)
 
         // Check after creating a node for access to recursive allDependencies
         trace("Check scope overlap with parents") {

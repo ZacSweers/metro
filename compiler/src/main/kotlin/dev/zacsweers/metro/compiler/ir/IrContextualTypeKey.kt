@@ -165,11 +165,18 @@ internal class IrContextualTypeKey(
       )
     }
 
+    /**
+     * [hasDefault] lets a caller use a default that [parameter] inherits from an overridden one.
+     */
     context(context: IrMetroContext)
-    fun from(parameter: IrValueParameter, type: IrType = parameter.type): IrContextualTypeKey {
+    fun from(
+      parameter: IrValueParameter,
+      type: IrType = parameter.type,
+      hasDefault: Boolean = parameter.hasMetroDefault(),
+    ): IrContextualTypeKey {
       return type.asContextualTypeKey(
         qualifierAnnotation = with(context) { parameter.qualifierAnnotation() },
-        hasDefault = parameter.hasMetroDefault(),
+        hasDefault = hasDefault,
         patchMutableCollections = false,
         declaration = parameter,
       )

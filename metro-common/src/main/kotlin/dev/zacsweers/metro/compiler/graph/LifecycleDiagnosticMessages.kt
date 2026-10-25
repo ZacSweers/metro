@@ -46,4 +46,38 @@ public object LifecycleDiagnosticMessages {
   public fun syncParentCannotCloseSuspendChild(parent: String, child: String): String =
     "CloseableGraph '$parent' can't close SuspendCloseableGraph extension '$child'. Make '$parent' " +
       "implement SuspendCloseableGraph."
+
+  /**
+   * A callback's annotations, like `@OnGraphInit @OnGraphClose`. They're sorted by phase so the
+   * label doesn't depend on the order they're written in.
+   */
+  public fun annotationLabel(phases: Collection<GraphLifecyclePhase>): String =
+    phases.sorted().joinToString(" ") { "@${it.annotation.shortClassName}" }
+
+  /**
+   * Shows a callback parameter in its callback's signature, like `AppGraph.stop(…, database)`. The
+   * other parameters show as `…`. The compiler and the IDE start traces of callback parameters with
+   * this.
+   */
+  public fun parameterSignature(
+    owner: String,
+    callback: String,
+    parameter: String,
+    index: Int,
+    parameterCount: Int,
+  ): String {
+    val before =
+      if (index > 0) {
+        "…, "
+      } else {
+        ""
+      }
+    val after =
+      if (index < parameterCount - 1) {
+        ", …"
+      } else {
+        ""
+      }
+    return "$owner.$callback($before$parameter$after)"
+  }
 }
