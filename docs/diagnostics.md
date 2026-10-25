@@ -12,6 +12,7 @@ Diagnostics rendering is controlled by the `diagnosticsRenderMode` Gradle option
 | Diagnostic | Summary |
 |------------|---------|
 | [`Metro/AssistedFactorySuspendRequired`](#assistedfactorysuspendrequired) | An assisted factory creates a target that depends on suspend bindings. |
+| [`Metro/CloseOnlyBinding`](#closeonlybinding) | Only close callbacks request a binding. |
 | [`Metro/DependencyCycle`](#dependencycycle) | A binding cycle has no deferred edge. |
 | [`Metro/DuplicateBinding`](#duplicatebinding) | Multiple bindings match the same type key. |
 | [`Metro/DuplicateMapKeys`](#duplicatemapkeys) | Multiple map contributions use the same key. |
@@ -32,6 +33,7 @@ Diagnostics rendering is controlled by the `diagnosticsRenderMode` Gradle option
 | [`Metro/SuspendProvidersNotEnabled`](#suspendprovidersnotenabled) | A suspend binding is used while suspend providers are disabled. |
 | [`Metro/SuspiciousUnusedMultibinding`](#suspiciousunusedmultibinding) | A multibinding has contributions but is never requested. |
 | [`Metro/UnprocessedUpstreamDeclaration`](#unprocessedupstreamdeclaration) | An upstream declaration does not appear to have been processed by Metro. |
+| [`Metro/UnscopedLifecycleParameter`](#unscopedlifecycleparameter) | A lifecycle callback requests an unscoped binding directly. |
 | [`Metro/UnusedGraphInputs`](#unusedgraphinputs) | A graph input is unused and can be removed. |
 
 ## AssistedFactorySuspendRequired
@@ -41,6 +43,14 @@ Diagnostics rendering is controlled by the `diagnosticsRenderMode` Gradle option
 **Summary:** An assisted factory creates a target that depends on suspend bindings.
 
 An `@AssistedFactory` creates a type whose non-assisted dependencies include suspend bindings. The factory function must await them. Declare the factory function as a `suspend` function so the generated implementation can await the suspend dependencies.
+
+## CloseOnlyBinding
+
+**Diagnostic:** `Metro/CloseOnlyBinding`
+
+**Summary:** Only close callbacks request a binding.
+
+Closing the graph creates the instance just so a close callback can receive it. Graph inputs, included graph accessors, and bindings from parent graphs are exempt.
 
 ## DependencyCycle
 
@@ -205,6 +215,14 @@ Contributions exist for a multibinding that nothing in the graph requests. This 
 Metro was asked to use an injected declaration from another module or compilation unit, but that declaration does not appear to have been processed by Metro. This usually means Metro was enabled only in the downstream module while the referenced declaration lives upstream.
 
 Enable Metro in the upstream module too. If this happens while using framework interop, make sure the upstream module also runs that framework's code generation when Metro relies on its generated code.
+
+## UnscopedLifecycleParameter
+
+**Diagnostic:** `Metro/UnscopedLifecycleParameter`
+
+**Summary:** A lifecycle callback requests an unscoped binding directly.
+
+The callback gets its own instance, which usually isn't the one the rest of the graph uses. Scope the binding to share one instance. Request a provider or lazy value if the callback should create its own. For a multibinding, Metro checks each contribution. Graph inputs, factories, and members injectors are exempt.
 
 ## UnusedGraphInputs
 

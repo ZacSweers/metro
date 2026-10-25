@@ -639,15 +639,45 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("GraphLifecycleCloseOnly.kt")
+    public void testGraphLifecycleCloseOnly() {
+      run("GraphLifecycleCloseOnly.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleCloseOnlyRetained.kt")
+    public void testGraphLifecycleCloseOnlyRetained() {
+      run("GraphLifecycleCloseOnlyRetained.kt");
+    }
+
+    @Test
     @TestMetadata("GraphLifecycleDeclarations.kt")
     public void testGraphLifecycleDeclarations() {
       run("GraphLifecycleDeclarations.kt");
     }
 
     @Test
+    @TestMetadata("GraphLifecycleGraphInputs.kt")
+    public void testGraphLifecycleGraphInputs() {
+      run("GraphLifecycleGraphInputs.kt");
+    }
+
+    @Test
     @TestMetadata("GraphLifecycleRoots.kt")
     public void testGraphLifecycleRoots() {
       run("GraphLifecycleRoots.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleUnscoped.kt")
+    public void testGraphLifecycleUnscoped() {
+      run("GraphLifecycleUnscoped.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleWarningText.kt")
+    public void testGraphLifecycleWarningText() {
+      run("GraphLifecycleWarningText.kt");
     }
 
     @Test

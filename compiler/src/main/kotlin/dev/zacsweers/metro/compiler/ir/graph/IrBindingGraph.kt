@@ -29,8 +29,10 @@ import dev.zacsweers.metro.compiler.graph.DiagnosticRoutes
 import dev.zacsweers.metro.compiler.graph.ErrorReporter
 import dev.zacsweers.metro.compiler.graph.GraphAdjacency
 import dev.zacsweers.metro.compiler.graph.GraphAnalysis
+import dev.zacsweers.metro.compiler.graph.GraphLifecyclePhase
 import dev.zacsweers.metro.compiler.graph.GraphTopology
 import dev.zacsweers.metro.compiler.graph.GraphValidationIssue
+import dev.zacsweers.metro.compiler.graph.LocationDiagnostic
 import dev.zacsweers.metro.compiler.graph.MissingBindingHints
 import dev.zacsweers.metro.compiler.graph.MultibindingKind
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
@@ -216,6 +218,21 @@ internal class IrBindingGraph(
           .also { parentSuspendBindingAnalysis = it }
     return analysis.isSuspend(typeKey)
   }
+
+  /**
+   * Returns true when each child request for [typeKey] can get a new instance from this graph.
+   * Children are validated before this graph seals, so this can still look up bindings.
+   */
+  internal fun createsFreshInstancesForChild(typeKey: IrTypeKey): Boolean {
+    val canLookUp = _bindingLookup != null
+    val lookup: (IrTypeKey) -> IrBinding? = { findBinding(it, allowLookup = canLookUp) }
+    val binding = resolveAliases(typeKey, lookup) ?: return false
+    return freshInstanceBindings(binding, lookup).isNotEmpty()
+  }
+
+  /** Asks the parent graph that owns [typeKey] whether each request gets a new instance. */
+  internal fun parentCreatesFreshInstances(typeKey: IrTypeKey): Boolean =
+    parentReader?.ownerCreatesFreshInstances(typeKey) == true
 
   private sealed interface PendingDiagnostic {
     val factory: KtDiagnosticFactory1<String>
@@ -408,6 +425,18 @@ internal class IrBindingGraph(
       parameter.key,
       IrBindingStack.Entry.lifecycleParameterAt(callback, parameter),
     )
+  }
+
+  /** Keys requested outside graph close. Keeps include the keys child graphs read from here. */
+  private fun rootsOutsideClose(): List<IrTypeKey> = buildList {
+    accessors.keys.mapTo(this) { it.typeKey }
+    injectors.keys.mapTo(this) { it.typeKey }
+    keeps().mapTo(this) { it.typeKey }
+    for (callback in node.lifecycleCallbacks) {
+      if (GraphLifecyclePhase.INIT in callback.phases) {
+        callback.parameters.mapTo(this) { it.key.typeKey }
+      }
+    }
   }
 
   fun addInjector(key: IrContextualTypeKey, entry: IrBindingStack.Entry) {
@@ -792,6 +821,9 @@ internal class IrBindingGraph(
     }
 
     trace("report empty multibindings") { reportEmptyMultibindings(onError) }
+    trace("report lifecycle warnings") {
+      reportLifecycleWarnings(node, this@IrBindingGraph, rootsOutsideClose())
+    }
     trace("check for absent bindings") {
       check(!realGraph.bindings.any { _, v -> v is IrBinding.Absent }) {
         "Found absent bindings in the binding graph: ${dumpGraph("Absent bindings", short = true)}"
@@ -833,17 +865,7 @@ internal class IrBindingGraph(
             // Report the first few bindings
             val examples =
               unusedSources
-                .mapNotNull { source ->
-                  val sourceBinding = bindingLookup[source] ?: return@mapNotNull null
-                  if (sourceBinding is IrBinding.Provided) {
-                    sourceBinding.renderContributionLocationDiagnostic(
-                      short = true,
-                      shortLocation = MetroOptions.SystemProperties.SHORTEN_LOCATIONS,
-                    ) ?: sourceBinding.renderLocationDiagnostic(underlineTypeKey = false)
-                  } else {
-                    sourceBinding.renderLocationDiagnostic(underlineTypeKey = false)
-                  }
-                }
+                .mapNotNull { source -> bindingLookup[source]?.renderContributionLocation() }
                 // Stable sort
                 .sortedBy { it.location }
             val locationItems = buildList {
@@ -1919,6 +1941,21 @@ private fun IrBinding.Provided.isFromGeneratedContributionImpl(): ClassId? {
  */
 private class AncestorBuild(val target: IrTypeKey, val depth: Int)
 
+/** Renders where a multibinding contribution is declared, preferring its contributing source. */
+internal fun IrBinding.renderContributionLocation(): LocationDiagnostic {
+  if (this is IrBinding.Provided) {
+    val contribution =
+      renderContributionLocationDiagnostic(
+        short = true,
+        shortLocation = MetroOptions.SystemProperties.SHORTEN_LOCATIONS,
+      )
+    if (contribution != null) {
+      return contribution
+    }
+  }
+  return renderLocationDiagnostic(underlineTypeKey = false)
+}
+
 /** The token for bindings a child graph reads from an ancestor graph's instance. */
 private val IrBinding.parentToken: ParentContext.Token?
   get() =
@@ -1928,7 +1965,7 @@ private val IrBinding.parentToken: ParentContext.Token?
       else -> null
     }
 
-private val IrBinding.isParentOwned: Boolean
+internal val IrBinding.isParentOwned: Boolean
   get() = parentToken != null
 
 /** A null consumer requires a getter for the dependency itself. */

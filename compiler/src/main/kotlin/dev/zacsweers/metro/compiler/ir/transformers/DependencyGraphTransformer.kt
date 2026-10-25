@@ -468,6 +468,7 @@ internal class DependencyGraphTransformer(
         node,
         bindingGraph::isTransitivelySuspendForChild,
         bindingGraph::declaresSameBindingAs,
+        bindingGraph::createsFreshInstancesForChild,
       )
 
       // Build each extension's implementation class before preparing its graph node.
