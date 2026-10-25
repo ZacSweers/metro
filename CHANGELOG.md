@@ -6,6 +6,8 @@ Changelog
 
 ### New
 
+- **[Runtime]** Add experimental graph lifecycle callbacks. A graph that implements `CloseableGraph` can annotate functions with `@OnGraphInit` and `@OnGraphClose`. Metro injects their parameters and generates `close()`, which also closes the graph's extensions. With suspend provider support, callbacks can suspend and graphs can implement `SuspendCloseableGraph`. See [graph lifecycle](docs/dependency-graphs.md#graph-lifecycle).
+  - The new `UnscopedLifecycleParameter` and `CloseOnlyBinding` warnings report likely mistakes in callback parameters.
 - **[metrox-viewmodel-compose]** Add support for `linuxX64`.
 - **[FIR]** Add the `diagnostic-level` compiler option to change the severity of Metro diagnostics reported in FIR. It works like kotlinc's `-Xwarning-level` but can also lower errors and use IDE-only levels. See [changing diagnostic severity](docs/validation-and-error-reporting.md#changing-diagnostic-severity).
 - **[FIR/IC]** Add the `function-inject-annotations-override` compiler option to use dedicated annotations for top-level function injection. See [custom function injection annotations](docs/injection-types.md#custom-function-injection-annotations).
