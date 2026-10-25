@@ -53,16 +53,19 @@ internal class Parameters(
       }
     }
 
+  /**
+   * Uses Kotlin's IR order: context parameters, the extension receiver, then regular parameters.
+   */
   val nonDispatchParameters: List<Parameter> by memoize {
     buildList {
-      extensionReceiverParameter?.let(::add)
       addAll(contextParameters)
+      extensionReceiverParameter?.let(::add)
       addAll(regularParameters)
     }
   }
 
   val extensionOrFirstParameter: Parameter?
-    get() = nonDispatchParameters.firstOrNull()
+    get() = extensionReceiverParameter ?: nonDispatchParameters.firstOrNull()
 
   val allParameters: List<Parameter> by memoize {
     buildList {

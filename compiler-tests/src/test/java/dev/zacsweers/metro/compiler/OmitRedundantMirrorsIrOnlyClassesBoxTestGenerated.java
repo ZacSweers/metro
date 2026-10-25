@@ -4003,6 +4003,12 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
     }
 
     @Test
+    @TestMetadata("PrivateExtensionPropertyProvidersInOtherModule.kt")
+    public void testPrivateExtensionPropertyProvidersInOtherModule() {
+      run("PrivateExtensionPropertyProvidersInOtherModule.kt");
+    }
+
+    @Test
     @TestMetadata("PrivateProvidesPropertiesInOtherModule.kt")
     public void testPrivateProvidesPropertiesInOtherModule() {
       run("PrivateProvidesPropertiesInOtherModule.kt");

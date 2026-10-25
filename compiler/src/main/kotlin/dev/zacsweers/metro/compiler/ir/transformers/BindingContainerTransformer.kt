@@ -832,11 +832,12 @@ internal class BindingContainerTransformer(
         } else {
           // Function call case
           val callParameters = parameters.filter { it.origin == Origins.RegularParameter }
+          // newInstance() parameters follow Kotlin's IR order.
           var index = 0
-          val extensionReceiver =
-            reference.parameters.extensionReceiverParameter?.let { irGet(callParameters[index++]) }
           val contextArgs =
             reference.parameters.contextParameters.map { irGet(callParameters[index++]) }
+          val extensionReceiver =
+            reference.parameters.extensionReceiverParameter?.let { irGet(callParameters[index++]) }
           val args = reference.parameters.regularParameters.map { irGet(callParameters[index++]) }
           irInvoke(
             dispatchReceiver = dispatchReceiver,

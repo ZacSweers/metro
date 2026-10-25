@@ -353,9 +353,12 @@ internal fun generateMetadataVisibleDeclarationMirror(
   val sourceProperty =
     target?.propertyIfAccessorCompat as? IrProperty
       ?: backingField?.correspondingPropertySymbol?.owner
+  // Mirrors declare context parameters and receivers as regular parameters, which getters can't
+  // have.
+  val hasReceiverDependencies = target?.hasContextOrExtensionParameters() == true
+  val isPrivateProperty = sourceProperty?.visibility == DescriptorVisibilities.PRIVATE
   val shouldGeneratePropertyMirror =
-    context.options.enablePrivateProviderProperties &&
-      sourceProperty?.visibility == DescriptorVisibilities.PRIVATE
+    context.options.enablePrivateProviderProperties && isPrivateProperty && !hasReceiverDependencies
   val property =
     if (shouldGeneratePropertyMirror) {
       factoryClass.addProperty {
@@ -420,6 +423,14 @@ internal fun generateMetadataVisibleDeclarationMirror(
       }
     }
     setDispatchReceiver(factoryClass.thisReceiverOrFail.copyTo(this))
+    // Some compilers swap qualifiers between context parameters and extension receivers when they
+    // read IR-registered declarations back from metadata. Regular parameters keep their
+    // annotations, so the mirror declares these as regular parameters in the same order.
+    for (parameter in parameters) {
+      if (parameter.isContextOrExtension()) {
+        parameter.kind = IrParameterKind.Regular
+      }
+    }
     typeSubstitution
       .takeIf { it.isNotEmpty() }
       ?.let {
@@ -454,6 +465,13 @@ internal fun generateMetadataVisibleDeclarationMirror(
     }
   }
   return function
+}
+
+private fun IrValueParameter.isContextOrExtension(): Boolean =
+  kind == IrParameterKind.Context || kind == IrParameterKind.ExtensionReceiver
+
+private fun IrFunction.hasContextOrExtensionParameters(): Boolean = parameters.any {
+  it.isContextOrExtension()
 }
 
 context(context: IrMetroContext)

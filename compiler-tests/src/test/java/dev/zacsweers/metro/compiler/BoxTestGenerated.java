@@ -4003,6 +4003,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("PrivateExtensionPropertyProvidersInOtherModule.kt")
+    public void testPrivateExtensionPropertyProvidersInOtherModule() {
+      run("PrivateExtensionPropertyProvidersInOtherModule.kt");
+    }
+
+    @Test
     @TestMetadata("PrivateProvidesPropertiesInOtherModule.kt")
     public void testPrivateProvidesPropertiesInOtherModule() {
       run("PrivateProvidesPropertiesInOtherModule.kt");
