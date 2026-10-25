@@ -374,16 +374,43 @@ internal class IrGraphGenerator(
         }
       }
 
+      val lifecycleStateProperty =
+        node.lifecycleClose?.let {
+          val stateClass = metroSymbols.graphLifecycleState
+          addSimpleInstanceProperty(
+            propertyNameAllocator.newName("metroLifecycle"),
+            IrTypeKey(stateClass.defaultType),
+          ) {
+            irCallConstructor(stateClass.constructors.single(), emptyList())
+          }
+        }
+      graphClass.lifecycleStateField = lifecycleStateProperty?.backingField
+      val lifecycle =
+        IrGraphLifecycleGenerator(
+          context = metroContext,
+          node = node,
+          bindingGraph = bindingGraph,
+          expressionGeneratorFactory = expressionGeneratorFactory,
+          stateField = graphClass.lifecycleStateField,
+          parentGraphParam = parentGraphParam,
+          parentGraphField = parentGraphInstanceProperty?.backingField,
+        )
+      trace("Generate lifecycle init") { lifecycle.implementInitFunction() }
+
       // Add extra constructor statements
       trace("Finalize constructor body") {
         with(ctor) {
           val originalBody = checkNotNull(body)
           buildBlockBody {
+            with(lifecycle) { irCheckParentOpen()?.let { +it } }
             +originalBody.statements
             constructorStatements.forEach { statement -> +statement(thisReceiverParameter) }
+            with(lifecycle) { finishConstructor(thisReceiverParameter) }
           }
         }
       }
+
+      trace("Generate lifecycle close") { lifecycle.implementClose() }
 
       trace("Implement overrides") { node.implementOverrides(expressionGeneratorFactory) }
 
@@ -1137,13 +1164,17 @@ internal class IrGraphGenerator(
           injectorRoots.add(injector.contextKey)
         }
       }
+      // Lifecycle callbacks resolve their parameters directly instead of calling an accessor. They
+      // count as ordinary reads so a binding they share with accessors still gets a property.
+      val lifecycleParameterKeys =
+        node.lifecycleCallbacks.flatMap { callback -> callback.parameters.map { it.key } }
       BindingPropertyCollector(
           metroContext = metroContext,
           graph = bindingGraph,
           sortedKeys = sealResult.sortedKeys,
           roots = roots,
           injectorRoots = injectorRoots,
-          extraKeeps = bindingGraph.keeps(),
+          extraKeeps = bindingGraph.keeps().toList() + lifecycleParameterKeys,
           deferredTypes = sealResult.deferredTypes,
           reachableKeys = sealResult.reachableKeys,
           reuseBinding = { bindingPropertyContext.reusableBinding(it) != null },

@@ -56,6 +56,7 @@ import dev.zacsweers.metro.compiler.ir.graph.IrGraphExtensionGenerator
 import dev.zacsweers.metro.compiler.ir.graph.IrGraphGenerator
 import dev.zacsweers.metro.compiler.ir.graph.expressions.BindingExpressionDecorator
 import dev.zacsweers.metro.compiler.ir.graph.generatedGraphExtensionData
+import dev.zacsweers.metro.compiler.ir.graph.irInitializedGraph
 import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.irCallConstructorWithSameParameters
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
@@ -1006,9 +1007,14 @@ internal class DependencyGraphTransformer(
           body =
             pluginContext.createIrBuilder(symbol).run {
               irExprBodySafe(
-                irCallConstructorWithSameParameters(
-                  source = createFunction,
-                  constructor = metroGraph.primaryConstructor!!.symbol,
+                irInitializedGraph(
+                  graph = metroGraph,
+                  construction =
+                    irCallConstructorWithSameParameters(
+                      source = createFunction,
+                      constructor = metroGraph.primaryConstructor!!.symbol,
+                    ),
+                  isSuspendCreator = createFunction.isSuspend,
                 ),
               )
             }

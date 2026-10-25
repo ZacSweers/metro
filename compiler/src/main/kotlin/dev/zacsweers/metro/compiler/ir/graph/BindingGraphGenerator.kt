@@ -533,6 +533,12 @@ internal class BindingGraphGenerator(
       }
     }
 
+    for (callback in node.lifecycleCallbacks) {
+      for (parameter in callback.parameters) {
+        graph.addLifecycleRoot(callback, parameter)
+      }
+    }
+
     trace("Process accessors") {
       val accessorsToAdd = buildList {
         addAll(node.accessors)
