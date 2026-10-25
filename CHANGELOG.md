@@ -6,8 +6,10 @@ Changelog
 
 ### New
 
-- **[Runtime]** Add experimental graph lifecycle callbacks. A graph that implements `CloseableGraph` can annotate functions with `@OnGraphInit` and `@OnGraphClose`. Metro injects their parameters and generates `close()`, which also closes the graph's extensions. With suspend provider support, callbacks can suspend and graphs can implement `SuspendCloseableGraph`. See [graph lifecycle](docs/dependency-graphs.md#graph-lifecycle).
-  - The new `UnscopedLifecycleParameter` and `CloseOnlyBinding` warnings report likely mistakes in callback parameters.
+- Add experimental graph lifecycle callbacks.
+  - A graph that implements `CloseableGraph` can annotate functions with `@OnGraphInit` and `@OnGraphClose`. Metro injects their parameters and generates `close()`, which also closes the graph's extensions.
+  - With suspend provider support, callbacks can suspend and graphs can implement `SuspendCloseableGraph`.
+  - See [graph lifecycle](docs/dependency-graphs.md#graph-lifecycle).
 
 1.5.2
 -----
