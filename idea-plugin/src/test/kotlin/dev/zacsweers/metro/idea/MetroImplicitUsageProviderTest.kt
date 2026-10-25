@@ -47,6 +47,9 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
     super.setUp()
     setMetroEnabled(null)
     module.addMetroRuntimeLibrary()
+    // A check that starts during indexing gives up, and tests have no highlighting pass to retry
+    // it.
+    IndexingTestUtil.waitUntilIndexesAreReady(project)
   }
 
   fun testFunctionInjectionOverrideAppliesOnlyToEnabledTopLevelFunctions() {
