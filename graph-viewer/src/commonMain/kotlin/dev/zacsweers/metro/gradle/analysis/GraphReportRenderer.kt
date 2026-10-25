@@ -689,6 +689,7 @@ public class GraphReportRenderer(
     val declaringGraph: String? = null,
     val declaringType: String? = null,
     val origin: String? = null,
+    val lifecycle: LifecycleCallbackMetadata? = null,
   )
 
   private data class GlowThresholds(
@@ -928,6 +929,23 @@ public class GraphReportRenderer(
       collectAccessors().forEachIndexed { index, accessor ->
         add(buildAccessorRoot(index, accessor))
       }
+      metadata.roots?.lifecycleCallbacks.orEmpty().forEachIndexed { index, callback ->
+        val kind =
+          when (callback.phase) {
+            LifecyclePhase.INIT -> "OnGraphInit"
+            LifecyclePhase.CLOSE -> "OnGraphClose"
+          }
+        add(
+          RootMemberInfo(
+            id = "root:${metadata.graph}:lifecycle:$index",
+            renderedKey = callback.declaration,
+            key = callback.declaration,
+            kind = kind,
+            name = callback.declaration,
+            lifecycle = callback,
+          ),
+        )
+      }
       metadata.roots?.injectors.orEmpty().forEachIndexed { index, injector ->
         add(
           RootMemberInfo(
@@ -1000,6 +1018,9 @@ public class GraphReportRenderer(
     }
 
     private fun rootDisplayName(member: RootMemberInfo): String {
+      member.lifecycle?.let {
+        return "@${member.kind} ${it.declaration.substringAfterLast('.')}()"
+      }
       val declaration = member.name
       val isAccessor = member.kind == "accessor"
       val displayType = extractDisplayName(member.renderedKey, typeNames)
@@ -1049,7 +1070,9 @@ public class GraphReportRenderer(
       put(
         "kind",
         JsonPrimitive(
-          if (isAccessor) {
+          if (member.lifecycle != null) {
+            member.kind
+          } else if (isAccessor) {
             "Accessor"
           } else {
             "Injector"
@@ -1082,7 +1105,14 @@ public class GraphReportRenderer(
         ),
       )
       put("itemStyle", buildJsonObject { put("color", JsonPrimitive(color)) })
-      if (isAccessor) {
+      if (member.lifecycle != null) {
+        put("parameters", json.encodeToJsonElement(member.lifecycle.parameters))
+        put(
+          "rawDependencies",
+          json.encodeToJsonElement(member.lifecycle.parameters.map { it.request }),
+        )
+        put("isSuspend", JsonPrimitive(member.lifecycle.isSuspend))
+      } else if (isAccessor) {
         put(
           "rawDependencies",
           json.encodeToJsonElement(
@@ -1458,7 +1488,14 @@ public class GraphReportRenderer(
           put("rootMembership", JsonPrimitive(true))
         },
       )
-      if (member.kind == "accessor") {
+      if (member.lifecycle != null) {
+        for (parameter in member.lifecycle.parameters) {
+          val request = parameter.request
+          if (request.key in keyToProviderNodeId) {
+            add(buildAccessorLink(member, request.key, request, parameter.name))
+          }
+        }
+      } else if (member.kind == "accessor") {
         val targetKey = member.resolvedKey
         if (targetKey != null) {
           add(buildAccessorLink(member, targetKey))
@@ -1468,37 +1505,44 @@ public class GraphReportRenderer(
       }
     }
 
-    private fun buildAccessorLink(member: RootMemberInfo, targetKey: String): JsonObject =
-      buildJsonObject {
-        put("source", JsonPrimitive(member.id))
-        put("target", JsonPrimitive(targetKey))
-        put(
-          "edgeType",
-          JsonPrimitive(
-            if (member.isDeferrable) {
-              "deferrable"
-            } else {
-              "accessor"
-            },
-          ),
-        )
-        put("rootKind", JsonPrimitive("accessor"))
-        put("requestedKey", JsonPrimitive(member.renderedKey))
-        put("isDeferrable", JsonPrimitive(member.isDeferrable))
-        if (member.wrapperType != null) {
-          put("wrapperType", JsonPrimitive(member.wrapperType))
-        }
-        put(
-          "lineStyle",
-          buildJsonObject {
-            put("color", JsonPrimitive(Colors.EDGE_ACCESSOR))
-            put("width", JsonPrimitive(2))
-            if (member.isDeferrable) {
-              put("type", JsonPrimitive("dashed"))
-            }
+    private fun buildAccessorLink(
+      member: RootMemberInfo,
+      targetKey: String,
+      request: DependencyMetadata? = null,
+      parameter: String? = null,
+    ): JsonObject = buildJsonObject {
+      val deferred = request?.isDeferrable ?: member.isDeferrable
+      val wrapper = request?.wrapperType ?: member.wrapperType
+      put("source", JsonPrimitive(member.id))
+      put("target", JsonPrimitive(targetKey))
+      put(
+        "edgeType",
+        JsonPrimitive(
+          if (deferred) {
+            "deferrable"
+          } else {
+            "accessor"
           },
-        )
+        ),
+      )
+      put("rootKind", JsonPrimitive(member.kind))
+      parameter?.let { put("parameter", JsonPrimitive(it)) }
+      put("requestedKey", JsonPrimitive(request?.renderedKey ?: member.renderedKey))
+      put("isDeferrable", JsonPrimitive(deferred))
+      if (wrapper != null) {
+        put("wrapperType", JsonPrimitive(wrapper))
       }
+      put(
+        "lineStyle",
+        buildJsonObject {
+          put("color", JsonPrimitive(Colors.EDGE_ACCESSOR))
+          put("width", JsonPrimitive(2))
+          if (deferred) {
+            put("type", JsonPrimitive("dashed"))
+          }
+        },
+      )
+    }
 
     private fun buildInjectorLinks(member: RootMemberInfo): JsonArray = buildJsonArray {
       val binding = member.binding ?: return@buildJsonArray
