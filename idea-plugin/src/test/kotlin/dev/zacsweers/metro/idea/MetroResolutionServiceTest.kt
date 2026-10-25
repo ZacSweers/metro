@@ -3227,6 +3227,105 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     assertEquals(listOf("binds"), bindings.map { it.label })
   }
 
+  fun testProviderReceiversAndContextParametersAreDependencies() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        @Inject class Input
+        class Result(val value: String)
+
+        @BindingContainer
+        object Providers {
+          @Provides
+          context(@Named("first") first: String)
+          fun Input.provideResult(): Result = Result(first)
+
+          @get:Provides
+          val @receiver:Named("first") String.provideLength: Int
+            get() = length
+        }
+
+        @DependencyGraph(bindingContainers = [Providers::class])
+        interface AppGraph {
+          val result: Result
+          val length: Int
+
+          @Provides @Named("first") fun first(): String = "first"
+
+          @Provides fun unqualified(): String = "plain"
+        }
+        """,
+      )
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val declarations = file.declarationsIncludingNested()
+
+    val result = index.consumerEntryAt(declarations.property("result"))!!
+    val resultProvider = index.resolveConsumer(result).uniformBindings.orEmpty().single()
+    assertEquals(
+      listOf("test.Input", "kotlin.String"),
+      resultProvider.dependencies.map { it.typeKey.renderedType },
+    )
+    assertTrue(resultProvider.dependencies[1].typeKey.qualifier.toString().contains("first"))
+
+    val length = index.consumerEntryAt(declarations.property("length"))!!
+    val lengthProvider = index.resolveConsumer(length).uniformBindings.orEmpty().single()
+    val receiverKey = lengthProvider.dependencies.single().typeKey
+    assertEquals("kotlin.String", receiverKey.renderedType)
+    assertTrue(receiverKey.qualifier.toString().contains("first"))
+
+    // Context parameters and receivers resolve to the qualified provider.
+    val contextParameter = index.consumerEntryAt(declarations.parameter("first"))!!
+    assertEquals(
+      listOf("first"),
+      index.bindingsFor(contextParameter).map { (it.pointer.element as? KtNamedDeclaration)?.name },
+    )
+    val propertyReceiver = declarations.property("provideLength").receiverTypeReference!!
+    val receiverConsumer = index.consumerEntryAt(propertyReceiver)!!
+    assertEquals(
+      listOf("first"),
+      index.bindingsFor(receiverConsumer).map { (it.pointer.element as? KtNamedDeclaration)?.name },
+    )
+  }
+
+  fun testBinaryProviderReceiversAndContextParametersAreDependencies() {
+    module.withMetroLibFixtureLibrary {
+      val file =
+        myFixture.configureMetroFile(
+          """
+          import libtest.LibReceiverInput
+          import libtest.LibReceiverProviders
+          import libtest.LibReceiverResult
+
+          @DependencyGraph(bindingContainers = [LibReceiverProviders::class])
+          interface AppGraph {
+            val result: LibReceiverResult
+            val length: Long
+
+            @Provides fun input(): LibReceiverInput = LibReceiverInput()
+
+            @Provides @Named("libFirst") fun first(): String = "first"
+          }
+          """,
+        )
+      val index = project.service<MetroResolutionService>().awaitIndex(file)
+      val declarations = file.declarationsIncludingNested()
+
+      val result = index.consumerEntryAt(declarations.property("result"))!!
+      val resultProvider = index.resolveConsumer(result).uniformBindings.orEmpty().single()
+      assertEquals(
+        listOf("libtest.LibReceiverInput", "kotlin.String"),
+        resultProvider.dependencies.map { it.typeKey.renderedType },
+      )
+      assertTrue(resultProvider.dependencies[1].typeKey.qualifier.toString().contains("libFirst"))
+
+      val length = index.consumerEntryAt(declarations.property("length"))!!
+      val lengthProvider = index.resolveConsumer(length).uniformBindings.orEmpty().single()
+      val receiverKey = lengthProvider.dependencies.single().typeKey
+      assertEquals("kotlin.String", receiverKey.renderedType)
+      assertTrue(receiverKey.qualifier.toString().contains("libFirst"))
+    }
+  }
+
   fun testContributedBindingBindsItsSoleSupertypeWithScope() {
     val file = configure()
     val index = project.service<MetroResolutionService>().awaitIndex(file)

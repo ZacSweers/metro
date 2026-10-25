@@ -37,6 +37,8 @@ import org.jetbrains.kotlin.analysis.api.symbols.KaCallableSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaClassKind
 import org.jetbrains.kotlin.analysis.api.symbols.KaClassSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaConstructorSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaContextParameterSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaKotlinPropertySymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedClassSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaPropertySymbol
@@ -172,15 +174,37 @@ internal class CallableBindingView(
   val returnType: KaType,
   val receiver: CallableParameterView?,
   val valueParameters: List<CallableParameterView>,
-)
+  contextParameters: List<CallableParameterView>,
+) {
+  /** Context parameters come before value parameters, like in the source declaration. */
+  val dependencyParameters: List<CallableParameterView> = contextParameters + valueParameters
+}
+
+/**
+ * Named functions and Kotlin properties expose context parameters across supported IDE versions.
+ */
+internal fun KaCallableSymbol.bindingContextParameters(): List<KaContextParameterSymbol> =
+  when (this) {
+    is KaNamedFunctionSymbol -> contextParameters
+    is KaKotlinPropertySymbol -> contextParameters
+    else -> emptyList()
+  }
 
 internal fun callableBindingView(symbol: KaCallableSymbol): CallableBindingView {
   val receiver = symbol.receiverParameter?.let { CallableParameterView(it, it.returnType) }
+  val contextParameters =
+    symbol.bindingContextParameters().map { CallableParameterView(it, it.returnType) }
   val valueParameters =
     (symbol as? KaNamedFunctionSymbol)?.valueParameters.orEmpty().map {
       CallableParameterView(it, it.returnType)
     }
-  return CallableBindingView(symbol, symbol.returnType, receiver, valueParameters)
+  return CallableBindingView(
+    symbol = symbol,
+    returnType = symbol.returnType,
+    receiver = receiver,
+    valueParameters = valueParameters,
+    contextParameters = contextParameters,
+  )
 }
 
 /** Unwraps fake overrides for source metadata while retaining [signature]'s substituted types. */
@@ -200,7 +224,21 @@ internal fun KaSession.callableBindingView(
   val valueParameters = signatureParameters.mapIndexed { index, parameter ->
     CallableParameterView(sourceParameters[index], parameter.returnType)
   }
-  return CallableBindingView(sourceSymbol, signature.returnType, receiver, valueParameters)
+  val sourceContextParameters = sourceSymbol.bindingContextParameters()
+  val signatureContextParameters = signature.contextParameters
+  if (sourceContextParameters.size != signatureContextParameters.size) {
+    return null
+  }
+  val contextParameters = signatureContextParameters.mapIndexed { index, parameter ->
+    CallableParameterView(sourceContextParameters[index], parameter.returnType)
+  }
+  return CallableBindingView(
+    symbol = sourceSymbol,
+    returnType = signature.returnType,
+    receiver = receiver,
+    valueParameters = valueParameters,
+    contextParameters = contextParameters,
+  )
 }
 
 /** Resolves an assisted factory's SAM for the concrete type requested by its graph. */
@@ -461,7 +499,7 @@ internal fun CallableBindingView.bindingData(
           callable.receiver?.let { dependencyKey(it.returnType, it.symbol, options) }
         val dependencies =
           listOfNotNull(receiverDependency) +
-            callable.valueParameters
+            callable.dependencyParameters
               .filterIndexed { index, parameter ->
                 checkCanceledEvery(index)
                 !parameter.symbol.hasAnyAnnotation(options.assistedAnnotations)

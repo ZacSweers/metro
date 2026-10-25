@@ -309,7 +309,7 @@ private fun KaSession.addIncludedContainerCallable(
       consumers,
     )
   }
-  for (parameter in callable.valueParameters) {
+  for (parameter in callable.dependencyParameters) {
     if (parameter.symbol.hasAnyAnnotation(options.assistedAnnotations)) continue
     val anchor = parameter.symbol.psi as? KtElement ?: sourceElement ?: continue
     addIncludedContainerConsumer(

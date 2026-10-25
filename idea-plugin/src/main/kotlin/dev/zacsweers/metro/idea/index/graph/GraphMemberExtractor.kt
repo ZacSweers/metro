@@ -423,7 +423,7 @@ internal class GraphMemberExtractor(
       addedBinding = true
     }
     if (!addedBinding) return
-    for (parameter in callable.valueParameters) {
+    for (parameter in callable.dependencyParameters) {
       checkCanceled()
       val source = parameter.symbol.psi as? KtElement ?: continue
       addConsumer(
@@ -462,9 +462,9 @@ internal class GraphMemberExtractor(
         return true
       }
     }
-    return callable.valueParameters.indices.any { index ->
-      val inherited = callable.valueParameters[index]
-      val declared = declaration.valueParameters[index]
+    return callable.dependencyParameters.indices.any { index ->
+      val inherited = callable.dependencyParameters[index]
+      val declared = declaration.dependencyParameters[index]
       typeKey(inherited.returnType, null) != typeKey(declared.returnType, null)
     }
   }

@@ -6,6 +6,7 @@ import foundry.gradle.properties.createPropertiesProvider
 import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask
+import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 
 plugins {
   alias(libs.plugins.kotlin.jvm)
@@ -233,6 +234,10 @@ val libFixture =
   sourceSets.register("libFixture") {
     kotlin.srcDir("src/test/data/libFixtures/kotlin")
   }
+
+tasks.named<KotlinJvmCompile>("compileLibFixtureKotlin") {
+  compilerOptions.freeCompilerArgs.add("-Xcontext-parameters")
+}
 
 val libFixtureJar =
   tasks.register<Jar>("libFixtureJar") {

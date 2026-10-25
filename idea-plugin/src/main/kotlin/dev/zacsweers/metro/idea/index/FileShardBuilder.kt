@@ -382,24 +382,45 @@ internal class FileShardBuilder(
                 )
             }
           }
+          val providerSymbol =
+            if (dataEntries.any { it.kind == BindingData.Kind.PROVIDED }) {
+              target.symbol as? KaCallableSymbol
+            } else {
+              null
+            }
+          // Context parameters and extension receivers belong to both function and property
+          // providers.
+          if (providerSymbol != null) {
+            for (parameter in providerSymbol.bindingContextParameters()) {
+              checkCanceled()
+              val source = parameter.psi as? KtElement ?: continue
+              addConsumer(
+                source,
+                parameter,
+                parameter.returnType,
+                originClassId = consumerOriginClassId,
+                contributionScopes = consumerContributionScopes,
+                containerId = containerId,
+              )
+            }
+            val receiverRef = (target as? KtCallableDeclaration)?.receiverTypeReference
+            val receiverSymbol = providerSymbol.receiverParameter
+            if (receiverRef != null && receiverSymbol != null) {
+              addConsumer(
+                receiverRef,
+                receiverSymbol,
+                originClassId = consumerOriginClassId,
+                contributionScopes = consumerContributionScopes,
+                containerId = containerId,
+              )
+            }
+          }
           // Provider function parameters are consumers themselves.
           if (target is KtNamedFunction && !target.isAnnotatedWithAny(options.bindsAnnotations)) {
             for (parameter in target.valueParameters) {
               checkCanceled()
               addParameterConsumer(
                 parameter,
-                originClassId = consumerOriginClassId,
-                contributionScopes = consumerContributionScopes,
-                containerId = containerId,
-              )
-            }
-            // An extension receiver on a provider function is a dependency too.
-            val receiverRef = target.receiverTypeReference
-            val receiverSymbol = (target.symbol as? KaCallableSymbol)?.receiverParameter
-            if (receiverRef != null && receiverSymbol != null) {
-              addConsumer(
-                receiverRef,
-                receiverSymbol,
                 originClassId = consumerOriginClassId,
                 contributionScopes = consumerContributionScopes,
                 containerId = containerId,
