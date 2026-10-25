@@ -98,6 +98,12 @@ internal interface ParentContextReader {
    * means the child needs a getter for the dependency itself.
    */
   fun markShared(key: IrTypeKey, depth: Int, consumer: IrTypeKey?, consumerDepth: Int) {}
+
+  /**
+   * Returns true when the ancestor graph that owns [key] can hand each request a new instance.
+   * Lifecycle warnings use this for callback parameters that a child reads from a parent.
+   */
+  fun ownerCreatesFreshInstances(key: IrTypeKey): Boolean = false
 }
 
 /**
@@ -129,6 +135,7 @@ internal class ParentContextSnapshot(
     val ownerGraphKey: IrTypeKey,
     val receiverParameter: IrValueParameter,
     val isSuspend: (IrTypeKey) -> Boolean,
+    val createsFreshInstances: (IrTypeKey) -> Boolean,
   )
 
   /** Information about a level for scope matching. */
@@ -239,6 +246,12 @@ internal class ParentContextSnapshot(
 
   fun graphPrivateKeys(): Set<IrTypeKey> = graphPrivateKeys
 
+  fun ownerCreatesFreshInstances(key: IrTypeKey): Boolean {
+    val ownership =
+      keyOwnership[key] ?: return ancestorReader?.ownerCreatesFreshInstances(key) == true
+    return ownership.createsFreshInstances(key)
+  }
+
   /** Creates a [ParentContextReader] backed by this snapshot and the given collector. */
   fun asReader(collector: UsedKeyCollector): ParentContextReader =
     object : ParentContextReader {
@@ -256,6 +269,9 @@ internal class ParentContextSnapshot(
       override val currentParentGraph = this@ParentContextSnapshot.currentParentGraph
 
       override fun findToken(key: IrTypeKey) = this@ParentContextSnapshot.findToken(key)
+
+      override fun ownerCreatesFreshInstances(key: IrTypeKey) =
+        this@ParentContextSnapshot.ownerCreatesFreshInstances(key)
 
       override fun sharedDepth(binding: IrBinding): Int {
         if (!declaresSameBinding(binding)) return 0
@@ -397,6 +413,7 @@ internal class ParentContext(
     val node: GraphNode,
     val isSuspend: (IrTypeKey) -> Boolean,
     val declaresSameBinding: (IrBinding) -> Boolean,
+    val createsFreshInstances: (IrTypeKey) -> Boolean,
     val deltaProvided: MutableSet<IrTypeKey> = mutableSetOf(),
     /** Tracks which contextual keys were used (preserving instance vs provider distinction) */
     val usedContextKeys: MutableSet<IrContextualTypeKey> = mutableSetOf(),
@@ -559,9 +576,10 @@ internal class ParentContext(
     node: GraphNode,
     isSuspend: (IrTypeKey) -> Boolean,
     declaresSameBinding: (IrBinding) -> Boolean,
+    createsFreshInstances: (IrTypeKey) -> Boolean,
   ) {
     val idx = levels.size
-    val level = Level(node, isSuspend, declaresSameBinding)
+    val level = Level(node, isSuspend, declaresSameBinding, createsFreshInstances)
     levels.addLast(level)
     parentScopes.addAll(node.scopes)
     _graphPrivateKeys.addAll(node.graphPrivateKeys)
@@ -617,6 +635,14 @@ internal class ParentContext(
     return key in pending || key in available || parent?.let { key in it } == true
   }
 
+  override fun ownerCreatesFreshInstances(key: IrTypeKey): Boolean {
+    val levelIdx = keyIntroStack[key]?.lastOrNull()
+    if (levelIdx == null) {
+      return parent?.ownerCreatesFreshInstances(key) == true
+    }
+    return levels[levelIdx].createsFreshInstances(key)
+  }
+
   override fun availableKeys(): Set<IrTypeKey> {
     val ancestorKeys = parent?.availableKeys()
     // Pending + all currently available + ancestor keys
@@ -647,6 +673,7 @@ internal class ParentContext(
           ownerGraphKey = level.node.typeKey,
           receiverParameter = level.node.metroGraphOrFail.thisReceiverOrFail,
           isSuspend = level.isSuspend,
+          createsFreshInstances = level.createsFreshInstances,
         )
     }
 
@@ -658,6 +685,7 @@ internal class ParentContext(
           ownerGraphKey = currentLevel.node.typeKey,
           receiverParameter = currentLevel.node.metroGraphOrFail.thisReceiverOrFail,
           isSuspend = currentLevel.isSuspend,
+          createsFreshInstances = currentLevel.createsFreshInstances,
         )
       for (key in pending) {
         keyOwnership[key] = currentOwnership
@@ -673,6 +701,7 @@ internal class ParentContext(
             ownerGraphKey = level.node.typeKey,
             receiverParameter = level.node.metroGraphOrFail.thisReceiverOrFail,
             isSuspend = level.isSuspend,
+            createsFreshInstances = level.createsFreshInstances,
           ),
       )
     }
