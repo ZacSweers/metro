@@ -49,6 +49,8 @@ internal class KaSuspendBindingValidator(
             ConsumerEntry.GraphRequestKind.ACCESSOR -> SuspendGraphRequestKind.ACCESSOR
             ConsumerEntry.GraphRequestKind.MEMBERS_INJECTOR ->
               SuspendGraphRequestKind.MEMBERS_INJECTOR
+            ConsumerEntry.GraphRequestKind.LIFECYCLE_PARAMETER ->
+              SuspendGraphRequestKind.LIFECYCLE_PARAMETER
             null -> SuspendGraphRequestKind.OTHER
           },
         isSuspend = consumer.isSuspend,

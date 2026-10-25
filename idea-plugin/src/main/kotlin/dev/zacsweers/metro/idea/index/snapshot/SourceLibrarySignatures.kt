@@ -147,6 +147,7 @@ private fun memberOverrideLibrarySignature(
     memberOverride.overriddenDeclarations.map(::callableLibrarySignature),
     memberOverride.isOptional,
     memberOverride.isAbstract,
+    memberOverride.isLifecycleCallback,
   )
 }
 
@@ -332,6 +333,7 @@ private data class GraphMemberOverrideLibrarySignature(
   val overriddenDeclarations: List<GraphCallableLibrarySignature>,
   val isOptional: Boolean,
   val isAbstract: Boolean,
+  val isLifecycleCallback: Boolean,
 )
 
 private data class GraphInterfaceLibrarySignature(
