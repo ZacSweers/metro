@@ -683,6 +683,24 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("GraphLifecycleCloseOnly.kt")
+    public void testGraphLifecycleCloseOnly() {
+      run("GraphLifecycleCloseOnly.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleCloseOnlyContents.kt")
+    public void testGraphLifecycleCloseOnlyContents() {
+      run("GraphLifecycleCloseOnlyContents.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleCloseOnlyRetained.kt")
+    public void testGraphLifecycleCloseOnlyRetained() {
+      run("GraphLifecycleCloseOnlyRetained.kt");
+    }
+
+    @Test
     @TestMetadata("GraphLifecycleCompiledClose.kt")
     public void testGraphLifecycleCompiledClose() {
       run("GraphLifecycleCompiledClose.kt");
@@ -692,6 +710,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     @TestMetadata("GraphLifecycleDeclarations.kt")
     public void testGraphLifecycleDeclarations() {
       run("GraphLifecycleDeclarations.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleGraphInputs.kt")
+    public void testGraphLifecycleGraphInputs() {
+      run("GraphLifecycleGraphInputs.kt");
     }
 
     @Test
@@ -722,6 +746,18 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     @TestMetadata("GraphLifecycleRoots.kt")
     public void testGraphLifecycleRoots() {
       run("GraphLifecycleRoots.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleUnscoped.kt")
+    public void testGraphLifecycleUnscoped() {
+      run("GraphLifecycleUnscoped.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleWarningText.kt")
+    public void testGraphLifecycleWarningText() {
+      run("GraphLifecycleWarningText.kt");
     }
 
     @Test
@@ -1705,6 +1741,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       @TestMetadata("DoNotSuggestMovingInjectAnnotationToClassWhenUsingJavaxOrJakartaInject.kt")
       public void testDoNotSuggestMovingInjectAnnotationToClassWhenUsingJavaxOrJakartaInject() {
         run("DoNotSuggestMovingInjectAnnotationToClassWhenUsingJavaxOrJakartaInject.kt");
+      }
+
+      @Test
+      @TestMetadata("GraphLifecycleOptional.kt")
+      public void testGraphLifecycleOptional() {
+        run("GraphLifecycleOptional.kt");
       }
 
       @Test
