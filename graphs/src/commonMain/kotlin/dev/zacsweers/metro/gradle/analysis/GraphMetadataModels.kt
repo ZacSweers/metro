@@ -112,7 +112,32 @@ public data class RootsMetadata(
   val accessors: List<AccessorMetadata> = emptyList(),
   /** Injector functions that inject dependencies into targets. */
   val injectors: List<InjectorMetadata> = emptyList(),
+  /** `@OnGraphInit` and `@OnGraphClose` callbacks and the bindings their parameters request. */
+  val lifecycleCallbacks: List<LifecycleCallbackMetadata> = emptyList(),
 )
+
+/** A lifecycle entry point and its requests in declaration order. */
+@Serializable
+@ExperimentalMetroGraphApi
+public data class LifecycleCallbackMetadata(
+  val phase: LifecyclePhase,
+  val declaration: String,
+  val isSuspend: Boolean = false,
+  val parameters: List<LifecycleParameterMetadata> = emptyList(),
+)
+
+/** The stage at which Metro invokes a callback. */
+@Serializable
+@ExperimentalMetroGraphApi
+public enum class LifecyclePhase {
+  INIT,
+  CLOSE,
+}
+
+/** Associates a recorded request with its source parameter. */
+@Serializable
+@ExperimentalMetroGraphApi
+public data class LifecycleParameterMetadata(val name: String, val request: DependencyMetadata)
 
 /** Metadata for an accessor property or function. */
 @Serializable
