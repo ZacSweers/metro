@@ -36,6 +36,7 @@ import dev.zacsweers.metro.compiler.fir.toSymbolCompat
 import dev.zacsweers.metro.compiler.fir.validateApiDeclaration
 import dev.zacsweers.metro.compiler.fir.validateBindingRef
 import dev.zacsweers.metro.compiler.fir.validateInjectionSiteType
+import dev.zacsweers.metro.compiler.graph.LifecycleDiagnosticMessages
 import dev.zacsweers.metro.compiler.graph.SuspendDiagnosticMessages
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.metroAnnotations
@@ -58,6 +59,7 @@ import org.jetbrains.kotlin.fir.declarations.getAnnotationByClassId
 import org.jetbrains.kotlin.fir.declarations.processAllDeclarations
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.declarations.utils.classId
+import org.jetbrains.kotlin.fir.declarations.utils.isAbstract
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
 import org.jetbrains.kotlin.fir.declarations.utils.isInterface
 import org.jetbrains.kotlin.fir.declarations.utils.isOverride
@@ -225,6 +227,21 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
     val bailFromSupertypeWalk = session.trace({ "Walk supertypes" }) { walkSupertypes() }
     if (bailFromSupertypeWalk) return
 
+    val closeability = declaration.graphCloseability()
+    val isCloseable = closeability.isCloseable
+    // SuspendCloseableGraph's generated close() awaits callbacks, which needs suspend support.
+    val isSuspendCloseable = closeability.isSuspendCloseable
+    if (isSuspendCloseable && !session.metroFirBuiltIns.options.enableSuspendProviders) {
+      reporter.reportOn(
+        declaration.source,
+        MetroDiagnostics.SUSPEND_PROVIDERS_NOT_ENABLED,
+        SuspendDiagnosticMessages.SUSPEND_PROVIDERS_NOT_ENABLED,
+      )
+    }
+
+    // A CloseableGraph closes its extensions from a close() that can't suspend.
+    val closesSynchronously = isCloseable && !isSuspendCloseable
+
     // Check supertype extensions
     if (graphExtensionFactorySupertypes.isNotEmpty()) {
       fun validateGraphExtensions() {
@@ -241,6 +258,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
             source = supertypeRef.source,
             parentScopeAnnotations = scopeAnnotations,
             parentAggregationScopes = aggregationScopes,
+            parentClosesSynchronously = closesSynchronously,
           )
         }
       }
@@ -257,8 +275,40 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
         allowedWritingMemberExpectForActualMapping = true,
       )
 
+    val callables = declaration.symbol.callableSymbols()
+    val lifecycleCallbacks =
+      callables.filterIsInstance<FirNamedFunctionSymbol>().filter { it.isLifecycleCallback() }
+    // FIR merges contributions only into root graphs that don't opt out. Other graphs merge them in
+    // IR, where a contribution that FIR can't see may make the graph closeable.
+    val isRootGraph = graphAnnotationClassId in classIds.dependencyGraphAnnotations
+    val optsOutOfFirMerging =
+      declaration.isAnnotatedWithAny(session, setOf(Symbols.ClassIds.mergeContributionsInIr))
+    val mergesContributionsInIr =
+      optsOutOfFirMerging || session.metroFirBuiltIns.options.generateClassesInIr
+    val mergesContributionsInFir = isRootGraph && !mergesContributionsInIr
+    session.trace({ "Check lifecycle callbacks" }) {
+      checkGraphLifecycle(declaration, lifecycleCallbacks, closeability, mergesContributionsInFir)
+    }
+    val lifecycleCallbackSet: Set<FirCallableSymbol<*>> = lifecycleCallbacks.toHashSet()
+
     fun walkCallables() {
-      for (callable in declaration.symbol.callableSymbols()) {
+      for (callable in callables) {
+        // Metro generates close() for closeable graphs, so it's neither an accessor nor user code.
+        if (isCloseable && callable.hasCloseSignature()) {
+          // Compiled declarations have no FIR body, so check that close() is still abstract.
+          if (!callable.isAbstract) {
+            reporter.reportOn(
+              declaration.source,
+              MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
+              LifecycleDiagnosticMessages.CLOSE_IS_GENERATED,
+            )
+          }
+          continue
+        }
+        // Lifecycle callbacks have bodies and are checked above, so they aren't accessors.
+        if (callable in lifecycleCallbackSet) {
+          continue
+        }
         val annotations = callable.metroAnnotations()
 
         val isEffectivelyOpen = with(session.compatContext) { callable.isEffectivelyOpen() }
@@ -352,6 +402,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
             source = callable.source,
             parentScopeAnnotations = scopeAnnotations,
             parentAggregationScopes = aggregationScopes,
+            parentClosesSynchronously = closesSynchronously,
           )
           continue
         } else if (callable.isOverride) {
@@ -386,6 +437,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
               source = callable.source,
               parentScopeAnnotations = scopeAnnotations,
               parentAggregationScopes = aggregationScopes,
+              parentClosesSynchronously = closesSynchronously,
             )
             continue
           }
@@ -393,6 +445,9 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
 
         when {
           isGraphExtension -> {
+            if (closesSynchronously) {
+              checkSyncParentCanClose(declaration, returnTypeClassSymbol, callable.source)
+            }
             // Functions with parameters are already handled above as ad-hoc factories.
             // Check if that extension has a creator. If so, we either must implement that creator
             // or it's an error because they need to use it.
@@ -606,11 +661,16 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
     graphExtension: FirClassLikeSymbol<*>,
     parentAggregationScopes: Set<ClassId>,
     parentScopeAnnotations: Set<MetroFirAnnotation>,
+    parentClosesSynchronously: Boolean,
   ) {
     val dependencyGraphAnno =
       graphExtension.resolvedCompilerAnnotationsWithClassIds
         .annotationsIn(session, classIds.graphExtensionAnnotations)
         .firstOrNull()
+
+    if (parentClosesSynchronously && graphExtension is FirClassSymbol<*>) {
+      checkSyncParentCanClose(parentGraph, graphExtension, source ?: parentGraph.source)
+    }
 
     val targetGraphScopes = dependencyGraphAnno?.allScopeClassIds(session).orEmpty()
     val targetGraphScopeAnnotations =

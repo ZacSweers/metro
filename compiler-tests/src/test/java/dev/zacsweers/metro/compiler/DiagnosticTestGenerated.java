@@ -677,6 +677,30 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("GraphLifecycleCalls.kt")
+    public void testGraphLifecycleCalls() {
+      run("GraphLifecycleCalls.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleCompiledClose.kt")
+    public void testGraphLifecycleCompiledClose() {
+      run("GraphLifecycleCompiledClose.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleDeclarations.kt")
+    public void testGraphLifecycleDeclarations() {
+      run("GraphLifecycleDeclarations.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleInjectionSites.kt")
+    public void testGraphLifecycleInjectionSites() {
+      run("GraphLifecycleInjectionSites.kt");
+    }
+
+    @Test
     @TestMetadata("GraphPrivateAccessorIsAnError.kt")
     public void testGraphPrivateAccessorIsAnError() {
       run("GraphPrivateAccessorIsAnError.kt");
@@ -2200,6 +2224,30 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     @TestMetadata("GraphExtensionParentSuspendBindingFromNonSuspendAccessor.kt")
     public void testGraphExtensionParentSuspendBindingFromNonSuspendAccessor() {
       run("GraphExtensionParentSuspendBindingFromNonSuspendAccessor.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleChildContract.kt")
+    public void testGraphLifecycleChildContract() {
+      run("GraphLifecycleChildContract.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleGraphChecks.kt")
+    public void testGraphLifecycleGraphChecks() {
+      run("GraphLifecycleGraphChecks.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecyclePropertyCreation.kt")
+    public void testGraphLifecyclePropertyCreation() {
+      run("GraphLifecyclePropertyCreation.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleStartupFactory.kt")
+    public void testGraphLifecycleStartupFactory() {
+      run("GraphLifecycleStartupFactory.kt");
     }
 
     @Test
