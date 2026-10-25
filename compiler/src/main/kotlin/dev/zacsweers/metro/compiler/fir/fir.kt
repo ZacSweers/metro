@@ -1422,6 +1422,13 @@ internal fun FirClassSymbol<*>.isOrImplements(supertype: ClassId, session: FirSe
 }
 
 internal fun FirClassSymbol<*>.implements(supertype: ClassId, session: FirSession): Boolean {
+  return implementsAny(session, setOf(supertype))
+}
+
+internal fun FirClassSymbol<*>.implementsAny(
+  session: FirSession,
+  supertypes: Set<ClassId>,
+): Boolean {
   return lookupSuperTypes(
       symbols = listOf(this),
       lookupInterfaces = true,
@@ -1430,7 +1437,7 @@ internal fun FirClassSymbol<*>.implements(supertype: ClassId, session: FirSessio
       substituteTypes = true,
     )
     // TODO remove expectAs in 2.3.20
-    .any { it.expectAs<ConeKotlinType>().classId?.let { it == supertype } == true }
+    .any { it.expectAs<ConeKotlinType>().classId?.let { it in supertypes } == true }
 }
 
 internal fun FirClassLikeSymbol<*>.isBindingContainer(session: FirSession): Boolean {
