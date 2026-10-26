@@ -419,6 +419,8 @@ tasks.named("buildPlugin") { mustRunAfter(validateIdeaPluginSigning) }
 
 tasks.named("signPlugin") { dependsOn(validateIdeaPluginSigning) }
 
+tasks.named("verifyPluginSignature") { dependsOn(tasks.named("signPlugin")) }
+
 tasks.named("publishPlugin") { dependsOn(validateIdeaPluginSigning) }
 
 tasks.test {
