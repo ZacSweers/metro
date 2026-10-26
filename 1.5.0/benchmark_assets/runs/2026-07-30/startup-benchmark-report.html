@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Metro Startup Benchmark Results</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { --baseline-color: #4CAF50; --metro-color: #4CAF50; --dagger-ksp-color: #2196F3; --dagger-kapt-color: #FF9800; --kotlin-inject-color: #9C27B0; }
+        * { box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background: #f5f5f5; color: #333; }
+        .header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: white; padding: 2rem; text-align: center; }
+        .header h1 { margin: 0 0 0.5rem 0; font-weight: 300; font-size: 2rem; }
+        .header .subtitle { opacity: 0.8; font-size: 0.9rem; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .refs-info { display: flex; gap: 2rem; margin-bottom: 2rem; flex-wrap: wrap; }
+        .ref-card { background: white; border-radius: 8px; padding: 1rem 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); flex: 1; min-width: 250px; }
+        .ref-card.baseline { border-left: 4px solid var(--metro-color); }
+        .ref-card.comparison { border-left: 4px solid var(--dagger-ksp-color); }
+        .ref-card h3 { margin: 0 0 0.5rem 0; font-size: 0.85rem; text-transform: uppercase; color: #666; }
+        .ref-card .ref-name { font-size: 1.2rem; font-weight: 600; font-family: monospace; }
+        .ref-card .commit { font-size: 0.85rem; color: #888; margin-top: 0.25rem; }
+        .ref-card .commit a, .metadata-group a { color: inherit; text-underline-offset: 0.15em; }
+        .versions-section { background: white; border-radius: 8px; padding: 1.5rem; margin-bottom: 2rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .versions-section h2 { margin: 0 0 1rem 0; font-size: 1.1rem; font-weight: 500; color: #666; border-bottom: 2px solid #eee; padding-bottom: 0.5rem; }
+        .versions-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); border-top: 1px solid #e5e5e5; border-left: 1px solid #e5e5e5; }
+        .version-item { display: flex; justify-content: space-between; gap: 1rem; min-width: 0; border-right: 1px solid #e5e5e5; border-bottom: 1px solid #e5e5e5; padding: 0.55rem 0.75rem; }
+        .version-item .label { color: #666; }
+        .version-item .value { flex: 0 0 auto; min-width: 0; font-family: 'SF Mono', Monaco, monospace; text-align: right; white-space: nowrap; }
+        .versions-section p { margin: 1rem 0 0; color: #666; font-size: 0.85rem; }
+        .versions-section a { color: inherit; text-underline-offset: 0.15em; }
+        .benchmark-section { background: white; border-radius: 8px; padding: 1.5rem; margin-bottom: 2rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .benchmark-section h2 { margin: 0 0 0.25rem 0; font-size: 1.3rem; font-weight: 500; }
+        .benchmark-section .chart-hint { font-size: 0.8rem; color: #888; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid #eee; }
+        .notes-section { background: #fffdf4; border: 1px solid #f0e2a2; border-radius: 8px; padding: 1.25rem 1.5rem; margin-bottom: 2rem; font-size: 0.9rem; line-height: 1.5; }
+        .notes-section h2, .notes-section h3 { margin: 0 0 0.75rem 0; font-size: 1.1rem; font-weight: 500; color: #665c2c; }
+        .binary-metrics-heading { margin: 0 0 1rem 0; font-size: 1.5rem; font-weight: 500; }
+        .notes-section ul { margin: 0; padding-left: 1.25rem; }
+        .notes-section li + li { margin-top: 0.5rem; }
+        .chart-group-title { margin: 0 0 0.75rem 0; font-size: 0.95rem; font-weight: 600; color: #555; }
+        .chart-note { margin: 0 0 1rem 0; color: #666; font-size: 0.9rem; }
+        .chart-container { position: relative; height: 300px; margin-bottom: 1.5rem; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        th, td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid #eee; }
+        th { background: #f8f9fa; font-weight: 600; color: #555; font-size: 0.8rem; text-transform: uppercase; }
+        td.numeric, th.numeric { text-align: right; font-family: 'SF Mono', Monaco, monospace; }
+        td.framework { font-weight: 500; }
+        .better { color: #43a047; }
+        .worse { color: #e53935; }
+        .baseline-select { cursor: pointer; width: 30px; }
+        .baseline-radio { display: inline-block; width: 16px; height: 16px; border: 2px solid #ccc; border-radius: 50%; }
+        .baseline-radio.selected { border-color: var(--baseline-color); background: var(--baseline-color); }
+        .baseline-row { background: #f3f6f7; }
+        .vs-baseline { color: #888; font-size: 0.85em; }
+        .vs-baseline.baseline { font-weight: 500; }
+        .vs-baseline.better { color: #43a047; }
+        .vs-baseline.worse { color: #e53935; }
+        .vs-baseline.slower { color: #e53935; }
+        .vs-baseline.faster { color: #43a047; }
+        .diff { font-weight: 500; }
+        .diff.positive { color: #e53935; }
+        .diff.negative { color: #43a047; }
+        .diff.neutral { color: #888; }
+        .legend { display: flex; gap: 1.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+        .legend-item { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; }
+        .legend-color { width: 16px; height: 16px; border-radius: 3px; }
+        .no-data { color: #999; font-style: italic; }
+        .metadata-section { background: white; border-radius: 8px; padding: 1.5rem; margin-top: 2rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .metadata-section h2 { margin: 0 0 1rem 0; font-size: 1.1rem; font-weight: 500; border-bottom: 2px solid #eee; padding-bottom: 0.5rem; color: #666; }
+        .metadata-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.5rem; }
+        .metadata-group { min-width: 0; }
+        .metadata-group h3 { margin: 0 0 0.75rem 0; font-size: 0.85rem; text-transform: uppercase; color: #888; font-weight: 600; }
+        .metadata-group dl { margin: 0; display: grid; grid-template-columns: minmax(160px, 240px) minmax(0, 1fr); gap: 0.25rem 1rem; align-items: start; }
+        .metadata-group dt { min-width: 0; color: #666; font-size: 0.85rem; overflow-wrap: anywhere; }
+        .metadata-group dd { min-width: 0; margin: 0; font-family: 'SF Mono', Monaco, monospace; font-size: 0.85rem; color: #333; overflow-wrap: anywhere; word-break: break-word; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Metro Startup Benchmark Results</h1>
+        <div class="subtitle" id="date"></div>
+    </div>
+    <div class="container">
+        <div class="refs-info" id="refs-info"></div>
+        <div class="versions-section" id="versions"></div>
+        <div class="notes-section">
+            <h2>Notes</h2>
+            <ul>
+                <li>Each runtime benchmark creates and initializes the same generated graph.</li>
+                <li>
+                    The Koin benchmarks deserve a couple notes because the work is not exactly like-for-like:
+                    <ul>
+                        <li>Koin's compiler plugin does less work. It aggregates definitions, generates module and factory wiring, and checks for missing dependencies and cycles, but leaves final graph resolution to runtime. Metro, Dagger, and kotlin-inject resolve and validate graphs from their roots and generate static implementations at compile time.</li>
+                        <li>Koin's runtime does more work as a result. The graph work deferred during compilation happens during startup.</li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+        <div id="benchmarks"></div>
+        <div id="binaryMetrics"></div>
+        <div id="metadata"></div>
+    </div>
+<script>
+const benchmarkData =
+{
+  "title": "Startup Benchmark Comparison",
+  "date": "2026-07-30T09:30:16-04:00",
+  "moduleCount": 500,
+  "metadata":
+{
+  "versions": {
+    "metro": "1.4.0-SNAPSHOT",
+    "kotlin": "2.4.0",
+    "dagger": "2.60.1",
+    "ksp": "2.3.10",
+    "kotlinInject": "0.9.0",
+    "anvil": "0.5.4",
+    "kotlinInjectAnvil": "0.1.7",
+    "koin": "4.2.2",
+    "koinCompiler": "1.1.0"
+  },
+  "build": {
+    "jdk": "25.0.4",
+    "jvmTarget": "11",
+    "jmhPlugin": "0.7.3",
+    "androidxBenchmark": "1.4.1"
+  },
+  "workload": {
+    "schemaVersion": 1,
+    "fingerprint": "sha256:7b20f05437d03f4742fc1bfa884d66091e025d86651c5f519f4a3f97e28ebdf4",
+    "seed": 0,
+    "moduleCount": 500,
+    "modulesByLayer": {
+      "core": 80,
+      "features": 350,
+      "app": 70
+    },
+    "dependencyEdgeCount": 874,
+    "contributionCount": 2756,
+    "contributionsByKind": {
+      "binding": 887,
+      "plugin": 982,
+      "initializer": 887
+    },
+    "subcomponents": {
+      "l1": 7,
+      "l2PerL1": 0,
+      "l3PerL2": 0,
+      "total": 7
+    }
+  },
+  "repository": {
+    "commit": "f4a6fc34c865a4bc9ae0a397e428c03f32239152",
+    "branch": "z/updateBenchmarks",
+    "dirty": false,
+    "dirtyDiffFingerprint": "clean"
+  },
+  "options": {
+    "benchmarkType": "all",
+    "modes": [
+      "metro",
+      "dagger-ksp",
+      "kotlin-inject-anvil",
+      "koin"
+    ],
+    "graphSharding": {
+      "requested": "auto",
+      "effective": true
+    },
+    "switchingProviders": false,
+    "runtimeTracing": false,
+    "includeMacrobenchmark": false,
+    "binaryMetricsOnly": false,
+    "jmhGcProfiler": false,
+    "r8RuntimeClasspathAsProgramInput": true,
+    "dagger": {
+      "mapMultibindingDuplicateDetectionFix": "ENABLED",
+      "mapMultibindingDuplicateDetectionFixSource": "explicit",
+      "useBindingGraphFix": "ENABLED",
+      "ignoreProvisionKeyWildcards": "ENABLED",
+      "validateTransitiveComponentDependencies": "ENABLED",
+      "strictSuperficialValidation": "ENABLED",
+      "fullBindingGraphValidation": "NONE",
+      "fastInit": "DISABLED",
+      "providerMultibindings": false
+    }
+  },
+  "system": {
+    "os": "Darwin",
+    "cpu": "Apple M4 Pro",
+    "ram": "48 GB"
+  },
+  "android": {
+    "serial": "47121FDAQ004T3",
+    "manufacturer": "Google",
+    "device": "Pixel 9",
+    "version": "17",
+    "sdk": "37",
+    "buildFingerprint": "google/tokay_beta/tokay:17/CP31.260618.005/15731206:user/release-keys",
+    "abi": "arm64-v8a"
+  }
+}
+,
+  "refs": {
+    "ref1": { "label": "1.4.0-SNAPSHOT", "commit": "f4a6fc34c Fix R8 benchmark inputs (Metro 1.4.0-SNAPSHOT)" }
+  },
+  "benchmarks": [
+    {
+      "name": "JVM Startup (JMH)",
+      "key": "jvm",
+      "unit": "ms",
+      "results": [
+        {
+          "framework": "Metro",
+          "key": "metro",
+          "ref1": 0.16807883977409765,
+          "ref2": null
+        },
+        {
+          "framework": "Dagger (KSP)",
+          "key": "dagger_ksp",
+          "ref1": 0.1778419859546272,
+          "ref2": null
+        },
+        {
+          "framework": "kotlin-inject",
+          "key": "kotlin_inject_anvil",
+          "ref1": 0.2380900961010331,
+          "ref2": null
+        },
+        {
+          "framework": "Koin",
+          "key": "koin",
+          "ref1": 6.490582016559728,
+          "ref2": null
+        }
+      ]
+    },
+    {
+      "name": "JVM Startup R8 Minified (JMH)",
+      "key": "jvm_r8",
+      "unit": "ms",
+      "results": [
+        {
+          "framework": "Metro",
+          "key": "metro",
+          "ref1": 0.16645391862207762,
+          "ref2": null
+        },
+        {
+          "framework": "Dagger (KSP)",
+          "key": "dagger_ksp",
+          "ref1": 0.1710602057899141,
+          "ref2": null
+        },
+        {
+          "framework": "kotlin-inject",
+          "key": "kotlin_inject_anvil",
+          "ref1": 0.22299428354115663,
+          "ref2": null
+        },
+        {
+          "framework": "Koin",
+          "key": "koin",
+          "ref1": 4.968557821007341,
+          "ref2": null
+        }
+      ]
+    },
+    {
+      "name": "Android Component Init (Microbenchmark)",
+      "key": "android_micro",
+      "unit": "ms",
+      "results": [
+        {
+          "framework": "Metro",
+          "key": "metro",
+          "ref1": 0.10138713576449912,
+          "ref2": null
+        },
+        {
+          "framework": "Dagger (KSP)",
+          "key": "dagger_ksp",
+          "ref1": 0.13074065954922893,
+          "ref2": null
+        },
+        {
+          "framework": "kotlin-inject",
+          "key": "kotlin_inject_anvil",
+          "ref1": 17.6878621,
+          "ref2": null
+        },
+        {
+          "framework": "Koin",
+          "key": "koin",
+          "ref1": 23.686009625,
+          "ref2": null
+        }
+      ]
+    }
+  ],
+  "binaryMetrics": {
+    "classes": [
+      {
+        "framework": "Metro",
+        "key": "metro",
+        "ref1": { "fields": 931, "methods": 1024, "shards": 0, "sizeBytes": 2525636, "classes": ["AppComponent$Impl$Ui5SubcomponentImpl.class","AppComponentKt.class","AppComponent$Impl$Ui7SubcomponentImpl.class","AppComponent$Impl$Ui1SubcomponentImpl.class","AppComponent$BindsMirror.class","AppComponent.class","AppComponent$Impl$Ui3SubcomponentImpl.class","AppComponent$Impl$Ui4SubcomponentImpl.class","AppComponent$Impl$Ui6SubcomponentImpl.class","AppComponent$Impl$Ui2SubcomponentImpl.class","AppComponent$Companion.class","AppComponent$Impl.class"] },
+        "ref2": null
+      },
+      {
+        "framework": "Dagger (KSP)",
+        "key": "dagger_ksp",
+        "ref1": { "fields": 939, "methods": 1016, "shards": 1, "sizeBytes": 1433598, "classes": ["MergedAppComponent$BindingModule.class","AppComponentKt.class","MergedAppComponent.class","AppComponent.class","AppComponent$Factory.class","AppComponentMultibinds.class","MergedAppComponent$Factory.class","DaggerAppComponent.class","DaggerMergedAppComponent$Factory.class","DaggerMergedAppComponent$MergedUi6Subcomponent_e9eba533Impl.class","DaggerMergedAppComponent$MergedUi4Subcomponent_3b599c6bImpl.class","DaggerMergedAppComponent$MergedUi5Subcomponent_c4d66f8dImpl.class","DaggerMergedAppComponent$MergedAppComponentImplShard.class","DaggerMergedAppComponent$MergedUi2Subcomponent_c81b9599Impl.class","DaggerMergedAppComponent$MergedUi3Subcomponent_fe5d4950Impl.class","DaggerMergedAppComponent$MergedAppComponentImpl.class","DaggerMergedAppComponent.class","DaggerMergedAppComponent$MergedUi7Subcomponent_898fd801Impl.class","DaggerMergedAppComponent$MergedUi1Subcomponent_259df8d9Impl.class"] },
+        "ref2": null
+      },
+      {
+        "framework": "kotlin-inject",
+        "key": "kotlin_inject_anvil",
+        "ref1": { "fields": 2, "methods": 1792, "shards": 0, "sizeBytes": 2248546, "classes": ["InjectKotlinInjectAppComponentKt.class","KotlinInjectAppComponent$Companion.class","AppComponentKt.class","KotlinInjectAppComponentKt.class","KotlinInjectAppComponent.class","AppComponent.class","KotlinInjectAppComponentMerged.class","InjectKotlinInjectAppComponent.class"] },
+        "ref2": null
+      },
+      {
+        "framework": "Koin",
+        "key": "koin",
+        "ref1": { "fields": 1, "methods": 11, "shards": 0, "sizeBytes": 237946, "classes": ["AppComponentKt.class","AppComponent.class","AppKoinApp.class"] },
+        "ref2": null
+      }
+    ],
+    "r8Jars": [
+      {
+        "framework": "Metro",
+        "key": "metro",
+        "ref1": { "sizeBytes": 1257500, "fields": 26, "methods": 2016, "classCount": 1885 },
+        "ref2": null
+      },
+      {
+        "framework": "Dagger (KSP)",
+        "key": "dagger_ksp",
+        "ref1": { "sizeBytes": 1244601, "fields": 2, "methods": 1900, "classCount": 1875 },
+        "ref2": null
+      },
+      {
+        "framework": "kotlin-inject",
+        "key": "kotlin_inject_anvil",
+        "ref1": { "sizeBytes": 1383990, "fields": 6, "methods": 3837, "classCount": 1907 },
+        "ref2": null
+      },
+      {
+        "framework": "Koin",
+        "key": "koin",
+        "ref1": { "sizeBytes": 4324870, "fields": 91, "methods": 8532, "classCount": 5808 },
+        "ref2": null
+      }
+    ],
+    "apks": [
+      {
+        "framework": "Metro",
+        "key": "metro",
+        "ref1": { "sizeBytes": 370554, "dexSizeBytes": 319898, "dexClasses": 476, "dexMethods": 2093, "dexFields": 832 },
+        "ref2": null
+      },
+      {
+        "framework": "Dagger (KSP)",
+        "key": "dagger_ksp",
+        "ref1": { "sizeBytes": 364001, "dexSizeBytes": 313139, "dexClasses": 469, "dexMethods": 2011, "dexFields": 809 },
+        "ref2": null
+      },
+      {
+        "framework": "kotlin-inject",
+        "key": "kotlin_inject_anvil",
+        "ref1": { "sizeBytes": 380962, "dexSizeBytes": 330957, "dexClasses": 472, "dexMethods": 2008, "dexFields": 809 },
+        "ref2": null
+      },
+      {
+        "framework": "Koin",
+        "key": "koin",
+        "ref1": { "sizeBytes": 1192578, "dexSizeBytes": 1153434, "dexClasses": 5261, "dexMethods": 2432, "dexFields": 1009 },
+        "ref2": null
+      }
+    ]
+  }
+}
+;
+const colors = { 'metro': '#4CAF50', 'dagger_ksp': '#2196F3', 'dagger_kapt': '#FF9800', 'kotlin_inject_anvil': '#9C27B0', 'koin': '#E91E63' };
+const benchmarkDescriptions = {
+    'jvm': 'Lower is better. Measures graph creation and initialization on the JVM.',
+    'jvm_r8': 'Lower is better. Measures the same JVM graph after R8 minification.',
+    'android_micro': 'Lower is better. Measures graph creation and initialization on the connected Android device.',
+};
+
+// State for selectable baseline
+let selectedBaseline = benchmarkData.benchmarks[0]?.results.some(r => r.key === 'metro')
+    ? 'metro'
+    : (benchmarkData.benchmarks[0]?.results[0]?.key || 'metro');
+document.documentElement.style.setProperty('--baseline-color', colors[selectedBaseline] || '#888');
+
+function formatTime(ms, unit) {
+    if (ms === null || ms === undefined) return '—';
+    const exactValue = ms.toLocaleString('en-US', { useGrouping: false, maximumSignificantDigits: 21 });
+    return unit === 'ms' ? exactValue + ' ms' : exactValue;
+}
+
+// Calculate percentage difference vs baseline: (value - baseline) / baseline * 100
+function calculateVsBaseline(value, baselineValue) {
+    if (!value || !baselineValue) return { text: '—', class: '' };
+    if (value === baselineValue) return { text: 'baseline', class: 'baseline' };
+    const pct = ((value - baselineValue) / baselineValue * 100).toFixed(0);
+    const mult = (value / baselineValue).toFixed(1);
+    if (pct < 0) {
+        return { text: `${pct}% (${mult}x)`, class: 'faster' };
+    }
+    return { text: `+${pct}% (${mult}x)`, class: 'slower' };
+}
+
+function calculateDiff(newVal, oldVal) {
+    if (!newVal || !oldVal) return { text: '—', class: 'neutral' };
+    const pct = ((newVal - oldVal) / oldVal * 100).toFixed(2);
+    if (Math.abs(pct) < 0.01) return { text: '+0.00%', class: 'neutral' };
+    const prefix = pct > 0 ? '+' : '';
+    return { text: `${prefix}${pct}%`, class: pct > 0 ? 'positive' : 'negative' };
+}
+
+function displayMetroVersion(version) {
+    return version?.replace(/-SNAPSHOT$/, '') || '—';
+}
+
+function renderVersions() {
+    const container = document.getElementById('versions');
+    const m = benchmarkData.metadata;
+    if (!m) { container.style.display = 'none'; return; }
+    const items = [
+        ['Metro', displayMetroVersion(m.versions?.metro)],
+        ['Kotlin', m.versions?.kotlin],
+        ['Dagger', m.versions?.dagger],
+        ['KSP', m.versions?.ksp],
+        ['Anvil', m.versions?.anvil],
+        ['kotlin-inject', m.versions?.kotlinInject],
+        ['kotlin-inject-anvil', m.versions?.kotlinInjectAnvil],
+        ['Koin', m.versions?.koin],
+        ['Koin Compiler', m.versions?.koinCompiler],
+        ['JDK', m.build?.jdk],
+        ['JVM Target', m.build?.jvmTarget],
+        ['JMH Plugin', m.build?.jmhPlugin],
+        ['AndroidX Benchmark', m.build?.androidxBenchmark],
+    ];
+    if (m.android?.version) items.push(['Android', m.android.version]);
+    if (m.android?.sdk) items.push(['Android SDK', m.android.sdk]);
+    container.innerHTML = `
+        <h2>Versions</h2>
+        <div class="versions-grid">${items.map(([label, value]) => `<div class="version-item"><span class="label">${label}</span><span class="value">${value || '—'}</span></div>`).join('')}</div>
+        <p>See the <a href="#build-environment">full build environment</a> at the bottom of the report.</p>`;
+}
+
+function formatCommit(commit) {
+    if (!commit) return 'unknown';
+    const [sha, ...subjectParts] = commit.split(' ');
+    if (!/^[0-9a-f]{7,40}$/i.test(sha)) return commit;
+    let subjectText = subjectParts.join(' ');
+    const recordedMetroVersion = benchmarkData.metadata?.versions?.metro;
+    if (recordedMetroVersion) {
+        subjectText = subjectText.replaceAll(recordedMetroVersion, displayMetroVersion(recordedMetroVersion));
+    }
+    const subject = subjectText ? ` ${subjectText}` : '';
+    return `<a href="https://github.com/ZacSweers/metro/commit/${sha}">${sha}</a>${subject}`;
+}
+
+function formatMetadataMap(value) {
+    if (!value) return '—';
+    return Object.entries(value).map(([key, item]) => `${key}: ${item}`).join('<br>');
+}
+
+function renderRefsInfo() {
+    const container = document.getElementById('refs-info');
+    let html = '';
+    if (benchmarkData.refs.ref1 && !benchmarkData.refs.ref2) {
+        html += `<div class="ref-card baseline"><h3>Source</h3><div class="ref-name">Metro ${frameworkVersion('metro')}</div><div class="commit">${formatCommit(benchmarkData.refs.ref1.commit)}</div></div>`;
+    } else if (benchmarkData.refs.ref1) {
+        html += `<div class="ref-card baseline"><h3>Baseline (ref1)</h3><div class="ref-name">${benchmarkData.refs.ref1.label}</div><div class="commit">${formatCommit(benchmarkData.refs.ref1.commit)}</div></div>`;
+    }
+    if (benchmarkData.refs.ref2) {
+        html += `<div class="ref-card comparison"><h3>Comparison (ref2)</h3><div class="ref-name">${benchmarkData.refs.ref2.label}</div><div class="commit">${formatCommit(benchmarkData.refs.ref2.commit)}</div></div>`;
+    }
+    container.innerHTML = html;
+}
+
+function renderSummaryStats() {
+    const container = document.getElementById('summary-stats');
+    // Calculate average speedup vs other frameworks across all benchmarks
+    let totalSpeedup = { dagger_ksp: 0, dagger_kapt: 0, kotlin_inject_anvil: 0, koin: 0 };
+    let counts = { dagger_ksp: 0, dagger_kapt: 0, kotlin_inject_anvil: 0, koin: 0 };
+    benchmarkData.benchmarks.forEach(benchmark => {
+        const metroResult = benchmark.results.find(r => r.key === 'metro');
+        if (!metroResult || !metroResult.ref1) return;
+        benchmark.results.forEach(result => {
+            if (Object.hasOwn(totalSpeedup, result.key) && result.ref1) {
+                totalSpeedup[result.key] += result.ref1 / metroResult.ref1;
+                counts[result.key]++;
+            }
+        });
+    });
+    let html = '';
+    const names = { 'dagger_ksp': 'Dagger (KSP)', 'dagger_kapt': 'Dagger (KAPT)', 'kotlin_inject_anvil': 'kotlin-inject', 'koin': 'Koin' };
+    Object.keys(totalSpeedup).forEach(key => {
+        if (counts[key] > 0) {
+            const avgSpeedup = (totalSpeedup[key] / counts[key]).toFixed(1);
+            html += `<div class="stat-card"><div class="value">${avgSpeedup}x</div><div class="label">faster than ${names[key]}</div></div>`;
+        }
+    });
+    container.innerHTML = html;
+}
+
+function getBaselineLabel() {
+    const result = benchmarkData.benchmarks[0]?.results.find(r => r.key === selectedBaseline);
+    return result?.framework || 'Baseline';
+}
+
+function frameworkVersion(key) {
+    const versions = benchmarkData.metadata?.versions || {};
+    switch (key) {
+        case 'metro':
+            return displayMetroVersion(versions.metro);
+        case 'dagger_ksp':
+        case 'dagger_kapt':
+            return versions.dagger || '—';
+        case 'kotlin_inject_anvil':
+            if (versions.kotlinInject && versions.kotlinInjectAnvil) {
+                return `${versions.kotlinInject} / anvil ${versions.kotlinInjectAnvil}`;
+            }
+            return versions.kotlinInject || versions.kotlinInjectAnvil || '—';
+        case 'koin':
+            if (versions.koin && versions.koinCompiler) {
+                return `${versions.koin} / compiler ${versions.koinCompiler}`;
+            }
+            return versions.koin || versions.koinCompiler || '—';
+        default:
+            return '—';
+    }
+}
+
+function chartGroupsFor(benchmark) {
+    if (benchmark.key !== 'android_micro') {
+        return [{ label: '', results: benchmark.results }];
+    }
+    const compiledKeys = new Set(['metro', 'dagger_ksp', 'dagger_kapt']);
+    const compiledResults = benchmark.results.filter(result => compiledKeys.has(result.key));
+    const hasOutsizedResults = benchmark.results.some(result => !compiledKeys.has(result.key));
+    if (!compiledResults.length || !hasOutsizedResults) {
+        return [{ label: '', results: benchmark.results }];
+    }
+    return [
+        { label: 'Metro and Dagger detail', results: compiledResults },
+        { label: 'All frameworks (full scale)', results: benchmark.results },
+    ];
+}
+
+function renderBenchmarks() {
+    const container = document.getElementById('benchmarks');
+    const isComparison = Boolean(benchmarkData.refs.ref2);
+    let html = '';
+    benchmarkData.benchmarks.forEach((benchmark, idx) => {
+        const chartGroups = chartGroupsFor(benchmark);
+        const splitNote = chartGroups.length > 1
+            ? '<p class="chart-note">Android uses two linear scales. The detail view shows Metro and Dagger. The full-scale view includes all frameworks and accommodates the longer kotlin-inject and Koin times.</p>'
+            : '';
+        const chartsHtml = chartGroups.map((group, groupIdx) => `
+            ${group.label ? `<h3 class="chart-group-title">${group.label}</h3>` : ''}
+            <div class="legend">${group.results.map(r => `<div class="legend-item"><div class="legend-color" style="background: ${colors[r.key]}"></div><span>${r.framework}</span></div>`).join('')}</div>
+            <div class="chart-container"><canvas id="chart-${idx}-${groupIdx}"></canvas></div>`).join('');
+        html += `<div class="benchmark-section"><h2>${benchmark.name}</h2>
+            <div class="chart-hint">${benchmarkDescriptions[benchmark.key] || 'Lower is better.'}</div>
+            ${splitNote}${chartsHtml}
+            <table><thead><tr><th></th><th>Framework</th>${isComparison
+                ? `<th class="numeric">${benchmarkData.refs.ref1.label}</th><th class="numeric">vs <span class="baseline-header">${getBaselineLabel()}</span></th><th class="numeric">${benchmarkData.refs.ref2.label}</th><th class="numeric">vs <span class="baseline-header">${getBaselineLabel()}</span></th><th class="numeric">Difference</th>`
+                : `<th class="numeric">Time</th><th class="numeric">vs <span class="baseline-header">${getBaselineLabel()}</span></th>`}
+            </tr></thead><tbody id="table-${idx}"></tbody></table></div>`;
+    });
+    container.innerHTML = html;
+    benchmarkData.benchmarks.forEach((benchmark, idx) => {
+        chartGroupsFor(benchmark).forEach((group, groupIdx) => renderChart(benchmark, idx, group, groupIdx));
+        renderTable(benchmark, idx);
+    });
+}
+
+const charts = {};
+function renderChart(benchmark, idx, group, groupIdx) {
+    const ctx = document.getElementById(`chart-${idx}-${groupIdx}`).getContext('2d');
+    const isComparison = Boolean(benchmarkData.refs.ref2);
+    const labels = [], ref1Data = [], ref2Data = [], backgroundColors = [];
+    group.results.forEach(result => {
+        labels.push(result.framework);
+        ref1Data.push(result.ref1 ?? null);
+        ref2Data.push(result.ref2 ?? null);
+        backgroundColors.push(colors[result.key]);
+    });
+    const datasets = [];
+    if (benchmarkData.refs.ref1) datasets.push({ label: benchmarkData.refs.ref1.label, data: ref1Data, backgroundColor: backgroundColors.map(c => c + 'CC'), borderColor: backgroundColors, borderWidth: 2 });
+    if (benchmarkData.refs.ref2) datasets.push({ label: benchmarkData.refs.ref2.label, data: ref2Data, backgroundColor: backgroundColors.map(c => c + '66'), borderColor: backgroundColors, borderWidth: 2, borderDash: [5, 5] });
+    charts[`${idx}-${groupIdx}`] = new Chart(ctx, { type: 'bar', data: { labels, datasets }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: datasets.length > 1 }, tooltip: { callbacks: { label: ctx => {
+        const label = isComparison ? ctx.dataset.label : group.results[ctx.dataIndex].framework;
+        return label + ': ' + formatTime(ctx.raw, benchmark.unit || 'ms');
+    } } } }, scales: { y: { type: 'linear', beginAtZero: true, title: { display: true, text: 'Time (' + (benchmark.unit || 'ms') + ', linear scale)' } } } } });
+}
+
+function renderTable(benchmark, idx) {
+    const tbody = document.getElementById(`table-${idx}`);
+    const isComparison = Boolean(benchmarkData.refs.ref2);
+    const baselineResult = benchmark.results.find(r => r.key === selectedBaseline);
+    const baselineRef1 = baselineResult?.ref1;
+    const baselineRef2 = baselineResult?.ref2 ?? baselineResult?.ref1;
+    // Get Metro's ref2 value for comparing frameworks that were not re-run.
+    const metroRef2 = benchmark.results.find(r => r.key === 'metro')?.ref2;
+    let html = '';
+    benchmark.results.forEach(result => {
+        const isBaseline = result.key === selectedBaseline;
+        const vsBaseline1 = calculateVsBaseline(result.ref1, baselineRef1);
+        const vsBaseline2 = calculateVsBaseline(result.ref2, baselineRef2);
+        // For diff: if this framework has ref2, compare ref2 vs ref1
+        // If not, compare ref1 against metro's ref2 (how much faster/slower than new metro)
+        const diff = result.ref2 ? calculateDiff(result.ref2, result.ref1) : calculateDiff(result.ref1, metroRef2);
+        html += `<tr class="${isBaseline ? 'baseline-row' : ''}" data-key="${result.key}">
+            <td class="baseline-select" onclick="setBaseline('${result.key}')"><span class="baseline-radio ${isBaseline ? 'selected' : ''}"></span></td>
+            <td class="framework" style="color: ${colors[result.key]}">${result.framework}</td>
+            ${isComparison
+                ? `<td class="numeric">${result.ref1 ? formatTime(result.ref1, benchmark.unit) : '<span class="no-data">N/A</span>'}</td><td class="numeric vs-baseline ${vsBaseline1.class}">${vsBaseline1.text}</td><td class="numeric">${result.ref2 ? formatTime(result.ref2, benchmark.unit) : '<span class="no-data">(not run)</span>'}</td><td class="numeric vs-baseline ${vsBaseline2.class}">${vsBaseline2.text}</td><td class="numeric diff ${diff.class}">${diff.text}</td>`
+                : `<td class="numeric">${result.ref1 ? formatTime(result.ref1, benchmark.unit) : '<span class="no-data">N/A</span>'}</td><td class="numeric vs-baseline ${vsBaseline1.class}">${vsBaseline1.text}</td>`}</tr>`;
+    });
+    tbody.innerHTML = html;
+}
+
+function setBaseline(key) {
+    selectedBaseline = key;
+    document.documentElement.style.setProperty('--baseline-color', colors[key] || '#888');
+    benchmarkData.benchmarks.forEach((benchmark, idx) => { renderTable(benchmark, idx); });
+    if (typeof renderBinaryMetrics === 'function') renderBinaryMetrics();
+    document.querySelectorAll('.baseline-header').forEach(el => { el.textContent = getBaselineLabel(); });
+}
+
+function renderMetadata() {
+    const m = benchmarkData.metadata;
+    if (!m) return;
+    const container = document.getElementById('metadata');
+    const hasAndroid = m.android?.device || m.android?.version;
+    container.innerHTML = `
+        <div class="metadata-section">
+            <h2 id="build-environment">Build Environment</h2>
+            <div class="metadata-grid">
+                <div class="metadata-group">
+                    <h3>Library Versions</h3>
+                    <dl>
+                        <dt>Metro</dt><dd>${displayMetroVersion(m.versions?.metro)}</dd>
+                        <dt>Kotlin</dt><dd>${m.versions?.kotlin || '—'}</dd>
+                        <dt>Dagger</dt><dd>${m.versions?.dagger || '—'}</dd>
+                        <dt>KSP</dt><dd>${m.versions?.ksp || '—'}</dd>
+                        <dt>kotlin-inject</dt><dd>${m.versions?.kotlinInject || '—'}</dd>
+                        <dt>Anvil</dt><dd>${m.versions?.anvil || '—'}</dd>
+                        <dt>kotlin-inject-anvil</dt><dd>${m.versions?.kotlinInjectAnvil || '—'}</dd>
+                    <dt>Koin</dt><dd>${m.versions?.koin || '—'}</dd>
+                    <dt>Koin Compiler</dt><dd>${m.versions?.koinCompiler || '—'}</dd>
+                    </dl>
+                </div>
+                <div class="metadata-group">
+                    <h3>Build Configuration</h3>
+                    <dl>
+                        <dt>JDK</dt><dd>${m.build?.jdk || '—'}</dd>
+                        <dt>JVM Target</dt><dd>${m.build?.jvmTarget || '—'}</dd>
+                        <dt>JMH Plugin</dt><dd>${m.build?.jmhPlugin || '—'}</dd>
+                        <dt>AndroidX Benchmark</dt><dd>${m.build?.androidxBenchmark || '—'}</dd>
+                    </dl>
+                </div>
+                <div class="metadata-group">
+                    <h3>Workload</h3>
+                    <dl>
+                        <dt>Seed</dt><dd>${m.workload?.seed ?? '—'}</dd>
+                        <dt>Fingerprint</dt><dd>${m.workload?.fingerprint || '—'}</dd>
+                        <dt>Modules</dt><dd>${m.workload?.moduleCount ?? '—'}</dd>
+                        <dt>Layers</dt><dd>${formatMetadataMap(m.workload?.modulesByLayer)}</dd>
+                        <dt>Dependency edges</dt><dd>${m.workload?.dependencyEdgeCount ?? '—'}</dd>
+                        <dt>Contributions</dt><dd>${m.workload?.contributionCount ?? '—'}</dd>
+                        <dt>Contribution kinds</dt><dd>${formatMetadataMap(m.workload?.contributionsByKind)}</dd>
+                        <dt>Subcomponents</dt><dd>${formatMetadataMap(m.workload?.subcomponents)}</dd>
+                    </dl>
+                </div>
+                <div class="metadata-group">
+                    <h3>Effective Options</h3>
+                    <dl>
+                        <dt>Suites</dt><dd>${m.options?.benchmarkType || '—'}</dd>
+                        <dt>Modes</dt><dd>${m.options?.modes?.join(', ') || '—'}</dd>
+                        <dt>Graph sharding</dt><dd>${m.options?.graphSharding ? `${m.options.graphSharding.requested} (effective ${m.options.graphSharding.effective})` : '—'}</dd>
+                        <dt>Switching providers</dt><dd>${m.options?.switchingProviders ?? '—'}</dd>
+                        <dt>Runtime tracing</dt><dd>${m.options?.runtimeTracing ?? '—'}</dd>
+                        <dt>Macrobenchmark</dt><dd>${m.options?.includeMacrobenchmark ?? '—'}</dd>
+                        <dt>JMH GC profiler</dt><dd>${m.options?.jmhGcProfiler ?? '—'}</dd>
+                        <dt>R8 runtime program input</dt><dd>${m.options?.r8RuntimeClasspathAsProgramInput ?? '—'}</dd>
+                        <dt>Dagger fastInit</dt><dd>${m.options?.dagger?.fastInit || '—'}</dd>
+                        <dt>Dagger validation</dt><dd>${formatMetadataMap(m.options?.dagger)}</dd>
+                    </dl>
+                </div>
+                <div class="metadata-group">
+                    <h3>Repository</h3>
+                    <dl>
+                        <dt>Commit</dt><dd>${formatCommit(m.repository?.commit)}</dd>
+                        <dt>Branch</dt><dd>${m.repository?.branch || '—'}</dd>
+                        <dt>Dirty</dt><dd>${m.repository?.dirty ?? '—'}</dd>
+                        <dt>Dirty diff fingerprint</dt><dd>${m.repository?.dirtyDiffFingerprint || '—'}</dd>
+                    </dl>
+                </div>
+                <div class="metadata-group">
+                    <h3>System Info</h3>
+                    <dl>
+                        <dt>OS</dt><dd>${m.system?.os || '—'}</dd>
+                        <dt>CPU</dt><dd>${m.system?.cpu || '—'}</dd>
+                        <dt>RAM</dt><dd>${m.system?.ram || '—'}</dd>
+                    </dl>
+                </div>
+                ${hasAndroid ? `
+                <div class="metadata-group">
+                    <h3>Android Device</h3>
+                    <dl>
+                        <dt>Serial</dt><dd>${m.android?.serial || '—'}</dd>
+                        <dt>Manufacturer</dt><dd>${m.android?.manufacturer || '—'}</dd>
+                        <dt>Device</dt><dd>${m.android?.device || '—'}</dd>
+                        <dt>Android Version</dt><dd>${m.android?.version || '—'}</dd>
+                        <dt>SDK</dt><dd>${m.android?.sdk || '—'}</dd>
+                        <dt>ABI</dt><dd>${m.android?.abi || '—'}</dd>
+                        <dt>Build Fingerprint</dt><dd>${m.android?.buildFingerprint || '—'}</dd>
+                    </dl>
+                </div>
+                ` : ''}
+            </div>
+        </div>
+    `;
+}
+
+function formatBytes(bytes) {
+    if (bytes === null || bytes === undefined) return '—';
+    const kb = bytes / 1024;
+    if (kb < 1024) return kb.toFixed(1) + ' KB';
+    return (kb / 1024).toFixed(2) + ' MB';
+}
+
+function formatDiffBytes(ref1, ref2) {
+    if (!ref1 || !ref2) return '—';
+    const diff = ref2 - ref1;
+    const pct = ref1 ? ((diff / ref1) * 100).toFixed(1) : 0;
+    const sign = diff > 0 ? '+' : '';
+    const cls = diff < 0 ? 'better' : (diff > 0 ? 'worse' : '');
+    return `<span class="${cls}">${sign}${formatBytes(diff)} (${sign}${pct}%)</span>`;
+}
+
+function formatDiffCount(ref1, ref2) {
+    if (ref1 === null || ref1 === undefined || ref2 === null || ref2 === undefined) return '—';
+    const diff = ref2 - ref1;
+    if (diff === 0) return '<span>0</span>';
+    const pct = ref1 ? ((diff / ref1) * 100).toFixed(1) : 0;
+    const sign = diff > 0 ? '+' : '';
+    const cls = diff < 0 ? 'better' : (diff > 0 ? 'worse' : '');
+    return `<span class="${cls}">${sign}${diff.toLocaleString()} (${sign}${pct}%)</span>`;
+}
+
+// Format value with delta annotation on second line for readability
+function formatBytesWithDelta(newVal, oldVal) {
+    if (newVal === null || newVal === undefined) return '—';
+    const formatted = formatBytes(newVal);
+    if (oldVal === null || oldVal === undefined) return formatted;
+    const diff = newVal - oldVal;
+    if (diff === 0) return formatted;
+    const pct = oldVal ? ((diff / oldVal) * 100).toFixed(1) : 0;
+    const sign = diff > 0 ? '+' : '';
+    const cls = diff < 0 ? 'better' : (diff > 0 ? 'worse' : '');
+    return `${formatted}<br><span class="${cls}">(${sign}${pct}%)</span>`;
+}
+
+function formatCountWithDelta(newVal, oldVal) {
+    if (newVal === null || newVal === undefined) return '—';
+    const formatted = newVal.toLocaleString();
+    if (oldVal === null || oldVal === undefined) return formatted;
+    const diff = newVal - oldVal;
+    if (diff === 0) return formatted;
+    // Handle division by zero: if oldVal is 0, just show the raw difference
+    const pct = oldVal !== 0 ? ((diff / oldVal) * 100).toFixed(1) : null;
+    const sign = diff > 0 ? '+' : '';
+    const cls = diff < 0 ? 'better' : (diff > 0 ? 'worse' : '');
+    if (pct !== null) {
+        return `${formatted}<br><span class="${cls}">(${sign}${pct}%)</span>`;
+    }
+    return `${formatted}<br><span class="${cls}">(${sign}${diff})</span>`;
+}
+
+// Format a delta comparison (for cross-framework tables)
+function formatDelta(newVal, oldVal) {
+    if (newVal === null || newVal === undefined || oldVal === null || oldVal === undefined) return '—';
+    const diff = newVal - oldVal;
+    if (diff === 0) return '0';
+    const sign = diff > 0 ? '+' : '';
+    // Handle division by zero: if oldVal is 0, just show the raw difference
+    const pct = oldVal !== 0 ? ((diff / oldVal) * 100).toFixed(1) : null;
+    const cls = diff < 0 ? 'better' : 'worse';
+    if (pct !== null) {
+        return `<span class="${cls}">${sign}${diff.toLocaleString()} (${sign}${pct}%)</span>`;
+    }
+    return `<span class="${cls}">${sign}${diff.toLocaleString()}</span>`;
+}
+
+function formatBytesDelta(newVal, oldVal) {
+    if (newVal === null || newVal === undefined || oldVal === null || oldVal === undefined) return '—';
+    const diff = newVal - oldVal;
+    if (diff === 0) return '0';
+    const sign = diff > 0 ? '+' : '';
+    // Handle division by zero: if oldVal is 0, just show the raw difference
+    const pct = oldVal !== 0 ? ((diff / oldVal) * 100).toFixed(1) : null;
+    const cls = diff < 0 ? 'better' : 'worse';
+    const diffFormatted = formatBytes(Math.abs(diff));
+    if (pct !== null) {
+        return `<span class="${cls}">${sign}${diffFormatted} (${sign}${pct}%)</span>`;
+    }
+    return `<span class="${cls}">${sign}${diffFormatted}</span>`;
+}
+
+function formatVsBaseline(value, baselineValue) {
+    if (value === null || value === undefined || baselineValue === null || baselineValue === undefined) return '—';
+    if (value === baselineValue) return '<span class="vs-baseline baseline">baseline</span>';
+    const pct = ((value - baselineValue) / baselineValue * 100).toFixed(1);
+    const sign = pct > 0 ? '+' : '';
+    // For size/count metrics: lower is better, so positive % is worse
+    const cls = pct < 0 ? 'better' : (pct > 0 ? 'worse' : '');
+    return `<span class="vs-baseline ${cls}">${sign}${pct}%</span>`;
+}
+
+function renderBinaryMetrics() {
+    const bm = benchmarkData.binaryMetrics;
+    if (!bm) return;
+    const container = document.getElementById('binaryMetrics');
+    const hasRef2 = benchmarkData.refs?.ref2;
+
+    // Get list of available frameworks
+    const frameworks = [];
+    if (bm.classes) bm.classes.forEach(c => { if (!frameworks.find(f => f.key === c.key)) frameworks.push({key: c.key, name: c.framework}); });
+    if (bm.r8Jars) bm.r8Jars.forEach(j => { if (!frameworks.find(f => f.key === j.key)) frameworks.push({key: j.key, name: j.framework}); });
+    if (bm.apks) bm.apks.forEach(a => { if (!frameworks.find(f => f.key === a.key)) frameworks.push({key: a.key, name: a.framework}); });
+
+    // Prefer Metro as the binary-metrics baseline when it is available.
+    if (!frameworks.find(f => f.key === selectedBaseline)) {
+        selectedBaseline = frameworks.some(f => f.key === 'metro')
+            ? 'metro'
+            : (frameworks[0]?.key || 'metro');
+    }
+
+    const showVsBaseline = frameworks.length > 1;
+    const getBaseline = (items, refKey) => {
+        const item = items?.find(i => i.key === selectedBaseline);
+        return item?.[refKey] ?? (refKey === 'ref2' ? item?.ref1 : null);
+    };
+
+    const hasMetrics = [bm.classes, bm.r8Jars, bm.apks].some(items => items?.length);
+    let html = hasMetrics
+        ? '<h2 class="binary-metrics-heading">Binary Metrics</h2><div class="notes-section"><h3>Notes</h3><ul><li>Field, method, and class counts are not exactly like-for-like. kotlin-inject generates a simple map, while Koin does not generate a static graph implementation.</li></ul></div>'
+        : '';
+
+    // Class metrics
+    if (bm.classes && bm.classes.length > 0) {
+        const baselineData = getBaseline(bm.classes, 'ref1');
+        const metroClass = bm.classes.find(c => c.key === 'metro');
+        const metroRef2 = metroClass?.ref2;
+
+        html += '<div class="benchmark-section"><h2>Pre-Minification Classes</h2>';
+        html += '<table><thead><tr>';
+        if (showVsBaseline) html += '<th></th>';
+        html += '<th>Framework</th>';
+        html += '<th class="numeric">Fields</th><th class="numeric">Methods</th><th class="numeric">Shards</th><th class="numeric">Size</th><th class="numeric">Classes</th>';
+        if (showVsBaseline) html += '<th class="numeric">Size vs <span class="baseline-header">' + getBaselineLabel() + '</span></th>';
+        if (hasRef2) html += '<th class="numeric">ref2 Fields</th><th class="numeric">ref2 Methods</th><th class="numeric">ref2 Shards</th><th class="numeric">ref2 Size</th>';
+        html += '</tr></thead><tbody>';
+        bm.classes.forEach(c => {
+            const isBaseline = c.key === selectedBaseline;
+            const rowClass = isBaseline ? 'baseline-row' : '';
+            const isMetro = c.key === 'metro';
+            // Only show ref2 data for metro (the actual framework that was benchmarked on ref2)
+            const hasRef2Data = isMetro && c.ref2;
+
+            html += `<tr class="${rowClass}">`;
+            if (showVsBaseline) html += `<td class="baseline-select" onclick="setBaseline('${c.key}')"><span class="baseline-radio ${isBaseline ? 'selected' : ''}"></span></td>`;
+            html += `<td class="framework" style="color: ${colors[c.key]}">${c.framework}</td>`;
+            html += `<td class="numeric">${c.ref1?.fields ?? '—'}</td>`;
+            html += `<td class="numeric">${c.ref1?.methods ?? '—'}</td>`;
+            html += `<td class="numeric">${c.ref1?.shards ?? '—'}</td>`;
+            html += `<td class="numeric">${c.ref1 ? formatBytes(c.ref1.sizeBytes) : '—'}</td>`;
+            html += `<td class="numeric">${c.ref1?.classes?.length ?? '—'}</td>`;
+            if (showVsBaseline) html += `<td class="numeric">${formatVsBaseline(c.ref1?.sizeBytes, baselineData?.sizeBytes)}</td>`;
+            if (hasRef2) {
+                if (hasRef2Data) {
+                    // Show ref2 values with delta annotation (comparing to ref1)
+                    html += `<td class="numeric">${formatCountWithDelta(c.ref2?.fields, c.ref1?.fields)}</td>`;
+                    html += `<td class="numeric">${formatCountWithDelta(c.ref2?.methods, c.ref1?.methods)}</td>`;
+                    html += `<td class="numeric">${formatCountWithDelta(c.ref2?.shards, c.ref1?.shards)}</td>`;
+                    html += `<td class="numeric">${formatBytesWithDelta(c.ref2?.sizeBytes, c.ref1?.sizeBytes)}</td>`;
+                } else {
+                    // Other frameworks were not run on ref2.
+                    html += '<td class="numeric no-data">—</td><td class="numeric no-data">—</td><td class="numeric no-data">—</td><td class="numeric no-data">—</td>';
+                }
+            }
+            html += '</tr>';
+        });
+        html += '</tbody></table>';
+
+        // Cross-framework comparison section (Metro ref2 vs Other Frameworks ref1)
+        if (hasRef2 && metroRef2 && bm.classes.length > 1) {
+            html += '<h3 style="margin-top:1.5rem;font-size:1rem;color:#666;">Metro (ref2) vs Other Frameworks (ref1)</h3>';
+            html += '<table><thead><tr><th>Comparison</th><th class="numeric">Δ Fields</th><th class="numeric">Δ Methods</th><th class="numeric">Δ Shards</th><th class="numeric">Δ Size</th></tr></thead><tbody>';
+            bm.classes.filter(c => c.key !== 'metro').forEach(c => {
+                html += `<tr><td style="color: ${colors[c.key]}">vs ${c.framework}</td>`;
+                html += `<td class="numeric">${formatDelta(metroRef2?.fields, c.ref1?.fields)}</td>`;
+                html += `<td class="numeric">${formatDelta(metroRef2?.methods, c.ref1?.methods)}</td>`;
+                html += `<td class="numeric">${formatDelta(metroRef2?.shards, c.ref1?.shards)}</td>`;
+                html += `<td class="numeric">${formatBytesDelta(metroRef2?.sizeBytes, c.ref1?.sizeBytes)}</td>`;
+                html += '</tr>';
+            });
+            html += '</tbody></table>';
+        }
+        html += '</div>';
+    }
+
+    // R8 JAR metrics
+    if (bm.r8Jars && bm.r8Jars.length > 0) {
+        const baselineData = getBaseline(bm.r8Jars, 'ref1');
+        const metroJar = bm.r8Jars.find(j => j.key === 'metro');
+        const metroRef2 = metroJar?.ref2;
+
+        html += '<div class="benchmark-section"><h2>R8-Minified JAR</h2>';
+        html += '<table><thead><tr>';
+        if (showVsBaseline) html += '<th></th>';
+        html += '<th>Framework</th>';
+        html += '<th class="numeric">JAR Size</th><th class="numeric">Classes</th><th class="numeric">Methods</th><th class="numeric">Fields</th>';
+        if (showVsBaseline) html += '<th class="numeric">JAR size vs <span class="baseline-header">' + getBaselineLabel() + '</span></th>';
+        if (hasRef2) html += '<th class="numeric">ref2 Size</th><th class="numeric">ref2 Classes</th><th class="numeric">ref2 Methods</th><th class="numeric">ref2 Fields</th>';
+        html += '</tr></thead><tbody>';
+        bm.r8Jars.forEach(j => {
+            const isBaseline = j.key === selectedBaseline;
+            const rowClass = isBaseline ? 'baseline-row' : '';
+            const isMetro = j.key === 'metro';
+            // Only show ref2 data for metro (the actual framework that was benchmarked on ref2)
+            const hasRef2Data = isMetro && j.ref2;
+
+            html += `<tr class="${rowClass}">`;
+            if (showVsBaseline) html += `<td class="baseline-select" onclick="setBaseline('${j.key}')"><span class="baseline-radio ${isBaseline ? 'selected' : ''}"></span></td>`;
+            html += `<td class="framework" style="color: ${colors[j.key]}">${j.framework}</td>`;
+            html += `<td class="numeric">${j.ref1 ? formatBytes(j.ref1.sizeBytes) : '—'}</td>`;
+            html += `<td class="numeric">${j.ref1?.classCount?.toLocaleString() ?? '—'}</td>`;
+            html += `<td class="numeric">${j.ref1?.methods?.toLocaleString() ?? '—'}</td>`;
+            html += `<td class="numeric">${j.ref1?.fields?.toLocaleString() ?? '—'}</td>`;
+            if (showVsBaseline) html += `<td class="numeric">${formatVsBaseline(j.ref1?.sizeBytes, baselineData?.sizeBytes)}</td>`;
+            if (hasRef2) {
+                if (hasRef2Data) {
+                    // Show ref2 values with delta annotation (comparing to ref1)
+                    html += `<td class="numeric">${formatBytesWithDelta(j.ref2?.sizeBytes, j.ref1?.sizeBytes)}</td>`;
+                    html += `<td class="numeric">${formatCountWithDelta(j.ref2?.classCount, j.ref1?.classCount)}</td>`;
+                    html += `<td class="numeric">${formatCountWithDelta(j.ref2?.methods, j.ref1?.methods)}</td>`;
+                    html += `<td class="numeric">${formatCountWithDelta(j.ref2?.fields, j.ref1?.fields)}</td>`;
+                } else {
+                    // Other frameworks were not run on ref2.
+                    html += '<td class="numeric no-data">—</td><td class="numeric no-data">—</td><td class="numeric no-data">—</td><td class="numeric no-data">—</td>';
+                }
+            }
+            html += '</tr>';
+        });
+        html += '</tbody></table>';
+
+        // Cross-framework comparison section (Metro ref2 vs Other Frameworks ref1)
+        if (hasRef2 && metroRef2 && bm.r8Jars.length > 1) {
+            html += '<h3 style="margin-top:1.5rem;font-size:1rem;color:#666;">Metro (ref2) vs Other Frameworks (ref1)</h3>';
+            html += '<table><thead><tr><th>Comparison</th><th class="numeric">Δ JAR Size</th><th class="numeric">Δ Classes</th><th class="numeric">Δ Methods</th><th class="numeric">Δ Fields</th></tr></thead><tbody>';
+            bm.r8Jars.filter(j => j.key !== 'metro').forEach(j => {
+                html += `<tr><td style="color: ${colors[j.key]}">vs ${j.framework}</td>`;
+                html += `<td class="numeric">${formatBytesDelta(metroRef2?.sizeBytes, j.ref1?.sizeBytes)}</td>`;
+                html += `<td class="numeric">${formatDelta(metroRef2?.classCount, j.ref1?.classCount)}</td>`;
+                html += `<td class="numeric">${formatDelta(metroRef2?.methods, j.ref1?.methods)}</td>`;
+                html += `<td class="numeric">${formatDelta(metroRef2?.fields, j.ref1?.fields)}</td>`;
+                html += '</tr>';
+            });
+            html += '</tbody></table>';
+        }
+        html += '</div>';
+    }
+
+    // APK metrics
+    if (bm.apks && bm.apks.length > 0) {
+        const baselineData = getBaseline(bm.apks, 'ref1');
+        const metroApk = bm.apks.find(a => a.key === 'metro');
+        const metroRef2 = metroApk?.ref2;
+
+        html += '<div class="benchmark-section"><h2>Android APK</h2>';
+        html += '<table><thead><tr>';
+        if (showVsBaseline) html += '<th></th>';
+        html += '<th>Framework</th>';
+        html += '<th class="numeric">APK Size</th>';
+        html += '<th class="numeric">DEX Size</th>';
+        html += '<th class="numeric">DEX Classes</th>';
+        html += '<th class="numeric">DEX Methods</th>';
+        html += '<th class="numeric">DEX Fields</th>';
+        if (showVsBaseline) html += '<th class="numeric">APK size vs <span class="baseline-header">' + getBaselineLabel() + '</span></th>';
+        if (hasRef2) html += '<th class="numeric">ref2 APK</th><th class="numeric">ref2 DEX</th><th class="numeric">ref2 Classes</th><th class="numeric">ref2 Methods</th><th class="numeric">ref2 Fields</th>';
+        html += '</tr></thead><tbody>';
+        bm.apks.forEach(a => {
+            const isBaseline = a.key === selectedBaseline;
+            const rowClass = isBaseline ? 'baseline-row' : '';
+            const isMetro = a.key === 'metro';
+            // Only show ref2 data for metro (the actual framework that was benchmarked on ref2)
+            const hasRef2Data = isMetro && a.ref2;
+
+            html += `<tr class="${rowClass}">`;
+            if (showVsBaseline) html += `<td class="baseline-select" onclick="setBaseline('${a.key}')"><span class="baseline-radio ${isBaseline ? 'selected' : ''}"></span></td>`;
+            html += `<td class="framework" style="color: ${colors[a.key]}">${a.framework}</td>`;
+            html += `<td class="numeric">${a.ref1 ? formatBytes(a.ref1.sizeBytes) : '—'}</td>`;
+            html += `<td class="numeric">${a.ref1?.dexSizeBytes ? formatBytes(a.ref1.dexSizeBytes) : '—'}</td>`;
+            html += `<td class="numeric">${a.ref1?.dexClasses?.toLocaleString() ?? '—'}</td>`;
+            html += `<td class="numeric">${a.ref1?.dexMethods?.toLocaleString() ?? '—'}</td>`;
+            html += `<td class="numeric">${a.ref1?.dexFields?.toLocaleString() ?? '—'}</td>`;
+            if (showVsBaseline) html += `<td class="numeric">${formatVsBaseline(a.ref1?.sizeBytes, baselineData?.sizeBytes)}</td>`;
+            if (hasRef2) {
+                if (hasRef2Data) {
+                    // Show ref2 values with delta annotation (comparing to ref1)
+                    html += `<td class="numeric">${formatBytesWithDelta(a.ref2?.sizeBytes, a.ref1?.sizeBytes)}</td>`;
+                    html += `<td class="numeric">${formatBytesWithDelta(a.ref2?.dexSizeBytes, a.ref1?.dexSizeBytes)}</td>`;
+                    html += `<td class="numeric">${formatCountWithDelta(a.ref2?.dexClasses, a.ref1?.dexClasses)}</td>`;
+                    html += `<td class="numeric">${formatCountWithDelta(a.ref2?.dexMethods, a.ref1?.dexMethods)}</td>`;
+                    html += `<td class="numeric">${formatCountWithDelta(a.ref2?.dexFields, a.ref1?.dexFields)}</td>`;
+                } else {
+                    // Other frameworks were not run on ref2.
+                    html += '<td class="numeric no-data">—</td><td class="numeric no-data">—</td><td class="numeric no-data">—</td><td class="numeric no-data">—</td><td class="numeric no-data">—</td>';
+                }
+            }
+            html += '</tr>';
+        });
+        html += '</tbody></table>';
+
+        // Cross-framework comparison section (Metro ref2 vs Other Frameworks ref1)
+        if (hasRef2 && metroRef2 && bm.apks.length > 1) {
+            html += '<h3 style="margin-top:1.5rem;font-size:1rem;color:#666;">Metro (ref2) vs Other Frameworks (ref1)</h3>';
+            html += '<table><thead><tr><th>Comparison</th><th class="numeric">Δ APK Size</th><th class="numeric">Δ DEX Size</th><th class="numeric">Δ DEX Classes</th><th class="numeric">Δ DEX Methods</th><th class="numeric">Δ DEX Fields</th></tr></thead><tbody>';
+            bm.apks.filter(a => a.key !== 'metro').forEach(a => {
+                html += `<tr><td style="color: ${colors[a.key]}">vs ${a.framework}</td>`;
+                html += `<td class="numeric">${formatBytesDelta(metroRef2?.sizeBytes, a.ref1?.sizeBytes)}</td>`;
+                html += `<td class="numeric">${formatBytesDelta(metroRef2?.dexSizeBytes, a.ref1?.dexSizeBytes)}</td>`;
+                html += `<td class="numeric">${formatDelta(metroRef2?.dexClasses, a.ref1?.dexClasses)}</td>`;
+                html += `<td class="numeric">${formatDelta(metroRef2?.dexMethods, a.ref1?.dexMethods)}</td>`;
+                html += `<td class="numeric">${formatDelta(metroRef2?.dexFields, a.ref1?.dexFields)}</td>`;
+                html += '</tr>';
+            });
+            html += '</tbody></table>';
+        }
+        html += '</div>';
+    }
+
+    container.innerHTML = html;
+}
+
+document.getElementById('date').textContent = new Date(benchmarkData.date).toLocaleString();
+renderRefsInfo(); renderVersions(); renderBenchmarks(); renderBinaryMetrics(); renderMetadata();
+</script>
+</body>
+</html>
