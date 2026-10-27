@@ -4,6 +4,10 @@ Changelog
 **Unreleased**
 --------------
 
+### Fixes
+
+- **[Gradle]** Fix false hidden-dependency reports for contributions from associated compilations, such as main sources in tests. This particularly affects KMP.
+
 1.5.0
 -----
 
