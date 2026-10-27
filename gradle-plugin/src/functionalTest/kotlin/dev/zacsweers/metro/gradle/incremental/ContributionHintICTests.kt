@@ -23,6 +23,72 @@ class ContributionHintICTests :
     requiresMultiplatformIc = false,
   ) {
 
+  // https://github.com/ZacSweers/metro/issues/3017
+  @Test
+  fun upstreamBindingConstructorChangeRecompilesGraphAndDirectCaller() {
+    assumeFirHintsSupported()
+    val fixture =
+      object :
+        MetroProject(
+          multiplatform = false,
+          // A cached compile task wouldn't report which sources Kotlin compiled.
+          additionalGradleProperties =
+            listOf("kotlin.build.report.output=file", "org.gradle.caching=false"),
+        ) {
+        override fun buildGradleProject() = multiModuleProject {
+          root {
+            dependencies(Dependency.implementation(":lib"))
+            sources(
+              source(
+                """
+                @DependencyGraph(AppScope::class)
+                interface AppGraph {
+                  val foo: lib.Foo
+                }
+
+                fun main() = createGraph<AppGraph>().foo.javaClass == directFoo().javaClass
+                """,
+              ),
+              source(
+                "fun directFoo(): lib.Foo = lib.FooImpl(lib.Bar())",
+                "DirectCaller",
+                includeDefaultImports = false,
+              ),
+              source("fun unrelated() = 1", includeDefaultImports = false),
+            )
+          }
+          subproject("lib") {
+            sources(
+              source(
+                """
+                interface Foo
+                @Inject class Bar
+                @Inject class Baz
+
+                @ContributesBinding(AppScope::class)
+                @Inject class FooImpl(val bar: Bar) : Foo
+                """,
+                packageName = "lib",
+              ),
+            )
+          }
+        }
+      }
+
+    val project = fixture.gradleProject
+    project.compileKotlin(":compileKotlin")
+    val reportsDir = project.rootDir.resolve("build/reports/kotlin-build")
+    val initialReports = reportsDir.listFiles().orEmpty().toSet()
+    val foo = project.rootDir.resolve("lib/src/main/kotlin/lib/Foo.kt")
+    // The default keeps the direct call valid after the one-argument JVM constructor is removed.
+    foo.writeText(foo.readText().replace("val bar: Bar", "val bar: Bar, val baz: Baz = Baz()"))
+
+    project.compileKotlin(":compileKotlin")
+    val report = reportsDir.listFiles().orEmpty().single { it !in initialReports }
+    assertThat(compiledMainSources(report)).containsExactly("AppGraph.kt", "DirectCaller.kt")
+    assertThat(project.invokeMain<Boolean>("test.AppGraphKt", target = null)).isTrue()
+  }
+
   // https://github.com/ZacSweers/metro/issues/2890
   @Test
   fun unrelatedPrivateEditDoesNotRecompileInjectOnlyFiles() {

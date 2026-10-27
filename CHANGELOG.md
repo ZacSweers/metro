@@ -6,6 +6,8 @@ Changelog
 
 ### Fixes
 
+
+- **[IR/IC]** Avoid recompiling unrelated files in the graph module when the constructor of an upstream `@Contributes*` class changes.
 - **[Gradle]** Fix false hidden-dependency reports for contributions from associated compilations, such as main sources in tests. This particularly affects KMP.
 
 1.5.0
