@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792900413490,
+  "lastUpdate": 1793210154635,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -26208,6 +26208,62 @@ window.BENCHMARK_DATA = {
             "value": 15958.184,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -1.54%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "f81d1d59~1",
+          "message": "[before] Fix an IC issue around origin classes (#3023)",
+          "timestamp": "2026-10-28T16:55:51Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/f81d1d59beb5edf6b5a3b259e2441bc2ec6893a7"
+        },
+        "date": 1793210154635,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18463.7,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "f81d1d59beb5edf6b5a3b259e2441bc2ec6893a7",
+          "message": "[after] Fix an IC issue around origin classes (#3023)",
+          "timestamp": "2026-10-28T16:55:51Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/f81d1d59beb5edf6b5a3b259e2441bc2ec6893a7"
+        },
+        "date": 1793210154636,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18414.462,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -0.27%"
           }
         ]
       }
