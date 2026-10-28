@@ -603,7 +603,7 @@ jobs:
         if: inputs.multiplatform-target == 'js' || inputs.multiplatform-target == 'wasmJs' || inputs.multiplatform-target == 'all'
         uses: actions/setup-node@v7.1.0
         with:
-          node-version: '24'
+          node-version: '26'
 
       - name: Run multiplatform benchmark
         run: |
