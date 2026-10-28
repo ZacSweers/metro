@@ -15,6 +15,7 @@ import org.gradle.api.artifacts.result.ResolvedComponentResult
 import org.gradle.api.artifacts.result.ResolvedDependencyResult
 import org.gradle.api.artifacts.type.ArtifactTypeDefinition
 import org.gradle.api.provider.Provider
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.plugin.KotlinCompilation
 import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
 
@@ -22,7 +23,7 @@ import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
  * Wires validation to this compilation's dependency configurations. Runtime outputs of the consumer
  * itself are excluded so checks can still run when its graph won't compile.
  */
-@OptIn(ExperimentalMetroGradleApi::class)
+@OptIn(ExperimentalMetroGradleApi::class, ExperimentalKotlinGradlePluginApi::class)
 internal fun registerHiddenDependencyTasks(
   project: Project,
   extension: MetroPluginExtension,
@@ -64,6 +65,8 @@ internal fun registerHiddenDependencyTasks(
       "check${taskQualifier}MetroHiddenDependencies",
       CheckHiddenMetroDependenciesTask::class.java,
     ) { task ->
+      val associatedOutputs =
+        project.files(compilation.allAssociatedCompilations.map { it.output.classesDirs })
       val incoming = runtimeConfiguration.get().incoming
       val artifactViews = buildList {
         add(
@@ -102,14 +105,18 @@ internal fun registerHiddenDependencyTasks(
         val artifacts = view.artifacts
         task.runtimeArtifacts.addAll(
           artifacts.resolvedArtifacts.map { resolved ->
-            resolved.map { artifact ->
-              val id = artifact.id.componentIdentifier
-              MetroValidationArtifact(componentKey(id), id.displayName, artifact.file)
-            }
+            // Associated compilation outputs aren't in the dependency component graph.
+            val visibleFiles = associatedOutputs.files
+            resolved
+              .filter { it.file !in visibleFiles }
+              .map { artifact ->
+                val id = artifact.id.componentIdentifier
+                MetroValidationArtifact(componentKey(id), id.displayName, artifact.file)
+              }
           },
         )
         // Keep the original file collections so Gradle sees each producer's task dependencies.
-        task.runtimeFiles.from(artifacts.artifactFiles)
+        task.runtimeFiles.from(artifacts.artifactFiles.minus(associatedOutputs))
       }
       task.scopes.set(extension.hiddenDependencies.scopes)
       val interop = extension.interop
