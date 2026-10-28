@@ -19,6 +19,70 @@ import org.junit.Test
 class MetroHiddenDependenciesKmpTest {
 
   @Test
+  fun `test compilation uses main contributions without hidden dependency findings`() {
+    val project = DesktopTestProject().gradleProject
+    val checkTask = ":checkDesktopTestMetroHiddenDependencies"
+    val report = project.rootDir.resolve("build/reports/metro/desktop/test/hidden-dependencies.txt")
+    val options = arrayOf("--isolated-projects", "--console=plain")
+
+    val tests = build(project.rootDir, ":desktopTest", *options)
+    assertThat(tests.task(":desktopTest")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+    val checked = build(project.rootDir, checkTask, *options)
+    assertThat(checked.task(checkTask)?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(report.readText()).isEmpty()
+
+    val automaticOptions =
+      arrayOf(
+        ":compileTestKotlinDesktop",
+        "-Pmetro.hiddenDependencies.checkOnCompile=true",
+        *options,
+      )
+    val automatic = build(project.rootDir, *automaticOptions)
+    assertThat(automatic.task(":compileTestKotlinDesktop")?.outcome)
+      .isEqualTo(TaskOutcome.UP_TO_DATE)
+    assertThat(automatic.task(checkTask)?.outcome).isEqualTo(TaskOutcome.UP_TO_DATE)
+    assertThat(report.readText()).isEmpty()
+
+    val cached = build(project.rootDir, *automaticOptions)
+    assertThat(cached.output).contains("Reusing configuration cache")
+    assertThat(cached.task(checkTask)?.outcome).isEqualTo(TaskOutcome.UP_TO_DATE)
+  }
+
+  @Test
+  fun `runtime-only files named main remain hidden from test compilations`() {
+    val project = DesktopTestProject().gradleProject
+    val checkTask = ":checkDesktopTestMetroHiddenDependencies"
+    val options = arrayOf("--isolated-projects", "--console=plain")
+    build(project.rootDir, ":desktopTest", *options)
+
+    // This runtime-only copy has the same basename as the associated output.
+    val mainOutput = project.rootDir.resolve("build/classes/kotlin/desktop/main")
+    val hiddenOutput = project.rootDir.resolve("runtime-only/main")
+    assertThat(mainOutput.copyRecursively(hiddenOutput)).isTrue()
+    project.rootDir
+      .resolve("build.gradle.kts")
+      .appendText(
+        """
+
+        kotlin.sourceSets.named("desktopTest") {
+          dependencies {
+            runtimeOnly(files("runtime-only/main"))
+          }
+        }
+        """
+          .trimIndent(),
+      )
+
+    val result = buildAndFail(project.rootDir, checkTask, *options)
+    assertThat(result.task(checkTask)?.outcome).isEqualTo(TaskOutcome.FAILED)
+    val report =
+      project.rootDir.resolve("build/reports/metro/desktop/test/hidden-dependencies.txt").readText()
+    assertThat(report).contains("Hidden Metro contribution: main")
+    assertThat(report).contains("metro/hints/TestMainBindingsDev_zacsweers_metro_AppScopeKt.class")
+  }
+
+  @Test
   fun `commonJvm hints are inherited by JVM and Android and api exposure clears both reports`() {
     val project = CommonJvmProject().gradleProject
     val jvmTask = ":app:checkJvmMainMetroHiddenDependencies"
@@ -74,6 +138,57 @@ class MetroHiddenDependenciesKmpTest {
   /** Reports use target paths because both targets have a main compilation. */
   private fun GradleProject.report(target: String): String =
     rootDir.resolve("app/build/reports/metro/$target/main/hidden-dependencies.txt").readText()
+
+  /** The test graph consumes a binding from its associated main compilation in the same project. */
+  private class DesktopTestProject :
+    MetroProject(
+      reportsEnabled = false,
+      additionalGradleProperties =
+        listOf(
+          "org.gradle.configuration-cache=true",
+          "org.gradle.configuration-cache.read-only=false",
+        ),
+    ) {
+    override fun multiplatformTargetsBlock(): String =
+      """
+      kotlin {
+        jvm("desktop")
+        sourceSets.commonTest.dependencies { implementation(kotlin("test")) }
+      }
+      """
+        .trimIndent() + "\n"
+
+    override fun sources() =
+      listOf(
+        dev.zacsweers.metro.gradle.source(
+          """
+          @ContributesTo(AppScope::class)
+          interface MainBindings {
+            @Provides fun message(): String = "from main"
+          }
+          """,
+          sourceSet = "desktopMain",
+        ),
+        dev.zacsweers.metro.gradle.source(
+          """
+          import kotlin.test.Test
+          import kotlin.test.assertEquals
+
+          @DependencyGraph(AppScope::class)
+          interface TestGraph {
+            val text: String
+          }
+
+          class MainBindingTest {
+            @Test fun seesMainBinding() {
+              assertEquals("from main", createGraph<TestGraph>().text)
+            }
+          }
+          """,
+          sourceSet = "desktopTest",
+        ),
+      )
+  }
 
   /** The shared group has the only edge to impl and the only hint sources. */
   private class CommonJvmProject :
