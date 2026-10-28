@@ -12,5 +12,5 @@
 2.5.0-Beta1=2.5.0-dev-7307
 # build-2.5.0-Beta2-206 branched at 2.5.0-dev-10257
 2.5.0-Beta2=2.5.0-dev-10106
-# build-2.5.0-RC-222 branched at 2.5.0-dev-10257
+# build-2.5.0-RC-255 branched at 2.5.0-dev-10257
 2.5.0-RC=2.5.0-dev-10106
