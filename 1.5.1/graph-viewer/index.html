@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Graph viewer · Metro</title>
+  <link rel="icon" href="pluginIcon_dark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="host.css">
+</head>
+<body>
+  <header class="host-header">
+    <a class="brand" href="../graph-analysis/" aria-label="Metro graph analysis documentation">
+      <img src="pluginIcon_dark.svg" width="32" height="32" alt="">
+      <span>metro</span>
+    </a>
+    <span class="header-title">Graph viewer</span>
+    <a class="docs-link" href="../graph-analysis/">Docs ↗</a>
+  </header>
+
+  <main id="workspace">
+    <section id="welcome" class="welcome" aria-labelledby="welcome-title">
+      <div class="route-lines" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+      <h1 id="welcome-title">Explore your dependency graphs</h1>
+      <p>Open Metro compiler reports to browse bindings, inspect dependencies, and follow routes from graph roots.</p>
+      <div id="drop-zone" class="drop-zone">
+        <svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M16 21V5m-6 6 6-6 6 6M6 21v5h20v-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <h2>Drop JSON reports here</h2>
+        <p>Choose one graph, several related reports, or <code>graphMetadata.json</code>.</p>
+        <div class="welcome-actions">
+          <button id="choose-reports" class="primary-button" type="button">Choose reports</button>
+          <button id="load-sample" class="secondary-button" type="button">Try a sample</button>
+        </div>
+        <p class="local-note">Files stay in your browser</p>
+      </div>
+      <p class="import-help">Include parent and extension reports to see how their bindings connect. You can also add <code>analysis.json</code> for metrics and the longest dependency chain.</p>
+    </section>
+
+    <section id="report-toolbar" class="report-toolbar" aria-label="Loaded graph reports" hidden>
+      <div class="graph-picker">
+        <label for="graph-select">Graph</label>
+        <select id="graph-select"></select>
+      </div>
+      <span id="report-summary" class="report-summary"></span>
+      <div class="report-actions">
+        <button id="add-reports" class="secondary-button" type="button" title="Add related graph reports or analysis to the current files">Add reports</button>
+        <button id="replace-reports" class="text-button" type="button" title="Choose a new set of files">Replace reports</button>
+      </div>
+    </section>
+
+    <div id="messages" class="messages">
+      <div id="import-error" class="error-message" role="alert" hidden></div>
+      <details id="import-warnings" class="warning-message" hidden>
+        <summary id="warning-summary"></summary>
+        <ul id="warning-list"></ul>
+      </details>
+      <div id="analysis-note" class="analysis-note" hidden>Analysis was not included. Browsing and routes are available. Add <code>analysis.json</code> for metrics and the longest chain.</div>
+    </div>
+
+    <section id="viewer-container" class="viewer-container" aria-label="Interactive graph viewer" hidden></section>
+    <div id="loading" class="loading" role="status" aria-live="polite" hidden><span class="spinner" aria-hidden="true"></span><span id="loading-text">Reading reports…</span></div>
+    <div id="drop-overlay" class="drop-overlay" hidden><strong>Drop reports to <span id="drop-action">open them</span></strong><span>JSON files are processed locally.</span></div>
+    <input id="file-picker" type="file" accept=".json,application/json" multiple hidden>
+    <p id="status" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></p>
+  </main>
+  <noscript><p class="noscript">Enable JavaScript to load and explore graph reports.</p></noscript>
+  <script type="module" src="host.js"></script>
+</body>
+</html>
