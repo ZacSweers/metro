@@ -452,7 +452,6 @@ tasks.withType<Test> {
     "-ea",
     "-XX:+UseCodeCacheFlushing",
     "-XX:ReservedCodeCacheSize=256m",
-    "-XX:MaxMetaspaceSize=${if (largeTestMode) "512m" else "1g"}",
     "-XX:CICompilerCount=2",
     "-Djna.nosys=true",
   )

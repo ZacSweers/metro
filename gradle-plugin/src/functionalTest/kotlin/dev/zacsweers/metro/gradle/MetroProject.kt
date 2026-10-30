@@ -346,7 +346,7 @@ abstract class MetroProject(
      */
     private val METRO_TESTKIT_GRADLE_PROPERTIES = buildList {
       add(
-        "org.gradle.jvmargs=-Xmx2g -Dfile.encoding=UTF-8 -XX:+HeapDumpOnOutOfMemoryError -XX:MaxMetaspaceSize=512m",
+        "org.gradle.jvmargs=-Xmx2g -Dfile.encoding=UTF-8 -XX:+HeapDumpOnOutOfMemoryError",
       )
       add("kotlin.daemon.jvmargs=-Xmx2g")
       add("org.gradle.parallel=true")
