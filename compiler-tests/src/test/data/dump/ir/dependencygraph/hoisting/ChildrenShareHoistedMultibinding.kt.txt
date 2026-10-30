@@ -1,7 +1,57 @@
 @BindingContainer
 class MultiBindsProvider {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideTwo", propertyName = "", startOffset = 702, endOffset = 765, newInstanceName = "provideTwo")
+  @CallableMetadata(callableName = "provideMapTwo", propertyName = "", startOffset = 935, endOffset = 1019, newInstanceName = "provideMapTwo")
+  class ProvideMapTwoMetroFactory : Factory<String> {
+    private /* final field */ val instance: MultiBindsProvider = instance
+    private /* final field */ val int2: Provider<Int> = int
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(instance: MultiBindsProvider, int: Provider<Int>): ProvideMapTwoMetroFactory {
+        return ProvideMapTwoMetroFactory(instance = instance, int = int)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun provideMapTwo(instance: MultiBindsProvider, int: Int): String {
+        return instance.provideMapTwo(int = int)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(instance: MultiBindsProvider, int: Provider<Int>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @IntoMap
+    @StringKey(value = "two")
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(int: Int): String {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): String {
+      return ProvideMapTwoMetroFactory/* companion */.provideMapTwo(instance = <this>.#instance, int = <this>.#int2.invoke())
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideTwo", propertyName = "", startOffset = 869, endOffset = 932, newInstanceName = "provideTwo")
   class ProvideTwoMetroFactory : Factory<String> {
     private /* final field */ val instance: MultiBindsProvider = instance
     private /* final field */ val int2: Provider<Int> = int
@@ -56,6 +106,13 @@ class MultiBindsProvider {
   }
 
   @Provides
+  @IntoMap
+  @StringKey(value = "two")
+  fun provideMapTwo(int: Int): String {
+    return "two" + int
+  }
+
+  @Provides
   @IntoSet
   fun provideTwo(int: Int): String {
     return "two" + int
@@ -68,13 +125,13 @@ interface AppGraph : ChildA.Factory, ChildB.Factory {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
+    private val multiBindsProviderInstance: MultiBindsProvider
+      field = MultiBindsProvider()
+
     @DependencyGraph
     private class ChildAImpl : ChildA {
       private val appGraphImpl: Impl
         field = appGraphImpl
-
-      private val multiBindsProviderInstance: MultiBindsProvider
-        field = MultiBindsProvider()
 
       constructor(appGraphImpl: Impl) /* primary */ {
         super/*Any*/()
@@ -84,13 +141,12 @@ interface AppGraph : ChildA.Factory, ChildB.Factory {
 
       override val strings: Set<String>
         override get(): Set<String> {
-          return { // BLOCK
-            buildSet<String>(capacity = 2, builderAction = local fun MutableSet<String>.<anonymous>() {
-              $receiver.add(element = <this>.#appGraphImpl.<get-provideOne>())
-              $receiver.add(element = <this>.#multiBindsProviderInstance.provideTwo(int = <this>.#appGraphImpl.provideInt()))
-            }
-)
-          }
+          return <this>.#appGraphImpl.<get-setOfString>()
+        }
+
+      override val stringsByKey: Map<String, String>
+        override get(): Map<String, String> {
+          return <this>.#appGraphImpl.<get-mapOfStringToString>()
         }
 
     }
@@ -100,9 +156,6 @@ interface AppGraph : ChildA.Factory, ChildB.Factory {
       private val appGraphImpl: Impl
         field = appGraphImpl
 
-      private val multiBindsProviderInstance: MultiBindsProvider
-        field = MultiBindsProvider()
-
       constructor(appGraphImpl: Impl) /* primary */ {
         super/*Any*/()
         /* <init>() */
@@ -111,13 +164,12 @@ interface AppGraph : ChildA.Factory, ChildB.Factory {
 
       override val strings: Set<String>
         override get(): Set<String> {
-          return { // BLOCK
-            buildSet<String>(capacity = 2, builderAction = local fun MutableSet<String>.<anonymous>() {
-              $receiver.add(element = <this>.#appGraphImpl.<get-provideOne>())
-              $receiver.add(element = <this>.#multiBindsProviderInstance.provideTwo(int = <this>.#appGraphImpl.provideInt()))
-            }
-)
-          }
+          return <this>.#appGraphImpl.<get-setOfString>()
+        }
+
+      override val stringsByKey: Map<String, String>
+        override get(): Map<String, String> {
+          return <this>.#appGraphImpl.<get-mapOfStringToString>()
         }
 
     }
@@ -136,10 +188,24 @@ interface AppGraph : ChildA.Factory, ChildB.Factory {
       return ChildBImpl(appGraphImpl = <this>)
     }
 
-    @MultibindingElement(bindingId = "kotlin/String", elementId = "-1837640912")
-    private val provideOne: String
-      private get(): String {
-        return <this>.provideOne(int = <this>.provideInt())
+    private val mapOfStringToString: Map<String, String>
+      private get(): Map<String, String> {
+        return buildMap<String, String>(capacity = 2, builderAction = local fun MutableMap<String, String>.<anonymous>() {
+          $receiver.put(key = "one", value = <this>.provideMapOne(int = <this>.provideInt()))
+          $receiver.put(key = "two", value = <this>.#multiBindsProviderInstance.provideMapTwo(int = <this>.provideInt()))
+        }
+)
+      }
+
+    private val setOfString: Set<String>
+      private get(): Set<String> {
+        return { // BLOCK
+          buildSet<String>(capacity = 2, builderAction = local fun MutableSet<String>.<anonymous>() {
+            $receiver.add(element = <this>.provideOne(int = <this>.provideInt()))
+            $receiver.add(element = <this>.#multiBindsProviderInstance.provideTwo(int = <this>.provideInt()))
+          }
+)
+        }
       }
 
   }
@@ -161,7 +227,7 @@ interface AppGraph : ChildA.Factory, ChildB.Factory {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 548, endOffset = 583, newInstanceName = "provideInt")
+  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 628, endOffset = 663, newInstanceName = "provideInt")
   class ProvideIntMetroFactory : Factory<Int> {
     private /* final field */ val instance: AppGraph = instance
     companion object Companion {
@@ -208,7 +274,57 @@ interface AppGraph : ChildA.Factory, ChildB.Factory {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideOne", propertyName = "", startOffset = 587, endOffset = 650, newInstanceName = "provideOne")
+  @CallableMetadata(callableName = "provideMapOne", propertyName = "", startOffset = 733, endOffset = 817, newInstanceName = "provideMapOne")
+  class ProvideMapOneMetroFactory : Factory<String> {
+    private /* final field */ val instance: AppGraph = instance
+    private /* final field */ val int2: Provider<Int> = int
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(instance: AppGraph, int: Provider<Int>): ProvideMapOneMetroFactory {
+        return ProvideMapOneMetroFactory(instance = instance, int = int)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun provideMapOne(instance: AppGraph, int: Int): String {
+        return instance.provideMapOne(int = int)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(instance: AppGraph, int: Provider<Int>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @IntoMap
+    @StringKey(value = "one")
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(int: Int): String {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): String {
+      return ProvideMapOneMetroFactory/* companion */.provideMapOne(instance = <this>.#instance, int = <this>.#int2.invoke())
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideOne", propertyName = "", startOffset = 667, endOffset = 730, newInstanceName = "provideOne")
   class ProvideOneMetroFactory : Factory<String> {
     private /* final field */ val instance: AppGraph = instance
     private /* final field */ val int2: Provider<Int> = int
@@ -262,6 +378,13 @@ interface AppGraph : ChildA.Factory, ChildB.Factory {
   }
 
   @Provides
+  @IntoMap
+  @StringKey(value = "one")
+  fun provideMapOne(int: Int): String {
+    return "one" + int
+  }
+
+  @Provides
   @IntoSet
   fun provideOne(int: Int): String {
     return "one" + int
@@ -280,6 +403,9 @@ interface ChildA {
   abstract val strings: Set<String>
     abstract get
 
+  abstract val stringsByKey: Map<String, String>
+    abstract get
+
 }
 
 @GraphExtension
@@ -293,4 +419,8 @@ interface ChildB {
   abstract val strings: Set<String>
     abstract get
 
+  abstract val stringsByKey: Map<String, String>
+    abstract get
+
 }
+

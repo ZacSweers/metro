@@ -1824,6 +1824,12 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
       }
 
       @Test
+      @TestMetadata("InheritedManagedBindingContainersShareInstances.kt")
+      public void testInheritedManagedBindingContainersShareInstances() {
+        run("InheritedManagedBindingContainersShareInstances.kt");
+      }
+
+      @Test
       @TestMetadata("InheritedMultibindingDoesNotCreateUnusedGetters.kt")
       public void testInheritedMultibindingDoesNotCreateUnusedGetters() {
         run("InheritedMultibindingDoesNotCreateUnusedGetters.kt");

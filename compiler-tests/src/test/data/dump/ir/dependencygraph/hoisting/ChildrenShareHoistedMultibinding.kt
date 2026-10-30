@@ -2,6 +2,7 @@
 @GraphExtension
 interface ChildA {
   val strings: Set<String>
+  val stringsByKey: Map<String, String>
 
   @GraphExtension.Factory
   interface Factory {
@@ -12,6 +13,7 @@ interface ChildA {
 @GraphExtension
 interface ChildB {
   val strings: Set<String>
+  val stringsByKey: Map<String, String>
 
   @GraphExtension.Factory
   interface Factory {
@@ -24,10 +26,12 @@ interface AppGraph : ChildA.Factory, ChildB.Factory {
   @Provides fun provideInt(): Int = 3
 
   @Provides @IntoSet fun provideOne(int: Int): String = "one$int"
+  @Provides @IntoMap @StringKey("one") fun provideMapOne(int: Int): String = "one$int"
 }
 
 @BindingContainer
 class MultiBindsProvider {
 
   @Provides @IntoSet fun provideTwo(int: Int): String = "two$int"
+  @Provides @IntoMap @StringKey("two") fun provideMapTwo(int: Int): String = "two$int"
 }

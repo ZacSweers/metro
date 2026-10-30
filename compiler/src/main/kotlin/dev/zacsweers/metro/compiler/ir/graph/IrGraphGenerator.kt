@@ -1042,25 +1042,12 @@ internal class IrGraphGenerator(
     }
   }
 
-  /**
-   * Creates managed binding containers instance properties if used.
-   *
-   * Processes all binding containers from this node and extended nodes, creating instance
-   * properties for each that isn't replaced by a dynamic instance.
-   */
+  /** Creates used managed container instances declared by this graph. */
   private fun IrClass.processBindingContainers(
     thisReceiverParameter: IrValueParameter,
     cachedProviderContextKeys: Set<IrContextualTypeKey>,
   ) {
-    val allBindingContainers = buildSet {
-      addAll(node.bindingContainers)
-      addAll(
-        node.allParentGraphs.values.flatMap {
-          (it as? GraphNode.Local)?.bindingContainers.orEmpty()
-        },
-      )
-    }
-    allBindingContainers
+    node.bindingContainers
       .sortedBy { it.kotlinFqName.asString() }
       .forEach { clazz ->
         val typeKey = IrTypeKey(clazz)

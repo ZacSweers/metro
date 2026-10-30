@@ -430,6 +430,14 @@ internal class DependencyGraphTransformer(
         }
       }
 
+      // Children use the container instance owned by this graph.
+      for (bindingContainer in node.bindingContainers) {
+        val typeKey = IrTypeKey(bindingContainer)
+        if (typeKey !in node.graphPrivateKeys) {
+          localParentContext.add(typeKey)
+        }
+      }
+
       // Published @Binds keys: non-private @Binds whose source is @GraphPrivate are exposed to
       // child graphs as parent-resolved dependencies (the child can't inherit the @Binds alias
       // since it can't resolve the private source type).

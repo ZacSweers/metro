@@ -2158,6 +2158,12 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
       }
 
       @Test
+      @TestMetadata("InheritedManagedBindingContainersShareInstances.kt")
+      public void testInheritedManagedBindingContainersShareInstances() {
+        run("InheritedManagedBindingContainersShareInstances.kt");
+      }
+
+      @Test
       @TestMetadata("InheritedMultibindingDoesNotCreateUnusedGetters.kt")
       public void testInheritedMultibindingDoesNotCreateUnusedGetters() {
         run("InheritedMultibindingDoesNotCreateUnusedGetters.kt");
@@ -3167,6 +3173,12 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
       @TestMetadata("IncludesContainersCanTransitivelyIncludeOthers.kt")
       public void testIncludesContainersCanTransitivelyIncludeOthers() {
         run("IncludesContainersCanTransitivelyIncludeOthers.kt");
+      }
+
+      @Test
+      @TestMetadata("InheritedManagedModulesShareInstances.kt")
+      public void testInheritedManagedModulesShareInstances() {
+        run("InheritedManagedModulesShareInstances.kt");
       }
 
       @Test

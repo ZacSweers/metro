@@ -426,12 +426,7 @@ internal class BindingGraphGenerator(
     }
 
     trace("Process binding containers") {
-      val allManagedBindingContainerInstances = buildSet {
-        addAll(node.bindingContainers)
-        addAll(inheritedData.bindingContainers)
-      }
-
-      for (bindingContainer in allManagedBindingContainerInstances) {
+      for (bindingContainer in node.bindingContainers) {
         val typeKey = IrTypeKey(bindingContainer)
 
         val hasDynamicReplacement = typeKey in node.dynamicTypeKeys
@@ -932,7 +927,6 @@ internal class BindingGraphGenerator(
     val providerFactoryKeys = mutableSetOf<IrTypeKey>()
     val bindsCallableKeys = mutableSetOf<IrTypeKey>()
     val bindsCallables = mutableListOf<RawBindsCallableEntry>()
-    val bindingContainers = mutableSetOf<IrClass>()
     val multibindsCallables = mutableSetOf<MultibindsCallable>()
     val optionalKeys = mutableMapOf<IrTypeKey, MutableSet<BindsOptionalOfCallable>>()
     val supertypeAliases = mutableMapOf<IrTypeKey, IrTypeKey>()
@@ -1031,11 +1025,6 @@ internal class BindingGraphGenerator(
         }
       }
 
-      // Collect binding containers (only from Local nodes).
-      if (extendedNode is GraphNode.Local) {
-        bindingContainers.addAll(extendedNode.bindingContainers)
-      }
-
       // Collect multibinds callables.
       for (callable in extendedNode.multibindsCallables) {
         if (callable.typeKey in extendedNode.graphPrivateKeys) continue
@@ -1083,7 +1072,6 @@ internal class BindingGraphGenerator(
     return RawInheritedGraphData(
       providerFactories = providerFactories,
       bindsCallables = bindsCallables,
-      bindingContainers = bindingContainers,
       multibindsCallables = multibindsCallables,
       optionalKeys = optionalKeys,
       supertypeAliases = supertypeAliases,
@@ -1100,7 +1088,6 @@ internal class BindingGraphGenerator(
 private class RawInheritedGraphData(
   val providerFactories: List<RawProviderFactoryEntry>,
   val bindsCallables: List<RawBindsCallableEntry>,
-  val bindingContainers: Set<IrClass>,
   val multibindsCallables: Set<MultibindsCallable>,
   val optionalKeys: Map<IrTypeKey, Set<BindsOptionalOfCallable>>,
   val supertypeAliases: Map<IrTypeKey, IrTypeKey>,
@@ -1138,7 +1125,6 @@ private class RawInheritedGraphData(
     return InheritedGraphData(
       providerFactories = outProviderFactories,
       bindsCallables = outBindsCallables,
-      bindingContainers = bindingContainers,
       multibindsCallables = multibindsCallables,
       optionalKeys = optionalKeys,
       supertypeAliases = supertypeAliases,
@@ -1188,7 +1174,6 @@ private data class PriorityConflictKey(
 private data class InheritedGraphData(
   val providerFactories: Set<Pair<IrTypeKey, ProviderFactory>>,
   val bindsCallables: List<Pair<IrTypeKey, BindsCallable>>,
-  val bindingContainers: Set<IrClass>,
   val multibindsCallables: Set<MultibindsCallable>,
   val optionalKeys: Map<IrTypeKey, Set<BindsOptionalOfCallable>>,
   val supertypeAliases: Map<IrTypeKey, IrTypeKey>,

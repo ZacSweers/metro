@@ -1824,6 +1824,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
       }
 
       @Test
+      @TestMetadata("InheritedManagedBindingContainersShareInstances.kt")
+      public void testInheritedManagedBindingContainersShareInstances() {
+        run("InheritedManagedBindingContainersShareInstances.kt");
+      }
+
+      @Test
       @TestMetadata("InheritedMultibindingDoesNotCreateUnusedGetters.kt")
       public void testInheritedMultibindingDoesNotCreateUnusedGetters() {
         run("InheritedMultibindingDoesNotCreateUnusedGetters.kt");
