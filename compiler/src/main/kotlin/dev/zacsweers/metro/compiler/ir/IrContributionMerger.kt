@@ -391,7 +391,8 @@ internal class IrContributionMerger(
         // origin class for @ContributesBinding(replaces=...) annotations
         for (container in mutableContributedBindingContainers.values) {
           val originClassId = container.originClassId() ?: continue
-          val originClass = container.lookupClass(originClassId)?.owner ?: continue
+          // The graph owns the lookup for containers from dependencies.
+          val originClass = callingDeclaration.lookupClass(originClassId)?.owner ?: continue
           yield(originClass)
         }
       }

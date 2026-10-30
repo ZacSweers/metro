@@ -22,7 +22,7 @@ anvil = "0.5.4"
 circuit = "0.39.0"
 compose-jb = "1.12.2"
 jetbrains-lifecycle-navigation3 = "2.11.0"
-jetbrains-navigation3 = "1.1.2"
+jetbrains-navigation3 = "1.2.0"
 dagger = "2.60.1"
 gjf = "1.35.0"
 jdk = "25"
@@ -37,21 +37,21 @@ kotlinPublished = "2.3.0"
 kotlinInject = "0.9.0"
 koin = "4.2.2"
 koin-compiler = "1.2.1"
-metro = "1.4.5"
+metro = "1.5.0"
 kotlinInject-anvil = "0.1.7"
 kotlinx-benchmark = "0.4.17"
 kotlinx-browser = "0.5.0"
 kotlinx-coroutines = "1.11.0"
 kotlinx-serialization = "1.11.0"
 ksp = "2.3.12"
-ktor = "3.6.0"
+ktor = "3.6.1"
 mordant = "3.1.0"
 okhttp = "5.5.1"
 okio = "3.18.2"
 pluginId = "dev.zacsweers.metro.compiler"
 poko = "0.23.2"
 tracing = "2.0.5"
-wire = "7.1.0"
+wire = "7.1.2"
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
@@ -68,7 +68,7 @@ dependencyGuard = { id = "com.dropbox.dependency-guard", version = "0.5.0" }
 dokka = { id = "org.jetbrains.dokka", version = "2.2.0" }
 gradleTestRetry = { id = "org.gradle.test-retry", version = "1.6.6" }
 intellijPlatform = { id = "org.jetbrains.intellij.platform", version = "2.19.0" }
-jmh = { id = "me.champeau.jmh", version = "0.7.3" }
+jmh = { id = "me.champeau.jmh", version = "0.7.4" }
 koin-compiler = { id = "io.insert-koin.compiler.plugin", version.ref = "koin-compiler" }
 kotlin-allopen = { id = "org.jetbrains.kotlin.plugin.allopen", version.ref = "kotlin" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
@@ -146,7 +146,7 @@ dagger-compiler = { module = "com.google.dagger:dagger-compiler", version.ref = 
 hilt-core = { module = "com.google.dagger:hilt-core", version.ref = "dagger" }
 hilt-compiler = { module = "com.google.dagger:hilt-compiler", version.ref = "dagger" }
 
-foundry-betterProps = "com.slack.foundry:better-gradle-properties:0.37.3"
+foundry-betterProps = "com.slack.foundry:better-gradle-properties:0.37.4"
 
 guice = "com.google.inject:guice:7.0.0"
 guice-assistedInject = "com.google.inject.extensions:guice-assistedinject:7.0.0"

@@ -17,13 +17,14 @@ CHANGELOG_FILE="CHANGELOG.md"
 
 usage() {
     cat <<EOF
-Usage: $0 [--dry-run] <version | --major | --minor | --patch>
+Usage: $0 [--dry-run] [--publish-idea-plugin] <version | --major | --minor | --patch>
 
   version    Explicit version to release (e.g., 1.2.3)
   --major    Bump the latest CHANGELOG.md release by one major version
   --minor    Bump the latest CHANGELOG.md release by one minor version
   --patch    Bump the latest CHANGELOG.md release by one patch version
   --dry-run  Print what would be done without making changes
+  --publish-idea-plugin  Sign, verify, and publish the IDE plugin for stable releases
   --help     Show this help message
 EOF
 }
@@ -248,6 +249,7 @@ preflight() {
 }
 
 DRY_RUN=false
+PUBLISH_IDEA_PLUGIN=false
 args=()
 for arg in "$@"; do
     case "$arg" in
@@ -257,6 +259,9 @@ for arg in "$@"; do
             ;;
         --dry-run)
             DRY_RUN=true
+            ;;
+        --publish-idea-plugin)
+            PUBLISH_IDEA_PLUGIN=true
             ;;
         --major|--minor|--patch)
             args+=("$arg")
@@ -314,7 +319,7 @@ if $DRY_RUN; then
     echo "  5. Run ./scripts/update-compatibility-docs.sh"
     echo "  6. Commit: 'Prepare for release $NEW_VERSION.'"
     next_step=7
-    if is_stable_version "$NEW_VERSION"; then
+    if $PUBLISH_IDEA_PLUGIN && is_stable_version "$NEW_VERSION"; then
         echo "  $next_step. Run ./metrow publish-idea-plugin --local --version $NEW_VERSION"
         next_step=$((next_step + 1))
     fi
@@ -322,7 +327,7 @@ if $DRY_RUN; then
     next_step=$((next_step + 1))
     echo "  $next_step. Run ./metrow publish"
     next_step=$((next_step + 1))
-    if is_stable_version "$NEW_VERSION"; then
+    if $PUBLISH_IDEA_PLUGIN && is_stable_version "$NEW_VERSION"; then
         echo "  $next_step. Run ./metrow publish-idea-plugin --version $NEW_VERSION"
         next_step=$((next_step + 1))
     fi
@@ -365,7 +370,7 @@ promote_changelog "$CHANGELOG_FILE" "$NEW_VERSION"
 
 git commit -am "Prepare for release $NEW_VERSION."
 
-if is_stable_version "$NEW_VERSION"; then
+if $PUBLISH_IDEA_PLUGIN && is_stable_version "$NEW_VERSION"; then
     ./metrow publish-idea-plugin --local --version "$NEW_VERSION"
 fi
 
@@ -374,7 +379,7 @@ git tag -a "$NEW_VERSION" -m "Version $NEW_VERSION"
 # Publish
 ./metrow publish
 
-if is_stable_version "$NEW_VERSION"; then
+if $PUBLISH_IDEA_PLUGIN && is_stable_version "$NEW_VERSION"; then
     ./metrow publish-idea-plugin --version "$NEW_VERSION"
 fi
 
