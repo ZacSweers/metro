@@ -204,6 +204,21 @@ fun androidHomeOrNull(): File? {
 // this unset (JVM only); main runs use a per-target value or `all` to fan out across targets.
 val functionalTestKmpTarget = providers.gradleProperty("metro.functionalTestKmpTarget").orNull
 val testOmitRedundantMirrors = providers.gradleProperty("metro.testOmitRedundantMirrors").orNull
+// The extra CI mode uses the newest supported compiler. Local runs must select a supported version.
+val functionalTestSeparateCompilation =
+  providers
+    .gradleProperty("metro.functionalTestSeparateCompilation")
+    .map(String::toBooleanStrict)
+    .map { enabled ->
+      if (enabled) {
+        require(KotlinToolingVersion(testCompilerVersion) >= KotlinToolingVersion("2.5.0-Beta1")) {
+          "metro.functionalTestSeparateCompilation requires Kotlin 2.5.0-Beta1+. " +
+            "Set -Pmetro.testCompilerVersion=2.5.0-Beta1 (selected: $testCompilerVersion)."
+        }
+      }
+      enabled
+    }
+    .orElse(false)
 
 // These controls let CI experiments tune concurrency and fixture caching independently.
 val functionalTestMaxParallelForks =
@@ -246,6 +261,7 @@ tasks.withType<Test>().configureEach {
 
 tasks.named<Test>("functionalTest") {
   maxParallelForks = functionalTestMaxParallelForks.get()
+  systemProperty("metro.functionalTestSeparateCompilation", functionalTestSeparateCompilation.get())
   testkitConfigurationCache.orNull?.let { systemProperty("metro.testkitConfigurationCache", it) }
   systemProperty("metro.testkitConfigurationCacheReadOnly", testkitConfigurationCacheReadOnly.get())
 }
