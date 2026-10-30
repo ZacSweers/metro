@@ -1,4 +1,69 @@
-@DependencyGraph
+@BindingContainer
+class MultiBindsProvider {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideTwo", propertyName = "", startOffset = 702, endOffset = 765, newInstanceName = "provideTwo")
+  class ProvideTwoMetroFactory : Factory<String> {
+    private /* final field */ val instance: MultiBindsProvider = instance
+    private /* final field */ val int2: Provider<Int> = int
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(instance: MultiBindsProvider, int: Provider<Int>): ProvideTwoMetroFactory {
+        return ProvideTwoMetroFactory(instance = instance, int = int)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun provideTwo(instance: MultiBindsProvider, int: Int): String {
+        return instance.provideTwo(int = int)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(instance: MultiBindsProvider, int: Provider<Int>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @IntoSet
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(int: Int): String {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): String {
+      return ProvideTwoMetroFactory/* companion */.provideTwo(instance = <this>.#instance, int = <this>.#int2.invoke())
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+  @Provides
+  @IntoSet
+  fun provideTwo(int: Int): String {
+    return "two" + int
+  }
+
+}
+
+@DependencyGraph(bindingContainers = [MultiBindsProvider::class])
 interface AppGraph : ChildA.Factory, ChildB.Factory {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
@@ -8,6 +73,9 @@ interface AppGraph : ChildA.Factory, ChildB.Factory {
       private val appGraphImpl: Impl
         field = appGraphImpl
 
+      private val multiBindsProviderInstance: MultiBindsProvider
+        field = MultiBindsProvider()
+
       constructor(appGraphImpl: Impl) /* primary */ {
         super/*Any*/()
         /* <init>() */
@@ -16,7 +84,13 @@ interface AppGraph : ChildA.Factory, ChildB.Factory {
 
       override val strings: Set<String>
         override get(): Set<String> {
-          return <this>.#appGraphImpl.<get-setOfString>()
+          return { // BLOCK
+            buildSet<String>(capacity = 2, builderAction = local fun MutableSet<String>.<anonymous>() {
+              $receiver.add(element = <this>.#appGraphImpl.<get-provideOne>())
+              $receiver.add(element = <this>.#multiBindsProviderInstance.provideTwo(int = <this>.#appGraphImpl.provideInt()))
+            }
+)
+          }
         }
 
     }
@@ -26,6 +100,9 @@ interface AppGraph : ChildA.Factory, ChildB.Factory {
       private val appGraphImpl: Impl
         field = appGraphImpl
 
+      private val multiBindsProviderInstance: MultiBindsProvider
+        field = MultiBindsProvider()
+
       constructor(appGraphImpl: Impl) /* primary */ {
         super/*Any*/()
         /* <init>() */
@@ -34,7 +111,13 @@ interface AppGraph : ChildA.Factory, ChildB.Factory {
 
       override val strings: Set<String>
         override get(): Set<String> {
-          return <this>.#appGraphImpl.<get-setOfString>()
+          return { // BLOCK
+            buildSet<String>(capacity = 2, builderAction = local fun MutableSet<String>.<anonymous>() {
+              $receiver.add(element = <this>.#appGraphImpl.<get-provideOne>())
+              $receiver.add(element = <this>.#multiBindsProviderInstance.provideTwo(int = <this>.#appGraphImpl.provideInt()))
+            }
+)
+          }
         }
 
     }
@@ -53,15 +136,10 @@ interface AppGraph : ChildA.Factory, ChildB.Factory {
       return ChildBImpl(appGraphImpl = <this>)
     }
 
-    private val setOfString: Set<String>
-      private get(): Set<String> {
-        return { // BLOCK
-          buildSet<String>(capacity = 2, builderAction = local fun MutableSet<String>.<anonymous>() {
-            $receiver.add(element = <this>.provideTwo(int = <this>.provideInt()))
-            $receiver.add(element = <this>.provideOne(int = <this>.provideInt()))
-          }
-)
-        }
+    @MultibindingElement(bindingId = "kotlin/String", elementId = "-1837640912")
+    private val provideOne: String
+      private get(): String {
+        return <this>.provideOne(int = <this>.provideInt())
       }
 
   }
@@ -83,7 +161,7 @@ interface AppGraph : ChildA.Factory, ChildB.Factory {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 499, endOffset = 534, newInstanceName = "provideInt")
+  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 548, endOffset = 583, newInstanceName = "provideInt")
   class ProvideIntMetroFactory : Factory<Int> {
     private /* final field */ val instance: AppGraph = instance
     companion object Companion {
@@ -130,7 +208,7 @@ interface AppGraph : ChildA.Factory, ChildB.Factory {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideOne", propertyName = "", startOffset = 538, endOffset = 601, newInstanceName = "provideOne")
+  @CallableMetadata(callableName = "provideOne", propertyName = "", startOffset = 587, endOffset = 650, newInstanceName = "provideOne")
   class ProvideOneMetroFactory : Factory<String> {
     private /* final field */ val instance: AppGraph = instance
     private /* final field */ val int2: Provider<Int> = int
@@ -178,55 +256,6 @@ interface AppGraph : ChildA.Factory, ChildB.Factory {
 
   }
 
-  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideTwo", propertyName = "", startOffset = 605, endOffset = 668, newInstanceName = "provideTwo")
-  class ProvideTwoMetroFactory : Factory<String> {
-    private /* final field */ val instance: AppGraph = instance
-    private /* final field */ val int2: Provider<Int> = int
-    companion object Companion {
-      private constructor() /* primary */ {
-        super/*Any*/()
-        /* <init>() */
-
-      }
-
-      @HiddenFromObjC
-      @JvmStatic
-      @JsStatic
-      fun create(instance: AppGraph, int: Provider<Int>): ProvideTwoMetroFactory {
-        return ProvideTwoMetroFactory(instance = instance, int = int)
-      }
-
-      @HiddenFromObjC
-      @JvmStatic
-      @JsStatic
-      fun provideTwo(instance: AppGraph, int: Int): String {
-        return instance.provideTwo(int = int)
-      }
-
-    }
-
-    @HiddenFromObjC
-    private constructor(instance: AppGraph, int: Provider<Int>) /* primary */ {
-      super/*Any*/()
-      /* <init>() */
-
-    }
-
-    @IntoSet
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun declarationMirror(int: Int): String {
-      return error(message = "Never called")
-    }
-
-    @HiddenFromObjC
-    override operator fun invoke(): String {
-      return ProvideTwoMetroFactory/* companion */.provideTwo(instance = <this>.#instance, int = <this>.#int2.invoke())
-    }
-
-  }
-
   @Provides
   fun provideInt(): Int {
     return 3
@@ -236,12 +265,6 @@ interface AppGraph : ChildA.Factory, ChildB.Factory {
   @IntoSet
   fun provideOne(int: Int): String {
     return "one" + int
-  }
-
-  @Provides
-  @IntoSet
-  fun provideTwo(int: Int): String {
-    return "two" + int
   }
 
 }

@@ -19,11 +19,15 @@ interface ChildB {
   }
 }
 
-@DependencyGraph
+@DependencyGraph(bindingContainers = [MultiBindsProvider::class])
 interface AppGraph : ChildA.Factory, ChildB.Factory {
   @Provides fun provideInt(): Int = 3
 
   @Provides @IntoSet fun provideOne(int: Int): String = "one$int"
+}
+
+@BindingContainer
+class MultiBindsProvider {
 
   @Provides @IntoSet fun provideTwo(int: Int): String = "two$int"
 }
