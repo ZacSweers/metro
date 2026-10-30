@@ -12,6 +12,7 @@ import dev.zacsweers.metro.compiler.ir.ParentContext
 import dev.zacsweers.metro.compiler.ir.ProviderFactory
 import dev.zacsweers.metro.compiler.ir.asCanonicalProviderKey
 import dev.zacsweers.metro.compiler.ir.canonicalize
+import dev.zacsweers.metro.compiler.ir.createAndAddTemporaryVariable
 import dev.zacsweers.metro.compiler.ir.graph.BindingProperty
 import dev.zacsweers.metro.compiler.ir.graph.BindingPropertyContext
 import dev.zacsweers.metro.compiler.ir.graph.GraphMetadataReporter
@@ -41,6 +42,7 @@ import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
+import org.jetbrains.kotlin.ir.builders.irBlock
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetObject
@@ -229,26 +231,24 @@ private constructor(
               else -> AccessType.INSTANCE
             }
 
-          // Determine the correct receiver for property access based on shard context
-          val propertyAccess = generatePropertyAccess(bindingProperty)
-
           val providerOrigin =
             if (storedKey.isWrappedInProvider || storedKey.isWrappedInSuspendProvider) {
               ProviderExpressionOrigin.ProviderProperty
             } else {
               ProviderExpressionOrigin.NewExpression
             }
-          return propertyAccess.toTargetType(
-            actual = actual,
-            requested = accessType,
-            contextualTypeKey = contextualTypeKey,
-            allowPropertyGetter = fieldInitKey == null,
-            // A reused parent multibinding getter builds a new collection on each call, so wrap it
-            // in a provider lambda instead of caching one instance in InstanceFactory.
-            useInstanceFactory = bindingProperty.ownerGraphKey == null,
-            bindingKind = bindingKind,
-            providerOrigin = providerOrigin,
-          )
+          return withBindingPropertyAccess(bindingProperty, accessType) { propertyAccess ->
+            propertyAccess.toTargetType(
+              actual = actual,
+              requested = accessType,
+              contextualTypeKey = contextualTypeKey,
+              allowPropertyGetter = fieldInitKey == null,
+              // A reused parent getter must build a new value on each provider invocation.
+              useInstanceFactory = bindingProperty.ownerGraphKey == null,
+              bindingKind = bindingKind,
+              providerOrigin = providerOrigin,
+            )
+          }
         }
       }
 
@@ -1407,17 +1407,18 @@ private constructor(
         val providerInstance =
           cachedProperty?.let { bindingProperty ->
             val storedKey = bindingProperty.storedKey
-            val propertyAccess = generatePropertyAccess(bindingProperty)
             val actualAccessType = AccessType.of(storedKey)
-            if (actualAccessType != accessType) {
-              propertyAccess.toTargetType(
-                actual = actualAccessType,
-                requested = accessType,
-                contextualTypeKey = lookupKey,
-                useInstanceFactory = bindingProperty.ownerGraphKey == null,
-              )
-            } else {
-              propertyAccess
+            withBindingPropertyAccess(bindingProperty, accessType) { propertyAccess ->
+              if (actualAccessType != accessType) {
+                propertyAccess.toTargetType(
+                  actual = actualAccessType,
+                  requested = accessType,
+                  contextualTypeKey = lookupKey,
+                  useInstanceFactory = bindingProperty.ownerGraphKey == null,
+                )
+              } else {
+                propertyAccess
+              }
             }
           }
             ?: run {
@@ -1511,6 +1512,43 @@ private constructor(
       isProviderProperty = bindingProperty.storedKey.isWrappedInProvider,
       isSuspendProviderProperty = bindingProperty.storedKey.isWrappedInSuspendProvider,
     )
+  }
+
+  /**
+   * Captures the owning ancestor before wrapping its getter in a provider. This keeps the provider
+   * from retaining the child graph. The getter runs on each invocation.
+   *
+   * Generated code inside a child graph looks like:
+   * ```kotlin
+   * val bindingOwner = this.appGraph
+   * val provider = Provider { bindingOwner.getShared() }
+   * ```
+   */
+  context(scope: IrBuilderWithScope)
+  private fun withBindingPropertyAccess(
+    bindingProperty: BindingProperty,
+    accessType: AccessType,
+    transform: (IrExpression) -> IrExpression,
+  ): IrExpression {
+    val ownerGraphKey = bindingProperty.ownerGraphKey
+    val wrapsGetter =
+      AccessType.of(bindingProperty.storedKey) == AccessType.INSTANCE &&
+        accessType != AccessType.INSTANCE
+    if (ownerGraphKey == null || !wrapsGetter) {
+      return transform(generatePropertyAccess(bindingProperty))
+    }
+    return scope.irBlock {
+      val owner =
+        createAndAddTemporaryVariable(ancestorGraphAccess(ownerGraphKey), nameHint = "bindingOwner")
+      val shardProperty = bindingProperty.shardProperty
+      val receiver =
+        if (shardProperty == null) {
+          irGet(owner)
+        } else {
+          irGetProperty(irGet(owner), shardProperty)
+        }
+      +transform(irGetProperty(receiver, bindingProperty.property))
+    }
   }
 
   /** Accesses [bindingProperty] locally or through the ancestor graph that owns it. */
