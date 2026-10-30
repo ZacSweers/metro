@@ -8,11 +8,17 @@ Changelog
 
 - **[IR]** Fix graph extensions creating separate instances of inherited class binding containers. Extensions now reuse the parent instance and can share set and map getters.
 
+### Changes
+
+- Update androidx.tracing to `2.0.5`.
+
 ### Contributors
 
 Special thanks to the following contributors for contributing to this release!
 
 - [@raosangi](https://github.com/raosangi)
+
+### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
 
 1.5.1
 -----
