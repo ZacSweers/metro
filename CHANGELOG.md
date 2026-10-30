@@ -4,6 +4,12 @@ Changelog
 **Unreleased**
 --------------
 
+### Changes
+
+- Update androidx.tracing to `2.0.5`.
+
+### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
+
 1.5.1
 -----
 
