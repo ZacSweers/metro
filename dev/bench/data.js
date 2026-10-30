@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793210154492,
+  "lastUpdate": 1793395783538,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -26264,6 +26264,62 @@ window.BENCHMARK_DATA = {
             "value": 0.2694917900498968,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: +0.49%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "raosangi",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "raosangi",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "09d309b0~1",
+          "message": "[before] Fix graph extensions creating separate instances o",
+          "timestamp": "2026-10-30T20:27:26Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/09d309b03294193e860f2173073be5b19d72b050"
+        },
+        "date": 1793395783538,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.2249176522336181,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "raosangi",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "raosangi",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "09d309b03294193e860f2173073be5b19d72b050",
+          "message": "[after] Fix graph extensions creating separate instances o",
+          "timestamp": "2026-10-30T20:27:26Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/09d309b03294193e860f2173073be5b19d72b050"
+        },
+        "date": 1793395783539,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.22463842518280458,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: -0.12%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793210154635,
+  "lastUpdate": 1793395783777,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -26264,6 +26264,62 @@ window.BENCHMARK_DATA = {
             "value": 18414.462,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -0.27%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "raosangi",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "raosangi",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "09d309b0~1",
+          "message": "[before] Fix graph extensions creating separate instances o",
+          "timestamp": "2026-10-30T20:27:26Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/09d309b03294193e860f2173073be5b19d72b050"
+        },
+        "date": 1793395783777,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 20033.783,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "raosangi",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "raosangi",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "09d309b03294193e860f2173073be5b19d72b050",
+          "message": "[after] Fix graph extensions creating separate instances o",
+          "timestamp": "2026-10-30T20:27:26Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/09d309b03294193e860f2173073be5b19d72b050"
+        },
+        "date": 1793395783778,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 20040.553,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +0.03%"
           }
         ]
       }
