@@ -7,6 +7,8 @@ import dev.zacsweers.metro.compiler.compat.IrGeneratedDeclarationsRegistrarCompa
 import dev.zacsweers.metro.compiler.compat.k240.CompatContextImpl as DelegateType
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
+import org.jetbrains.kotlin.diagnostics.KtSourcelessDiagnosticFactory
+import org.jetbrains.kotlin.ir.IrDiagnosticReporter
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
@@ -19,6 +21,13 @@ public class CompatContextImpl private constructor(private val delegate: Delegat
   public constructor() : this(DelegateType())
 
   override val supportsIrGeneratedClasses: Boolean = true
+
+  override fun IrDiagnosticReporter.reportCompat(
+    factory: KtSourcelessDiagnosticFactory,
+    message: String,
+  ) {
+    report(factory, message, location = null)
+  }
 
   override fun createIrGeneratedDeclarationsRegistrar(
     pluginContext: IrPluginContext,
