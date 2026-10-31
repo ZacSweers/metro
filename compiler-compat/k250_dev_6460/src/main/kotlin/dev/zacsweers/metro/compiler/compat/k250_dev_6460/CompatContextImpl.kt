@@ -7,6 +7,8 @@ import dev.zacsweers.metro.compiler.compat.k2420.CompatContextImpl as DelegateTy
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.KtSourceElementOffsetStrategy
+import org.jetbrains.kotlin.config.LanguageFeature
+import org.jetbrains.kotlin.config.LanguageVersionSettings
 import org.jetbrains.kotlin.diagnostics.KtDiagnostic
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticWithParameters1
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticWithParameters2
@@ -21,7 +23,10 @@ import org.jetbrains.kotlin.ir.declarations.IrPackageFragment
 import org.jetbrains.kotlin.ir.declarations.createEmptyExternalPackageFragment as createEmptyExternalPackageFragmentNative
 import org.jetbrains.kotlin.name.FqName
 
-/** Adapts package fragments and source locations to Kotlin 2.5.0-dev-6460. */
+/**
+ * Adapts package fragments, source locations, and companion feature checks to Kotlin
+ * 2.5.0-dev-6460.
+ */
 public class CompatContextImpl : CompatContext by DelegateType() {
   override fun KtDiagnostic.withSeverityCompat(severity: Severity): KtDiagnostic {
     return when (this) {
@@ -55,6 +60,10 @@ public class CompatContextImpl : CompatContext by DelegateType() {
       newKind,
       KtSourceElementOffsetStrategy.Custom.Initialized(startOffset, endOffset),
     )
+  }
+
+  override fun LanguageVersionSettings.companionBlocksEnabledCompat(): Boolean {
+    return supportsFeature(LanguageFeature.CompanionBlocks)
   }
 
   public class Factory : CompatContext.Factory {
