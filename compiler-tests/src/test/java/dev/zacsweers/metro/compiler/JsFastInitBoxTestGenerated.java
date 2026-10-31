@@ -872,6 +872,70 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
   }
 
   @Nested
+  @TestMetadata("compiler-tests/src/test/data/box/companionblocks")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Companionblocks {
+    private void run(String fileName) {
+      runTest("compiler-tests/src/test/data/box/companionblocks/" + fileName);
+    }
+
+    @Test
+    public void testAllFilesPresentInCompanionblocks() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/companionblocks"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
+    }
+
+    @Test
+    @TestMetadata("InvisibleHelpersAcrossModules.kt")
+    public void testInvisibleHelpersAcrossModules() {
+      run("InvisibleHelpersAcrossModules.kt");
+    }
+
+    @Test
+    @TestMetadata("StaticHelperBytecode.kt")
+    public void testStaticHelperBytecode() {
+      run("StaticHelperBytecode.kt");
+    }
+
+    @Test
+    @TestMetadata("StaticHelperJavaConsumer.kt")
+    public void testStaticHelperJavaConsumer() {
+      run("StaticHelperJavaConsumer.kt");
+    }
+
+    @Test
+    @TestMetadata("StaticHelpers.kt")
+    public void testStaticHelpers() {
+      run("StaticHelpers.kt");
+    }
+
+    @Test
+    @TestMetadata("StaticHelpersMirrorCarrier.kt")
+    public void testStaticHelpersMirrorCarrier() {
+      run("StaticHelpersMirrorCarrier.kt");
+    }
+  }
+
+  @Nested
+  @TestMetadata("compiler-tests/src/test/data/box/companionmode")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Companionmode {
+    private void run(String fileName) {
+      runTest("compiler-tests/src/test/data/box/companionmode/" + fileName);
+    }
+
+    @Test
+    public void testAllFilesPresentInCompanionmode() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/companionmode"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
+    }
+
+    @Test
+    @TestMetadata("CompanionObjectHelpers.kt")
+    public void testCompanionObjectHelpers() {
+      run("CompanionObjectHelpers.kt");
+    }
+  }
+
+  @Nested
   @TestMetadata("compiler-tests/src/test/data/box/contributesgraphextension")
   @TestDataPath("$PROJECT_ROOT")
   public class Contributesgraphextension {

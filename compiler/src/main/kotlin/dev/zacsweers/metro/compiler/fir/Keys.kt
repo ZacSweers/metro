@@ -97,6 +97,11 @@ internal object Keys {
     override fun toString() = "FactoryNewInstanceFunction"
   }
 
+  /** A receiverless compatibility-mode function that delegates to a companion helper. */
+  data object StaticHelperBridgeFunction : GeneratedDeclarationKey() {
+    override fun toString() = "StaticHelperBridgeFunction"
+  }
+
   data object TopLevelInjectFunctionClass : GeneratedDeclarationKey() {
     override fun toString() = "TopLevelInjectFunctionClass"
   }

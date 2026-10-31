@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.BitFieldBuilder
+import dev.zacsweers.metro.compiler.CompanionMode
 import dev.zacsweers.metro.compiler.METADATA_VERSION
 import dev.zacsweers.metro.compiler.PLUGIN_ID
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
@@ -11,6 +12,7 @@ import dev.zacsweers.metro.compiler.ir.graph.IrBinding
 import dev.zacsweers.metro.compiler.ir.graph.IrBindingGraph
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainer
 import dev.zacsweers.metro.compiler.proto.AssistedFactoryImplProto
+import dev.zacsweers.metro.compiler.proto.CompanionMode as CompanionModeProto
 import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
 import dev.zacsweers.metro.compiler.proto.InjectedClassProto
 import dev.zacsweers.metro.compiler.proto.MetroMetadata
@@ -36,6 +38,24 @@ internal fun createMetroMetadata(
     injected_class = injected_class,
     assisted_factory_impl = assisted_factory_impl,
   )
+
+/** Records the producer's mode in binary metadata. */
+internal fun CompanionMode.toProto(): CompanionModeProto =
+  when (this) {
+    CompanionMode.COMPANION_OBJECT -> CompanionModeProto.COMPANION_OBJECT
+    CompanionMode.COMPANION_BLOCK -> CompanionModeProto.COMPANION_BLOCK
+    CompanionMode.COMPATIBILITY -> CompanionModeProto.COMPATIBILITY
+    CompanionMode.NONE -> CompanionModeProto.NONE
+  }
+
+/** Reads the producer's mode, which can differ from the consumer's compiler options. */
+internal fun CompanionModeProto.toCompanionMode(): CompanionMode =
+  when (this) {
+    CompanionModeProto.COMPANION_OBJECT -> CompanionMode.COMPANION_OBJECT
+    CompanionModeProto.COMPANION_BLOCK -> CompanionMode.COMPANION_BLOCK
+    CompanionModeProto.COMPATIBILITY -> CompanionMode.COMPATIBILITY
+    CompanionModeProto.NONE -> CompanionMode.NONE
+  }
 
 // TODO cache lookups of injected_class since it's checked multiple times
 context(context: IrMetroContext)

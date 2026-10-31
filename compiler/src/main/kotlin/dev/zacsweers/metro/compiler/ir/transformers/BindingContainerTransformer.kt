@@ -9,6 +9,7 @@ import dev.zacsweers.metro.binding
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Origins
+import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.compat.propertyIfAccessorCompat
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
@@ -592,12 +593,8 @@ internal class BindingContainerTransformer(
             signatureFunction = signatureFunction,
             annotations = reference.annotations,
             isPropertyAccessor = reference.isPropertyAccessor,
-            newInstanceName =
-              if (signatureCarrier == SignatureCarrier.CREATOR_FUNCTION) {
-                reference.name
-              } else {
-                sourceFunction.name
-              },
+            // Both signature carriers refer to the same generated helper.
+            newInstanceName = bytecodeFunction.name,
           )
         } else if (backingField != null) {
           if (useCreatorSignatureCarrier) {
@@ -768,14 +765,7 @@ internal class BindingContainerTransformer(
     factoryParameters: Parameters,
     useCreatorSignatureCarrier: Boolean,
   ): IrSimpleFunction {
-    // If this is an object, we can generate directly into this object
-    val isObject = factoryCls.kind == ClassKind.OBJECT
-    val classToGenerateCreatorsIn =
-      if (isObject) {
-        factoryCls
-      } else {
-        factoryCls.companionObject()!!
-      }
+    val classToGenerateCreatorsIn = factoryCls.factoryHelperDeclarationContainer()
 
     // Generate create()
     @Suppress("RETURN_VALUE_NOT_USED")
@@ -850,6 +840,7 @@ internal class BindingContainerTransformer(
         }
       }
 
+    generateCompatibilityBridges(factoryCls)
     return newInstanceFunction
   }
 
@@ -1282,15 +1273,13 @@ internal class BindingContainerTransformer(
     }
     val sourceAnnotations = sourceFunction.metroAnnotations(metroSymbols.classIds)
 
-    // Add creator functions to the stub so IrMetroFactory can find them
-    if (existingFactory == null) {
-      generateStubCreatorFunctions(
-        factoryClass = stub,
-        callableName = entry.callable_name,
-        returnType = sourceFunction.returnType,
-        sourceFunction = sourceFunction,
-      )
-    }
+    // An existing factory can be a FIR-generated header that lacks the helpers IR adds.
+    generateStubCreatorFunctions(
+      factoryClass = stub,
+      callableName = entry.new_instance_name,
+      returnType = sourceFunction.returnType,
+      sourceFunction = sourceFunction,
+    )
 
     val callableId = CallableId(container.classIdOrFail, Name.identifier(entry.callable_name))
     val callableMetadata =
@@ -1299,7 +1288,7 @@ internal class BindingContainerTransformer(
         signatureCallableId = mirrorFunction.callableId,
         annotations = sourceAnnotations,
         isPropertyAccessor = entry.property_name.isNotEmpty(),
-        newInstanceName = Name.identifier(entry.new_instance_name),
+        newInstanceName = entry.new_instance_name.asName(),
         function = sourceFunction,
         signatureFunction = mirrorFunction,
       )
@@ -1375,8 +1364,8 @@ internal class BindingContainerTransformer(
 
         if (isObject) {
           addDefaultConstructor().apply { visibility = DescriptorVisibilities.PRIVATE }
-        } else {
-          // Non-objects need a companion for create()/newInstance() static methods
+        } else if (!options.companionMode.usesStaticHelpers) {
+          // The companion owns the create() and newInstance() helpers.
           val factoryCls = this
           pluginContext.irFactory
             .buildClass {

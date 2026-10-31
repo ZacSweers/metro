@@ -25,6 +25,7 @@ import dev.zacsweers.metro.compiler.ir.extensionReceiverParameterCompat
 import dev.zacsweers.metro.compiler.ir.hasMetroDefault
 import dev.zacsweers.metro.compiler.ir.irCallConstructorWithSameParameters
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
+import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.dedupeParameters
@@ -47,6 +48,7 @@ import org.jetbrains.kotlin.ir.builders.declarations.addGetter
 import org.jetbrains.kotlin.ir.builders.declarations.addProperty
 import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.builders.irExprBody
+import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
@@ -58,12 +60,14 @@ import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrTypeParameter
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrExpression
+import org.jetbrains.kotlin.ir.expressions.IrGetValue
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.IrTypeSubstitutor
 import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.typeWithParameters
 import org.jetbrains.kotlin.ir.util.classId
+import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.copyParametersFrom
 import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.copyTypeParametersFrom
@@ -72,8 +76,10 @@ import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isObject
+import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nonDispatchParameters
 import org.jetbrains.kotlin.ir.util.parentAsClass
+import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.platform.jvm.isJvm
 
 /**
@@ -108,6 +114,8 @@ internal fun generateStaticCreateFunction(
         name = Symbols.StringNames.CREATE,
         // Placeholder, replaced in body
         returnType = context.irBuiltIns.unitType,
+        // Helpers on a class are companion-block members, which have no receiver.
+        isStatic = !objectClassToGenerateIn.isObject,
         origin = Origins.FactoryCreateFunction,
       )
       .apply {
@@ -267,6 +275,8 @@ internal fun generateStaticNewInstanceFunction(
         name = functionName,
         // Placeholder, replaced in body
         returnType = context.irBuiltIns.unitType,
+        // Helpers on a class are companion-block members, which have no receiver.
+        isStatic = !parentClass.isObject,
         origin = Origins.FactoryNewInstanceFunction,
         isSuspend = isSuspend,
         // inline can only work if the target is visible
@@ -512,6 +522,97 @@ internal fun shouldUseCreatorSignatureCarrier(): Boolean {
   return supportsIrGeneratedClasses && annotationsAreReadable && annotationChangesInvalidateLookups
 }
 
+/** Chooses the helper owner for this compilation. Object factories own their helpers directly. */
+context(context: IrMetroContext)
+internal fun IrClass.factoryHelperDeclarationContainer(): IrClass {
+  if (!isObject && context.options.companionMode.usesStaticHelpers) {
+    return this
+  }
+  return requireStaticIshDeclarationContainer()
+}
+
+/**
+ * Adds receiverless functions to [factoryClass] that delegate to its companion helpers. Assisted
+ * implementations keep their binary signatures in proto metadata, so they skip metadata
+ * registration.
+ */
+context(context: IrMetroContext)
+internal fun generateCompatibilityBridges(
+  factoryClass: IrClass,
+  functions: List<IrSimpleFunction>? = null,
+  registerAsMetadataVisible: Boolean = true,
+) {
+  if (factoryClass.isObject || !context.options.companionMode.addsStaticHelperBridges) {
+    return
+  }
+  val companion =
+    checkNotNull(factoryClass.companionObject()) {
+      "Compatibility bridges need a companion object on ${factoryClass.kotlinFqName}"
+    }
+  val canonicalFunctions =
+    functions
+      ?: companion.functions
+        .filter {
+          it.origin == Origins.FactoryCreateFunction ||
+            it.origin == Origins.FactoryNewInstanceFunction ||
+            it.origin == Origins.MembersInjectorStaticInjectFunction
+        }
+        .toList()
+  for (canonical in canonicalFunctions) {
+    // The bridge is the JVM and JS static entry point, so the companion helper can't also be one.
+    // IR-generated helpers never get these annotations, but FIR-declared helpers already have them.
+    canonical.replaceAnnotationsCompat(
+      canonical.annotationsCompat().filter {
+        val annotationClassId = it.annotationClass.classId
+        annotationClassId != Symbols.ClassIds.JvmStatic &&
+          annotationClassId != Symbols.ClassIds.JsStatic
+      },
+    )
+    val bridge = canonical.deepCopyWithSymbols(initialParent = factoryClass)
+    bridge.origin = Origins.StaticHelperBridgeFunction
+    val defaultReceiver = bridge.dispatchReceiverParameter
+    bridge.setDispatchReceiver(null)
+    factoryClass.declarations.add(bridge)
+    if (defaultReceiver != null) {
+      // Copied defaults can read the canonical companion through their former dispatch receiver.
+      val defaultBuilder = context.createIrBuilder(bridge.symbol)
+      val remapDefaultReceiver =
+        object : IrElementTransformerVoid() {
+          override fun visitGetValue(expression: IrGetValue): IrExpression {
+            return if (expression.symbol == defaultReceiver.symbol) {
+              defaultBuilder.irGetObject(companion.symbol)
+            } else {
+              super.visitGetValue(expression)
+            }
+          }
+        }
+      for (parameter in bridge.nonDispatchParameters) {
+        parameter.defaultValue?.transformChildren(remapDefaultReceiver, null)
+      }
+    }
+    bridge.body =
+      context.createIrBuilder(bridge.symbol).run {
+        irExprBodySafe(
+          irInvoke(
+            dispatchReceiver = irGetObject(companion.symbol),
+            callee = canonical.symbol,
+            args = bridge.regularParameters.map { irGet(it) },
+            contextArgs =
+              bridge.parameters.filter { it.kind == IrParameterKind.Context }.map { irGet(it) },
+            typeArgs = bridge.typeParameters.map { it.defaultType },
+            typeHint = bridge.returnType,
+          ),
+        )
+      }
+    if (
+      registerAsMetadataVisible &&
+        factoryClass.shouldRegisterGeneratedFactoryMembersAsMetadataVisible()
+    ) {
+      context.metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(bridge)
+    }
+  }
+}
+
 context(context: IrMetroContext)
 private fun IrClass.shouldRegisterGeneratedFactoryMembersAsMetadataVisible(): Boolean {
   return context.options.generateClassesInIr ||
@@ -519,12 +620,12 @@ private fun IrClass.shouldRegisterGeneratedFactoryMembersAsMetadataVisible(): Bo
 }
 
 /**
- * Adds stub `create()` and named creator functions to a factory class for cross-module invisible
- * factory stubs. These are phantom functions that the consuming module can reference, at runtime
- * the real factory class from the producing module provides the actual implementation.
+ * Adds stub `create()` and named creator functions for cross-module invisible factories. The
+ * consumer references the stubs during compilation. The producer's factory supplies the
+ * implementation at runtime.
  *
- * For object factories, the functions are added directly to the object. For class factories, the
- * functions are added to the companion object.
+ * Invisible factories come from FIR class generation. Their helpers live on the object or
+ * companion.
  */
 context(context: IrMetroContext)
 internal fun generateStubCreatorFunctions(
@@ -545,29 +646,33 @@ internal fun generateStubCreatorFunctions(
     )
 
   // create() function, parameters are Provider-wrapped
-  creatorClass.addFunction(Symbols.StringNames.CREATE, factoryClass.defaultType).apply {
-    setDispatchReceiver(creatorClass.thisReceiverOrFail.copyTo(this))
-    addParameters(
-      createParameters.nonDispatchParameters,
-      wrapInProvider = true,
-      copyQualifiers = true,
-      wrapInSuspendProvider = sourceFunction.isSuspend,
-    )
-    addStaticAnnotations(this)
-    body = context.createIrBuilder(symbol).run { irExprBodySafe(stubExpression()) }
+  if (creatorClass.functions.none { it.name == Symbols.Names.create }) {
+    creatorClass.addFunction(Symbols.StringNames.CREATE, factoryClass.defaultType).apply {
+      setDispatchReceiver(creatorClass.thisReceiverOrFail.copyTo(this))
+      addParameters(
+        createParameters.nonDispatchParameters,
+        wrapInProvider = true,
+        copyQualifiers = true,
+        wrapInSuspendProvider = sourceFunction.isSuspend,
+      )
+      addStaticAnnotations(this)
+      body = context.createIrBuilder(symbol).run { irExprBodySafe(stubExpression()) }
+    }
   }
 
   // Named function (e.g., "provideImplAsBase")
-  creatorClass.addFunction(callableName, returnType).apply {
-    isSuspend = sourceFunction.isSuspend
-    setDispatchReceiver(creatorClass.thisReceiverOrFail.copyTo(this))
-    addParameters(
-      sourceParameters.nonDispatchParameters,
-      wrapInProvider = false,
-      copyQualifiers = true,
-    )
-    addStaticAnnotations(this)
-    body = context.createIrBuilder(symbol).run { irExprBodySafe(stubExpression()) }
+  if (creatorClass.functions.none { it.name.asString() == callableName }) {
+    creatorClass.addFunction(callableName, returnType).apply {
+      isSuspend = sourceFunction.isSuspend
+      setDispatchReceiver(creatorClass.thisReceiverOrFail.copyTo(this))
+      addParameters(
+        sourceParameters.nonDispatchParameters,
+        wrapInProvider = false,
+        copyQualifiers = true,
+      )
+      addStaticAnnotations(this)
+      body = context.createIrBuilder(symbol).run { irExprBodySafe(stubExpression()) }
+    }
   }
 }
 
