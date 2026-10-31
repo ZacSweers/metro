@@ -2910,6 +2910,28 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     assertFalse(original == changed)
   }
 
+  fun testSharedDeclarationFingerprintKeepsCompanionBlockConstantImports() {
+    val source =
+      """
+      package test
+      import first.VALUE
+      class Qualifiers {
+        companion {
+          const val NAME = VALUE
+        }
+      }
+      """
+        .trimIndent()
+    val factory = KtPsiFactory(project)
+    val original = sharedDeclarationFingerprint(factory.createFile(source))
+    assertTrue(original, original.contains("Qualifiers.const val NAME = VALUE"))
+    val changed =
+      sharedDeclarationFingerprint(
+        factory.createFile(source.replace("first.VALUE", "second.VALUE")),
+      )
+    assertFalse(original == changed)
+  }
+
   fun testSharedDeclarationFingerprintKeepsMalformedImports() {
     val source = "package test\nimport first.Missing as\nconst val NAME = \"unchanged\""
     val factory = KtPsiFactory(project)
@@ -3934,6 +3956,58 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       assertEquals(
         "@SingleIn(scope = AppScope::class)",
         bindings.single().scope?.render(short = true),
+      )
+    }
+  }
+
+  fun testSourceCompanionBlockProviderDependsOnItsContext() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        @Inject class Input
+        class Result(val input: Input)
+
+        @DependencyGraph
+        interface AppGraph {
+          val result: Result
+          companion {
+            context(input: Input)
+            @Provides fun makeResult(): Result = Result(input)
+          }
+        }
+        """,
+      )
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val accessor = index.consumerEntryAt(file.declarationsIncludingNested().property("result"))!!
+    val provider = index.resolveConsumer(accessor).uniformBindings.orEmpty().single()
+    assertEquals(listOf("test.Input"), provider.dependencies.map { it.typeKey.renderedType })
+  }
+
+  fun testBinaryCompanionBlockProviderDependsOnItsContext() {
+    module.withMetroLibFixtureLibrary {
+      val file =
+        myFixture.configureMetroFile(
+          """
+          import libtest.LibBlockChild
+          import libtest.LibParentService
+
+          @DependencyGraph
+          interface AppGraph {
+            fun child(): LibBlockChild
+            @Provides fun parent(): LibParentService = object : LibParentService {}
+          }
+          """,
+        )
+      val index = project.service<MetroResolutionService>().awaitIndex(file)
+      val child = index.graphs.single { it.name == "LibBlockChild" }
+      val context = index.contextsFor(child).single()
+      val query = checkNotNull(index.queryContext(context))
+      val accessor =
+        index.graphComposition(query).accessors.single { it.key.renderedType == "kotlin.String" }
+      val provider = index.bindingsFor(accessor, query).single()
+      assertEquals(
+        listOf("libtest.LibParentService"),
+        provider.dependencies.map { it.typeKey.renderedType },
       )
     }
   }

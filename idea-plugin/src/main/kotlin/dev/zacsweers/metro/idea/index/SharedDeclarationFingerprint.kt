@@ -9,6 +9,7 @@ import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.KtClassBody
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtDeclaration
+import org.jetbrains.kotlin.psi.KtDeclarationContainer
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.kotlin.psi.KtSimpleNameExpression
@@ -21,7 +22,7 @@ import org.jetbrains.kotlin.psi.KtTypeAlias
 internal fun sharedDeclarationFingerprint(file: KtFile): String {
   val referencedNames = HashSet<String>()
   val declarations = buildString {
-    appendSharedDeclarations(file.declarations, owner = "", referencedNames)
+    appendSharedDeclarations(file.declarations.asSequence(), owner = "", referencedNames)
   }
   val imports = sortedSetOf<String>()
   for (directive in file.importDirectives) {
@@ -47,9 +48,30 @@ internal fun sharedDeclarationFingerprint(file: KtFile): String {
   }
 }
 
+/** Companion-block members retain their enclosing class as the declaration owner. */
+internal fun KtClassOrObject.membersIncludingCompanionBlocks(): Sequence<KtDeclaration> {
+  val body = body ?: return emptySequence()
+  // Stub children keep unopened files from loading their AST.
+  val stubChildren = body.stub?.childrenStubs
+  val members =
+    if (stubChildren != null) {
+      stubChildren.asSequence().map { it.psi }
+    } else {
+      body.children.asSequence()
+    }
+  // Check KtDeclaration first so nested classes stay whole. Companion blocks are only containers.
+  return members.flatMap { member ->
+    when (member) {
+      is KtDeclaration -> sequenceOf(member)
+      is KtDeclarationContainer -> member.declarations.asSequence()
+      else -> emptySequence()
+    }
+  }
+}
+
 /** Returns whether this container owns shared declarations, including nested containers. */
 private fun StringBuilder.appendSharedDeclarations(
-  declarations: List<KtDeclaration>,
+  declarations: Sequence<KtDeclaration>,
   owner: String,
   referencedNames: MutableSet<String>,
 ): Boolean {
@@ -71,7 +93,7 @@ private fun StringBuilder.appendSharedDeclarations(
       declaration is KtClassOrObject -> {
         val hasNestedDeclarations =
           appendSharedDeclarations(
-            declaration.declarations,
+            declaration.membersIncludingCompanionBlocks(),
             "$owner${declaration.name}.",
             referencedNames,
           )
