@@ -434,6 +434,38 @@ public final class dev/zacsweers/metro/gradle/analysis/InjectorMetadata$Companio
 	public final fun serializer ()Lkotlinx/serialization/KSerializer;
 }
 
+public final synthetic class dev/zacsweers/metro/gradle/analysis/LifecycleCallbackMetadata$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Ldev/zacsweers/metro/gradle/analysis/LifecycleCallbackMetadata$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ldev/zacsweers/metro/gradle/analysis/LifecycleCallbackMetadata;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Ldev/zacsweers/metro/gradle/analysis/LifecycleCallbackMetadata;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+}
+
+public final class dev/zacsweers/metro/gradle/analysis/LifecycleCallbackMetadata$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public final synthetic class dev/zacsweers/metro/gradle/analysis/LifecycleParameterMetadata$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Ldev/zacsweers/metro/gradle/analysis/LifecycleParameterMetadata$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ldev/zacsweers/metro/gradle/analysis/LifecycleParameterMetadata;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Ldev/zacsweers/metro/gradle/analysis/LifecycleParameterMetadata;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+}
+
+public final class dev/zacsweers/metro/gradle/analysis/LifecycleParameterMetadata$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public final class dev/zacsweers/metro/gradle/analysis/LifecyclePhase$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
 public final synthetic class dev/zacsweers/metro/gradle/analysis/LongestPathResult$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
 	public static final field INSTANCE Ldev/zacsweers/metro/gradle/analysis/LongestPathResult$$serializer;
 	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;

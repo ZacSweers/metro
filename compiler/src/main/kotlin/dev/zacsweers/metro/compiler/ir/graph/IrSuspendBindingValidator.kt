@@ -3,7 +3,6 @@
 package dev.zacsweers.metro.compiler.ir.graph
 
 import androidx.collection.ScatterMap
-import dev.zacsweers.metro.compiler.compat.propertyIfAccessorCompat
 import dev.zacsweers.metro.compiler.diagnostics.factory
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.graph.GraphAdjacency
@@ -33,7 +32,6 @@ import dev.zacsweers.metro.compiler.ir.render
 import dev.zacsweers.metro.compiler.ir.requireSimpleType
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactory1
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
-import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
@@ -56,18 +54,35 @@ internal class IrSuspendBindingValidator(
       IrTypeKey,
       IrContextualTypeKey,
       IrBinding,
-      GraphAccessor,
+      IrBindingStack.Entry,
     > {
     val analysis = SuspendBindingAnalysis(bindings::get)
-    val requests =
-      node.accessors.map { accessor ->
-        SuspendGraphRequest(
-          contextKey = accessor.contextKey,
-          source = accessor,
-          kind = SuspendGraphRequestKind.ACCESSOR,
-          isSuspend = accessor.metroFunction.ir.isSuspend,
+    val requests = buildList {
+      for (accessor in node.accessors) {
+        val declaration = accessor.metroFunction.ir
+        add(
+          SuspendGraphRequest(
+            accessor.contextKey,
+            IrBindingStack.Entry.requestedAt(accessor.contextKey, declaration),
+            SuspendGraphRequestKind.ACCESSOR,
+            declaration.isSuspend,
+          ),
         )
       }
+      for (callback in node.lifecycleCallbacks) {
+        for (parameter in callback.parameters) {
+          val site = IrBindingStack.Entry.lifecycleParameterAt(callback, parameter)
+          add(
+            SuspendGraphRequest(
+              parameter.key,
+              site,
+              SuspendGraphRequestKind.LIFECYCLE_PARAMETER,
+              callback.graphFunction.isSuspend,
+            ),
+          )
+        }
+      }
+    }
     val validation =
       SuspendBindingValidator(
           bindings = bindings,
@@ -169,7 +184,7 @@ internal class IrSuspendBindingValidator(
   }
 
   private fun reportIssue(
-    issue: SuspendValidationIssue<IrTypeKey, IrContextualTypeKey, IrBinding, GraphAccessor>,
+    issue: SuspendValidationIssue<IrTypeKey, IrContextualTypeKey, IrBinding, IrBindingStack.Entry>,
   ) {
     val trace = issueTrace(issue)
     val message = buildString {
@@ -184,12 +199,16 @@ internal class IrSuspendBindingValidator(
       if (issue.kind == SuspendValidationIssueKind.NON_SUSPEND_ACCESSOR) {
         val site =
           issue.site.expectAs<
-            SuspendValidationSite.GraphRequest<IrContextualTypeKey, GraphAccessor>,
+            SuspendValidationSite.GraphRequest<IrContextualTypeKey, IrBindingStack.Entry>,
           >()
         val request = site.request
         val typeRender = request.contextKey.typeKey.render(short = true)
         val deferredForm = suspendFunctionRender(typeRender)
         appendLine()
+        if (request.kind == SuspendGraphRequestKind.LIFECYCLE_PARAMETER) {
+          append("Mark this callback as suspend or request `$deferredForm`.")
+          return@buildString
+        }
         appendLine("Either:")
         appendLine(
           "  - Mark this accessor as `suspend fun` so it can await suspend dependencies, or",
@@ -201,7 +220,7 @@ internal class IrSuspendBindingValidator(
   }
 
   private fun reportCandidates(
-    issue: SuspendValidationIssue<IrTypeKey, IrContextualTypeKey, IrBinding, GraphAccessor>,
+    issue: SuspendValidationIssue<IrTypeKey, IrContextualTypeKey, IrBinding, IrBindingStack.Entry>,
   ): Sequence<IrDeclaration?> {
     if (
       issue.kind == SuspendValidationIssueKind.FEATURE_DISABLED ||
@@ -210,14 +229,10 @@ internal class IrSuspendBindingValidator(
       return sequenceOf(node.sourceGraph)
     }
     val requestSite =
-      issue.site as? SuspendValidationSite.GraphRequest<IrContextualTypeKey, GraphAccessor>
+      issue.site as? SuspendValidationSite.GraphRequest<IrContextualTypeKey, IrBindingStack.Entry>
     if (requestSite != null) {
       val request = requestSite.request
-      // Resolve to the property (if it's a getter) so the diagnostic lands on the property
-      // declaration, then walk fake overrides back to the original interface declaration.
-      val declaration =
-        request.source.metroFunction.ir.propertyIfAccessorCompat.expectAs<IrDeclarationWithName>()
-      return sequenceOf(declaration.originalDeclarationIfOverride())
+      return sequenceOf(request.source.declaration, node.sourceGraph)
     }
 
     val dependencySite =
@@ -270,14 +285,14 @@ internal class IrSuspendBindingValidator(
    * see which declarations stand in the way.
    */
   private fun issueTrace(
-    issue: SuspendValidationIssue<IrTypeKey, IrContextualTypeKey, IrBinding, GraphAccessor>,
+    issue: SuspendValidationIssue<IrTypeKey, IrContextualTypeKey, IrBinding, IrBindingStack.Entry>,
   ): List<IrBindingStack.Entry> {
     val path = issue.path ?: return emptyList()
     val head =
       when (val site = issue.site) {
         is SuspendValidationSite.GraphRequest -> {
           val request = site.request
-          IrBindingStack.Entry.requestedAt(request.contextKey, request.source.metroFunction.ir)
+          request.source
         }
         is SuspendValidationSite.BindingDependency -> {
           val binding = site.binding

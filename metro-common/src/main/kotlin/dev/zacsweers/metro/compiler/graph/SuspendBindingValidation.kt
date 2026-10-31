@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
 public enum class SuspendGraphRequestKind {
   ACCESSOR,
   MEMBERS_INJECTOR,
+  LIFECYCLE_PARAMETER,
   OTHER,
 }
 

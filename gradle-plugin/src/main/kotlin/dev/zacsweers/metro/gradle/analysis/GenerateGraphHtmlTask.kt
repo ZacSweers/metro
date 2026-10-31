@@ -113,7 +113,14 @@ internal class GraphHtmlRenderer(
       graphs.joinToString("\n") { graph ->
         val fileName = graphReportFileName(graph.graph, "html")
         val displayName = extractDisplayName(graph.graph, typeNames)
-        """<a class="graph-card" href="${escapeHtml(reportUrl(fileName))}"><span class="line-badge">M</span><span class="graph-title" title="${escapeHtml(graph.graph)}">${escapeHtml(displayName)}<small>${graph.bindings.count { it.isScoped }} scoped · ${graph.roots?.accessors?.size ?: 0} roots</small></span><span class="graph-size">${graph.bindings.size}<small>bindings</small></span><span aria-hidden="true">↗</span></a>"""
+        val roots = graph.roots
+        val rootCount =
+          if (roots == null) {
+            0
+          } else {
+            roots.accessors.size + roots.lifecycleCallbacks.size
+          }
+        """<a class="graph-card" href="${escapeHtml(reportUrl(fileName))}"><span class="line-badge">M</span><span class="graph-title" title="${escapeHtml(graph.graph)}">${escapeHtml(displayName)}<small>${graph.bindings.count { it.isScoped }} scoped · $rootCount roots</small></span><span class="graph-size">${graph.bindings.size}<small>bindings</small></span><span aria-hidden="true">↗</span></a>"""
       }
     return """
 <!DOCTYPE html>

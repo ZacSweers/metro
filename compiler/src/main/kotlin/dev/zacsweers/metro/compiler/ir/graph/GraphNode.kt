@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.ir.graph
 
 import dev.zacsweers.metro.compiler.BitField
 import dev.zacsweers.metro.compiler.Origins
+import dev.zacsweers.metro.compiler.graph.GraphLifecyclePhase
 import dev.zacsweers.metro.compiler.graph.explanation.BindingExplanationCandidate
 import dev.zacsweers.metro.compiler.ir.BindsCallable
 import dev.zacsweers.metro.compiler.ir.BindsOptionalOfCallable
@@ -175,6 +176,10 @@ internal sealed class GraphNode {
     override val supertypes: List<IrType>,
     override val includedGraphNodes: Map<IrTypeKey, GraphNode>,
     val graphExtensions: Map<IrTypeKey, List<GraphExtensionAccessor>>,
+    /** Init and close callbacks in declaration order. */
+    val lifecycleCallbacks: List<LifecycleCallback>,
+    /** The `close()` that Metro implements. Null when the graph isn't closeable. */
+    val lifecycleClose: IrSimpleFunction?,
     override val scopes: Set<IrAnnotation>,
     override val aggregationScopes: Set<ClassId>,
     override val providerFactories: Map<IrTypeKey, List<ProviderFactory>>,
@@ -208,6 +213,10 @@ internal sealed class GraphNode {
     val contributionDecisions: List<BindingExplanationCandidate> = emptyList(),
   ) : GraphNode() {
     val hasExtensions = graphExtensions.isNotEmpty()
+    /** The first suspend init callback. When present, init runs in `metroInit()`. */
+    val suspendInit = lifecycleCallbacks.firstOrNull {
+      GraphLifecyclePhase.INIT in it.phases && it.graphFunction.isSuspend
+    }
 
     override val directlyProvidedKeys: Set<IrTypeKey> by memoize {
       buildSet {

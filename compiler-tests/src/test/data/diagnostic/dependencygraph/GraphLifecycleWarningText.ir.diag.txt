@@ -1,0 +1,36 @@
+/GraphLifecycleWarningText.kt:15:26: warning: [Metro/UnscopedLifecycleParameter] Unscoped String is injected into parameter 'label' of
+    @OnGraphInit Child.start. This instance may be discarded after the callback.
+
+  help: request () -> String or Lazy<String> to resolve String explicitly
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#unscopedlifecycleparameter
+
+
+/GraphLifecycleWarningText.kt:29:5: warning: [Metro/UnscopedLifecycleParameter] Unscoped Service is injected into parameter 'service' of
+    @OnGraphInit AppGraph.start. This instance may be discarded after the callback.
+
+  help: request () -> Service or Lazy<Service> to resolve Service explicitly
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#unscopedlifecycleparameter
+
+
+/GraphLifecycleWarningText.kt:30:5: warning: [Metro/UnscopedLifecycleParameter] Unscoped contributions to Set<Plugin> are injected into parameter
+    'plugins' of @OnGraphInit AppGraph.start. These instances may be discarded after the callback.
+
+      GraphLifecycleWarningText.kt:25:22
+        @Provides @IntoSet fun fresh(): Plugin
+
+  help: request () -> Set<Plugin> or Lazy<Set<Plugin>> to resolve Set<Plugin> explicitly
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#unscopedlifecycleparameter
+
+
+/GraphLifecycleWarningText.kt:34:26: warning: [Metro/CloseOnlyBinding] CloseOnly is reachable only from @OnGraphClose callbacks in AppGraph.
+    Resolving parameter 'closeOnly' of AppGraph.stop may create CloseOnly for the first time during
+    graph close.
+
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#closeonlybinding
+
+
+/GraphLifecycleWarningText.kt:35:38: warning: [Metro/UnscopedLifecycleParameter] Unscoped Service is injected into parameter 'other' of
+    @OnGraphInit @OnGraphClose AppGraph.run. This instance may be discarded after the callback.
+
+  help: request () -> Service or Lazy<Service> to resolve Service explicitly
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#unscopedlifecycleparameter

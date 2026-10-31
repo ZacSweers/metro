@@ -64,14 +64,17 @@ public fun BaseBindingStack<*, *, *, *, *>.toTraceSection(): DiagnosticSection.B
  * shallow for the summary to add useful signal.
  */
 public fun BaseBindingStack<*, *, *, *, *>.toChainSection(): DiagnosticSection.Chain? {
-  if (entries.size < 2) return null
   // entries[0] is innermost, usually the missing type. Render the chain from the graph outward.
+  val outermost = entries.lastOrNull() ?: return null
+  val explicitRoot = outermost.chainRoot
+  if (entries.size < 2 && explicitRoot == null) return null
   val outermostFirst = entries.asReversed()
   val items = buildList {
     // The outermost entry is usually the graph accessor. Its context, such as `AppGraph.repo`, is a
     // better chain root than the accessor return type.
-    val outermost = outermostFirst.first()
-    if (outermost.isSynthetic && outermost.graphContext != null) {
+    if (explicitRoot != null) {
+      add(textOf(explicitRoot))
+    } else if (outermost.isSynthetic && outermost.graphContext != null) {
       add(textOf(outermost.graphContext!!))
     }
     for (entry in outermostFirst) {

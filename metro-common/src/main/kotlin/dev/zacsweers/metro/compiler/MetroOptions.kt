@@ -63,6 +63,13 @@ public object MetroClassIds {
   public val metroRuntimeInternalPackage: FqName =
     metroRuntimePackage.child(Name.identifier("internal"))
 
+  public val closeableGraph: ClassId = metroRuntimePackage.classId("CloseableGraph")
+  public val suspendCloseableGraph: ClassId = metroRuntimePackage.classId("SuspendCloseableGraph")
+  public val onGraphInit: ClassId = metroRuntimePackage.classId("OnGraphInit")
+  public val onGraphClose: ClassId = metroRuntimePackage.classId("OnGraphClose")
+  public val lifecycleCallbacks: Set<ClassId> = setOf(onGraphInit, onGraphClose)
+  public val lifecycleGraphs: Set<ClassId> = setOf(closeableGraph, suspendCloseableGraph)
+
   public val dependencyGraph: ClassId = metroRuntimePackage.classId("DependencyGraph")
   public val dependencyGraphFactory: ClassId = dependencyGraph.nested("Factory")
   public val assisted: ClassId = metroRuntimePackage.classId("Assisted")

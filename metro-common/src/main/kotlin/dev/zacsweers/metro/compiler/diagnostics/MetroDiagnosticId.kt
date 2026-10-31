@@ -64,6 +64,16 @@ public enum class MetroDiagnosticId(
     Metro finds a near match, the report lists it as a similar multibinding.
     """,
   ),
+  UNSCOPED_LIFECYCLE_PARAMETER(
+    "Metro/UnscopedLifecycleParameter",
+    "A lifecycle callback requests an unscoped binding directly.",
+    "The callback gets its own instance, which usually isn't the one the rest of the graph uses. Scope the binding to share one instance. Request a provider or lazy value if the callback should create its own. For a multibinding, Metro checks each contribution. Graph inputs, factories, and members injectors are exempt.",
+  ),
+  CLOSE_ONLY_BINDING(
+    "Metro/CloseOnlyBinding",
+    "Only close callbacks request a binding.",
+    "Closing the graph creates the instance just so a close callback can receive it. Graph inputs, included graph accessors, and bindings from parent graphs are exempt.",
+  ),
   SUSPICIOUS_UNUSED_MULTIBINDING(
     "Metro/SuspiciousUnusedMultibinding",
     "A multibinding has contributions but is never requested.",

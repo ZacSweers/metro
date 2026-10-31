@@ -865,6 +865,24 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
     }
 
     @Test
+    @TestMetadata("GraphLifecycleInitBytecode.kt")
+    public void testGraphLifecycleInitBytecode() {
+      run("GraphLifecycleInitBytecode.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleSuspendCloseBytecode.kt")
+    public void testGraphLifecycleSuspendCloseBytecode() {
+      run("GraphLifecycleSuspendCloseBytecode.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleSuspendFactoryBytecode.kt")
+    public void testGraphLifecycleSuspendFactoryBytecode() {
+      run("GraphLifecycleSuspendFactoryBytecode.kt");
+    }
+
+    @Test
     @TestMetadata("SwitchingProvidersGenerateTableSwitch.kt")
     public void testSwitchingProvidersGenerateTableSwitch() {
       run("SwitchingProvidersGenerateTableSwitch.kt");
@@ -1138,6 +1156,24 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
     @TestMetadata("GraphFactoriesSupportGenericProviders.kt")
     public void testGraphFactoriesSupportGenericProviders() {
       run("GraphFactoriesSupportGenericProviders.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleClose.kt")
+    public void testGraphLifecycleClose() {
+      run("GraphLifecycleClose.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleDefaultValues.kt")
+    public void testGraphLifecycleDefaultValues() {
+      run("GraphLifecycleDefaultValues.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleInit.kt")
+    public void testGraphLifecycleInit() {
+      run("GraphLifecycleInit.kt");
     }
 
     @Test
@@ -1749,6 +1785,12 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
       @TestMetadata("GraphExtensionIgnoresOwnTypeBinding.kt")
       public void testGraphExtensionIgnoresOwnTypeBinding() {
         run("GraphExtensionIgnoresOwnTypeBinding.kt");
+      }
+
+      @Test
+      @TestMetadata("GraphLifecycleClosedParent.kt")
+      public void testGraphLifecycleClosedParent() {
+        run("GraphLifecycleClosedParent.kt");
       }
 
       @Test
@@ -3281,6 +3323,36 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
     }
 
     @Test
+    @TestMetadata("GraphLifecycleChildren.kt")
+    public void testGraphLifecycleChildren() {
+      run("GraphLifecycleChildren.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleFactory.kt")
+    public void testGraphLifecycleFactory() {
+      run("GraphLifecycleFactory.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleInitNameClash.kt")
+    public void testGraphLifecycleInitNameClash() {
+      run("GraphLifecycleInitNameClash.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleStartup.kt")
+    public void testGraphLifecycleStartup() {
+      run("GraphLifecycleStartup.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleSuspendClose.kt")
+    public void testGraphLifecycleSuspendClose() {
+      run("GraphLifecycleSuspendClose.kt");
+    }
+
+    @Test
     @TestMetadata("IncludedGraphSuspendAccessor.kt")
     public void testIncludedGraphSuspendAccessor() {
       run("IncludedGraphSuspendAccessor.kt");
@@ -3490,6 +3562,12 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
     @Test
     public void testAllFilesPresentInTracing() {
       KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/tracing"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleTracing.kt")
+    public void testGraphLifecycleTracing() {
+      run("GraphLifecycleTracing.kt");
     }
 
     @Test

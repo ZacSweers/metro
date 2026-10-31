@@ -53,6 +53,8 @@ internal class ConsumerEntry(
   val isOptional: Boolean = false,
   /** Exact implicit interface contribution that must survive in the owning graph path. */
   val graphContribution: GraphReference? = null,
+  /** Keeps override selection on the callback and diagnostics on the parameter. */
+  val lifecycleDeclaration: GraphCallableReference? = null,
 ) {
   val sourceIdentity: BindingIndex.SourcePointerIdentity? = sourcePointerIdentity(pointer)
   val injectedMemberSourceIdentity: BindingIndex.SourcePointerIdentity? =
@@ -80,12 +82,15 @@ internal class ConsumerEntry(
       isSuspend = isSuspend,
       isOptional = isOptional,
       graphContribution = contribution.declarationId,
+      lifecycleDeclaration = lifecycleDeclaration,
     )
   }
 
   enum class GraphRequestKind {
     ACCESSOR,
     MEMBERS_INJECTOR,
+    LIFECYCLE_INIT,
+    LIFECYCLE_CLOSE,
   }
 }
 
@@ -306,6 +311,11 @@ internal class GraphMemberOverride(
   val overriddenDeclarations: List<GraphCallableReference>,
   val isOptional: Boolean,
   val isAbstract: Boolean,
+  /**
+   * Lifecycle callbacks stay active even though they have bodies, so they don't supersede
+   * themselves.
+   */
+  val isLifecycleCallback: Boolean = false,
 )
 
 /** A real graph accessor whose result is an extension factory. */
