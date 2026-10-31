@@ -179,6 +179,7 @@ import org.jetbrains.kotlin.ir.util.hasShape
 import org.jetbrains.kotlin.ir.util.isFromJava
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.isPropertyAccessor
+import org.jetbrains.kotlin.ir.util.isStatic
 import org.jetbrains.kotlin.ir.util.isTopLevelDeclaration
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
@@ -3077,6 +3078,20 @@ internal fun IrClass.staticIshDeclarationContainerOrNull(): IrClass? {
     null
   }
 }
+
+/** Kotlin compiles companion-block members to static members of their non-object class. */
+internal val IrDeclaration.isCompanionBlockMember: Boolean
+  get() {
+    val owner = parent as? IrClass ?: return false
+    val isStaticMember =
+      when (this) {
+        is IrFunction -> isStatic
+        is IrField -> isStatic
+        else -> false
+      }
+    val ownerIsKotlinClass = !owner.isObject && !owner.isFromJava()
+    return isStaticMember && ownerIsKotlinClass
+  }
 
 /**
  * In cases where we read Anvil-generated kotlin code, "static" may be a function in a companion

@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isDependencyGraph
+import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
@@ -72,6 +73,9 @@ internal class GraphFactoryFirSupertypeGenerator(
   }
 
   override fun needTransformSupertypes(declaration: FirClassLikeDeclaration): Boolean {
+    if (!session.metroFirBuiltIns.options.companionMode.generatesCompanionCreators) {
+      return false
+    }
     return declaration.symbol.isCompanion &&
       declaration.getContainingClassSymbol()?.isDependencyGraph(session) == true
     // TODO why does the above work but not the predicate matcher?

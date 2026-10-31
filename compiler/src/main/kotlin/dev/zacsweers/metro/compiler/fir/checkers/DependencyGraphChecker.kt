@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.fir.checkers
 
 import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.compat.CompatContext
+import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
 import dev.zacsweers.metro.compiler.fir.additionalScopesArgument
@@ -14,8 +15,12 @@ import dev.zacsweers.metro.compiler.fir.callableSymbols
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
+import dev.zacsweers.metro.compiler.fir.generators.findSamFunction
+import dev.zacsweers.metro.compiler.fir.generators.graphCreatorName
+import dev.zacsweers.metro.compiler.fir.hasOrigin
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isEffectivelyOpen
+import dev.zacsweers.metro.compiler.fir.isGraphFactory
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.nestedClasses
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
@@ -32,6 +37,7 @@ import dev.zacsweers.metro.compiler.fir.validateInjectionSiteType
 import dev.zacsweers.metro.compiler.graph.SuspendDiagnosticMessages
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.metroAnnotations
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.trace
 import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.descriptors.Modality
@@ -45,14 +51,20 @@ import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.directOverriddenSymbolsSafe
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.constructors
+import org.jetbrains.kotlin.fir.declarations.getAnnotationByClassId
+import org.jetbrains.kotlin.fir.declarations.processAllDeclarations
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.declarations.utils.classId
+import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
+import org.jetbrains.kotlin.fir.declarations.utils.isInterface
 import org.jetbrains.kotlin.fir.declarations.utils.isOverride
 import org.jetbrains.kotlin.fir.declarations.utils.isSuspend
 import org.jetbrains.kotlin.fir.dispatchReceiverClassLookupTagOrNull
 import org.jetbrains.kotlin.fir.dispatchReceiverClassTypeOrNull
 import org.jetbrains.kotlin.fir.expectActualMatchingContextFactory
+import org.jetbrains.kotlin.fir.moduleData
 import org.jetbrains.kotlin.fir.resolve.firClassLike
+import org.jetbrains.kotlin.fir.resolve.fullyExpandedType
 import org.jetbrains.kotlin.fir.resolve.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
@@ -61,12 +73,21 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
+import org.jetbrains.kotlin.fir.types.ConeKotlinType
+import org.jetbrains.kotlin.fir.types.ConeTypeParameterType
 import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.types.coneType
+import org.jetbrains.kotlin.fir.types.isMarkedNullable
 import org.jetbrains.kotlin.fir.types.isNothing
 import org.jetbrains.kotlin.fir.types.isUnit
+import org.jetbrains.kotlin.fir.types.lowerBoundIfFlexible
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.JsStandardClassIds
+import org.jetbrains.kotlin.name.JvmStandardClassIds
+import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.StandardClassIds
+import org.jetbrains.kotlin.platform.isJs
+import org.jetbrains.kotlin.platform.jvm.isJvm
 
 // TODO
 //  - if there's a factory(): Graph in the companion object, error because we'll generate it
@@ -107,6 +128,9 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
 
     val dependencyGraphAnno = dependencyGraphAnnos.first()
     val graphAnnotationClassId = dependencyGraphAnno.toAnnotationClassIdSafe(session) ?: return
+    if (graphAnnotationClassId in classIds.dependencyGraphAnnotations) {
+      checkStaticCreatorCollisions(declaration)
+    }
     if (
       graphAnnotationClassId in classIds.dependencyGraphAnnotations &&
         session.shouldCheckRuntimeTracingGraphInputs()
@@ -623,5 +647,136 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
     matchingContext: FirExpectActualMatchingContext,
   ): Boolean {
     return with(matchingContext) { this@isFakeOverride.isFakeOverride(containingClass) }
+  }
+
+  /** Reports static functions that share a generated graph creator's platform signature. */
+  context(context: CheckerContext, reporter: DiagnosticReporter, compatContext: CompatContext)
+  private fun checkStaticCreatorCollisions(graph: FirClass) {
+    val session = context.session
+    val companionMode = session.metroFirBuiltIns.options.companionMode
+    if (!companionMode.generatesBlockCreators) {
+      return
+    }
+
+    val nestedClasses = graph.symbol.nestedClasses()
+    val factory = nestedClasses.firstOrNull { it.isGraphFactory(session) }
+    val sam =
+      if (factory?.isInterface == true) {
+        factory.findSamFunction(session) ?: return
+      } else {
+        null
+      }
+
+    val creatorName = graphCreatorName(factory, sam)
+
+    val creatorParameters =
+      if (sam != null) {
+        val contextParameterTypes = sam.contextParameterSymbols.map { it.resolvedReturnType }
+        val valueParameterTypes = sam.valueParameterSymbols.map { it.resolvedReturnType }
+        contextParameterTypes + valueParameterTypes
+      } else {
+        emptyList()
+      }
+
+    val platform = session.moduleData.platform
+    val isJvm = platform.isJvm()
+    val creatorErasure = creatorParameters.map { it.jvmErasureKey(session) }
+    val (staticAnnotation, nameAnnotation) =
+      when {
+        isJvm -> Symbols.ClassIds.JvmStatic to JvmStandardClassIds.Annotations.JvmName
+        platform.isJs() -> Symbols.ClassIds.JsStatic to JsStandardClassIds.Annotations.JsName
+        else -> null to null
+      }
+
+    // The instance member scope excludes source declarations in companion blocks.
+    val candidates = mutableListOf<FirNamedFunctionSymbol>()
+    graph.processAllDeclarations(session) { symbol ->
+      if (
+        symbol is FirNamedFunctionSymbol &&
+          with(compatContext) { symbol.isCompanionBlockMemberCompat }
+      ) {
+        candidates += symbol
+      }
+    }
+
+    if (staticAnnotation != null) {
+      val companion = nestedClasses.firstOrNull { it.isCompanion }
+      val functions =
+        companion?.callableSymbols().orEmpty().filterIsInstance<FirNamedFunctionSymbol>()
+      for (function in functions) {
+        if (function.getAnnotationByClassId(staticAnnotation, session) != null) {
+          candidates += function
+        }
+      }
+    }
+
+    for (function in candidates) {
+      val isGeneratedCreator =
+        function.hasOrigin(
+          Keys.MetroGraphCreatorsObjectInvokeDeclaration,
+          Keys.MetroGraphFactoryCompanionGetter,
+        )
+      if (isGeneratedCreator) {
+        continue
+      }
+
+      val source = function.source ?: continue
+      val renamed = nameAnnotation?.let { function.getAnnotationByClassId(it, session) }
+      val emittedName =
+        with(compatContext) { renamed?.getStringArgumentCompat(Name.identifier("name"), session) }
+      // Kotlin resolves block members by source name. Platforms use the @JvmName or @JsName.
+      val isBlockMember = with(compatContext) { function.isCompanionBlockMemberCompat }
+      val hasSourceConflict = isBlockMember && function.name == creatorName
+      val platformName = emittedName ?: function.name.asString()
+      val hasPlatformNameConflict = platformName == creatorName.asString()
+      val sharesCreatorName = hasSourceConflict || hasPlatformNameConflict
+      if (!sharesCreatorName) {
+        continue
+      }
+
+      val platformParameters = buildList {
+        addAll(function.contextParameterSymbols.map { it.resolvedReturnType })
+        function.resolvedReceiverType?.let { add(it) }
+        addAll(function.valueParameterSymbols.map { it.resolvedReturnType })
+      }
+      val hasSameParameters =
+        if (isJvm) {
+          platformParameters.map { it.jvmErasureKey(session) } == creatorErasure
+        } else {
+          platformParameters == creatorParameters
+        }
+      if (!hasSameParameters) {
+        continue
+      }
+
+      reporter.reportOn(
+        source,
+        MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
+        "Companion-block graph creator '$creatorName' conflicts with this static function. Change its signature or select a different companion-mode.",
+      )
+    }
+  }
+
+  /**
+   * Approximates how a parameter type appears in a JVM signature. Type arguments are dropped,
+   * except for arrays. Nullability stays because `Int` and `Int?` compile to different JVM types.
+   */
+  private fun ConeKotlinType.jvmErasureKey(session: FirSession): Any {
+    val type = fullyExpandedType(session).lowerBoundIfFlexible()
+    return when (type) {
+      is ConeTypeParameterType -> {
+        val bound = type.lookupTag.typeParameterSymbol.resolvedBounds.firstOrNull()?.coneType
+        bound?.jvmErasureKey(session) ?: (StandardClassIds.Any to true)
+      }
+      is ConeClassLikeType -> {
+        val classId = type.lookupTag.classId
+        if (classId == StandardClassIds.Array) {
+          type
+        } else {
+          classId to type.isMarkedNullable
+        }
+      }
+      else -> type
+    }
   }
 }

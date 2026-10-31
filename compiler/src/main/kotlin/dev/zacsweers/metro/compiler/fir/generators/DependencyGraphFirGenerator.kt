@@ -2,12 +2,15 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.generators
 
+import dev.zacsweers.metro.compiler.CompanionMode
 import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.Keys
+import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
 import dev.zacsweers.metro.compiler.fir.buildSimpleAnnotation
 import dev.zacsweers.metro.compiler.fir.buildStaticAnnotations
+import dev.zacsweers.metro.compiler.fir.caching
 import dev.zacsweers.metro.compiler.fir.constructType
 import dev.zacsweers.metro.compiler.fir.copyTypeParametersFrom
 import dev.zacsweers.metro.compiler.fir.hasOrigin
@@ -22,6 +25,7 @@ import dev.zacsweers.metro.compiler.fir.nestedClasses
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
 import dev.zacsweers.metro.compiler.fir.requireContainingClassSymbol
+import dev.zacsweers.metro.compiler.fir.typeRefFromQualifierParts
 import dev.zacsweers.metro.compiler.mapToArray
 import dev.zacsweers.metro.compiler.newName
 import dev.zacsweers.metro.compiler.reportCompilerBug
@@ -30,12 +34,16 @@ import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.fir.FirSession
+import org.jetbrains.kotlin.fir.caches.FirCache
+import org.jetbrains.kotlin.fir.caches.firCachesFactory
 import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
+import org.jetbrains.kotlin.fir.declarations.FirClass
+import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
+import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameter
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
 import org.jetbrains.kotlin.fir.declarations.utils.isInterface
 import org.jetbrains.kotlin.fir.declarations.utils.isLocal
-import org.jetbrains.kotlin.fir.declarations.utils.isOperator
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.MemberGenerationContext
@@ -45,17 +53,22 @@ import org.jetbrains.kotlin.fir.plugin.createConstructor
 import org.jetbrains.kotlin.fir.plugin.createDefaultPrivateConstructor
 import org.jetbrains.kotlin.fir.plugin.createNestedClass
 import org.jetbrains.kotlin.fir.resolve.getContainingClassSymbol
+import org.jetbrains.kotlin.fir.resolve.providers.firProvider
+import org.jetbrains.kotlin.fir.resolve.toRegularClassSymbol
 import org.jetbrains.kotlin.fir.scopes.impl.toConeType
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
+import org.jetbrains.kotlin.fir.types.FirUserTypeRef
+import org.jetbrains.kotlin.fir.types.coneTypeOrNull
 import org.jetbrains.kotlin.fir.types.constructType
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.SpecialNames
+import org.jetbrains.kotlin.name.StandardClassIds
 
 /**
  * Generates implementation class headers for `@DependencyGraph` types.
@@ -188,6 +201,24 @@ internal class DependencyGraphFirGenerator(session: FirSession, compatContext: C
 
   private val graphImpls = mutableSetOf<ClassId>()
   private val factoryImpls = mutableSetOf<ClassId>()
+  private val creatorTypeResolverFactory by lazy { MetroFirTypeResolver.Factory(session).caching() }
+
+  // FIR can ask for an owner's callable names more than once.
+  private val callableNamesByOwner: FirCache<FirClassSymbol<*>, Set<Name>, Unit> =
+    session.firCachesFactory.createCache { owner, _ -> computeCallableNames(owner) }
+
+  // FIR calls generateFunctions() once per reserved name, so resolve each owner's creator once.
+  private val creatorPlans: FirCache<FirClassSymbol<*>, CreatorPlan?, Unit> =
+    session.firCachesFactory.createCache { owner, _ -> computeCreatorPlan(owner) }
+
+  private val companionMode: CompanionMode
+    get() = session.metroFirBuiltIns.options.companionMode
+
+  private val generatesCompanionCreators: Boolean
+    get() = companionMode.generatesCompanionCreators
+
+  private val generatesBlockCreators: Boolean
+    get() = companionMode.generatesBlockCreators
 
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
     register(session.predicates.dependencyGraphAndFactoryPredicate)
@@ -220,7 +251,7 @@ internal class DependencyGraphFirGenerator(session: FirSession, compatContext: C
         names += classId.shortClassName
       }
 
-      if (!hasCompanion) {
+      if (!hasCompanion && generatesCompanionCreators) {
         // Generate a companion for us to generate these functions on to
         names += SpecialNames.DEFAULT_NAME_FOR_COMPANION_OBJECT
       }
@@ -319,28 +350,55 @@ internal class DependencyGraphFirGenerator(session: FirSession, compatContext: C
   override fun getCallableNamesForClass(
     classSymbol: FirClassSymbol<*>,
     context: MemberGenerationContext,
-  ): Set<Name> {
+  ): Set<Name> = callableNamesByOwner.getValue(classSymbol, Unit)
+
+  @OptIn(DirectDeclarationsAccess::class)
+  private fun computeCallableNames(classSymbol: FirClassSymbol<*>): Set<Name> {
     val names = mutableSetOf<Name>()
 
     /*
-     * There are two types of creator instances.
-     * 1. A graph class's companion object. It will either implement the
-     *    graph factory (if it's an interface) or expose a `factory()` accessor function.
-     * 2. A graph factory interface's `Impl` declaration (if it's not an interface).
+     * There are three types of creator owners.
+     * 1. A graph class's companion object. It either implements the graph factory (if it's an
+     *    interface) or exposes a `factory()` accessor function.
+     * 2. A graph factory's hidden `Impl` declaration.
+     * 3. The graph itself when the mode generates companion-block creators.
      *
-     * In either case, we'll just generate a constructor and a PLACEHOLDER_SAM_FUNCTION. The
-     * placeholder is important because not everything about a creator is resolvable at
-     * this point, but we can use this marker later to indicate we expect generateFunctions()
-     * to generate the correct functions.
+     * Creator names aren't always resolvable here. `PLACEHOLDER_SAM_FUNCTION` tells
+     * `generateFunctions()` to generate a creator whose name wasn't reserved.
      */
     val isGraphCompanion =
-      classSymbol.isCompanion &&
+      if (generatesCompanionCreators && classSymbol.isCompanion) {
         classSymbol.requireContainingClassSymbol().isDependencyGraph(session)
-    val isCreatorImpl =
-      isGraphCompanion || classSymbol.hasOrigin(Keys.GraphFactoryImplClassDeclaration)
-    if (isCreatorImpl) {
-      names += SpecialNames.INIT
+      } else {
+        false
+      }
+
+    val isFactoryImpl = classSymbol.hasOrigin(Keys.GraphFactoryImplClassDeclaration)
+    val isCreatorImpl = isGraphCompanion || isFactoryImpl
+    val isBlockCreator = generatesBlockCreators && classSymbol.isDependencyGraph(session)
+
+    if (isCreatorImpl || isBlockCreator) {
+      if (isCreatorImpl) {
+        names += SpecialNames.INIT
+      }
       names += PLACEHOLDER_SAM_FUNCTION
+      names += Symbols.Names.invoke
+      names += Symbols.Names.factory
+      if (isBlockCreator) {
+        // FIR resolves a call like `AppGraph.create()` by name before it generates members.
+        val creator =
+          classSymbol.declarationSymbols.filterIsInstance<FirClassSymbol<*>>().firstOrNull {
+            it.isGraphFactory(session)
+          }
+        if (creator != null) {
+          names += declaredCreatorFunctionNames(creator)
+        }
+      } else if (isGraphCompanion) {
+        // Reserve source function names so their overloads also see the generated override.
+        classSymbol.declarationSymbols.filterIsInstance<FirNamedFunctionSymbol>().mapTo(names) {
+          it.name
+        }
+      }
     } else if (classSymbol.hasOrigin(Keys.GraphImplClassDeclaration)) {
       // `Impl`, generate a constructor
       names += SpecialNames.INIT
@@ -349,6 +407,71 @@ internal class DependencyGraphFirGenerator(session: FirSession, compatContext: C
     if (names.isNotEmpty()) {
       log("Will generate callables into ${classSymbol.classId}: $names")
     }
+    return names
+  }
+
+  /**
+   * Returns the function names that [creator] and its supertypes declare. Source supertypes can
+   * still be unresolved at this phase. Resolving them normally could reenter generated member
+   * scopes, so this resolves their qualified names through the file's import scopes.
+   */
+  @OptIn(DirectDeclarationsAccess::class)
+  private fun declaredCreatorFunctionNames(creator: FirClassSymbol<*>): Set<Name> {
+    val names = mutableSetOf<Name>()
+    // Any's members can't be factory functions.
+    val visited = mutableSetOf(StandardClassIds.Any)
+
+    fun collect(classSymbol: FirClassSymbol<*>) {
+      if (!visited.add(classSymbol.classId)) {
+        return
+      }
+      classSymbol.declarationSymbols.filterIsInstance<FirNamedFunctionSymbol>().forEach {
+        names += it.name
+      }
+
+      val typeResolver = creatorTypeResolverFactory.create(classSymbol)
+      val sourceClass =
+        if (classSymbol.origin is FirDeclarationOrigin.Source) {
+          classSymbol.moduleData.session.firProvider.getFirClassifierByFqName(classSymbol.classId)
+            as? FirClass
+        } else {
+          null
+        }
+
+      val superTypeRefs =
+        if (sourceClass != null) {
+          sourceClass.superTypeRefs
+        } else {
+          classSymbol.resolvedSuperTypeRefs
+        }
+
+      for (superTypeRef in superTypeRefs) {
+        val resolvedSuperType = superTypeRef.coneTypeOrNull
+        val superType =
+          if (resolvedSuperType != null) {
+            resolvedSuperType
+          } else {
+            val userTypeRef = superTypeRef as? FirUserTypeRef ?: continue
+            val source = userTypeRef.source ?: continue
+
+            // Finding the class only needs its qualified name, so type arguments can stay
+            // unresolved.
+            val classifierTypeRef =
+              typeRefFromQualifierParts(userTypeRef.isMarkedNullable, source) {
+                for (qualifier in userTypeRef.qualifier) {
+                  part(qualifier.name)
+                }
+              }
+
+            typeResolver?.resolveType(classifierTypeRef) ?: continue
+          }
+
+        val superClass = superType.toRegularClassSymbol(session) ?: continue
+        collect(superClass)
+      }
+    }
+
+    collect(creator)
     return names
   }
 
@@ -379,7 +502,13 @@ internal class DependencyGraphFirGenerator(session: FirSession, compatContext: C
             isPrimary = true,
             generateDelegatedNoArgConstructorCall = true,
           ) {
-            visibility = Visibilities.Private
+            // In NONE mode, createGraph() calls in other modules construct this class directly.
+            visibility =
+              if (companionMode == CompanionMode.NONE) {
+                Visibilities.Public
+              } else {
+                Visibilities.Private
+              }
             if (creator != null) {
               log("Generating graph SAM - ${samFunction?.callableId}")
               samFunction?.valueParameterSymbols?.forEach { valueParameterSymbol ->
@@ -416,143 +545,191 @@ internal class DependencyGraphFirGenerator(session: FirSession, compatContext: C
     return listOf(constructor.symbol)
   }
 
+  /**
+   * Resolves the creator that [owner] implements. [owner] is a graph companion, a graph that gets
+   * companion-block creators, or a factory's hidden `Impl`. Returns null for any other class.
+   */
+  private fun computeCreatorPlan(owner: FirClassSymbol<*>): CreatorPlan? {
+    if (owner.hasOrigin(Keys.GraphFactoryImplClassDeclaration)) {
+      val graphClass =
+        owner.requireContainingClassSymbol().requireContainingClassSymbol() as FirClassSymbol<*>
+      val graphObject =
+        graphObject(graphClass) ?: reportCompilerBug("No graph object found for $graphClass")
+      val creator = graphObject.findCreator(session, "generateFunctions ${owner.classId}", ::log)!!
+      val sam = creator.classSymbol.findSamFunction(session) ?: return null
+      return CreatorPlan(graphClass, creator, sam, sam.name)
+    }
+
+    val isBlockCreator = generatesBlockCreators && owner.isDependencyGraph(session)
+    val isCompanionCreator = generatesCompanionCreators && owner.isCompanion
+    val isCreatorOwner = isBlockCreator || isCompanionCreator
+    if (!isCreatorOwner) {
+      return null
+    }
+    val graphClass =
+      if (isBlockCreator) {
+        owner
+      } else {
+        owner.requireContainingClassSymbol() as FirClassSymbol<*>
+      }
+    val graphObject = graphObject(graphClass) ?: return null
+    val creator = graphObject.findCreator(session, "generateFunctions ${owner.classId}", ::log)
+    val creatorClass = creator?.classSymbol
+
+    var sam: FirNamedFunctionSymbol? = null
+    if (creatorClass != null) {
+      val isBlockSam = isBlockCreator && creatorClass.isInterface
+      val generatesSam = isBlockSam || owner.implements(creatorClass.classId, session)
+      if (generatesSam) {
+        // A factory without a single abstract function has nothing to implement.
+        sam = creatorClass.findSamFunction(session) ?: return null
+      }
+    }
+    return CreatorPlan(graphClass, creator, sam, graphCreatorName(creatorClass, sam))
+  }
+
   override fun generateFunctions(
     callableId: CallableId,
     context: MemberGenerationContext?,
   ): List<FirNamedFunctionSymbol> {
     log("Generating function $callableId")
     val owner = context?.owner ?: return emptyList()
+    val plan = creatorPlans.getValue(owner, Unit) ?: return emptyList()
 
-    val generateSAMFunction: (FirClassSymbol<*>, FirFunctionSymbol<*>) -> FirNamedFunctionSymbol =
-      { target, function ->
-        log("Generating creator SAM ${function.callableId} in ${target.classId}")
+    val requestedName = callableId.callableName
+    val matchesCreatorName = requestedName == plan.creatorName
+    // External extensions can supply a factory after this generator reserves the owner's names.
+    val isPlaceholderRequest = requestedName == PLACEHOLDER_SAM_FUNCTION && plan.sam != null
+    val isUnreservedName = plan.creatorName !in callableNamesByOwner.getValue(owner, Unit)
+    val needsPlaceholderSam = isPlaceholderRequest && isUnreservedName
+    val generatesCreator = matchesCreatorName || needsPlaceholderSam
+    if (!generatesCreator) {
+      return emptyList()
+    }
+
+    val isBlockCreator = generatesBlockCreators && owner.isDependencyGraph(session)
+
+    // Creator markers let downstream intrinsics discover the producer's entry points.
+    fun finishCreator(function: FirFunction, marksGraphCreator: Boolean): FirNamedFunctionSymbol {
+      val extraAnnotations = buildList {
+        if (marksGraphCreator) {
+          add(
+            buildSimpleAnnotation {
+              session.metroFirBuiltIns.graphFactoryInvokeFunctionMarkerClassSymbol
+            },
+          )
+        }
+        // In compatibility mode, the block creator is the static entry point.
+        if (owner.isCompanion && companionMode == CompanionMode.COMPANION_OBJECT) {
+          addAll(buildStaticAnnotations(session))
+        }
+      }
+      function.replaceAnnotationsSafe(function.annotations + extraAnnotations)
+
+      val declaration =
+        if (isBlockCreator) {
+          function.markAsCompanionBlockMemberCompat(owner)
+        } else {
+          function
+        }
+      return declaration.symbol as FirNamedFunctionSymbol
+    }
+
+    fun generateSAMFunction(
+      function: FirFunctionSymbol<*>,
+      sourceDefaults: Set<Int> = emptySet(),
+    ): FirNamedFunctionSymbol {
+      val generated =
         createMemberFunction(
             owner,
             Keys.MetroGraphCreatorsObjectInvokeDeclaration,
             function.name,
             returnType = function.resolvedReturnType,
           ) {
+            // These modifiers are syntactic, so the raw status is reliable before resolution.
             status {
-              isOverride = !owner.isCompanion
-              isOperator = function.isOperator
+              isOverride = !owner.isCompanion && !isBlockCreator
+              isOperator = function.rawStatus.isOperator
+              isSuspend = function.rawStatus.isSuspend
             }
-            log("Generating ${function.valueParameterSymbols.size} parameters?")
-            for (parameter in function.valueParameterSymbols) {
-              log("Generating parameter ${parameter.name}")
+            for ((index, parameter) in function.valueParameterSymbols.withIndex()) {
               valueParameter(
                 name = parameter.name,
                 key = Keys.RegularParameter,
                 type = parameter.resolvedReturnType,
+                isVararg = parameter.isVararg,
+                isCrossinline = parameter.isCrossinline,
+                isNoinline = parameter.isNoinline,
+                hasDefaultValue = index in sourceDefaults,
               )
             }
           }
           .apply {
-            // Copy annotations over. Workaround for https://youtrack.jetbrains.com/issue/KT-74361/
+            // Copy factory input annotations to preserve bindings.
+            // Work around https://youtrack.jetbrains.com/issue/KT-74361/.
             for ((i, parameter) in function.valueParameterSymbols.withIndex()) {
-              val parameterToUpdate = valueParameters[i]
-              parameterToUpdate.replaceAnnotationsSafe(
+              valueParameters[i].replaceAnnotationsSafe(
                 parameter.resolvedCompilerAnnotationsWithClassIds,
               )
             }
-            // Add our marker annotation (and static annotations when generated into a
-            // companion, i.e. not an override).
-            val extraAnnotations = buildList {
-              add(
-                buildSimpleAnnotation {
-                  session.metroFirBuiltIns.graphFactoryInvokeFunctionMarkerClassSymbol
-                },
-              )
-              if (owner.isCompanion) {
-                addAll(buildStaticAnnotations(session))
-              }
-            }
-            replaceAnnotationsSafe(annotations + extraAnnotations)
           }
-          .symbol as FirNamedFunctionSymbol
-      }
-
-    val functions = mutableListOf<FirNamedFunctionSymbol>()
-
-    if (owner.isCompanion) {
-      log("... into companion")
-      val graphClass = owner.requireContainingClassSymbol()
-      val graphObject = graphObject(graphClass) ?: return emptyList()
-      if (callableId.callableName == PLACEHOLDER_SAM_FUNCTION) {
-        val creator =
-          graphObject.findCreator(session, "generateFunctions ${context.owner.classId}", ::log)
-        if (creator == null) {
-          // Generate a default invoke function
-          log("Creator was null, generating a default invoke. ")
-          val generatedFunction =
-            createMemberFunction(
-                owner,
-                Keys.MetroGraphCreatorsObjectInvokeDeclaration,
-                Symbols.Names.invoke,
-                returnTypeProvider = {
-                  graphClass.constructType(it.mapToArray(FirTypeParameter::toConeType))
-                },
-              ) {
-                status { isOperator = true }
-              }
-              .apply {
-                // Add our marker annotation + static annotations (this is in a companion)
-                replaceAnnotationsSafe(
-                  annotations +
-                    buildSimpleAnnotation {
-                      session.metroFirBuiltIns.graphFactoryInvokeFunctionMarkerClassSymbol
-                    } +
-                    buildStaticAnnotations(session),
-                )
-              }
-          functions += generatedFunction.symbol as FirNamedFunctionSymbol
-        } else if (owner.implements(creator.classSymbol.classId, session)) {
-          // Companion is the interface
-          val samFunction = creator.classSymbol.findSamFunction(session)
-          log("Generating graph creator function $samFunction")
-          samFunction?.let { functions += generateSAMFunction(graphObject.classSymbol, it) }
-        } else {
-          // Companion object factory function, i.e. factory()
-          val creatorClass = creator.classSymbol
-          val generatedFunction =
-            createMemberFunction(
-                owner,
-                Keys.MetroGraphFactoryCompanionGetter,
-                Symbols.Names.factory,
-                returnTypeProvider = {
-                  creatorClass.constructType(it.mapToArray(FirTypeParameter::toConeType))
-                },
-              )
-              .apply {
-                val staticAnnotations = buildStaticAnnotations(session)
-                if (staticAnnotations.isNotEmpty()) {
-                  replaceAnnotationsSafe(annotations + staticAnnotations)
-                }
-              }
-          functions += generatedFunction.symbol as FirNamedFunctionSymbol
-        }
-      }
-    } else if (owner.hasOrigin(Keys.GraphFactoryImplClassDeclaration)) {
-      // Graph factory `Impl` class, just generate the SAM function
-      log("Generating factory impl into ${owner.classId}")
-      val graphClass = owner.requireContainingClassSymbol().requireContainingClassSymbol()
-      val graphObject =
-        graphObject(graphClass) ?: reportCompilerBug("No graph object found for $graphClass")
-      val creator =
-        graphObject.findCreator(session, "generateFunctions ${context.owner.classId}", ::log)!!
-      val samFunction = creator.classSymbol.findSamFunction(session)
-      samFunction?.let { functions += generateSAMFunction(graphObject.classSymbol, it) }
+      return finishCreator(generated, marksGraphCreator = true)
     }
 
-    if (functions.isNotEmpty()) {
-      log(
-        "Generated ${functions.size} for ${owner.classId}: ${functions.joinToString { it.name.asString() }}",
-      )
-    } else {
-      log("Generated no functions for ${owner.classId}")
-    }
+    val graphClass = plan.graphClass
+    val creator = plan.creator
+    val sam = plan.sam
+    val function =
+      if (creator == null) {
+        // Block functions can't see the graph's type parameters, so the creator declares copies.
+        val generatedFunction =
+          createMemberFunction(
+            owner,
+            Keys.MetroGraphCreatorsObjectInvokeDeclaration,
+            Symbols.Names.invoke,
+            returnTypeProvider = {
+              graphClass.constructType(it.mapToArray(FirTypeParameter::toConeType))
+            },
+          ) {
+            copyTypeParametersFrom(graphClass, session, includeBounds = true)
+            status { isOperator = true }
+          }
+        finishCreator(generatedFunction, marksGraphCreator = true)
+      } else if (sam != null) {
+        // Block creators don't override the SAM, so they copy the defaults they can see.
+        val defaults =
+          if (isBlockCreator) {
+            creator.classSymbol.sourceFactoryDefaults(sam, session)
+          } else {
+            emptySet()
+          }
+        generateSAMFunction(sam, defaults)
+      } else {
+        val creatorClass = creator.classSymbol
+        val generatedFunction =
+          createMemberFunction(
+            owner,
+            Keys.MetroGraphFactoryCompanionGetter,
+            Symbols.Names.factory,
+            returnTypeProvider = {
+              creatorClass.constructType(it.mapToArray(FirTypeParameter::toConeType))
+            },
+          )
+        finishCreator(generatedFunction, marksGraphCreator = false)
+      }
 
-    return functions
+    log("Generated ${function.name} for ${owner.classId}")
+    return listOf(function)
   }
+
+  /** The creator that a companion, block, or factory `Impl` owner implements. */
+  private class CreatorPlan(
+    val graphClass: FirClassSymbol<*>,
+    val creator: GraphObject.Creator?,
+    /** The factory function to implement. It's null for `invoke()` and `factory()` creators. */
+    val sam: FirNamedFunctionSymbol?,
+    val creatorName: Name,
+  )
 
   fun graphObject(classLikeSymbol: FirClassLikeSymbol<*>) =
     graphObject(classLikeSymbol as FirClassSymbol<*>)

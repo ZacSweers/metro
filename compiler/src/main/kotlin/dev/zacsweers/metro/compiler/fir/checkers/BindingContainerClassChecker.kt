@@ -300,8 +300,15 @@ internal object BindingContainerClassChecker : FirClassChecker(MppCheckerKind.Co
       if (symbol !is FirCallableSymbol<*>) return@processAllDeclarations
       if (symbol.isAnnotatedWithAny(session, classIds.providesAnnotations)) {
 
-        if (isBindingContainer && isAbstract) {
-          val type = if (declaration.isInterface) "interface" else "abstract class"
+        val isAbstractBindingContainer = isBindingContainer && isAbstract
+        val isCompanionBlockMember = with(compatContext) { symbol.isCompanionBlockMemberCompat }
+        if (isAbstractBindingContainer && !isCompanionBlockMember) {
+          val type =
+            if (declaration.isInterface) {
+              "interface"
+            } else {
+              "abstract class"
+            }
           reporter.reportOn(
             symbol.source,
             BINDING_CONTAINER_ERROR,

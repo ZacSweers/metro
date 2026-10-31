@@ -170,6 +170,11 @@ private fun createGraphProto(
                 is ProviderFactory.Metro -> factory.signatureCarrier
                 is ProviderFactory.Dagger -> SignatureCarrier.MIRROR_FUNCTION
               },
+            is_companion_block_member =
+              when (factory) {
+                is ProviderFactory.Metro -> factory.function.isCompanionBlockMember
+                is ProviderFactory.Dagger -> false
+              },
           )
         }
         .sortedBy { it.class_id },
