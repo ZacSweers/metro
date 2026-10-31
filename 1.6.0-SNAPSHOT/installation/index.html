@@ -687,10 +687,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#amper" class="md-nav__link">
+  <a href="#kotlin-toolchain" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Amper
+        Kotlin Toolchain
       </span>
     </span>
   </a>
@@ -2053,10 +2053,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#amper" class="md-nav__link">
+  <a href="#kotlin-toolchain" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Amper
+        Kotlin Toolchain
       </span>
     </span>
   </a>
@@ -2175,9 +2175,12 @@
     <span class="p">],</span>
 <span class="p">)</span>
 </code></pre></div>
-<h3 id="amper"><a href="https://amper.org">Amper</a><a class="headerlink" href="#amper" title="Permanent link">&para;</a></h3>
-<p>Using the <a href="https://amper.org/latest/user-guide/advanced/kotlin-compiler-plugins/">compiler plugin</a> support in Amper 0.10+.</p>
-<div class="highlight"><pre><span></span><code><span class="nt">settings</span><span class="p">:</span>
+<h3 id="kotlin-toolchain"><a href="https://kotlin-toolchain.org/">Kotlin Toolchain</a><a class="headerlink" href="#kotlin-toolchain" title="Permanent link">&para;</a></h3>
+<p>Using the <a href="https://kotlin-toolchain.org/latest/user-guide/advanced/kotlin-compiler-plugins/">compiler plugin</a> support in Kotlin Toolchain (formerly known as Amper).</p>
+<div class="highlight"><pre><span></span><code><span class="nt">dependencies</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">$libs.metro.runtime</span>
+
+<span class="nt">settings</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">kotlin</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">compilerPlugins</span><span class="p">:</span>
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dev.zacsweers.metro.compiler</span>
@@ -2189,6 +2192,7 @@
 </code></pre></div>
 <div class="highlight"><pre><span></span><code><span class="c1"># Version Catalog</span>
 <span class="n">metro-compiler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">module</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">"dev.zacsweers.metro:compiler"</span><span class="p">,</span><span class="w"> </span><span class="n">version</span><span class="p">.</span><span class="n">ref</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">"metro"</span><span class="w"> </span><span class="p">}</span>
+<span class="n">metro-runtime</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">module</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">"dev.zacsweers.metro:runtime"</span><span class="p">,</span><span class="w"> </span><span class="n">version</span><span class="p">.</span><span class="n">ref</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">"metro"</span><span class="w"> </span><span class="p">}</span>
 </code></pre></div>
 <h2 id="ide-support">IDE Support<a class="headerlink" href="#ide-support" title="Permanent link">&para;</a></h2>
 <p>The K2 Kotlin IntelliJ plugin supports running third party FIR plugins in the IDE, but this feature is hidden behind a flag. Some Metro features can take advantage of this, namely diagnostic reporting directly in the IDE and some opt-in features to see generated declarations. </p>
