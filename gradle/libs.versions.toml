@@ -188,7 +188,7 @@ kotlinx-browser = { module = "org.jetbrains.kotlinx:kotlinx-browser", version.re
 kotlinx-datetime = "org.jetbrains.kotlinx:kotlinx-datetime:0.7.1"
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 
-graphSupport = "com.autonomousapps:graph-support:0.12.0"
+graphSupport = "com.autonomousapps:graph-support:0.13.0"
 
 guava = "com.google.guava:guava:33.7.2-jre"
 
