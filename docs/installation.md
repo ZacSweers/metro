@@ -50,11 +50,14 @@ kt_jvm_library(
 )
 ```
 
-### [Amper](https://amper.org)
+### [Kotlin Toolchain](https://kotlin-toolchain.org/)
 
-Using the [compiler plugin](https://amper.org/latest/user-guide/advanced/kotlin-compiler-plugins/) support in Amper 0.10+.
+Using the [compiler plugin](https://kotlin-toolchain.org/latest/user-guide/advanced/kotlin-compiler-plugins/) support in Kotlin Toolchain (formerly known as Amper).
 
 ```yaml
+dependencies:
+  - $libs.metro.runtime
+
 settings:
   kotlin:
     compilerPlugins:
@@ -69,6 +72,7 @@ settings:
 ```toml
 # Version Catalog
 metro-compiler = { module = "dev.zacsweers.metro:compiler", version.ref = "metro" }
+metro-runtime = { module = "dev.zacsweers.metro:runtime", version.ref = "metro" }
 ```
 
 ## IDE Support
