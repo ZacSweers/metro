@@ -367,21 +367,7 @@ interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
-    private val provideDirectSuspendValueSuspendProvider: SuspendProvider<DirectSuspendValue>
-
-    private val deferredSuspendConsumerProvider: Provider<DeferredSuspendConsumer>
-
-    private val sharedUnscopedSuspendValueSuspendProvider: SuspendProvider<SharedUnscopedSuspendValue>
-
-    private val synchronousScopedProvider: Provider<SynchronousScoped>
-
-    private val transitiveSuspendValueSuspendProvider: SuspendProvider<TransitiveSuspendValue>
-
     private class SwitchingProvider<T : Any?> : Provider<T> {
-      private val graph: Impl
-
-      private val id: Int
-
       constructor(graph: Impl, id: Int) /* primary */ {
         super/*Any*/()
         <this>.#graph = graph
@@ -399,13 +385,13 @@ interface AppGraph {
         }
       }
 
-    }
-
-    private class SwitchingSuspendProvider<T : Any?> : SuspendProvider<T> {
       private val graph: Impl
 
       private val id: Int
 
+    }
+
+    private class SwitchingSuspendProvider<T : Any?> : SuspendProvider<T> {
       constructor(graph: Impl, id: Int) /* primary */ {
         super/*Any*/()
         <this>.#graph = graph
@@ -445,6 +431,10 @@ interface AppGraph {
           }
         }
       }
+
+      private val graph: Impl
+
+      private val id: Int
 
     }
 
@@ -492,10 +482,20 @@ interface AppGraph {
         return <this>.#deferredSuspendConsumerProvider.invoke()
       }
 
+    private val deferredSuspendConsumerProvider: Provider<DeferredSuspendConsumer>
+
+    private val provideDirectSuspendValueSuspendProvider: SuspendProvider<DirectSuspendValue>
+
+    private val sharedUnscopedSuspendValueSuspendProvider: SuspendProvider<SharedUnscopedSuspendValue>
+
     override val synchronous: SynchronousScoped
       override get(): SynchronousScoped {
         return <this>.#synchronousScopedProvider.invoke()
       }
+
+    private val synchronousScopedProvider: Provider<SynchronousScoped>
+
+    private val transitiveSuspendValueSuspendProvider: SuspendProvider<TransitiveSuspendValue>
 
   }
 

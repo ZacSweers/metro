@@ -238,21 +238,7 @@ interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
-    private val classAProvider: Provider<ClassA>
-
-    private val classBProvider: Provider<ClassB>
-
-    private val classCProvider: Provider<ClassC>
-
-    private val classDProvider: Provider<ClassD>
-
-    private val classEProvider: Provider<ClassE>
-
     private class SwitchingProvider<T : Any?> : Provider<T> {
-      private val graph: Impl
-
-      private val id: Int
-
       constructor(graph: Impl, id: Int) /* primary */ {
         super/*Any*/()
         <this>.#graph = graph
@@ -304,6 +290,10 @@ interface AppGraph {
         }
       }
 
+      private val graph: Impl
+
+      private val id: Int
+
     }
 
     private constructor() /* primary */ {
@@ -343,6 +333,16 @@ interface AppGraph {
       override get(): ClassC {
         return <this>.#classCProvider.invoke()
       }
+
+    private val classAProvider: Provider<ClassA>
+
+    private val classBProvider: Provider<ClassB>
+
+    private val classCProvider: Provider<ClassC>
+
+    private val classDProvider: Provider<ClassD>
+
+    private val classEProvider: Provider<ClassE>
 
     override val d: ClassD
       override get(): ClassD {

@@ -1,8 +1,4 @@
 class Injectable {
-  lateinit var string: String
-    get
-    set
-
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class MetroMembersInjector : MembersInjector<Injectable> {
     private /* final field */ val string: Provider<String> = string
@@ -45,6 +41,10 @@ class Injectable {
     /* <init>() */
 
   }
+
+  lateinit var string: String
+    get
+    set
 
 }
 
@@ -129,10 +129,6 @@ interface AppGraph {
       field = provider<Provider<ScopedClass>, ScopedClass>(delegate = SwitchingProvider<ScopedClass>(graph = <this>, id = 0))
 
     private class SwitchingProvider<T : Any?> : Provider<T> {
-      private val graph: Impl
-
-      private val id: Int
-
       constructor(graph: Impl, id: Int) /* primary */ {
         super/*Any*/()
         <this>.#graph = graph
@@ -151,6 +147,10 @@ interface AppGraph {
           }
         }
       }
+
+      private val graph: Impl
+
+      private val id: Int
 
     }
 
