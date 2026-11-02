@@ -157,6 +157,7 @@ import org.jetbrains.kotlin.ir.types.typeOrNull
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.types.typeWithArguments
 import org.jetbrains.kotlin.ir.types.typeWithParameters
+import org.jetbrains.kotlin.ir.util.NaiveSourceBasedFileEntryImpl
 import org.jetbrains.kotlin.ir.util.SYNTHETIC_OFFSET
 import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.allParameters
@@ -208,6 +209,27 @@ import org.jetbrains.kotlin.platform.konan.isNative
 /** Finds the line and column of [this] within its file. */
 internal fun IrDeclaration.location(): CompilerMessageSourceLocation {
   return locationOrNull() ?: reportCompilerBug("No location found for ${dumpKotlinLike()}!")
+}
+
+/**
+ * Kotlin puts each FIR-generated top-level class in its own synthetic file, and that file's entry
+ * has no line table. The JVM backend sizes a class's SMAP range from its file's line count, so it
+ * writes an empty `1#1,0:1` range when a class in that file inlines a call like `provider {}`. The
+ * SMAP format requires at least one line per range, and R8 9.5 fails on the empty one. This gives
+ * the synthetic file a single line. The backend already maps synthetic offsets in it to that line.
+ */
+internal fun IrFile.ensureSyntheticFileHasLineTable() {
+  val entry = fileEntry as? NaiveSourceBasedFileEntryImpl ?: return
+  if (!entry.lineStartOffsetsAreEmpty) {
+    return
+  }
+  fileEntry =
+    NaiveSourceBasedFileEntryImpl(
+      name = entry.name,
+      lineStartOffsets = intArrayOf(0),
+      maxOffset = 0,
+      firstRelevantLineIndex = 0,
+    )
 }
 
 /** Finds the line and column of [this] within its file or returns null if this has no location. */

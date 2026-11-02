@@ -8,6 +8,7 @@ Changelog
 
 - **[IR]** Fix graph extensions creating separate instances of inherited class binding containers. Extensions now reuse the parent instance and can share set and map getters.
 - **[IR]** Fix a `NoSuchMethodError` when reporting diagnostics without a source location on Kotlin `2.4.20` and newer.
+- **[IR]** Fix contribution provider factories and top-level Circuit factories generated in FIR emitting an empty Kotlin SMAP line range (`1#1,0:1`) when they inline code like `provider {}`. R8 9.5 fails on these ranges when generating a mapping file.
 
 ### Changes
 

@@ -27,6 +27,7 @@ import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.buildAnnotation
 import dev.zacsweers.metro.compiler.ir.copyParameterDefaultValues
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
+import dev.zacsweers.metro.compiler.ir.ensureSyntheticFileHasLineTable
 import dev.zacsweers.metro.compiler.ir.findAnnotations
 import dev.zacsweers.metro.compiler.ir.findInjectableConstructor
 import dev.zacsweers.metro.compiler.ir.getOrCreateGraphImplClassShell
@@ -148,6 +149,10 @@ internal class ContributionIrTransformer(
     val shouldSkip = declaration.isLocal
     if (shouldSkip) {
       return declaration
+    }
+
+    if (declaration.origin == Origins.ContributionProviderHolderDeclaration) {
+      declaration.file.ensureSyntheticFileHasLineTable()
     }
 
     return trace("Visit ${declaration.name}") {

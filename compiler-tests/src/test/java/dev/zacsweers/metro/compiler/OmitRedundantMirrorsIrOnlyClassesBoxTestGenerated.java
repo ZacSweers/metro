@@ -484,6 +484,12 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
       }
 
       @Test
+      @TestMetadata("defaultParameterSmaps.kt")
+      public void testDefaultParameterSmaps() {
+        run("defaultParameterSmaps.kt");
+      }
+
+      @Test
       @TestMetadata("defaultParameters.kt")
       public void testDefaultParameters() {
         run("defaultParameters.kt");

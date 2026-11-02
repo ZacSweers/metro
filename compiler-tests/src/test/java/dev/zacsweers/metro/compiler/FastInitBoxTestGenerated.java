@@ -484,6 +484,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       }
 
       @Test
+      @TestMetadata("defaultParameterSmaps.kt")
+      public void testDefaultParameterSmaps() {
+        run("defaultParameterSmaps.kt");
+      }
+
+      @Test
       @TestMetadata("defaultParameters.kt")
       public void testDefaultParameters() {
         run("defaultParameters.kt");
