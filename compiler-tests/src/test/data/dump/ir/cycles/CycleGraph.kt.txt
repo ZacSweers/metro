@@ -130,14 +130,6 @@ class C {
     field = aProvider
     get
 
-  lateinit var aLazy: Lazy<A>
-    get
-    set
-
-  lateinit var aLazyProvider: Function0<Lazy<A>>
-    get
-    set
-
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class MetroFactory : Factory<C> {
     private /* final field */ val aProvider: Provider<A> = aProvider
@@ -237,6 +229,14 @@ class C {
     /* <init>() */
 
   }
+
+  lateinit var aLazy: Lazy<A>
+    get
+    set
+
+  lateinit var aLazyProvider: Function0<Lazy<A>>
+    get
+    set
 
 }
 

@@ -1,8 +1,4 @@
 class Target {
-  lateinit var strings: Map<Int, Function0<String>>
-    get
-    set
-
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class MetroMembersInjector : MembersInjector<Target> {
     private /* final field */ val strings: Provider<Map<Int, Function0<String>>> = strings
@@ -45,6 +41,10 @@ class Target {
     /* <init>() */
 
   }
+
+  lateinit var strings: Map<Int, Function0<String>>
+    get
+    set
 
 }
 

@@ -13,10 +13,6 @@ interface AppGraph {
       field = provider<Provider<Long>, Long>(delegate = SwitchingProvider<Long>(graph = <this>, id = 0))
 
     private class SwitchingProvider<T : Any?> : Provider<T> {
-      private val graph: Impl
-
-      private val id: Int
-
       constructor(graph: Impl, id: Int) /* primary */ {
         super/*Any*/()
         <this>.#graph = graph
@@ -35,6 +31,10 @@ interface AppGraph {
           }
         }
       }
+
+      private val graph: Impl
+
+      private val id: Int
 
     }
 

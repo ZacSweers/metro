@@ -336,32 +336,26 @@ interface TestGraph {
     private val instance: ProvidedExample
       field = example
 
-    internal val shard1: Shard1
-
-    internal val shard2: Shard2
-
-    internal val shard3: Shard3
-
     private class Shard1 {
-      internal val provider: Provider<Config>
-
       constructor(graph: Impl) /* primary */ {
         super/*Any*/()
         <this>.#provider = provider<Provider<Config>, Config>(delegate = create(example = providerOf<ProvidedExample>(value = graph.#instance)))
       }
 
+      internal val provider: Provider<Config>
+
     }
 
     private class Shard2 {
-      internal val provider: Provider<Repository>
-
-      internal val provider2: Provider<Service>
-
       constructor(graph: Impl) /* primary */ {
         super/*Any*/()
         <this>.#provider = provider<Provider<Repository>, Repository>(delegate = create(config = graph.#shard1.#provider))
         <this>.#provider2 = provider<Provider<Service>, Service>(delegate = create(repository = <this>.#provider))
       }
+
+      internal val provider: Provider<Repository>
+
+      internal val provider2: Provider<Service>
 
     }
 
@@ -395,6 +389,12 @@ interface TestGraph {
       override get(): Service {
         return <this>.#shard2.#provider2.invoke()
       }
+
+    internal val shard1: Shard1
+
+    internal val shard2: Shard2
+
+    internal val shard3: Shard3
 
   }
 
