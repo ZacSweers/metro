@@ -214,6 +214,9 @@ internal fun IrDeclaration.location(): CompilerMessageSourceLocation {
 /**
  * Gives synthetic files a line table to prevent empty SMAP ranges (`1#1,0:1`) during inlining.
  * These ranges crash R8 9.5 when it generates a mapping file.
+ *
+ * - Kotlin issue: https://youtrack.jetbrains.com/issue/KT-91212
+ * - R8 fix: https://r8-review.googlesource.com/c/r8/+/138963
  */
 internal fun IrFile.ensureSyntheticFileHasLineTable() {
   val entry = fileEntry as? NaiveSourceBasedFileEntryImpl ?: return
