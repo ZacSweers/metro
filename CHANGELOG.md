@@ -6,12 +6,15 @@ Changelog
 
 ### Fixes
 
+- **[FIR]** Fix compat with Kotlin `2.5.20` dev builds around inherited member injection.
 - **[IR]** Fix graph extensions creating separate instances of inherited class binding containers. Extensions now reuse the parent instance and can share set and map getters.
 - **[IR]** Fix a `NoSuchMethodError` when reporting diagnostics without a source location on Kotlin `2.4.20` and newer.
+- **[IR]** Fix providers for parent-owned bindings retaining child graphs. Generated provider lambdas now capture the owning ancestor directly.
 - **[IR]** Add an opt-in `fix-empty-smap-ranges` compiler option to fix empty Kotlin SMAP line ranges (`1#1,0:1`) in synthetic files.
 
 ### Changes
 
+- **[compat]** Support Kotlin `2.5.20-dev-2623`.
 - Update androidx.tracing to `2.0.5`.
 
 ### Contributors

@@ -430,6 +430,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
       }
 
       @Test
+      @TestMetadata("ParentGetterProviderCapturesOwner.kt")
+      public void testParentGetterProviderCapturesOwner() {
+        run("ParentGetterProviderCapturesOwner.kt");
+      }
+
+      @Test
       @TestMetadata("SingleChildBindingIsNotHoisted.kt")
       public void testSingleChildBindingIsNotHoisted() {
         run("SingleChildBindingIsNotHoisted.kt");

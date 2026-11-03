@@ -3,11 +3,18 @@
 package dev.zacsweers.metro.compiler
 
 import dev.zacsweers.metro.compiler.compat.CompatContext
+import dev.zacsweers.metro.compiler.compat.stableDeclarationOrder
+import dev.zacsweers.metro.compiler.compat.stableTypeOrder
 import dev.zacsweers.metro.compiler.ir.metroDumpKotlinLike
 import org.jetbrains.kotlin.ir.IrElement
+import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationContainer
+import org.jetbrains.kotlin.ir.declarations.IrFile
+import org.jetbrains.kotlin.ir.declarations.IrTypeParameter
 import org.jetbrains.kotlin.ir.expressions.IrFunctionExpression
 import org.jetbrains.kotlin.ir.util.FakeOverridesStrategy
 import org.jetbrains.kotlin.ir.util.KotlinLikeDumpOptions
+import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.visitors.IrVisitor
 import org.jetbrains.kotlin.test.backend.handlers.AbstractIrHandler
@@ -52,7 +59,7 @@ class MetroIrPrettyKotlinDumpHandler(
       KotlinLikeDumpOptions(
         printFilePath = false,
         printFakeOverridesStrategy = FakeOverridesStrategy.NONE,
-        stableOrder = true,
+        stableOrder = false,
         printExpectDeclarations = module.languageVersionSettings.languageVersion.usesK2,
         inferElseBranches = true,
       )
@@ -70,7 +77,7 @@ class MetroIrPrettyKotlinDumpHandler(
     val printFileName = filteredIrFiles.size > 1 || allModules.size > 1
     val modifiedOptions = options.copy(printFileName = printFileName)
     for (irFile in filteredIrFiles) {
-      builder.append(irFile.metroDumpKotlinLike(modifiedOptions))
+      builder.append(irFile.copyWithStableDumpOrder().metroDumpKotlinLike(modifiedOptions))
       if (MetroDirectives.METRO_DUMP_FUNCTION_EXPRESSION_TYPES in module.directives) {
         val expressionTypes = mutableListOf<String>()
         builder.appendLine("// Function expression types:")
@@ -103,5 +110,28 @@ class MetroIrPrettyKotlinDumpHandler(
     } else {
       assertions.assertEqualsToFile(expectedFile, dumper.generateResultingDump())
     }
+  }
+
+  /** Orders a dump copy so Kotlin's sorting changes don't affect the shared goldens. */
+  private fun IrFile.copyWithStableDumpOrder(): IrFile {
+    val copy = deepCopyWithSymbols()
+    copy.accept(
+      object : IrVisitor<Unit, Unit>() {
+        override fun visitElement(element: IrElement, data: Unit) {
+          if (element is IrDeclarationContainer) {
+            val ordered = element.declarations.stableDeclarationOrder()
+            element.declarations.clear()
+            element.declarations.addAll(ordered)
+          }
+          when (element) {
+            is IrClass -> element.superTypes = element.superTypes.stableTypeOrder()
+            is IrTypeParameter -> element.superTypes = element.superTypes.stableTypeOrder()
+          }
+          element.acceptChildren(this, data)
+        }
+      },
+      Unit,
+    )
+    return copy
   }
 }

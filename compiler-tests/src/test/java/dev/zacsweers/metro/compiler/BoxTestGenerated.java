@@ -2254,6 +2254,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("ParentGetterProvidersDoNotRetainChildren.kt")
+      public void testParentGetterProvidersDoNotRetainChildren() {
+        run("ParentGetterProvidersDoNotRetainChildren.kt");
+      }
+
+      @Test
       @TestMetadata("ParentMultibindingsAreAlsoIncluded.kt")
       public void testParentMultibindingsAreAlsoIncluded() {
         run("ParentMultibindingsAreAlsoIncluded.kt");
