@@ -11,12 +11,12 @@ import org.jetbrains.org.objectweb.asm.ClassReader
 import org.jetbrains.org.objectweb.asm.ClassVisitor
 import org.jetbrains.org.objectweb.asm.Opcodes
 
-/**
- * Checks the Kotlin SMAP of every compiled class for line ranges that map zero lines, like
- * `1#1,0:1`. The SMAP format requires at least one line per range, and R8 9.5 fails on empty ones.
- */
+/** Checks for empty SMAP ranges when the test opts into the workaround. */
 class MetroSmapHandler(testServices: TestServices) : JvmBinaryArtifactHandler(testServices) {
   override fun processModule(module: TestModule, info: BinaryArtifacts.Jvm) {
+    if (MetroDirectives.FIX_EMPTY_SMAP_RANGES !in module.directives) {
+      return
+    }
     // The artifact's class moved in Kotlin 2.4.20, but every version exposes this property.
     val classFileFactory =
       info.javaClass.getMethod("getClassFileFactory").invoke(info) as ClassFileFactory

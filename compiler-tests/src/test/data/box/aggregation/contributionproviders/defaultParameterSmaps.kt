@@ -1,6 +1,8 @@
 // GENERATE_CONTRIBUTION_PROVIDERS: true
-// Contribution provider holders live in synthetic files without source lines. Factories that inline
-// provider {} for default values must still emit nonempty SMAP ranges. MetroSmapHandler checks this.
+// FIX_EMPTY_SMAP_RANGES
+// https://github.com/ZacSweers/metro/pull/3046
+// FIR contribution provider holders live in synthetic files without source lines.
+// Factories that inline provider {} for default values must still emit nonempty SMAP ranges.
 interface Service {
   fun describe(): String
 }

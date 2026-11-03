@@ -892,6 +892,18 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       }
 
       @Test
+      @TestMetadata("InlineFactorySmaps.kt")
+      public void testInlineFactorySmaps() {
+        run("InlineFactorySmaps.kt");
+      }
+
+      @Test
+      @TestMetadata("InlineFactorySmapsWithoutHints.kt")
+      public void testInlineFactorySmapsWithoutHints() {
+        run("InlineFactorySmapsWithoutHints.kt");
+      }
+
+      @Test
       @TestMetadata("ParameterOrderDoesNotMatter.kt")
       public void testParameterOrderDoesNotMatter() {
         run("ParameterOrderDoesNotMatter.kt");
@@ -2837,6 +2849,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       @TestMetadata("GenericWithDependentTypeParams.kt")
       public void testGenericWithDependentTypeParams() {
         run("GenericWithDependentTypeParams.kt");
+      }
+
+      @Test
+      @TestMetadata("InlineFunctionSmaps.kt")
+      public void testInlineFunctionSmaps() {
+        run("InlineFunctionSmaps.kt");
       }
     }
 

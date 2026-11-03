@@ -212,11 +212,8 @@ internal fun IrDeclaration.location(): CompilerMessageSourceLocation {
 }
 
 /**
- * Kotlin puts each FIR-generated top-level class in its own synthetic file, and that file's entry
- * has no line table. The JVM backend sizes a class's SMAP range from its file's line count, so it
- * writes an empty `1#1,0:1` range when a class in that file inlines a call like `provider {}`. The
- * SMAP format requires at least one line per range, and R8 9.5 fails on the empty one. This gives
- * the synthetic file a single line. The backend already maps synthetic offsets in it to that line.
+ * Gives synthetic files a line table to prevent empty SMAP ranges (`1#1,0:1`) during inlining.
+ * These ranges crash R8 9.5 when it generates a mapping file.
  */
 internal fun IrFile.ensureSyntheticFileHasLineTable() {
   val entry = fileEntry as? NaiveSourceBasedFileEntryImpl ?: return

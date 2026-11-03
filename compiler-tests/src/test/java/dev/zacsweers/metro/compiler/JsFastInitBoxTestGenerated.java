@@ -2504,6 +2504,12 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
       public void testGenericWithDependentTypeParams() {
         run("GenericWithDependentTypeParams.kt");
       }
+
+      @Test
+      @TestMetadata("InlineFunctionSmaps.kt")
+      public void testInlineFunctionSmaps() {
+        run("InlineFunctionSmaps.kt");
+      }
     }
 
     @Nested

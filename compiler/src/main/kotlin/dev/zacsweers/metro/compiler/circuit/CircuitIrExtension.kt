@@ -11,7 +11,6 @@ import dev.zacsweers.metro.compiler.ir.addDefaultConstructor
 import dev.zacsweers.metro.compiler.ir.annotationsCompat
 import dev.zacsweers.metro.compiler.ir.classReferenceArgument
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
-import dev.zacsweers.metro.compiler.ir.ensureSyntheticFileHasLineTable
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.findInjectableConstructor
 import dev.zacsweers.metro.compiler.ir.finderFor
@@ -596,9 +595,6 @@ private class CircuitIrFactoryTransformer(
     val generatedOrigin =
       declaration.origin.expectAsOrNull<IrDeclarationOrigin.GeneratedByPlugin>()?.pluginKey
     if (generatedOrigin is CircuitOrigins.FactoryClass) {
-      // Top-level factories that FIR generated sit in synthetic files.
-      (declaration.parent as? IrFile)?.ensureSyntheticFileHasLineTable()
-
       // Find the target info from the factory class annotations
       val circuitTargetInfo = declaration.circuitFactoryTargetData()
       val screenClass =

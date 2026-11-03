@@ -16,6 +16,7 @@ import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.platform.jvm.isJvm
 
 public class MetroIrGenerationExtension(
   private val messageCollector: MessageCollector,
@@ -42,6 +43,13 @@ public class MetroIrGenerationExtension(
           traceContext,
         )
     graph.pipeline.run()
+
+    if (options.fixEmptySmapRanges && pluginContext.platform.isJvm()) {
+      // Repair synthetic files after all FIR and IR generated declarations have been processed.
+      for (file in moduleFragment.files) {
+        file.ensureSyntheticFileHasLineTable()
+      }
+    }
   }
 }
 

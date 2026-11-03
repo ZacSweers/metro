@@ -136,12 +136,14 @@ class MetroExtensionRegistrarConfigurator(
       enableGraphImplClassAsReturnType =
         MetroDirectives.ENABLE_GRAPH_IMPL_CLASS_AS_RETURN_TYPE in module.directives
       generateContributionHints =
-        module.directives.singleOrZeroValue(MetroDirectives.GENERATE_CONTRIBUTION_HINTS) ?: true
+        // Let fixture directives override the suite default.
+        module.directives[MetroDirectives.GENERATE_CONTRIBUTION_HINTS].lastOrNull() ?: true
       generateClassesInIr =
         module.directives[MetroDirectives.GENERATE_CLASSES_IN_IR]
           .lastOrNull()
           ?.toString()
           ?.toBoolean() ?: false
+      fixEmptySmapRanges = MetroDirectives.FIX_EMPTY_SMAP_RANGES in module.directives
       omitRedundantMirrors =
         module.directives[MetroDirectives.OMIT_REDUNDANT_MIRRORS]
           .lastOrNull()
