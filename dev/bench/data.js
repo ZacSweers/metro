@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793681628224,
+  "lastUpdate": 1793724055231,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -26488,6 +26488,62 @@ window.BENCHMARK_DATA = {
             "value": 0.20197334618105295,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: +5.32%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Aidan Pieper",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Aidan Pieper",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "7bfdbefb~1",
+          "message": "[before] Fix empty Kotlin SMAP line ranges which crashes R8",
+          "timestamp": "2026-11-03T15:55:40Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/7bfdbefbb4ceff76aa13a64a3dc3c04abb2915f1"
+        },
+        "date": 1793724055231,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.26946203228413157,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Aidan Pieper",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Aidan Pieper",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "7bfdbefbb4ceff76aa13a64a3dc3c04abb2915f1",
+          "message": "[after] Fix empty Kotlin SMAP line ranges which crashes R8",
+          "timestamp": "2026-11-03T15:55:40Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/7bfdbefbb4ceff76aa13a64a3dc3c04abb2915f1"
+        },
+        "date": 1793724055232,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.2714325429826635,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: +0.73%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }

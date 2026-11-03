@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793681628370,
+  "lastUpdate": 1793724055386,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -26488,6 +26488,62 @@ window.BENCHMARK_DATA = {
             "value": 13683.710000000001,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -3.77%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Aidan Pieper",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Aidan Pieper",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "7bfdbefb~1",
+          "message": "[before] Fix empty Kotlin SMAP line ranges which crashes R8",
+          "timestamp": "2026-11-03T15:55:40Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/7bfdbefbb4ceff76aa13a64a3dc3c04abb2915f1"
+        },
+        "date": 1793724055386,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 9879.499,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Aidan Pieper",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Aidan Pieper",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "7bfdbefbb4ceff76aa13a64a3dc3c04abb2915f1",
+          "message": "[after] Fix empty Kotlin SMAP line ranges which crashes R8",
+          "timestamp": "2026-11-03T15:55:40Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/7bfdbefbb4ceff76aa13a64a3dc3c04abb2915f1"
+        },
+        "date": 1793724055387,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 9800.985,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -0.79%"
           }
         ]
       }
