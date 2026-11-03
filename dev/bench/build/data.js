@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793400302671,
+  "lastUpdate": 1793677663450,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -26376,6 +26376,62 @@ window.BENCHMARK_DATA = {
             "value": 10308.721,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -3.66%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Aidan Pieper",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Aidan Pieper",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "2df2aecd~1",
+          "message": "[before] Fix child graph retention (#3044)",
+          "timestamp": "2026-11-02T21:53:21-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/2df2aecde4a63d812e15e271285b753330dba492"
+        },
+        "date": 1793677663450,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 15215.256,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Aidan Pieper",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Aidan Pieper",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "2df2aecde4a63d812e15e271285b753330dba492",
+          "message": "[after] Fix child graph retention (#3044)",
+          "timestamp": "2026-11-02T21:53:21-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/2df2aecde4a63d812e15e271285b753330dba492"
+        },
+        "date": 1793677663451,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 13671.721,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -10.14%"
           }
         ]
       }
