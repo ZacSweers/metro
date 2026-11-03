@@ -157,6 +157,7 @@ import org.jetbrains.kotlin.ir.types.typeOrNull
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.types.typeWithArguments
 import org.jetbrains.kotlin.ir.types.typeWithParameters
+import org.jetbrains.kotlin.ir.util.NaiveSourceBasedFileEntryImpl
 import org.jetbrains.kotlin.ir.util.SYNTHETIC_OFFSET
 import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.allParameters
@@ -208,6 +209,27 @@ import org.jetbrains.kotlin.platform.konan.isNative
 /** Finds the line and column of [this] within its file. */
 internal fun IrDeclaration.location(): CompilerMessageSourceLocation {
   return locationOrNull() ?: reportCompilerBug("No location found for ${dumpKotlinLike()}!")
+}
+
+/**
+ * Gives synthetic files a line table to prevent empty SMAP ranges (`1#1,0:1`) during inlining.
+ * These ranges crash R8 9.5 when it generates a mapping file.
+ *
+ * - Kotlin issue: https://youtrack.jetbrains.com/issue/KT-91212
+ * - R8 fix: https://r8-review.googlesource.com/c/r8/+/138963
+ */
+internal fun IrFile.ensureSyntheticFileHasLineTable() {
+  val entry = fileEntry as? NaiveSourceBasedFileEntryImpl ?: return
+  if (!entry.lineStartOffsetsAreEmpty) {
+    return
+  }
+  fileEntry =
+    NaiveSourceBasedFileEntryImpl(
+      name = entry.name,
+      lineStartOffsets = intArrayOf(0),
+      maxOffset = 0,
+      firstRelevantLineIndex = 0,
+    )
 }
 
 /** Finds the line and column of [this] within its file or returns null if this has no location. */

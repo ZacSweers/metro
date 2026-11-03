@@ -9,6 +9,7 @@ import org.jetbrains.kotlin.config.JvmTarget
 import org.jetbrains.kotlin.test.backend.ir.IrBackendInput
 import org.jetbrains.kotlin.test.builders.TestConfigurationBuilder
 import org.jetbrains.kotlin.test.builders.configureIrHandlersStep
+import org.jetbrains.kotlin.test.builders.configureJvmArtifactsHandlersStep
 import org.jetbrains.kotlin.test.directives.AdditionalFilesDirectives.WITH_COROUTINES as WITH_COROUTINE_HELPERS
 import org.jetbrains.kotlin.test.directives.CodegenTestDirectives.IGNORE_DEXING
 import org.jetbrains.kotlin.test.directives.ConfigurationDirectives.WITH_STDLIB
@@ -60,6 +61,8 @@ open class AbstractBoxTest : AbstractFirLightTreeBlackBoxCodegenTest() {
       forTestsMatching("CircuitSerializerRegistrationExpectActual.kt") {
         defaultDirectives { -WITH_COROUTINE_HELPERS }
       }
+
+      configureJvmArtifactsHandlersStep { useHandlers(::MetroSmapHandler) }
 
       configureIrHandlersStep {
         useHandlers(

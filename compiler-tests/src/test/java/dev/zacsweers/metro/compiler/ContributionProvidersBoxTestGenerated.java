@@ -484,6 +484,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
       }
 
       @Test
+      @TestMetadata("defaultParameterSmaps.kt")
+      public void testDefaultParameterSmaps() {
+        run("defaultParameterSmaps.kt");
+      }
+
+      @Test
       @TestMetadata("defaultParameters.kt")
       public void testDefaultParameters() {
         run("defaultParameters.kt");
@@ -883,6 +889,18 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
       @TestMetadata("CreatorSignatureCarrierScreenArguments.kt")
       public void testCreatorSignatureCarrierScreenArguments() {
         run("CreatorSignatureCarrierScreenArguments.kt");
+      }
+
+      @Test
+      @TestMetadata("InlineFactorySmaps.kt")
+      public void testInlineFactorySmaps() {
+        run("InlineFactorySmaps.kt");
+      }
+
+      @Test
+      @TestMetadata("InlineFactorySmapsWithoutHints.kt")
+      public void testInlineFactorySmapsWithoutHints() {
+        run("InlineFactorySmapsWithoutHints.kt");
       }
 
       @Test
@@ -2837,6 +2855,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
       @TestMetadata("GenericWithDependentTypeParams.kt")
       public void testGenericWithDependentTypeParams() {
         run("GenericWithDependentTypeParams.kt");
+      }
+
+      @Test
+      @TestMetadata("InlineFunctionSmaps.kt")
+      public void testInlineFunctionSmaps() {
+        run("InlineFunctionSmaps.kt");
       }
     }
 

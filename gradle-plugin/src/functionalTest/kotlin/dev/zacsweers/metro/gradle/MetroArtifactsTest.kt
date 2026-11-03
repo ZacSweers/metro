@@ -511,6 +511,7 @@ class MetroArtifactsTest {
                 "parallelThreads": 0,
                 "bufferedIcTracking": true,
                 "omitRedundantMirrors": $omitRedundantMirrors,
+                "fixEmptySmapRanges": false,
                 "enableProviderInlining": true,
                 "enableFunctionProviders": true,
                 "enableSuspendProviders": false,

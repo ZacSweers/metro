@@ -969,6 +969,17 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     ),
   ),
+  FIX_EMPTY_SMAP_RANGES(
+    RawMetroOption.boolean(
+      name = "fix-empty-smap-ranges",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description =
+        "Give synthetic JVM files a line table to work around R8 crashes on empty SMAP ranges.",
+      required = false,
+      allowMultipleOccurrences = false,
+    ),
+  ),
   OMIT_REDUNDANT_MIRRORS(
     RawMetroOption.boolean(
       name = "omit-redundant-mirrors",
@@ -1315,6 +1326,8 @@ public class MetroOptions(
     MetroOption.BUFFERED_IC_TRACKING.raw.defaultValue.expectAs(),
   public val omitRedundantMirrors: Boolean =
     MetroOption.OMIT_REDUNDANT_MIRRORS.raw.defaultValue.expectAs(),
+  public val fixEmptySmapRanges: Boolean =
+    MetroOption.FIX_EMPTY_SMAP_RANGES.raw.defaultValue.expectAs(),
   public val enableProviderInlining: Boolean =
     MetroOption.ENABLE_PROVIDER_INLINING.raw.defaultValue.expectAs(),
   public val enableFunctionProviders: Boolean =
@@ -1687,6 +1700,7 @@ public class MetroOptions(
     public var parallelThreads: Int = base.parallelThreads
     public var bufferedIcTracking: Boolean = base.bufferedIcTracking
     public var omitRedundantMirrors: Boolean = base.omitRedundantMirrors
+    public var fixEmptySmapRanges: Boolean = base.fixEmptySmapRanges
     public var enableProviderInlining: Boolean = base.enableProviderInlining
     public var enableFunctionProviders: Boolean = base.enableFunctionProviders
     public var enableSuspendProviders: Boolean = base.enableSuspendProviders
@@ -2052,6 +2066,7 @@ public class MetroOptions(
         MetroOption.PARALLEL_THREADS -> parallelThreads = value.expectAs()
         MetroOption.BUFFERED_IC_TRACKING -> bufferedIcTracking = value.expectAs()
         MetroOption.OMIT_REDUNDANT_MIRRORS -> omitRedundantMirrors = value.expectAs()
+        MetroOption.FIX_EMPTY_SMAP_RANGES -> fixEmptySmapRanges = value.expectAs()
         MetroOption.ENABLE_PROVIDER_INLINING -> enableProviderInlining = value.expectAs()
         MetroOption.ENABLE_FUNCTION_PROVIDERS -> enableFunctionProviders = value.expectAs()
         MetroOption.ENABLE_SUSPEND_PROVIDERS -> enableSuspendProviders = value.expectAs()
@@ -2148,6 +2163,7 @@ public class MetroOptions(
         parallelThreads = parallelThreads,
         bufferedIcTracking = bufferedIcTracking,
         omitRedundantMirrors = omitRedundantMirrors,
+        fixEmptySmapRanges = fixEmptySmapRanges,
         enableProviderInlining = enableProviderInlining,
         enableFunctionProviders = enableFunctionProviders,
         enableSuspendProviders = enableSuspendProviders,

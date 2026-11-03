@@ -484,6 +484,12 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
       }
 
       @Test
+      @TestMetadata("defaultParameterSmaps.kt")
+      public void testDefaultParameterSmaps() {
+        run("defaultParameterSmaps.kt");
+      }
+
+      @Test
       @TestMetadata("defaultParameters.kt")
       public void testDefaultParameters() {
         run("defaultParameters.kt");
@@ -2503,6 +2509,12 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
       @TestMetadata("GenericWithDependentTypeParams.kt")
       public void testGenericWithDependentTypeParams() {
         run("GenericWithDependentTypeParams.kt");
+      }
+
+      @Test
+      @TestMetadata("InlineFunctionSmaps.kt")
+      public void testInlineFunctionSmaps() {
+        run("InlineFunctionSmaps.kt");
       }
     }
 

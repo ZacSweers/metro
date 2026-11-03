@@ -14,6 +14,31 @@ class MetroCompilerOptionsTest {
   private val compatContext by lazy { CompatContext.create() }
 
   @Test
+  fun `empty SMAP workaround is disabled by default`() {
+    assertThat(MetroOptions.buildOptions {}.fixEmptySmapRanges).isFalse()
+    for (version in listOf("2.3.20", "2.4.20")) {
+      assertThat(loadOptions(version).fixEmptySmapRanges).isFalse()
+    }
+  }
+
+  @Test
+  fun `empty SMAP workaround can be configured through raw compiler options`() {
+    for (enabled in listOf(false, true)) {
+      val options = MetroOptions.buildOptions {
+        applyRawOption("fix-empty-smap-ranges", enabled.toString())
+      }
+      assertThat(options.fixEmptySmapRanges).isEqualTo(enabled)
+      assertThat(options.toBuilder().build().fixEmptySmapRanges).isEqualTo(enabled)
+
+      val loaded =
+        loadOptions("2.4.20") {
+          MetroOption.FIX_EMPTY_SMAP_RANGES.raw.put(this, enabled.toString())
+        }
+      assertThat(loaded.fixEmptySmapRanges).isEqualTo(enabled)
+    }
+  }
+
+  @Test
   fun `function injection uses the configured inject annotations without an override`() {
     for (enabled in listOf(false, true)) {
       val options = MetroOptions.buildOptions {
