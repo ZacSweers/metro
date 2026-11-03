@@ -8647,16 +8647,20 @@
 <li><strong>[IR]</strong> Fix graph extensions creating separate instances of inherited class binding containers. Extensions now reuse the parent instance and can share set and map getters.</li>
 <li><strong>[IR]</strong> Fix a <code>NoSuchMethodError</code> when reporting diagnostics without a source location on Kotlin <code>2.4.20</code> and newer.</li>
 <li><strong>[IR]</strong> Fix providers for parent-owned bindings retaining child graphs. Generated provider lambdas now capture the owning ancestor directly.</li>
+<li><strong>[IR]</strong> Add an opt-in <code>fix-empty-smap-ranges</code> compiler option to fix empty Kotlin SMAP line ranges (<code>1#1,0:1</code>) in synthetic files. See the <a href="https://youtrack.jetbrains.com/issue/KT-91212">Kotlin issue</a> and <a href="https://r8-review.googlesource.com/c/r8/+/138963">R8 fix</a>.</li>
 </ul>
 <h3 id="changes">Changes<a class="headerlink" href="#changes" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>[compat]</strong> Support Kotlin <code>2.5.20-dev-2623</code>.</li>
 <li>Update androidx.tracing to <code>2.0.5</code>.</li>
+<li>Update Kotlin Toolchain usage docs.</li>
 </ul>
 <h3 id="contributors">Contributors<a class="headerlink" href="#contributors" title="Permanent link">&para;</a></h3>
 <p>Special thanks to the following contributors for contributing to this release!</p>
 <ul>
+<li><a href="https://github.com/Plastix">@Plastix</a></li>
 <li><a href="https://github.com/raosangi">@raosangi</a></li>
+<li><a href="https://github.com/sockeye-d">@sockeye-d</a></li>
 </ul>
 <h3 id="consider-sponsoring-metros-development"><a href="https://www.zacsweers.dev/sponsoring-metro/">Consider sponsoring Metro&rsquo;s development</a><a class="headerlink" href="#consider-sponsoring-metros-development" title="Permanent link">&para;</a></h3>
 <h2 id="151">1.5.1<a class="headerlink" href="#151" title="Permanent link">&para;</a></h2>
