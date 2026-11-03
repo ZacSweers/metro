@@ -8,6 +8,7 @@ Changelog
 
 - **[IR]** Fix graph extensions creating separate instances of inherited class binding containers. Extensions now reuse the parent instance and can share set and map getters.
 - **[IR]** Fix a `NoSuchMethodError` when reporting diagnostics without a source location on Kotlin `2.4.20` and newer.
+- **[IR]** Fix providers for parent-owned bindings retaining child graphs. Generated provider lambdas now capture the owning ancestor directly.
 
 ### Changes
 
