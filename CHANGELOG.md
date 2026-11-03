@@ -4,6 +4,11 @@ Changelog
 **Unreleased**
 --------------
 
+1.5.2
+-----
+
+_2026-11-03_
+
 ### Fixes
 
 - **[FIR]** Fix compat with Kotlin `2.5.20` dev builds around inherited member injection.
