@@ -16,12 +16,15 @@ Changelog
 
 - **[compat]** Support Kotlin `2.5.20-dev-2623`.
 - Update androidx.tracing to `2.0.5`.
+- Update Kotlin Toolchain usage docs.
 
 ### Contributors
 
 Special thanks to the following contributors for contributing to this release!
 
+- [@Plastix](https://github.com/Plastix)
 - [@raosangi](https://github.com/raosangi)
+- [@sockeye-d](https://github.com/sockeye-d)
 
 ### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
 
