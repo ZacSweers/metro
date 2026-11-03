@@ -33,6 +33,7 @@
 **/ProviderOfLazy.kt
 **/SetFactory.kt
 **/SetFactoryTest.kt
+**/StableDumpOrder.kt
 **/StringKey.kt
 **/collectionUtil.kt
 **/ir/cache/*.kt

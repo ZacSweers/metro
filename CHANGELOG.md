@@ -6,11 +6,13 @@ Changelog
 
 ### Fixes
 
+- **[FIR]** Fix compat with Kotlin `2.5.20` dev builds around inherited member injection.
 - **[IR]** Fix graph extensions creating separate instances of inherited class binding containers. Extensions now reuse the parent instance and can share set and map getters.
 - **[IR]** Fix a `NoSuchMethodError` when reporting diagnostics without a source location on Kotlin `2.4.20` and newer.
 
 ### Changes
 
+- **[compat]** Support Kotlin `2.5.20-dev-2623`.
 - Update androidx.tracing to `2.0.5`.
 
 ### Contributors

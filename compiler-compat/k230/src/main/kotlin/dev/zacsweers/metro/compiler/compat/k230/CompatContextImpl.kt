@@ -53,6 +53,7 @@ import org.jetbrains.kotlin.fir.copy
 import org.jetbrains.kotlin.fir.declarations.DeprecationsProvider
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationStatus
+import org.jetbrains.kotlin.fir.declarations.FirFile
 import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.FirResolvePhase
 import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
@@ -83,6 +84,8 @@ import org.jetbrains.kotlin.fir.moduleData
 import org.jetbrains.kotlin.fir.plugin.SimpleFunctionBuildingContext
 import org.jetbrains.kotlin.fir.plugin.createMemberFunction as createMemberFunctionNative
 import org.jetbrains.kotlin.fir.plugin.createTopLevelFunction as createTopLevelFunctionNative
+import org.jetbrains.kotlin.fir.resolve.TypeResolutionConfiguration
+import org.jetbrains.kotlin.fir.scopes.FirScope
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
@@ -124,6 +127,12 @@ import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.util.PrivateForInline
 
 public class CompatContextImpl : CompatContext {
+  override fun createTypeResolutionConfigurationCompat(
+    scopes: Iterable<FirScope>,
+    useSiteFile: FirFile?,
+  ): TypeResolutionConfiguration =
+    TypeResolutionConfiguration(scopes, emptyList(), useSiteFile = useSiteFile)
+
   override fun KtDiagnostic.withSeverityCompat(severity: Severity): KtDiagnostic {
     return when (this) {
       is KtPsiSimpleDiagnostic -> copy(severity = severity)
