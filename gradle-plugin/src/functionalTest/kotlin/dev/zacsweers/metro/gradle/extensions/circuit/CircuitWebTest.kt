@@ -204,7 +204,13 @@ class CircuitWebTest(target: KmpTarget, private val generateClassesInIr: Boolean
       } else {
         ":compileProductionExecutableKotlinWasmJs"
       }
-    val firstBuild = build(project.rootDir, compileTask, executableTask)
+    val profileArgs =
+      if (System.getProperty("metro.testkitProfile").toBoolean()) {
+        arrayOf("--profile")
+      } else {
+        emptyArray()
+      }
+    val firstBuild = build(project.rootDir, compileTask, executableTask, *profileArgs)
     assertThat(firstBuild.task(compileTask)?.outcome).isEqualTo(TaskOutcome.SUCCESS)
     assertThat(firstBuild.task(executableTask)?.outcome).isEqualTo(TaskOutcome.SUCCESS)
     if (target == KmpTarget.JS) {
@@ -218,7 +224,7 @@ class CircuitWebTest(target: KmpTarget, private val generateClassesInIr: Boolean
     uiFile.writeText(uiFile.readText().replace("stateful:", "updated:"))
     val reportsDir = project.rootDir.resolve("build/reports/kotlin-build")
     val previousReports = reportsDir.listFiles().orEmpty().toSet()
-    val secondBuild = build(project.rootDir, compileTask, executableTask)
+    val secondBuild = build(project.rootDir, compileTask, executableTask, *profileArgs)
     assertThat(secondBuild.task(compileTask)?.outcome).isEqualTo(TaskOutcome.SUCCESS)
     assertThat(secondBuild.task(executableTask)?.outcome).isEqualTo(TaskOutcome.SUCCESS)
     val report = (reportsDir.listFiles().orEmpty().toSet() - previousReports).single()

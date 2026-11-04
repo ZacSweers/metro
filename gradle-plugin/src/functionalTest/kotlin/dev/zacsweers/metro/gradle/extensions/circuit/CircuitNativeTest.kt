@@ -187,7 +187,11 @@ class CircuitNativeTest {
 
     val nativeTaskSuffix =
       KmpTarget.NATIVE_HOST.gradleTargetName.replaceFirstChar { it.titlecase() }
-    val result = build(fixture.gradleProject.rootDir, ":runDebugExecutable$nativeTaskSuffix")
+    val buildArguments = mutableListOf(":runDebugExecutable$nativeTaskSuffix")
+    if (System.getProperty("metro.testkitProfile").toBoolean()) {
+      buildArguments += "--profile"
+    }
+    val result = build(fixture.gradleProject.rootDir, *buildArguments.toTypedArray())
     assertThat(result.task(":linkDebugExecutable$nativeTaskSuffix")?.outcome)
       .isEqualTo(TaskOutcome.SUCCESS)
     assertThat(result.output).contains("subui-native:OK")

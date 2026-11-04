@@ -1,0 +1,64 @@
+name: CI experiments
+
+on:
+  workflow_dispatch:
+    inputs:
+      matrix:
+        description: Experiment matrix JSON
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  measure:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 100
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(inputs.matrix) }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: ./.github/actions/setup-gradle
+        with:
+          encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+          cache-read-only: true
+          konan: ${{ matrix.suite != 'compiler' }}
+          kotlin-compiler-version: ${{ matrix.kotlin }}
+      - name: Measure workload
+        env:
+          EXPERIMENT_SUITE: ${{ matrix.suite }}
+          EXPERIMENT_FORKS: ${{ matrix.forks }}
+          EXPERIMENT_TARGET: ${{ matrix.target }}
+          EXPERIMENT_KOTLIN: ${{ matrix.kotlin }}
+          EXPERIMENT_MIRRORS: ${{ matrix.mirrors }}
+          EXPERIMENT_THREADS: ${{ matrix.threads }}
+          EXPERIMENT_LEGACY_FORKS: ${{ matrix.legacy-forks }}
+          EXPERIMENT_SHARD: ${{ matrix.shard }}
+          EXPERIMENT_LIGHTWEIGHT: ${{ matrix.lightweight }}
+          EXPERIMENT_FILTER: ${{ matrix.filter }}
+          EXPERIMENT_PROFILE_NESTED: ${{ matrix.profile-nested }}
+          EXPERIMENT_JFR: ${{ matrix.jfr }}
+        run: bash scripts/run-ci-experiment.sh
+      - name: Upload measurements
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: experiment-${{ matrix.name }}-${{ github.run_attempt }}
+          retention-days: 14
+          path: |
+            ${{ runner.temp }}/timing.txt
+            ${{ runner.temp }}/workload.log
+            ${{ runner.temp }}/macos-resources.jsonl
+            build/reports/profile/**
+            compiler/build/test-results/test/*.xml
+            compiler-tests/build/test-results/test/*.xml
+            compiler-tests/build/compiler-ci.jfr
+            gradle-plugin/build/test-results/functionalTest/*.xml
+            gradle-plugin/build/functionalTest/**/build/reports/profile/**
+            gradle-plugin/build/functionalTest/**/build/reports/kotlin-build/**

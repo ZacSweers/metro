@@ -1,0 +1,59 @@
+import org.gradle.api.tasks.testing.Test
+
+gradle.beforeProject { project ->
+    if (project.path == ':compiler' || project.path == ':compiler-tests') {
+        project.afterEvaluate {
+            if (!project.plugins.hasPlugin('java')) {
+                return
+            }
+            project.tasks.withType(Test).configureEach { task ->
+                task.doFirst { runningTask ->
+                    println('Compiler experiment: task=' + runningTask.path + ', maxParallelForks=' + runningTask.maxParallelForks + ', heap=' + runningTask.maxHeapSize)
+                    def junitProperties = runningTask.systemProperties.findAll { key, value -> key.startsWith('junit.') }
+                    println('Compiler experiment explicit JUnit JVM properties: ' + junitProperties)
+                }
+                if (project.path == ':compiler') {
+                    def forks = project.providers.gradleProperty('metro.experiment.legacyForks').orNull
+                    if (forks != null) {
+                        task.maxParallelForks = Integer.parseInt(forks)
+                    }
+                } else {
+                    def parallelism = project.providers.gradleProperty('metro.experiment.compilerJUnitThreads').orNull
+                    if (parallelism != null) {
+                        task.systemProperty('junit.jupiter.execution.parallel.config.strategy', 'fixed')
+                        task.systemProperty('junit.jupiter.execution.parallel.config.fixed.parallelism', parallelism)
+                        task.systemProperty('junit.jupiter.execution.parallel.config.fixed.max-pool-size', parallelism)
+                        task.systemProperty('junit.jupiter.execution.parallel.config.fixed.saturate', 'true')
+                    }
+                    def modeSuites = [
+                        'dev.zacsweers.metro.compiler.FastInitBoxTestGenerated*',
+                        'dev.zacsweers.metro.compiler.ContributionProvidersBoxTestGenerated*',
+                        'dev.zacsweers.metro.compiler.OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated*',
+                    ]
+                    def shard = project.providers.gradleProperty('metro.experiment.compilerShard').orNull
+                    if (shard == 'modes') {
+                        modeSuites.each { task.filter.includeTestsMatching(it) }
+                    } else if (shard == 'base') {
+                        modeSuites.each { task.filter.excludeTestsMatching(it) }
+                    } else if (shard != null) {
+                        throw new GradleException('Unknown compiler shard: ' + shard)
+                    }
+                }
+                if (project.path == ':compiler-tests' && project.providers.gradleProperty('metro.experiment.compilerJfr').orNull == 'true') {
+                    def recording = project.layout.buildDirectory.file('compiler-ci.jfr').get().asFile
+                    task.jvmArgs('-XX:StartFlightRecording=filename=' + recording.absolutePath + ',settings=profile,dumponexit=true,maxsize=128m')
+                }
+            }
+        }
+    }
+}
+
+gradle.beforeProject { project ->
+    project.afterEvaluate {
+        project.tasks.withType(Test).configureEach { task ->
+            if (System.getenv('EXPERIMENT_PROFILE_NESTED') == 'true') {
+                task.systemProperty('metro.testkitProfile', 'true')
+            }
+        }
+    }
+}
