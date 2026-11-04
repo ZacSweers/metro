@@ -113,8 +113,17 @@ gradle.beforeProject { project ->
                     'dev.zacsweers.metro.gradle.SuspendProvidersConfigurationTest*',
                     'dev.zacsweers.metro.gradle.incremental.ContributionScopeICTests*',
                 ]
+                def macosNativePatterns = [
+                    '*[macosArm64*',
+                    'dev.zacsweers.metro.gradle.extensions.circuit.CircuitNativeTest*',
+                    'dev.zacsweers.metro.gradle.incremental.NativeICTests*',
+                ]
                 def shard = project.providers.gradleProperty('metro.experiment.functionalShard').orNull
-                if (shard == 'web-js') {
+                if (shard == 'macos-native') {
+                    macosNativePatterns.each { task.filter.includeTestsMatching(it) }
+                } else if (shard == 'macos-portable') {
+                    macosNativePatterns.each { task.filter.excludeTestsMatching(it) }
+                } else if (shard == 'web-js') {
                     webPatterns.each { task.filter.includeTestsMatching(it) }
                 } else if (shard == 'web-wasm') {
                     webPatterns.each { task.filter.excludeTestsMatching(it) }
