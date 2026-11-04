@@ -99,8 +99,26 @@ gradle.beforeProject { project ->
                     'dev.zacsweers.metro.gradle.extensions.circuit.CircuitNativeTest*',
                     'dev.zacsweers.metro.gradle.incremental.KmpCommonSourcesICTests*',
                 ]
+                def webPatterns = [
+                    'dev.zacsweers.metro.gradle.extensions.circuit.CircuitWebTest.*[js, generateClassesInIr=*]',
+                    'dev.zacsweers.metro.gradle.MetroHiddenDependenciesTest*',
+                    'dev.zacsweers.metro.gradle.incremental.ICTests*',
+                    'dev.zacsweers.metro.gradle.InteropConfigurationTest*',
+                    'dev.zacsweers.metro.gradle.MetroHiddenDependenciesKmpTest*',
+                    'dev.zacsweers.metro.gradle.incremental.NativeICTests*',
+                    'dev.zacsweers.metro.gradle.incremental.BindingContainerMultibindingICTests*',
+                    'dev.zacsweers.metro.gradle.incremental.CircuitMirrorRemovalIcTests*',
+                    'dev.zacsweers.metro.gradle.incremental.GenerateContributionProvidersICTests*',
+                    'dev.zacsweers.metro.gradle.incremental.ContributionHintICTests*',
+                    'dev.zacsweers.metro.gradle.SuspendProvidersConfigurationTest*',
+                    'dev.zacsweers.metro.gradle.incremental.ContributionScopeICTests*',
+                ]
                 def shard = project.providers.gradleProperty('metro.experiment.functionalShard').orNull
-                if (shard == 'jvm-base') {
+                if (shard == 'web-js') {
+                    webPatterns.each { task.filter.includeTestsMatching(it) }
+                } else if (shard == 'web-wasm') {
+                    webPatterns.each { task.filter.excludeTestsMatching(it) }
+                } else if (shard == 'jvm-base') {
                     jvmClasses.each { task.filter.includeTestsMatching(it) }
                 } else if (shard == 'jvm-other') {
                     jvmClasses.each { task.filter.excludeTestsMatching(it) }
