@@ -245,6 +245,11 @@ tasks.withType<Test>().configureEach {
 }
 
 tasks.named<Test>("functionalTest") {
+  // Native and web artifacts are consumed outside the test JVM classpath.
+  inputs
+    .dir(rootProject.layout.buildDirectory.dir("functionalTestRepo"))
+    .withPropertyName("functionalTestRepository")
+    .withPathSensitivity(PathSensitivity.RELATIVE)
   maxParallelForks = functionalTestMaxParallelForks.get()
   testkitConfigurationCache.orNull?.let { systemProperty("metro.testkitConfigurationCache", it) }
   systemProperty("metro.testkitConfigurationCacheReadOnly", testkitConfigurationCacheReadOnly.get())

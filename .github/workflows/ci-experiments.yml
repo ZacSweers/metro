@@ -7,13 +7,59 @@ on:
         description: Experiment matrix JSON
         required: true
         type: string
+      prebuilt:
+        description: Share the TestKit repository between consumers
+        type: boolean
+        default: false
+      producer-os:
+        description: Runner for the shared repository producer
+        type: string
+        default: ubuntu-latest
 
 permissions:
   contents: read
 
 jobs:
+  prepare:
+    name: Prepare shared TestKit repository
+    if: inputs.prebuilt
+    runs-on: ${{ inputs.producer-os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: ./.github/actions/setup-gradle
+        with:
+          encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+          cache-read-only: true
+          konan: true
+      - name: Build TestKit repository
+        shell: bash
+        run: |
+          set -o pipefail
+          start=$SECONDS
+          ./scripts/run-ci-gradle.sh :gradle-plugin:installForFunctionalTest --quiet --profile \
+            -Dorg.gradle.configuration-cache.read-only=true \
+            -Pmetro.testkitLightweightPublications=true 2>&1 | tee "$RUNNER_TEMP/preparation.log"
+          printf 'elapsed_seconds=%s\n' "$((SECONDS - start))" > "$RUNNER_TEMP/preparation-timing.txt"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: experiment-testkit-repository
+          path: build/functionalTestRepo
+          if-no-files-found: error
+          retention-days: 3
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: experiment-preparation-${{ github.run_attempt }}
+          retention-days: 14
+          path: |
+            ${{ runner.temp }}/preparation-timing.txt
+            ${{ runner.temp }}/preparation.log
+            build/reports/profile/**
+
   measure:
     name: ${{ matrix.name }}
+    needs: prepare
+    if: ${{ always() && (needs.prepare.result == 'success' || needs.prepare.result == 'skipped') }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 100
     strategy:
@@ -30,6 +76,11 @@ jobs:
           cache-read-only: true
           konan: ${{ matrix.suite != 'compiler' }}
           kotlin-compiler-version: ${{ matrix.kotlin }}
+      - uses: actions/download-artifact@v8
+        if: inputs.prebuilt
+        with:
+          name: experiment-testkit-repository
+          path: build/functionalTestRepo
       - name: Measure workload
         env:
           EXPERIMENT_SUITE: ${{ matrix.suite }}
@@ -45,6 +96,8 @@ jobs:
           EXPERIMENT_FILTER: ${{ matrix.filter }}
           EXPERIMENT_PROFILE_NESTED: ${{ matrix.profile-nested }}
           EXPERIMENT_JFR: ${{ matrix.jfr }}
+          EXPERIMENT_PREBUILT: ${{ inputs.prebuilt }}
+          EXPERIMENT_PREPARE_STOP: ${{ matrix.prepare-stop }}
         run: bash scripts/run-ci-experiment.sh
       - name: Upload measurements
         if: ${{ !cancelled() }}

@@ -47,6 +47,9 @@ else
   if [[ "$EXPERIMENT_LIGHTWEIGHT" == 'true' ]]; then
     args+=(-Pmetro.testkitLightweightPublications=true)
   fi
+  if [[ "$EXPERIMENT_PREBUILT" == 'true' ]]; then
+    args+=(-x installForFunctionalTest)
+  fi
   if [[ -n "$EXPERIMENT_FUNCTIONAL_SHARD" ]]; then
     args+=("-Pmetro.experiment.functionalShard=$EXPERIMENT_FUNCTIONAL_SHARD")
   fi
@@ -55,9 +58,57 @@ else
   fi
 fi
 
+run_experiment() {
+  if [[ "${EXPERIMENT_PREPARE_STOP:-false}" == 'true' ]]; then
+    if [[ "$EXPERIMENT_SUITE" == 'compiler' || "${EXPERIMENT_PREBUILT:-false}" == 'true' ]]; then
+      echo 'prepare-stop requires a functional workload with local preparation'
+      return 2
+    fi
+    local prepare_args=()
+    local skip_filter_value=false
+    local arg
+    for arg in "${args[@]}"; do
+      if [[ "$skip_filter_value" == 'true' ]]; then
+        skip_filter_value=false
+        continue
+      fi
+      case "$arg" in
+        :gradle-plugin:functionalTest|--rerun) continue ;;
+        --tests) skip_filter_value=true; continue ;;
+      esac
+      prepare_args+=("$arg")
+    done
+    prepare_args+=(:gradle-plugin:installForFunctionalTest :gradle-plugin:functionalTestClasses
+      :gradle-plugin:pluginUnderTestMetadata)
+    local phase_start=$SECONDS
+    ./scripts/run-ci-gradle.sh "${prepare_args[@]}"
+    local phase_status=$?
+    printf 'preparation_elapsed_seconds=%s\npreparation_exit_code=%s\n' \
+      "$((SECONDS - phase_start))" "$phase_status" | tee -a "$RUNNER_TEMP/timing.txt"
+    if (( phase_status != 0 )); then
+      return "$phase_status"
+    fi
+    phase_start=$SECONDS
+    ./gradlew --stop
+    phase_status=$?
+    printf 'stop_elapsed_seconds=%s\nstop_exit_code=%s\n' \
+      "$((SECONDS - phase_start))" "$phase_status" | tee -a "$RUNNER_TEMP/timing.txt"
+    if (( phase_status != 0 )); then
+      return "$phase_status"
+    fi
+  fi
+  local phase_start=$SECONDS
+  ./scripts/run-ci-gradle.sh "${args[@]}"
+  local phase_status=$?
+  printf 'test_build_elapsed_seconds=%s\ntest_build_exit_code=%s\n' \
+    "$((SECONDS - phase_start))" "$phase_status" | tee -a "$RUNNER_TEMP/timing.txt"
+  return "$phase_status"
+}
+
 start=$SECONDS
+: > "$RUNNER_TEMP/timing.txt"
 set +e
-./scripts/run-ci-gradle.sh "${args[@]}" 2>&1 | tee "$RUNNER_TEMP/workload.log"
+run_experiment 2>&1 | tee "$RUNNER_TEMP/workload.log"
 status=${PIPESTATUS[0]}
-printf 'elapsed_seconds=%s\nexit_code=%s\n' "$((SECONDS - start))" "$status" | tee "$RUNNER_TEMP/timing.txt"
+printf 'elapsed_seconds=%s\nexit_code=%s\n' "$((SECONDS - start))" "$status" | tee -a "$RUNNER_TEMP/timing.txt"
 exit "$status"

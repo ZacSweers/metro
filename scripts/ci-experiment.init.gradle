@@ -79,8 +79,26 @@ gradle.beforeProject { project ->
         'dev.zacsweers.metro.gradle.SuspendProvidersConfigurationTest',
         'dev.zacsweers.metro.gradle.RuntimeTracingConfigurationTest',
                 ]
+                def jvmClasses = [
+                    'dev.zacsweers.metro.gradle.extensions.circuit.CircuitWebTest*',
+                    'dev.zacsweers.metro.gradle.InteropConfigurationTest*',
+                    'dev.zacsweers.metro.gradle.incremental.GraphExtensionICTests*',
+                    'dev.zacsweers.metro.gradle.VersionCompatibilityTest*',
+                    'dev.zacsweers.metro.gradle.MetroHiddenDependenciesKmpTest*',
+                    'dev.zacsweers.metro.gradle.incremental.BindingContainerICTests*',
+                    'dev.zacsweers.metro.gradle.incremental.BindingContainerMultibindingICTests*',
+                    'dev.zacsweers.metro.gradle.incremental.GenerateContributionProvidersICTests*',
+                    'dev.zacsweers.metro.gradle.incremental.DefaultBindingICTests*',
+                    'dev.zacsweers.metro.gradle.incremental.HiltAggregatedDepsICTests*',
+                    'dev.zacsweers.metro.gradle.extensions.circuit.CircuitNativeTest*',
+                    'dev.zacsweers.metro.gradle.incremental.KmpCommonSourcesICTests*',
+                ]
                 def shard = project.providers.gradleProperty('metro.experiment.functionalShard').orNull
-                if (shard == 'base') {
+                if (shard == 'jvm-base') {
+                    jvmClasses.each { task.filter.includeTestsMatching(it) }
+                } else if (shard == 'jvm-other') {
+                    jvmClasses.each { task.filter.excludeTestsMatching(it) }
+                } else if (shard == 'base') {
                     selectedClasses.each { task.filter.includeTestsMatching(it) }
                 } else if (shard == 'other') {
                     selectedClasses.each { task.filter.excludeTestsMatching(it) }
