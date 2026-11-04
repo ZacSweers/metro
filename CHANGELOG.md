@@ -4,6 +4,14 @@ Changelog
 **Unreleased**
 --------------
 
+### Changes
+
+- Test IntelliJ IDEA `2026.2.4` and `2026.3 RC`.
+- Test Android Studio Rabbit 2 stable.
+- Test Android Studio Rabbit 3 canaries (Canary 2).
+
+### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
+
 1.5.2
 -----
 
