@@ -46,7 +46,7 @@ def classify_paths(paths: list[str], event_name: str) -> dict[str, bool]:
             full = True
         elif path.endswith(".md") or path.startswith("docs/") or path in DOC_PATHS:
             docs = True
-        elif path.startswith("idea-plugin/"):
+        elif path.startswith(("idea-plugin/", "ide-integration-tests/")):
             idea = True
         else:
             full = True
@@ -155,7 +155,7 @@ def render_summary(paths: list[str], event_name: str, routes: dict[str, bool]) -
             (True, False, True): "Other changed paths retain full CI and IDEA plugin tests",
             (True, True, True): "Documentation infrastructure and viewer code select docs validation and full CI",
             (False, True, False): "Documentation paths select docs validation",
-            (False, False, True): "IDEA plugin paths select IDEA plugin tests",
+            (False, False, True): "IDEA plugin paths select IDEA plugin tests and IDE integration tests",
         }
         examples = {key: [] for key in reasons}
         counts = {key: 0 for key in reasons}

@@ -9,10 +9,12 @@ on:
       - '**/*.md'
   # Always run on PRs
   pull_request:
+  # Manual branch runs exercise the main-only platform coverage without publishing snapshots.
+  workflow_dispatch:
 
 concurrency:
-  group: 'ci-${{ github.event.merge_group.head_ref || github.head_ref }}-${{ github.workflow }}'
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  group: 'ci-${{ github.workflow }}-${{ github.head_ref || github.run_id }}'
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   changes:
@@ -27,6 +29,7 @@ jobs:
       - name: Check CI routing
         run: |
           python3 scripts/test-classify-ci-changes.py
+          python3 scripts/test-check-ci-status.py
       - uses: ./.github/actions/classify-changes
         id: changes
         with:
@@ -155,40 +158,19 @@ jobs:
         uses: ./.github/actions/setup-gradle
         with:
           encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
-          # The newest compiler seeds dependencies and outputs for its test workload on main.
-          cache-read-only: ${{ github.ref != 'refs/heads/main' || matrix.kotlin-compiler != needs.generate-matrix.outputs.latest_kotlin_version }}
-          # NativeICTests runs independently of the JVM-only parameterized IC tests. Preserve its
-          # per-version toolchain coverage while avoiding a second writer for the default version.
-          konan: true
-          konan-cache-read-only: ${{ github.ref != 'refs/heads/main' || matrix.kotlin-compiler == needs.generate-matrix.outputs.default_kotlin_version }}
-          kotlin-compiler-version: ${{ matrix.kotlin-compiler }}
+          # Each compiler version refreshes its own compilation and test outputs on main.
+          # The experiment branch writes only its own branch-scoped cache during validation.
+          cache-read-only: ${{ github.ref != 'refs/heads/main' && github.head_ref != 'z/ciSpeed' }}
 
       - name: Generate and test compiler
-        id: compiler_tests
         run: |
           prepared_file="$RUNNER_TEMP/compiler-tests-prepared"
           rm -f "$prepared_file"
-          set +e
           ./scripts/run-ci-gradle.sh :compiler-tests:generateTests :compiler:test :compiler-tests:test --continue --quiet --profile \
             "-Pmetro.ciCompilerTestsPreparedFile=$prepared_file" \
             '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' \
             "-Pmetro.testOmitRedundantMirrors=$METRO_TEST_OMIT_REDUNDANT_MIRRORS" \
             -Pmetro.excludeJsBoxTests \
-            ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
-          status=$?
-          # Generation success lets the separate functional tests run after a compiler test failure.
-          if [[ -f "$prepared_file" ]]; then
-            echo "generated=true" >> "$GITHUB_OUTPUT"
-          fi
-          exit "$status"
-
-      - name: Test Gradle plugin
-        if: ${{ !cancelled() && steps.compiler_tests.outputs.generated == 'true' }}
-        run: |
-          ./scripts/run-ci-gradle.sh :gradle-plugin:functionalTest --continue --quiet --profile \
-            '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' \
-            "-Pmetro.testOmitRedundantMirrors=$METRO_TEST_OMIT_REDUNDANT_MIRRORS" \
-            -Pmetro.functionalTestKmpTarget=jvm \
             ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
 
       # Successful runs provide the task timings and test counts needed for performance comparisons.
@@ -197,13 +179,12 @@ jobs:
         continue-on-error: true
         uses: actions/upload-artifact@v7
         with:
-          name: compatibility-performance-${{ matrix.kotlin-compiler }}
+          name: compatibility-performance-compiler-${{ matrix.kotlin-compiler }}-${{ github.run_attempt }}
           retention-days: 7
           path: |
             build/reports/profile/**
             compiler/build/test-results/test/*.xml
             compiler-tests/build/test-results/test/*.xml
-            gradle-plugin/build/test-results/functionalTest/*.xml
 
       - name: (Fail-only) Upload reports
         if: failure()
@@ -219,6 +200,74 @@ jobs:
         with:
           report_paths: '**/build/test-results/**/TEST-*.xml'
           check_name: 'Test Report - compatibility / ${{ matrix.kotlin-compiler }}'
+
+  functional-compatibility:
+    name: "Gradle compatibility / ${{ matrix.kotlin-compiler }}"
+    runs-on: ubuntu-latest
+    needs: [changes, generate-matrix]
+    if: needs.changes.outputs.full == 'true'
+    timeout-minutes: 40
+    strategy:
+      matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
+      fail-fast: false
+    env:
+      METRO_TEST_OMIT_REDUNDANT_MIRRORS: ${{ matrix.kotlin-compiler == needs.generate-matrix.outputs.default_kotlin_version || matrix.kotlin-compiler == needs.generate-matrix.outputs.latest_kotlin_version }}
+      METRO_TESTKIT_CONFIGURATION_CACHE: ${{ matrix.kotlin-compiler != needs.generate-matrix.outputs.default_kotlin_version }}
+    permissions:
+      checks: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup Gradle
+        uses: ./.github/actions/setup-gradle
+        with:
+          encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+          cache-read-only: ${{ github.ref != 'refs/heads/main' && github.head_ref != 'z/ciSpeed' }}
+          # NativeICTests retains its per-version toolchain coverage in this job.
+          konan: true
+          konan-cache-read-only: ${{ github.ref != 'refs/heads/main' || matrix.kotlin-compiler == needs.generate-matrix.outputs.default_kotlin_version }}
+          kotlin-compiler-version: ${{ matrix.kotlin-compiler }}
+
+      - name: Test Gradle plugin
+        run: |
+          fixture_cache_args=()
+          # The default compiler keeps the fixture configuration-cache baseline covered.
+          if [[ "$METRO_TESTKIT_CONFIGURATION_CACHE" == 'true' ]]; then
+            fixture_cache_args+=(-Pmetro.testkitConfigurationCache=true -Pmetro.testkitConfigurationCacheReadOnly=false)
+          fi
+          ./scripts/run-ci-gradle.sh :gradle-plugin:functionalTest --continue --quiet --profile \
+            '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' \
+            "-Pmetro.testOmitRedundantMirrors=$METRO_TEST_OMIT_REDUNDANT_MIRRORS" \
+            -Pmetro.functionalTestKmpTarget=jvm \
+            -Pmetro.functionalTestMaxParallelForks=2 \
+            "${fixture_cache_args[@]}" \
+            ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+
+      - name: Upload compatibility timings and test results
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: compatibility-performance-functional-${{ matrix.kotlin-compiler }}-${{ github.run_attempt }}
+          retention-days: 7
+          path: |
+            build/reports/profile/**
+            gradle-plugin/build/test-results/functionalTest/*.xml
+
+      - name: (Fail-only) Upload reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: reports-functional-compatibility-${{ matrix.kotlin-compiler }}
+          path: '**/build/reports/**'
+
+      - name: Publish Test Report
+        uses: mikepenz/action-junit-report@v6
+        if: failure()
+        with:
+          report_paths: 'gradle-plugin/build/test-results/functionalTest/*.xml'
+          check_name: 'Test Report - Gradle compatibility / ${{ matrix.kotlin-compiler }}'
 
   shaded-compiler-smoke:
     name: shaded compiler / JDK 21
@@ -284,7 +333,7 @@ jobs:
           check_name: 'Test Report - shaded compiler / Ubuntu JDK 21'
 
   js-box:
-    name: ${{ github.ref == 'refs/heads/main' && 'js box / full' || 'web / smoke' }}
+    name: ${{ github.event_name == 'pull_request' && 'web / smoke' || 'js box / full' }}
     runs-on: ubuntu-latest
     needs: [changes, generate-matrix]
     if: needs.changes.outputs.full == 'true'
@@ -306,7 +355,7 @@ jobs:
         run: ./scripts/run-ci-gradle.sh :compiler-tests:generateTests --quiet ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
 
       - name: Run JS box smoke tests
-        if: github.ref != 'refs/heads/main'
+        if: github.event_name == 'pull_request'
         run: |
           ./scripts/run-ci-gradle.sh :compiler-tests:test --quiet \
             --tests 'dev.zacsweers.metro.compiler.JsBoxTestGenerated$Inject$Assisted.testBasicAssistedInject' \
@@ -316,7 +365,7 @@ jobs:
             ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
 
       - name: Run Wasm contribution hint smoke tests
-        if: github.ref != 'refs/heads/main'
+        if: github.event_name == 'pull_request'
         run: |
           ./gradlew :gradle-plugin:functionalTest --quiet \
             '-Pmetro.testCompilerVersion=${{ needs.generate-matrix.outputs.latest_kotlin_version }}' \
@@ -326,19 +375,19 @@ jobs:
             -Dorg.gradle.configuration-cache.read-only=true
 
       - name: Run standard JS box tests
-        if: github.ref == 'refs/heads/main'
+        if: github.event_name != 'pull_request'
         run: |
           ./scripts/run-ci-gradle.sh :compiler-tests:test --quiet \
             --tests 'dev.zacsweers.metro.compiler.JsBoxTestGenerated*'
 
       - name: Run FastInit JS box tests
-        if: github.ref == 'refs/heads/main'
+        if: github.event_name != 'pull_request'
         run: |
           ./scripts/run-ci-gradle.sh :compiler-tests:test --quiet \
             --tests 'dev.zacsweers.metro.compiler.JsFastInitBoxTestGenerated*'
 
       - name: Run contribution provider JS box tests
-        if: github.ref == 'refs/heads/main'
+        if: github.event_name != 'pull_request'
         run: |
           ./scripts/run-ci-gradle.sh :compiler-tests:test --quiet \
             --tests 'dev.zacsweers.metro.compiler.JsContributionProvidersBoxTestGenerated*'
@@ -357,50 +406,6 @@ jobs:
         with:
           report_paths: '**/build/test-results/**/TEST-*.xml'
           check_name: 'Test Report - js box'
-
-  # Main-only: run each non-JVM target of :gradle-plugin:functionalTest in its own runner.
-  # The incremental tests parallelize across targets and test classes.
-  # The `compatibility` job keeps these parameterized tests JVM-only on PR/branch runs.
-  kmp-functional:
-    if: github.ref == 'refs/heads/main'
-    name: kmp functional / ${{ matrix.target }}
-    runs-on: ubuntu-latest
-    permissions:
-      checks: write
-    strategy:
-      fail-fast: false
-      matrix:
-        target: [js, wasmJs, linuxX64]
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-
-      - name: Setup Gradle
-        uses: ./.github/actions/setup-gradle
-        with:
-          encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
-          cache-read-only: true
-          # These jobs restore the versioned Konan cache written by the default Kotlin core lane.
-          konan: true
-
-      - name: ':gradle-plugin:functionalTest'
-        run: ./gradlew :gradle-plugin:functionalTest --continue --quiet -Pmetro.functionalTestKmpTarget=${{ matrix.target }}
-
-      - name: (Fail-only) Upload reports
-        if: failure()
-        uses: actions/upload-artifact@v7
-        with:
-          name: reports-kmp-functional-${{ matrix.target }}
-          path: |
-            **/build/reports/**
-
-      - name: Publish Test Report
-        uses: mikepenz/action-junit-report@v6
-        if: failure()
-        with:
-          report_paths: '**/build/test-results/**/TEST-*.xml'
-          check_name: 'Test Report - kmp functional / ${{ matrix.target }}'
 
   samples:
     name: samples
@@ -491,10 +496,9 @@ jobs:
           report_paths: 'idea-plugin/**/build/test-results/**/TEST-*.xml'
           check_name: 'Test Report - idea-plugin'
 
-  # Run multiplatform tests on main only to reduce PR time
-  # Job conditions skip runner allocation for the entire matrix on PRs.
+  # Main and manual runs cover every target once on each host OS.
   multiplatform-tests:
-    if: github.ref == 'refs/heads/main'
+    if: github.event_name != 'pull_request'
     name: multiplatform / ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     permissions:
@@ -527,12 +531,12 @@ jobs:
 
       - name: Check runtime tests (Linux)
         if: runner.os == 'Linux'
-        run: RUNNER_DEBUG=1 ./scripts/run-ci-gradle.sh :runtime:allTests :runtime-coroutines:allTests --continue --quiet
+        run: RUNNER_DEBUG=1 ./scripts/run-ci-gradle.sh :runtime:allTests :runtime-coroutines:allTests --continue --quiet --profile
 
       - name: Check IC tests (Linux)
         if: ${{ !cancelled() && runner.os == 'Linux' }}
         run: |
-          RUNNER_DEBUG=1 ./scripts/run-ci-gradle.sh :gradle-plugin:functionalTest --continue --quiet \
+          RUNNER_DEBUG=1 ./scripts/run-ci-gradle.sh :gradle-plugin:functionalTest --continue --quiet --profile \
             -Pmetro.functionalTestKmpTarget=all \
             -Pmetro.functionalTestMaxParallelForks=2
 
@@ -540,15 +544,27 @@ jobs:
         if: runner.os != 'Linux'
         # `all` exercises every KmpTarget entry on this OS — host native is OS-specific (macosArm64,
         # mingwX64, etc.), so each runner covers a different native target naturally.
-        run: ./gradlew :runtime:allTests :runtime-coroutines:allTests :gradle-plugin:functionalTest --continue --quiet -Pmetro.functionalTestKmpTarget=all
+        run: ./gradlew :runtime:allTests :runtime-coroutines:allTests :gradle-plugin:functionalTest --continue --quiet --profile -Pmetro.functionalTestKmpTarget=all
 
       - name: Check samples
         run: |
           if [[ "$RUNNER_OS" == "Linux" ]]; then
-            RUNNER_DEBUG=1 ./scripts/run-ci-gradle.sh -p samples test allTests --continue --quiet
+            RUNNER_DEBUG=1 ./scripts/run-ci-gradle.sh -p samples test allTests --continue --quiet --profile
           else
-            ./gradlew -p samples test allTests --continue --quiet
+            ./gradlew -p samples test allTests --continue --quiet --profile
           fi
+
+      - name: Upload platform timings and test results
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: multiplatform-performance-${{ matrix.os }}
+          retention-days: 7
+          path: |
+            build/reports/profile/**
+            samples/build/reports/profile/**
+            **/build/test-results/**/*.xml
 
       - name: (Fail-only) Upload reports
         if: failure()
@@ -607,9 +623,10 @@ jobs:
       - generate-matrix
       - core
       - compatibility
+      - functional-compatibility
       - shaded-compiler-smoke
       - js-box
-      - kmp-functional
+      - multiplatform-tests
       - benchmarks
       - idea-plugin
       - samples
@@ -623,11 +640,15 @@ jobs:
   publish:
     name: Publish snapshot (main only)
     runs-on: macos-latest
+    concurrency:
+      group: metro-snapshot-publish
+      cancel-in-progress: false
     # Skipped ancestors can block publish after final-status succeeds unless status is explicit.
     if: >-
       ${{
         !cancelled() &&
         needs.final-status.result == 'success' &&
+        github.event_name == 'push' &&
         github.ref == 'refs/heads/main' &&
         github.repository == 'zacsweers/metro'
       }}
@@ -638,7 +659,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
+      - name: Check snapshot revision
+        id: revision
+        run: |
+          latest=$(git ls-remote origin refs/heads/main | cut -f1)
+          echo "current=$([[ "$latest" == "$GITHUB_SHA" ]] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
       - name: Setup Gradle
+        if: steps.revision.outputs.current == 'true'
         uses: ./.github/actions/setup-gradle
         with:
           encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
@@ -646,6 +674,7 @@ jobs:
           konan: true
 
       - name: Upload snapshot
+        if: steps.revision.outputs.current == 'true'
         # Sonatype keeps giving 429 errors lately, so no need to mark this as failure for now
         continue-on-error: true
         env:
@@ -657,6 +686,9 @@ jobs:
     name: Publish IDEA plugin snapshot (opt-in)
     runs-on: ubuntu-latest
     timeout-minutes: 40
+    concurrency:
+      group: metro-idea-snapshot-publish
+      cancel-in-progress: false
     permissions:
       contents: read
     # Set this repository variable to true after the first manual EAP upload succeeds.
@@ -664,6 +696,7 @@ jobs:
       ${{
         !cancelled() &&
         needs.final-status.result == 'success' &&
+        github.event_name == 'push' &&
         github.ref == 'refs/heads/main' &&
         github.repository == 'zacsweers/metro' &&
         vars.METRO_IDEA_PLUGIN_AUTOMATIC_SNAPSHOTS == 'true'
@@ -675,16 +708,25 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
+      - name: Check snapshot revision
+        id: revision
+        run: |
+          latest=$(git ls-remote origin refs/heads/main | cut -f1)
+          echo "current=$([[ "$latest" == "$GITHUB_SHA" ]] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
       - name: Setup Gradle
+        if: steps.revision.outputs.current == 'true'
         uses: ./.github/actions/setup-gradle
         with:
           encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
           cache-read-only: true
 
       - name: Verify idea-plugin compatibility
+        if: steps.revision.outputs.current == 'true'
         run: ./gradlew -p idea-plugin verifyPlugin --quiet
 
       - name: Publish EAP snapshot
+        if: steps.revision.outputs.current == 'true'
         env:
           METRO_IDEA_PLUGIN_PRIVATE_KEY: ${{ secrets.METRO_IDEA_PLUGIN_PRIVATE_KEY }}
           METRO_IDEA_PLUGIN_PRIVATE_KEY_PASSWORD: ${{ secrets.METRO_IDEA_PLUGIN_PRIVATE_KEY_PASSWORD }}

@@ -10,7 +10,7 @@ import os
 import sys
 
 
-def check_results(needs, workflow, is_main=False):
+def check_results(needs, workflow, full_platforms=False):
     """Return failures for missing jobs, failed jobs, and unexpected dependency skips."""
     changes = needs.get("changes", {})
     if changes.get("result") != "success":
@@ -24,14 +24,14 @@ def check_results(needs, workflow, is_main=False):
     if workflow == "ci":
         required.add("format")
         if routes["full"] == "true":
-            required.update(("generate-matrix", "core", "compatibility", "shaded-compiler-smoke",
+            required.update(("generate-matrix", "core", "compatibility", "functional-compatibility", "shaded-compiler-smoke",
                              "js-box", "benchmarks", "samples"))
         if routes["idea"] == "true":
             required.add("idea-plugin")
         if routes["docs"] == "true":
             required.add("docs")
-        if is_main:
-            required.add("kmp-functional")
+        if full_platforms:
+            required.add("multiplatform-tests")
     elif workflow == "ide":
         if routes["idea"] == "true":
             required.update(("generate-matrix", "build-metro", "ide-tests"))
@@ -52,8 +52,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("workflow", choices=("ci", "ide"))
     args = parser.parse_args()
-    errors = check_results(json.loads(os.environ["NEEDS_JSON"]), args.workflow,
-                          os.environ.get("GITHUB_REF") == "refs/heads/main")
+    full_platforms = os.environ.get("GITHUB_REF") == "refs/heads/main"
+    full_platforms = full_platforms or os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch"
+    errors = check_results(json.loads(os.environ["NEEDS_JSON"]), args.workflow, full_platforms)
     for error in errors:
         print(f"::error::{error}", file=sys.stderr)
     return bool(errors)

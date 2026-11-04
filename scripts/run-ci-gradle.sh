@@ -49,13 +49,17 @@ log_resources() {
   swap_free_kb=$(read_meminfo_kb "SwapFree")
   disk_available_kb=$(df -Pk "${GITHUB_WORKSPACE:-.}" | awk 'NR == 2 { print $4 }')
   read -r java_processes java_rss_kb < <(
-    ps -eo comm=,rss= | awk '$1 == "java" { count += 1; rss += $2 } END { print count + 0, rss + 0 }'
+    ps -eo rss=,comm= | awk '$NF ~ /(^|\/)java$/ { count += 1; rss += $1 } END { print count + 0, rss + 0 }'
   )
   cgroup_memory=$(read_cgroup_value "/sys/fs/cgroup/memory.current")
   cgroup_memory_max=$(read_cgroup_value "/sys/fs/cgroup/memory.max")
   cgroup_oom_kills=$(read_oom_kill_count)
 
   echo "CI resources: mem_available_kb=$mem_available_kb swap_free_kb=$swap_free_kb disk_available_kb=$disk_available_kb java_processes=$java_processes java_rss_kb=$java_rss_kb cgroup_memory_bytes=$cgroup_memory cgroup_memory_max_bytes=$cgroup_memory_max cgroup_oom_kills=$cgroup_oom_kills"
+  if [[ "${RUNNER_OS:-}" == "macOS" ]]; then
+    sysctl vm.swapusage
+    vm_stat | awk '/Pages free:|Pages inactive:|Pages occupied by compressor:|Pageouts:|Swapouts:/ { print "CI macOS memory: " $0 }'
+  fi
 }
 
 monitor_resources() {
@@ -79,9 +83,16 @@ if [[ "${RUNNER_DEBUG:-0}" == "1" ]]; then
 fi
 
 gradle_jvm_args="-Xmx4g -Dfile.encoding=UTF-8 --enable-native-access=ALL-UNNAMED"
+gradle_max_workers=4
+if [[ "${RUNNER_OS:-}" == "macOS" ]]; then
+  processor_count=$(sysctl -n hw.logicalcpu)
+  if (( processor_count < gradle_max_workers )); then
+    gradle_max_workers=$processor_count
+  fi
+fi
 
 ./gradlew \
-  --max-workers=4 \
+  "--max-workers=$gradle_max_workers" \
   "-Dorg.gradle.jvmargs=$gradle_jvm_args" \
   -Pkotlin.daemon.jvmargs=-Xmx2g \
   "$@"
