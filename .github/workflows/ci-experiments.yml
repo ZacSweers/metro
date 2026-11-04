@@ -1,0 +1,121 @@
+name: CI experiments
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/ci-experiments.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  measure:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-compiler-baseline
+            os: ubuntu-latest
+            suite: compiler
+            forks: 1
+          - name: linux-compiler-two-forks
+            os: ubuntu-latest
+            suite: compiler
+            forks: 2
+          - name: linux-functional-baseline
+            os: ubuntu-latest
+            suite: functional
+          - name: linux-functional-two-forks
+            os: ubuntu-latest
+            suite: functional
+            forks: 2
+          - name: linux-functional-configuration-cache
+            os: ubuntu-latest
+            suite: functional
+            forks: 2
+            configuration-cache: true
+          - name: macos-functional-baseline
+            os: macos-latest
+            suite: functional
+          - name: macos-functional-bounded
+            os: macos-latest
+            suite: functional
+            forks: 2
+          - name: macos-functional-configuration-cache
+            os: macos-latest
+            suite: functional
+            forks: 2
+            configuration-cache: true
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: ./.github/actions/setup-gradle
+        with:
+          encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+          cache-read-only: true
+          konan: true
+          kotlin-compiler-version: ${{ matrix.suite == 'compiler' && '2.5.0-dev-6460' || '2.4.20' }}
+      - name: Measure workload
+        env:
+          EXPERIMENT_SUITE: ${{ matrix.suite }}
+          EXPERIMENT_FORKS: ${{ matrix.forks }}
+          EXPERIMENT_CONFIGURATION_CACHE: ${{ matrix.configuration-cache }}
+          RUNNER_DEBUG: '1'
+        run: |
+          command=(./scripts/run-ci-gradle.sh)
+          if [[ "$RUNNER_OS" == 'macOS' && -z "$EXPERIMENT_FORKS" ]]; then
+            command=(./gradlew)
+          fi
+          args=(--continue --quiet --profile -Dorg.gradle.configuration-cache.read-only=true)
+          if [[ "$EXPERIMENT_SUITE" == 'compiler' ]]; then
+            args+=(
+              :compiler-tests:generateTests
+              :compiler:test --rerun
+              :compiler-tests:test --rerun
+              -Pmetro.testCompilerVersion=2.5.0-dev-6460
+              -Pmetro.testOmitRedundantMirrors=false
+              -Pmetro.excludeJsBoxTests
+              "-Pmetro.compilerTestMaxParallelForks=$EXPERIMENT_FORKS"
+              "-Pmetro.ciCompilerTestsPreparedFile=$RUNNER_TEMP/compiler-tests-prepared"
+            )
+          else
+            args+=(:gradle-plugin:functionalTest --rerun -Pmetro.testCompilerVersion=2.4.20)
+            if [[ "$RUNNER_OS" == 'macOS' ]]; then
+              args+=(:runtime:allTests :runtime-coroutines:allTests -Pmetro.functionalTestKmpTarget=all)
+            else
+              args+=(-Pmetro.functionalTestKmpTarget=jvm -Pmetro.testOmitRedundantMirrors=true)
+            fi
+            if [[ -n "$EXPERIMENT_FORKS" ]]; then
+              args+=("-Pmetro.functionalTestMaxParallelForks=$EXPERIMENT_FORKS")
+            fi
+            if [[ "$EXPERIMENT_CONFIGURATION_CACHE" == 'true' ]]; then
+              args+=(-Pmetro.testkitConfigurationCache=true -Pmetro.testkitConfigurationCacheReadOnly=false)
+            fi
+          fi
+          start=$SECONDS
+          set +e
+          "${command[@]}" "${args[@]}" 2>&1 | tee "$RUNNER_TEMP/workload.log"
+          status=${PIPESTATUS[0]}
+          echo "elapsed_seconds=$((SECONDS - start))" | tee "$RUNNER_TEMP/timing.txt"
+          exit "$status"
+      - name: Upload measurements
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: experiment-${{ matrix.name }}
+          retention-days: 14
+          path: |
+            ${{ runner.temp }}/timing.txt
+            ${{ runner.temp }}/workload.log
+            build/reports/profile/**
+            compiler/build/test-results/test/*.xml
+            compiler-tests/build/test-results/test/*.xml
+            gradle-plugin/build/test-results/functionalTest/*.xml
+            runtime/build/test-results/**
+            runtime-coroutines/build/test-results/**
