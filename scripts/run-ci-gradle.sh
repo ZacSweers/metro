@@ -63,9 +63,21 @@ log_resources() {
 }
 
 monitor_resources() {
+  # The sleep process must exit before the step's output pipe can close.
+  stop_monitor() {
+    local child_pid
+    for child_pid in $(jobs -pr); do
+      kill "$child_pid" 2>/dev/null || true
+    done
+    wait 2>/dev/null || true
+    exit 0
+  }
+  trap stop_monitor TERM INT
+
   while true; do
     log_resources
-    sleep 60
+    sleep 60 &
+    wait "$!"
   done
 }
 
