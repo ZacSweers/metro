@@ -226,8 +226,38 @@ internal sealed class ClassFactory : IrMetroFactory {
     private val metroContext: IrMetroContext,
     override val factoryClass: IrClass,
     override val targetConstructor: IrConstructor,
-    override val targetFunctionParameters: Parameters,
+    constructorParameters: Parameters,
   ) : ClassFactory() {
+    override val targetFunctionParameters: Parameters by memoize {
+      if (targetConstructor.regularParameters.none { it.defaultValue != null }) {
+        return@memoize constructorParameters
+      }
+      context(metroContext) {
+        val newInstanceFunction =
+          factoryClass
+            .requireStaticIshDeclarationContainer()
+            .requireSimpleFunction(Symbols.StringNames.NEW_INSTANCE)
+            .owner
+        val remapper = newInstanceFunction.typeRemapperFor(constructorParameters.ir!!.returnType)
+
+        // Keep constructor metadata while using the generated factory's dependency signature.
+        val parameters =
+          constructorParameters.regularParameters.mapIndexed { index, parameter ->
+            val factoryParameter = newInstanceFunction.regularParameters[index]
+            val factoryType = remapper.remapType(factoryParameter.type)
+            val contextKey =
+              factoryType.asContextualTypeKey(
+                qualifierAnnotation = parameter.typeKey.qualifier,
+                hasDefault = factoryParameter.hasMetroDefault(),
+                patchMutableCollections = false,
+                declaration = factoryParameter,
+              )
+            parameter.copy(contextualTypeKey = contextKey)
+          }
+        constructorParameters.copy(regularParameters = parameters)
+      }
+    }
+
     override val function: IrConstructor = targetConstructor
     override val createFunctionNames: Set<Name> =
       setOf(Symbols.Names.create, Symbols.Names.createFactoryProvider)
