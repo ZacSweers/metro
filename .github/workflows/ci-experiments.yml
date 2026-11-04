@@ -109,7 +109,13 @@ jobs:
           EXPERIMENT_PREBUILT: ${{ inputs.prebuilt }}
           EXPERIMENT_PREBUILT_COMPILER: ${{ matrix.prebuilt-compiler }}
           EXPERIMENT_PREPARE_STOP: ${{ matrix.prepare-stop }}
-        run: bash scripts/run-ci-experiment.sh
+          EXPERIMENT_SERIES: ${{ matrix.series }}
+        run: |
+          if [[ "$EXPERIMENT_SERIES" == 'compiler-heap' ]]; then
+            bash scripts/run-compiler-heap-series.sh
+          else
+            bash scripts/run-ci-experiment.sh
+          fi
       - name: Upload measurements
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7
@@ -120,6 +126,7 @@ jobs:
             ${{ runner.temp }}/timing.txt
             ${{ runner.temp }}/workload.log
             ${{ runner.temp }}/macos-resources.jsonl
+            ${{ runner.temp }}/compiler-trials/**
             build/reports/profile/**
             compiler/build/test-results/test/*.xml
             compiler-tests/build/test-results/test/*.xml

@@ -20,7 +20,7 @@ args=(--continue --quiet --profile -Dorg.gradle.configuration-cache.read-only=tr
   "-Pmetro.testOmitRedundantMirrors=$EXPERIMENT_MIRRORS")
 if [[ "$EXPERIMENT_SUITE" == 'compiler' ]]; then
   args+=(:compiler-tests:generateTests)
-  if [[ "$EXPERIMENT_SHARD" != 'modes' ]]; then
+  if [[ "$EXPERIMENT_SHARD" != 'modes' && "${EXPERIMENT_SKIP_LEGACY:-false}" != 'true' ]]; then
     args+=(:compiler:test --rerun)
   fi
   args+=(:compiler-tests:test --rerun -Pmetro.excludeJsBoxTests
