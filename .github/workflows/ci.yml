@@ -502,6 +502,17 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: false
+          dotnet: true
+          haskell: true
+          large-packages: false
+          docker-images: false
+          swap-storage: false
+
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
@@ -565,7 +576,7 @@ jobs:
           konan: true
           konan-cache-read-only: ${{ github.ref != 'refs/heads/main' || matrix.os == 'ubuntu-latest' }}
 
-      # Core and samples already cover the Linux runtime and sample test tasks.
+      # Core already covers the Linux runtime test tasks.
       - name: Check IC tests (Linux)
         if: runner.os == 'Linux'
         run: |
@@ -594,9 +605,15 @@ jobs:
         # mingwX64, etc.), so each runner covers a different native target naturally.
         run: ./gradlew :runtime:allTests :runtime-coroutines:allTests :gradle-plugin:functionalTest --continue --quiet --profile -Pmetro.functionalTestKmpTarget=all
 
+      # This run covers the committed npm locks on every host.
+      # The separate samples job regenerates its locks first.
       - name: Check samples
-        if: runner.os != 'Linux'
-        run: ./gradlew -p samples test allTests --continue --quiet --profile
+        run: |
+          if [[ "$RUNNER_OS" == "Linux" ]]; then
+            RUNNER_DEBUG=1 ./scripts/run-ci-gradle.sh -p samples test allTests --continue --quiet --profile
+          else
+            ./gradlew -p samples test allTests --continue --quiet --profile
+          fi
 
       - name: Upload platform timings and test results
         if: ${{ !cancelled() }}
