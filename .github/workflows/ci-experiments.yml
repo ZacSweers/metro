@@ -89,6 +89,7 @@ jobs:
           github-token: ${{ github.token }}
           run-id: ${{ inputs.repository-run-id || github.run_id }}
       - name: Measure workload
+        timeout-minutes: 85
         env:
           RUNNER_DEBUG: '1'
           EXPERIMENT_SUITE: ${{ matrix.suite }}
@@ -109,6 +110,7 @@ jobs:
           EXPERIMENT_PREBUILT: ${{ inputs.prebuilt }}
           EXPERIMENT_PREBUILT_COMPILER: ${{ matrix.prebuilt-compiler }}
           EXPERIMENT_FIXTURE_CACHE_MODE: ${{ matrix.fixture-cache-mode }}
+          EXPERIMENT_KOTLIN_IDLE_SECONDS: ${{ matrix.kotlin-idle-seconds }}
           EXPERIMENT_PREPARE_STOP: ${{ matrix.prepare-stop }}
           EXPERIMENT_SERIES: ${{ matrix.series }}
         run: |

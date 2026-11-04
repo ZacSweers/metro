@@ -95,6 +95,13 @@ if [[ "${RUNNER_DEBUG:-0}" == "1" ]]; then
 fi
 
 gradle_jvm_args="-Xmx4g -Dfile.encoding=UTF-8 --enable-native-access=ALL-UNNAMED"
+if [[ -n "${EXPERIMENT_KOTLIN_IDLE_SECONDS:-}" ]]; then
+  if [[ ! "$EXPERIMENT_KOTLIN_IDLE_SECONDS" =~ ^[1-9][0-9]*$ ]]; then
+    echo 'Kotlin idle timeout must be a positive integer' >&2
+    exit 2
+  fi
+  gradle_jvm_args+=" -Dkotlin.daemon.jvm.options=autoshutdownIdleSeconds=$EXPERIMENT_KOTLIN_IDLE_SECONDS"
+fi
 gradle_max_workers=4
 if [[ "${RUNNER_OS:-}" == "macOS" ]]; then
   processor_count=$(sysctl -n hw.logicalcpu)
