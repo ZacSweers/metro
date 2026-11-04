@@ -725,8 +725,9 @@ jobs:
       - name: Check snapshot revision
         id: revision
         run: |
-          latest=$(git ls-remote origin refs/heads/main | cut -f1)
-          if [[ "$latest" == "$GITHUB_SHA" ]]; then
+          git fetch --no-tags --depth=1 origin refs/heads/main
+          # Markdown-only commits don't trigger CI.
+          if git diff --quiet "$GITHUB_SHA" FETCH_HEAD -- . ':(glob,exclude)**/*.md'; then
             echo 'current=true' >> "$GITHUB_OUTPUT"
           else
             echo 'current=false' >> "$GITHUB_OUTPUT"
@@ -779,8 +780,9 @@ jobs:
       - name: Check snapshot revision
         id: revision
         run: |
-          latest=$(git ls-remote origin refs/heads/main | cut -f1)
-          if [[ "$latest" == "$GITHUB_SHA" ]]; then
+          git fetch --no-tags --depth=1 origin refs/heads/main
+          # Markdown-only commits don't trigger CI.
+          if git diff --quiet "$GITHUB_SHA" FETCH_HEAD -- . ':(glob,exclude)**/*.md'; then
             echo 'current=true' >> "$GITHUB_OUTPUT"
           else
             echo 'current=false' >> "$GITHUB_OUTPUT"
