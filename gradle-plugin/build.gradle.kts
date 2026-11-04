@@ -4,6 +4,7 @@ import com.android.build.gradle.internal.lint.AndroidLintAnalysisTask
 import com.android.build.gradle.internal.lint.LintModelWriterTask
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import java.util.Properties
+import org.gradle.api.publish.maven.tasks.PublishToMavenRepository
 import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 import org.jetbrains.kotlin.tooling.core.KotlinToolingVersion
 
@@ -245,14 +246,89 @@ tasks.withType<Test>().configureEach {
 }
 
 tasks.named<Test>("functionalTest") {
-  // Native and web artifacts are consumed outside the test JVM classpath.
-  inputs
-    .dir(rootProject.layout.buildDirectory.dir("functionalTestRepo"))
-    .withPropertyName("functionalTestRepository")
-    .withPathSensitivity(PathSensitivity.RELATIVE)
   maxParallelForks = functionalTestMaxParallelForks.get()
   testkitConfigurationCache.orNull?.let { systemProperty("metro.testkitConfigurationCache", it) }
   systemProperty("metro.testkitConfigurationCacheReadOnly", testkitConfigurationCacheReadOnly.get())
+}
+
+// Capture publication inputs before Gradle stores the configured task graph.
+gradle.taskGraph.whenReady {
+  val functionalTest = tasks.named<Test>("functionalTest").get()
+  if (!hasTask(functionalTest)) {
+    return@whenReady
+  }
+
+  val pending = ArrayDeque<Task>()
+  pending.add(tasks.named("installForFunctionalTest").get())
+  val visited = mutableSetOf<String>()
+  val publications = mutableListOf<PublishToMavenRepository>()
+  var usesPrebuiltRepository = gradle.startParameter.excludedTaskNames.isNotEmpty()
+  while (pending.isNotEmpty() && !usesPrebuiltRepository) {
+    val task = pending.removeFirst()
+    if (!visited.add(task.path)) {
+      continue
+    }
+    if (!hasTask(task)) {
+      usesPrebuiltRepository = true
+      break
+    }
+    if (task is PublishToMavenRepository) {
+      if (!task.enabled) {
+        usesPrebuiltRepository = true
+        break
+      }
+      publications.add(task)
+    } else {
+      pending.addAll(getDependencies(task))
+    }
+  }
+
+  val publicationFiles = publications.flatMap { it.inputs.files.files }.map { it.canonicalFile }
+  val publicationRoot = rootProject.layout.projectDirectory.asFile.canonicalFile
+  val hasExternalPublicationFiles = publicationFiles.any {
+    !it.toPath().startsWith(publicationRoot.toPath())
+  }
+  val expectedRepository =
+    rootProject.layout.buildDirectory.dir("functionalTestRepo").get().asFile.canonicalFile
+  val hasUnusualPublicationDestination = publications.any {
+    val repositoryFile = runCatching { File(it.repository.url).canonicalFile }.getOrNull()
+    it.repository.name != "FunctionalTest" || repositoryFile != expectedRepository
+  }
+  val hasUnsupportedPublications = hasExternalPublicationFiles || hasUnusualPublicationDestination
+  val needsRepositoryInputs = usesPrebuiltRepository || hasUnsupportedPublications
+  if (needsRepositoryInputs || publications.isEmpty()) {
+    functionalTest.inputs
+      .dir(rootProject.layout.buildDirectory.dir("functionalTestRepo"))
+      .withPropertyName("functionalTestRepository")
+      .withPathSensitivity(PathSensitivity.RELATIVE)
+  } else {
+    // Source artifacts include native and web binaries without SNAPSHOT publication timestamps.
+    val publicationPaths = publicationFiles.map {
+      it.relativeTo(publicationRoot).invariantSeparatorsPath
+    }
+    val publicationSources = rootProject.fileTree(publicationRoot) { setIncludes(publicationPaths) }
+    val publicationSelection =
+      publications
+        .sortedBy { it.path }
+        .map { task ->
+          val publication = task.publication
+          val repository = expectedRepository.relativeTo(publicationRoot).invariantSeparatorsPath
+          val artifacts =
+            publication.artifacts
+              .map {
+                val source =
+                  it.file.canonicalFile.relativeTo(publicationRoot).invariantSeparatorsPath
+                "$source:${it.extension}:${it.classifier}"
+              }
+              .sorted()
+          "${task.path}:$repository:${publication.groupId}:${publication.artifactId}:${publication.version}:$artifacts"
+        }
+    functionalTest.inputs
+      .files(publicationSources)
+      .withPropertyName("functionalTestPublications")
+      .withPathSensitivity(PathSensitivity.RELATIVE)
+    functionalTest.inputs.property("functionalTestPublicationSelection", publicationSelection)
+  }
 }
 
 tasks
