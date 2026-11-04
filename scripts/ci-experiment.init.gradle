@@ -58,3 +58,36 @@ gradle.beforeProject { project ->
         }
     }
 }
+
+gradle.beforeProject { project ->
+    if (project.path == ':gradle-plugin') {
+        project.afterEvaluate {
+            project.tasks.withType(org.gradle.api.tasks.testing.Test).configureEach { task ->
+                if (task.name != 'functionalTest') {
+                    return
+                }
+                def selectedClasses = [
+        'dev.zacsweers.metro.gradle.extensions.circuit.CircuitWebTest',
+        'dev.zacsweers.metro.gradle.incremental.BindingContainerICTests',
+        'dev.zacsweers.metro.gradle.incremental.AssistedInjectionICTests',
+        'dev.zacsweers.metro.gradle.incremental.BindingContainerInclusionICTests',
+        'dev.zacsweers.metro.gradle.MetroHiddenDependenciesTest',
+        'dev.zacsweers.metro.gradle.incremental.ICTests',
+        'dev.zacsweers.metro.gradle.VersionCompatibilityTest',
+        'dev.zacsweers.metro.gradle.InteropConfigurationTest',
+        'dev.zacsweers.metro.gradle.incremental.NativeICTests',
+        'dev.zacsweers.metro.gradle.SuspendProvidersConfigurationTest',
+        'dev.zacsweers.metro.gradle.RuntimeTracingConfigurationTest',
+                ]
+                def shard = project.providers.gradleProperty('metro.experiment.functionalShard').orNull
+                if (shard == 'base') {
+                    selectedClasses.each { task.filter.includeTestsMatching(it) }
+                } else if (shard == 'other') {
+                    selectedClasses.each { task.filter.excludeTestsMatching(it) }
+                } else if (shard != null) {
+                    throw new GradleException('Unknown functional shard: ' + shard)
+                }
+            }
+        }
+    }
+}

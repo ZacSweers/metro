@@ -41,6 +41,7 @@ jobs:
           EXPERIMENT_LEGACY_FORKS: ${{ matrix.legacy-forks }}
           EXPERIMENT_SHARD: ${{ matrix.shard }}
           EXPERIMENT_LIGHTWEIGHT: ${{ matrix.lightweight }}
+          EXPERIMENT_FUNCTIONAL_SHARD: ${{ matrix.functional-shard }}
           EXPERIMENT_FILTER: ${{ matrix.filter }}
           EXPERIMENT_PROFILE_NESTED: ${{ matrix.profile-nested }}
           EXPERIMENT_JFR: ${{ matrix.jfr }}

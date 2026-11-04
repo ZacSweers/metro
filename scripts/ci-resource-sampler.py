@@ -29,6 +29,31 @@ def cpu_seconds(value):
     return total + days * 86400
 
 
+JAVA_ROLES = {
+    'org.gradle.launcher.daemon.bootstrap.GradleDaemon': 'gradle_daemon',
+    'org.gradle.launcher.GradleMain': 'gradle_client',
+    'org.gradle.wrapper.GradleWrapperMain': 'gradle_wrapper',
+    'org.jetbrains.kotlin.daemon.KotlinCompileDaemon': 'kotlin_daemon',
+    'worker.org.gradle.process.internal.worker.GradleWorkerMain': 'gradle_worker',
+}
+ROLE_CACHE = {}
+
+
+def java_roles():
+    result = {}
+    try:
+        output = command('jps', '-l')
+    except (RuntimeError, subprocess.TimeoutExpired):
+        return result
+    for line in output.splitlines():
+        fields = line.split(maxsplit=1)
+        if len(fields) != 2 or not fields[0].isdigit():
+            continue
+        role = JAVA_ROLES.get(fields[1], 'other_java')
+        result[int(fields[0])] = role
+    return result
+
+
 def java_processes():
     processes = []
     for line in command('ps', '-axo', 'pid=,ppid=,time=,rss=,comm=').splitlines():
@@ -43,6 +68,10 @@ def java_processes():
             'cpu_seconds': cpu_seconds(fields[2]),
             'rss_kib': int(fields[3]),
         })
+    if any(p['pid'] not in ROLE_CACHE for p in processes):
+        ROLE_CACHE.update(java_roles())
+    for process in processes:
+        process['role'] = ROLE_CACHE.get(process['pid'], 'unknown_java')
     return processes
 
 

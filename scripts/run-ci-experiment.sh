@@ -47,6 +47,9 @@ else
   if [[ "$EXPERIMENT_LIGHTWEIGHT" == 'true' ]]; then
     args+=(-Pmetro.testkitLightweightPublications=true)
   fi
+  if [[ -n "$EXPERIMENT_FUNCTIONAL_SHARD" ]]; then
+    args+=("-Pmetro.experiment.functionalShard=$EXPERIMENT_FUNCTIONAL_SHARD")
+  fi
   if [[ -n "$EXPERIMENT_FILTER" ]]; then
     args+=(--tests "$EXPERIMENT_FILTER")
   fi
