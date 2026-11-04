@@ -3122,6 +3122,18 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       }
 
       @Test
+      @TestMetadata("DaggerFactoryDefaultedParamUsesPresentBinding.kt")
+      public void testDaggerFactoryDefaultedParamUsesPresentBinding() {
+        run("DaggerFactoryDefaultedParamUsesPresentBinding.kt");
+      }
+
+      @Test
+      @TestMetadata("DaggerFactoryDefaultedParamWithScopedBinding.kt")
+      public void testDaggerFactoryDefaultedParamWithScopedBinding() {
+        run("DaggerFactoryDefaultedParamWithScopedBinding.kt");
+      }
+
+      @Test
       @TestMetadata("DaggerLazySubtypeInterop.kt")
       public void testDaggerLazySubtypeInterop() {
         run("DaggerLazySubtypeInterop.kt");
