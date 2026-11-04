@@ -4,11 +4,21 @@ Changelog
 **Unreleased**
 --------------
 
+### Fixes
+
+- **[IR/interop]** Fix an issue with Dagger-processed providers/constructors with default parameters with their generated factory. Previously, Metro would treat the source function's parameter as optional if it had a default value and not reconcile that correctly with Dagger's generated factory (which would not propagate that default since Dagger uses a different mechanism for optional bindings).
+
 ### Changes
 
 - Test IntelliJ IDEA `2026.2.4` and `2026.3 RC`.
 - Test Android Studio Rabbit 2 stable.
 - Test Android Studio Rabbit 3 canaries (Canary 2).
+
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@aglose](https://github.com/aglose)
 
 ### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
 
