@@ -83,12 +83,15 @@ jobs:
           path: build/functionalTestRepo
       - name: Measure workload
         env:
+          RUNNER_DEBUG: '1'
           EXPERIMENT_SUITE: ${{ matrix.suite }}
           EXPERIMENT_FORKS: ${{ matrix.forks }}
           EXPERIMENT_TARGET: ${{ matrix.target }}
           EXPERIMENT_KOTLIN: ${{ matrix.kotlin }}
           EXPERIMENT_MIRRORS: ${{ matrix.mirrors }}
           EXPERIMENT_THREADS: ${{ matrix.threads }}
+          EXPERIMENT_HEAP: ${{ matrix.heap }}
+          EXPERIMENT_GC: ${{ matrix.gc }}
           EXPERIMENT_LEGACY_FORKS: ${{ matrix.legacy-forks }}
           EXPERIMENT_SHARD: ${{ matrix.shard }}
           EXPERIMENT_LIGHTWEIGHT: ${{ matrix.lightweight }}

@@ -29,6 +29,12 @@ if [[ "$EXPERIMENT_SUITE" == 'compiler' ]]; then
   if [[ -n "$EXPERIMENT_THREADS" ]]; then
     args+=("-Pmetro.experiment.compilerJUnitThreads=$EXPERIMENT_THREADS")
   fi
+  if [[ -n "$EXPERIMENT_HEAP" ]]; then
+    args+=("-Pmetro.compilerTestHeapSize=$EXPERIMENT_HEAP")
+  fi
+  if [[ -n "$EXPERIMENT_GC" ]]; then
+    args+=("-Pmetro.experiment.compilerGc=$EXPERIMENT_GC")
+  fi
   if [[ -n "$EXPERIMENT_LEGACY_FORKS" ]]; then
     args+=("-Pmetro.experiment.legacyForks=$EXPERIMENT_LEGACY_FORKS")
   fi

@@ -18,6 +18,12 @@ gradle.beforeProject { project ->
                         task.maxParallelForks = Integer.parseInt(forks)
                     }
                 } else {
+                    def collector = project.providers.gradleProperty('metro.experiment.compilerGc').orNull
+                    if (collector == 'parallel') {
+                        task.jvmArgs('-XX:+UseParallelGC')
+                    } else if (collector != null) {
+                        throw new GradleException('Unknown compiler GC: ' + collector)
+                    }
                     def parallelism = project.providers.gradleProperty('metro.experiment.compilerJUnitThreads').orNull
                     if (parallelism != null) {
                         task.systemProperty('junit.jupiter.execution.parallel.config.strategy', 'fixed')
