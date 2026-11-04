@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+Recommended way to edit .jfc files is to use the configure command of
+the 'jfr' tool, i.e. jfr configure, or JDK Mission Control
+see Window -> Flight Recorder Template Manager
+
+-->
+<configuration label="Custom" version="2.0">
+
+  <event name="jdk.CPUInformation">
+    <setting name="enabled">true</setting>
+    <setting name="period">beginChunk</setting>
+  </event>
+
+  <event name="jdk.CPULoad">
+    <setting name="enabled">true</setting>
+    <setting name="period">1 s</setting>
+  </event>
+
+  <event name="jdk.ThreadCPULoad">
+    <setting name="enabled">true</setting>
+    <setting name="period">1 s</setting>
+  </event>
+
+  <event name="jdk.GarbageCollection">
+    <setting name="enabled">true</setting>
+    <setting name="threshold">0 ns</setting>
+  </event>
+
+  <event name="jdk.GCPhasePause">
+    <setting name="enabled">true</setting>
+    <setting name="threshold">0 ns</setting>
+  </event>
+
+  <event name="jdk.GCCPUTime">
+    <setting name="enabled">true</setting>
+  </event>
+
+  <event name="jdk.GCHeapSummary">
+    <setting name="enabled">true</setting>
+  </event>
+
+  <event name="jdk.ExecutionSample">
+    <setting name="enabled">true</setting>
+    <setting name="period">10 ms</setting>
+  </event>
+
+  <event name="jdk.NativeMethodSample">
+    <setting name="enabled">true</setting>
+    <setting name="period">20 ms</setting>
+  </event>
+
+</configuration>

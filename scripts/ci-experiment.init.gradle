@@ -41,7 +41,8 @@ gradle.beforeProject { project ->
                 }
                 if (project.path == ':compiler-tests' && project.providers.gradleProperty('metro.experiment.compilerJfr').orNull == 'true') {
                     def recording = project.layout.buildDirectory.file('compiler-ci.jfr').get().asFile
-                    task.jvmArgs('-XX:StartFlightRecording=filename=' + recording.absolutePath + ',settings=profile,dumponexit=true,maxsize=128m')
+                    def settings = project.rootProject.file('scripts/compiler-ci.jfc')
+                    task.jvmArgs('-XX:StartFlightRecording=filename=' + recording.absolutePath + ',settings=' + settings.absolutePath + ',dumponexit=true,maxsize=128m')
                 }
             }
         }
