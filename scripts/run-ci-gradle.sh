@@ -100,7 +100,7 @@ if [[ -n "${EXPERIMENT_KOTLIN_IDLE_SECONDS:-}" ]]; then
     echo 'Kotlin idle timeout must be a positive integer' >&2
     exit 2
   fi
-  gradle_jvm_args+=" -Dkotlin.daemon.jvm.options=autoshutdownIdleSeconds=$EXPERIMENT_KOTLIN_IDLE_SECONDS"
+  gradle_jvm_args+=" -Dkotlin.daemon.options=autoshutdownIdleSeconds=$EXPERIMENT_KOTLIN_IDLE_SECONDS"
 fi
 gradle_max_workers=4
 if [[ "${RUNNER_OS:-}" == "macOS" ]]; then
