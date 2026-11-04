@@ -140,6 +140,12 @@ tasks.withType<AndroidLintAnalysisTask>().configureEach { dependsOn(shadowJar) }
 
 tasks.withType<LintModelWriterTask>().configureEach { dependsOn(shadowJar) }
 
+val prebuiltTestKitCompiler =
+  providers
+    .gradleProperty("metro.testkitPrebuiltCompiler")
+    .map(String::toBooleanStrict)
+    .orElse(false)
+
 dependencies {
   api(project(":graphs"))
   implementation(project(":graph-viewer"))
@@ -172,7 +178,13 @@ dependencies {
   functionalTestImplementation(libs.testkit.support)
   functionalTestImplementation(libs.testkit.truth)
   // TODO really only here for extensions tests
-  functionalTestRuntimeOnly(project(":compiler"))
+  if (prebuiltTestKitCompiler.get()) {
+    functionalTestRuntimeOnly(
+      "${project.group}:compiler:${providers.gradleProperty("VERSION_NAME").get()}",
+    )
+  } else {
+    functionalTestRuntimeOnly(project(":compiler"))
+  }
   functionalTestRuntimeOnly(project(":runtime"))
   functionalTestRuntimeOnly(project(":runtime-coroutines"))
   functionalTestRuntimeOnly(project(":interop-dagger"))

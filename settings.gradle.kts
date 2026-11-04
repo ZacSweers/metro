@@ -21,7 +21,29 @@ pluginManagement {
 
 dependencyResolutionManagement {
   val kotlinRepoUrl = providers.gradleProperty("kotlin_repo_url").orNull
+  val prebuiltTestKitCompiler =
+    providers
+      .gradleProperty("metro.testkitPrebuiltCompiler")
+      .map(String::toBooleanStrict)
+      .orElse(false)
   repositories {
+    if (prebuiltTestKitCompiler.get()) {
+      exclusiveContent {
+        forRepository {
+          maven {
+            name = "testkitPrebuiltCompiler"
+            url = uri(layout.settingsDirectory.dir("build/functionalTestRepo"))
+          }
+        }
+        filter {
+          includeVersion(
+            providers.gradleProperty("GROUP").get(),
+            "compiler",
+            providers.gradleProperty("VERSION_NAME").get(),
+          )
+        }
+      }
+    }
     if (kotlinRepoUrl != null) {
       maven(kotlinRepoUrl)
     }

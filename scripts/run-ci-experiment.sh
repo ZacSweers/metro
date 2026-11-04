@@ -56,6 +56,9 @@ else
   if [[ "$EXPERIMENT_PREBUILT" == 'true' ]]; then
     args+=(-x installForFunctionalTest)
   fi
+  if [[ "$EXPERIMENT_PREBUILT_COMPILER" == 'true' ]]; then
+    args+=(-Pmetro.testkitPrebuiltCompiler=true)
+  fi
   if [[ -n "$EXPERIMENT_FUNCTIONAL_SHARD" ]]; then
     args+=("-Pmetro.experiment.functionalShard=$EXPERIMENT_FUNCTIONAL_SHARD")
   fi

@@ -15,14 +15,19 @@ on:
         description: Runner for the shared repository producer
         type: string
         default: ubuntu-latest
+      repository-run-id:
+        description: Reuse the unchanged compiler artifacts from an earlier experiment
+        type: string
+        default: ''
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   prepare:
     name: Prepare shared TestKit repository
-    if: inputs.prebuilt
+    if: ${{ inputs.prebuilt && inputs.repository-run-id == '' }}
     runs-on: ${{ inputs.producer-os }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -81,6 +86,8 @@ jobs:
         with:
           name: experiment-testkit-repository
           path: build/functionalTestRepo
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.repository-run-id || github.run_id }}
       - name: Measure workload
         env:
           RUNNER_DEBUG: '1'
@@ -100,6 +107,7 @@ jobs:
           EXPERIMENT_PROFILE_NESTED: ${{ matrix.profile-nested }}
           EXPERIMENT_JFR: ${{ matrix.jfr }}
           EXPERIMENT_PREBUILT: ${{ inputs.prebuilt }}
+          EXPERIMENT_PREBUILT_COMPILER: ${{ matrix.prebuilt-compiler }}
           EXPERIMENT_PREPARE_STOP: ${{ matrix.prepare-stop }}
         run: bash scripts/run-ci-experiment.sh
       - name: Upload measurements
