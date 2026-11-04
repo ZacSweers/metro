@@ -171,6 +171,8 @@ jobs:
             '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' \
             "-Pmetro.testOmitRedundantMirrors=$METRO_TEST_OMIT_REDUNDANT_MIRRORS" \
             -Pmetro.excludeJsBoxTests \
+            -Pmetro.compilerTestParallelism=4 \
+            -Pmetro.legacyCompilerTestMaxParallelForks=2 \
             ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
 
       # Successful runs provide the task timings and test counts needed for performance comparisons.
@@ -241,6 +243,7 @@ jobs:
             "-Pmetro.testOmitRedundantMirrors=$METRO_TEST_OMIT_REDUNDANT_MIRRORS" \
             -Pmetro.functionalTestKmpTarget=jvm \
             -Pmetro.functionalTestMaxParallelForks=2 \
+            -Pmetro.testkitLightweightPublications=true \
             "${fixture_cache_args[@]}" \
             ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
 

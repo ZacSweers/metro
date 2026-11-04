@@ -86,7 +86,11 @@ buildConfig {
 }
 
 tasks.test {
-  maxParallelForks = Runtime.getRuntime().availableProcessors() * 2
+  maxParallelForks =
+    providers
+      .gradleProperty("metro.legacyCompilerTestMaxParallelForks")
+      .map(String::toInt)
+      .getOrElse(Runtime.getRuntime().availableProcessors() * 2)
   if (providers.gradleProperty("metro.ciCompilerTestsPreparedFile").isPresent) {
     // CI waits for generated suites before starting either compiler test task.
     dependsOn(":compiler-tests:prepareCiCompilerTests")

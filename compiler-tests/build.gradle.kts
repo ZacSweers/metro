@@ -409,6 +409,9 @@ val compilerTestHeapSize =
 val compilerTestMaxParallelForks =
   providers.gradleProperty("metro.compilerTestMaxParallelForks").map(String::toInt).orElse(1)
 
+val compilerTestParallelism =
+  providers.gradleProperty("metro.compilerTestParallelism").map(String::toInt)
+
 val excludeJsBoxTests = providers.gradleProperty("metro.excludeJsBoxTests").isPresent
 val testOmitRedundantMirrors = providers.gradleProperty("metro.testOmitRedundantMirrors").orNull
 
@@ -444,6 +447,14 @@ tasks.withType<Test> {
   }
   dependsOn(runtimeTracingClasspath)
   maxParallelForks = compilerTestMaxParallelForks.get()
+  compilerTestParallelism.orNull?.let { parallelism ->
+    require(parallelism > 0) { "metro.compilerTestParallelism must be positive: $parallelism" }
+    // JUnit can otherwise add worker threads when compiler tests block.
+    systemProperty("junit.jupiter.execution.parallel.config.strategy", "fixed")
+    systemProperty("junit.jupiter.execution.parallel.config.fixed.parallelism", parallelism)
+    systemProperty("junit.jupiter.execution.parallel.config.fixed.max-pool-size", parallelism)
+    systemProperty("junit.jupiter.execution.parallel.config.fixed.saturate", true)
+  }
 
   // Inspo from https://youtrack.jetbrains.com/issue/KT-83440
   minHeapSize = "512m"
