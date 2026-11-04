@@ -3122,6 +3122,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
       }
 
       @Test
+      @TestMetadata("DaggerFactoryDefaultedGenericParams.kt")
+      public void testDaggerFactoryDefaultedGenericParams() {
+        run("DaggerFactoryDefaultedGenericParams.kt");
+      }
+
+      @Test
       @TestMetadata("DaggerFactoryDefaultedParamUsesPresentBinding.kt")
       public void testDaggerFactoryDefaultedParamUsesPresentBinding() {
         run("DaggerFactoryDefaultedParamUsesPresentBinding.kt");
@@ -3185,6 +3191,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
       @TestMetadata("DaggerProviderFactoryClassInKotlinCanBeLoaded.kt")
       public void testDaggerProviderFactoryClassInKotlinCanBeLoaded() {
         run("DaggerProviderFactoryClassInKotlinCanBeLoaded.kt");
+      }
+
+      @Test
+      @TestMetadata("DaggerProviderFactoryDefaultedParams.kt")
+      public void testDaggerProviderFactoryDefaultedParams() {
+        run("DaggerProviderFactoryDefaultedParams.kt");
       }
 
       @Test

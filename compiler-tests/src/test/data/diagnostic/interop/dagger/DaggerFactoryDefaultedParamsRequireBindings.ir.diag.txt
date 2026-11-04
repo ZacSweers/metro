@@ -1,0 +1,23 @@
+/module_main_DaggerFactoryDefaultedParamsRequireBindings.kt:27:11: error: [Metro/MissingBinding] No binding found for @Named("required") BaseProps
+
+  test.AppGraph.nonNullableEncoder -> NonNullableEncoder -> @Named("required") BaseProps
+
+  trace (in test.AppGraph):
+      @Named("required") BaseProps is injected at test.NonNullableEncoder(…, base)
+      NonNullableEncoder is requested at test.AppGraph.nonNullableEncoder
+
+  help: ensure @Named("required") BaseProps has an @Inject constructor or is provided by an
+        @Provides or @Binds declaration visible to AppGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
+
+[Metro/MissingBinding] No binding found for BaseProps
+
+  test.AppGraph.nullableEncoder -> NullableEncoder -> BaseProps
+
+  trace (in test.AppGraph):
+      BaseProps is injected at test.NullableEncoder(…, base)
+      NullableEncoder is requested at test.AppGraph.nullableEncoder
+
+  help: ensure BaseProps has an @Inject constructor or is provided by an @Provides or @Binds
+        declaration visible to AppGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
