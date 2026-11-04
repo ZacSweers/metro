@@ -412,6 +412,12 @@ val compilerTestMaxParallelForks =
 val compilerTestParallelism =
   providers.gradleProperty("metro.compilerTestParallelism").map(String::toInt)
 
+val compilerTestUseParallelGc =
+  providers
+    .gradleProperty("metro.compilerTestUseParallelGc")
+    .map(String::toBooleanStrict)
+    .orElse(false)
+
 val excludeJsBoxTests = providers.gradleProperty("metro.excludeJsBoxTests").isPresent
 val testOmitRedundantMirrors = providers.gradleProperty("metro.testOmitRedundantMirrors").orNull
 
@@ -459,6 +465,9 @@ tasks.withType<Test> {
   // Inspo from https://youtrack.jetbrains.com/issue/KT-83440
   minHeapSize = "512m"
   maxHeapSize = compilerTestHeapSize.get()
+  if (compilerTestUseParallelGc.get()) {
+    jvmArgs("-XX:+UseParallelGC")
+  }
   jvmArgs(
     "-ea",
     "-XX:+UseCodeCacheFlushing",

@@ -172,6 +172,8 @@ jobs:
             "-Pmetro.testOmitRedundantMirrors=$METRO_TEST_OMIT_REDUNDANT_MIRRORS" \
             -Pmetro.excludeJsBoxTests \
             -Pmetro.compilerTestParallelism=4 \
+            -Pmetro.compilerTestHeapSize=4g \
+            -Pmetro.compilerTestUseParallelGc=true \
             -Pmetro.legacyCompilerTestMaxParallelForks=2 \
             ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
 
