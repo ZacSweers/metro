@@ -172,6 +172,8 @@ tasks.jar.configure { enabled = false }
 val shadowJar =
   tasks.register("shadowJar", ShadowJar::class.java) {
     from(java.sourceSets.main.map { it.output })
+    // The published compiler only needs the main source set's classes.
+    sourceSetsClassesDirs.setFrom(java.sourceSets.main.map { it.output.classesDirs })
     configurations.add(embeddedClasspath)
 
     minimize {
