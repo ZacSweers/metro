@@ -467,19 +467,17 @@ jobs:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
       - name: Test idea-plugin
-        run: ./gradlew -p idea-plugin test --quiet ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+        run: ./gradlew -p idea-plugin test --quiet --profile ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
 
-      - name: Verify idea-plugin compatibility
-        run: ./gradlew -p idea-plugin verifyPlugin --quiet ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
-
-      - name: Upload idea-plugin compatibility reports
+      - name: Upload idea-plugin test timings and results
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
-          name: idea-plugin-compatibility-reports
-          path: idea-plugin/build/reports/pluginVerifier/**
-          if-no-files-found: error
-          retention-days: 14
+          name: idea-plugin-test-performance-${{ github.run_attempt }}
+          path: |
+            idea-plugin/build/reports/profile/**
+            idea-plugin/build/test-results/test/*.xml
+          retention-days: 7
 
       - name: (Fail-only) Upload reports
         if: failure()
@@ -495,6 +493,44 @@ jobs:
         with:
           report_paths: 'idea-plugin/**/build/test-results/**/TEST-*.xml'
           check_name: 'Test Report - idea-plugin'
+
+  idea-plugin-compatibility:
+    name: idea-plugin compatibility
+    needs: changes
+    if: needs.changes.outputs.idea == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup Gradle
+        uses: ./.github/actions/setup-gradle
+        with:
+          encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: Verify idea-plugin compatibility
+        run: ./gradlew -p idea-plugin verifyPlugin --quiet --profile ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+
+      - name: Upload idea-plugin compatibility reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: idea-plugin-compatibility-reports
+          path: |
+            idea-plugin/build/reports/pluginVerifier/**
+            idea-plugin/build/reports/profile/**
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: (Fail-only) Upload reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: reports-idea-plugin-compatibility
+          path: 'idea-plugin/build/reports/**'
 
   # Main and manual runs cover every target on each host OS.
   multiplatform-tests:
@@ -637,6 +673,7 @@ jobs:
       - multiplatform-tests
       - benchmarks
       - idea-plugin
+      - idea-plugin-compatibility
       - samples
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7

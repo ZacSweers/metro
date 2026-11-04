@@ -27,7 +27,7 @@ def check_results(needs, workflow, full_platforms=False):
             required.update(("generate-matrix", "core", "compatibility", "functional-compatibility", "shaded-compiler-smoke",
                              "js-box", "benchmarks", "samples"))
         if routes["idea"] == "true":
-            required.add("idea-plugin")
+            required.update(("idea-plugin", "idea-plugin-compatibility"))
         if routes["docs"] == "true":
             required.add("docs")
         if full_platforms:

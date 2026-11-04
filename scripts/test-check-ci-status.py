@@ -21,7 +21,7 @@ class RequiredResultsTest(unittest.TestCase):
         names = (
             "changes", "format", "generate-matrix", "core", "compatibility",
             "functional-compatibility", "shaded-compiler-smoke", "js-box",
-            "benchmarks", "samples", "idea-plugin", "multiplatform-tests",
+            "benchmarks", "samples", "idea-plugin", "idea-plugin-compatibility", "multiplatform-tests",
         )
         results = {name: {"result": "success"} for name in names}
         results["changes"]["outputs"] = {"full": "true", "docs": "false", "idea": "true"}
@@ -50,6 +50,11 @@ class RequiredResultsTest(unittest.TestCase):
         results["multiplatform-tests"]["result"] = "skipped"
         self.assertEqual([], checker.check_results(results, "ci"))
 
+    def test_idea_verification_is_required(self):
+        results = self.results()
+        del results["idea-plugin-compatibility"]
+        self.assertIn("idea-plugin-compatibility: missing", checker.check_results(results, "ci"))
+
     def test_full_platform_run_passes_when_all_jobs_succeed(self):
         self.assertEqual([], checker.check_results(self.results(), "ci", full_platforms=True))
 
@@ -61,6 +66,7 @@ class RequiredResultsTest(unittest.TestCase):
             },
             "format": {"result": "success"},
             "idea-plugin": {"result": "success"},
+            "idea-plugin-compatibility": {"result": "success"},
             "compatibility": {"result": "skipped"},
             "functional-compatibility": {"result": "skipped"},
             "multiplatform-tests": {"result": "skipped"},
