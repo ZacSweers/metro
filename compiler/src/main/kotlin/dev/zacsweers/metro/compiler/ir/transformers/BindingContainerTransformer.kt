@@ -78,6 +78,7 @@ import dev.zacsweers.metro.compiler.ir.toClassReferences
 import dev.zacsweers.metro.compiler.ir.toProto
 import dev.zacsweers.metro.compiler.ir.transformIfIntoMultibinding
 import dev.zacsweers.metro.compiler.ir.typeRemapperFor
+import dev.zacsweers.metro.compiler.ir.withDaggerFactorySignature
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
 import dev.zacsweers.metro.compiler.isPlatformType
 import dev.zacsweers.metro.compiler.mapNotNullToSet
@@ -1109,7 +1110,8 @@ internal class BindingContainerTransformer(
                     rawTypeKey = contextKey.typeKey,
                     callableId = callableId,
                     annotations = annotations,
-                    parameters = parameters,
+                    parameters =
+                      parameters.withDaggerFactorySignature(factoryClass.owner, newInstanceName),
                     function = function,
                     isPropertyAccessor = isProperty,
                     realDeclaration = lookupRealDeclaration(isProperty, function) as IrFunction,
