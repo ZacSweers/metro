@@ -108,6 +108,7 @@ jobs:
           EXPERIMENT_JFR: ${{ matrix.jfr }}
           EXPERIMENT_PREBUILT: ${{ inputs.prebuilt }}
           EXPERIMENT_PREBUILT_COMPILER: ${{ matrix.prebuilt-compiler }}
+          EXPERIMENT_FIXTURE_CACHE_MODE: ${{ matrix.fixture-cache-mode }}
           EXPERIMENT_PREPARE_STOP: ${{ matrix.prepare-stop }}
           EXPERIMENT_SERIES: ${{ matrix.series }}
         run: |

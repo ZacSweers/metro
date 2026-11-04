@@ -47,9 +47,11 @@ if [[ "$EXPERIMENT_SUITE" == 'compiler' ]]; then
 else
   args+=(:gradle-plugin:functionalTest --rerun
     "-Pmetro.functionalTestMaxParallelForks=$EXPERIMENT_FORKS"
-    "-Pmetro.functionalTestKmpTarget=$EXPERIMENT_TARGET"
-    -Pmetro.testkitConfigurationCache=true
-    -Pmetro.testkitConfigurationCacheReadOnly=false)
+    "-Pmetro.functionalTestKmpTarget=$EXPERIMENT_TARGET")
+  if [[ "$EXPERIMENT_FIXTURE_CACHE_MODE" != 'unchanged' ]]; then
+    args+=(-Pmetro.testkitConfigurationCache=true
+      -Pmetro.testkitConfigurationCacheReadOnly=false)
+  fi
   if [[ "$EXPERIMENT_LIGHTWEIGHT" == 'true' ]]; then
     args+=(-Pmetro.testkitLightweightPublications=true)
   fi
