@@ -1,0 +1,87 @@
+name: CI experiments
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/ci-experiments.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  measure:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-compiler-four-gigabyte-heap
+            suite: compiler
+          - name: linux-functional-one-fork
+            suite: functional
+          - name: linux-functional-one-fork-configuration-cache
+            suite: functional
+            configuration-cache: true
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: ./.github/actions/setup-gradle
+        with:
+          encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+          cache-read-only: true
+          konan: true
+          kotlin-compiler-version: ${{ matrix.suite == 'compiler' && '2.5.0-dev-6460' || '2.4.20' }}
+      - name: Measure workload
+        env:
+          EXPERIMENT_SUITE: ${{ matrix.suite }}
+          EXPERIMENT_CONFIGURATION_CACHE: ${{ matrix.configuration-cache }}
+          RUNNER_DEBUG: '1'
+        run: |
+          args=(--continue --quiet --profile -Dorg.gradle.configuration-cache.read-only=true)
+          if [[ "$EXPERIMENT_SUITE" == 'compiler' ]]; then
+            args+=(
+              :compiler-tests:generateTests
+              :compiler:test --rerun
+              :compiler-tests:test --rerun
+              -Pmetro.testCompilerVersion=2.5.0-dev-6460
+              -Pmetro.testOmitRedundantMirrors=false
+              -Pmetro.excludeJsBoxTests
+              -Pmetro.compilerTestHeapSize=4g
+              "-Pmetro.ciCompilerTestsPreparedFile=$RUNNER_TEMP/compiler-tests-prepared"
+            )
+          else
+            args+=(
+              :gradle-plugin:functionalTest --rerun
+              -Pmetro.testCompilerVersion=2.4.20
+              -Pmetro.functionalTestKmpTarget=jvm
+              -Pmetro.testOmitRedundantMirrors=true
+              -Pmetro.functionalTestMaxParallelForks=1
+            )
+            if [[ "$EXPERIMENT_CONFIGURATION_CACHE" == 'true' ]]; then
+              args+=(-Pmetro.testkitConfigurationCache=true -Pmetro.testkitConfigurationCacheReadOnly=false)
+            fi
+          fi
+          start=$SECONDS
+          set +e
+          ./scripts/run-ci-gradle.sh "${args[@]}" 2>&1 | tee "$RUNNER_TEMP/workload.log"
+          status=${PIPESTATUS[0]}
+          echo "elapsed_seconds=$((SECONDS - start))" | tee "$RUNNER_TEMP/timing.txt"
+          exit "$status"
+      - name: Upload measurements
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: experiment-${{ matrix.name }}-${{ github.run_attempt }}
+          retention-days: 14
+          path: |
+            ${{ runner.temp }}/timing.txt
+            ${{ runner.temp }}/workload.log
+            build/reports/profile/**
+            compiler/build/test-results/test/*.xml
+            compiler-tests/build/test-results/test/*.xml
+            gradle-plugin/build/test-results/functionalTest/*.xml
