@@ -132,6 +132,142 @@ Is functionally equivalent to writing the below.
 interface AppGraph
 ```
 
+## Graph lifecycle
+
+Graphs can run startup and cleanup code in callbacks. Metro calls each callback, injects its parameters, and validates them with the rest of the graph.
+
+A graph opts in by implementing `CloseableGraph` or `SuspendCloseableGraph`. Then it annotates functions with `@OnGraphInit` or `@OnGraphClose`.
+
+```kotlin
+@SingleIn(AppScope::class)
+@Inject
+class Analytics {
+  fun start() { /* ... */ }
+  fun flush() { /* ... */ }
+}
+
+@DependencyGraph(AppScope::class)
+interface AppGraph : CloseableGraph {
+  @OnGraphInit
+  fun initialize(analytics: Analytics) {
+    analytics.start()
+  }
+
+  @OnGraphClose
+  fun shutdown(analytics: Analytics) {
+    analytics.flush()
+  }
+}
+```
+
+`CloseableGraph` extends `AutoCloseable`, so `use {}` works with it. `SuspendCloseableGraph` has a suspend `close()` for cleanup that suspends. Metro generates `close()`. Implementing it yourself is an error.
+
+### Callbacks
+
+Callbacks are ordinary functions with a body that return `Unit`. A graph can have any number of them, with or without parameters. They run one at a time in no particular order.
+
+Only Metro calls callbacks. Calling one directly, including through `super`, or taking a reference to it is an error.
+
+Init callbacks run after the graph's own initialization. Graph factories and `createGraph()` return the graph only after every init callback succeeds. If one fails or creation is cancelled, creation stops there. Metro doesn't run close callbacks to undo partial startup, so release anything acquired before the failure yourself.
+
+### Contributed callbacks
+
+A contributed interface can bring its own callbacks.
+
+```kotlin
+@ContributesTo(AppScope::class)
+interface AnalyticsLifecycle {
+  @OnGraphInit
+  fun initializeAnalytics(analytics: Analytics) {
+    analytics.start()
+  }
+
+  @OnGraphClose
+  fun closeAnalytics(analytics: Analytics) {
+    analytics.flush()
+  }
+}
+```
+
+The graph that the interface is contributed to must implement `CloseableGraph` or `SuspendCloseableGraph`. The interface itself doesn't have to. Metro calls an inherited callback once, even through diamond inheritance. An override replaces the inherited callback and must repeat its annotation.
+
+### Callback parameters
+
+Callback parameters use normal dependency resolution and get the same checks as graph accessors. Metro reports a missing binding on the parameter that requests it.
+
+Close callbacks have two traps. A binding that nothing else requests can be created during close just to be cleaned up. An unscoped binding gives the callback a new instance, so cleaning it up leaves the one the rest of the graph used untouched. Metro warns about both.
+
+[UnscopedLifecycleParameter](diagnostics.md#unscopedlifecycleparameter) reports any callback parameter that requests an unscoped binding directly. Request `() -> T` or `Lazy<T>` to choose when the instance is created. A `@Provides` graph input counts as scoped.
+
+[CloseOnlyBinding](diagnostics.md#closeonlybinding) reports a binding that only close callbacks request. Requests from init callbacks and child graphs count as other uses. Graph inputs and `@Includes` accessors are exempt.
+
+Suppress either warning when you intend that behavior.
+
+### Close
+
+The first call to `close()` marks the graph closed and runs cleanup. Later calls return immediately, even while cleanup is running, so close callbacks run at most once. If cleanup fails, the error reaches the caller and the rest of cleanup doesn't run. The graph stays closed, and closing it again doesn't retry.
+
+A closed graph still serves dependency requests. A request after close can create a binding for the first time, so stop using a graph before you close it. Closing doesn't clear cached instances. A closed graph and its providers keep them in memory until you drop your references.
+
+Creating a graph extension through a closed graph fails, even with a factory obtained earlier.
+
+### Graph extensions
+
+Closing a graph closes its closeable extensions first, then runs its own close callbacks. Each extension closes its own extensions the same way. Closing an extension yourself removes it from its parent.
+
+```kotlin
+val factory = appGraph.userGraphFactory
+val first = factory.create(firstUser)
+val second = factory.create(secondUser)
+
+first.close()
+appGraph.close() // Closes second, then runs appGraph's close callbacks.
+```
+
+!!! warning
+
+    A graph keeps a reference to each closeable extension it creates until the extension or the graph closes. Close extensions you're done with so they can be garbage collected.
+
+An extension joins its parent's cleanup once its init callbacks succeed, before it's returned. A graph that receives another graph as an input doesn't close it. Finish creating or closing extensions before you close their parent. Sibling extensions close in no particular order.
+
+A `CloseableGraph` can't own a `SuspendCloseableGraph` extension. A `SuspendCloseableGraph` can own both kinds.
+
+### Suspend callbacks
+
+Callbacks can be `suspend` functions when [suspend provider support](coroutines.md) is enabled.
+
+A graph with a suspend init callback needs a graph factory whose creation function suspends. A non-suspend callback can't request a binding that suspends. Request `suspend () -> T` or `SuspendLazy<T>` to defer it.
+
+```kotlin
+@DependencyGraph(AppScope::class)
+interface AppGraph : SuspendCloseableGraph {
+  @OnGraphInit
+  suspend fun initialize(database: Database) {
+    database.migrate()
+  }
+
+  @DependencyGraph.Factory
+  fun interface Factory {
+    suspend fun create(@Provides config: AppConfig): AppGraph
+  }
+}
+
+val factory = createGraphFactory<AppGraph.Factory>()
+val graph = factory.create(config) // Returns after initialize() finishes
+```
+
+Getting the factory doesn't suspend. Calling its creation function does. Graph extensions follow the same rule through their `@GraphExtension.Factory`, and so do dynamic graph factories.
+
+Suspend close callbacks require `SuspendCloseableGraph`. Cancelling the caller of `close()` doesn't interrupt cleanup. A failure still stops cleanup and reaches the caller. A graph with only suspend close callbacks can still be created without suspending.
+
+### Coroutines and resources
+
+Scoped suspend bindings initialize in the caller's coroutine, so the graph doesn't own that work. Closing a graph doesn't cancel or dispose of the instances it created, such as a `CoroutineScope` binding. Cancel or close resources you own in a close callback.
+
+### Tracing
+
+With [runtime tracing](performance.md#runtime-tracing) enabled, Metro records how long the init callbacks and close take, with a span for each callback. The graph doesn't own its tracer, so closing the graph leaves the tracer open.
+
 ## Graph Extensions
 
 Dependency graphs can be extended via _graph extensions_. As the name implies, graph extensions _extend_ a parent graph they are declared for and contain a superset of bindings that includes both the parent graph(s) as well as their own. These are similar in functionality to Dagger's _Subcomponents_.

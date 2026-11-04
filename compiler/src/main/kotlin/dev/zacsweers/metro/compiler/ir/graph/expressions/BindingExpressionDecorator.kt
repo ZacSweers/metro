@@ -236,54 +236,21 @@ private class TraceExpressionDecorator(
     request: DirectExpressionRequest,
   ): IrExpression {
     val traceContext = traceContextFor(request.contextualTypeKey) ?: return expression
-    val traceFunction =
-      if (request.isSuspend) {
-        // Requires a metro-trace runtime with suspend support; absence means an older runtime.
-        // Skip decoration rather than generate invalid IR (a suspend call in a non-suspend
-        // trace lambda).
-        metroSymbols.metroTraceContextTraceSuspend ?: return expression
-      } else {
-        metroSymbols.metroTraceContextTrace!!
-      }
-    val bindingType = request.contextualTypeKey.typeKey.type
-    val qualifier = request.contextualTypeKey.runtimeTraceQualifier()
-    val type = request.contextualTypeKey.runtimeTraceType()
-    val contextualType = request.contextualTypeKey.runtimeTraceContextualType()
-
-    return with(scope) {
-      val qualifierExpression = qualifier.toNullableStringExpression()
-      val contextualTypeExpression = contextualType.toNullableStringExpression()
-      val kindExpression = request.bindingKind.toNullableStringExpression()
-      val traceBlock =
-        irLambda(
-          parent = parent,
-          receiverParameter = null,
-          valueParameters = emptyList(),
-          returnType = bindingType,
-          suspend = request.isSuspend,
+    val traced =
+      with(scope) {
+        irRuntimeTraceSpan(
+          traceContext = traceContext,
+          qualifier = request.contextualTypeKey.runtimeTraceQualifier(),
+          type = request.contextualTypeKey.runtimeTraceType(),
+          contextualType = request.contextualTypeKey.runtimeTraceContextualType(),
+          kind = request.bindingKind,
+          returnType = request.contextualTypeKey.typeKey.type,
+          isSuspend = request.isSuspend,
         ) {
-          +irReturn(expression)
+          expression
         }
-      irInvoke(
-        dispatchReceiver = traceContext,
-        callee = traceFunction,
-        typeHint = bindingType,
-        typeArgs = listOf(bindingType),
-        args =
-          listOf(
-            // qualifier
-            qualifierExpression,
-            // type
-            irString(type),
-            // contextualType
-            contextualTypeExpression,
-            // kind
-            kindExpression,
-            // block
-            traceBlock,
-          ),
-      )
-    }
+      }
+    return traced ?: expression
   }
 
   context(scope: IrBuilderWithScope)
@@ -479,4 +446,60 @@ private class TraceExpressionDecorator(
         }
     }
   }
+}
+
+/**
+ * Builds `traceContext.trace(qualifier, type, contextualType, kind) { body() }`, or `traceSuspend`
+ * when [isSuspend] is true.
+ *
+ * Returns null when [isSuspend] is true and the metro-trace runtime predates suspend tracing. A
+ * suspend call in a non-suspend trace lambda would be invalid IR, so callers skip tracing then.
+ */
+context(context: IrMetroContext)
+internal fun IrBuilderWithScope.irRuntimeTraceSpan(
+  traceContext: IrExpression,
+  qualifier: String?,
+  type: String,
+  contextualType: String?,
+  kind: String?,
+  returnType: IrType,
+  isSuspend: Boolean,
+  body: IrBuilderWithScope.() -> IrExpression,
+): IrExpression? {
+  val traceFunction =
+    if (isSuspend) {
+      context.metroSymbols.metroTraceContextTraceSuspend ?: return null
+    } else {
+      context.metroSymbols.metroTraceContextTrace!!
+    }
+  fun String?.orNullExpression(): IrExpression =
+    if (this == null) {
+      irNull()
+    } else {
+      irString(this)
+    }
+  val block =
+    irLambda(
+      parent = parent,
+      receiverParameter = null,
+      valueParameters = emptyList(),
+      returnType = returnType,
+      suspend = isSuspend,
+    ) {
+      +irReturn(body())
+    }
+  return irInvoke(
+    dispatchReceiver = traceContext,
+    callee = traceFunction,
+    typeHint = returnType,
+    typeArgs = listOf(returnType),
+    args =
+      listOf(
+        qualifier.orNullExpression(),
+        irString(type),
+        contextualType.orNullExpression(),
+        kind.orNullExpression(),
+        block,
+      ),
+  )
 }

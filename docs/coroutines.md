@@ -170,6 +170,8 @@ Scoped suspend bindings use `dev.zacsweers.metro:runtime-coroutines`, which must
 
 Metro caches the value but does not close it. The application remains responsible for releasing resources when they are no longer needed.
 
+For suspend init and close callbacks, see [graph lifecycle](dependency-graphs.md#suspend-callbacks).
+
 ## Execution context
 
 Metro does not switch dispatchers or launch independent dependencies concurrently. Provider code runs in the calling coroutine's context, and dependency arguments are initialized sequentially.

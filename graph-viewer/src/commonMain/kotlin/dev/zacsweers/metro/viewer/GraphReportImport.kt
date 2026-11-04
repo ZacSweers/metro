@@ -156,6 +156,9 @@ public class GraphReportImport(files: List<ReportFile>) {
       graph.includedGraphs.forEach { add(it.key) }
       graph.roots?.accessors?.forEach { add(it.key) }
       graph.roots?.injectors?.forEach { add(it.key) }
+      graph.roots?.lifecycleCallbacks?.forEach { callback ->
+        callback.parameters.forEach { add(it.request.key) }
+      }
       graph.bindings.forEach { binding ->
         binding.dependencies.forEach { add(it.key) }
         binding.assistedTarget?.let { target ->

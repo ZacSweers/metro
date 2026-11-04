@@ -379,7 +379,8 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
             continue
           }
           // A fake override can still point at the concrete declaration itself.
-          if (!memberOverride.isAbstract) {
+          val supersedesItself = !memberOverride.isAbstract && !memberOverride.isLifecycleCallback
+          if (supersedesItself) {
             declaration.sourceIdentity?.let(identities::add)
           }
           // Abstract overrides retain their own request with its narrowed type and qualifiers.
@@ -1574,7 +1575,8 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
     if (supersededRequests.isEmpty()) {
       return false
     }
-    val source = consumer.sourceIdentity ?: return false
+    val source =
+      consumer.lifecycleDeclaration?.sourceIdentity ?: consumer.sourceIdentity ?: return false
     return source in supersededRequests
   }
 
