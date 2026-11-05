@@ -74,6 +74,21 @@ Tests are spread across a few areas.
 
 To test different versions of Kotlin (backed by the `:compiler-compat` system, see its README for more details), set the `metro.testCompilerVersion` property to the Kotlin version you want to test. This is automatically used by all the tests in `:compiler`, `:compiler-tests`, and `:gradle-plugin` functional tests when specified.
 
+### KMP separate compilation
+
+The functional tests accept a separate-compilation mode for Kotlin 2.5.0-Beta1 and later. To try an existing test locally:
+
+```bash
+./gradlew :gradle-plugin:functionalTest --quiet \
+  -Pmetro.testCompilerVersion=2.5.0-Beta1 \
+  -Pmetro.functionalTestSeparateCompilation=true \
+  --tests '*ContributionICTests*'
+```
+
+Use `-Pmetro.functionalTestKmpTarget=js`, `wasmJs`, `native_host`, or `all` to select additional targets. The default is JVM. CI runs the extra mode on main with the newest supported compiler. Ordinary functional test runs keep their default mode.
+
+The switch writes `kotlin.kmp.separateCompilation=true` to KMP TestKit fixtures. `MetroProject` declares multiple targets by default. On Kotlin 2.5.0-Beta1, fixtures with single-target producers can fail to resolve the producer's common declarations because its common metadata isn't compiled.
+
 ### Local Publishing
 
 To publish to a local maven repo, run this:
