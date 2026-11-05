@@ -34,7 +34,7 @@ def check_results(needs, workflow, full_platforms=False):
             required.add("multiplatform-tests")
     elif workflow == "ide":
         if routes["idea"] == "true":
-            required.update(("generate-matrix", "build-metro", "ide-tests"))
+            required.update(("generate-matrix", "build-metro", "build-idea-plugin", "ide-tests"))
     else:
         raise ValueError(f"Unknown workflow: {workflow}")
 

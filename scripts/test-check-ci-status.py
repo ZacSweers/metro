@@ -74,5 +74,34 @@ class RequiredResultsTest(unittest.TestCase):
         self.assertEqual([], checker.check_results(results, "ci"))
 
 
+class RequiredIdeResultsTest(unittest.TestCase):
+    def results(self):
+        names = ("changes", "generate-matrix", "build-metro", "build-idea-plugin", "ide-tests")
+        results = {name: {"result": "success"} for name in names}
+        results["changes"]["outputs"] = {"full": "false", "docs": "false", "idea": "true"}
+        return results
+
+    def test_both_artifact_producers_are_required(self):
+        for name in ("build-metro", "build-idea-plugin"):
+            for result in (None, "skipped", "failure", "cancelled"):
+                with self.subTest(name=name, result=result):
+                    results = self.results()
+                    if result is None:
+                        del results[name]
+                    else:
+                        results[name]["result"] = result
+                    self.assertIn(f"{name}: {result or 'missing'}", checker.check_results(results, "ide"))
+
+    def test_ide_run_passes_when_all_jobs_succeed(self):
+        self.assertEqual([], checker.check_results(self.results(), "ide"))
+
+    def test_unselected_ide_run_can_skip_artifact_producers(self):
+        results = self.results()
+        results["changes"]["outputs"]["idea"] = "false"
+        for name in ("generate-matrix", "build-metro", "build-idea-plugin", "ide-tests"):
+            results[name]["result"] = "skipped"
+        self.assertEqual([], checker.check_results(results, "ide"))
+
+
 if __name__ == "__main__":
     unittest.main()
