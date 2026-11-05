@@ -1,3 +1,5 @@
+// Copyright (C) 2026 Zac Sweers
+// SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.gradle.incremental
 
 import com.autonomousapps.kit.gradle.Dependency
@@ -66,7 +68,7 @@ class DaggerMultiModuleICTests(target: KmpTarget) : BaseIncrementalCompilationTe
                 source(
                     """
                         interface ITarget
-            
+
                         @Module
                         interface TargetBindingModule {
                           @Binds
@@ -102,7 +104,7 @@ class DaggerMultiModuleICTests(target: KmpTarget) : BaseIncrementalCompilationTe
             project.rootDir,
             fixture.targetImpl,
             """
-      
+
                   class Target @Inject constructor() : ITarget {
                     // adding new function here. Since this is non-ABI change, incremental compilation should work fine.
                     private fun test() { }
@@ -164,7 +166,7 @@ class DaggerMultiModuleICTests(target: KmpTarget) : BaseIncrementalCompilationTe
                 source(
                     """
                         interface ITarget
-            
+
                         @Module
                         interface TargetBindingModule {
                           @Binds
@@ -198,9 +200,9 @@ class DaggerMultiModuleICTests(target: KmpTarget) : BaseIncrementalCompilationTe
             project.rootDir,
             fixture.targetImpl,
             """
-      
+
                   @javax.inject.Singleton
-                  class Target @Inject constructor() : ITarget 
+                  class Target @Inject constructor() : ITarget
                   """
                 .trimIndent(),
         )
