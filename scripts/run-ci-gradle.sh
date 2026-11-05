@@ -101,6 +101,8 @@ if [[ "${RUNNER_OS:-}" == "macOS" ]]; then
   if (( processor_count < gradle_max_workers )); then
     gradle_max_workers=$processor_count
   fi
+  # Release idle Kotlin daemons after preparation.
+  gradle_jvm_args+=" -Dkotlin.daemon.options=autoshutdownIdleSeconds=60"
 fi
 
 ./gradlew \

@@ -551,7 +551,7 @@ jobs:
   # Main and manual runs cover every target on each host OS.
   multiplatform-tests:
     if: github.event_name != 'pull_request'
-    name: multiplatform / ${{ matrix.os }}
+    name: multiplatform / ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     permissions:
       checks: write
@@ -565,7 +565,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-latest, windows-latest, macos-latest ]
+        include:
+          - os: ubuntu-latest
+            name: ubuntu-latest
+          - os: windows-latest
+            name: windows-latest
+          - os: macos-latest
+            name: macos-latest-native
+            partition: native
+            forks: 1
+          - os: macos-latest
+            name: macos-latest-portable
+            partition: portable
+            forks: 2
 
     steps:
       - name: Checkout
@@ -576,10 +588,10 @@ jobs:
         uses: ./.github/actions/setup-gradle
         with:
           encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
-          # Each host preserves outputs for its full target selection.
+          # Each matrix row preserves its Gradle task outputs on main.
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
           konan: true
-          konan-cache-read-only: ${{ github.ref != 'refs/heads/main' || matrix.os == 'ubuntu-latest' }}
+          konan-cache-read-only: ${{ github.ref != 'refs/heads/main' || matrix.os == 'ubuntu-latest' || matrix.partition == 'portable' }}
 
       # Core already covers the Linux runtime test tasks.
       - name: Check IC tests (Linux)
@@ -592,7 +604,7 @@ jobs:
             -Pmetro.testkitConfigurationCacheReadOnly=false
 
       - name: Check runtime tests (macOS)
-        if: runner.os == 'macOS'
+        if: runner.os == 'macOS' && matrix.partition == 'native'
         run: RUNNER_DEBUG=1 ./scripts/run-ci-gradle.sh :runtime:allTests :runtime-coroutines:allTests --continue --quiet --profile
 
       - name: Check IC tests (macOS)
@@ -600,7 +612,9 @@ jobs:
         run: |
           RUNNER_DEBUG=1 ./scripts/run-ci-gradle.sh :gradle-plugin:functionalTest --continue --quiet --profile \
             -Pmetro.functionalTestKmpTarget=all \
-            -Pmetro.functionalTestMaxParallelForks=2 \
+            -Pmetro.functionalTestMaxParallelForks=${{ matrix.forks }} \
+            -Pmetro.functionalTestMacosPartition=${{ matrix.partition }} \
+            -Pmetro.testkitLightweightPublications=true \
             -Pmetro.testkitConfigurationCache=true \
             -Pmetro.testkitConfigurationCacheReadOnly=false
 
@@ -613,6 +627,7 @@ jobs:
       # This run covers the committed npm locks on every host.
       # The separate samples job regenerates its locks first.
       - name: Check samples
+        if: runner.os != 'macOS' || matrix.partition == 'native'
         run: |
           if [[ "$RUNNER_OS" == "Linux" ]]; then
             RUNNER_DEBUG=1 ./scripts/run-ci-gradle.sh -p samples test allTests --continue --quiet --profile
@@ -625,7 +640,7 @@ jobs:
         continue-on-error: true
         uses: actions/upload-artifact@v7
         with:
-          name: multiplatform-performance-${{ matrix.os }}-${{ github.run_attempt }}
+          name: multiplatform-performance-${{ matrix.name }}-${{ github.run_attempt }}
           retention-days: 7
           path: |
             build/reports/profile/**
@@ -636,7 +651,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: reports-multiplatform-${{ matrix.os }}
+          name: reports-multiplatform-${{ matrix.name }}
           path: |
             **/build/reports/**
 
@@ -647,7 +662,7 @@ jobs:
           report_paths: |
             **/build/test-results/**/TEST-*.xml
             samples/**/build/test-results/**/TEST-*.xml
-          check_name: 'Test Report - multiplatform / ${{ matrix.os }}'
+          check_name: 'Test Report - multiplatform / ${{ matrix.name }}'
 
   benchmarks:
     needs: changes

@@ -206,6 +206,18 @@ fun androidHomeOrNull(): File? {
 val functionalTestKmpTarget = providers.gradleProperty("metro.functionalTestKmpTarget").orNull
 val testOmitRedundantMirrors = providers.gradleProperty("metro.testOmitRedundantMirrors").orNull
 
+// Mac CI keeps Native linking on one worker and runs the remaining tests separately.
+val functionalTestMacosPartition =
+  providers
+    .gradleProperty("metro.functionalTestMacosPartition")
+    .map { value ->
+      require(value == "native" || value == "portable") {
+        "metro.functionalTestMacosPartition must be native or portable: $value"
+      }
+      value
+    }
+    .orNull
+
 // These controls let CI experiments tune concurrency and fixture caching independently.
 val functionalTestMaxParallelForks =
   providers
@@ -247,6 +259,16 @@ tasks.withType<Test>().configureEach {
 
 tasks.named<Test>("functionalTest") {
   maxParallelForks = functionalTestMaxParallelForks.get()
+  val nativePatterns =
+    listOf(
+      "*[macos*",
+      "dev.zacsweers.metro.gradle.extensions.circuit.CircuitNativeTest*",
+      "dev.zacsweers.metro.gradle.incremental.NativeICTests*",
+    )
+  when (functionalTestMacosPartition) {
+    "native" -> nativePatterns.forEach { filter.includeTestsMatching(it) }
+    "portable" -> nativePatterns.forEach { filter.excludeTestsMatching(it) }
+  }
   testkitConfigurationCache.orNull?.let { systemProperty("metro.testkitConfigurationCache", it) }
   systemProperty("metro.testkitConfigurationCacheReadOnly", testkitConfigurationCacheReadOnly.get())
 }
