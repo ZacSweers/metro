@@ -239,6 +239,7 @@ tasks.withType<Test>().configureEach {
   systemProperty("metro.agpVersion", libs.versions.agp.get())
   systemProperty("metro.androidCompileSdk", libs.versions.android.compileSdk.get())
   systemProperty("metro.circuitVersion", libs.versions.circuit.get())
+  systemProperty("metro.daggerVersion", libs.versions.dagger.get())
   androidHomeOrNull()?.let { systemProperty("metro.androidHome", it.absolutePath) }
   functionalTestKmpTarget?.let { systemProperty("metro.functionalTestKmpTarget", it) }
   testOmitRedundantMirrors?.let { systemProperty("metro.testOmitRedundantMirrors", it) }

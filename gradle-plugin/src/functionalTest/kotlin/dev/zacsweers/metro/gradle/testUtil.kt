@@ -40,6 +40,8 @@ fun getTestOmitRedundantMirrorsOverride(): Boolean? =
 
 fun getTestCircuitVersion(): String = System.getProperty("metro.circuitVersion")
 
+fun getTestDaggerVersion(): String = System.getProperty("metro.daggerVersion")
+
 fun String.cleanOutputLine(): String =
   FILE_PATH_REGEX.replace(trimEnd(), "").lineSequence().joinToString("\n") { it.trimEnd() }
 
