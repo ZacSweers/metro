@@ -2867,6 +2867,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     }
 
     @Test
+    @TestMetadata("MapProviderValuesAreReusedAcrossReads.kt")
+    public void testMapProviderValuesAreReusedAcrossReads() {
+      run("MapProviderValuesAreReusedAcrossReads.kt");
+    }
+
+    @Test
     @TestMetadata("MultibindingGraphWithWithScopedMapProviderDeps.kt")
     public void testMultibindingGraphWithWithScopedMapProviderDeps() {
       run("MultibindingGraphWithWithScopedMapProviderDeps.kt");
