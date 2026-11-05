@@ -2152,6 +2152,12 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
       }
 
       @Test
+      @TestMetadata("IncludedProviderIsReadLazilyInExtension.kt")
+      public void testIncludedProviderIsReadLazilyInExtension() {
+        run("IncludedProviderIsReadLazilyInExtension.kt");
+      }
+
+      @Test
       @TestMetadata("IncludesAcrossIntermediateUnpacking.kt")
       public void testIncludesAcrossIntermediateUnpacking() {
         run("IncludesAcrossIntermediateUnpacking.kt");

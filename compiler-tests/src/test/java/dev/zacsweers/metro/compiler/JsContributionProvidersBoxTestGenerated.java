@@ -1806,6 +1806,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
       }
 
       @Test
+      @TestMetadata("IncludedProviderIsReadLazilyInExtension.kt")
+      public void testIncludedProviderIsReadLazilyInExtension() {
+        run("IncludedProviderIsReadLazilyInExtension.kt");
+      }
+
+      @Test
       @TestMetadata("IncludesAcrossIntermediateUnpacking.kt")
       public void testIncludesAcrossIntermediateUnpacking() {
         run("IncludesAcrossIntermediateUnpacking.kt");
