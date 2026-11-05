@@ -3,7 +3,6 @@
 @file:OptIn(ExperimentalWasmDsl::class)
 
 import org.gradle.process.CommandLineArgumentProvider
-import org.gradle.work.DisableCachingByDefault
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinUsages
@@ -367,36 +366,12 @@ val generateTests =
     jvmArgs("-Xss1m")
   }
 
-/**
- * Records successful suite generation so CI can run functional tests after a compiler test failure.
- */
-@DisableCachingByDefault(because = "CI records preparation separately for each invocation.")
-abstract class PrepareCiCompilerTests : DefaultTask() {
-  @get:OutputFile abstract val preparedFile: RegularFileProperty
-
-  @TaskAction
-  fun markPrepared() {
-    val file = preparedFile.get().asFile
-    file.parentFile.mkdirs()
-    file.writeText("prepared\n")
-  }
-}
-
 // Preserve explicit generation: ordinary test runs use the checked-in suites. When generation is
 // requested in the same invocation, compile the updated Java sources before running tests.
 tasks.named<JavaCompile>("compileTestJava") { mustRunAfter(generateTests) }
 
-// CI uses this marker to distinguish generation failures from later test failures.
-val ciCompilerTestsPreparedFile = providers.gradleProperty("metro.ciCompilerTestsPreparedFile")
-
-if (ciCompilerTestsPreparedFile.isPresent) {
-  val prepareCiCompilerTests =
-    tasks.register<PrepareCiCompilerTests>("prepareCiCompilerTests") {
-      dependsOn(generateTests)
-      preparedFile.set(layout.file(ciCompilerTestsPreparedFile.map(::File)))
-      outputs.upToDateWhen { false }
-    }
-  tasks.named<JavaCompile>("compileTestJava") { dependsOn(prepareCiCompilerTests) }
+if (providers.gradleProperty("metro.generateCompilerTests").isPresent) {
+  tasks.named<JavaCompile>("compileTestJava") { dependsOn(generateTests) }
 }
 
 val largeTestMode = providers.gradleProperty("metro.enableLargeTests").isPresent
@@ -404,10 +379,6 @@ val largeTestMode = providers.gradleProperty("metro.enableLargeTests").isPresent
 // Heap tuning must not change test selection. Large-test mode still selects only stress tests.
 val compilerTestHeapSize =
   providers.gradleProperty("metro.compilerTestHeapSize").orElse(if (largeTestMode) "5g" else "2g")
-
-// CI experiments can opt into additional compiler-test JVMs.
-val compilerTestMaxParallelForks =
-  providers.gradleProperty("metro.compilerTestMaxParallelForks").map(String::toInt).orElse(1)
 
 val compilerTestParallelism =
   providers.gradleProperty("metro.compilerTestParallelism").map(String::toInt)
@@ -452,7 +423,7 @@ tasks.withType<Test> {
     inputs.property(variable, environment[variable]?.toString().orEmpty())
   }
   dependsOn(runtimeTracingClasspath)
-  maxParallelForks = compilerTestMaxParallelForks.get()
+  maxParallelForks = 1
   compilerTestParallelism.orNull?.let { parallelism ->
     require(parallelism > 0) { "metro.compilerTestParallelism must be positive: $parallelism" }
     // JUnit can otherwise add worker threads when compiler tests block.

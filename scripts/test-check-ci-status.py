@@ -27,7 +27,7 @@ class RequiredResultsTest(unittest.TestCase):
         results["changes"]["outputs"] = {"full": "true", "docs": "false", "idea": "true"}
         return results
 
-    def test_platform_result_is_required_for_full_platform_runs(self):
+    def test_platform_result_is_required_on_main(self):
         for result in (None, "skipped", "failure", "cancelled"):
             with self.subTest(result=result):
                 results = self.results()
@@ -35,7 +35,7 @@ class RequiredResultsTest(unittest.TestCase):
                     del results["multiplatform-tests"]
                 else:
                     results["multiplatform-tests"]["result"] = result
-                errors = checker.check_results(results, "ci", full_platforms=True)
+                errors = checker.check_results(results, "ci", is_main=True)
                 self.assertTrue(any(error.startswith("multiplatform-tests:") for error in errors))
 
     def test_compiler_and_functional_phases_are_both_required(self):
@@ -55,8 +55,8 @@ class RequiredResultsTest(unittest.TestCase):
         del results["idea-plugin-compatibility"]
         self.assertIn("idea-plugin-compatibility: missing", checker.check_results(results, "ci"))
 
-    def test_full_platform_run_passes_when_all_jobs_succeed(self):
-        self.assertEqual([], checker.check_results(self.results(), "ci", full_platforms=True))
+    def test_main_run_passes_when_all_jobs_succeed(self):
+        self.assertEqual([], checker.check_results(self.results(), "ci", is_main=True))
 
     def test_idea_only_change_can_skip_compiler_jobs(self):
         results = {

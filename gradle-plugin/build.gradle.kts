@@ -218,7 +218,7 @@ val functionalTestMacosPartition =
     }
     .orNull
 
-// These controls let CI experiments tune concurrency and fixture caching independently.
+// CI configures functional test workers and fixture caching separately.
 val functionalTestMaxParallelForks =
   providers
     .gradleProperty("metro.functionalTestMaxParallelForks")

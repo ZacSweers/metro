@@ -10,7 +10,7 @@ import os
 import sys
 
 
-def check_results(needs, workflow, full_platforms=False):
+def check_results(needs, workflow, is_main=False):
     """Return failures for missing jobs, failed jobs, and unexpected dependency skips."""
     changes = needs.get("changes", {})
     if changes.get("result") != "success":
@@ -30,7 +30,7 @@ def check_results(needs, workflow, full_platforms=False):
             required.update(("idea-plugin", "idea-plugin-compatibility"))
         if routes["docs"] == "true":
             required.add("docs")
-        if full_platforms:
+        if is_main:
             required.add("multiplatform-tests")
     elif workflow == "ide":
         if routes["idea"] == "true":
@@ -52,9 +52,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("workflow", choices=("ci", "ide"))
     args = parser.parse_args()
-    full_platforms = os.environ.get("GITHUB_REF") == "refs/heads/main"
-    full_platforms = full_platforms or os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch"
-    errors = check_results(json.loads(os.environ["NEEDS_JSON"]), args.workflow, full_platforms)
+    errors = check_results(json.loads(os.environ["NEEDS_JSON"]), args.workflow,
+                          os.environ.get("GITHUB_REF") == "refs/heads/main")
     for error in errors:
         print(f"::error::{error}", file=sys.stderr)
     return bool(errors)

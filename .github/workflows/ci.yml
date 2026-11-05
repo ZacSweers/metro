@@ -9,8 +9,6 @@ on:
       - '**/*.md'
   # Always run on PRs
   pull_request:
-  # Manual branch runs exercise the main-only platform coverage without publishing snapshots.
-  workflow_dispatch:
 
 concurrency:
   group: 'ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}'
@@ -164,10 +162,8 @@ jobs:
 
       - name: Generate and test compiler
         run: |
-          prepared_file="$RUNNER_TEMP/compiler-tests-prepared"
-          rm -f "$prepared_file"
-          ./scripts/run-ci-gradle.sh :compiler-tests:generateTests :compiler:test :compiler-tests:test --continue --quiet --profile \
-            "-Pmetro.ciCompilerTestsPreparedFile=$prepared_file" \
+          ./scripts/run-ci-gradle.sh :compiler:test :compiler-tests:test --continue --quiet \
+            -Pmetro.generateCompilerTests \
             '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' \
             "-Pmetro.testOmitRedundantMirrors=$METRO_TEST_OMIT_REDUNDANT_MIRRORS" \
             -Pmetro.excludeJsBoxTests \
@@ -176,19 +172,6 @@ jobs:
             -Pmetro.compilerTestUseParallelGc=true \
             -Pmetro.legacyCompilerTestMaxParallelForks=2 \
             ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
-
-      # Successful runs provide the task timings and test counts needed for performance comparisons.
-      - name: Upload compatibility timings and test results
-        if: ${{ !cancelled() }}
-        continue-on-error: true
-        uses: actions/upload-artifact@v7
-        with:
-          name: compatibility-performance-compiler-${{ matrix.kotlin-compiler }}-${{ github.run_attempt }}
-          retention-days: 7
-          path: |
-            build/reports/profile/**
-            compiler/build/test-results/test/*.xml
-            compiler-tests/build/test-results/test/*.xml
 
       - name: (Fail-only) Upload reports
         if: failure()
@@ -240,7 +223,7 @@ jobs:
           if [[ "$METRO_TESTKIT_CONFIGURATION_CACHE" == 'true' ]]; then
             fixture_cache_args+=(-Pmetro.testkitConfigurationCache=true -Pmetro.testkitConfigurationCacheReadOnly=false)
           fi
-          ./scripts/run-ci-gradle.sh :gradle-plugin:functionalTest --continue --quiet --profile \
+          ./scripts/run-ci-gradle.sh :gradle-plugin:functionalTest --continue --quiet \
             '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' \
             "-Pmetro.testOmitRedundantMirrors=$METRO_TEST_OMIT_REDUNDANT_MIRRORS" \
             -Pmetro.functionalTestKmpTarget=jvm \
@@ -248,17 +231,6 @@ jobs:
             -Pmetro.testkitLightweightPublications=true \
             "${fixture_cache_args[@]}" \
             ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
-
-      - name: Upload compatibility timings and test results
-        if: ${{ !cancelled() }}
-        continue-on-error: true
-        uses: actions/upload-artifact@v7
-        with:
-          name: compatibility-performance-functional-${{ matrix.kotlin-compiler }}-${{ github.run_attempt }}
-          retention-days: 7
-          path: |
-            build/reports/profile/**
-            gradle-plugin/build/test-results/functionalTest/*.xml
 
       - name: (Fail-only) Upload reports
         if: failure()
@@ -346,7 +318,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: ${{ fromJSON(github.event_name == 'pull_request' && '["smoke"]' || '["standard", "fast-init", "contribution-providers"]') }}
+        suite: ${{ fromJSON(github.ref != 'refs/heads/main' && '["smoke"]' || '["standard", "fast-init", "contribution-providers"]') }}
     permissions:
       checks: write
 
@@ -364,7 +336,7 @@ jobs:
         run: ./scripts/run-ci-gradle.sh :compiler-tests:generateTests --quiet ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
 
       - name: Run JS box smoke tests
-        if: github.event_name == 'pull_request'
+        if: matrix.suite == 'smoke'
         run: |
           ./scripts/run-ci-gradle.sh :compiler-tests:test --quiet \
             --tests 'dev.zacsweers.metro.compiler.JsBoxTestGenerated$Inject$Assisted.testBasicAssistedInject' \
@@ -374,7 +346,7 @@ jobs:
             ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
 
       - name: Run Wasm contribution hint smoke tests
-        if: github.event_name == 'pull_request'
+        if: matrix.suite == 'smoke'
         run: |
           ./gradlew :gradle-plugin:functionalTest --quiet \
             '-Pmetro.testCompilerVersion=${{ needs.generate-matrix.outputs.latest_kotlin_version }}' \
@@ -386,31 +358,20 @@ jobs:
       - name: Run standard JS box tests
         if: matrix.suite == 'standard'
         run: |
-          ./scripts/run-ci-gradle.sh :compiler-tests:test --quiet --profile \
+          ./scripts/run-ci-gradle.sh :compiler-tests:test --quiet \
             --tests 'dev.zacsweers.metro.compiler.JsBoxTestGenerated*'
 
       - name: Run FastInit JS box tests
         if: matrix.suite == 'fast-init'
         run: |
-          ./scripts/run-ci-gradle.sh :compiler-tests:test --quiet --profile \
+          ./scripts/run-ci-gradle.sh :compiler-tests:test --quiet \
             --tests 'dev.zacsweers.metro.compiler.JsFastInitBoxTestGenerated*'
 
       - name: Run contribution provider JS box tests
         if: matrix.suite == 'contribution-providers'
         run: |
-          ./scripts/run-ci-gradle.sh :compiler-tests:test --quiet --profile \
+          ./scripts/run-ci-gradle.sh :compiler-tests:test --quiet \
             --tests 'dev.zacsweers.metro.compiler.JsContributionProvidersBoxTestGenerated*'
-
-      - name: Upload JS timings and test results
-        if: ${{ !cancelled() && matrix.suite != 'smoke' }}
-        continue-on-error: true
-        uses: actions/upload-artifact@v7
-        with:
-          name: js-box-performance-${{ matrix.suite }}-${{ github.run_attempt }}
-          retention-days: 7
-          path: |
-            build/reports/profile/**
-            compiler-tests/build/test-results/test/*.xml
 
       - name: (Fail-only) Upload reports
         if: failure()
@@ -487,17 +448,7 @@ jobs:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
       - name: Test idea-plugin
-        run: ./gradlew -p idea-plugin test --quiet --profile ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
-
-      - name: Upload idea-plugin test timings and results
-        if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
-        with:
-          name: idea-plugin-test-performance-${{ github.run_attempt }}
-          path: |
-            idea-plugin/build/reports/profile/**
-            idea-plugin/build/test-results/test/*.xml
-          retention-days: 7
+        run: ./gradlew -p idea-plugin test --quiet ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
 
       - name: (Fail-only) Upload reports
         if: failure()
@@ -544,16 +495,14 @@ jobs:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
       - name: Verify idea-plugin compatibility
-        run: ./gradlew -p idea-plugin verifyPlugin --quiet --profile ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+        run: ./gradlew -p idea-plugin verifyPlugin --quiet ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
 
       - name: Upload idea-plugin compatibility reports
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: idea-plugin-compatibility-reports
-          path: |
-            idea-plugin/build/reports/pluginVerifier/**
-            idea-plugin/build/reports/profile/**
+          path: idea-plugin/build/reports/pluginVerifier/**
           if-no-files-found: error
           retention-days: 14
 
@@ -564,9 +513,9 @@ jobs:
           name: reports-idea-plugin-compatibility
           path: 'idea-plugin/build/reports/**'
 
-  # Main and manual runs cover every target on each host OS.
+  # Main runs cover every target on each host OS.
   multiplatform-tests:
-    if: github.event_name != 'pull_request'
+    if: github.ref == 'refs/heads/main'
     name: multiplatform / ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     permissions:
@@ -616,7 +565,7 @@ jobs:
       - name: Check IC tests (Linux)
         if: runner.os == 'Linux'
         run: |
-          RUNNER_DEBUG=1 ./scripts/run-ci-gradle.sh :gradle-plugin:functionalTest --continue --quiet --profile \
+          ./scripts/run-ci-gradle.sh :gradle-plugin:functionalTest --continue --quiet \
             -Pmetro.functionalTestKmpTarget=all \
             -Pmetro.functionalTestMaxParallelForks=2 \
             -Pmetro.testkitConfigurationCache=true \
@@ -624,12 +573,12 @@ jobs:
 
       - name: Check runtime tests (macOS)
         if: runner.os == 'macOS' && matrix.partition == 'runtime'
-        run: RUNNER_DEBUG=1 ./scripts/run-ci-gradle.sh :runtime:allTests :runtime-coroutines:allTests --continue --quiet --profile
+        run: ./scripts/run-ci-gradle.sh :runtime:allTests :runtime-coroutines:allTests --continue --quiet
 
       - name: Check IC tests (macOS)
         if: ${{ !cancelled() && contains(fromJSON('["native", "portable"]'), matrix.partition) }}
         run: |
-          RUNNER_DEBUG=1 ./scripts/run-ci-gradle.sh :gradle-plugin:functionalTest --continue --quiet --profile \
+          ./scripts/run-ci-gradle.sh :gradle-plugin:functionalTest --continue --quiet \
             -Pmetro.functionalTestKmpTarget=all \
             -Pmetro.functionalTestMaxParallelForks=${{ matrix.forks }} \
             -Pmetro.functionalTestMacosPartition=${{ matrix.partition }} \
@@ -641,7 +590,7 @@ jobs:
         if: runner.os == 'Windows'
         # `all` exercises every KmpTarget entry on this OS — host native is OS-specific (macosArm64,
         # mingwX64, etc.), so each runner covers a different native target naturally.
-        run: ./gradlew :runtime:allTests :runtime-coroutines:allTests :gradle-plugin:functionalTest --continue --quiet --profile -Pmetro.functionalTestKmpTarget=all
+        run: ./gradlew :runtime:allTests :runtime-coroutines:allTests :gradle-plugin:functionalTest --continue --quiet -Pmetro.functionalTestKmpTarget=all
 
       # This run covers the committed npm locks on every host.
       # The separate samples job regenerates its locks first.
@@ -649,22 +598,10 @@ jobs:
         if: runner.os != 'macOS' || matrix.partition == 'runtime'
         run: |
           if [[ "$RUNNER_OS" == "Linux" ]]; then
-            RUNNER_DEBUG=1 ./scripts/run-ci-gradle.sh -p samples test allTests --continue --quiet --profile
+            ./scripts/run-ci-gradle.sh -p samples test allTests --continue --quiet
           else
-            ./gradlew -p samples test allTests --continue --quiet --profile
+            ./gradlew -p samples test allTests --continue --quiet
           fi
-
-      - name: Upload platform timings and test results
-        if: ${{ !cancelled() }}
-        continue-on-error: true
-        uses: actions/upload-artifact@v7
-        with:
-          name: multiplatform-performance-${{ matrix.name }}-${{ github.run_attempt }}
-          retention-days: 7
-          path: |
-            build/reports/profile/**
-            samples/build/reports/profile/**
-            **/build/test-results/**/*.xml
 
       - name: (Fail-only) Upload reports
         if: failure()

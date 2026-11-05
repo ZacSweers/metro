@@ -56,10 +56,6 @@ log_resources() {
   cgroup_oom_kills=$(read_oom_kill_count)
 
   echo "CI resources: mem_available_kb=$mem_available_kb swap_free_kb=$swap_free_kb disk_available_kb=$disk_available_kb java_processes=$java_processes java_rss_kb=$java_rss_kb cgroup_memory_bytes=$cgroup_memory cgroup_memory_max_bytes=$cgroup_memory_max cgroup_oom_kills=$cgroup_oom_kills"
-  if [[ "${RUNNER_OS:-}" == "macOS" ]]; then
-    sysctl vm.swapusage
-    vm_stat | awk '/Pages free:|Pages inactive:|Pages occupied by compressor:|Pageouts:|Swapouts:/ { print "CI macOS memory: " $0 }'
-  fi
 }
 
 monitor_resources() {
@@ -98,9 +94,6 @@ gradle_jvm_args="-Xmx4g -Dfile.encoding=UTF-8 --enable-native-access=ALL-UNNAMED
 gradle_max_workers=4
 if [[ "${RUNNER_OS:-}" == "macOS" ]]; then
   processor_count=$(sysctl -n hw.logicalcpu)
-  if [[ "${RUNNER_DEBUG:-0}" == "1" ]]; then
-    echo "CI macOS hardware: logical_cpus=$processor_count physical_memory_bytes=$(sysctl -n hw.memsize)"
-  fi
   if (( processor_count < gradle_max_workers )); then
     gradle_max_workers=$processor_count
   fi
