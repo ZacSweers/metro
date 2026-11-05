@@ -113,6 +113,19 @@ if [[ -n "${EXPERIMENT_ROOT_PERIODIC_GC:-}" ]]; then
     gradle_jvm_args+=" -XX:G1PeriodicGCInterval=60000"
   fi
 fi
+if [[ -n "${EXPERIMENT_ROOT_REDUCE_HEAP_RESERVE:-}" ]]; then
+  case "$EXPERIMENT_ROOT_REDUCE_HEAP_RESERVE" in
+    true|false) ;;
+    *) echo 'Root heap reserve reduction must be true or false' >&2; exit 2 ;;
+  esac
+  if [[ "$EXPERIMENT_ROOT_REDUCE_HEAP_RESERVE" == 'true' ]]; then
+    if [[ "${EXPERIMENT_ROOT_PERIODIC_GC:-}" != 'true' ]]; then
+      echo 'Root heap reserve reduction requires root periodic GC' >&2
+      exit 2
+    fi
+    gradle_jvm_args+=" -XX:MinHeapFreeRatio=20 -XX:MaxHeapFreeRatio=40"
+  fi
+fi
 gradle_max_workers=4
 if [[ "${RUNNER_OS:-}" == "macOS" ]]; then
   processor_count=$(sysctl -n hw.logicalcpu)

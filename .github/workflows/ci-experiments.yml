@@ -112,6 +112,7 @@ jobs:
           EXPERIMENT_FIXTURE_CACHE_MODE: ${{ matrix.fixture-cache-mode }}
           EXPERIMENT_KOTLIN_IDLE_SECONDS: ${{ matrix.kotlin-idle-seconds }}
           EXPERIMENT_ROOT_PERIODIC_GC: ${{ matrix.root-periodic-gc }}
+          EXPERIMENT_ROOT_REDUCE_HEAP_RESERVE: ${{ matrix.root-reduce-heap-reserve }}
           EXPERIMENT_PREPARE_STOP: ${{ matrix.prepare-stop }}
           EXPERIMENT_SERIES: ${{ matrix.series }}
         run: |
