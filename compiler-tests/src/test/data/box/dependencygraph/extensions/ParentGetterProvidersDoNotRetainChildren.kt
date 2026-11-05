@@ -29,6 +29,16 @@ class Product(@Assisted val name: String, val shared: Shared) {
 
 @Inject class Consumer(val shared: () -> Shared)
 
+class Included
+
+class Dependencies {
+  val included: Included
+    get() {
+      Constructions.count++
+      return Included()
+    }
+}
+
 @BindingContainer
 object StringBindings {
   @Provides @IntoSet fun string(): String {
@@ -43,6 +53,11 @@ interface AppGraph {
   val strings: Set<String>
   val singleton: Singleton
   val child: ChildGraph
+
+  @DependencyGraph.Factory
+  interface Factory {
+    fun create(@Includes dependencies: Dependencies): AppGraph
+  }
 }
 
 @GraphExtension
@@ -53,6 +68,8 @@ interface ChildGraph {
   val factory: Product.Factory
   val strings: Provider<Set<String>>
   val singleton: Provider<Singleton>
+  val included: Provider<Included>
+  val dependencies: Provider<Dependencies>
   val grandchild: GrandchildGraph
 }
 
@@ -63,6 +80,8 @@ interface GrandchildGraph {
   val consumer: Consumer
   val factory: Product.Factory
   val strings: Provider<Set<String>>
+  val included: Provider<Included>
+  val dependencies: Provider<Dependencies>
 }
 
 // Inspect generated fields so the regression doesn't depend on garbage collection.
@@ -73,7 +92,7 @@ fun assertDoesNotRetain(value: Any, vararg children: Any) {
   val loader = children.first().javaClass.classLoader
   while (pending.isNotEmpty()) {
     val (current, path) = pending.removeFirst()
-    assertFalse(children.any { it === current }, "Retained child through $path")
+    assertFalse(children.any { it === current }, "Retained graph through $path")
     if (visited.put(current, true) != null) {
       continue
     }
@@ -101,7 +120,8 @@ fun assertDoesNotRetain(value: Any, vararg children: Any) {
 
 fun box(): String {
   Constructions.count = 0
-  val graph = createGraph<AppGraph>()
+  val dependencies = Dependencies()
+  val graph = createGraphFactory<AppGraph.Factory>().create(dependencies)
   val child = graph.child
   val grandchild = child.grandchild
   val providers = listOf(child.shared, grandchild.shared)
@@ -109,10 +129,18 @@ fun box(): String {
   val factories = listOf(child.factory, grandchild.factory)
   val collections = listOf(child.strings, grandchild.strings)
   val consumers = listOf(child.consumer, grandchild.consumer)
+  val includedProviders = listOf(child.included, grandchild.included)
+  val dependencyProviders = listOf(child.dependencies, grandchild.dependencies)
   val singleton = child.singleton
   assertEquals(0, Constructions.count)
 
-  for (value in providers + functions + factories + collections + consumers + singleton) {
+  for (provider in dependencyProviders) {
+    assertDoesNotRetain(provider, graph, child, grandchild)
+    assertSame(dependencies, provider())
+    assertSame(dependencies, provider())
+  }
+
+  for (value in providers + functions + factories + collections + consumers + includedProviders + singleton) {
     assertDoesNotRetain(value, child, grandchild)
   }
 
@@ -127,6 +155,11 @@ fun box(): String {
   for (function in functions + consumers.map { it.shared }) {
     val before = Constructions.count
     assertNotSame(function(), function())
+    assertEquals(before + 2, Constructions.count)
+  }
+  for (provider in includedProviders) {
+    val before = Constructions.count
+    assertNotSame(provider(), provider())
     assertEquals(before + 2, Constructions.count)
   }
   for (factory in factories) {

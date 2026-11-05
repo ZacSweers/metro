@@ -12,8 +12,10 @@ import dev.zacsweers.metro.trace.internal.testMetroTrace
 @DependencyGraph
 interface SourceGraph {
   val message: String
+  val count: Int
 
   @Provides fun provideMessage(): String = "source"
+  @Provides private fun provideCount(): Int = 1
 
   @DependencyGraph.Factory
   interface Factory {
@@ -21,13 +23,18 @@ interface SourceGraph {
   }
 }
 
+class CountValue(val value: Int)
+
 @GraphExtension
 interface ChildGraph {
   val sourceMessage: String
+  val countValue: CountValue
 
   @Provides fun provideSourceMessage(sourceGraph: Provider<SourceGraph>): String {
     return sourceGraph().message
   }
+
+  @Provides private fun provideCountValue(count: Provider<Int>): CountValue = CountValue(count())
 
   @GraphExtension.Factory
   interface Factory {
@@ -48,7 +55,8 @@ fun box(): String {
     val sourceGraph = createGraphFactory<SourceGraph.Factory>().create(tracer)
     val appGraph = createGraphFactory<AppGraph.Factory>().create(tracer, sourceGraph)
 
-    assertEquals("source", appGraph.createChildGraph().sourceMessage)
+    val child = appGraph.createChildGraph()
+    assertEquals("source", child.sourceMessage)
     assertInstant(
       name = "AppGraph.createChildGraph",
       graph = "AppGraph",
@@ -92,6 +100,45 @@ fun box(): String {
       graph = "SourceGraph",
       path = "SourceGraph",
       type = "String",
+      kind = "Provided",
+    )
+
+    assertEquals(1, child.countValue.value)
+    assertInstant(
+      name = "ChildGraph.countValue",
+      graph = "ChildGraph",
+      path = "AppGraph/ChildGraph",
+      callable = "countValue",
+      type = "CountValue",
+      kind = "Accessor",
+    )
+    assertTrace(
+      name = "CountValue",
+      graph = "ChildGraph",
+      path = "AppGraph/ChildGraph",
+      type = "CountValue",
+      kind = "Provided",
+    )
+    assertTrace(
+      name = "Int",
+      graph = "ChildGraph",
+      path = "AppGraph/ChildGraph",
+      type = "Int",
+      kind = "GraphDependency",
+    )
+    assertInstant(
+      name = "SourceGraph.count",
+      graph = "SourceGraph",
+      path = "SourceGraph",
+      callable = "count",
+      type = "Int",
+      kind = "Accessor",
+    )
+    assertTrace(
+      name = "Int",
+      graph = "SourceGraph",
+      path = "SourceGraph",
+      type = "Int",
       kind = "Provided",
     )
   }
