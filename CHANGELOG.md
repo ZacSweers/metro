@@ -4,6 +4,10 @@ Changelog
 **Unreleased**
 --------------
 
+### Fixes
+
+- **[FIR/IR]** Fix contributed `@Inject` classes skipping declared and inherited member injection when `generateContributionProviders` is enabled.
+
 ### Changes
 
 - Test IntelliJ IDEA `2026.2.4` and `2026.3 RC`.
