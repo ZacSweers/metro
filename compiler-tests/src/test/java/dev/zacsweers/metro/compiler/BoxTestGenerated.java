@@ -3122,6 +3122,24 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("DaggerFactoryDefaultedGenericParams.kt")
+      public void testDaggerFactoryDefaultedGenericParams() {
+        run("DaggerFactoryDefaultedGenericParams.kt");
+      }
+
+      @Test
+      @TestMetadata("DaggerFactoryDefaultedParamUsesPresentBinding.kt")
+      public void testDaggerFactoryDefaultedParamUsesPresentBinding() {
+        run("DaggerFactoryDefaultedParamUsesPresentBinding.kt");
+      }
+
+      @Test
+      @TestMetadata("DaggerFactoryDefaultedParamWithScopedBinding.kt")
+      public void testDaggerFactoryDefaultedParamWithScopedBinding() {
+        run("DaggerFactoryDefaultedParamWithScopedBinding.kt");
+      }
+
+      @Test
       @TestMetadata("DaggerLazySubtypeInterop.kt")
       public void testDaggerLazySubtypeInterop() {
         run("DaggerLazySubtypeInterop.kt");
@@ -3173,6 +3191,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       @TestMetadata("DaggerProviderFactoryClassInKotlinCanBeLoaded.kt")
       public void testDaggerProviderFactoryClassInKotlinCanBeLoaded() {
         run("DaggerProviderFactoryClassInKotlinCanBeLoaded.kt");
+      }
+
+      @Test
+      @TestMetadata("DaggerProviderFactoryDefaultedParams.kt")
+      public void testDaggerProviderFactoryDefaultedParams() {
+        run("DaggerProviderFactoryDefaultedParams.kt");
       }
 
       @Test

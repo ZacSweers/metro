@@ -1,0 +1,23 @@
+/module_main_DaggerProviderFactoryDefaultedParamsRequireBindings.kt:34:11: error: [Metro/MissingBinding] No binding found for InstanceDependency
+
+  test.AppGraph.value -> String -> InstanceDependency
+
+  trace (in test.AppGraph):
+      InstanceDependency is injected at test.InstanceModule.value(…, dependency)
+      String is requested at test.AppGraph.value
+
+  help: ensure InstanceDependency has an @Inject constructor or is provided by an @Provides or
+        @Binds declaration visible to AppGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
+
+[Metro/MissingBinding] No binding found for ObjectDependency
+
+  test.AppGraph.number -> Int -> ObjectDependency
+
+  trace (in test.AppGraph):
+      ObjectDependency is injected at test.ObjectModule.number(…, dependency)
+      Int is requested at test.AppGraph.number
+
+  help: ensure ObjectDependency has an @Inject constructor or is provided by an @Provides or @Binds
+        declaration visible to AppGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
