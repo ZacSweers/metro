@@ -1586,9 +1586,21 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       }
 
       @Test
+      @TestMetadata("DaggerFactoryDefaultedParamsRequireBindings.kt")
+      public void testDaggerFactoryDefaultedParamsRequireBindings() {
+        run("DaggerFactoryDefaultedParamsRequireBindings.kt");
+      }
+
+      @Test
       @TestMetadata("DaggerModuleSubcomponentsIsIgnored.kt")
       public void testDaggerModuleSubcomponentsIsIgnored() {
         run("DaggerModuleSubcomponentsIsIgnored.kt");
+      }
+
+      @Test
+      @TestMetadata("DaggerProviderFactoryDefaultedParamsRequireBindings.kt")
+      public void testDaggerProviderFactoryDefaultedParamsRequireBindings() {
+        run("DaggerProviderFactoryDefaultedParamsRequireBindings.kt");
       }
 
       @Test
