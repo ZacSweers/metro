@@ -114,7 +114,7 @@ gradle.beforeProject { project ->
                     'dev.zacsweers.metro.gradle.incremental.ContributionScopeICTests*',
                 ]
                 def macosNativePatterns = [
-                    '*[macosArm64*',
+                    '*[macos*',
                     'dev.zacsweers.metro.gradle.extensions.circuit.CircuitNativeTest*',
                     'dev.zacsweers.metro.gradle.incremental.NativeICTests*',
                 ]
