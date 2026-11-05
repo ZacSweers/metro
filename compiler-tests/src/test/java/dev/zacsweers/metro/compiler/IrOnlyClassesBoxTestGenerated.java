@@ -2639,6 +2639,12 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
     }
 
     @Test
+    @TestMetadata("InjectedProviderIsReusedAcrossConsumers.kt")
+    public void testInjectedProviderIsReusedAcrossConsumers() {
+      run("InjectedProviderIsReusedAcrossConsumers.kt");
+    }
+
+    @Test
     @TestMetadata("InjectedTypeInheritsAnAnnotatedAbstractClass.kt")
     public void testInjectedTypeInheritsAnAnnotatedAbstractClass() {
       run("InjectedTypeInheritsAnAnnotatedAbstractClass.kt");
@@ -3251,6 +3257,12 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
       @TestMetadata("InlinedObjectMultibindingRemainsLazy.kt")
       public void testInlinedObjectMultibindingRemainsLazy() {
         run("InlinedObjectMultibindingRemainsLazy.kt");
+      }
+
+      @Test
+      @TestMetadata("JavaxProviderAccessorIsReused.kt")
+      public void testJavaxProviderAccessorIsReused() {
+        run("JavaxProviderAccessorIsReused.kt");
       }
 
       @Test
@@ -4084,6 +4096,12 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
     @TestMetadata("PropertyProvidersAreRespected.kt")
     public void testPropertyProvidersAreRespected() {
       run("PropertyProvidersAreRespected.kt");
+    }
+
+    @Test
+    @TestMetadata("ProvidedProviderIsReusedAcrossConsumers.kt")
+    public void testProvidedProviderIsReusedAcrossConsumers() {
+      run("ProvidedProviderIsReusedAcrossConsumers.kt");
     }
 
     @Test

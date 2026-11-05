@@ -2293,6 +2293,12 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
     }
 
     @Test
+    @TestMetadata("InjectedProviderIsReusedAcrossConsumers.kt")
+    public void testInjectedProviderIsReusedAcrossConsumers() {
+      run("InjectedProviderIsReusedAcrossConsumers.kt");
+    }
+
+    @Test
     @TestMetadata("InjectedTypeInheritsAnAnnotatedAbstractClass.kt")
     public void testInjectedTypeInheritsAnAnnotatedAbstractClass() {
       run("InjectedTypeInheritsAnAnnotatedAbstractClass.kt");
@@ -3070,6 +3076,12 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
     @TestMetadata("PropertyProvidersAreRespected.kt")
     public void testPropertyProvidersAreRespected() {
       run("PropertyProvidersAreRespected.kt");
+    }
+
+    @Test
+    @TestMetadata("ProvidedProviderIsReusedAcrossConsumers.kt")
+    public void testProvidedProviderIsReusedAcrossConsumers() {
+      run("ProvidedProviderIsReusedAcrossConsumers.kt");
     }
 
     @Test
