@@ -98,6 +98,9 @@ gradle_jvm_args="-Xmx4g -Dfile.encoding=UTF-8 --enable-native-access=ALL-UNNAMED
 gradle_max_workers=4
 if [[ "${RUNNER_OS:-}" == "macOS" ]]; then
   processor_count=$(sysctl -n hw.logicalcpu)
+  if [[ "${RUNNER_DEBUG:-0}" == "1" ]]; then
+    echo "CI macOS hardware: logical_cpus=$processor_count physical_memory_bytes=$(sysctl -n hw.memsize)"
+  fi
   if (( processor_count < gradle_max_workers )); then
     gradle_max_workers=$processor_count
   fi

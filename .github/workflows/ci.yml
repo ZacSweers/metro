@@ -511,7 +511,8 @@ jobs:
         uses: jlumbroso/free-disk-space@main
         with:
           tool-cache: false
-          android: false
+          # Static plugin verification does not use the Android SDK.
+          android: true
           dotnet: true
           haskell: true
           large-packages: false
