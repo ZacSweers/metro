@@ -102,6 +102,17 @@ if [[ -n "${EXPERIMENT_KOTLIN_IDLE_SECONDS:-}" ]]; then
   fi
   gradle_jvm_args+=" -Dkotlin.daemon.options=autoshutdownIdleSeconds=$EXPERIMENT_KOTLIN_IDLE_SECONDS"
 fi
+if [[ -n "${EXPERIMENT_ROOT_PERIODIC_GC:-}" ]]; then
+  case "$EXPERIMENT_ROOT_PERIODIC_GC" in
+    true|false) ;;
+    *) echo 'Root periodic GC must be true or false' >&2; exit 2 ;;
+  esac
+  : "${RUNNER_TEMP:?RUNNER_TEMP is required for root GC logging}"
+  gradle_jvm_args+=" \"-Xlog:gc=info,gc+heap=debug:file=$RUNNER_TEMP/root-gc-%p.log:utctime,uptime,level,tags\""
+  if [[ "$EXPERIMENT_ROOT_PERIODIC_GC" == 'true' ]]; then
+    gradle_jvm_args+=" -XX:G1PeriodicGCInterval=60000"
+  fi
+fi
 gradle_max_workers=4
 if [[ "${RUNNER_OS:-}" == "macOS" ]]; then
   processor_count=$(sysctl -n hw.logicalcpu)

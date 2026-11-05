@@ -111,6 +111,7 @@ jobs:
           EXPERIMENT_PREBUILT_COMPILER: ${{ matrix.prebuilt-compiler }}
           EXPERIMENT_FIXTURE_CACHE_MODE: ${{ matrix.fixture-cache-mode }}
           EXPERIMENT_KOTLIN_IDLE_SECONDS: ${{ matrix.kotlin-idle-seconds }}
+          EXPERIMENT_ROOT_PERIODIC_GC: ${{ matrix.root-periodic-gc }}
           EXPERIMENT_PREPARE_STOP: ${{ matrix.prepare-stop }}
           EXPERIMENT_SERIES: ${{ matrix.series }}
         run: |
@@ -129,6 +130,7 @@ jobs:
             ${{ runner.temp }}/timing.txt
             ${{ runner.temp }}/workload.log
             ${{ runner.temp }}/macos-resources.jsonl
+            ${{ runner.temp }}/root-gc-*.log
             ${{ runner.temp }}/compiler-trials/**
             build/reports/profile/**
             compiler/build/test-results/test/*.xml

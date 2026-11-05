@@ -72,6 +72,17 @@ gradle.beforeProject { project ->
                 if (task.name != 'functionalTest') {
                     return
                 }
+                def rootHeapLogging = System.getenv('EXPERIMENT_ROOT_PERIODIC_GC') in ['true', 'false']
+                if (rootHeapLogging) {
+                    task.doFirst {
+                        def heap = java.lang.management.ManagementFactory.memoryMXBean.heapMemoryUsage
+                        println('Root heap: phase=before_functionalTest pid=' + ProcessHandle.current().pid() + ' used_bytes=' + heap.used + ' committed_bytes=' + heap.committed + ' max_bytes=' + heap.max)
+                    }
+                    task.doLast {
+                        def heap = java.lang.management.ManagementFactory.memoryMXBean.heapMemoryUsage
+                        println('Root heap: phase=after_functionalTest pid=' + ProcessHandle.current().pid() + ' used_bytes=' + heap.used + ' committed_bytes=' + heap.committed + ' max_bytes=' + heap.max)
+                    }
+                }
                 def selectedClasses = [
         'dev.zacsweers.metro.gradle.extensions.circuit.CircuitWebTest',
         'dev.zacsweers.metro.gradle.incremental.BindingContainerICTests',
