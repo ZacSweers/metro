@@ -23,6 +23,7 @@ object MetroDirectives : SimpleDirectivesContainer() {
     directive("Generate custom test data files per compiler version")
   val GENERATE_ASSISTED_FACTORIES by directive("Enable assisted factories generation.")
   val ENABLE_TOP_LEVEL_FUNCTION_INJECTION by directive("Enable top-level function injection.")
+  val FIX_EMPTY_SMAP_RANGES by directive("Enable the workaround for empty JVM SMAP ranges.")
   val GENERATE_CONTRIBUTION_HINTS by
     valueDirective("Enable/disable generation of contribution hint generation.") { it.toBoolean() }
   val GENERATE_CONTRIBUTION_HINTS_IN_FIR by

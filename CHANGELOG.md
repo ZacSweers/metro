@@ -4,20 +4,40 @@ Changelog
 **Unreleased**
 --------------
 
+### Changes
+
+- Test IntelliJ IDEA `2026.2.4` and `2026.3 RC`.
+- Test Android Studio Rabbit 2 stable.
+- Test Android Studio Rabbit 3 canaries (Canary 2).
+
+### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
+
+1.5.2
+-----
+
+_2026-11-03_
+
 ### Fixes
 
+- **[FIR]** Fix compat with Kotlin `2.5.20` dev builds around inherited member injection.
 - **[IR]** Fix graph extensions creating separate instances of inherited class binding containers. Extensions now reuse the parent instance and can share set and map getters.
 - **[IR]** Fix a `NoSuchMethodError` when reporting diagnostics without a source location on Kotlin `2.4.20` and newer.
+- **[IR]** Fix providers for parent-owned bindings retaining child graphs. Generated provider lambdas now capture the owning ancestor directly.
+- **[IR]** Add an opt-in `fix-empty-smap-ranges` compiler option to fix empty Kotlin SMAP line ranges (`1#1,0:1`) in synthetic files. See the [Kotlin issue](https://youtrack.jetbrains.com/issue/KT-91212) and [R8 fix](https://r8-review.googlesource.com/c/r8/+/138963).
 
 ### Changes
 
+- **[compat]** Support Kotlin `2.5.20-dev-2623`.
 - Update androidx.tracing to `2.0.5`.
+- Update Kotlin Toolchain usage docs.
 
 ### Contributors
 
 Special thanks to the following contributors for contributing to this release!
 
+- [@Plastix](https://github.com/Plastix)
 - [@raosangi](https://github.com/raosangi)
+- [@sockeye-d](https://github.com/sockeye-d)
 
 ### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
 

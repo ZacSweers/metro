@@ -15,7 +15,7 @@
 //   4. IrSymbol.safeName, safeParentClassName, and callable reference rendering all
 //      delegate to classNameTransformer instead of using simple names.
 //   5. Removed VariableNameData/normalizedName (internal APIs) — replaced with simple name access.
-//   6. Local copy of stableOrdered() (internal API).
+//   6. Shared copy of stable dump ordering (internal API).
 //
 // NOTE: visitClass is intentionally NOT changed — class declarations keep simple names.
 // Only references to classes in expressions go through classNameTransformer.
@@ -29,6 +29,8 @@ package dev.zacsweers.metro.compiler.compat.k230
 
 // METRO CHANGE: removed com.intellij.openapi.util.text.StringUtil dependency,
 // replaced with local escapeString/escapeChar helpers below.
+import dev.zacsweers.metro.compiler.compat.stableDeclarationOrder
+import dev.zacsweers.metro.compiler.compat.stableTypeOrder
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.DescriptorVisibility
@@ -130,7 +132,6 @@ import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.IrTypeArgument
 import org.jetbrains.kotlin.ir.types.IrTypeProjection
 import org.jetbrains.kotlin.ir.types.SimpleTypeNullability
-import org.jetbrains.kotlin.ir.types.classifierOrNull
 import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.isAny
 import org.jetbrains.kotlin.ir.types.isMarkedNullable
@@ -147,7 +148,6 @@ import org.jetbrains.kotlin.ir.util.isFakeOverriddenFromAny
 import org.jetbrains.kotlin.ir.util.isInterface
 import org.jetbrains.kotlin.ir.util.isStatic
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
-import org.jetbrains.kotlin.ir.util.render
 import org.jetbrains.kotlin.ir.visitors.IrVisitor
 import org.jetbrains.kotlin.types.Variance
 import org.jetbrains.kotlin.utils.Printer
@@ -165,32 +165,6 @@ internal fun IrElement.dumpKotlinLikeFallback(
     )
     .printElement(this)
   return sb.toString()
-}
-
-// Local copy of internal stableOrdered() from DumpIrTree.kt
-private fun List<IrDeclaration>.stableOrdered(): List<IrDeclaration> {
-  val strictOrder = hashMapOf<IrDeclaration, Int>()
-  var idx = 0
-  forEach {
-    val shouldPreserveRelativeOrder =
-      when (it) {
-        is IrProperty -> it.backingField != null && !it.isConst
-        is IrAnonymousInitializer,
-        is IrEnumEntry,
-        is IrField -> true
-        else -> false
-      }
-    if (shouldPreserveRelativeOrder) {
-      strictOrder[it] = idx++
-    }
-  }
-  return sortedWith { a, b ->
-    val strictA = strictOrder[a] ?: Int.MAX_VALUE
-    val strictB = strictOrder[b] ?: Int.MAX_VALUE
-    if (strictA == strictB) {
-      a.render().compareTo(b.render())
-    } else strictA - strictB
-  }
 }
 
 private class BetterKotlinLikeDumper(
@@ -257,19 +231,20 @@ private class BetterKotlinLikeDumper(
   }
 
   @JvmName("orderedDeclarations") // Prevent JVM signature clash
-  private fun List<IrDeclaration>.ordered() = if (options.stableOrder) stableOrdered() else this
+  private fun List<IrDeclaration>.ordered(): List<IrDeclaration> =
+    if (options.stableOrder) {
+      stableDeclarationOrder()
+    } else {
+      this
+    }
 
   @JvmName("orderedTypes") // Prevent JVM signature clash
-  private fun List<IrType>.ordered(): List<IrType> {
-    if (!options.stableOrder) return this
-
-    fun isNonInterfaceType(type: IrType) =
-      type.classifierOrNull?.let { it !is IrClassSymbol || !it.owner.isInterface } ?: true
-
-    val (classTypes, interfaceTypes) = partition(::isNonInterfaceType)
-
-    return classTypes.sortedBy(IrType::render) + interfaceTypes.sortedBy(IrType::render)
-  }
+  private fun List<IrType>.ordered(): List<IrType> =
+    if (options.stableOrder) {
+      stableTypeOrder()
+    } else {
+      this
+    }
 
   private inline fun wrap(element: IrElement, container: IrDeclaration?, block: () -> Unit) {
     if (!options.customDumpStrategy.willPrintElement(element, container, p, options)) return

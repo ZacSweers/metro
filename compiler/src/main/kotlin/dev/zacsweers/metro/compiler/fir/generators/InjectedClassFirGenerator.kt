@@ -208,7 +208,8 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
     // Don't preallocate as these are always prefixed later with "inject"
     private val memberKeyAllocator =
       NameAllocator(preallocateKeywords = false, mode = NameAllocator.Mode.COUNT)
-    private var declaredInjectedMembersPopulated = false
+    // Generated injection methods belong to the class that declares the injected member.
+    private var declaredInjectedMembers: Map<Name, List<MetroFirValueParameter>>? = null
     private var parentHasMemberInjections: Boolean? = null
     private var ancestorInjectedMembersPopulated = false
 
@@ -221,7 +222,8 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
       constructorParameters.filter { it.isAssisted }
     }
 
-    val injectedMembersParamsByMemberKey = LinkedHashMap<Name, List<MetroFirValueParameter>>()
+    private val injectedMembersParamsByMemberKey =
+      LinkedHashMap<Name, List<MetroFirValueParameter>>()
     val injectedMembersParameters: List<MetroFirValueParameter>
       get() = injectedMembersParamsByMemberKey.values.flatten()
 
@@ -252,10 +254,13 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
     fun populateDeclaredMemberInjections(
       session: FirSession,
     ): Map<Name, List<MetroFirValueParameter>> {
-      if (declaredInjectedMembersPopulated) return injectedMembersParamsByMemberKey
+      val cached = declaredInjectedMembers
+      if (cached != null) {
+        return cached
+      }
       val declared = memberInjections(session, includeSelf = true, includeAncestors = false)
       injectedMembersParamsByMemberKey.putAll(declared)
-      declaredInjectedMembersPopulated = true
+      declaredInjectedMembers = declared
       return declared
     }
 
@@ -293,7 +298,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
 
     fun populateAncestorMemberInjections(session: FirSession) {
       if (ancestorInjectedMembersPopulated) return
-      val declared = injectedMembersParamsByMemberKey.toMap()
+      val declared = populateDeclaredMemberInjections(session)
       injectedMembersParamsByMemberKey.clear()
       // Put ancestors first
       injectedMembersParamsByMemberKey.putAll(
@@ -611,7 +616,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
       val targetClass = classSymbol.getContainingClassSymbol()?.classId ?: return emptySet()
       val injectedClass = membersInjectorClassIdsToInjectedClass[targetClass] ?: return emptySet()
       // Only declared members matter here
-      names += injectedClass.injectedMembersParamsByMemberKey.keys
+      names += injectedClass.populateDeclaredMemberInjections(session).keys
     }
 
     return names
@@ -792,7 +797,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
           }
           else -> {
             val parameters =
-              injectedClass.injectedMembersParamsByMemberKey[callableId.callableName]
+              injectedClass.populateDeclaredMemberInjections(session)[callableId.callableName]
                 ?: return emptyList()
 
             // It's a member injector name

@@ -9,9 +9,9 @@ Pre-release versions are normally only tested during their development cycle. Af
 | Kotlin version  | Metro versions (inclusive) | Notes                                                                    |
 |-----------------|----------------------------|--------------------------------------------------------------------------|
 | 2.5.0-Beta2     | 1.5.0 -                    | Branched from `2.5.0-dev-10257`, uses the `2.5.0-dev-10106` compat impl. |
-| 2.5.0-dev-10106 | 1.5.0 -                    |                                                                          |
+| 2.5.0-dev-10106 | 1.5.0 - [1.5.2]            |                                                                          |
 | 2.5.0-Beta1     | 1.5.0 -                    | Branched from `2.5.0-dev-7232`, uses the `2.5.0-dev-7307` compat impl.   |
-| 2.5.0-dev-7307  | 1.5.0 -                    |                                                                          |
+| 2.5.0-dev-7307  | 1.5.0 - [1.5.2]            |                                                                          |
 | 2.5.0-dev-6460  | 1.4.3 -                    |                                                                          |
 | 2.5.0-dev-4967  | 1.4.3 - [1.4.3]            |                                                                          |
 | 2.5.0-dev-3513  | 1.4.2 - [1.4.2]            |                                                                          |
@@ -98,8 +98,7 @@ The following Kotlin versions are tested via CI:
 
 | Kotlin Version  |
 |-----------------|
-| 2.5.0-dev-10106 |
-| 2.5.0-dev-7307  |
+| 2.5.20-dev-2623 |
 | 2.5.0-dev-6460  |
 | 2.5.0-Beta2     |
 | 2.5.0-Beta1     |

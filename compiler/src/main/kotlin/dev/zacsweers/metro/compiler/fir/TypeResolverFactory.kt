@@ -88,7 +88,8 @@ public sealed interface MetroFirTypeResolver {
     private fun create(file: FirFile): MetroFirTypeResolver? {
       return resolversByFile.getOrPut(file) {
         val scopes = createImportingScopes(file, session, scopeSession)
-        val configuration = TypeResolutionConfiguration(scopes, emptyList(), useSiteFile = file)
+        val configuration =
+          session.compatContext.createTypeResolutionConfigurationCompat(scopes, useSiteFile = file)
         LocalMetroFirTypeResolver(session, configuration)
       }
     }
@@ -96,6 +97,9 @@ public sealed interface MetroFirTypeResolver {
 
   private class ExternalMetroFirTypeResolver(private val session: FirSession) :
     MetroFirTypeResolver {
+
+    private val configuration =
+      session.compatContext.createTypeResolutionConfigurationCompat(emptyList(), useSiteFile = null)
 
     override fun resolveType(typeRef: FirTypeRef): ConeKotlinType {
       check(typeRef is FirUserTypeRef)
@@ -108,7 +112,7 @@ public sealed interface MetroFirTypeResolver {
       return session.typeResolver
         .resolveType(
           typeRef = typeRef,
-          configuration = EMPTY_CONFIGURATION,
+          configuration = configuration,
           areBareTypesAllowed = true,
           isOperandOfIsOperator = false,
           resolveDeprecations = false,
@@ -142,13 +146,6 @@ public sealed interface MetroFirTypeResolver {
   public companion object {
     // For cases where we use this in IR, types are already resolved so just read coneType
     internal fun forIrUse(): MetroFirTypeResolver = IrMetroFirTypeResolver
-
-    private val EMPTY_CONFIGURATION =
-      TypeResolutionConfiguration(
-        scopes = emptyList(),
-        containingClassDeclarations = emptyList(),
-        useSiteFile = null,
-      )
   }
 
   private object IrMetroFirTypeResolver : MetroFirTypeResolver {

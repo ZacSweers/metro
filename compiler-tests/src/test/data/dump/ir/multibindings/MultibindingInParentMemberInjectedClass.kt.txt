@@ -1,10 +1,6 @@
 // FILE: MultibindingInParentMemberInjectedClass.kt
 
 class AFragment : Fragment {
-  lateinit var viewModelFactory: ViewModelFactory
-    get
-    set
-
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class MetroMembersInjector : MembersInjector<AFragment> {
     private /* final field */ val viewModelFactory: Provider<ViewModelFactory> = viewModelFactory
@@ -47,6 +43,10 @@ class AFragment : Fragment {
     /* <init>() */
 
   }
+
+  lateinit var viewModelFactory: ViewModelFactory
+    get
+    set
 
 }
 
@@ -239,10 +239,6 @@ open class Activity {
 }
 
 class BFragment : Fragment {
-  lateinit var viewModelFactory: ViewModelFactory
-    get
-    set
-
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class MetroMembersInjector : MembersInjector<BFragment> {
     private /* final field */ val viewModelFactory: Provider<ViewModelFactory> = viewModelFactory
@@ -285,6 +281,10 @@ class BFragment : Fragment {
     /* <init>() */
 
   }
+
+  lateinit var viewModelFactory: ViewModelFactory
+    get
+    set
 
 }
 
@@ -469,10 +469,6 @@ class BViewModel : ViewModel {
 
 @HasMemberInjections
 abstract class BaseActivity : Activity {
-  lateinit var fragmentInjector: FragmentInjector
-    get
-    set
-
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class MetroMembersInjector : MembersInjector<BaseActivity> {
     private /* final field */ val fragmentInjector: Provider<FragmentInjector> = fragmentInjector
@@ -515,6 +511,10 @@ abstract class BaseActivity : Activity {
     /* <init>() */
 
   }
+
+  lateinit var fragmentInjector: FragmentInjector
+    get
+    set
 
 }
 

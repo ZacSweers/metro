@@ -5,9 +5,10 @@
 
 set -euo pipefail
 
-# Validates that version-aliases.txt is an equal or superset of available compiler-compat modules
+# Validates that listed versions cover all compiler-compat modules, including prerelease mappings.
 
 ALIASES_FILE="compiler-compat/version-aliases.txt"
+MAPPINGS_FILE="compiler-compat/prerelease-mappings.txt"
 
 if [ ! -f "$ALIASES_FILE" ]; then
     echo "❌ Error: $ALIASES_FILE not found"
@@ -18,6 +19,17 @@ echo "🔍 Validating version-aliases.txt..."
 
 # Read versions from version-aliases.txt (skip comments and blank lines)
 declared_versions=$(grep -v '^#' "$ALIASES_FILE" | grep -v '^[[:space:]]*$' | sort)
+
+# Only listed prereleases provide CI coverage for their mapped modules.
+covered_versions="$declared_versions"
+while IFS='=' read -r prerelease version; do
+    if [[ -z "$prerelease" || "$prerelease" == \#* ]]; then
+        continue
+    fi
+    if grep -Fxq "$prerelease" <<< "$declared_versions"; then
+        covered_versions="$covered_versions"$'\n'"$version"
+    fi
+done < "$MAPPINGS_FILE"
 
 # Find all k-prefixed directories with version.txt files
 module_dirs=$(find compiler-compat -maxdepth 1 -type d -name 'k*' -exec test -f {}/version.txt \; -print | sort)
@@ -35,14 +47,14 @@ for module_dir in $module_dirs; do
 done
 module_versions=$(echo "$module_versions" | sort)
 
-# Check that all module versions are declared in the file
+# Check that all module versions have coverage.
 echo ""
-echo "📦 Checking all modules are declared in $ALIASES_FILE..."
+echo "📦 Checking all modules are covered by $ALIASES_FILE..."
 missing_in_file=""
 for version in $module_versions; do
-    if ! grep -Fxq "$version" <<< "$declared_versions"; then
+    if ! grep -Fxq "$version" <<< "$covered_versions"; then
         missing_in_file="$missing_in_file$version"$'\n'
-        echo "  ❌ Module version $version is not declared in $ALIASES_FILE"
+        echo "  ❌ Module version $version is not covered by $ALIASES_FILE"
     else
         echo "  ✅ $version"
     fi
@@ -50,11 +62,10 @@ done
 
 if [ -n "$missing_in_file" ]; then
     echo ""
-    echo "❌ Error: $ALIASES_FILE is missing versions that have modules:"
+    echo "❌ Error: $ALIASES_FILE leaves these module versions uncovered:"
     echo "$missing_in_file"
     echo ""
-    echo "The file must be an equal or superset of available modules."
-    echo "Add the missing versions to $ALIASES_FILE"
+    echo "Add each missing version or a prerelease mapped to it to $ALIASES_FILE"
     exit 1
 fi
 
@@ -65,7 +76,7 @@ missing_modules=""
 for version in $declared_versions; do
     if ! grep -Fxq "$version" <<< "$module_versions"; then
         missing_modules="$missing_modules$version"$'\n'
-        echo "  ℹ️  Declared version $version has no corresponding module (will use nearest available)"
+        echo "  ℹ️  Declared version $version has no corresponding module (will use a compatible module)"
     else
         echo "  ✅ $version"
     fi
@@ -76,8 +87,8 @@ if [ -n "$missing_modules" ]; then
     echo "ℹ️  Note: $ALIASES_FILE declares versions without modules:"
     echo "$missing_modules"
     echo ""
-    echo "These versions are supported for CI and will use the nearest available module implementation."
+    echo "These versions are supported for CI and will use a compatible module implementation."
 fi
 
 echo ""
-echo "✅ Validation passed! $ALIASES_FILE correctly declares all available modules."
+echo "✅ Validation passed! $ALIASES_FILE covers all available modules."

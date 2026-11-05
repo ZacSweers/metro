@@ -3,8 +3,8 @@
 
 # Kotlin compiler versions to test against in CI
 #
-# This file must be an equal or superset of the available compiler-compat modules.
-# Each line is a Kotlin version that has a corresponding k* module.
+# Every compiler-compat module must be covered directly or through a listed prerelease's mapping.
+# Each line is a Kotlin version to test.
 # Keep versions in release order. CI treats the final entry as the newest tested version.
 # Blank lines and comments (starting with #) are ignored.
 
@@ -21,7 +21,6 @@
 2.4.20
 # Retained for IntelliJ 2026.3 EAP (2.5.0-dev-6810).
 2.5.0-dev-6460
-2.5.0-dev-7307
 2.5.0-Beta1
-2.5.0-dev-10106
 2.5.0-Beta2
+2.5.20-dev-2623
