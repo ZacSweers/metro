@@ -6,6 +6,8 @@ Changelog
 
 ### Fixes
 
+- **[IR]** Fix eager reads of included dependency accessors when graph extensions request `Provider` or `Lazy` values.
+- **[IR]** Fix missing graph references in getter-only shards when accessing included dependencies.
 - **[IR/interop]** Fix an issue with Dagger-processed providers/constructors with default parameters with their generated factory. Previously, Metro would treat the source function's parameter as optional if it had a default value and not reconcile that correctly with Dagger's generated factory (which would not propagate that default since Dagger uses a different mechanism for optional bindings).
 
 ### Changes
