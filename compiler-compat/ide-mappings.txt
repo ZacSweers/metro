@@ -134,3 +134,5 @@
 2.5.0-ij263-18=2.5.0-dev-9507
 # IntelliJ IDEA 2026.3 (rc)
 2.5.0-ij263-40=2.5.0-dev-9507
+# IntelliJ IDEA 2026.3 (stable)
+2.5.0-ij263-56=2.5.0-dev-9507
