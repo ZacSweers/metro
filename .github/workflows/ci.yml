@@ -338,11 +338,15 @@ jobs:
           check_name: 'Test Report - shaded compiler / Ubuntu JDK 21'
 
   js-box:
-    name: ${{ github.event_name == 'pull_request' && 'web / smoke' || 'js box / full' }}
+    name: ${{ matrix.suite == 'smoke' && 'web / smoke' || format('js box / {0}', matrix.suite) }}
     runs-on: ubuntu-latest
     needs: [changes, generate-matrix]
     if: needs.changes.outputs.full == 'true'
     timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: ${{ fromJSON(github.event_name == 'pull_request' && '["smoke"]' || '["standard", "fast-init", "contribution-providers"]') }}
     permissions:
       checks: write
 
@@ -380,28 +384,39 @@ jobs:
             -Dorg.gradle.configuration-cache.read-only=true
 
       - name: Run standard JS box tests
-        if: github.event_name != 'pull_request'
+        if: matrix.suite == 'standard'
         run: |
-          ./scripts/run-ci-gradle.sh :compiler-tests:test --quiet \
+          ./scripts/run-ci-gradle.sh :compiler-tests:test --quiet --profile \
             --tests 'dev.zacsweers.metro.compiler.JsBoxTestGenerated*'
 
       - name: Run FastInit JS box tests
-        if: github.event_name != 'pull_request'
+        if: matrix.suite == 'fast-init'
         run: |
-          ./scripts/run-ci-gradle.sh :compiler-tests:test --quiet \
+          ./scripts/run-ci-gradle.sh :compiler-tests:test --quiet --profile \
             --tests 'dev.zacsweers.metro.compiler.JsFastInitBoxTestGenerated*'
 
       - name: Run contribution provider JS box tests
-        if: github.event_name != 'pull_request'
+        if: matrix.suite == 'contribution-providers'
         run: |
-          ./scripts/run-ci-gradle.sh :compiler-tests:test --quiet \
+          ./scripts/run-ci-gradle.sh :compiler-tests:test --quiet --profile \
             --tests 'dev.zacsweers.metro.compiler.JsContributionProvidersBoxTestGenerated*'
+
+      - name: Upload JS timings and test results
+        if: ${{ !cancelled() && matrix.suite != 'smoke' }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: js-box-performance-${{ matrix.suite }}-${{ github.run_attempt }}
+          retention-days: 7
+          path: |
+            build/reports/profile/**
+            compiler-tests/build/test-results/test/*.xml
 
       - name: (Fail-only) Upload reports
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: reports-js-box
+          name: reports-js-box-${{ matrix.suite }}-${{ github.run_attempt }}
           path: |
             **/build/reports/**
 
@@ -410,7 +425,7 @@ jobs:
         if: failure()
         with:
           report_paths: '**/build/test-results/**/TEST-*.xml'
-          check_name: 'Test Report - js box'
+          check_name: 'Test Report - js box / ${{ matrix.suite }}'
 
   samples:
     name: samples
@@ -579,6 +594,9 @@ jobs:
             name: macos-latest-portable
             partition: portable
             forks: 2
+          - os: macos-latest
+            name: macos-latest-runtime
+            partition: runtime
 
     steps:
       - name: Checkout
@@ -592,7 +610,7 @@ jobs:
           # Each matrix row preserves its Gradle task outputs on main.
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
           konan: true
-          konan-cache-read-only: ${{ github.ref != 'refs/heads/main' || matrix.os == 'ubuntu-latest' || matrix.partition == 'portable' }}
+          konan-cache-read-only: ${{ github.ref != 'refs/heads/main' || matrix.os == 'ubuntu-latest' || contains(fromJSON('["portable", "runtime"]'), matrix.partition) }}
 
       # Core already covers the Linux runtime test tasks.
       - name: Check IC tests (Linux)
@@ -605,11 +623,11 @@ jobs:
             -Pmetro.testkitConfigurationCacheReadOnly=false
 
       - name: Check runtime tests (macOS)
-        if: runner.os == 'macOS' && matrix.partition == 'native'
+        if: runner.os == 'macOS' && matrix.partition == 'runtime'
         run: RUNNER_DEBUG=1 ./scripts/run-ci-gradle.sh :runtime:allTests :runtime-coroutines:allTests --continue --quiet --profile
 
       - name: Check IC tests (macOS)
-        if: ${{ !cancelled() && runner.os == 'macOS' }}
+        if: ${{ !cancelled() && contains(fromJSON('["native", "portable"]'), matrix.partition) }}
         run: |
           RUNNER_DEBUG=1 ./scripts/run-ci-gradle.sh :gradle-plugin:functionalTest --continue --quiet --profile \
             -Pmetro.functionalTestKmpTarget=all \
@@ -628,7 +646,7 @@ jobs:
       # This run covers the committed npm locks on every host.
       # The separate samples job regenerates its locks first.
       - name: Check samples
-        if: runner.os != 'macOS' || matrix.partition == 'native'
+        if: runner.os != 'macOS' || matrix.partition == 'runtime'
         run: |
           if [[ "$RUNNER_OS" == "Linux" ]]; then
             RUNNER_DEBUG=1 ./scripts/run-ci-gradle.sh -p samples test allTests --continue --quiet --profile
