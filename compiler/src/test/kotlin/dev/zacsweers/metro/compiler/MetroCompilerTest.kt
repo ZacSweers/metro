@@ -376,6 +376,9 @@ abstract class MetroCompilerTest {
             OMIT_REDUNDANT_MIRRORS -> {
               processor.option(entry.raw.cliOption, this@toPluginOptions.omitRedundantMirrors)
             }
+            FIX_EMPTY_SMAP_RANGES -> {
+              processor.option(entry.raw.cliOption, this@toPluginOptions.fixEmptySmapRanges)
+            }
             ENABLE_PROVIDER_INLINING -> {
               processor.option(entry.raw.cliOption, this@toPluginOptions.enableProviderInlining)
             }

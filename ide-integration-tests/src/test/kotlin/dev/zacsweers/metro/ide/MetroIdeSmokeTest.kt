@@ -322,6 +322,7 @@ class MetroIdeSmokeTest {
           addSystemProperty("ide.show.tips.on.startup.default.value", false)
 
           if (asConsentDirs != null) {
+            addSystemProperty("disable.android.analytics.consent.dialog", true)
             addSystemProperty("google.login.enable.startup.sign.in.dialog", false)
             addSystemProperty(
               "idea.common.data.path",

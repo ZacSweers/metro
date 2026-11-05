@@ -108,6 +108,7 @@
     "parallelThreads": 0,
     "bufferedIcTracking": true,
     "omitRedundantMirrors": false,
+    "fixEmptySmapRanges": false,
     "enableProviderInlining": true,
     "enableFunctionProviders": true,
     "enableSuspendProviders": false,

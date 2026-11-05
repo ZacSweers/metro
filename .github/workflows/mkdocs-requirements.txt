@@ -9,7 +9,7 @@ click==8.5.0
 future==1.0.0
 Jinja2==3.1.6
 livereload==2.7.1
-lunr==0.8.0
+lunr==0.8.1
 Markdown==3.11.2
 MarkupSafe==3.0.4
 # Mike (Zensical fork by squidfunk) - versioned docs deployment to gh-pages
@@ -25,7 +25,7 @@ mkdocs-callouts==1.17.1
 Pygments==2.21.0
 pymdown-extensions==12.3
 python-dateutil==4.0.0
-mkdocs-git-revision-date-localized-plugin==1.6.2
+mkdocs-git-revision-date-localized-plugin==1.6.3
 PyYAML==6.0.3
 repackage==0.7.3
 six==1.17.0

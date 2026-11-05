@@ -1,8 +1,4 @@
 class Activity {
-  lateinit var handler: Handler
-    get
-    set
-
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class MetroMembersInjector : MembersInjector<Activity> {
     private /* final field */ val handler: Provider<Handler> = handler
@@ -45,6 +41,10 @@ class Activity {
     /* <init>() */
 
   }
+
+  lateinit var handler: Handler
+    get
+    set
 
 }
 

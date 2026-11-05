@@ -408,22 +408,8 @@ interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
-    internal val shard1: Shard1
-
-    internal val shard2: Shard2
-
-    internal val shard3: Shard3
-
     private class Shard1 {
-      internal val oneProvider: Provider<One>
-
-      internal val threeProvider: Provider<Three>
-
       private class SwitchingProvider<T : Any?> : Provider<T> {
-        private val graph: Shard1
-
-        private val id: Int
-
         constructor(graph: Shard1, id: Int) /* primary */ {
           super/*Any*/()
           <this>.#graph = graph
@@ -441,6 +427,10 @@ interface AppGraph {
           }
         }
 
+        private val graph: Shard1
+
+        private val id: Int
+
       }
 
       constructor() /* primary */ {
@@ -449,18 +439,14 @@ interface AppGraph {
         <this>.#threeProvider = provider<Provider<Three>, Three>(delegate = SwitchingProvider<Three>(graph = <this>, id = 0))
       }
 
+      internal val oneProvider: Provider<One>
+
+      internal val threeProvider: Provider<Three>
+
     }
 
     private class Shard2 {
-      internal val twoProvider: Provider<Two>
-
-      internal val graph: Impl
-
       private class SwitchingProvider<T : Any?> : Provider<T> {
-        private val graph: Shard2
-
-        private val id: Int
-
         constructor(graph: Shard2, id: Int) /* primary */ {
           super/*Any*/()
           <this>.#graph = graph
@@ -477,6 +463,10 @@ interface AppGraph {
           }
         }
 
+        private val graph: Shard2
+
+        private val id: Int
+
       }
 
       constructor(graph: Impl) /* primary */ {
@@ -490,14 +480,18 @@ interface AppGraph {
           return FirstAdapter(one = <this>.#graph.#shard1.#oneProvider.invoke(), two = <this>.#twoProvider.invoke(), three = <this>.#graph.#shard1.#threeProvider.invoke())
         }
 
+      internal val graph: Impl
+
+      internal val twoProvider: Provider<Two>
+
     }
 
     private class Shard3 {
-      internal val graph: Impl
-
       constructor(graph: Impl) /* primary */ {
         super/*Any*/()
       }
+
+      internal val graph: Impl
 
       internal val setOfAdapter: Set<Adapter>
         internal get(): Set<Adapter> {
@@ -601,6 +595,12 @@ interface AppGraph {
       override get(): Set<Adapter> {
         return <this>.#shard3.<get-setOfAdapter>()
       }
+
+    internal val shard1: Shard1
+
+    internal val shard2: Shard2
+
+    internal val shard3: Shard3
 
     override val sibling: SiblingGraph
       override get(): SiblingGraph {

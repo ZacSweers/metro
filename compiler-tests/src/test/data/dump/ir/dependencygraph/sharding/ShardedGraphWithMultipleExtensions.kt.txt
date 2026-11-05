@@ -568,42 +568,36 @@ interface AppGraph : Feature1Graph.Factory.MetroContributionToAppScope, Feature2
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
-    internal val shard1: Shard1
-
-    internal val shard2: Shard2
-
-    internal val shard3: Shard3
-
     private class Shard1 {
-      internal val appService1Provider: Provider<AppService1>
-
       constructor() /* primary */ {
         super/*Any*/()
         <this>.#appService1Provider = provider<Provider<AppService1>, AppService1>(delegate = create())
       }
 
+      internal val appService1Provider: Provider<AppService1>
+
     }
 
     private class Shard2 {
-      internal val appService2Provider: Provider<AppService2>
-
-      internal val appService3Provider: Provider<AppService3>
-
       constructor() /* primary */ {
         super/*Any*/()
         <this>.#appService2Provider = provider<Provider<AppService2>, AppService2>(delegate = create())
         <this>.#appService3Provider = provider<Provider<AppService3>, AppService3>(delegate = create())
       }
 
+      internal val appService2Provider: Provider<AppService2>
+
+      internal val appService3Provider: Provider<AppService3>
+
     }
 
     private class Shard3 {
-      internal val appService4Provider: Provider<AppService4>
-
       constructor() /* primary */ {
         super/*Any*/()
         <this>.#appService4Provider = provider<Provider<AppService4>, AppService4>(delegate = create())
       }
+
+      internal val appService4Provider: Provider<AppService4>
 
     }
 
@@ -612,30 +606,26 @@ interface AppGraph : Feature1Graph.Factory.MetroContributionToAppScope, Feature2
       private val appGraphImpl: Impl
         field = appGraphImpl
 
-      internal val shard1: Shard1
-
-      internal val shard2: Shard2
-
       private class Shard1 {
-        internal val feature1Service1Provider: Provider<Feature1Service1>
-
-        internal val feature1Service2Provider: Provider<Feature1Service2>
-
         constructor() /* primary */ {
           super/*Any*/()
           <this>.#feature1Service1Provider = provider<Provider<Feature1Service1>, Feature1Service1>(delegate = create())
           <this>.#feature1Service2Provider = provider<Provider<Feature1Service2>, Feature1Service2>(delegate = create(f1s1 = <this>.#feature1Service1Provider))
         }
 
+        internal val feature1Service1Provider: Provider<Feature1Service1>
+
+        internal val feature1Service2Provider: Provider<Feature1Service2>
+
       }
 
       private class Shard2 {
-        internal val feature1Service3Provider: Provider<Feature1Service3>
-
         constructor(graph: Feature1GraphImpl) /* primary */ {
           super/*Any*/()
           <this>.#feature1Service3Provider = provider<Provider<Feature1Service3>, Feature1Service3>(delegate = create(f1s2 = graph.#shard1.#feature1Service2Provider))
         }
+
+        internal val feature1Service3Provider: Provider<Feature1Service3>
 
       }
 
@@ -652,6 +642,10 @@ interface AppGraph : Feature1Graph.Factory.MetroContributionToAppScope, Feature2
           return <this>.#shard2.#feature1Service3Provider.invoke()
         }
 
+      internal val shard1: Shard1
+
+      internal val shard2: Shard2
+
     }
 
     @DependencyGraph(scope = Feature2Scope::class)
@@ -659,30 +653,26 @@ interface AppGraph : Feature1Graph.Factory.MetroContributionToAppScope, Feature2
       private val appGraphImpl: Impl
         field = appGraphImpl
 
-      internal val shard1: Shard1
-
-      internal val shard2: Shard2
-
       private class Shard1 {
-        internal val feature2Service1Provider: Provider<Feature2Service1>
-
         constructor(graph: Feature2GraphImpl) /* primary */ {
           super/*Any*/()
           <this>.#feature2Service1Provider = provider<Provider<Feature2Service1>, Feature2Service1>(delegate = create(app = graph.#appGraphImpl.#shard1.#appService1Provider))
         }
 
+        internal val feature2Service1Provider: Provider<Feature2Service1>
+
       }
 
       private class Shard2 {
-        internal val feature2Service2Provider: Provider<Feature2Service2>
-
-        internal val feature2Service3Provider: Provider<Feature2Service3>
-
         constructor(graph: Feature2GraphImpl) /* primary */ {
           super/*Any*/()
           <this>.#feature2Service2Provider = provider<Provider<Feature2Service2>, Feature2Service2>(delegate = create(f2s1 = graph.#shard1.#feature2Service1Provider))
           <this>.#feature2Service3Provider = provider<Provider<Feature2Service3>, Feature2Service3>(delegate = create(f2s2 = <this>.#feature2Service2Provider))
         }
+
+        internal val feature2Service2Provider: Provider<Feature2Service2>
+
+        internal val feature2Service3Provider: Provider<Feature2Service3>
 
       }
 
@@ -698,6 +688,10 @@ interface AppGraph : Feature1Graph.Factory.MetroContributionToAppScope, Feature2
         override get(): Feature2Service3 {
           return <this>.#shard2.#feature2Service3Provider.invoke()
         }
+
+      internal val shard1: Shard1
+
+      internal val shard2: Shard2
 
     }
 
@@ -747,6 +741,12 @@ interface AppGraph : Feature1Graph.Factory.MetroContributionToAppScope, Feature2
       override get(): Feature2Graph.Factory {
         return <this>
       }
+
+    internal val shard1: Shard1
+
+    internal val shard2: Shard2
+
+    internal val shard3: Shard3
 
   }
 

@@ -484,6 +484,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
       }
 
       @Test
+      @TestMetadata("defaultParameterSmaps.kt")
+      public void testDefaultParameterSmaps() {
+        run("defaultParameterSmaps.kt");
+      }
+
+      @Test
       @TestMetadata("defaultParameters.kt")
       public void testDefaultParameters() {
         run("defaultParameters.kt");
@@ -1902,6 +1908,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
       }
 
       @Test
+      @TestMetadata("ParentGetterProvidersDoNotRetainChildren.kt")
+      public void testParentGetterProvidersDoNotRetainChildren() {
+        run("ParentGetterProvidersDoNotRetainChildren.kt");
+      }
+
+      @Test
       @TestMetadata("ParentMultibindingsAreAlsoIncluded.kt")
       public void testParentMultibindingsAreAlsoIncluded() {
         run("ParentMultibindingsAreAlsoIncluded.kt");
@@ -2497,6 +2509,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
       @TestMetadata("GenericWithDependentTypeParams.kt")
       public void testGenericWithDependentTypeParams() {
         run("GenericWithDependentTypeParams.kt");
+      }
+
+      @Test
+      @TestMetadata("InlineFunctionSmaps.kt")
+      public void testInlineFunctionSmaps() {
+        run("InlineFunctionSmaps.kt");
       }
     }
 
