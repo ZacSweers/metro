@@ -31,6 +31,7 @@ import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.constructors
+import org.jetbrains.kotlin.ir.util.patchDeclarationParents
 
 /**
  * Adds optional behavior around the binding expressions produced by [BindingExpressionGenerator].
@@ -264,6 +265,7 @@ private class TraceExpressionDecorator(
         ) {
           +irReturn(expression)
         }
+      traceBlock.function.body?.patchDeclarationParents(traceBlock.function)
       irInvoke(
         dispatchReceiver = traceContext,
         callee = traceFunction,
