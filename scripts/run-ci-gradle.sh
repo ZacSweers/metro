@@ -49,7 +49,7 @@ log_resources() {
   swap_free_kb=$(read_meminfo_kb "SwapFree")
   disk_available_kb=$(df -Pk "${GITHUB_WORKSPACE:-.}" | awk 'NR == 2 { print $4 }')
   read -r java_processes java_rss_kb < <(
-    ps -eo comm=,rss= | awk '$1 == "java" { count += 1; rss += $2 } END { print count + 0, rss + 0 }'
+    ps -eo rss=,comm= | awk '$NF ~ /(^|\/)java$/ { count += 1; rss += $1 } END { print count + 0, rss + 0 }'
   )
   cgroup_memory=$(read_cgroup_value "/sys/fs/cgroup/memory.current")
   cgroup_memory_max=$(read_cgroup_value "/sys/fs/cgroup/memory.max")
@@ -59,9 +59,21 @@ log_resources() {
 }
 
 monitor_resources() {
+  # The sleep process must exit before the step's output pipe can close.
+  stop_monitor() {
+    local child_pid
+    for child_pid in $(jobs -pr); do
+      kill "$child_pid" 2>/dev/null || true
+    done
+    wait 2>/dev/null || true
+    exit 0
+  }
+  trap stop_monitor TERM INT
+
   while true; do
     log_resources
-    sleep 60
+    sleep 60 &
+    wait "$!"
   done
 }
 
@@ -79,9 +91,18 @@ if [[ "${RUNNER_DEBUG:-0}" == "1" ]]; then
 fi
 
 gradle_jvm_args="-Xmx4g -Dfile.encoding=UTF-8 --enable-native-access=ALL-UNNAMED"
+gradle_max_workers=4
+if [[ "${RUNNER_OS:-}" == "macOS" ]]; then
+  processor_count=$(sysctl -n hw.logicalcpu)
+  if (( processor_count < gradle_max_workers )); then
+    gradle_max_workers=$processor_count
+  fi
+  # Release idle Kotlin daemons after preparation.
+  gradle_jvm_args+=" -Dkotlin.daemon.options=autoshutdownIdleSeconds=60"
+fi
 
 ./gradlew \
-  --max-workers=4 \
+  "--max-workers=$gradle_max_workers" \
   "-Dorg.gradle.jvmargs=$gradle_jvm_args" \
   -Pkotlin.daemon.jvmargs=-Xmx2g \
   "$@"
