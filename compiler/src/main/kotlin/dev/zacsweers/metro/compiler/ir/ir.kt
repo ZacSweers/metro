@@ -1,4 +1,5 @@
 // Copyright (C) 2024 Zac Sweers
+// Copyright 2010-2021 JetBrains s.r.o. and Kotlin Programming Language contributors.
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
@@ -42,8 +43,6 @@ import org.jetbrains.kotlin.DeprecatedForRemovalCompilerApi
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.backend.common.ir.createExtensionReceiver
 import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
-import org.jetbrains.kotlin.backend.jvm.ir.isEffectivelyInlineOnly
-import org.jetbrains.kotlin.backend.jvm.ir.isWithFlexibleNullability
 import org.jetbrains.kotlin.builtins.StandardNames
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
@@ -2832,6 +2831,26 @@ internal fun IrDeclarationWithVisibility.isVisibleAsInternalTo(
   return callingDeclarationPackageFragment.moduleDescriptor.shouldSeeInternalsOf(
     referencedDeclarationPackageFragment.moduleDescriptor,
   )
+}
+
+private fun IrDeclarationWithVisibility.isEffectivelyInlineOnly(): Boolean {
+  if (this !is IrFunction) {
+    return false
+  }
+  if (typeParameters.any { it.isReified }) {
+    return true
+  }
+  val hasInlineOnlyAnnotation = hasAnnotation(StandardClassIds.Annotations.InlineOnly)
+  if (isInline && hasInlineOnlyAnnotation) {
+    return true
+  }
+  val property = (this as? IrSimpleFunction)?.correspondingPropertySymbol?.owner
+  if (property?.hasAnnotation(StandardClassIds.Annotations.InlineOnly) == true) {
+    return true
+  }
+  val isPrivateInline = isInline && visibility == DescriptorVisibilities.PRIVATE
+  val isSuspendFunction = this is IrSimpleFunction && isSuspend
+  return isSuspendFunction && isPrivateInline
 }
 
 private fun IrDeclarationWithVisibility.isPackagePrivateIsh(): Boolean {

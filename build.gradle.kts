@@ -103,10 +103,24 @@ tasks.register<Sync>("prepareGraphViewer") {
   from(layout.projectDirectory.file("design/pluginIcon_dark.svg"))
 }
 
+val compilerApiDependency = providers.gradleProperty("metro.compilerApiDependency")
+val compilerApiProjects = setOf(":compiler", ":compiler-compat", ":compiler-compat:k2520_dev_2623")
+
 subprojects {
   apply(plugin = "metro.base")
   group = project.property("GROUP") as String
   version = project.property("VERSION_NAME") as String
+
+  if (compilerApiDependency.isPresent && path in compilerApiProjects) {
+    configurations
+      .matching { it.name == "compileClasspath" }
+      .configureEach {
+        resolutionStrategy.dependencySubstitution {
+          substitute(module("org.jetbrains.kotlin:kotlin-compiler"))
+            .using(module(compilerApiDependency.get()))
+        }
+      }
+  }
 }
 
 dependencies {

@@ -1,4 +1,5 @@
 // Copyright (C) 2024 Zac Sweers
+// Copyright 2010-2026 JetBrains s.r.o. and Kotlin Programming Language contributors.
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir
 
@@ -28,9 +29,7 @@ import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.FirAnnotationContainer
 import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.FirSession
-import org.jetbrains.kotlin.fir.analysis.checkers.classKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
-import org.jetbrains.kotlin.fir.analysis.checkers.declaredMemberScope
 import org.jetbrains.kotlin.fir.analysis.checkers.getAllowedAnnotationTargets
 import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
 import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
@@ -56,6 +55,7 @@ import org.jetbrains.kotlin.fir.declarations.utils.isInner
 import org.jetbrains.kotlin.fir.declarations.utils.isLateInit
 import org.jetbrains.kotlin.fir.declarations.utils.isLocal
 import org.jetbrains.kotlin.fir.declarations.utils.isOpen
+import org.jetbrains.kotlin.fir.declarations.utils.isOverride
 import org.jetbrains.kotlin.fir.declarations.utils.modality
 import org.jetbrains.kotlin.fir.declarations.utils.visibility
 import org.jetbrains.kotlin.fir.deserialization.toQualifiedPropertyAccessExpression
@@ -93,14 +93,19 @@ import org.jetbrains.kotlin.fir.renderer.ConeIdShortRenderer
 import org.jetbrains.kotlin.fir.renderer.ConeTypeRendererForReadability
 import org.jetbrains.kotlin.fir.resolve.ScopeSession
 import org.jetbrains.kotlin.fir.resolve.defaultType
+import org.jetbrains.kotlin.fir.resolve.fullyExpandedType
 import org.jetbrains.kotlin.fir.resolve.getContainingClassSymbol
+import org.jetbrains.kotlin.fir.resolve.getContainingDeclaration
 import org.jetbrains.kotlin.fir.resolve.getSuperTypes
 import org.jetbrains.kotlin.fir.resolve.lookupSuperTypes
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.resolve.substitution.substitutorByMap
+import org.jetbrains.kotlin.fir.resolve.toClassLikeSymbol
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 import org.jetbrains.kotlin.fir.resolve.toRegularClassSymbol
 import org.jetbrains.kotlin.fir.resolve.toSymbol
+import org.jetbrains.kotlin.fir.scopes.ScopeFunctionRequiresPrewarm
+import org.jetbrains.kotlin.fir.scopes.getDirectOverriddenMembers
 import org.jetbrains.kotlin.fir.scopes.impl.declaredMemberScope
 import org.jetbrains.kotlin.fir.scopes.impl.toConeType
 import org.jetbrains.kotlin.fir.scopes.processAllCallables
@@ -136,6 +141,7 @@ import org.jetbrains.kotlin.fir.types.FirUserTypeRef
 import org.jetbrains.kotlin.fir.types.abbreviatedType
 import org.jetbrains.kotlin.fir.types.builder.buildUserTypeRef
 import org.jetbrains.kotlin.fir.types.classId
+import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
 import org.jetbrains.kotlin.fir.types.constructClassLikeType
 import org.jetbrains.kotlin.fir.types.constructClassType
@@ -156,6 +162,50 @@ import org.jetbrains.kotlin.types.ConstantValueKind
 @OptIn(UnresolvedExpressionTypeAccess::class)
 internal val FirExpression.isResolved: Boolean
   get() = coneTypeOrNull != null
+
+// Adapted from Kotlin's FirHelpers.kt and FirObjCInterop.kt.
+internal val FirClassLikeSymbol<*>.classKind: ClassKind?
+  get() = (this as? FirClassSymbol<*>)?.classKind
+
+internal fun ConeKotlinType.fullyExpandedClassId(session: FirSession): ClassId? =
+  fullyExpandedType(session).classId
+
+internal fun FirTypeRef.toClassLikeSymbol(session: FirSession): FirClassLikeSymbol<*>? =
+  coneType.toClassLikeSymbol(session)
+
+internal fun CheckerContext.findClosestClassOrObject(): FirClassSymbol<*>? {
+  for (symbol in containingDeclarations.asReversed()) {
+    if (symbol is FirRegularClassSymbol || symbol is FirAnonymousObjectSymbol) {
+      return symbol
+    }
+  }
+  return null
+}
+
+context(context: CheckerContext)
+@OptIn(ScopeFunctionRequiresPrewarm::class)
+internal fun FirCallableSymbol<*>.directOverriddenSymbolsSafe(): List<FirCallableSymbol<*>> {
+  if (!isOverride) {
+    return emptyList()
+  }
+  val containingClass = getContainingClassSymbol() as? FirClassSymbol<*> ?: return emptyList()
+  val scope =
+    containingClass.unsubstitutedScope(
+      context.session,
+      context.scopeSession,
+      withForcedTypeCalculator = true,
+      memberRequiredPhase = FirResolvePhase.STATUS,
+    )
+  scope.processFunctionsByName(name) {}
+  return scope.getDirectOverriddenMembers(this, true)
+}
+
+internal fun FirClassSymbol<*>.parentsWithSelf(
+  session: FirSession,
+): Sequence<FirClassLikeSymbol<FirClassLikeDeclaration>> =
+  generateSequence<FirClassLikeSymbol<FirClassLikeDeclaration>>(this) {
+    it.getContainingDeclaration(session)
+  }
 
 internal fun TargetPlatform?.supportsTracing(): Boolean {
   return this == null || isJvm()
@@ -1543,7 +1593,8 @@ internal fun FirClassSymbol<*>.callableSymbols(): List<FirCallableSymbol<*>> {
 context(context: CheckerContext)
 internal fun FirClassSymbol<*>.directCallableSymbols(): List<FirCallableSymbol<*>> {
   val collected = mutableListOf<FirCallableSymbol<*>>()
-  declaredMemberScope().processAllCallables { collected += it }
+  declaredMemberScope(context.session, memberRequiredPhase = FirResolvePhase.STATUS)
+    .processAllCallables { collected += it }
   return collected
 }
 

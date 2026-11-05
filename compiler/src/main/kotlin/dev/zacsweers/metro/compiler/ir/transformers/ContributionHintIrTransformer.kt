@@ -22,6 +22,7 @@ import dev.zacsweers.metro.compiler.ir.trackClassLookup
 import dev.zacsweers.metro.compiler.ir.usesContributionProviderPath
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.scopeHintFunctionName
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import kotlin.io.path.Path
 import kotlin.io.path.absolutePathString
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
@@ -35,9 +36,8 @@ import org.jetbrains.kotlin.ir.util.file
 import org.jetbrains.kotlin.ir.util.fileEntry
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.primaryConstructor
-import org.jetbrains.kotlin.load.kotlin.PackagePartClassUtils
 import org.jetbrains.kotlin.name.ClassId
-import org.jetbrains.kotlin.name.JvmStandardClassIds
+import org.jetbrains.kotlin.name.NameUtils
 import org.jetbrains.kotlin.platform.jvm.isJvm
 
 /**
@@ -101,16 +101,14 @@ internal class ContributionHintIrTransformer(
     if (isJvm) {
       file.clearTopLevelPluginFileMarkerCompat()
       val jvmNameConstructor =
-        builtinsFinderCompat()
-          .findClass(ClassId.topLevel(JvmStandardClassIds.JVM_NAME))!!
-          .owner
-          .primaryConstructor!!
+        builtinsFinderCompat().findClass(Symbols.ClassIds.JvmName)!!.owner.primaryConstructor!!
 
       val jvmNameAnnotation =
         with(pluginContext) {
+          val fileClassName =
+            NameUtils.getPackagePartClassNamePrefix(hintFileName.substringBeforeLast('.')) + "Kt"
           buildAnnotation(hint.symbol, jvmNameConstructor.symbol) { annotation ->
-            annotation.arguments[0] =
-              irString(PackagePartClassUtils.getFilePartShortName(hintFileName))
+            annotation.arguments[0] = irString(fileClassName)
           }
         }
       file.addAnnotationCompat(jvmNameAnnotation)

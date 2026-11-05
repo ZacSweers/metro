@@ -1,8 +1,8 @@
 // Copyright (C) 2025 Zac Sweers
+// Copyright 2010-2024 JetBrains s.r.o. and Kotlin Programming Language contributors.
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
-import org.jetbrains.kotlin.backend.jvm.ir.fileParentOrNull
 import org.jetbrains.kotlin.backend.jvm.ir.getIoFile
 import org.jetbrains.kotlin.backend.jvm.ir.getKtFile
 import org.jetbrains.kotlin.incremental.components.ExpectActualTracker
@@ -26,6 +26,15 @@ import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.psi.doNotAnalyze
+
+private val IrDeclaration.fileParentOrNull: IrFile?
+  get() {
+    var currentParent = parent
+    while (currentParent is IrDeclaration) {
+      currentParent = currentParent.parent
+    }
+    return currentParent as? IrFile
+  }
 
 /**
  * This is a hack for IC using the [IrMetroContext.expectActualTracker] to link the

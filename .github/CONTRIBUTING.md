@@ -74,6 +74,38 @@ Tests are spread across a few areas.
 
 To test different versions of Kotlin (backed by the `:compiler-compat` system, see its README for more details), set the `metro.testCompilerVersion` property to the Kotlin version you want to test. This is automatically used by all the tests in `:compiler`, `:compiler-tests`, and `:gradle-plugin` functional tests when specified.
 
+### Compiler Plugin API Trial
+
+Set `metro.compilerApiDependency` to replace the compiler dependency on the main compile classpaths of `:compiler`, `:compiler-compat`, and `:compiler-compat:k2520_dev_2623`. Older compatibility adapters keep their version-specific dependencies. Test and documentation runtime dependencies keep the full compiler.
+
+```bash
+./gradlew :compiler:compileKotlin --quiet -Pmetro.compilerApiDependency=org.jetbrains.kotlin:kotlin-compiler-plugin-api:2.5.20-dev-2623
+```
+
+Use the full compiler at the same version to check whether a failure also occurs outside the reduced API artifact:
+
+```bash
+./gradlew :compiler:compileKotlin --quiet -Pmetro.compilerApiDependency=org.jetbrains.kotlin:kotlin-compiler:2.5.20-dev-2623
+```
+
+If the API trial fails in a compatibility module, run the full-compiler command first to compile those modules. Then exclude their compile tasks to collect errors from the main compiler module:
+
+```bash
+./gradlew :compiler:compileKotlin --quiet \
+  -Pmetro.compilerApiDependency=org.jetbrains.kotlin:kotlin-compiler-plugin-api:2.5.20-dev-2623 \
+  -x :compiler-compat:compileKotlin -x :compiler-compat:k2520_dev_2623:compileKotlin
+```
+
+This diagnostic command reuses compatibility classes built against the full compiler. A successful migration must also pass the trial without task exclusions.
+
+The existing `kotlin_repo_url` property supports a locally published Kotlin build:
+
+```bash
+./gradlew :compiler:compileKotlin --quiet \
+  -Pmetro.compilerApiDependency=org.jetbrains.kotlin:kotlin-compiler-plugin-api:2.5.255-SNAPSHOT \
+  -Pkotlin_repo_url="file://$HOME/.m2/repository"
+```
+
 ### Local Publishing
 
 To publish to a local maven repo, run this:

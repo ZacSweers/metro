@@ -5,6 +5,13 @@ package dev.zacsweers.metro.compiler.ir
 import com.google.common.truth.Truth.assertThat
 import dev.zacsweers.metro.compiler.MetroOptions
 import kotlin.test.fail
+import org.jetbrains.kotlin.descriptors.ClassKind
+import org.jetbrains.kotlin.descriptors.Modality
+import org.jetbrains.kotlin.ir.builders.declarations.buildClass
+import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.impl.IrFactoryImpl
+import org.jetbrains.kotlin.ir.types.typeWith
+import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.platform.js.JsPlatforms
 import org.jetbrains.kotlin.platform.jvm.JvmPlatforms
 import org.jetbrains.kotlin.platform.konan.NativePlatforms
@@ -14,6 +21,27 @@ import org.junit.Test
 class IrTest {
 
   private val metroOptions = MetroOptions()
+
+  @Test
+  fun `superinterfaces preserve ancestor order and shared inheritance paths`() {
+    fun declaration(name: String, kind: ClassKind, vararg parents: IrClass): IrClass {
+      return IrFactoryImpl.buildClass {
+          this.name = Name.identifier(name)
+          this.kind = kind
+          modality = Modality.ABSTRACT
+        }
+        .apply { superTypes = parents.map { it.typeWith() } }
+    }
+
+    val root = declaration("Root", ClassKind.INTERFACE)
+    val left = declaration("Left", ClassKind.INTERFACE, root)
+    val right = declaration("Right", ClassKind.INTERFACE, root)
+    val base = declaration("Base", ClassKind.CLASS, left)
+    val target = declaration("Target", ClassKind.CLASS, base, right)
+
+    assertThat(target.allSuperInterfaces()).containsExactly(root, left, root, right).inOrder()
+    assertThat(left.allSuperInterfaces()).containsExactly(root, left).inOrder()
+  }
 
   // region shouldCheckSignatureCarrierParamMismatches tests
 

@@ -36,8 +36,6 @@ import org.jetbrains.kotlin.ir.util.kotlinPackageFqn
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
-import org.jetbrains.kotlin.name.JsStandardClassIds
-import org.jetbrains.kotlin.name.JvmStandardClassIds
 import org.jetbrains.kotlin.name.StandardClassIds
 
 @SingleIn(IrScope::class)
@@ -156,9 +154,10 @@ internal class Symbols(
     val HasMemberInjections = MetroClassIds.hasMemberInjections
     val JavaOptional = ClassId(FqNames.javaUtil, Names.Optional)
     val JavaLangClass = ClassId(FqName("java.lang"), "Class".asName())
-    val JvmField = JvmStandardClassIds.Annotations.JvmField
-    val JvmStatic = JvmStandardClassIds.Annotations.JvmStatic
-    val JsStatic = JsStandardClassIds.Annotations.JsStatic
+    val JvmField = ClassId.topLevel(FqName("kotlin.jvm.JvmField"))
+    val JvmName = ClassId.topLevel(FqName("kotlin.jvm.JvmName"))
+    val JvmStatic = ClassId.topLevel(FqName("kotlin.jvm.JvmStatic"))
+    val JsStatic = ClassId.topLevel(FqName("kotlin.js.JsStatic"))
     val Lazy = MetroClassIds.lazy
     val MembersInjector = ClassId(FqNames.metroRuntimePackage, Names.membersInjector)
     val MultibindingElement = MetroClassIds.multibindingElement

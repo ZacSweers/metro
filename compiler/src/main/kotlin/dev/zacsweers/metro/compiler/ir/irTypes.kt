@@ -1,10 +1,11 @@
 // Copyright (C) 2025 Zac Sweers
+// Copyright 2010-2021 JetBrains s.r.o. and Kotlin Programming Language contributors.
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.ir.cache.IrCache
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
-import org.jetbrains.kotlin.backend.jvm.ir.isWithFlexibleNullability
+import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrTypeParametersContainer
 import org.jetbrains.kotlin.ir.symbols.IrTypeParameterSymbol
@@ -22,7 +23,27 @@ import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
+import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.StandardClassIds
+
+internal fun IrType.isWithFlexibleNullability(): Boolean =
+  hasAnnotation(StandardClassIds.Annotations.FlexibleNullability)
+
+/** Visits ancestor interfaces before their children. Shared ancestors appear once per path. */
+internal fun IrClass.allSuperInterfaces(): List<IrClass> {
+  val result = mutableListOf<IrClass>()
+  fun collect(current: IrClass) {
+    for (supertype in current.superTypes) {
+      collect(supertype.classifierOrFail.owner as IrClass)
+    }
+    if (current.kind == ClassKind.INTERFACE) {
+      result += current
+    }
+  }
+  collect(this)
+  return result
+}
 
 /** Creates a remapper for this class and subtype. The caller owns its mutable result cache. */
 internal fun IrClass.deepRemapperFor(subtype: IrType): TypeRemapper {
