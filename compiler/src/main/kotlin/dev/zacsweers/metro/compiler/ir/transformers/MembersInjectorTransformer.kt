@@ -56,6 +56,7 @@ import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.requireStaticIshDeclarationContainer
 import dev.zacsweers.metro.compiler.ir.staticIshDeclarationContainerOrNull
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
+import dev.zacsweers.metro.compiler.ir.trackClassLookup
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.ir.typeRemapperFor
 import dev.zacsweers.metro.compiler.memoize
@@ -71,7 +72,8 @@ import java.util.Optional
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.jvm.optionals.getOrNull
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
-import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
+import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
+import org.jetbrains.kotlin.ir.builders.IrStatementsBuilder
 import org.jetbrains.kotlin.ir.builders.declarations.addConstructor
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
 import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
@@ -81,8 +83,11 @@ import org.jetbrains.kotlin.ir.builders.irSetField
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.declarations.IrValueDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrExpression
+import org.jetbrains.kotlin.ir.types.IrSimpleType
+import org.jetbrains.kotlin.ir.types.IrStarProjection
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.isUnit
@@ -102,6 +107,7 @@ import org.jetbrains.kotlin.ir.util.isInterface
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.nonDispatchParameters
+import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.superClass
 import org.jetbrains.kotlin.name.CallableId
@@ -512,10 +518,15 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
             addMemberInjection(
               callingFunction = this@apply,
               instanceReceiver = regularParameters[0],
-              injectorReceiver = dispatchReceiverParameter!!,
-              injectFunctions = injectFunctions,
-              parametersToFields = sourceParametersToFields,
-            )
+              injectFunctions = injectFunctions.toList(),
+            ) { parameters, typeRemapper ->
+              parametersAsProviderArguments(
+                parameters = parameters,
+                receiver = dispatchReceiverParameter!!,
+                parametersToFields = sourceParametersToFields,
+                typeRemapper = typeRemapper,
+              )
+            }
           }
       }
     }
@@ -965,20 +976,48 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
   }
 }
 
+/**
+ * Emits member-injection calls for an existing instance.
+ *
+ * [instanceReceiver] holds the instance so every call uses the same object. [injectFunctions] must
+ * be in injection order with ancestors first. This helper records the generated references for
+ * incremental compilation. It resolves generic injector methods against the instance's concrete
+ * type.
+ *
+ * [buildArguments] supplies only the member dependencies in parameter order. It receives the
+ * original parameter model and the instance's type remapper. Callers can read arguments from
+ * function parameters, provider fields, or graph bindings. Returning null skips the injection call
+ * for an absent optional member. A null element in the returned list omits that argument for
+ * default-value handling.
+ */
 context(context: IrMetroContext)
-internal fun IrBlockBodyBuilder.addMemberInjection(
+internal fun IrStatementsBuilder<*>.addMemberInjection(
   callingFunction: IrSimpleFunction,
-  injectFunctions: Map<IrSimpleFunction, Parameters>,
-  parametersToFields: Map<Parameter, IrField>,
-  instanceReceiver: IrValueParameter,
-  injectorReceiver: IrValueParameter,
+  injectFunctions: Iterable<Pair<IrSimpleFunction, Parameters>>,
+  instanceReceiver: IrValueDeclaration,
+  buildArguments: IrBuilderWithScope.(Parameters, TypeRemapper) -> List<IrExpression?>?,
 ) {
   val sourceClass = instanceReceiver.type.classOrNull!!.owner
   val typeRemapper = sourceClass.deepRemapperFor(instanceReceiver.type)
+  val instanceType = instanceReceiver.type
+  val hasStarProjection =
+    instanceType is IrSimpleType && instanceType.arguments.any { it is IrStarProjection }
   for ((function, parameters) in injectFunctions) {
+    // Kotlin injector methods can live in the injector class's companion object.
+    val functionOwner = function.parentAsClass
+    val injectorClass =
+      if (functionOwner.isCompanion) {
+        functionOwner.parentAsClass
+      } else {
+        functionOwner
+      }
+    trackClassLookup(callingFunction, injectorClass)
     trackFunctionCall(callingFunction, function)
+    val memberArguments = buildArguments(parameters, typeRemapper) ?: continue
+    // Star projections don't provide concrete method type arguments.
+    val canSupplyTypeArguments = function.typeParameters.isNotEmpty() && !hasStarProjection
     val typeArgs =
-      if (function.typeParameters.isNotEmpty()) {
+      if (canSupplyTypeArguments) {
         val injectedSourceClass = function.regularParameters[0].type.classOrNull!!.owner
         injectedSourceClass.typeParameters.map { typeRemapper.remapType(it.defaultType) }
       } else {
@@ -990,14 +1029,7 @@ internal fun IrBlockBodyBuilder.addMemberInjection(
       args =
         buildList {
           add(irGet(instanceReceiver))
-          addAll(
-            parametersAsProviderArguments(
-              parameters,
-              injectorReceiver,
-              parametersToFields,
-              typeRemapper,
-            ),
-          )
+          addAll(memberArguments)
         },
     )
   }

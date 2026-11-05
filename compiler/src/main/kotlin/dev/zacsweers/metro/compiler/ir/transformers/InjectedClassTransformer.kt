@@ -53,8 +53,6 @@ import dev.zacsweers.metro.compiler.ir.requireDeclarationMirrorFunction
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.requireStaticIshDeclarationContainer
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
-import dev.zacsweers.metro.compiler.ir.trackClassLookup
-import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.metro.compiler.ir.typeRemapperFor
 import dev.zacsweers.metro.compiler.ir.usesContributionProviderPath
@@ -73,7 +71,6 @@ import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
-import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
@@ -96,7 +93,6 @@ import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.nonDispatchParameters
-import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
@@ -613,29 +609,17 @@ internal class InjectedClassTransformer(
 
         if (injectors.isNotEmpty()) {
           val instance = createAndAddTemporaryVariable(newInstance)
-          for (injector in injectors) {
-            val injectorClass = injector.injectorClass ?: continue
-            trackClassLookup(invokeFunction, injectorClass)
-            for ((function, parameters) in injector.declaredInjectFunctions) {
-              // Record for IC
-              trackFunctionCall(invokeFunction, function)
-              +irInvoke(
-                dispatchReceiver = irGetObject(function.parentAsClass.symbol),
-                callee = function.symbol,
-                args =
-                  buildList {
-                    add(irGet(instance))
-                    addAll(
-                      parametersAsProviderArguments(
-                        parameters = parameters,
-                        receiver = invokeFunction.dispatchReceiverParameter!!,
-                        providerFieldsByKey = providerFieldsByKey,
-                        typeRemapper = typeRemapper,
-                      ),
-                    )
-                  },
-              )
-            }
+          addMemberInjection(
+            callingFunction = invokeFunction,
+            instanceReceiver = instance,
+            injectFunctions = injectors.flatMap { it.declaredInjectFunctions.toList() },
+          ) { parameters, memberTypeRemapper ->
+            parametersAsProviderArguments(
+              parameters = parameters,
+              receiver = invokeFunction.dispatchReceiverParameter!!,
+              providerFieldsByKey = providerFieldsByKey,
+              typeRemapper = memberTypeRemapper,
+            )
           }
 
           +irReturn(irGet(instance))

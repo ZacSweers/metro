@@ -562,6 +562,12 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
       }
 
       @Test
+      @TestMetadata("memberInjection.kt")
+      public void testMemberInjection() {
+        run("memberInjection.kt");
+      }
+
+      @Test
       @TestMetadata("memberInjectionAcrossModules.kt")
       public void testMemberInjectionAcrossModules() {
         run("memberInjectionAcrossModules.kt");
@@ -625,6 +631,12 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
       @TestMetadata("scoped.kt")
       public void testScoped() {
         run("scoped.kt");
+      }
+
+      @Test
+      @TestMetadata("scopedMemberInjectionAcrossModules.kt")
+      public void testScopedMemberInjectionAcrossModules() {
+        run("scopedMemberInjectionAcrossModules.kt");
       }
 
       @Test

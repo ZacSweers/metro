@@ -6,6 +6,7 @@ Changelog
 
 ### Fixes
 
+- **[FIR/IR]** Fix contributed `@Inject` classes skipping declared and inherited member injection when `generateContributionProviders` is enabled.
 - **[IR/interop]** Fix an issue with Dagger-processed providers/constructors with default parameters with their generated factory. Previously, Metro would treat the source function's parameter as optional if it had a default value and not reconcile that correctly with Dagger's generated factory (which would not propagate that default since Dagger uses a different mechanism for optional bindings).
 
 ### Changes

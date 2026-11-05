@@ -11,7 +11,6 @@ import dev.zacsweers.metro.compiler.ir.asCanonicalProviderKey
 import dev.zacsweers.metro.compiler.ir.buildBlockBody
 import dev.zacsweers.metro.compiler.ir.createAndAddTemporaryVariable
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
-import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter.AssistedParameterKey.Companion.toAssistedParameterKey
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
@@ -19,8 +18,8 @@ import dev.zacsweers.metro.compiler.ir.parametersAsProviderArguments
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
-import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
+import dev.zacsweers.metro.compiler.ir.transformers.addMemberInjection
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.metro.compiler.ir.typeRemapperFor
 import dev.zacsweers.metro.compiler.ir.withIrBuilder
@@ -38,7 +37,6 @@ import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irDelegatingConstructorCall
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
-import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.builders.irSetField
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -55,7 +53,6 @@ import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
 import org.jetbrains.kotlin.ir.util.defaultType
-import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 
 /**
@@ -357,22 +354,16 @@ internal class GraphSuspendFactoryGenerator(
               // ordinary factory's generated invoke() member-injection sequence.
               irBlockBody {
                 val instance = createAndAddTemporaryVariable(buildTargetCall(ctorArgs))
-                for ((injectFn, params) in injectFunctions) {
-                  trackFunctionCall(overrideFunction, injectFn)
-                  +irInvoke(
-                    dispatchReceiver = irGetObject(injectFn.parentAsClass.symbol),
-                    callee = injectFn.symbol,
-                    args =
-                      buildList {
-                        add(irGet(instance))
-                        addAll(
-                          parametersAsProviderArguments(
-                            parameters = params,
-                            receiver = localDispatchReceiver,
-                            parametersToFields = fieldsByParam,
-                          ),
-                        )
-                      },
+                addMemberInjection(
+                  callingFunction = overrideFunction,
+                  instanceReceiver = instance,
+                  injectFunctions = injectFunctions,
+                ) { parameters, typeRemapper ->
+                  parametersAsProviderArguments(
+                    parameters = parameters,
+                    receiver = localDispatchReceiver,
+                    parametersToFields = fieldsByParam,
+                    typeRemapper = typeRemapper,
                   )
                 }
                 +irReturn(irGet(instance))
