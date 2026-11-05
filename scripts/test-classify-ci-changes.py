@@ -29,6 +29,9 @@ class ClassifyPathsTest(unittest.TestCase):
         cases = [
             (["README.md"], {"full": False, "docs": True, "idea": False}),
             (["idea-plugin/src/Graph.kt"], {"full": False, "docs": False, "idea": True}),
+            (["ide-integration-tests/ide-versions.txt"], {"full": False, "docs": False, "idea": True}),
+            (["ide-integration-tests/src/test/SmokeTest.kt"], {"full": False, "docs": False, "idea": True}),
+            (["compiler-compat/prerelease-mappings.txt"], {"full": True, "docs": False, "idea": True}),
             (
                 ["README.md", "idea-plugin/src/Graph.kt"],
                 {"full": False, "docs": True, "idea": True},

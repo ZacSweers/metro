@@ -24,17 +24,17 @@ def check_results(needs, workflow, is_main=False):
     if workflow == "ci":
         required.add("format")
         if routes["full"] == "true":
-            required.update(("generate-matrix", "core", "compatibility", "shaded-compiler-smoke",
+            required.update(("generate-matrix", "core", "compatibility", "functional-compatibility", "shaded-compiler-smoke",
                              "js-box", "benchmarks", "samples"))
         if routes["idea"] == "true":
-            required.add("idea-plugin")
+            required.update(("idea-plugin", "idea-plugin-compatibility"))
         if routes["docs"] == "true":
             required.add("docs")
         if is_main:
-            required.add("kmp-functional")
+            required.add("multiplatform-tests")
     elif workflow == "ide":
         if routes["idea"] == "true":
-            required.update(("generate-matrix", "build-metro", "ide-tests"))
+            required.update(("generate-matrix", "build-metro", "build-idea-plugin", "ide-tests"))
     else:
         raise ValueError(f"Unknown workflow: {workflow}")
 
