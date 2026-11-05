@@ -1,4 +1,4 @@
-/module_main_DaggerFactoryDefaultedParamsRequireBindings.kt:27:11: error: [Metro/MissingBinding] No binding found for @Named("required") BaseProps
+/module_main_DaggerFactoryDefaultedParamsRequireBindings.kt:28:11: error: [Metro/MissingBinding] No binding found for @Named("required") BaseProps
 
   test.AppGraph.nonNullableEncoder -> NonNullableEncoder -> @Named("required") BaseProps
 

@@ -14,6 +14,7 @@ interface BaseProps
 
 class NullableEncoder @Inject constructor(val base: BaseProps? = null)
 
+@Suppress("ANNOTATION_WILL_BE_APPLIED_ALSO_TO_PROPERTY_OR_FIELD")
 class NonNullableEncoder @Inject constructor(
   @Named("required") val base: BaseProps = object : BaseProps {},
 )
