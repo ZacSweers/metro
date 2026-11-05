@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793724055231,
+  "lastUpdate": 1793895926425,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -26544,6 +26544,62 @@ window.BENCHMARK_DATA = {
             "value": 0.2714325429826635,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: +0.73%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Andrew Glose",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Andrew Glose",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "31563bcf~1",
+          "message": "[before] Reconcile default params in dagger interop (#3059)",
+          "timestamp": "2026-11-05T15:35:27Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/31563bcf45741321e37c72c16d902a031029ce45"
+        },
+        "date": 1793895926425,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.1556689963881897,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Andrew Glose",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Andrew Glose",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "31563bcf45741321e37c72c16d902a031029ce45",
+          "message": "[after] Reconcile default params in dagger interop (#3059)",
+          "timestamp": "2026-11-05T15:35:27Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/31563bcf45741321e37c72c16d902a031029ce45"
+        },
+        "date": 1793895926426,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.15352293850780044,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: -1.38%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }

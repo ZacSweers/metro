@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793724055386,
+  "lastUpdate": 1793895926579,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -26544,6 +26544,62 @@ window.BENCHMARK_DATA = {
             "value": 9800.985,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -0.79%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Andrew Glose",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Andrew Glose",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "31563bcf~1",
+          "message": "[before] Reconcile default params in dagger interop (#3059)",
+          "timestamp": "2026-11-05T15:35:27Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/31563bcf45741321e37c72c16d902a031029ce45"
+        },
+        "date": 1793895926579,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 13890.698,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Andrew Glose",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Andrew Glose",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "31563bcf45741321e37c72c16d902a031029ce45",
+          "message": "[after] Reconcile default params in dagger interop (#3059)",
+          "timestamp": "2026-11-05T15:35:27Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/31563bcf45741321e37c72c16d902a031029ce45"
+        },
+        "date": 1793895926580,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 13956.232,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +0.47%"
           }
         ]
       }
