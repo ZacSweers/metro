@@ -86,10 +86,14 @@ buildConfig {
 }
 
 tasks.test {
-  maxParallelForks = Runtime.getRuntime().availableProcessors() * 2
-  if (providers.gradleProperty("metro.ciCompilerTestsPreparedFile").isPresent) {
+  maxParallelForks =
+    providers
+      .gradleProperty("metro.legacyCompilerTestMaxParallelForks")
+      .map(String::toInt)
+      .getOrElse(Runtime.getRuntime().availableProcessors() * 2)
+  if (providers.gradleProperty("metro.generateCompilerTests").isPresent) {
     // CI waits for generated suites before starting either compiler test task.
-    dependsOn(":compiler-tests:prepareCiCompilerTests")
+    dependsOn(":compiler-tests:generateTests")
   }
   systemProperty("metro.buildDir", project.layout.buildDirectory.asFile.get().absolutePath)
   systemProperty("metro.diagnosticsRenderMode", "PLAIN")
@@ -168,6 +172,8 @@ tasks.jar.configure { enabled = false }
 val shadowJar =
   tasks.register("shadowJar", ShadowJar::class.java) {
     from(java.sourceSets.main.map { it.output })
+    // The published compiler only needs the main source set's classes.
+    sourceSetsClassesDirs.setFrom(java.sourceSets.main.map { it.output.classesDirs })
     configurations.add(embeddedClasspath)
 
     minimize {
