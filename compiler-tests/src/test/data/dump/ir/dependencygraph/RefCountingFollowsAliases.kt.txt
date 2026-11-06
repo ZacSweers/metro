@@ -6,7 +6,7 @@ class BarA {
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class MetroFactory : Factory<BarA> {
-    private /* final field */ val foo: Function0<Foo> = foo
+    private /* final field */ val foo: Provider<Foo> = foo
     companion object Companion {
       private constructor() /* primary */ {
         super/*Any*/()
@@ -17,7 +17,7 @@ class BarA {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(foo: Function0<Foo>): MetroFactory {
+      fun create(foo: Provider<Foo>): MetroFactory {
         return MetroFactory(foo = foo)
       }
 
@@ -31,7 +31,7 @@ class BarA {
     }
 
     @HiddenFromObjC
-    private constructor(foo: Function0<Foo>) /* primary */ {
+    private constructor(foo: Provider<Foo>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -66,7 +66,7 @@ class BarB {
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class MetroFactory : Factory<BarB> {
-    private /* final field */ val foo: Function0<Foo> = foo
+    private /* final field */ val foo: Provider<Foo> = foo
     companion object Companion {
       private constructor() /* primary */ {
         super/*Any*/()
@@ -77,7 +77,7 @@ class BarB {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(foo: Function0<Foo>): MetroFactory {
+      fun create(foo: Provider<Foo>): MetroFactory {
         return MetroFactory(foo = foo)
       }
 
@@ -91,7 +91,7 @@ class BarB {
     }
 
     @HiddenFromObjC
-    private constructor(foo: Function0<Foo>) /* primary */ {
+    private constructor(foo: Provider<Foo>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -293,10 +293,10 @@ class Main {
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class MetroFactory : Factory<Main> {
-    private /* final field */ val barA: Function0<BarA> = barA
-    private /* final field */ val barB: Function0<BarB> = barB
-    private /* final field */ val quxA: Function0<QuxA> = quxA
-    private /* final field */ val quxB: Function0<QuxB> = quxB
+    private /* final field */ val barA: Provider<BarA> = barA
+    private /* final field */ val barB: Provider<BarB> = barB
+    private /* final field */ val quxA: Provider<QuxA> = quxA
+    private /* final field */ val quxB: Provider<QuxB> = quxB
     companion object Companion {
       private constructor() /* primary */ {
         super/*Any*/()
@@ -307,7 +307,7 @@ class Main {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(barA: Function0<BarA>, barB: Function0<BarB>, quxA: Function0<QuxA>, quxB: Function0<QuxB>): MetroFactory {
+      fun create(barA: Provider<BarA>, barB: Provider<BarB>, quxA: Provider<QuxA>, quxB: Provider<QuxB>): MetroFactory {
         return MetroFactory(barA = barA, barB = barB, quxA = quxA, quxB = quxB)
       }
 
@@ -321,7 +321,7 @@ class Main {
     }
 
     @HiddenFromObjC
-    private constructor(barA: Function0<BarA>, barB: Function0<BarB>, quxA: Function0<QuxA>, quxB: Function0<QuxB>) /* primary */ {
+    private constructor(barA: Provider<BarA>, barB: Provider<BarB>, quxA: Provider<QuxA>, quxB: Provider<QuxB>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -357,7 +357,7 @@ class QuxA {
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class MetroFactory : Factory<QuxA> {
-    private /* final field */ val baz: Function0<Baz> = baz
+    private /* final field */ val baz: Provider<Baz> = baz
     companion object Companion {
       private constructor() /* primary */ {
         super/*Any*/()
@@ -368,7 +368,7 @@ class QuxA {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(baz: Function0<Baz>): MetroFactory {
+      fun create(baz: Provider<Baz>): MetroFactory {
         return MetroFactory(baz = baz)
       }
 
@@ -382,7 +382,7 @@ class QuxA {
     }
 
     @HiddenFromObjC
-    private constructor(baz: Function0<Baz>) /* primary */ {
+    private constructor(baz: Provider<Baz>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -417,7 +417,7 @@ class QuxB {
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class MetroFactory : Factory<QuxB> {
-    private /* final field */ val baz: Function0<Baz> = baz
+    private /* final field */ val baz: Provider<Baz> = baz
     companion object Companion {
       private constructor() /* primary */ {
         super/*Any*/()
@@ -428,7 +428,7 @@ class QuxB {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(baz: Function0<Baz>): MetroFactory {
+      fun create(baz: Provider<Baz>): MetroFactory {
         return MetroFactory(baz = baz)
       }
 
@@ -442,7 +442,7 @@ class QuxB {
     }
 
     @HiddenFromObjC
-    private constructor(baz: Function0<Baz>) /* primary */ {
+    private constructor(baz: Provider<Baz>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.graph
 
+import dev.zacsweers.metro.compiler.MetroClassIds
 import dev.zacsweers.metro.compiler.memoize
 import org.jetbrains.kotlin.name.ClassId
 
@@ -250,6 +251,19 @@ public sealed interface WrappedType<T : Any> {
 
   /** Returns true if this type is a canonical type or Map rather than a scalar wrapper. */
   public fun isScalarLeaf(): Boolean = immediateInnerType() == null
+
+  /**
+   * Whether a generated factory parameter keeps this declared provider type. Interop providers keep
+   * it so graphs can pass their cached conversions. Function types use Metro's `Provider` so they
+   * share a factory field with `T` and `Lazy<T>` parameters.
+   */
+  public fun keepsDeclaredFactoryProviderType(): Boolean {
+    if (this !is Provider) {
+      return false
+    }
+    val isFunctionType = providerType == MetroClassIds.function0
+    return innerType.isScalarLeaf() && !isFunctionType
+  }
 
   /**
    * The scalar wrapper node directly enclosing the [scalarLeaf], walking through any nested scalar

@@ -7,7 +7,6 @@ import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.compat.propertyIfAccessorCompat
 import dev.zacsweers.metro.compiler.generatedContextParameterName
-import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
@@ -445,19 +444,17 @@ internal fun Parameter.remapTypes(remapper: TypeRemapper): Parameter =
 /**
  * Returns the provider type stored by a generated factory.
  *
- * Direct provider requests without defaults keep their requested type. Other requests use a
- * canonical provider so each factory invocation can create fresh values and lazy wrappers. Map
- * value wrappers remain part of the binding key.
+ * Direct interop provider requests without defaults keep their requested type. Function types and
+ * other requests use a canonical provider so each factory invocation can create fresh values and
+ * lazy wrappers. Map value wrappers remain part of the binding key.
  */
 context(context: IrMetroContext)
 internal fun Parameter.toFactoryProviderKey(
   defaultUsesSuspendProvider: Boolean = false,
 ): IrContextualTypeKey {
   val wrappedType = contextualTypeKey.wrappedType
-  if (!hasDefault && wrappedType is WrappedType.Provider) {
-    if (wrappedType.innerType.isScalarLeaf()) {
-      return contextualTypeKey
-    }
+  if (!hasDefault && wrappedType.keepsDeclaredFactoryProviderType()) {
+    return contextualTypeKey
   }
   val usesSuspendProvider = wrappedType.usesSuspendProvider(defaultUsesSuspendProvider)
   return contextualTypeKey.asCanonicalProviderKey(usesSuspendProvider)

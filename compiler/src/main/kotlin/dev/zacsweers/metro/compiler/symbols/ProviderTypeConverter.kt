@@ -36,6 +36,10 @@ internal class ProviderTypeConverter(
   context(context: IrMetroContext)
   fun needsCachedConversion(key: IrContextualTypeKey): Boolean {
     val requestedProvider = key.wrappedType as? WrappedType.Provider ?: return false
+    // Platforms where Provider isn't a function type wrap it in a lambda at each call site.
+    if (requestedProvider.providerType == Symbols.ClassIds.function0) {
+      return false
+    }
     val canonicalKey = key.canonicalize()
     if (requestedProvider.innerType != canonicalKey.wrappedType) {
       return false
