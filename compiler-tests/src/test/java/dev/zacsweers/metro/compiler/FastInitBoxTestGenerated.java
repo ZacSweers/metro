@@ -3893,6 +3893,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("MapProviderValuesAreReusedAcrossReads.kt")
+    public void testMapProviderValuesAreReusedAcrossReads() {
+      run("MapProviderValuesAreReusedAcrossReads.kt");
+    }
+
+    @Test
     @TestMetadata("MultibindingGraphWithWithScopedMapProviderDeps.kt")
     public void testMultibindingGraphWithWithScopedMapProviderDeps() {
       run("MultibindingGraphWithWithScopedMapProviderDeps.kt");
