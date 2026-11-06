@@ -20,6 +20,7 @@ import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.anvilKClassBoundTypeArgument
 import dev.zacsweers.metro.compiler.fir.argumentAsOrNull
 import dev.zacsweers.metro.compiler.fir.buildClassReference
+import dev.zacsweers.metro.compiler.fir.buildFullSubstitutionMap
 import dev.zacsweers.metro.compiler.fir.buildHiddenFromObjCAnnotation
 import dev.zacsweers.metro.compiler.fir.buildSimpleAnnotation
 import dev.zacsweers.metro.compiler.fir.buildSimpleValueParameter
@@ -82,12 +83,14 @@ import org.jetbrains.kotlin.fir.references.impl.FirSimpleNamedReference
 import org.jetbrains.kotlin.fir.render
 import org.jetbrains.kotlin.fir.resolve.defaultType
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
+import org.jetbrains.kotlin.fir.resolve.substitution.substitutorByMap
 import org.jetbrains.kotlin.fir.resolve.toRegularClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
+import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.types.coneType
@@ -568,6 +571,7 @@ internal class ContributionsFirGenerator(
             // (including Provider/Lazy wrappers) — typeKey.type strips those.
             this.returnTypeRef = original.symbol.resolvedReturnTypeRef
           }
+          addContributionMemberParameters(this, contributingClassSymbol, constructorParams)
         }
       }
 
@@ -702,6 +706,7 @@ internal class ContributionsFirGenerator(
           sourceParameters = constructorParams,
           copyParameterDefaults = true,
         )
+        addContributionMemberParameters(this, contributingClassSymbol, constructorParams)
       }
 
     // Add @Provides + scope + @Named qualifier
@@ -727,6 +732,57 @@ internal class ContributionsFirGenerator(
     function.replaceAnnotationsSafe(function.annotations + functionAnnotations)
 
     return function.symbol as FirNamedFunctionSymbol
+  }
+
+  /** Appends member dependencies in the same order used by the generated injection calls. */
+  private fun addContributionMemberParameters(
+    functionBuilder: CompatContext.FunctionBuilderScope,
+    contributingClassSymbol: FirClassSymbol<*>,
+    constructorParams: List<MetroFirValueParameter>,
+  ) {
+    if (contributingClassSymbol.classKind != ClassKind.CLASS) {
+      return
+    }
+    // Reuse factory member discovery to keep inherited members and parameter names consistent.
+    val injectedClass =
+      InjectedClassFirGenerator.InjectedClass(
+        classSymbol = contributingClassSymbol,
+        isConstructorInjected = true,
+        constructorParameters = constructorParams,
+        isAssistedInject = false,
+      )
+    injectedClass.populateAncestorMemberInjections(session)
+    val memberParameters = injectedClass.injectedMembersParameters
+    if (memberParameters.isEmpty()) {
+      return
+    }
+    // Resolve inherited type parameters against the contributing class's concrete supertypes.
+    val substitutor =
+      substitutorByMap(
+        buildFullSubstitutionMap(contributingClassSymbol, emptyMap(), session),
+        session,
+      )
+    for (parameter in memberParameters) {
+      // Keep declared wrappers so eager member dependencies still participate in cycle checks.
+      val memberType = substitutor.substituteOrSelf(parameter.contextKey.originalType(session))
+      val valueParameter =
+        buildSimpleValueParameter(
+          name = parameter.name,
+          type = memberType.toFirResolvedTypeRef(),
+          containingFunctionSymbol = functionBuilder.symbol,
+        )
+      val annotations = buildList {
+        parameter.symbol.resolvedCompilerAnnotationsWithClassIds
+          .annotationsIn(session, session.classIds.optionalBindingAnnotations)
+          .forEach { add(buildAnnotationCopy(it) {}) }
+        // The member model also captures qualifiers declared on the property.
+        parameter.contextKey.typeKey.qualifier?.let {
+          add(buildAnnotationCopy(it.fir) {})
+        }
+      }
+      valueParameter.replaceAnnotationsSafe(annotations)
+      functionBuilder.valueParameters += valueParameter
+    }
   }
 
   /** Compute a unique function name for a binding contribution. */

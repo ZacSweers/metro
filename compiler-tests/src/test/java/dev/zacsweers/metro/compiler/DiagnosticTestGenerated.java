@@ -117,6 +117,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("ContributionProviderMemberInjectionCycle.kt")
+    public void testContributionProviderMemberInjectionCycle() {
+      run("ContributionProviderMemberInjectionCycle.kt");
+    }
+
+    @Test
     @TestMetadata("ContributionProviderMissingBindingShowsOrigin.kt")
     public void testContributionProviderMissingBindingShowsOrigin() {
       run("ContributionProviderMissingBindingShowsOrigin.kt");
@@ -1580,9 +1586,21 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       }
 
       @Test
+      @TestMetadata("DaggerFactoryDefaultedParamsRequireBindings.kt")
+      public void testDaggerFactoryDefaultedParamsRequireBindings() {
+        run("DaggerFactoryDefaultedParamsRequireBindings.kt");
+      }
+
+      @Test
       @TestMetadata("DaggerModuleSubcomponentsIsIgnored.kt")
       public void testDaggerModuleSubcomponentsIsIgnored() {
         run("DaggerModuleSubcomponentsIsIgnored.kt");
+      }
+
+      @Test
+      @TestMetadata("DaggerProviderFactoryDefaultedParamsRequireBindings.kt")
+      public void testDaggerProviderFactoryDefaultedParamsRequireBindings() {
+        run("DaggerProviderFactoryDefaultedParamsRequireBindings.kt");
       }
 
       @Test

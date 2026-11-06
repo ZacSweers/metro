@@ -562,6 +562,12 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
       }
 
       @Test
+      @TestMetadata("memberInjection.kt")
+      public void testMemberInjection() {
+        run("memberInjection.kt");
+      }
+
+      @Test
       @TestMetadata("memberInjectionAcrossModules.kt")
       public void testMemberInjectionAcrossModules() {
         run("memberInjectionAcrossModules.kt");
@@ -625,6 +631,12 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
       @TestMetadata("scoped.kt")
       public void testScoped() {
         run("scoped.kt");
+      }
+
+      @Test
+      @TestMetadata("scopedMemberInjectionAcrossModules.kt")
+      public void testScopedMemberInjectionAcrossModules() {
+        run("scopedMemberInjectionAcrossModules.kt");
       }
 
       @Test
@@ -3122,6 +3134,24 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
       }
 
       @Test
+      @TestMetadata("DaggerFactoryDefaultedGenericParams.kt")
+      public void testDaggerFactoryDefaultedGenericParams() {
+        run("DaggerFactoryDefaultedGenericParams.kt");
+      }
+
+      @Test
+      @TestMetadata("DaggerFactoryDefaultedParamUsesPresentBinding.kt")
+      public void testDaggerFactoryDefaultedParamUsesPresentBinding() {
+        run("DaggerFactoryDefaultedParamUsesPresentBinding.kt");
+      }
+
+      @Test
+      @TestMetadata("DaggerFactoryDefaultedParamWithScopedBinding.kt")
+      public void testDaggerFactoryDefaultedParamWithScopedBinding() {
+        run("DaggerFactoryDefaultedParamWithScopedBinding.kt");
+      }
+
+      @Test
       @TestMetadata("DaggerLazySubtypeInterop.kt")
       public void testDaggerLazySubtypeInterop() {
         run("DaggerLazySubtypeInterop.kt");
@@ -3173,6 +3203,12 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
       @TestMetadata("DaggerProviderFactoryClassInKotlinCanBeLoaded.kt")
       public void testDaggerProviderFactoryClassInKotlinCanBeLoaded() {
         run("DaggerProviderFactoryClassInKotlinCanBeLoaded.kt");
+      }
+
+      @Test
+      @TestMetadata("DaggerProviderFactoryDefaultedParams.kt")
+      public void testDaggerProviderFactoryDefaultedParams() {
+        run("DaggerProviderFactoryDefaultedParams.kt");
       }
 
       @Test

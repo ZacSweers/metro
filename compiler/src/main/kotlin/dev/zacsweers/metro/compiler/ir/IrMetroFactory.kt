@@ -156,6 +156,47 @@ internal sealed interface IrMetroFactory {
     }
 }
 
+/** Uses the generated factory's dependency signature when the source has default parameters. */
+context(context: IrMetroContext)
+internal fun Parameters.withDaggerFactorySignature(
+  factoryClass: IrClass,
+  newInstanceName: Name,
+): Parameters {
+  val sourceFunction = checkNotNull(ir)
+  if (sourceFunction.parameters.none { it.defaultValue != null }) {
+    return this
+  }
+
+  val newInstanceFunction =
+    factoryClass
+      .requireStaticIshDeclarationContainer()
+      .requireSimpleFunction(newInstanceName.asString())
+      .owner
+  val declaringType =
+    if (sourceFunction is IrConstructor) {
+      sourceFunction.returnType
+    } else {
+      dispatchReceiverParameter?.type ?: sourceFunction.parentAsClass.defaultType
+    }
+  val remapper = newInstanceFunction.typeRemapperFor(declaringType)
+  val factoryParameters = newInstanceFunction.regularParameters
+  // Generated provider methods put their module instance before the source parameters.
+  val parameterOffset = factoryParameters.size - regularParameters.size
+  val parameters = regularParameters.mapIndexed { index, parameter ->
+    val factoryParameter = factoryParameters[index + parameterOffset]
+    val factoryType = remapper.remapType(factoryParameter.type)
+    val contextKey =
+      factoryType.asContextualTypeKey(
+        qualifierAnnotation = parameter.typeKey.qualifier,
+        hasDefault = factoryParameter.hasMetroDefault(),
+        patchMutableCollections = false,
+        declaration = factoryParameter,
+      )
+    parameter.copy(contextualTypeKey = contextKey)
+  }
+  return copy(regularParameters = parameters)
+}
+
 internal sealed class ClassFactory : IrMetroFactory {
   abstract val invokeFunctionSymbol: IrFunctionSymbol
   abstract val targetFunctionParameters: Parameters
@@ -226,8 +267,14 @@ internal sealed class ClassFactory : IrMetroFactory {
     private val metroContext: IrMetroContext,
     override val factoryClass: IrClass,
     override val targetConstructor: IrConstructor,
-    override val targetFunctionParameters: Parameters,
+    constructorParameters: Parameters,
   ) : ClassFactory() {
+    override val targetFunctionParameters: Parameters by memoize {
+      context(metroContext) {
+        constructorParameters.withDaggerFactorySignature(factoryClass, Symbols.Names.newInstance)
+      }
+    }
+
     override val function: IrConstructor = targetConstructor
     override val createFunctionNames: Set<Name> =
       setOf(Symbols.Names.create, Symbols.Names.createFactoryProvider)

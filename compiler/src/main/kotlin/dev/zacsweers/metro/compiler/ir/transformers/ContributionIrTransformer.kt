@@ -27,6 +27,7 @@ import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.buildAnnotation
 import dev.zacsweers.metro.compiler.ir.copyParameterDefaultValues
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
+import dev.zacsweers.metro.compiler.ir.deepRemapperFor
 import dev.zacsweers.metro.compiler.ir.findAnnotations
 import dev.zacsweers.metro.compiler.ir.findInjectableConstructor
 import dev.zacsweers.metro.compiler.ir.getOrCreateGraphImplClassShell
@@ -72,11 +73,13 @@ import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
 import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.builders.declarations.buildClass
+import org.jetbrains.kotlin.ir.builders.irBlock
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irImplicitCast
 import org.jetbrains.kotlin.ir.builders.irString
+import org.jetbrains.kotlin.ir.builders.irTemporary
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrFunction
@@ -84,6 +87,7 @@ import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.overrides.isEffectivelyPrivate
+import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.isMarkedNullable
 import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.addFakeOverrides
@@ -124,6 +128,7 @@ internal class ContributionIrTransformer(
   private val bindingContainerTransformer: BindingContainerTransformer,
   private val assistedFactoryTransformer: AssistedFactoryTransformer,
   private val injectedClassTransformer: InjectedClassTransformer,
+  private val membersInjectorTransformer: MembersInjectorTransformer,
   traceScope: TraceScope,
 ) : IrTransformer<IrContributionData>(), IrMetroContext by context, TraceScope by traceScope {
 
@@ -632,6 +637,28 @@ internal class ContributionIrTransformer(
           replaceAnnotationsCompat(parameter.annotationsCompat())
         }
       }
+
+      val originClass = injectConstructor.parentAsClass
+      // Member parameters must have unique names alongside the constructor parameters.
+      val nameAllocator = NameAllocator(mode = COUNT)
+      regularParameters.forEach { nameAllocator.reserveName(it.name) }
+
+      // Collect each class's declared members once in ancestor-first injection order.
+      val memberParameters =
+        membersInjectorTransformer.getOrGenerateAllInjectorsFor(originClass).flatMap { injector ->
+          injector.declaredInjectFunctions.values.flatMap { it.regularParameters }
+        }
+
+      // Resolve generic ancestors to the concrete types supplied by the contributing class.
+      val typeRemapper = originClass.deepRemapperFor(originClass.defaultType)
+      addParameters(
+        memberParameters.map { it.copy(name = nameAllocator.newName(it.name.asString()).asName()) },
+        // Keep eager dependencies visible to cycle detection.
+        wrapInProvider = false,
+        copyQualifiers = true,
+        stubDefaults = false,
+        typeRemapper = typeRemapper::remapType,
+      )
     }
   }
 
@@ -734,6 +761,14 @@ internal class ContributionIrTransformer(
       originClass.findInjectableConstructor(onlyUsePrimaryConstructor = false)
     }
 
+    val memberInjectors by memoize {
+      if (originClass.isObject || isAssistedFactory) {
+        emptyList()
+      } else {
+        membersInjectorTransformer.getOrGenerateAllInjectorsFor(originClass)
+      }
+    }
+
     // Add bodies to all @Provides functions
     for (function in declaration.functions) {
       if (!function.isAnnotatedWithAny(metroSymbols.classIds.providesAnnotations)) continue
@@ -770,7 +805,7 @@ internal class ContributionIrTransformer(
               providerFunction = calleeCtor,
               sourceMetroParameters = Parameters.empty(),
               sourceParameters = calleeCtor.regularParameters,
-              targetParameters = function.regularParameters,
+              targetParameters = function.regularParameters.take(calleeCtor.regularParameters.size),
               containerParameter = null,
               isTopLevelFunction = true,
             )
@@ -785,7 +820,30 @@ internal class ContributionIrTransformer(
                   }
                 }
               }
-            irExprBodySafe(constructorCall)
+
+            if (memberInjectors.isNotEmpty()) {
+              irExprBodySafe(
+                irBlock(resultType = originClass.defaultType) {
+                  // Every injection must target the same constructed instance.
+                  val instance = irTemporary(constructorCall)
+                  // The provider signature puts member dependencies after constructor arguments.
+                  val memberParameters =
+                    function.regularParameters.drop(calleeCtor.regularParameters.size).iterator()
+                  // Ancestor members are initialized before the subclass's members.
+                  addMemberInjection(
+                    callingFunction = function,
+                    instanceReceiver = instance,
+                    injectFunctions =
+                      memberInjectors.flatMap { it.declaredInjectFunctions.toList() },
+                  ) { parameters, _ ->
+                    parameters.regularParameters.map { irGet(memberParameters.next()) }
+                  }
+                  +irGet(instance)
+                },
+              )
+            } else {
+              irExprBodySafe(constructorCall)
+            }
           }
         }
     }

@@ -20,5 +20,10 @@ plugins.withType<NodeJsRootPlugin> {
   the<NodeJsEnvSpec>().version.set("24.4.1")
   // Karma and Kotlin's source map plugin must load the same webpack instance.
   val webpack = the<NodeJsRootExtension>().versions.webpack
-  the<NpmExtension>().override(webpack.name, webpack.version)
+  the<NpmExtension>().apply {
+    override(webpack.name, webpack.version)
+    // Karma and glob 7 still require minimatch 3's callable export.
+    override("minimatch@>=9", "11.0.4")
+    override("serialize-javascript", "7.1.3")
+  }
 }
