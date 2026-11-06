@@ -1,0 +1,150 @@
+# Manually deletes specified doc versions from gh-pages with mike.
+name: Metro Docs Site (Prune Versions)
+
+on:
+  workflow_dispatch:
+    inputs:
+      versions:
+        description: 'Comma- or space-separated list of versions to delete (e.g. 0.5.5, 0.6.10, 0.7.7)'
+        required: true
+        type: string
+      dry_run:
+        description: 'Dry run to preview versions without pushing changes'
+        required: false
+        type: boolean
+        default: false
+
+# Sets permissions of the GITHUB_TOKEN to allow pushing to gh-pages branch
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+# Separate concurrency group to avoid push conflicts on gh-pages
+concurrency:
+  group: "pages-prune"
+  cancel-in-progress: false
+
+jobs:
+  prune-versions:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.15'
+
+      - name: Install docs dependencies
+        run: |
+          pip install --requirement .github/workflows/mkdocs-requirements.txt
+
+      - name: Configure Git for Mike
+        run: |
+          git config --local user.name "github-actions[bot]"
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Fetch gh-pages branch
+        run: |
+          if git fetch origin gh-pages; then
+            if git rev-parse --verify gh-pages >/dev/null 2>&1; then
+              git update-ref refs/heads/gh-pages origin/gh-pages
+            else
+              git branch --track gh-pages origin/gh-pages
+            fi
+          else
+            echo "Error: gh-pages branch does not exist on origin."
+            exit 1
+          fi
+
+      - name: Show current mike versions
+        run: |
+          echo "Current mike versions available:"
+          mike list || echo "No docs site versions found"
+
+      - name: Prune specified versions
+        run: |
+          INPUT_VERSIONS="${{ inputs.versions }}"
+          DRY_RUN="${{ inputs.dry_run }}"
+
+          # Normalize separators into spaces
+          CLEAN_VERSIONS=$(echo "$INPUT_VERSIONS" | tr ',' ' ' | tr '\n' ' ')
+
+          TARGET_VERSIONS=()
+          for item in $CLEAN_VERSIONS; do
+            trimmed=$(echo "$item" | xargs)
+            if [[ -n "$trimmed" ]]; then
+              TARGET_VERSIONS+=("$trimmed")
+            fi
+          done
+
+          if [[ ${#TARGET_VERSIONS[@]} -eq 0 ]]; then
+            echo "Error: No versions provided to delete."
+            exit 1
+          fi
+
+          echo "Requested versions to delete: ${TARGET_VERSIONS[*]}"
+
+          # Extract existing versions and current latest alias
+          EXISTING_VERSIONS=()
+          LATEST_VERSION=""
+          while IFS= read -r line; do
+            v=$(echo "$line" | awk '{print $1}')
+            if [[ -n "$v" ]]; then
+              EXISTING_VERSIONS+=("$v")
+              if [[ "$line" =~ \[.*latest.*\] ]]; then
+                LATEST_VERSION="$v"
+              fi
+            fi
+          done < <(mike list 2>/dev/null || true)
+
+          # Validate requested versions against available versions
+          MISSING_VERSIONS=()
+          for target in "${TARGET_VERSIONS[@]}"; do
+            if [[ "$target" == "latest" ]] || [[ "$target" == "$LATEST_VERSION" ]]; then
+              echo "Error: Version '$target' is currently marked as 'latest'. Reassign the 'latest' alias before deleting this version."
+              exit 1
+            fi
+
+            found=false
+            for existing in "${EXISTING_VERSIONS[@]}"; do
+              if [[ "$target" == "$existing" ]]; then
+                found=true
+                break
+              fi
+            done
+            if [[ "$found" == "false" ]]; then
+              MISSING_VERSIONS+=("$target")
+            fi
+          done
+
+          if [[ ${#MISSING_VERSIONS[@]} -gt 0 ]]; then
+            echo "Error: The following version(s) were not found in mike list:"
+            for m in "${MISSING_VERSIONS[@]}"; do
+              echo "  - $m"
+            done
+            echo ""
+            echo "Available versions in mike list:"
+            mike list
+            exit 1
+          fi
+
+          if [[ "$DRY_RUN" == "true" ]]; then
+            echo "Dry run enabled. Skipping actual deletion."
+            echo "Planned command:"
+            echo "mike delete -m \"Prune docs versions: ${TARGET_VERSIONS[*]}\" --push ${TARGET_VERSIONS[*]}"
+          else
+            echo "Deleting version(s): ${TARGET_VERSIONS[*]}"
+            mike delete -m "Prune docs versions: ${TARGET_VERSIONS[*]}" --push "${TARGET_VERSIONS[@]}"
+            echo "Successfully deleted specified version(s)."
+          fi
+
+      - name: Show updated mike versions
+        if: ${{ inputs.dry_run == false }}
+        run: |
+          echo "Updated mike versions after deletion:"
+          mike list
