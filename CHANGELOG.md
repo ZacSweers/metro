@@ -6,6 +6,10 @@ Changelog
 
 ### Fixes
 
+- **[IR]** Better reuse provider instances across repeated graph accessor and unscoped consumer requests. 
+  - Converted provider accessors and constructor parameters reuse their wrappers (i.e. different types of `Provider` types). Canonical providers used only to initialize one cached conversion can be inlined.
+  - Repeated requests for multibinding providers reuse their set and map factories.
+  - Unscoped values still create a fresh instance on each provider invocation.
 - **[IR/interop]** Fix an issue with Dagger-processed providers/constructors with default parameters with their generated factory. Previously, Metro would treat the source function's parameter as optional if it had a default value and not reconcile that correctly with Dagger's generated factory (which would not propagate that default since Dagger uses a different mechanism for optional bindings).
 
 ### Changes
@@ -19,6 +23,7 @@ Changelog
 Special thanks to the following contributors for contributing to this release!
 
 - [@aglose](https://github.com/aglose)
+- [@falqadi](https://github.com/falqadi)
 
 ### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
 
