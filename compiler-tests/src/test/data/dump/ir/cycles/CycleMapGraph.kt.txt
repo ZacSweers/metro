@@ -159,16 +159,10 @@ interface CycleMapGraph {
       field = DelegateFactory<Y>()
 
     private val mapOfStringToXProvider: Provider<Map<String, Function0<X>>>
-      field = providerOf<Map<String, Function0<X>>>(value = buildMap<String, Function0<X>>(capacity = 1, builderAction = local fun MutableMap<String, Function0<X>>.<anonymous>() {
-        $receiver.put(key = "X", value = create(y = <this>.#yProvider))
-      }
-))
+      field = singleton<String, X>(key = "X", provider = create(y = <this>.#yProvider))
 
     private val mapOfStringToYProvider: Provider<Map<String, Function0<Y>>>
-      field = providerOf<Map<String, Function0<Y>>>(value = buildMap<String, Function0<Y>>(capacity = 1, builderAction = local fun MutableMap<String, Function0<Y>>.<anonymous>() {
-        $receiver.put(key = "Y", value = <this>.#yProvider)
-      }
-))
+      field = singleton<String, Y>(key = "Y", provider = <this>.#yProvider)
 
     private constructor() /* primary */ {
       super/*Any*/()

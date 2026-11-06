@@ -355,10 +355,7 @@ interface AppGraph {
       field = create()
 
     private val mapOfStringToValueProvider: Provider<Map<String, Function0<Value>>>
-      field = providerOf<Map<String, Function0<Value>>>(value = buildMap<String, Function0<Value>>(capacity = 1, builderAction = local fun MutableMap<String, Function0<Value>>.<anonymous>() {
-        $receiver.put(key = "parent", value = <this>.#parentValueProvider)
-      }
-))
+      field = singleton<String, Value>(key = "parent", provider = <this>.#parentValueProvider)
 
     @DependencyGraph
     private class ChildGraphImpl : ChildGraph {
@@ -388,11 +385,12 @@ interface AppGraph {
           field = create()
 
         private val mapOfStringToValueProvider: Provider<Map<String, Function0<Value>>>
-          field = providerOf<Map<String, Function0<Value>>>(value = buildMap<String, Function0<Value>>(capacity = 2, builderAction = local fun MutableMap<String, Function0<Value>>.<anonymous>() {
-            $receiver.put(key = "child", value = <this>.#childValueProvider)
-            $receiver.put(key = "parent", value = <this>.#childGraphImpl.#appGraphImpl.#parentValueProvider)
+          field = { // BLOCK
+            val tmp0_builder: MapProviderFactory.Builder<String, Value> = builder<String, Value>(size = 2)
+            tmp0_builder.put(key = "child", providerOfValue = <this>.#childValueProvider)
+            tmp0_builder.put(key = "parent", providerOfValue = <this>.#childGraphImpl.#appGraphImpl.#parentValueProvider)
+            tmp0_builder.build()
           }
-))
 
         private class FactoryImpl : GrandchildGraph.Factory {
           package /* final field */ val ChildGraphImpl: ChildGraphImpl = ChildGraphImpl

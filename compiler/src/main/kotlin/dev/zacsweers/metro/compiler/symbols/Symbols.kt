@@ -768,6 +768,24 @@ internal class Symbols(
       .firstOrNull()
   }
 
+  /** `providerMapAsFunctions(providers)`. Only exists in the JS runtime. */
+  val providerMapAsFunctions: IrSimpleFunctionSymbol? by lazy {
+    builtinsFinder
+      .findFunctions(
+        CallableId(FqNames.metroRuntimeInternalPackage, "providerMapAsFunctions".asName()),
+      )
+      .firstOrNull()
+  }
+
+  /** `suspendProviderMapAsFunctions(providers)`. Only exists in the JS runtime. */
+  val suspendProviderMapAsFunctions: IrSimpleFunctionSymbol? by lazy {
+    builtinsFinder
+      .findFunctions(
+        CallableId(FqNames.metroRuntimeInternalPackage, "suspendProviderMapAsFunctions".asName()),
+      )
+      .firstOrNull()
+  }
+
   val emptySet by lazy {
     builtinsFinder
       .findFunctions(CallableId(stdlibCollections.packageFqName, "emptySet".asName()))

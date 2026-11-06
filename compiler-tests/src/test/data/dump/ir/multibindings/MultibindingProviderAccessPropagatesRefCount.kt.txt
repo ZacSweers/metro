@@ -455,10 +455,7 @@ interface TestGraph {
       field = singleton<Int, B>(key = 1, provider = create(x = <this>.#xImplProvider))
 
     private val mapOfIntToCProvider: Provider<Map<Int, Function0<C>>>
-      field = providerOf<Map<Int, Function0<C>>>(value = buildMap<Int, Function0<C>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<C>>.<anonymous>() {
-        $receiver.put(key = 1, value = create(x = <this>.#xImplProvider))
-      }
-))
+      field = singleton<Int, C>(key = 1, provider = create(x = <this>.#xImplProvider))
 
     private val setOfAProvider: Provider<Set<A>>
       field = singleton<A>(provider = create(x = <this>.#xImplProvider))

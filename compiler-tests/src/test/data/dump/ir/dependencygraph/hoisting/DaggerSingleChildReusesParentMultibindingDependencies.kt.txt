@@ -355,10 +355,11 @@ interface AppGraph {
       field = create()
 
     private val mapOfStringToValueProvider: Provider<Map<String, Provider<Value>>>
-      field = providerOf<Map<String, Provider<Value>>>(value = buildMap<String, Provider<Value>>(capacity = 1, builderAction = local fun MutableMap<String, Provider<Value>>.<anonymous>() {
-        $receiver.put(key = "parent", value = asJavaxProvider<Value>(/* <this> = <this>.#parentValueProvider */))
-      }
-))
+      field = asMetroProvider<Map<String, Provider<Value>>>(/* <this> = { // BLOCK
+        val tmp0_builder: MapProviderFactory.Builder<String, Value> = builder<String, Value>(size = 1)
+        tmp0_builder.put(key = "parent", providerOfValue = asDaggerInternalProvider<Value>(/* <this> = <this>.#parentValueProvider */))
+        tmp0_builder.build()
+      } */)
 
     @DependencyGraph
     private class ChildGraphImpl : ChildGraph {
@@ -388,11 +389,12 @@ interface AppGraph {
           field = create()
 
         private val mapOfStringToValueProvider: Provider<Map<String, Provider<Value>>>
-          field = providerOf<Map<String, Provider<Value>>>(value = buildMap<String, Provider<Value>>(capacity = 2, builderAction = local fun MutableMap<String, Provider<Value>>.<anonymous>() {
-            $receiver.put(key = "parent", value = asJavaxProvider<Value>(/* <this> = <this>.#childGraphImpl.#appGraphImpl.#parentValueProvider */))
-            $receiver.put(key = "child", value = asJavaxProvider<Value>(/* <this> = <this>.#childValueProvider */))
-          }
-))
+          field = asMetroProvider<Map<String, Provider<Value>>>(/* <this> = { // BLOCK
+            val tmp0_builder: MapProviderFactory.Builder<String, Value> = builder<String, Value>(size = 2)
+            tmp0_builder.put(key = "parent", providerOfValue = asDaggerInternalProvider<Value>(/* <this> = <this>.#childGraphImpl.#appGraphImpl.#parentValueProvider */))
+            tmp0_builder.put(key = "child", providerOfValue = asDaggerInternalProvider<Value>(/* <this> = <this>.#childValueProvider */))
+            tmp0_builder.build()
+          } */)
 
         private class FactoryImpl : GrandchildGraph.Factory {
           package /* final field */ val ChildGraphImpl: ChildGraphImpl = ChildGraphImpl

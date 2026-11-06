@@ -25,17 +25,15 @@ import kotlin.jvm.JvmStatic
  */
 public class MapProviderLazyFactory<K : Any, V>
 private constructor(map: Map<K, Provider<V>>) : AbstractMapFactory<K, V, Provider<Lazy<V>>>(map) {
+  /** Built once, so every call returns the same entry providers. */
+  private val providersOfLazy: Map<K, Provider<Lazy<V>>> = providersOfLazy(map)
+
   /**
    * Returns a `Map<K, Provider<Lazy<V>>>` whose iteration order is that of the elements given by
-   * each of the providers, which are invoked in the order given at creation.
+   * each of the providers, which are invoked in the order given at creation. Every call returns the
+   * same map. Each entry still creates a new [Lazy] when it's invoked.
    */
-  override fun invoke(): Map<K, Provider<Lazy<V>>> {
-    val result = newLinkedHashMapWithExpectedSize<K, Provider<Lazy<V>>>(contributingMap().size)
-    for (entry in contributingMap().entries) {
-      result[entry.key] = Provider { DoubleCheck.lazy<Provider<V>, V>(entry.value) }
-    }
-    return result.toUnmodifiableMap()
-  }
+  override fun invoke(): Map<K, Provider<Lazy<V>>> = providersOfLazy
 
   /** A builder for [MapProviderLazyFactory]. */
   public class Builder<K : Any, V> internal constructor(size: Int) :
@@ -87,10 +85,18 @@ private constructor(map: Map<K, Provider<V>>) : AbstractMapFactory<K, V, Provide
   }
 }
 
-private class SingletonMapProviderLazyFactory<K : Any, V>(
-  private val key: K,
-  private val provider: Provider<V>,
-) : Factory<Map<K, Provider<Lazy<V>>>> {
-  override fun invoke(): Map<K, Provider<Lazy<V>>> =
-    SingletonMap(key, ProviderOfLazy.create(provider))
+private class SingletonMapProviderLazyFactory<K : Any, V>(key: K, provider: Provider<V>) :
+  Factory<Map<K, Provider<Lazy<V>>>> {
+  private val map: Map<K, Provider<Lazy<V>>> = SingletonMap(key, ProviderOfLazy.create(provider))
+
+  override fun invoke(): Map<K, Provider<Lazy<V>>> = map
+}
+
+/** Wraps each provider so every invocation of the wrapper creates a new [Lazy]. */
+private fun <K : Any, V> providersOfLazy(map: Map<K, Provider<V>>): Map<K, Provider<Lazy<V>>> {
+  val result = newLinkedHashMapWithExpectedSize<K, Provider<Lazy<V>>>(map.size)
+  for (entry in map.entries) {
+    result[entry.key] = Provider { DoubleCheck.lazy<Provider<V>, V>(entry.value) }
+  }
+  return result.toUnmodifiableMap()
 }

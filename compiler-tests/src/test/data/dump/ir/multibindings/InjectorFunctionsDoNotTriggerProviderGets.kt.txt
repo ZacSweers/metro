@@ -113,10 +113,7 @@ interface TestGraph1 : Bindings {
   @MetroImplMarker
   class Impl : TestGraph1 {
     private val mapOfIntToStringProvider: Provider<Map<Int, Function0<String>>>
-      field = providerOf<Map<Int, Function0<String>>>(value = buildMap<Int, Function0<String>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<String>>.<anonymous>() {
-        $receiver.put(key = 1, value = create(instance = <this>))
-      }
-))
+      field = singleton<Int, String>(key = 1, provider = create(instance = <this>))
 
     private constructor() /* primary */ {
       super/*Any*/()
@@ -156,10 +153,7 @@ interface TestGraph2 : Bindings {
   @MetroImplMarker
   class Impl : TestGraph2 {
     private val mapOfIntToStringProvider: Provider<Map<Int, Function0<String>>>
-      field = providerOf<Map<Int, Function0<String>>>(value = buildMap<Int, Function0<String>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<String>>.<anonymous>() {
-        $receiver.put(key = 1, value = create(instance = <this>))
-      }
-))
+      field = singleton<Int, String>(key = 1, provider = create(instance = <this>))
 
     private constructor() /* primary */ {
       super/*Any*/()
@@ -207,10 +201,7 @@ interface TestGraph3 : Bindings {
   @MetroImplMarker
   class Impl : TestGraph3 {
     private val mapOfIntToStringProvider: Provider<Map<Int, Function0<String>>>
-      field = providerOf<Map<Int, Function0<String>>>(value = buildMap<Int, Function0<String>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<String>>.<anonymous>() {
-        $receiver.put(key = 1, value = create(instance = <this>))
-      }
-))
+      field = singleton<Int, String>(key = 1, provider = create(instance = <this>))
 
     private constructor() /* primary */ {
       super/*Any*/()
@@ -258,10 +249,7 @@ interface TestGraph4 : Bindings {
   @MetroImplMarker
   class Impl : TestGraph4 {
     private val mapOfIntToStringProvider: Provider<Map<Int, Function0<String>>>
-      field = providerOf<Map<Int, Function0<String>>>(value = buildMap<Int, Function0<String>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<String>>.<anonymous>() {
-        $receiver.put(key = 1, value = create(instance = <this>))
-      }
-))
+      field = singleton<Int, String>(key = 1, provider = create(instance = <this>))
 
     private constructor() /* primary */ {
       super/*Any*/()
@@ -303,10 +291,7 @@ interface TestGraph5 : Bindings {
   @MetroImplMarker
   class Impl : TestGraph5 {
     private val mapOfIntToStringProvider: Provider<Map<Int, Function0<String>>>
-      field = providerOf<Map<Int, Function0<String>>>(value = buildMap<Int, Function0<String>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<String>>.<anonymous>() {
-        $receiver.put(key = 1, value = create(instance = <this>))
-      }
-))
+      field = singleton<Int, String>(key = 1, provider = create(instance = <this>))
 
     private constructor() /* primary */ {
       super/*Any*/()

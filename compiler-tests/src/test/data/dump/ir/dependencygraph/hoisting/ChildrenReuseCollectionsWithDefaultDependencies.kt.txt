@@ -191,10 +191,7 @@ interface AppGraph {
       field = Adapter.MetroFactory/* companion */.create(present = create(instance = <this>))
 
     private val mapOfStringToAdapterProvider: Provider<Map<String, Function0<Adapter>>>
-      field = providerOf<Map<String, Function0<Adapter>>>(value = buildMap<String, Function0<Adapter>>(capacity = 1, builderAction = local fun MutableMap<String, Function0<Adapter>>.<anonymous>() {
-        $receiver.put(key = "adapter", value = <this>.#adapterProvider)
-      }
-))
+      field = singleton<String, Adapter>(key = "adapter", provider = <this>.#adapterProvider)
 
     private val setOfAdapterProvider: Provider<Set<Adapter>>
       field = singleton<Adapter>(provider = <this>.#adapterProvider)
@@ -213,10 +210,7 @@ interface AppGraph {
           field = Adapter.MetroFactory/* companion */.create(absent = create(instance = <this>), present = create(instance = <this>))
 
         private val mapOfStringToAdapterProvider: Provider<Map<String, Function0<Adapter>>>
-          field = providerOf<Map<String, Function0<Adapter>>>(value = buildMap<String, Function0<Adapter>>(capacity = 1, builderAction = local fun MutableMap<String, Function0<Adapter>>.<anonymous>() {
-            $receiver.put(key = "adapter", value = <this>.#adapterProvider)
-          }
-))
+          field = singleton<String, Adapter>(key = "adapter", provider = <this>.#adapterProvider)
 
         private val setOfAdapterProvider: Provider<Set<Adapter>>
           field = singleton<Adapter>(provider = <this>.#adapterProvider)

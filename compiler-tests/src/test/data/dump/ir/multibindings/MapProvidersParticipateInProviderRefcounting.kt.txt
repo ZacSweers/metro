@@ -35,20 +35,18 @@ interface AppGraph {
       field = create(instance = <this>)
 
     private val mapOfIntToIntProvider: Provider<Map<Int, Function0<Int>>>
-      field = providerOf<Map<Int, Function0<Int>>>(value = buildMap<Int, Function0<Int>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<Int>>.<anonymous>() {
-        $receiver.put(key = 3, value = <this>.#provideIntProvider)
-      }
-))
+      field = singleton<Int, Int>(key = 3, provider = <this>.#provideIntProvider)
 
     private val provideSharedDependencyProvider: Provider<SharedDependency>
       field = create(instance = <this>)
 
     private val mapOfStringToStringProvider: Provider<Map<String, SuspendFunction0<String>>>
-      field = providerOf<Map<String, SuspendFunction0<String>>>(value = buildMap<String, SuspendFunction0<String>>(capacity = 2, builderAction = local fun MutableMap<String, SuspendFunction0<String>>.<anonymous>() {
-        $receiver.put(key = "second", value = SyncSuspendProvider<String>(delegate = create(instance = <this>, sharedDependency = <this>.#provideSharedDependencyProvider)))
-        $receiver.put(key = "first", value = SyncSuspendProvider<String>(delegate = create(instance = <this>, sharedDependency = <this>.#provideSharedDependencyProvider)))
+      field = { // BLOCK
+        val tmp0_builder: MapSuspendProviderFactory.Builder<String, String> = builder<String, String>(size = 2)
+        tmp0_builder.put(key = "second", providerOfValue = SyncSuspendProvider<String>(delegate = create(instance = <this>, sharedDependency = <this>.#provideSharedDependencyProvider)))
+        tmp0_builder.put(key = "first", providerOfValue = SyncSuspendProvider<String>(delegate = create(instance = <this>, sharedDependency = <this>.#provideSharedDependencyProvider)))
+        tmp0_builder.build()
       }
-))
 
     private constructor() /* primary */ {
       super/*Any*/()

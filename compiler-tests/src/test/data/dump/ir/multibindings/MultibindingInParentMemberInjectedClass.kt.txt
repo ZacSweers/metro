@@ -671,11 +671,12 @@ interface AppGraph {
   @MetroImplMarker
   class Impl : AppGraph {
     private val mapOfKClass___ToViewModelProvider: Provider<Map<KClass<*>, Function0<ViewModel>>>
-      field = providerOf<Map<KClass<*>, Function0<ViewModel>>>(value = buildMap<KClass<*>, Function0<ViewModel>>(capacity = 2, builderAction = local fun MutableMap<KClass<*>, Function0<ViewModel>>.<anonymous>() {
-        $receiver.put(key = BViewModel::class, value = create())
-        $receiver.put(key = AViewModel::class, value = create())
+      field = { // BLOCK
+        val tmp0_builder: MapProviderFactory.Builder<KClass<*>, ViewModel> = builder<KClass<*>, ViewModel>(size = 2)
+        tmp0_builder.put(key = BViewModel::class, providerOfValue = create())
+        tmp0_builder.put(key = AViewModel::class, providerOfValue = create())
+        tmp0_builder.build()
       }
-))
 
     private val viewModelFactoryProvider: Provider<ViewModelFactory>
       field = create(viewModels = <this>.#mapOfKClass___ToViewModelProvider)

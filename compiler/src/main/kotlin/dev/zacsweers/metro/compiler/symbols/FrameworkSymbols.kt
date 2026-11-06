@@ -337,7 +337,8 @@ internal class MetroFrameworkSymbols(
   }
 
   // MapFunctionFactory is JS-only — see runtime/src/jsMain/.../MapFunctionFactory.kt.
-  // Only access these symbols from code paths gated on `platform.isJs()`.
+  // Only access these symbols from code paths gated on `platform.isJs()`. Non-empty function maps
+  // use the provider map factories and providerMapAsFunctions instead.
   val mapFunctionFactory: IrClassSymbol by lazy {
     builtinsFinder.findClass(
       ClassId(metroRuntimeInternal.packageFqName, "MapFunctionFactory".asName()),
@@ -358,14 +359,6 @@ internal class MetroFrameworkSymbols(
 
   val mapFunctionFactoryEmptyFunction: IrSimpleFunctionSymbol by lazy {
     mapFunctionFactoryCompanionObject.requireSimpleFunction("empty")
-  }
-
-  val mapFunctionFactorySingletonFunction: IrSimpleFunctionSymbol by lazy {
-    mapFunctionFactoryCompanionObject.requireSimpleFunction("singleton")
-  }
-
-  val mapFunctionFactoryBuilderPutFunction: IrSimpleFunctionSymbol by lazy {
-    mapFunctionFactoryBuilder.requireSimpleFunction("put")
   }
 
   val mapFunctionFactoryBuilderBuildFunction: IrSimpleFunctionSymbol by lazy {
