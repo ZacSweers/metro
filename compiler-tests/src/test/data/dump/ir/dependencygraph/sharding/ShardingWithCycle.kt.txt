@@ -121,7 +121,7 @@ class C {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class MetroFactory : Factory<C> {
     private /* final field */ val b: Provider<B> = b
-    private /* final field */ val d: Provider<D> = d
+    private /* final field */ val d: Function0<D> = d
     companion object Companion {
       private constructor() /* primary */ {
         super/*Any*/()
@@ -132,7 +132,7 @@ class C {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(b: Provider<B>, d: Provider<D>): MetroFactory {
+      fun create(b: Provider<B>, d: Function0<D>): MetroFactory {
         return MetroFactory(b = b, d = d)
       }
 
@@ -146,7 +146,7 @@ class C {
     }
 
     @HiddenFromObjC
-    private constructor(b: Provider<B>, d: Provider<D>) /* primary */ {
+    private constructor(b: Provider<B>, d: Function0<D>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 

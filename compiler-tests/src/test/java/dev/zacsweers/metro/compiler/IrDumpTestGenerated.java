@@ -472,6 +472,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
       public void testBindsOptionalOfUsesLazyProviders() {
         run("BindsOptionalOfUsesLazyProviders.kt");
       }
+
+      @Test
+      @TestMetadata("ConvertedProviderInitializersInlineSingleUseFactories.kt")
+      public void testConvertedProviderInitializersInlineSingleUseFactories() {
+        run("ConvertedProviderInitializersInlineSingleUseFactories.kt");
+      }
     }
 
     @Nested

@@ -3,6 +3,9 @@ interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
+    private val optionalStringProvider: Provider<Optional<String>>
+      field = providerOf<Optional<String>>(value = empty<String>())
+
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
@@ -11,7 +14,7 @@ interface AppGraph {
 
     override val stringProvider: Function0<Optional<String>>
       override get(): Function0<Optional<String>> {
-        return providerOf<Optional<String>>(value = empty<String>())
+        return <this>.#optionalStringProvider
       }
 
   }

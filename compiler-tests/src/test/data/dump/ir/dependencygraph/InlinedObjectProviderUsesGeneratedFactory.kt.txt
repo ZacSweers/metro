@@ -3,6 +3,9 @@ interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
+    private val provideObjectProvider: Provider<InlinedObject>
+      field = create()
+
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
@@ -11,7 +14,7 @@ interface AppGraph {
 
     override val objectProvider: Provider<InlinedObject>
       override get(): Provider<InlinedObject> {
-        return create()
+        return <this>.#provideObjectProvider
       }
 
   }

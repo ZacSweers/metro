@@ -1,7 +1,12 @@
-// Every consumer of Provider<Foo> should get the same provider instead of a new factory, when Foo
-// comes from a @Provides function.
+// Repeated consumer requests share the factory for their provided dependency within each graph.
 
-@Inject class Bar
+var barConstructions = 0
+
+@Inject class Bar {
+  init {
+    barConstructions++
+  }
+}
 
 class Foo(val bar: Bar)
 
@@ -18,7 +23,15 @@ interface AppGraph {
 }
 
 fun box(): String {
+  barConstructions = 0
   val graph = createGraph<AppGraph>()
   assertSame(graph.consumer.foo, graph.consumer.foo)
+  assertEquals(0, barConstructions)
+  val first = graph.consumer.foo()
+  val second = graph.consumer.foo()
+  assertNotSame(first, second)
+  assertNotSame(first.bar, second.bar)
+  assertEquals(2, barConstructions)
+  assertNotSame(graph.consumer.foo, createGraph<AppGraph>().consumer.foo)
   return "OK"
 }

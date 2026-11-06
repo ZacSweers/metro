@@ -2287,6 +2287,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     }
 
     @Test
+    @TestMetadata("InjectedFunctionProvidersAreReused.kt")
+    public void testInjectedFunctionProvidersAreReused() {
+      run("InjectedFunctionProvidersAreReused.kt");
+    }
+
+    @Test
     @TestMetadata("InjectedPrivateConstructorParametersWithGenericsWork.kt")
     public void testInjectedPrivateConstructorParametersWithGenericsWork() {
       run("InjectedPrivateConstructorParametersWithGenericsWork.kt");
@@ -2876,6 +2882,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     @TestMetadata("MultibindingGraphWithWithScopedMapProviderDeps.kt")
     public void testMultibindingGraphWithWithScopedMapProviderDeps() {
       run("MultibindingGraphWithWithScopedMapProviderDeps.kt");
+    }
+
+    @Test
+    @TestMetadata("MultibindingProvidersAreReused.kt")
+    public void testMultibindingProvidersAreReused() {
+      run("MultibindingProvidersAreReused.kt");
     }
 
     @Test

@@ -329,6 +329,18 @@ interface AppGraph {
     private val internalHeaderProvider: Provider<InternalHeader>
       field = create(key = create(instance = <this>))
 
+    private val setOfPair_String__String_Provider: Provider<Set<Pair<String, String>>>
+      field = { // BLOCK
+        val tmp0_builder: SetFactory.Builder<Pair<String, String>> = builder<Pair<String, String>>(individualProviderSize = 0, collectionProviderSize = 1)
+        tmp0_builder.addCollectionProvider(collectionProvider = create(instance = <this>, otherHeaders = { // BLOCK
+          val tmp1_builder: SetFactory.Builder<Pair<String, String>> = builder<Pair<String, String>>(individualProviderSize = 1, collectionProviderSize = 1)
+          tmp1_builder.addProvider(individualProvider = create(instance = <this>, header = <this>.#internalHeaderProvider))
+          tmp1_builder.addCollectionProvider(collectionProvider = create(instance = <this>))
+          tmp1_builder.build()
+        }))
+        tmp0_builder.build()
+      }
+
     private val commonAppHeadersInterceptorProvider: Provider<CommonAppHeadersInterceptor>
       field = DelegateFactory<CommonAppHeadersInterceptor>()
 
@@ -336,7 +348,7 @@ interface AppGraph {
       super/*Any*/()
       /* <init>() */
 
-      setDelegate<CommonAppHeadersInterceptor>(delegateFactory = <this>.#commonAppHeadersInterceptorProvider, delegate = create(additionalHeaders = <this>.<get-setOfPair_String__String_Provider>(), lazyDelegate = <this>.#commonAppHeadersInterceptorProvider))
+      setDelegate<CommonAppHeadersInterceptor>(delegateFactory = <this>.#commonAppHeadersInterceptorProvider, delegate = create(additionalHeaders = <this>.#setOfPair_String__String_Provider, lazyDelegate = <this>.#commonAppHeadersInterceptorProvider))
     }
 
     override val interceptor: CommonAppHeadersInterceptor
@@ -347,20 +359,6 @@ interface AppGraph {
     override val internalHeader: InternalHeader
       override get(): InternalHeader {
         return <this>.#internalHeaderProvider.invoke()
-      }
-
-    private val setOfPair_String__String_Provider: Provider<Set<Pair<String, String>>>
-      private get(): Provider<Set<Pair<String, String>>> {
-        return { // BLOCK
-          val tmp0_builder: SetFactory.Builder<Pair<String, String>> = builder<Pair<String, String>>(individualProviderSize = 0, collectionProviderSize = 1)
-          tmp0_builder.addCollectionProvider(collectionProvider = create(instance = <this>, otherHeaders = { // BLOCK
-            val tmp1_builder: SetFactory.Builder<Pair<String, String>> = builder<Pair<String, String>>(individualProviderSize = 1, collectionProviderSize = 1)
-            tmp1_builder.addProvider(individualProvider = create(instance = <this>, header = <this>.#internalHeaderProvider))
-            tmp1_builder.addCollectionProvider(collectionProvider = create(instance = <this>))
-            tmp1_builder.build()
-          }))
-          tmp0_builder.build()
-        }
       }
 
   }

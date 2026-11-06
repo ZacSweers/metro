@@ -2633,6 +2633,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("InjectedFunctionProvidersAreReused.kt")
+    public void testInjectedFunctionProvidersAreReused() {
+      run("InjectedFunctionProvidersAreReused.kt");
+    }
+
+    @Test
     @TestMetadata("InjectedPrivateConstructorParametersWithGenericsWork.kt")
     public void testInjectedPrivateConstructorParametersWithGenericsWork() {
       run("InjectedPrivateConstructorParametersWithGenericsWork.kt");
@@ -3254,6 +3260,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("InjectedJavaxProvidersAreReused.kt")
+      public void testInjectedJavaxProvidersAreReused() {
+        run("InjectedJavaxProvidersAreReused.kt");
+      }
+
+      @Test
       @TestMetadata("InlinedObjectMultibindingRemainsLazy.kt")
       public void testInlinedObjectMultibindingRemainsLazy() {
         run("InlinedObjectMultibindingRemainsLazy.kt");
@@ -3507,6 +3519,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       @Test
       public void testAllFilesPresentInGuice() {
         KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/interop/guice"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      }
+
+      @Test
+      @TestMetadata("ConvertedProvidersAreReusedAcrossModules.kt")
+      public void testConvertedProvidersAreReusedAcrossModules() {
+        run("ConvertedProvidersAreReusedAcrossModules.kt");
       }
 
       @Test
@@ -3896,6 +3914,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     @TestMetadata("MultibindingGraphWithWithScopedMapProviderDeps.kt")
     public void testMultibindingGraphWithWithScopedMapProviderDeps() {
       run("MultibindingGraphWithWithScopedMapProviderDeps.kt");
+    }
+
+    @Test
+    @TestMetadata("MultibindingProvidersAreReused.kt")
+    public void testMultibindingProvidersAreReused() {
+      run("MultibindingProvidersAreReused.kt");
     }
 
     @Test
