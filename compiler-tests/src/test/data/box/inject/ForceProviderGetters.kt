@@ -62,6 +62,8 @@ fun box(): String {
   assertEquals(6, constructions)
   val providers = graph.providerMap()
   assertEquals(6, constructions)
+  // Map entries keep their providers across reads.
+  assertSame(providers.getValue("first"), graph.providerMap().getValue("first"))
   assertNotSame(providers.getValue("first")(), providers.getValue("first")())
 
   assertSame(graph.scoped, graph.scoped)

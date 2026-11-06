@@ -205,6 +205,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("ForceProviderGettersInlineSingleUseProviders.kt")
+    public void testForceProviderGettersInlineSingleUseProviders() {
+      run("ForceProviderGettersInlineSingleUseProviders.kt");
+    }
+
+    @Test
     @TestMetadata("GraphAccessors.kt")
     public void testGraphAccessors() {
       run("GraphAccessors.kt");

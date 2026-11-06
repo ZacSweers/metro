@@ -362,42 +362,6 @@ interface AppGraph {
 
     }
 
-    private class Shard10 {
-      constructor(graph: Impl) /* primary */ {
-        super/*Any*/()
-        <this>.#graph = graph
-      }
-
-      internal val graph: Impl
-
-      @MultibindingElement(bindingId = "Foo", elementId = "662182539")
-      internal val secondSetProvider: Provider<Foo>
-        internal get(): Provider<Foo> {
-          return create(instance = <this>.#graph, foo = <this>.#graph.#shard2.<get-fooProvider>())
-        }
-
-    }
-
-    private class Shard11 {
-      constructor(graph: Impl) /* primary */ {
-        super/*Any*/()
-        <this>.#graph = graph
-      }
-
-      internal val graph: Impl
-
-      internal val setOfFooProvider: Provider<Set<Foo>>
-        internal get(): Provider<Set<Foo>> {
-          return { // BLOCK
-            val tmp0_builder: SetFactory.Builder<Foo> = builder<Foo>(individualProviderSize = 2, collectionProviderSize = 0)
-            tmp0_builder.addProvider(individualProvider = <this>.#graph.#shard9.<get-firstSetProvider>())
-            tmp0_builder.addProvider(individualProvider = <this>.#graph.#shard10.<get-secondSetProvider>())
-            tmp0_builder.build()
-          }
-        }
-
-    }
-
     private class Shard2 {
       constructor(graph: Impl) /* primary */ {
         super/*Any*/()
@@ -419,21 +383,6 @@ interface AppGraph {
     }
 
     private class Shard3 {
-      constructor(graph: Impl) /* primary */ {
-        super/*Any*/()
-        <this>.#graph = graph
-      }
-
-      internal val consumerProvider: Provider<Consumer>
-        internal get(): Provider<Consumer> {
-          return create(foo = <this>.#graph.#shard2.<get-fooConvertedProvider>())
-        }
-
-      internal val graph: Impl
-
-    }
-
-    private class Shard4 {
       constructor() /* primary */ {
         super/*Any*/()
         <this>.#cycleBarProvider = DelegateFactory<CycleBar>()
@@ -454,7 +403,7 @@ interface AppGraph {
 
     }
 
-    private class Shard5 {
+    private class Shard4 {
       constructor(graph: Impl) /* primary */ {
         super/*Any*/()
         <this>.#scopedFooProvider = provider<Provider<ScopedFoo>, ScopedFoo>(delegate = create(dependency = graph.#shard1.<get-dependencyProvider>()))
@@ -469,39 +418,7 @@ interface AppGraph {
 
     }
 
-    private class Shard6 {
-      constructor(graph: Impl) /* primary */ {
-        super/*Any*/()
-        <this>.#graph = graph
-      }
-
-      @MultibindingElement(bindingId = "kotlin/String|Foo", elementId = "157796493")
-      internal val firstMapProvider: Provider<Foo>
-        internal get(): Provider<Foo> {
-          return create(instance = <this>.#graph, foo = <this>.#graph.#shard2.<get-fooProvider>())
-        }
-
-      internal val graph: Impl
-
-    }
-
-    private class Shard7 {
-      constructor(graph: Impl) /* primary */ {
-        super/*Any*/()
-        <this>.#graph = graph
-      }
-
-      internal val graph: Impl
-
-      @MultibindingElement(bindingId = "kotlin/String|Foo", elementId = "486594385")
-      internal val secondMapProvider: Provider<Foo>
-        internal get(): Provider<Foo> {
-          return create(instance = <this>.#graph, foo = <this>.#graph.#shard2.<get-fooProvider>())
-        }
-
-    }
-
-    private class Shard8 {
+    private class Shard5 {
       constructor(graph: Impl) /* primary */ {
         super/*Any*/()
         <this>.#graph = graph
@@ -513,27 +430,31 @@ interface AppGraph {
         internal get(): Provider<Map<String, Foo>> {
           return { // BLOCK
             val tmp0_builder: MapFactory.Builder<String, Foo> = builder<String, Foo>(size = 2)
-            tmp0_builder.put(key = "first", providerOfValue = <this>.#graph.#shard6.<get-firstMapProvider>())
-            tmp0_builder.put(key = "second", providerOfValue = <this>.#graph.#shard7.<get-secondMapProvider>())
+            tmp0_builder.put(key = "first", providerOfValue = create(instance = <this>.#graph, foo = <this>.#graph.#shard2.<get-fooProvider>()))
+            tmp0_builder.put(key = "second", providerOfValue = create(instance = <this>.#graph, foo = <this>.#graph.#shard2.<get-fooProvider>()))
             tmp0_builder.build()
           }
         }
 
     }
 
-    private class Shard9 {
+    private class Shard6 {
       constructor(graph: Impl) /* primary */ {
         super/*Any*/()
         <this>.#graph = graph
       }
 
-      @MultibindingElement(bindingId = "Foo", elementId = "333384647")
-      internal val firstSetProvider: Provider<Foo>
-        internal get(): Provider<Foo> {
-          return create(instance = <this>.#graph, foo = <this>.#graph.#shard2.<get-fooProvider>())
-        }
-
       internal val graph: Impl
+
+      internal val setOfFooProvider: Provider<Set<Foo>>
+        internal get(): Provider<Set<Foo>> {
+          return { // BLOCK
+            val tmp0_builder: SetFactory.Builder<Foo> = builder<Foo>(individualProviderSize = 2, collectionProviderSize = 0)
+            tmp0_builder.addProvider(individualProvider = create(instance = <this>.#graph, foo = <this>.#graph.#shard2.<get-fooProvider>()))
+            tmp0_builder.addProvider(individualProvider = create(instance = <this>.#graph, foo = <this>.#graph.#shard2.<get-fooProvider>()))
+            tmp0_builder.build()
+          }
+        }
 
     }
 
@@ -543,25 +464,20 @@ interface AppGraph {
 
       <this>.#shard1 = Shard1()
       <this>.#shard2 = Shard2(graph = <this>)
-      <this>.#shard3 = Shard3(graph = <this>)
-      <this>.#shard4 = Shard4()
+      <this>.#shard3 = Shard3()
+      <this>.#shard4 = Shard4(graph = <this>)
       <this>.#shard5 = Shard5(graph = <this>)
       <this>.#shard6 = Shard6(graph = <this>)
-      <this>.#shard7 = Shard7(graph = <this>)
-      <this>.#shard8 = Shard8(graph = <this>)
-      <this>.#shard9 = Shard9(graph = <this>)
-      <this>.#shard10 = Shard10(graph = <this>)
-      <this>.#shard11 = Shard11(graph = <this>)
     }
 
     override val consumer: Provider<Consumer>
       override get(): Provider<Consumer> {
-        return <this>.#shard3.<get-consumerProvider>()
+        return create(foo = <this>.#shard2.<get-fooConvertedProvider>())
       }
 
     override val cycle: Provider<CycleFoo>
       override get(): Provider<CycleFoo> {
-        return <this>.#shard4.<get-cycleFooConvertedProvider>()
+        return <this>.#shard3.<get-cycleFooConvertedProvider>()
       }
 
     override val foo: Provider<Foo>
@@ -571,24 +487,20 @@ interface AppGraph {
 
     override val map: Provider<Map<String, Foo>>
       override get(): Provider<Map<String, Foo>> {
-        return <this>.#shard8.<get-mapOfStringToFooProvider>()
+        return <this>.#shard5.<get-mapOfStringToFooProvider>()
       }
 
     override val scoped: Provider<ScopedFoo>
       override get(): Provider<ScopedFoo> {
-        return <this>.#shard5.<get-scopedFooConvertedProvider>()
+        return <this>.#shard4.<get-scopedFooConvertedProvider>()
       }
 
     override val set: Provider<Set<Foo>>
       override get(): Provider<Set<Foo>> {
-        return <this>.#shard11.<get-setOfFooProvider>()
+        return <this>.#shard6.<get-setOfFooProvider>()
       }
 
     internal val shard1: Shard1
-
-    internal val shard10: Shard10
-
-    internal val shard11: Shard11
 
     internal val shard2: Shard2
 
@@ -599,12 +511,6 @@ interface AppGraph {
     internal val shard5: Shard5
 
     internal val shard6: Shard6
-
-    internal val shard7: Shard7
-
-    internal val shard8: Shard8
-
-    internal val shard9: Shard9
 
   }
 

@@ -125,6 +125,12 @@ internal class BindingPropertyCollector(
   private val assistedTargetCounts =
     LinkedHashMap<IrTypeKey, Pair<IrBinding.ConstructorInjected, Int>>()
 
+  /**
+   * Whether a provider requested repeatedly gets its own property. Forced getters build a new
+   * provider on every call, so they skip this and inline single-site providers instead.
+   */
+  private val cachesRepeatedFactoryAccess = !metroContext.options.forceProviderGetters
+
   /** Counters for assigning IDs within each switching provider flavor. */
   private var nextSwitchingProviderId = 0
   private var nextSwitchingSuspendProviderId = 0
@@ -405,7 +411,7 @@ internal class BindingPropertyCollector(
 
       val propertyKind =
         if (isField && isProviderType) {
-          providerPropertyKind(binding)
+          providerPropertyKind(binding, node)
         } else {
           knownPropertyType
         }
@@ -457,7 +463,7 @@ internal class BindingPropertyCollector(
           } else {
             contextKey
           }
-        val propertyKind = providerPropertyKind(binding)
+        val propertyKind = providerPropertyKind(binding, node)
         val switchingId = allocateSwitchingId(binding, propertyKind)
         keysWithBackingProperties[propertyContextKey] =
           CollectedProperty(
@@ -470,7 +476,7 @@ internal class BindingPropertyCollector(
       } else if (needsSharedGetter()) {
         if (binding.isSuspendInGraph) {
           // The property returns a SuspendProvider so each consumer can await it.
-          val propertyKind = providerPropertyKind(binding)
+          val propertyKind = providerPropertyKind(binding, node)
           keysWithBackingProperties[contextKey] =
             CollectedProperty(
               binding,
@@ -536,7 +542,7 @@ internal class BindingPropertyCollector(
       val needsFactory = inFactoryPath || dependency.requiresProviderInstance
       val switchingProviderRequestsDependency =
         dependency.requiresProviderInstance &&
-          shouldUseSwitchingProvider(binding, providerPropertyKind(binding))
+          shouldUseSwitchingProvider(binding, providerPropertyKind(binding, node))
       val hasDefaultFactoryArgument = inFactoryPath && dependency.hasDefault
       val usesCanonicalArgument = hasDefaultFactoryArgument && !switchingProviderRequestsDependency
       val dependencyKey =
@@ -554,8 +560,12 @@ internal class BindingPropertyCollector(
     }
   }
 
-  private fun providerPropertyKind(binding: IrBinding): PropertyKind {
+  private fun providerPropertyKind(binding: IrBinding, node: Node): PropertyKind {
     if (!metroContext.options.forceProviderGetters) {
+      return PropertyKind.FIELD
+    }
+    // Map entries keep a stored provider so each map read returns the same entry providers.
+    if (node.requiresCachedProvider) {
       return PropertyKind.FIELD
     }
     val requiresStorage = binding.isScoped() || binding.typeKey in deferredTypes
@@ -701,7 +711,9 @@ internal class BindingPropertyCollector(
           }
           isFactory -> {
             factoryRefCount++
-            hasRepeatedFactoryAccess = hasRepeatedFactoryAccess || isRepeated
+            if (isRepeated && cachesRepeatedFactoryAccess) {
+              hasRepeatedFactoryAccess = true
+            }
           }
           else -> {
             scalarRefCount++
