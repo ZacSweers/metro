@@ -8792,6 +8792,8 @@
 <h3 id="fixes">Fixes<a class="headerlink" href="#fixes" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>[FIR/IR]</strong> Fix contributed <code>@Inject</code> classes skipping declared and inherited member injection when <code>generateContributionProviders</code> is enabled.</li>
+<li><strong>[IR]</strong> Fix eager reads of included dependency accessors when graph extensions request <code>Provider</code> or <code>Lazy</code> values.</li>
+<li><strong>[IR]</strong> Fix missing graph references in getter-only shards when accessing included dependencies.</li>
 <li><strong>[IR]</strong> Fix graphs creating new providers every time a <code>Map&lt;K, Provider&lt;V&gt;&gt;</code> is requested. </li>
 <li><strong>[IR/interop]</strong> Fix an issue with Dagger-processed providers/constructors with default parameters with their generated factory. Previously, Metro would treat the source function&rsquo;s parameter as optional if it had a default value and not reconcile that correctly with Dagger&rsquo;s generated factory (which would not propagate that default since Dagger uses a different mechanism for optional bindings).</li>
 </ul>
