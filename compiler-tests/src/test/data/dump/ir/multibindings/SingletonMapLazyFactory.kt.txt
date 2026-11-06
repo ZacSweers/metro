@@ -22,6 +22,9 @@ interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
+    private val mapOfIntToIntProvider: Provider<Map<Int, Lazy<Int>>>
+      field = singleton<Int, Int>(key = 1, provider = create(instance = <this>))
+
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
@@ -30,7 +33,7 @@ interface AppGraph {
 
     override val ints: Function0<Map<Int, Lazy<Int>>>
       override get(): Function0<Map<Int, Lazy<Int>>> {
-        return singleton<Int, Int>(key = 1, provider = create(instance = <this>))
+        return <this>.#mapOfIntToIntProvider
       }
 
   }

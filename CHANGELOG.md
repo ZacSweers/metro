@@ -11,6 +11,11 @@ Changelog
 ### Fixes
 
 - **[FIR/IR]** Fix contributed `@Inject` classes skipping declared and inherited member injection when `generateContributionProviders` is enabled.
+- **[IR]** Better reuse provider instances across repeated graph accessor and unscoped consumer requests. 
+  - Converted provider accessors and constructor parameters reuse their wrappers (i.e. different types of `Provider` types). Canonical providers used only to initialize one cached conversion can be inlined.
+  - Repeated requests for multibinding providers reuse their providers. Unscoped maps of providers remain fresh on each invocation while reusing their entry providers.
+  - Unscoped values still create a fresh instance on each provider invocation.
+  - Note that this results in more fields to allow reuse, in exchange for less allocations at runtime. If you have any issues, please file an issue with details. you can force these to just be getters instead via temporary compiler option in the meantime via `metro { compilerOptions.put("force-provider-getters", "true") }`
 - **[IR]** Fix `@GraphPrivate @Binds` declarations leaking into graph extensions. Child graphs now resolve their own bindings or report a missing binding when the parent's alias is private.
 - **[IR]** Fix eager reads of included dependency accessors when graph extensions request `Provider` or `Lazy` values.
 - **[IR]** Fix missing graph references in getter-only shards when accessing included dependencies.

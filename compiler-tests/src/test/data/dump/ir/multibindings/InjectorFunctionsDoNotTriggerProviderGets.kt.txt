@@ -160,6 +160,21 @@ interface TestGraph2 : Bindings {
     private val provideStringProvider: Provider<String>
       field = create(instance = <this>)
 
+    private val mapOfIntToStringProvider: Provider<Map<Int, Function0<String>>>
+      field = { // BLOCK
+        val tmp0_valueProviders: Map<Int, Function0<String>> = buildMap<Int, Function0<String>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<String>>.<anonymous>() {
+          $receiver.put(key = 1, value = <this>.#provideStringProvider)
+        }
+)
+        local fun <anonymous>(): Map<Int, Function0<String>> {
+          return buildMap<Int, Function0<String>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<String>>.<anonymous>() {
+            $receiver.putAll(from = tmp0_valueProviders)
+          }
+)
+        }
+ /*-> Provider<Map<Int, Function0<String>>> */
+      }
+
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
@@ -167,17 +182,12 @@ interface TestGraph2 : Bindings {
     }
 
     override fun inject(target: Target) {
-      injectStrings(instance = target, strings = <this>.<get-mapOfIntToStringProvider>().invoke())
+      injectStrings(instance = target, strings = <this>.#mapOfIntToStringProvider.invoke())
     }
-
-    private val mapOfIntToStringProvider: Provider<Map<Int, Function0<String>>>
-      private get(): Provider<Map<Int, Function0<String>>> {
-        return singleton<Int, String>(key = 1, provider = <this>.#provideStringProvider)
-      }
 
     override val strings: Function0<Map<Int, Function0<String>>>
       override get(): Function0<Map<Int, Function0<String>>> {
-        return <this>.<get-mapOfIntToStringProvider>()
+        return <this>.#mapOfIntToStringProvider
       }
 
   }
@@ -271,6 +281,21 @@ interface TestGraph4 : Bindings {
     private val provideStringProvider: Provider<String>
       field = create(instance = <this>)
 
+    private val mapOfIntToStringProvider: Provider<Map<Int, Function0<String>>>
+      field = { // BLOCK
+        val tmp0_valueProviders: Map<Int, Function0<String>> = buildMap<Int, Function0<String>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<String>>.<anonymous>() {
+          $receiver.put(key = 1, value = <this>.#provideStringProvider)
+        }
+)
+        local fun <anonymous>(): Map<Int, Function0<String>> {
+          return buildMap<Int, Function0<String>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<String>>.<anonymous>() {
+            $receiver.putAll(from = tmp0_valueProviders)
+          }
+)
+        }
+ /*-> Provider<Map<Int, Function0<String>>> */
+      }
+
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
@@ -279,7 +304,7 @@ interface TestGraph4 : Bindings {
 
     override val strings: Function0<Map<Int, Function0<String>>>
       override get(): Function0<Map<Int, Function0<String>>> {
-        return singleton<Int, String>(key = 1, provider = <this>.#provideStringProvider)
+        return <this>.#mapOfIntToStringProvider
       }
 
   }

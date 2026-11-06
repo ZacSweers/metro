@@ -66,6 +66,10 @@ object MetroDirectives : SimpleDirectivesContainer() {
     ) {
       it.toInt()
     }
+  val FORCE_PROVIDER_GETTERS by
+    valueDirective("Use getters for unscoped providers and provider conversions.") {
+      it.toBoolean()
+    }
   val ENABLE_SWITCHING_PROVIDERS by
     valueDirective("Enable SwitchingProviders for deferred class loading.") { it.toBoolean() }
   val ENABLE_FULL_BINDING_GRAPH_VALIDATION by

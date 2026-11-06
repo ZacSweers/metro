@@ -678,9 +678,25 @@ interface AppGraph {
 
     private val viewModelFactoryProvider: Provider<ViewModelFactory>
       field = create(viewModels = { // BLOCK
-        val tmp0_builder: MapProviderFactory.Builder<KClass<*>, ViewModel> = builder<KClass<*>, ViewModel>(size = 2)
-        tmp0_builder.put(key = BViewModel::class, providerOfValue = <this>.#bViewModelProvider)
-        tmp0_builder.put(key = AViewModel::class, providerOfValue = <this>.#aViewModelProvider)
+        val tmp0_valueProviders: Map<KClass<*>, Function0<ViewModel>> = buildMap<KClass<*>, Function0<ViewModel>>(capacity = 2, builderAction = local fun MutableMap<KClass<*>, Function0<ViewModel>>.<anonymous>() {
+          $receiver.put(key = BViewModel::class, value = <this>.#bViewModelProvider)
+          $receiver.put(key = AViewModel::class, value = <this>.#aViewModelProvider)
+        }
+)
+        local fun <anonymous>(): Map<KClass<*>, Function0<ViewModel>> {
+          return buildMap<KClass<*>, Function0<ViewModel>>(capacity = 2, builderAction = local fun MutableMap<KClass<*>, Function0<ViewModel>>.<anonymous>() {
+            $receiver.putAll(from = tmp0_valueProviders)
+          }
+)
+        }
+ /*-> Provider<Map<KClass<*>, Function0<ViewModel>>> */
+      })
+
+    private val fragmentInjectorProvider: Provider<FragmentInjector>
+      field = create(injectors = { // BLOCK
+        val tmp0_builder: MapFactory.Builder<KClass<*>, Injector> = builder<KClass<*>, Injector>(size = 2)
+        tmp0_builder.put(key = BFragment::class, providerOfValue = create(memberInjector = providerOf<MembersInjector<BFragment>>(value = create(viewModelFactory = <this>.#viewModelFactoryProvider))))
+        tmp0_builder.put(key = AFragment::class, providerOfValue = create(memberInjector = providerOf<MembersInjector<AFragment>>(value = create(viewModelFactory = <this>.#viewModelFactoryProvider))))
         tmp0_builder.build()
       })
 
@@ -692,12 +708,7 @@ interface AppGraph {
 
     override val memberInjector: MembersInjector<MyActivity>
       override get(): MembersInjector<MyActivity> {
-        return create(fragmentInjector = create(injectors = { // BLOCK
-          val tmp0_builder: MapFactory.Builder<KClass<*>, Injector> = builder<KClass<*>, Injector>(size = 2)
-          tmp0_builder.put(key = BFragment::class, providerOfValue = create(memberInjector = providerOf<MembersInjector<BFragment>>(value = create(viewModelFactory = <this>.#viewModelFactoryProvider))))
-          tmp0_builder.put(key = AFragment::class, providerOfValue = create(memberInjector = providerOf<MembersInjector<AFragment>>(value = create(viewModelFactory = <this>.#viewModelFactoryProvider))))
-          tmp0_builder.build()
-        }))
+        return create(fragmentInjector = <this>.#fragmentInjectorProvider)
       }
 
   }

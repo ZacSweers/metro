@@ -210,7 +210,7 @@ class WrapperA1 {
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class MetroFactory : Factory<WrapperA1> {
-    private /* final field */ val consumer: Provider<SetConsumerA> = consumer
+    private /* final field */ val consumer: Function0<SetConsumerA> = consumer
     companion object Companion {
       private constructor() /* primary */ {
         super/*Any*/()
@@ -221,7 +221,7 @@ class WrapperA1 {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(consumer: Provider<SetConsumerA>): MetroFactory {
+      fun create(consumer: Function0<SetConsumerA>): MetroFactory {
         return MetroFactory(consumer = consumer)
       }
 
@@ -235,7 +235,7 @@ class WrapperA1 {
     }
 
     @HiddenFromObjC
-    private constructor(consumer: Provider<SetConsumerA>) /* primary */ {
+    private constructor(consumer: Function0<SetConsumerA>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -270,7 +270,7 @@ class WrapperA2 {
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class MetroFactory : Factory<WrapperA2> {
-    private /* final field */ val consumer: Provider<SetConsumerA> = consumer
+    private /* final field */ val consumer: Function0<SetConsumerA> = consumer
     companion object Companion {
       private constructor() /* primary */ {
         super/*Any*/()
@@ -281,7 +281,7 @@ class WrapperA2 {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(consumer: Provider<SetConsumerA>): MetroFactory {
+      fun create(consumer: Function0<SetConsumerA>): MetroFactory {
         return MetroFactory(consumer = consumer)
       }
 
@@ -295,7 +295,7 @@ class WrapperA2 {
     }
 
     @HiddenFromObjC
-    private constructor(consumer: Provider<SetConsumerA>) /* primary */ {
+    private constructor(consumer: Function0<SetConsumerA>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -330,7 +330,7 @@ class WrapperB1 {
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class MetroFactory : Factory<WrapperB1> {
-    private /* final field */ val consumer: Provider<SetConsumerB> = consumer
+    private /* final field */ val consumer: Function0<SetConsumerB> = consumer
     companion object Companion {
       private constructor() /* primary */ {
         super/*Any*/()
@@ -341,7 +341,7 @@ class WrapperB1 {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(consumer: Provider<SetConsumerB>): MetroFactory {
+      fun create(consumer: Function0<SetConsumerB>): MetroFactory {
         return MetroFactory(consumer = consumer)
       }
 
@@ -355,7 +355,7 @@ class WrapperB1 {
     }
 
     @HiddenFromObjC
-    private constructor(consumer: Provider<SetConsumerB>) /* primary */ {
+    private constructor(consumer: Function0<SetConsumerB>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -390,7 +390,7 @@ class WrapperB2 {
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class MetroFactory : Factory<WrapperB2> {
-    private /* final field */ val consumer: Provider<SetConsumerB> = consumer
+    private /* final field */ val consumer: Function0<SetConsumerB> = consumer
     companion object Companion {
       private constructor() /* primary */ {
         super/*Any*/()
@@ -401,7 +401,7 @@ class WrapperB2 {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(consumer: Provider<SetConsumerB>): MetroFactory {
+      fun create(consumer: Function0<SetConsumerB>): MetroFactory {
         return MetroFactory(consumer = consumer)
       }
 
@@ -415,7 +415,7 @@ class WrapperB2 {
     }
 
     @HiddenFromObjC
-    private constructor(consumer: Provider<SetConsumerB>) /* primary */ {
+    private constructor(consumer: Function0<SetConsumerB>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -450,11 +450,19 @@ interface TestGraph {
     private val provideBaseProvider: Provider<Base>
       field = create(instance = <this>)
 
+    private val setOfIntProvider: Provider<Set<Int>>
+      field = { // BLOCK
+        val tmp0_builder: SetFactory.Builder<Int> = builder<Int>(individualProviderSize = 2, collectionProviderSize = 0)
+        tmp0_builder.addProvider(individualProvider = create(instance = <this>, base = <this>.#provideBaseProvider))
+        tmp0_builder.addProvider(individualProvider = create(instance = <this>, base = <this>.#provideBaseProvider))
+        tmp0_builder.build()
+      }
+
     private val setConsumerAProvider: Provider<SetConsumerA>
-      field = create(set = <this>.<get-setOfIntProvider>())
+      field = create(set = <this>.#setOfIntProvider)
 
     private val setConsumerBProvider: Provider<SetConsumerB>
-      field = create(set = <this>.<get-setOfIntProvider>())
+      field = create(set = <this>.#setOfIntProvider)
 
     private constructor() /* primary */ {
       super/*Any*/()
@@ -465,16 +473,6 @@ interface TestGraph {
     override val entry: Entry
       override get(): Entry {
         return Entry(a1 = WrapperA1(consumer = <this>.#setConsumerAProvider), a2 = WrapperA2(consumer = <this>.#setConsumerAProvider), b1 = WrapperB1(consumer = <this>.#setConsumerBProvider), b2 = WrapperB2(consumer = <this>.#setConsumerBProvider))
-      }
-
-    private val setOfIntProvider: Provider<Set<Int>>
-      private get(): Provider<Set<Int>> {
-        return { // BLOCK
-          val tmp0_builder: SetFactory.Builder<Int> = builder<Int>(individualProviderSize = 2, collectionProviderSize = 0)
-          tmp0_builder.addProvider(individualProvider = create(instance = <this>, base = <this>.#provideBaseProvider))
-          tmp0_builder.addProvider(individualProvider = create(instance = <this>, base = <this>.#provideBaseProvider))
-          tmp0_builder.build()
-        }
       }
 
   }

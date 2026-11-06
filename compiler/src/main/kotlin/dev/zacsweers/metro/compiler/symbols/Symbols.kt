@@ -854,6 +854,12 @@ internal class Symbols(
       .single { it.name.asString() == "put" }
   }
 
+  val mutableMapPutAll by lazy {
+    pluginContext.irBuiltIns.mutableMapClass.owner.declarations
+      .filterIsInstance<IrSimpleFunction>()
+      .single { it.name.asString() == "putAll" }
+  }
+
   val intoMapConstructor by lazy {
     builtinsFinder
       .findClass(ClassId(metroRuntime.packageFqName, StringNames.INTO_MAP.asName()))!!

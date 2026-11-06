@@ -132,7 +132,8 @@ class C {
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class MetroFactory : Factory<C> {
-    private /* final field */ val aProvider: Provider<A> = aProvider
+    private /* final field */ val aProvider: Function0<A> = aProvider
+    private /* final field */ val aLazy: Provider<A> = aLazy
     companion object Companion {
       private constructor() /* primary */ {
         super/*Any*/()
@@ -143,8 +144,8 @@ class C {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(aProvider: Provider<A>): MetroFactory {
-        return MetroFactory(aProvider = aProvider)
+      fun create(aProvider: Function0<A>, aLazy: Provider<A>): MetroFactory {
+        return MetroFactory(aProvider = aProvider, aLazy = aLazy)
       }
 
       @HiddenFromObjC
@@ -157,7 +158,7 @@ class C {
     }
 
     @HiddenFromObjC
-    private constructor(aProvider: Provider<A>) /* primary */ {
+    private constructor(aProvider: Function0<A>, aLazy: Provider<A>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -172,8 +173,8 @@ class C {
     @HiddenFromObjC
     override operator fun invoke(): C {
       val tmp0: C = C.MetroFactory/* companion */.newInstance(aProvider = <this>.#aProvider)
-      MetroMembersInjector/* companion */.injectALazy(instance = tmp0, aLazy = DoubleCheck/* companion */.lazy<Provider<A>, A>(provider = <this>.#aProvider))
-      MetroMembersInjector/* companion */.injectALazyProvider(instance = tmp0, aLazyProvider = ProviderOfLazy/* companion */.create<A>(provider = <this>.#aProvider))
+      MetroMembersInjector/* companion */.injectALazy(instance = tmp0, aLazy = DoubleCheck/* companion */.lazy<Provider<A>, A>(provider = <this>.#aLazy))
+      MetroMembersInjector/* companion */.injectALazyProvider(instance = tmp0, aLazyProvider = ProviderOfLazy/* companion */.create<A>(provider = <this>.#aLazy))
       return tmp0
     }
 
@@ -428,7 +429,7 @@ interface CycleGraph {
         super/*Any*/()
         /* <init>() */
 
-        setDelegate<C>(delegateFactory = <this>.#cProvider, delegate = create(aProvider = <this>.#aProvider))
+        setDelegate<C>(delegateFactory = <this>.#cProvider, delegate = create(aProvider = <this>.#aProvider, aLazy = <this>.#aProvider))
         setDelegate<Any>(delegateFactory = <this>.#provideObjectWithCycleProvider, delegate = create(instance = <this>.#cycleGraphImpl, obj = <this>.#provideObjectWithCycleProvider))
       }
 
@@ -448,7 +449,7 @@ interface CycleGraph {
       super/*Any*/()
       /* <init>() */
 
-      setDelegate<C>(delegateFactory = <this>.#cProvider, delegate = create(aProvider = <this>.#aProvider))
+      setDelegate<C>(delegateFactory = <this>.#cProvider, delegate = create(aProvider = <this>.#aProvider, aLazy = <this>.#aProvider))
       setDelegate<Any>(delegateFactory = <this>.#provideObjectWithCycleProvider, delegate = create(instance = <this>, obj = <this>.#provideObjectWithCycleProvider))
     }
 
@@ -491,7 +492,7 @@ interface CycleGraph {
   @CallableMetadata(callableName = "provideObjectWithCycle", propertyName = "", startOffset = 489, endOffset = 582, newInstanceName = "provideObjectWithCycle")
   class ProvideObjectWithCycleMetroFactory : Factory<Any> {
     private /* final field */ val instance: CycleGraph = instance
-    private /* final field */ val obj: Provider<Any> = obj
+    private /* final field */ val obj: Function0<Any> = obj
     companion object Companion {
       private constructor() /* primary */ {
         super/*Any*/()
@@ -502,7 +503,7 @@ interface CycleGraph {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(instance: CycleGraph, obj: Provider<Any>): ProvideObjectWithCycleMetroFactory {
+      fun create(instance: CycleGraph, obj: Function0<Any>): ProvideObjectWithCycleMetroFactory {
         return ProvideObjectWithCycleMetroFactory(instance = instance, obj = obj)
       }
 
@@ -516,7 +517,7 @@ interface CycleGraph {
     }
 
     @HiddenFromObjC
-    private constructor(instance: CycleGraph, obj: Provider<Any>) /* primary */ {
+    private constructor(instance: CycleGraph, obj: Function0<Any>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 

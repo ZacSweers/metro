@@ -2,12 +2,16 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.symbols
 
+import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
+import dev.zacsweers.metro.compiler.ir.canonicalize
+import dev.zacsweers.metro.compiler.ir.wrapInProvider
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classOrNull
+import org.jetbrains.kotlin.ir.types.isSubtypeOf
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.name.ClassId
 
@@ -28,6 +32,18 @@ internal class ProviderTypeConverter(
   private val metroFramework: MetroProviderFramework,
   private val frameworks: List<ProviderFramework>,
 ) {
+  /** Whether a direct provider request needs an adapter around the canonical provider. */
+  context(context: IrMetroContext)
+  fun needsCachedConversion(key: IrContextualTypeKey): Boolean {
+    val requestedProvider = key.wrappedType as? WrappedType.Provider ?: return false
+    val canonicalKey = key.canonicalize()
+    if (requestedProvider.innerType != canonicalKey.wrappedType) {
+      return false
+    }
+    val canonicalType = canonicalKey.wrapInProvider().toIrType()
+    return !canonicalType.isSubtypeOf(key.toIrType(), context.irTypeSystemContext)
+  }
+
   /**
    * Converts [this] provider expression to match the target contextual type.
    *

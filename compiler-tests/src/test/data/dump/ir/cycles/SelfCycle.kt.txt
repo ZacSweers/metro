@@ -7,7 +7,8 @@ class S {
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class MetroFactory : Factory<S> {
-    private /* final field */ val sProvider: Provider<S> = sProvider
+    private /* final field */ val sProvider: Function0<S> = sProvider
+    private /* final field */ val sLazy: Provider<S> = sLazy
     companion object Companion {
       private constructor() /* primary */ {
         super/*Any*/()
@@ -18,8 +19,8 @@ class S {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(sProvider: Provider<S>): MetroFactory {
-        return MetroFactory(sProvider = sProvider)
+      fun create(sProvider: Function0<S>, sLazy: Provider<S>): MetroFactory {
+        return MetroFactory(sProvider = sProvider, sLazy = sLazy)
       }
 
       @HiddenFromObjC
@@ -32,7 +33,7 @@ class S {
     }
 
     @HiddenFromObjC
-    private constructor(sProvider: Provider<S>) /* primary */ {
+    private constructor(sProvider: Function0<S>, sLazy: Provider<S>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -47,7 +48,7 @@ class S {
     @HiddenFromObjC
     override operator fun invoke(): S {
       val tmp0: S = S.MetroFactory/* companion */.newInstance(sProvider = <this>.#sProvider)
-      MetroMembersInjector/* companion */.injectSLazy(instance = tmp0, sLazy = DoubleCheck/* companion */.lazy<Provider<S>, S>(provider = <this>.#sProvider))
+      MetroMembersInjector/* companion */.injectSLazy(instance = tmp0, sLazy = DoubleCheck/* companion */.lazy<Provider<S>, S>(provider = <this>.#sLazy))
       return tmp0
     }
 
@@ -114,7 +115,7 @@ interface SelfCycleGraph {
       super/*Any*/()
       /* <init>() */
 
-      setDelegate<S>(delegateFactory = <this>.#sProvider, delegate = create(sProvider = <this>.#sProvider))
+      setDelegate<S>(delegateFactory = <this>.#sProvider, delegate = create(sProvider = <this>.#sProvider, sLazy = <this>.#sProvider))
     }
 
     override fun s(): S {

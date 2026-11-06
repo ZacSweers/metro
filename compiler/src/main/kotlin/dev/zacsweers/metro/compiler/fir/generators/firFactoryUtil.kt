@@ -15,6 +15,7 @@ import dev.zacsweers.metro.compiler.fir.generateMemberFunction
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
 import dev.zacsweers.metro.compiler.fir.wrapInProviderIfNecessary
+import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.fir.FirSession
@@ -44,7 +45,6 @@ import org.jetbrains.kotlin.fir.types.ConeClassLikeType
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.constructType
 import org.jetbrains.kotlin.name.CallableId
-import org.jetbrains.kotlin.name.ClassId
 
 internal fun FirDeclarationGenerationExtension.buildFactoryConstructor(
   context: MemberGenerationContext,
@@ -100,15 +100,12 @@ internal fun FirDeclarationGenerationExtension.buildFactoryConstructor(
           }
 
           // Apply substitution to the type
-          val originalType = valueParameter.contextKey.typeKey.type
+          val originalType = valueParameter.factoryProviderType(session)
           val substitutedType = substitutor.substituteOrNull(originalType) ?: originalType
 
           valueParameter(
             valueParameter.name,
-            substitutedType.wrapInProviderIfNecessary(
-              session,
-              valueParameter.canonicalProviderClassId(defaultUsesSuspendProvider = false),
-            ),
+            substitutedType,
             key = Keys.RegularParameter,
           )
         }
@@ -191,16 +188,10 @@ internal fun FirDeclarationGenerationExtension.buildFactoryCreateFunction(
           // Will be copied in IR
           copyParameterDefaults = false,
         ) { original ->
-          val type = original.contextKey.typeKey.type
+          val type = original.factoryProviderType(session)
           val substitutor = substitutorByMap(fullSubstitutionMap, session)
           val copiedType = substitutor.substituteOrNull(type) ?: type
-          this.returnTypeRef =
-            copiedType
-              .wrapInProviderIfNecessary(
-                session,
-                original.canonicalProviderClassId(defaultUsesSuspendProvider = false),
-              )
-              .toFirResolvedTypeRef()
+          this.returnTypeRef = copiedType.toFirResolvedTypeRef()
         }
       }
       .also { func ->
@@ -215,14 +206,23 @@ internal fun FirDeclarationGenerationExtension.buildFactoryCreateFunction(
       .symbol as FirNamedFunctionSymbol
   }
 
-internal fun MetroFirValueParameter.canonicalProviderClassId(
-  defaultUsesSuspendProvider: Boolean,
-): ClassId {
-  return if (contextKey.wrappedType.usesSuspendProvider(defaultUsesSuspendProvider)) {
-    Symbols.ClassIds.metroSuspendProvider
-  } else {
-    Symbols.ClassIds.metroProvider
+internal fun MetroFirValueParameter.factoryProviderType(
+  session: FirSession,
+  defaultUsesSuspendProvider: Boolean = false,
+): ConeKotlinType {
+  val wrappedType = contextKey.wrappedType
+  if (!contextKey.hasDefault && wrappedType is WrappedType.Provider) {
+    if (wrappedType.innerType.isScalarLeaf()) {
+      return contextKey.originalType(session)
+    }
   }
+  val providerClassId =
+    if (wrappedType.usesSuspendProvider(defaultUsesSuspendProvider)) {
+      Symbols.ClassIds.metroSuspendProvider
+    } else {
+      Symbols.ClassIds.metroProvider
+    }
+  return contextKey.typeKey.type.wrapInProviderIfNecessary(session, providerClassId)
 }
 
 internal fun FirClassSymbol<*>.findSamFunction(session: FirSession): FirFunctionSymbol<*>? {

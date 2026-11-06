@@ -37,6 +37,7 @@ interface AppGraph {
 @DependencyGraph
 interface SingletonGraph {
   val handlers: Map<String, Provider<Handler>>
+  val handlersProvider: Provider<Map<String, Provider<Handler>>>
 
   @Binds @IntoMap @StringKey("single") val InjectedHandler.handler: Handler
 }
@@ -79,10 +80,19 @@ fun box(): String {
   val singleProvider = singletonGraph.handlers.getValue("single")
   assertSame(singleProvider, singletonGraph.handlers.getValue("single"))
   assertNotSame(singleProvider(), singleProvider())
+  val singletonMapProvider = singletonGraph.handlersProvider
+  assertSame(singletonMapProvider, singletonGraph.handlersProvider)
+  val firstSingletonMap = singletonMapProvider()
+  val secondSingletonMap = singletonMapProvider()
+  assertNotSame(firstSingletonMap, secondSingletonMap)
+  assertSame(singleProvider, firstSingletonMap.getValue("single"))
+  assertSame(singleProvider, secondSingletonMap.getValue("single"))
 
   val wrappedGraph = createGraph<WrappedGraph>()
-  val firstWrapped = wrappedGraph.handlers()
-  val secondWrapped = wrappedGraph.handlers()
+  val wrappedProvider = wrappedGraph.handlers
+  assertSame(wrappedProvider, wrappedGraph.handlers)
+  val firstWrapped = wrappedProvider()
+  val secondWrapped = wrappedProvider()
   assertNotSame(firstWrapped, secondWrapped)
   for (key in listOf("alpha", "beta")) {
     assertSame(firstWrapped.getValue(key), secondWrapped.getValue(key))

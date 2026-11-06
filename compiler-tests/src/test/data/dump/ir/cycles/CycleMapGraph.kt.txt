@@ -165,7 +165,31 @@ interface CycleMapGraph {
       super/*Any*/()
       /* <init>() */
 
-      setDelegate<Y>(delegateFactory = <this>.#yProvider, delegate = create(mapOfProvidersOfX = singleton<String, X>(key = "X", provider = <this>.#xProvider), mapOfProvidersOfY = singleton<String, Y>(key = "Y", provider = <this>.#yProvider)))
+      setDelegate<Y>(delegateFactory = <this>.#yProvider, delegate = create(mapOfProvidersOfX = { // BLOCK
+        val tmp0_valueProviders: Map<String, Function0<X>> = buildMap<String, Function0<X>>(capacity = 1, builderAction = local fun MutableMap<String, Function0<X>>.<anonymous>() {
+          $receiver.put(key = "X", value = <this>.#xProvider)
+        }
+)
+        local fun <anonymous>(): Map<String, Function0<X>> {
+          return buildMap<String, Function0<X>>(capacity = 1, builderAction = local fun MutableMap<String, Function0<X>>.<anonymous>() {
+            $receiver.putAll(from = tmp0_valueProviders)
+          }
+)
+        }
+ /*-> Provider<Map<String, Function0<X>>> */
+      }, mapOfProvidersOfY = { // BLOCK
+        val tmp1_valueProviders: Map<String, Function0<Y>> = buildMap<String, Function0<Y>>(capacity = 1, builderAction = local fun MutableMap<String, Function0<Y>>.<anonymous>() {
+          $receiver.put(key = "Y", value = <this>.#yProvider)
+        }
+)
+        local fun <anonymous>(): Map<String, Function0<Y>> {
+          return buildMap<String, Function0<Y>>(capacity = 1, builderAction = local fun MutableMap<String, Function0<Y>>.<anonymous>() {
+            $receiver.putAll(from = tmp1_valueProviders)
+          }
+)
+        }
+ /*-> Provider<Map<String, Function0<Y>>> */
+      }))
     }
 
     override fun y(): Y {

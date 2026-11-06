@@ -14,6 +14,29 @@ class MetroCompilerOptionsTest {
   private val compatContext by lazy { CompatContext.create() }
 
   @Test
+  fun `provider getters are disabled by default`() {
+    assertThat(MetroOptions.buildOptions {}.forceProviderGetters).isFalse()
+    assertThat(loadOptions("2.4.20").forceProviderGetters).isFalse()
+  }
+
+  @Test
+  fun `provider getters can be configured through raw compiler options`() {
+    for (enabled in listOf(false, true)) {
+      val options = MetroOptions.buildOptions {
+        applyRawOption("force-provider-getters", enabled.toString())
+      }
+      assertThat(options.forceProviderGetters).isEqualTo(enabled)
+      assertThat(options.toBuilder().build().forceProviderGetters).isEqualTo(enabled)
+
+      val loaded =
+        loadOptions("2.4.20") {
+          MetroOption.FORCE_PROVIDER_GETTERS.raw.put(this, enabled.toString())
+        }
+      assertThat(loaded.forceProviderGetters).isEqualTo(enabled)
+    }
+  }
+
+  @Test
   fun `empty SMAP workaround is disabled by default`() {
     assertThat(MetroOptions.buildOptions {}.fixEmptySmapRanges).isFalse()
     for (version in listOf("2.3.20", "2.4.20")) {

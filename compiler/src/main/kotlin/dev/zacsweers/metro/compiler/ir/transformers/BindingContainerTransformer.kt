@@ -62,7 +62,7 @@ import dev.zacsweers.metro.compiler.ir.originOrNull
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.dedupeParameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
-import dev.zacsweers.metro.compiler.ir.parameters.toCanonicalProviderKey
+import dev.zacsweers.metro.compiler.ir.parameters.toFactoryProviderKey
 import dev.zacsweers.metro.compiler.ir.parametersAsProviderArguments
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
@@ -510,8 +510,7 @@ internal class BindingContainerTransformer(
               }
             val field = irParam.addBackingFieldTo(factoryCls, fieldName)
             nameToField[irParam.name] = field
-            providerFieldsByKey[parameter.toCanonicalProviderKey(defaultUsesSuspendProvider)] =
-              field
+            providerFieldsByKey[parameter.toFactoryProviderKey(defaultUsesSuspendProvider)] = field
           }
           addHiddenFromObjCAnnotation(this)
           body = generateDefaultConstructorBody()

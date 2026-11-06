@@ -193,6 +193,17 @@ private constructor(
 
       val exactGraphDependencyRequest =
         binding is IrBinding.GraphDependency && binding.canPassThrough(contextualTypeKey)
+      val canReadConvertedProvider =
+        accessType == AccessType.PROVIDER && fieldInitKey != binding.typeKey
+      val needsConvertedProvider =
+        canReadConvertedProvider &&
+          metroSymbols.providerTypeConverter.needsCachedConversion(contextualTypeKey)
+      if (needsConvertedProvider && !exactGraphDependencyRequest) {
+        val convertedProperty = bindingPropertyContext.get(contextualTypeKey)
+        if (convertedProperty?.storedKey == contextualTypeKey) {
+          return generatePropertyAccess(convertedProperty)
+        }
+      }
       if (!exactGraphDependencyRequest) {
         // Graph expressions operate on one canonical Metro Provider/SuspendProvider layer. The
         // complete consumer wrapper stack is reconstructed by typeAsProviderArgument.
@@ -1366,6 +1377,12 @@ private constructor(
       return paramsForCall.mapIndexed { i, param ->
         val contextualTypeKey = paramsToMap[i].contextualTypeKey
         val accessType = AccessType.of(param.contextualTypeKey)
+        if (metroSymbols.providerTypeConverter.needsCachedConversion(param.contextualTypeKey)) {
+          val convertedProperty = bindingPropertyContext.get(param.contextualTypeKey)
+          if (convertedProperty?.storedKey == param.contextualTypeKey) {
+            return@mapIndexed generatePropertyAccess(convertedProperty)
+          }
+        }
 
         // TODO consolidate this logic with generateBindingCode
         if (accessType == AccessType.INSTANCE) {

@@ -463,6 +463,7 @@ class MetroArtifactsTest {
                 "keysPerGraphShard": 2000,
                 "mergedSupertypeChunkSize": 0,
                 "multibindingGetterThreshold": 25,
+                "forceProviderGetters": false,
                 "enableSwitchingProviders": false,
                 "publicScopedProviderSeverity": "NONE",
                 "nonPublicContributionSeverity": "NONE",

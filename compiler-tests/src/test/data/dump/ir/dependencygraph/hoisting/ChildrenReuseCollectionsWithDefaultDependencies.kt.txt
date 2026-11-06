@@ -86,7 +86,7 @@ class Consumer {
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class MetroFactory : Factory<Consumer> {
-    private /* final field */ val adapters: Provider<Set<Adapter>> = adapters
+    private /* final field */ val adapters: Function0<Set<Adapter>> = adapters
     private /* final field */ val providers: Provider<Map<String, Function0<Adapter>>> = providers
     companion object Companion {
       private constructor() /* primary */ {
@@ -98,7 +98,7 @@ class Consumer {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(adapters: Provider<Set<Adapter>>, providers: Provider<Map<String, Function0<Adapter>>>): MetroFactory {
+      fun create(adapters: Function0<Set<Adapter>>, providers: Provider<Map<String, Function0<Adapter>>>): MetroFactory {
         return MetroFactory(adapters = adapters, providers = providers)
       }
 
@@ -112,7 +112,7 @@ class Consumer {
     }
 
     @HiddenFromObjC
-    private constructor(adapters: Provider<Set<Adapter>>, providers: Provider<Map<String, Function0<Adapter>>>) /* primary */ {
+    private constructor(adapters: Function0<Set<Adapter>>, providers: Provider<Map<String, Function0<Adapter>>>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -190,6 +190,9 @@ interface AppGraph {
     private val adapterProvider: Provider<Adapter>
       field = Adapter.MetroFactory/* companion */.create(present = create(instance = <this>))
 
+    private val setOfAdapterProvider: Provider<Set<Adapter>>
+      field = singleton<Adapter>(provider = <this>.#adapterProvider)
+
     @DependencyGraph
     private class ChildGraphImpl : ChildGraph {
       private val appGraphImpl: Impl
@@ -202,6 +205,9 @@ interface AppGraph {
 
         private val adapterProvider: Provider<Adapter>
           field = Adapter.MetroFactory/* companion */.create(absent = create(instance = <this>), present = create(instance = <this>))
+
+        private val setOfAdapterProvider: Provider<Set<Adapter>>
+          field = singleton<Adapter>(provider = <this>.#adapterProvider)
 
         @DependencyGraph
         private class UnchangedGrandchildImpl : UnchangedGrandchild {
@@ -234,7 +240,7 @@ interface AppGraph {
 
         private val consumer2: Consumer
           private get(): Consumer {
-            return Consumer(adapters = singleton<Adapter>(provider = <this>.#adapterProvider), providers = buildMap<String, Function0<Adapter>>(capacity = 1, builderAction = local fun MutableMap<String, Function0<Adapter>>.<anonymous>() {
+            return Consumer(adapters = <this>.#setOfAdapterProvider, providers = buildMap<String, Function0<Adapter>>(capacity = 1, builderAction = local fun MutableMap<String, Function0<Adapter>>.<anonymous>() {
               $receiver.put(key = "adapter", value = <this>.#adapterProvider)
             }
 ))
@@ -288,7 +294,7 @@ interface AppGraph {
 
       private val consumer2: Consumer
         private get(): Consumer {
-          return Consumer(adapters = <this>.#appGraphImpl.<get-setOfAdapterProvider>(), providers = <this>.#appGraphImpl.<get-mapOfStringToAdapter>())
+          return Consumer(adapters = <this>.#appGraphImpl.#setOfAdapterProvider, providers = <this>.#appGraphImpl.<get-mapOfStringToAdapter>())
         }
 
       override val unchanged: UnchangedGrandchild
@@ -311,7 +317,7 @@ interface AppGraph {
 
     override val adapters: Function0<Set<Adapter>>
       override get(): Function0<Set<Adapter>> {
-        return <this>.<get-setOfAdapterProvider>()
+        return <this>.#setOfAdapterProvider
       }
 
     override val child: ChildGraph
@@ -330,11 +336,6 @@ interface AppGraph {
     override val providers: Map<String, Function0<Adapter>>
       override get(): Map<String, Function0<Adapter>> {
         return <this>.<get-mapOfStringToAdapter>()
-      }
-
-    private val setOfAdapterProvider: Provider<Set<Adapter>>
-      private get(): Provider<Set<Adapter>> {
-        return singleton<Adapter>(provider = <this>.#adapterProvider)
       }
 
   }

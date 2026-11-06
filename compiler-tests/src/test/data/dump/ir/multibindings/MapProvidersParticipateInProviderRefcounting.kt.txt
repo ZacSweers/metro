@@ -37,6 +37,14 @@ interface AppGraph {
     private val provideSharedDependencyProvider: Provider<SharedDependency>
       field = create(instance = <this>)
 
+    @MultibindingElement(bindingId = "kotlin/String|kotlin/String", elementId = "-189137138")
+    private val provideSecondProvider: Provider<String>
+      field = create(instance = <this>, sharedDependency = <this>.#provideSharedDependencyProvider)
+
+    @MultibindingElement(bindingId = "kotlin/String|kotlin/String", elementId = "617005748")
+    private val provideFirstProvider: Provider<String>
+      field = create(instance = <this>, sharedDependency = <this>.#provideSharedDependencyProvider)
+
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
@@ -59,8 +67,8 @@ interface AppGraph {
     override val strings: Map<String, SuspendFunction0<String>>
       override get(): Map<String, SuspendFunction0<String>> {
         return buildMap<String, SuspendFunction0<String>>(capacity = 2, builderAction = local fun MutableMap<String, SuspendFunction0<String>>.<anonymous>() {
-          $receiver.put(key = "second", value = SyncSuspendProvider<String>(delegate = create(instance = <this>, sharedDependency = <this>.#provideSharedDependencyProvider)))
-          $receiver.put(key = "first", value = SyncSuspendProvider<String>(delegate = create(instance = <this>, sharedDependency = <this>.#provideSharedDependencyProvider)))
+          $receiver.put(key = "second", value = SyncSuspendProvider<String>(delegate = <this>.#provideSecondProvider))
+          $receiver.put(key = "first", value = SyncSuspendProvider<String>(delegate = <this>.#provideFirstProvider))
         }
 )
       }

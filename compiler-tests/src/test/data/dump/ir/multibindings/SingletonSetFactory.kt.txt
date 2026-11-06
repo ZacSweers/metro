@@ -21,6 +21,9 @@ interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
+    private val setOfStringProvider: Provider<Set<String>>
+      field = singleton<String>(provider = create(instance = <this>))
+
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
@@ -29,7 +32,7 @@ interface AppGraph {
 
     override val tags: Function0<Set<String>>
       override get(): Function0<Set<String>> {
-        return singleton<String>(provider = create(instance = <this>))
+        return <this>.#setOfStringProvider
       }
 
   }

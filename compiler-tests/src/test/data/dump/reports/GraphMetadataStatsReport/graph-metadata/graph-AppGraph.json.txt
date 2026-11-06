@@ -74,6 +74,7 @@
     "keysPerGraphShard": 4,
     "mergedSupertypeChunkSize": 2,
     "multibindingGetterThreshold": 25,
+    "forceProviderGetters": false,
     "enableSwitchingProviders": false,
     "publicScopedProviderSeverity": "NONE",
     "nonPublicContributionSeverity": "NONE",

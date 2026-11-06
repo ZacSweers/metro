@@ -28,12 +28,20 @@ interface AppGraph {
 
 fun box(): String {
   val graph = createGraph<AppGraph>()
+  val provider = graph.data
+  assertSame(provider, graph.data)
+  val first = provider.get()
+  val second = provider.get()
+  assertNotSame(first, second)
+  for (key in listOf("name", "version")) {
+    assertSame(first.getValue(key), second.getValue(key))
+  }
   assertEquals(
     mapOf(
       "name" to "TestApp",
       "version" to "1.0.0"
     ),
-    graph.data.get().mapValues { it.value.get() }
+    first.mapValues { it.value.get() }
   )
   return "OK"
 }

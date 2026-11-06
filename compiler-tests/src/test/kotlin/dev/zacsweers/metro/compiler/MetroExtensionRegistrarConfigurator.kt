@@ -124,6 +124,9 @@ class MetroExtensionRegistrarConfigurator(
       module.directives.singleOrZeroValue(MetroDirectives.MULTIBINDING_GETTER_THRESHOLD)?.let {
         multibindingGetterThreshold = it
       }
+      module.directives.singleOrZeroValue(MetroDirectives.FORCE_PROVIDER_GETTERS)?.let {
+        forceProviderGetters = it
+      }
       enableSwitchingProviders =
         // Weird but necessary because we may set a default in default configurations that we
         // override in the test, so just take the last one from the file

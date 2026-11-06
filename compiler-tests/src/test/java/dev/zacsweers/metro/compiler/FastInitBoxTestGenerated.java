@@ -2633,6 +2633,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("ForceProviderGetters.kt")
+    public void testForceProviderGetters() {
+      run("ForceProviderGetters.kt");
+    }
+
+    @Test
     @TestMetadata("InjectWithEnumQualifiers.kt")
     public void testInjectWithEnumQualifiers() {
       run("InjectWithEnumQualifiers.kt");
@@ -2657,9 +2663,21 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("InjectedFunctionProvidersAreReused.kt")
+    public void testInjectedFunctionProvidersAreReused() {
+      run("InjectedFunctionProvidersAreReused.kt");
+    }
+
+    @Test
     @TestMetadata("InjectedPrivateConstructorParametersWithGenericsWork.kt")
     public void testInjectedPrivateConstructorParametersWithGenericsWork() {
       run("InjectedPrivateConstructorParametersWithGenericsWork.kt");
+    }
+
+    @Test
+    @TestMetadata("InjectedProviderIsReusedAcrossConsumers.kt")
+    public void testInjectedProviderIsReusedAcrossConsumers() {
+      run("InjectedProviderIsReusedAcrossConsumers.kt");
     }
 
     @Test
@@ -3224,6 +3242,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       }
 
       @Test
+      @TestMetadata("ForceConvertedProviderGetters.kt")
+      public void testForceConvertedProviderGetters() {
+        run("ForceConvertedProviderGetters.kt");
+      }
+
+      @Test
       @TestMetadata("FunctionProviderWithDaggerInterop.kt")
       public void testFunctionProviderWithDaggerInterop() {
         run("FunctionProviderWithDaggerInterop.kt");
@@ -3272,9 +3296,21 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       }
 
       @Test
+      @TestMetadata("InjectedJavaxProvidersAreReused.kt")
+      public void testInjectedJavaxProvidersAreReused() {
+        run("InjectedJavaxProvidersAreReused.kt");
+      }
+
+      @Test
       @TestMetadata("InlinedObjectMultibindingRemainsLazy.kt")
       public void testInlinedObjectMultibindingRemainsLazy() {
         run("InlinedObjectMultibindingRemainsLazy.kt");
+      }
+
+      @Test
+      @TestMetadata("JavaxProviderAccessorIsReused.kt")
+      public void testJavaxProviderAccessorIsReused() {
+        run("JavaxProviderAccessorIsReused.kt");
       }
 
       @Test
@@ -3519,6 +3555,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       @Test
       public void testAllFilesPresentInGuice() {
         KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/interop/guice"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      }
+
+      @Test
+      @TestMetadata("ConvertedProvidersAreReusedAcrossModules.kt")
+      public void testConvertedProvidersAreReusedAcrossModules() {
+        run("ConvertedProvidersAreReusedAcrossModules.kt");
       }
 
       @Test
@@ -3917,6 +3959,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("MultibindingProvidersAreReused.kt")
+    public void testMultibindingProvidersAreReused() {
+      run("MultibindingProvidersAreReused.kt");
+    }
+
+    @Test
     @TestMetadata("PrimeMultibindingMapEnumKey.kt")
     public void testPrimeMultibindingMapEnumKey() {
       run("PrimeMultibindingMapEnumKey.kt");
@@ -4117,6 +4165,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("ProvidedProviderIsReusedAcrossConsumers.kt")
+    public void testProvidedProviderIsReusedAcrossConsumers() {
+      run("ProvidedProviderIsReusedAcrossConsumers.kt");
+    }
+
+    @Test
     @TestMetadata("ProvidesParametersCanHaveDefaults.kt")
     public void testProvidesParametersCanHaveDefaults() {
       run("ProvidesParametersCanHaveDefaults.kt");
@@ -4292,6 +4346,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     @TestMetadata("DepInConstructorInjectedAccessor.kt")
     public void testDepInConstructorInjectedAccessor() {
       run("DepInConstructorInjectedAccessor.kt");
+    }
+
+    @Test
+    @TestMetadata("ForceSuspendProviderGetters.kt")
+    public void testForceSuspendProviderGetters() {
+      run("ForceSuspendProviderGetters.kt");
     }
 
     @Test

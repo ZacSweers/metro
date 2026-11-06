@@ -12,7 +12,7 @@ interface AppGraph {
     @Binds
     @IntoMap
     @IntKey(value = 1)
-    @CallableMetadata(callableName = "bindValue", propertyName = "", startOffset = 310, endOffset = 334)
+    @CallableMetadata(callableName = "bindValue", propertyName = "", startOffset = 267, endOffset = 291)
     fun Int.bindValue2201066027_intomap(): Int {
       return error(message = "Never called")
     }
@@ -25,6 +25,21 @@ interface AppGraph {
     private val provideValueProvider: Provider<Int>
       field = create(instance = <this>)
 
+    private val mapOfIntToIntProvider: Provider<Map<Int, Function0<Int>>>
+      field = { // BLOCK
+        val tmp0_valueProviders: Map<Int, Function0<Int>> = buildMap<Int, Function0<Int>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<Int>>.<anonymous>() {
+          $receiver.put(key = 1, value = <this>.#provideValueProvider)
+        }
+)
+        local fun <anonymous>(): Map<Int, Function0<Int>> {
+          return buildMap<Int, Function0<Int>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<Int>>.<anonymous>() {
+            $receiver.putAll(from = tmp0_valueProviders)
+          }
+)
+        }
+ /*-> Provider<Map<Int, Function0<Int>>> */
+      }
+
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
@@ -33,7 +48,7 @@ interface AppGraph {
 
     override val ints: Function0<Map<Int, Function0<Int>>>
       override get(): Function0<Map<Int, Function0<Int>>> {
-        return singleton<Int, Int>(key = 1, provider = <this>.#provideValueProvider)
+        return <this>.#mapOfIntToIntProvider
       }
 
   }
@@ -55,7 +70,7 @@ interface AppGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideValue", propertyName = "", startOffset = 242, endOffset = 279, newInstanceName = "provideValue")
+  @CallableMetadata(callableName = "provideValue", propertyName = "", startOffset = 199, endOffset = 236, newInstanceName = "provideValue")
   class ProvideValueMetroFactory : Factory<Int> {
     private /* final field */ val instance: AppGraph = instance
     companion object Companion {

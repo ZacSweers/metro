@@ -150,6 +150,7 @@ abstract class MetroCompilerTest {
               processor.option(entry.raw.cliOption, mergedSupertypeChunkSize)
             MULTIBINDING_GETTER_THRESHOLD ->
               processor.option(entry.raw.cliOption, multibindingGetterThreshold)
+            FORCE_PROVIDER_GETTERS -> processor.option(entry.raw.cliOption, forceProviderGetters)
             PUBLIC_SCOPED_PROVIDER_SEVERITY ->
               processor.option(entry.raw.cliOption, publicScopedProviderSeverity)
             NON_PUBLIC_CONTRIBUTION_SEVERITY ->

@@ -2287,6 +2287,12 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("ForceProviderGetters.kt")
+    public void testForceProviderGetters() {
+      run("ForceProviderGetters.kt");
+    }
+
+    @Test
     @TestMetadata("InjectWithEnumQualifiers.kt")
     public void testInjectWithEnumQualifiers() {
       run("InjectWithEnumQualifiers.kt");
@@ -2311,9 +2317,21 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("InjectedFunctionProvidersAreReused.kt")
+    public void testInjectedFunctionProvidersAreReused() {
+      run("InjectedFunctionProvidersAreReused.kt");
+    }
+
+    @Test
     @TestMetadata("InjectedPrivateConstructorParametersWithGenericsWork.kt")
     public void testInjectedPrivateConstructorParametersWithGenericsWork() {
       run("InjectedPrivateConstructorParametersWithGenericsWork.kt");
+    }
+
+    @Test
+    @TestMetadata("InjectedProviderIsReusedAcrossConsumers.kt")
+    public void testInjectedProviderIsReusedAcrossConsumers() {
+      run("InjectedProviderIsReusedAcrossConsumers.kt");
     }
 
     @Test
@@ -2903,6 +2921,12 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("MultibindingProvidersAreReused.kt")
+    public void testMultibindingProvidersAreReused() {
+      run("MultibindingProvidersAreReused.kt");
+    }
+
+    @Test
     @TestMetadata("PrimeMultibindingMapEnumKey.kt")
     public void testPrimeMultibindingMapEnumKey() {
       run("PrimeMultibindingMapEnumKey.kt");
@@ -3103,6 +3127,12 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("ProvidedProviderIsReusedAcrossConsumers.kt")
+    public void testProvidedProviderIsReusedAcrossConsumers() {
+      run("ProvidedProviderIsReusedAcrossConsumers.kt");
+    }
+
+    @Test
     @TestMetadata("ProvidesParametersCanHaveDefaults.kt")
     public void testProvidesParametersCanHaveDefaults() {
       run("ProvidesParametersCanHaveDefaults.kt");
@@ -3278,6 +3308,12 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
     @TestMetadata("DepInConstructorInjectedAccessor.kt")
     public void testDepInConstructorInjectedAccessor() {
       run("DepInConstructorInjectedAccessor.kt");
+    }
+
+    @Test
+    @TestMetadata("ForceSuspendProviderGetters.kt")
+    public void testForceSuspendProviderGetters() {
+      run("ForceSuspendProviderGetters.kt");
     }
 
     @Test
