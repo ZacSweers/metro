@@ -594,7 +594,9 @@ internal class BindingPropertyCollector(
 
     return when (binding) {
       is GraphDependency if (binding.token == null) -> {
-        val needsAccessorProvider = usesSharedAccessorProvider(binding) && node.factoryRefCount > 0
+        // Child graphs read the shared provider too, so their provider requests need no lambdas.
+        val hasProviderReader = node.factoryRefCount > 0 || graph.hasReservedKey(key)
+        val needsAccessorProvider = usesSharedAccessorProvider(binding) && hasProviderReader
         if (needsAccessorProvider) {
           PropertyKind.FIELD
         } else {

@@ -223,6 +223,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("IncludedAccessorProvidersAreSharedWithExtensions.kt")
+    public void testIncludedAccessorProvidersAreSharedWithExtensions() {
+      run("IncludedAccessorProvidersAreSharedWithExtensions.kt");
+    }
+
+    @Test
     @TestMetadata("IncludedGraphWithExtensionsIsStoredOnce.kt")
     public void testIncludedGraphWithExtensionsIsStoredOnce() {
       run("IncludedGraphWithExtensionsIsStoredOnce.kt");
