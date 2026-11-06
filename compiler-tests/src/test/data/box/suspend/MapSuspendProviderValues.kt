@@ -43,7 +43,7 @@ fun box(): String =
     assertSame(provider, graph.providerOfSuspendProviderInts)
     val first = provider()
     val second = provider()
-    assertNotSame(first, second)
+    assertSame(first, second)
     for (key in expected.keys) {
       assertSame(first.getValue(key), second.getValue(key))
     }

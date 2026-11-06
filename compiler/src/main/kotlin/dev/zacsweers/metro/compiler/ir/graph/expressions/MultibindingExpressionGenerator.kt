@@ -738,8 +738,8 @@ internal class MultibindingExpressionGenerator(
         binding.sourceBindings.map { sourceKey -> bindingGraph.requireBinding(sourceKey) }
 
       val hasProviderValues = valueIsWrappedInProvider || valueIsWrappedInSuspendProvider
-      val needsFreshMapProvider = accessType == AccessType.PROVIDER && hasProviderValues
-      if (needsFreshMapProvider) {
+      val returnsEntryProviders = accessType == AccessType.PROVIDER && hasProviderValues
+      if (returnsEntryProviders) {
         val mapType = irBuiltIns.mapClass.typeWith(keyType, originalValueType)
         val valueAccessType =
           if (valueIsWrappedInSuspendProvider) {
@@ -747,50 +747,20 @@ internal class MultibindingExpressionGenerator(
           } else {
             AccessType.PROVIDER
           }
-        val mapProvider =
-          irBlock(resultType = mapType.wrapInProvider(metroSymbols.metroProvider)) {
-            // Capture one map of entry providers to keep large maps within JVM parameter limits.
-            val valueProviders =
-              createAndAddTemporaryVariable(
-                generateMapBuilderExpression(
-                  sourceBindings = sourceBindings,
-                  keyType = keyType,
-                  valueType = originalValueType,
-                  canonicalValueContextKey = originalValueContextKey,
-                  valueAccessType = valueAccessType,
-                  wrapInLazy = false,
-                  wrapInProviderLazy = false,
-                  valueFrameworkSymbols = valueProviderSymbols,
-                  fieldInitKey = fieldInitKey,
-                ),
-                nameHint = "valueProviders",
-              )
-            +scope.wrapInProviderFunction(mapType) {
-              irCall(
-                  callee = metroSymbols.buildMapWithCapacity,
-                  type = mapType,
-                  typeArguments = listOf(keyType, originalValueType),
-                )
-                .apply {
-                  arguments[0] = irInt(sourceBindings.size)
-                  arguments[1] =
-                    irLambda(
-                      parent = parent,
-                      receiverParameter =
-                        irBuiltIns.mutableMapClass.typeWith(keyType, originalValueType),
-                      valueParameters = emptyList(),
-                      returnType = irBuiltIns.unitType,
-                      suspend = false,
-                    ) { function ->
-                      +irInvoke(
-                        dispatchReceiver = irGet(function.extensionReceiverParameterCompat!!),
-                        callee = metroSymbols.mutableMapPutAll.symbol,
-                        args = listOf(irGet(valueProviders)),
-                      )
-                    }
-                }
-            }
-          }
+        // Entry providers don't change after they're built, so each invocation returns this map.
+        val valueProviders =
+          generateMapBuilderExpression(
+            sourceBindings = sourceBindings,
+            keyType = keyType,
+            valueType = originalValueType,
+            canonicalValueContextKey = originalValueContextKey,
+            valueAccessType = valueAccessType,
+            wrapInLazy = false,
+            wrapInProviderLazy = false,
+            valueFrameworkSymbols = valueProviderSymbols,
+            fieldInitKey = fieldInitKey,
+          )
+        val mapProvider = valueProviders.wrapInInstanceFactory(mapType, allowPropertyGetter = true)
 
         return mapProvider.toTargetType(
           actual = AccessType.PROVIDER,

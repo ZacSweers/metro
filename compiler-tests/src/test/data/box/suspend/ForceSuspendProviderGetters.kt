@@ -34,7 +34,7 @@ fun box(): String = runBlocking {
   val mapProvider = graph.providerMap
   val map = mapProvider()
   val otherMap = mapProvider()
-  assertNotSame(map, otherMap)
+  assertSame(map, otherMap)
   assertSame(map.getValue("first"), otherMap.getValue("first"))
   assertEquals(0, computations)
   val first = graph.consumer()

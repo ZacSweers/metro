@@ -677,20 +677,11 @@ interface AppGraph {
       field = create()
 
     private val viewModelFactoryProvider: Provider<ViewModelFactory>
-      field = create(viewModels = { // BLOCK
-        val tmp0_valueProviders: Map<KClass<*>, Function0<ViewModel>> = buildMap<KClass<*>, Function0<ViewModel>>(capacity = 2, builderAction = local fun MutableMap<KClass<*>, Function0<ViewModel>>.<anonymous>() {
-          $receiver.put(key = BViewModel::class, value = <this>.#bViewModelProvider)
-          $receiver.put(key = AViewModel::class, value = <this>.#aViewModelProvider)
-        }
-)
-        local fun <anonymous>(): Map<KClass<*>, Function0<ViewModel>> {
-          return buildMap<KClass<*>, Function0<ViewModel>>(capacity = 2, builderAction = local fun MutableMap<KClass<*>, Function0<ViewModel>>.<anonymous>() {
-            $receiver.putAll(from = tmp0_valueProviders)
-          }
-)
-        }
- /*-> Provider<Map<KClass<*>, Function0<ViewModel>>> */
-      })
+      field = create(viewModels = providerOf<Map<KClass<*>, Function0<ViewModel>>>(value = buildMap<KClass<*>, Function0<ViewModel>>(capacity = 2, builderAction = local fun MutableMap<KClass<*>, Function0<ViewModel>>.<anonymous>() {
+        $receiver.put(key = BViewModel::class, value = <this>.#bViewModelProvider)
+        $receiver.put(key = AViewModel::class, value = <this>.#aViewModelProvider)
+      }
+)))
 
     private val fragmentInjectorProvider: Provider<FragmentInjector>
       field = create(injectors = { // BLOCK

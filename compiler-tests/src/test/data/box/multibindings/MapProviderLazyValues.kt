@@ -34,7 +34,7 @@ fun box(): String {
   assertSame(providerOfProviderLazyInts, graph.providerOfProviderLazyInts)
   val first = providerOfProviderLazyInts()
   val second = providerOfProviderLazyInts()
-  assertNotSame(first, second)
+  assertSame(first, second)
   for (key in first.keys) {
     assertSame(first.getValue(key), second.getValue(key))
     assertNotSame(first.getValue(key)(), second.getValue(key)())

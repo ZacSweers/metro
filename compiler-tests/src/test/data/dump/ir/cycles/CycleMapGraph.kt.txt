@@ -165,31 +165,13 @@ interface CycleMapGraph {
       super/*Any*/()
       /* <init>() */
 
-      setDelegate<Y>(delegateFactory = <this>.#yProvider, delegate = create(mapOfProvidersOfX = { // BLOCK
-        val tmp0_valueProviders: Map<String, Function0<X>> = buildMap<String, Function0<X>>(capacity = 1, builderAction = local fun MutableMap<String, Function0<X>>.<anonymous>() {
-          $receiver.put(key = "X", value = <this>.#xProvider)
-        }
-)
-        local fun <anonymous>(): Map<String, Function0<X>> {
-          return buildMap<String, Function0<X>>(capacity = 1, builderAction = local fun MutableMap<String, Function0<X>>.<anonymous>() {
-            $receiver.putAll(from = tmp0_valueProviders)
-          }
-)
-        }
- /*-> Provider<Map<String, Function0<X>>> */
-      }, mapOfProvidersOfY = { // BLOCK
-        val tmp1_valueProviders: Map<String, Function0<Y>> = buildMap<String, Function0<Y>>(capacity = 1, builderAction = local fun MutableMap<String, Function0<Y>>.<anonymous>() {
-          $receiver.put(key = "Y", value = <this>.#yProvider)
-        }
-)
-        local fun <anonymous>(): Map<String, Function0<Y>> {
-          return buildMap<String, Function0<Y>>(capacity = 1, builderAction = local fun MutableMap<String, Function0<Y>>.<anonymous>() {
-            $receiver.putAll(from = tmp1_valueProviders)
-          }
-)
-        }
- /*-> Provider<Map<String, Function0<Y>>> */
-      }))
+      setDelegate<Y>(delegateFactory = <this>.#yProvider, delegate = create(mapOfProvidersOfX = providerOf<Map<String, Function0<X>>>(value = buildMap<String, Function0<X>>(capacity = 1, builderAction = local fun MutableMap<String, Function0<X>>.<anonymous>() {
+        $receiver.put(key = "X", value = <this>.#xProvider)
+      }
+)), mapOfProvidersOfY = providerOf<Map<String, Function0<Y>>>(value = buildMap<String, Function0<Y>>(capacity = 1, builderAction = local fun MutableMap<String, Function0<Y>>.<anonymous>() {
+        $receiver.put(key = "Y", value = <this>.#yProvider)
+      }
+))))
     }
 
     override fun y(): Y {

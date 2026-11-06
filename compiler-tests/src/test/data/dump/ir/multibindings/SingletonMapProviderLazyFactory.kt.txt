@@ -26,19 +26,10 @@ interface AppGraph {
       field = create(instance = <this>)
 
     private val mapOfIntToIntProvider: Provider<Map<Int, Function0<Lazy<Int>>>>
-      field = { // BLOCK
-        val tmp0_valueProviders: Map<Int, Function0<Lazy<Int>>> = buildMap<Int, Function0<Lazy<Int>>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<Lazy<Int>>>.<anonymous>() {
-          $receiver.put(key = 1, value = ProviderOfLazy/* companion */.create<Int>(provider = <this>.#provideValueProvider))
-        }
-)
-        local fun <anonymous>(): Map<Int, Function0<Lazy<Int>>> {
-          return buildMap<Int, Function0<Lazy<Int>>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<Lazy<Int>>>.<anonymous>() {
-            $receiver.putAll(from = tmp0_valueProviders)
-          }
-)
-        }
- /*-> Provider<Map<Int, Function0<Lazy<Int>>>> */
+      field = providerOf<Map<Int, Function0<Lazy<Int>>>>(value = buildMap<Int, Function0<Lazy<Int>>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<Lazy<Int>>>.<anonymous>() {
+        $receiver.put(key = 1, value = ProviderOfLazy/* companion */.create<Int>(provider = <this>.#provideValueProvider))
       }
+))
 
     private constructor() /* primary */ {
       super/*Any*/()

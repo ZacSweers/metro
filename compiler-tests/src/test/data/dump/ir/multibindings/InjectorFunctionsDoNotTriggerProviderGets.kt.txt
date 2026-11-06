@@ -161,19 +161,10 @@ interface TestGraph2 : Bindings {
       field = create(instance = <this>)
 
     private val mapOfIntToStringProvider: Provider<Map<Int, Function0<String>>>
-      field = { // BLOCK
-        val tmp0_valueProviders: Map<Int, Function0<String>> = buildMap<Int, Function0<String>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<String>>.<anonymous>() {
-          $receiver.put(key = 1, value = <this>.#provideStringProvider)
-        }
-)
-        local fun <anonymous>(): Map<Int, Function0<String>> {
-          return buildMap<Int, Function0<String>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<String>>.<anonymous>() {
-            $receiver.putAll(from = tmp0_valueProviders)
-          }
-)
-        }
- /*-> Provider<Map<Int, Function0<String>>> */
+      field = providerOf<Map<Int, Function0<String>>>(value = buildMap<Int, Function0<String>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<String>>.<anonymous>() {
+        $receiver.put(key = 1, value = <this>.#provideStringProvider)
       }
+))
 
     private constructor() /* primary */ {
       super/*Any*/()
@@ -282,19 +273,10 @@ interface TestGraph4 : Bindings {
       field = create(instance = <this>)
 
     private val mapOfIntToStringProvider: Provider<Map<Int, Function0<String>>>
-      field = { // BLOCK
-        val tmp0_valueProviders: Map<Int, Function0<String>> = buildMap<Int, Function0<String>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<String>>.<anonymous>() {
-          $receiver.put(key = 1, value = <this>.#provideStringProvider)
-        }
-)
-        local fun <anonymous>(): Map<Int, Function0<String>> {
-          return buildMap<Int, Function0<String>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<String>>.<anonymous>() {
-            $receiver.putAll(from = tmp0_valueProviders)
-          }
-)
-        }
- /*-> Provider<Map<Int, Function0<String>>> */
+      field = providerOf<Map<Int, Function0<String>>>(value = buildMap<Int, Function0<String>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<String>>.<anonymous>() {
+        $receiver.put(key = 1, value = <this>.#provideStringProvider)
       }
+))
 
     private constructor() /* primary */ {
       super/*Any*/()
