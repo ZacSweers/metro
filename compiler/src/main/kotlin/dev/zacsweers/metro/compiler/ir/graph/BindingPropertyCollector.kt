@@ -140,11 +140,11 @@ internal class BindingPropertyCollector(
   private var nextSwitchingProviderId = 0
   private var nextSwitchingSuspendProviderId = 0
 
-  /** Plain included accessors share a provider class when ordinary factories need their values. */
+  /**
+   * Plain included accessors share a provider class when ordinary factories need their values. This
+   * applies with or without switching providers.
+   */
   private fun usesSharedAccessorProvider(binding: IrBinding): Boolean {
-    if (metroContext.options.enableSwitchingProviders) {
-      return false
-    }
     if (binding !is IrBinding.GraphDependency) {
       return false
     }

@@ -1,0 +1,237 @@
+@Inject
+class Consumer {
+  val service: Service
+    field = service
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<Consumer> {
+    private /* final field */ val service: Provider<Service> = service
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(service: Provider<Service>): MetroFactory {
+        return MetroFactory(service = service)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(service: Service): Consumer {
+        return Consumer(service = service)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(service: Provider<Service>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(service: Service): Consumer {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Consumer {
+      return MetroFactory/* companion */.newInstance(service = <this>.#service.invoke())
+    }
+
+  }
+
+  constructor(service: Service) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@Inject
+class ProviderConsumer {
+  val service: Provider<Service>
+    field = service
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<ProviderConsumer> {
+    private /* final field */ val service: Provider<Service> = service
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(service: Provider<Service>): MetroFactory {
+        return MetroFactory(service = service)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(service: Provider<Service>): ProviderConsumer {
+        return ProviderConsumer(service = service)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(service: Provider<Service>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(service: Provider<Service>): ProviderConsumer {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): ProviderConsumer {
+      return MetroFactory/* companion */.newInstance(service = <this>.#service)
+    }
+
+  }
+
+  constructor(service: Provider<Service>) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+class Service {
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@DependencyGraph
+interface AppGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : AppGraph {
+    private val depsInstance: Deps
+      field = deps
+
+    private val depsServiceProvider: Provider<Service>
+      field = SwitchingProvider<Service>(graph = <this>, id = 1)
+
+    private val consumerProvider: Provider<Consumer>
+      field = SwitchingProvider<Consumer>(graph = <this>, id = 0)
+
+    private class SwitchingProvider<T : Any?> : Provider<T> {
+      constructor(graph: Impl, id: Int) /* primary */ {
+        super/*Any*/()
+        <this>.#graph = graph
+        <this>.#id = id
+      }
+
+      override fun invoke(): T {
+        return { // BLOCK
+          val tmp0_id: Int = <this>.#id
+          val tmp1_graph: AppGraph.Impl = <this>.#graph
+          when {
+            EQEQ(arg0 = tmp0_id, arg1 = 0) -> Consumer(service = tmp1_graph.#depsServiceProvider.invoke()) /*as T */
+            EQEQ(arg0 = tmp0_id, arg1 = 1) -> tmp1_graph.#depsInstance.<get-service>() /*as T */
+            else -> throw error(message = "Unexpected SwitchingProvider id: " + tmp0_id)
+          }
+        }
+      }
+
+      private val graph: Impl
+
+      private val id: Int
+
+    }
+
+    private constructor(@Includes deps: Deps) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override val consumer: Provider<Consumer>
+      override get(): Provider<Consumer> {
+        return <this>.#consumerProvider
+      }
+
+    override val providerConsumer: ProviderConsumer
+      override get(): ProviderConsumer {
+        return ProviderConsumer(service = <this>.#depsServiceProvider)
+      }
+
+  }
+
+  companion object Companion : Factory {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
+    override fun create(@Includes deps: Deps): AppGraph {
+      return Impl(deps = deps)
+    }
+
+  }
+
+  @DependencyGraph.Factory
+  interface Factory {
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    @MetroImplMarker
+    object Impl : Factory {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @GraphFactoryInvokeFunctionMarker
+      override fun create(@Includes deps: Deps): AppGraph {
+        return Impl(deps = deps)
+      }
+
+    }
+
+    abstract fun create(@Includes deps: Deps): AppGraph
+
+  }
+
+  abstract val consumer: Provider<Consumer>
+    abstract get
+
+  abstract val providerConsumer: ProviderConsumer
+    abstract get
+
+}
+
+interface Deps {
+  abstract val service: Service
+    abstract get
+
+}

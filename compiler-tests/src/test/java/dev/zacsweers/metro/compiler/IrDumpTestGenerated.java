@@ -648,6 +648,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
       }
 
       @Test
+      @TestMetadata("SwitchingProvidersIncludeAccessors.kt")
+      public void testSwitchingProvidersIncludeAccessors() {
+        run("SwitchingProvidersIncludeAccessors.kt");
+      }
+
+      @Test
       @TestMetadata("SwitchingProvidersWithBindsOptional.kt")
       public void testSwitchingProvidersWithBindsOptional() {
         run("SwitchingProvidersWithBindsOptional.kt");
