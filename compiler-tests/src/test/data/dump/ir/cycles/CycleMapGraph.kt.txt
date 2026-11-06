@@ -158,11 +158,14 @@ interface CycleMapGraph {
     private val yProvider: Provider<Y>
       field = DelegateFactory<Y>()
 
+    private val xProvider: Provider<X>
+      field = create(y = <this>.#yProvider)
+
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
 
-      setDelegate<Y>(delegateFactory = <this>.#yProvider, delegate = create(mapOfProvidersOfX = singleton<String, X>(key = "X", provider = create(y = <this>.#yProvider)), mapOfProvidersOfY = singleton<String, Y>(key = "Y", provider = <this>.#yProvider)))
+      setDelegate<Y>(delegateFactory = <this>.#yProvider, delegate = create(mapOfProvidersOfX = singleton<String, X>(key = "X", provider = <this>.#xProvider), mapOfProvidersOfY = singleton<String, Y>(key = "Y", provider = <this>.#yProvider)))
     }
 
     override fun y(): Y {

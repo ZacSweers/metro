@@ -72,7 +72,7 @@ fun box(): String {
 // 0 getEntry\$annotations
 // 0 private final getInjectedEntry
 // 0 NEW InjectedEntry
-// 1 INVOKESTATIC InjectedEntry\$MetroFactory\.create
+// 1 (INVOKESTATIC InjectedEntry\$MetroFactory\.create|NEW RootGraph\$Impl\$ChildGraphImpl\$SwitchingProvider)
 // 1 RootGraph\$Impl.*getSharedByChildren
 // @RootGraph$Impl$ChildGraphImpl$NestedGraphImpl.class:
 // 1 RootGraph\$Impl.*getSharedByChildren

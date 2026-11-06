@@ -1303,10 +1303,10 @@ internal class IrGraphGenerator(
         null
       }
 
-    // Generate switching provider classes if switching providers are enabled and there are
-    // eligible bindings.
+    // Collected IDs also cover shared included-accessor providers in normal mode.
+    val hasSwitchingBindings = shard.properties.values.any { it.shardBinding.switchingId != null }
     val switchingProviders =
-      if (options.enableSwitchingProviders) {
+      if (hasSwitchingBindings) {
         trace("Generate switching providers") {
           val switchingBindings =
             shard.properties.values
