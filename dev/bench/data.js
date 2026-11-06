@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793934787765,
+  "lastUpdate": 1793978881812,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -26880,6 +26880,62 @@ window.BENCHMARK_DATA = {
             "value": 0.1504911146500956,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: -3.98%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "falqadi",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "falqadi",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "e98e1546~1",
+          "message": "[before] Reduce provider allocations (#3067)",
+          "timestamp": "2026-11-06T09:27:47-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/e98e1546ef5fac798ef2bbb764878ad0d38032b0"
+        },
+        "date": 1793978881812,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.17800926627235283,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "falqadi",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "falqadi",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "e98e1546ef5fac798ef2bbb764878ad0d38032b0",
+          "message": "[after] Reduce provider allocations (#3067)",
+          "timestamp": "2026-11-06T09:27:47-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/e98e1546ef5fac798ef2bbb764878ad0d38032b0"
+        },
+        "date": 1793978881813,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.18046395165984658,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: +1.38%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }
