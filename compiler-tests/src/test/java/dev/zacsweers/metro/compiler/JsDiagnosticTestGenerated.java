@@ -736,6 +736,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
       }
 
       @Test
+      @TestMetadata("GraphPrivateBindsNotVisibleToExtensions.kt")
+      public void testGraphPrivateBindsNotVisibleToExtensions() {
+        run("GraphPrivateBindsNotVisibleToExtensions.kt");
+      }
+
+      @Test
       @TestMetadata("GraphPrivateGraphExtensionFactoryParam.kt")
       public void testGraphPrivateGraphExtensionFactoryParam() {
         run("GraphPrivateGraphExtensionFactoryParam.kt");

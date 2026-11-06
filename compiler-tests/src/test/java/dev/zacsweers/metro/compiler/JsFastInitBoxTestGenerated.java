@@ -1776,6 +1776,12 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
       }
 
       @Test
+      @TestMetadata("GraphPrivateBindsAreGraphLocal.kt")
+      public void testGraphPrivateBindsAreGraphLocal() {
+        run("GraphPrivateBindsAreGraphLocal.kt");
+      }
+
+      @Test
       @TestMetadata("GraphPrivateDoesNotBlockNonPrivateBindings.kt")
       public void testGraphPrivateDoesNotBlockNonPrivateBindings() {
         run("GraphPrivateDoesNotBlockNonPrivateBindings.kt");

@@ -16,6 +16,7 @@ Changelog
   - Repeated requests for multibinding providers reuse their providers. Unscoped maps of providers remain fresh on each invocation while reusing their entry providers.
   - Unscoped values still create a fresh instance on each provider invocation.
   - Note that this results in more fields to allow reuse, in exchange for less allocations at runtime. If you have any issues, please file an issue with details. you can force these to just be getters instead via temporary compiler option in the meantime via `metro { compilerOptions.put("force-provider-getters", "true") }`
+- **[IR]** Fix `@GraphPrivate @Binds` declarations leaking into graph extensions. Child graphs now resolve their own bindings or report a missing binding when the parent's alias is private.
 - **[IR]** Fix eager reads of included dependency accessors when graph extensions request `Provider` or `Lazy` values.
 - **[IR]** Fix missing graph references in getter-only shards when accessing included dependencies.
 - **[IR]** Fix graphs creating new providers every time a `Map<K, Provider<V>>` is requested. 
@@ -33,6 +34,7 @@ Special thanks to the following contributors for contributing to this release!
 
 - [@aglose](https://github.com/aglose)
 - [@falqadi](https://github.com/falqadi)
+- [@hossain-khan](https://github.com/hossain-khan)
 
 ### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
 
