@@ -207,10 +207,11 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
     assertThat(constructor.parameterTypes.toList())
       .containsExactly(
         Provider::class.java,
-        Provider::class.java,
-        Provider::class.java,
+        Function0::class.java,
+        Function0::class.java,
         Provider::class.java,
       )
+      .inOrder()
 
     @Suppress("UNCHECKED_CAST")
     val membersInjectorInstance =
