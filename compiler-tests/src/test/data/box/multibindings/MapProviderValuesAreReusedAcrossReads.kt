@@ -62,7 +62,7 @@ fun box(): String {
   val first = graph.handlers
   val second = graph.handlers
   assertEquals(0, dependencyReads)
-  assertNotSame(first, second)
+  assertSame(first, second)
   assertSame(first.getValue("alpha"), second.getValue("alpha"))
   assertSame(first.getValue("beta"), second.getValue("beta"))
   for (key in listOf("alpha", "beta")) {
@@ -84,7 +84,7 @@ fun box(): String {
   assertSame(singletonMapProvider, singletonGraph.handlersProvider)
   val firstSingletonMap = singletonMapProvider()
   val secondSingletonMap = singletonMapProvider()
-  assertNotSame(firstSingletonMap, secondSingletonMap)
+  assertSame(firstSingletonMap, secondSingletonMap)
   assertSame(singleProvider, firstSingletonMap.getValue("single"))
   assertSame(singleProvider, secondSingletonMap.getValue("single"))
 
@@ -93,7 +93,7 @@ fun box(): String {
   assertSame(wrappedProvider, wrappedGraph.handlers)
   val firstWrapped = wrappedProvider()
   val secondWrapped = wrappedProvider()
-  assertNotSame(firstWrapped, secondWrapped)
+  assertSame(firstWrapped, secondWrapped)
   for (key in listOf("alpha", "beta")) {
     assertSame(firstWrapped.getValue(key), secondWrapped.getValue(key))
     assertNotSame(firstWrapped.getValue(key)(), secondWrapped.getValue(key)())

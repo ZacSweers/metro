@@ -7,7 +7,7 @@ class FinalThing {
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class MetroFactory : Factory<FinalThing> {
-    private /* final field */ val ints: Function0<Set<Int>> = ints
+    private /* final field */ val ints: Provider<Set<Int>> = ints
     companion object Companion {
       private constructor() /* primary */ {
         super/*Any*/()
@@ -18,7 +18,7 @@ class FinalThing {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(@Named(name = "final") ints: Function0<Set<Int>>): MetroFactory {
+      fun create(@Named(name = "final") ints: Provider<Set<Int>>): MetroFactory {
         return MetroFactory(ints = ints)
       }
 
@@ -32,7 +32,7 @@ class FinalThing {
     }
 
     @HiddenFromObjC
-    private constructor(ints: Function0<Set<Int>>) /* primary */ {
+    private constructor(ints: Provider<Set<Int>>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 

@@ -13,13 +13,13 @@ Changelog
 - **[FIR/IR]** Fix contributed `@Inject` classes skipping declared and inherited member injection when `generateContributionProviders` is enabled.
 - **[IR]** Better reuse provider instances across repeated graph accessor and unscoped consumer requests. 
   - Converted provider accessors and constructor parameters reuse their wrappers (i.e. different types of `Provider` types). Canonical providers used only to initialize one cached conversion can be inlined.
-  - Repeated requests for multibinding providers reuse their providers. Unscoped maps of providers remain fresh on each invocation while reusing their entry providers.
+  - Repeated requests for multibinding providers reuse their providers. A `Provider<Map<K, Provider<V>>>` returns the same map of entry providers on each invocation, like Dagger.
   - Unscoped values still create a fresh instance on each provider invocation.
   - Note that this results in more fields to allow reuse, in exchange for less allocations at runtime. If you have any issues, please file an issue with details. you can force these to just be getters instead via temporary compiler option in the meantime via `metro { compilerOptions.put("force-provider-getters", "true") }`
 - **[IR]** Fix `@GraphPrivate @Binds` declarations leaking into graph extensions. Child graphs now resolve their own bindings or report a missing binding when the parent's alias is private.
 - **[IR]** Fix eager reads of included dependency accessors when graph extensions request `Provider` or `Lazy` values.
 - **[IR]** Fix missing graph references in getter-only shards when accessing included dependencies.
-- **[IR]** Fix graphs creating new providers every time a `Map<K, Provider<V>>` is requested. 
+- **[IR]** Fix graphs creating new providers every time a `Map<K, Provider<V>>` is requested. The graph now stores one map of entry providers and returns it on every read.
 - **[IR/interop]** Fix an issue with Dagger-processed providers/constructors with default parameters with their generated factory. Previously, Metro would treat the source function's parameter as optional if it had a default value and not reconcile that correctly with Dagger's generated factory (which would not propagate that default since Dagger uses a different mechanism for optional bindings).
 
 ### Changes

@@ -58,7 +58,7 @@ abstract class ImplContributions {
     @CallableMetadata(callableName = "provideImplAsBase", propertyName = "", startOffset = -1, endOffset = -1, newInstanceName = "provideImplAsBase")
     class ProvideImplAsBaseMetroFactory : Factory<Base> {
       private /* final field */ val string: Provider<String> = string
-      private /* final field */ val longProvider: Function0<Long> = longProvider
+      private /* final field */ val longProvider: Provider<Long> = longProvider
       private /* final field */ val lazyBool: Provider<Boolean> = lazyBool
       private /* final field */ val providerOfLazyDouble: Provider<Double> = providerOfLazyDouble
       companion object Companion {
@@ -71,7 +71,7 @@ abstract class ImplContributions {
         @HiddenFromObjC
         @JvmStatic
         @JsStatic
-        fun create(string: Provider<String>, longProvider: Function0<Long>, lazyBool: Provider<Boolean>, providerOfLazyDouble: Provider<Double>): ProvideImplAsBaseMetroFactory {
+        fun create(string: Provider<String>, longProvider: Provider<Long>, lazyBool: Provider<Boolean>, providerOfLazyDouble: Provider<Double>): ProvideImplAsBaseMetroFactory {
           return ProvideImplAsBaseMetroFactory(string = string, longProvider = longProvider, lazyBool = lazyBool, providerOfLazyDouble = providerOfLazyDouble)
         }
 
@@ -85,7 +85,7 @@ abstract class ImplContributions {
       }
 
       @HiddenFromObjC
-      private constructor(string: Provider<String>, longProvider: Function0<Long>, lazyBool: Provider<Boolean>, providerOfLazyDouble: Provider<Double>) /* primary */ {
+      private constructor(string: Provider<String>, longProvider: Provider<Long>, lazyBool: Provider<Boolean>, providerOfLazyDouble: Provider<Double>) /* primary */ {
         super/*Any*/()
         /* <init>() */
 

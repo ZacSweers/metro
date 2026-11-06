@@ -182,6 +182,13 @@ interface AppGraph {
       }
  /*-> Provider<Optional<Exporter>> */)
 
+    private val mapOfStringToAdapterProvider: Provider<Map<String, Provider<Adapter>>>
+      field = asMetroProvider<Map<String, Provider<Adapter>>>(/* <this> = { // BLOCK
+        val tmp0_builder: MapProviderFactory.Builder<String, Adapter> = builder<String, Adapter>(size = 1)
+        tmp0_builder.put(key = "adapter", providerOfValue = asDaggerInternalProvider<Adapter>(/* <this> = <this>.#adapterProvider */))
+        tmp0_builder.build()
+      } */)
+
     private val setOfAdapterProvider: Provider<Set<Adapter>>
       field = singleton<Adapter>(provider = <this>.#adapterProvider)
 
@@ -223,6 +230,13 @@ interface AppGraph {
             return of<Exporter>(p0 = ChildBindings.presentExporter())
           }
  /*-> Provider<Optional<Exporter>> */)
+
+        private val mapOfStringToAdapterProvider: Provider<Map<String, Provider<Adapter>>>
+          field = asMetroProvider<Map<String, Provider<Adapter>>>(/* <this> = { // BLOCK
+            val tmp0_builder: MapProviderFactory.Builder<String, Adapter> = builder<String, Adapter>(size = 1)
+            tmp0_builder.put(key = "adapter", providerOfValue = asDaggerInternalProvider<Adapter>(/* <this> = <this>.#adapterProvider */))
+            tmp0_builder.build()
+          } */)
 
         private val setOfAdapterConvertedProvider: Provider<Set<@JvmSuppressWildcards Adapter>>
           field = asJavaxProvider<Set<Adapter>>(/* <this> = singleton<Adapter>(provider = <this>.#adapterProvider) */)
@@ -286,10 +300,7 @@ interface AppGraph {
 
         private val consumer2: Consumer
           private get(): Consumer {
-            return Consumer(adapters = <this>.#setOfAdapterConvertedProvider, providers = buildMap<String, Provider<Adapter>>(capacity = 1, builderAction = local fun MutableMap<String, Provider<Adapter>>.<anonymous>() {
-              $receiver.put(key = "adapter", value = asJavaxProvider<Adapter>(/* <this> = <this>.#adapterProvider */))
-            }
-))
+            return Consumer(adapters = <this>.#setOfAdapterConvertedProvider, providers = <this>.#mapOfStringToAdapterProvider.invoke())
           }
 
         override val unchangedFactory: UnchangedGrandchild.Factory
@@ -349,7 +360,7 @@ interface AppGraph {
 
       private val consumer2: Consumer
         private get(): Consumer {
-          return Consumer(adapters = <this>.#setOfAdapterConvertedProvider, providers = <this>.#appGraphImpl.<get-mapOfStringToAdapter>())
+          return Consumer(adapters = <this>.#setOfAdapterConvertedProvider, providers = <this>.#appGraphImpl.#mapOfStringToAdapterProvider.invoke())
         }
 
       private val factoryFactory: UnchangedGrandchild.Factory
@@ -380,17 +391,9 @@ interface AppGraph {
         return AppGraph.Impl.ChildGraphImpl.FactoryImpl(AppGraphImpl = <this>)
       }
 
-    private val mapOfStringToAdapter: Map<String, Provider<Adapter>>
-      private get(): Map<String, Provider<Adapter>> {
-        return buildMap<String, Provider<Adapter>>(capacity = 1, builderAction = local fun MutableMap<String, Provider<Adapter>>.<anonymous>() {
-          $receiver.put(key = "adapter", value = asJavaxProvider<Adapter>(/* <this> = <this>.#adapterProvider */))
-        }
-)
-      }
-
     override val providers: Map<String, @JvmSuppressWildcards Provider<Adapter>>
       override get(): Map<String, @JvmSuppressWildcards Provider<Adapter>> {
-        return <this>.<get-mapOfStringToAdapter>()
+        return <this>.#mapOfStringToAdapterProvider.invoke()
       }
 
   }

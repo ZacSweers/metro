@@ -15,7 +15,6 @@ import dev.zacsweers.metro.compiler.fir.generateMemberFunction
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
 import dev.zacsweers.metro.compiler.fir.wrapInProviderIfNecessary
-import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.fir.FirSession
@@ -211,10 +210,8 @@ internal fun MetroFirValueParameter.factoryProviderType(
   defaultUsesSuspendProvider: Boolean = false,
 ): ConeKotlinType {
   val wrappedType = contextKey.wrappedType
-  if (!contextKey.hasDefault && wrappedType is WrappedType.Provider) {
-    if (wrappedType.innerType.isScalarLeaf()) {
-      return contextKey.originalType(session)
-    }
+  if (!contextKey.hasDefault && wrappedType.keepsDeclaredFactoryProviderType()) {
+    return contextKey.originalType(session)
   }
   val providerClassId =
     if (wrappedType.usesSuspendProvider(defaultUsesSuspendProvider)) {

@@ -1169,6 +1169,14 @@ internal class IrGraphGenerator(
           accessorsCanShareCode = !runtimeTracingAvailability.isAvailable(),
         )
         .collect()
+        .also { result ->
+          // Forced getters keep every conversion as a getter, so only cached conversions are
+          // pruned.
+          if (!options.forceProviderGetters) {
+            // A factory that takes the canonical provider never reads a conversion.
+            convertedProviderKeys = convertedProviderKeys intersect result.usedCachedRequests
+          }
+        }
     }
 
   /**

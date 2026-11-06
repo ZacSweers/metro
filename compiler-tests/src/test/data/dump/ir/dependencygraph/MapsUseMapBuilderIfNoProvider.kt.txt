@@ -24,6 +24,9 @@ interface AppGraph {
     private val provideIntProvider: Provider<Int>
       field = create(instance = <this>)
 
+    private val mapOfIntToIntProvider: Provider<Map<Int, Function0<Int>>>
+      field = singleton<Int, Int>(key = 3, provider = <this>.#provideIntProvider)
+
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
@@ -41,10 +44,7 @@ interface AppGraph {
 
     override val intsWithProviders: Map<Int, Function0<Int>>
       override get(): Map<Int, Function0<Int>> {
-        return buildMap<Int, Function0<Int>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<Int>>.<anonymous>() {
-          $receiver.put(key = 3, value = <this>.#provideIntProvider)
-        }
-)
+        return <this>.#mapOfIntToIntProvider.invoke()
       }
 
   }

@@ -32,7 +32,7 @@ fun box(): String {
   assertSame(provider, graph.data)
   val first = provider.get()
   val second = provider.get()
-  assertNotSame(first, second)
+  assertSame(first, second)
   for (key in listOf("name", "version")) {
     assertSame(first.getValue(key), second.getValue(key))
   }

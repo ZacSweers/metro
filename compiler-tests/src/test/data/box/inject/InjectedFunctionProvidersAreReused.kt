@@ -1,3 +1,6 @@
+// IGNORE_BACKEND: JS_IR
+// JS wraps the provider in a new lambda at each call site because its Provider isn't a function.
+
 @Inject class Value
 @Inject class Consumer(
   val value: () -> Value,

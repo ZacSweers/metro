@@ -55,7 +55,7 @@ fun box(): String {
 
   val providers = graph.providerMap()
   val otherProviders = graph.providerMap()
-  assertNotSame(providers, otherProviders)
+  assertSame(providers, otherProviders)
   for (key in listOf("first", "second")) {
     assertSame(providers.getValue(key), otherProviders.getValue(key))
   }

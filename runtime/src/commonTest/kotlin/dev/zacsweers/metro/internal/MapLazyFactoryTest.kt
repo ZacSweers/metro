@@ -2,9 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.internal
 
+import dev.zacsweers.metro.Provider
 import dev.zacsweers.metro.providerOf
 import kotlin.test.Test
+import kotlin.test.assertNotSame
 import kotlin.test.assertNull
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class MapLazyFactoryTest {
@@ -30,5 +33,18 @@ class MapLazyFactoryTest {
     assertNull(singleton.getValue("singleton")().value)
 
     assertTrue(MapProviderLazyFactory.empty<String, String?>()().isEmpty())
+  }
+
+  @Test
+  fun `provider lazy map factories return the same map on every call`() {
+    var count = 0
+    val provider = Provider { ++count }
+    val built = MapProviderLazyFactory.builder<String, Int>(1).put("built", provider).build()
+    assertSame(built(), built())
+    val entry = built().getValue("built")
+    assertNotSame(entry(), entry())
+
+    val singleton = MapProviderLazyFactory.singleton("singleton", provider)
+    assertSame(singleton(), singleton())
   }
 }

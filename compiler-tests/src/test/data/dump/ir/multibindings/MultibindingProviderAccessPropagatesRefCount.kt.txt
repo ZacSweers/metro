@@ -186,7 +186,7 @@ class MapConsumer {
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class MetroFactory : Factory<MapConsumer> {
-    private /* final field */ val map: Function0<Map<Int, B>> = map
+    private /* final field */ val map: Provider<Map<Int, B>> = map
     companion object Companion {
       private constructor() /* primary */ {
         super/*Any*/()
@@ -197,7 +197,7 @@ class MapConsumer {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(map: Function0<Map<Int, B>>): MetroFactory {
+      fun create(map: Provider<Map<Int, B>>): MetroFactory {
         return MetroFactory(map = map)
       }
 
@@ -211,7 +211,7 @@ class MapConsumer {
     }
 
     @HiddenFromObjC
-    private constructor(map: Function0<Map<Int, B>>) /* primary */ {
+    private constructor(map: Provider<Map<Int, B>>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -306,7 +306,7 @@ class SetConsumer {
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class MetroFactory : Factory<SetConsumer> {
-    private /* final field */ val set: Function0<Set<A>> = set
+    private /* final field */ val set: Provider<Set<A>> = set
     companion object Companion {
       private constructor() /* primary */ {
         super/*Any*/()
@@ -317,7 +317,7 @@ class SetConsumer {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(set: Function0<Set<A>>): MetroFactory {
+      fun create(set: Provider<Set<A>>): MetroFactory {
         return MetroFactory(set = set)
       }
 
@@ -331,7 +331,7 @@ class SetConsumer {
     }
 
     @HiddenFromObjC
-    private constructor(set: Function0<Set<A>>) /* primary */ {
+    private constructor(set: Provider<Set<A>>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -454,8 +454,8 @@ interface TestGraph {
     private val mapOfIntToBProvider: Provider<Map<Int, B>>
       field = singleton<Int, B>(key = 1, provider = create(x = <this>.#xImplProvider))
 
-    private val cProvider: Provider<C>
-      field = create(x = <this>.#xImplProvider)
+    private val mapOfIntToCProvider: Provider<Map<Int, Function0<C>>>
+      field = singleton<Int, C>(key = 1, provider = create(x = <this>.#xImplProvider))
 
     private val setOfAProvider: Provider<Set<A>>
       field = singleton<A>(provider = create(x = <this>.#xImplProvider))
@@ -473,10 +473,7 @@ interface TestGraph {
 
     override val providerMapConsumer: ProviderMapConsumer
       override get(): ProviderMapConsumer {
-        return ProviderMapConsumer(map = buildMap<Int, Function0<C>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<C>>.<anonymous>() {
-          $receiver.put(key = 1, value = <this>.#cProvider)
-        }
-))
+        return ProviderMapConsumer(map = <this>.#mapOfIntToCProvider.invoke())
       }
 
     override val setConsumer: SetConsumer

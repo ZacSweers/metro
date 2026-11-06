@@ -205,6 +205,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("ForceProviderGettersInlineSingleUseProviders.kt")
+    public void testForceProviderGettersInlineSingleUseProviders() {
+      run("ForceProviderGettersInlineSingleUseProviders.kt");
+    }
+
+    @Test
     @TestMetadata("GraphAccessors.kt")
     public void testGraphAccessors() {
       run("GraphAccessors.kt");
@@ -214,6 +220,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     @TestMetadata("GraphImplClassAsReturnType.kt")
     public void testGraphImplClassAsReturnType() {
       run("GraphImplClassAsReturnType.kt");
+    }
+
+    @Test
+    @TestMetadata("IncludedAccessorProvidersAreSharedWithExtensions.kt")
+    public void testIncludedAccessorProvidersAreSharedWithExtensions() {
+      run("IncludedAccessorProvidersAreSharedWithExtensions.kt");
     }
 
     @Test
@@ -484,6 +496,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
       public void testForceProviderGetters() {
         run("ForceProviderGetters.kt");
       }
+
+      @Test
+      @TestMetadata("UnreadConvertedProvidersGetNoFields.kt")
+      public void testUnreadConvertedProvidersGetNoFields() {
+        run("UnreadConvertedProvidersGetNoFields.kt");
+      }
     }
 
     @Nested
@@ -633,6 +651,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
       @TestMetadata("SwitchingProvidersAcrossExtensions.kt")
       public void testSwitchingProvidersAcrossExtensions() {
         run("SwitchingProvidersAcrossExtensions.kt");
+      }
+
+      @Test
+      @TestMetadata("SwitchingProvidersIncludeAccessors.kt")
+      public void testSwitchingProvidersIncludeAccessors() {
+        run("SwitchingProvidersIncludeAccessors.kt");
       }
 
       @Test

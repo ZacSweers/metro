@@ -22,23 +22,8 @@ interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
-    private val provideValueProvider: Provider<Int>
-      field = create(instance = <this>)
-
     private val mapOfIntToIntProvider: Provider<Map<Int, Function0<Int>>>
-      field = { // BLOCK
-        val tmp0_valueProviders: Map<Int, Function0<Int>> = buildMap<Int, Function0<Int>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<Int>>.<anonymous>() {
-          $receiver.put(key = 1, value = <this>.#provideValueProvider)
-        }
-)
-        local fun <anonymous>(): Map<Int, Function0<Int>> {
-          return buildMap<Int, Function0<Int>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<Int>>.<anonymous>() {
-            $receiver.putAll(from = tmp0_valueProviders)
-          }
-)
-        }
- /*-> Provider<Map<Int, Function0<Int>>> */
-      }
+      field = singleton<Int, Int>(key = 1, provider = create(instance = <this>))
 
     private constructor() /* primary */ {
       super/*Any*/()

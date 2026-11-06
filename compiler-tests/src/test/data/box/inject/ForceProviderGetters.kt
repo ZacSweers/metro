@@ -51,7 +51,8 @@ fun box(): String {
   assertNotSame(graph.consumer().foo, graph.consumer().foo)
   assertNotSame(graph.set, graph.set)
   assertNotSame(graph.map, graph.map)
-  assertNotSame(graph.providerMap, graph.providerMap)
+  // A map of providers is stored once so its entries stay the same.
+  assertSame(graph.providerMap, graph.providerMap)
   assertEquals(0, constructions)
 
   val provider = graph.foo
@@ -62,6 +63,8 @@ fun box(): String {
   assertEquals(6, constructions)
   val providers = graph.providerMap()
   assertEquals(6, constructions)
+  // Map entries keep their providers across reads.
+  assertSame(providers.getValue("first"), graph.providerMap().getValue("first"))
   assertNotSame(providers.getValue("first")(), providers.getValue("first")())
 
   assertSame(graph.scoped, graph.scoped)

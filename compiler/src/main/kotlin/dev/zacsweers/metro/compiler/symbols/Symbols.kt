@@ -768,6 +768,24 @@ internal class Symbols(
       .firstOrNull()
   }
 
+  /** `providerMapAsFunctions(providers)`. Only exists in the JS runtime. */
+  val providerMapAsFunctions: IrSimpleFunctionSymbol? by lazy {
+    builtinsFinder
+      .findFunctions(
+        CallableId(FqNames.metroRuntimeInternalPackage, "providerMapAsFunctions".asName()),
+      )
+      .firstOrNull()
+  }
+
+  /** `suspendProviderMapAsFunctions(providers)`. Only exists in the JS runtime. */
+  val suspendProviderMapAsFunctions: IrSimpleFunctionSymbol? by lazy {
+    builtinsFinder
+      .findFunctions(
+        CallableId(FqNames.metroRuntimeInternalPackage, "suspendProviderMapAsFunctions".asName()),
+      )
+      .firstOrNull()
+  }
+
   val emptySet by lazy {
     builtinsFinder
       .findFunctions(CallableId(stdlibCollections.packageFqName, "emptySet".asName()))
@@ -852,12 +870,6 @@ internal class Symbols(
     pluginContext.irBuiltIns.mutableMapClass.owner.declarations
       .filterIsInstance<IrSimpleFunction>()
       .single { it.name.asString() == "put" }
-  }
-
-  val mutableMapPutAll by lazy {
-    pluginContext.irBuiltIns.mutableMapClass.owner.declarations
-      .filterIsInstance<IrSimpleFunction>()
-      .single { it.name.asString() == "putAll" }
   }
 
   val intoMapConstructor by lazy {

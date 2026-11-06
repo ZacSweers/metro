@@ -112,9 +112,8 @@ interface TestGraph1 : Bindings {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : TestGraph1 {
-    @MultibindingElement(bindingId = "kotlin/Int|kotlin/String", elementId = "1070765913")
-    private val provideStringProvider: Provider<String>
-      field = create(instance = <this>)
+    private val mapOfIntToStringProvider: Provider<Map<Int, Function0<String>>>
+      field = singleton<Int, String>(key = 1, provider = create(instance = <this>))
 
     private constructor() /* primary */ {
       super/*Any*/()
@@ -123,10 +122,7 @@ interface TestGraph1 : Bindings {
     }
 
     override fun inject(target: Target) {
-      injectStrings(instance = target, strings = buildMap<Int, Function0<String>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<String>>.<anonymous>() {
-        $receiver.put(key = 1, value = <this>.#provideStringProvider)
-      }
-))
+      injectStrings(instance = target, strings = <this>.#mapOfIntToStringProvider.invoke())
     }
 
   }
@@ -156,24 +152,8 @@ interface TestGraph2 : Bindings {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : TestGraph2 {
-    @MultibindingElement(bindingId = "kotlin/Int|kotlin/String", elementId = "1070765913")
-    private val provideStringProvider: Provider<String>
-      field = create(instance = <this>)
-
     private val mapOfIntToStringProvider: Provider<Map<Int, Function0<String>>>
-      field = { // BLOCK
-        val tmp0_valueProviders: Map<Int, Function0<String>> = buildMap<Int, Function0<String>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<String>>.<anonymous>() {
-          $receiver.put(key = 1, value = <this>.#provideStringProvider)
-        }
-)
-        local fun <anonymous>(): Map<Int, Function0<String>> {
-          return buildMap<Int, Function0<String>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<String>>.<anonymous>() {
-            $receiver.putAll(from = tmp0_valueProviders)
-          }
-)
-        }
- /*-> Provider<Map<Int, Function0<String>>> */
-      }
+      field = singleton<Int, String>(key = 1, provider = create(instance = <this>))
 
     private constructor() /* primary */ {
       super/*Any*/()
@@ -220,9 +200,8 @@ interface TestGraph3 : Bindings {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : TestGraph3 {
-    @MultibindingElement(bindingId = "kotlin/Int|kotlin/String", elementId = "1070765913")
-    private val provideStringProvider: Provider<String>
-      field = create(instance = <this>)
+    private val mapOfIntToStringProvider: Provider<Map<Int, Function0<String>>>
+      field = singleton<Int, String>(key = 1, provider = create(instance = <this>))
 
     private constructor() /* primary */ {
       super/*Any*/()
@@ -231,20 +210,12 @@ interface TestGraph3 : Bindings {
     }
 
     override fun inject(target: Target) {
-      injectStrings(instance = target, strings = <this>.<get-mapOfIntToString>())
+      injectStrings(instance = target, strings = <this>.#mapOfIntToStringProvider.invoke())
     }
-
-    private val mapOfIntToString: Map<Int, Function0<String>>
-      private get(): Map<Int, Function0<String>> {
-        return buildMap<Int, Function0<String>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<String>>.<anonymous>() {
-          $receiver.put(key = 1, value = <this>.#provideStringProvider)
-        }
-)
-      }
 
     override val strings: Map<Int, Function0<String>>
       override get(): Map<Int, Function0<String>> {
-        return <this>.<get-mapOfIntToString>()
+        return <this>.#mapOfIntToStringProvider.invoke()
       }
 
   }
@@ -277,24 +248,8 @@ interface TestGraph4 : Bindings {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : TestGraph4 {
-    @MultibindingElement(bindingId = "kotlin/Int|kotlin/String", elementId = "1070765913")
-    private val provideStringProvider: Provider<String>
-      field = create(instance = <this>)
-
     private val mapOfIntToStringProvider: Provider<Map<Int, Function0<String>>>
-      field = { // BLOCK
-        val tmp0_valueProviders: Map<Int, Function0<String>> = buildMap<Int, Function0<String>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<String>>.<anonymous>() {
-          $receiver.put(key = 1, value = <this>.#provideStringProvider)
-        }
-)
-        local fun <anonymous>(): Map<Int, Function0<String>> {
-          return buildMap<Int, Function0<String>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<String>>.<anonymous>() {
-            $receiver.putAll(from = tmp0_valueProviders)
-          }
-)
-        }
- /*-> Provider<Map<Int, Function0<String>>> */
-      }
+      field = singleton<Int, String>(key = 1, provider = create(instance = <this>))
 
     private constructor() /* primary */ {
       super/*Any*/()
@@ -335,9 +290,8 @@ interface TestGraph5 : Bindings {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : TestGraph5 {
-    @MultibindingElement(bindingId = "kotlin/Int|kotlin/String", elementId = "1070765913")
-    private val provideStringProvider: Provider<String>
-      field = create(instance = <this>)
+    private val mapOfIntToStringProvider: Provider<Map<Int, Function0<String>>>
+      field = singleton<Int, String>(key = 1, provider = create(instance = <this>))
 
     private constructor() /* primary */ {
       super/*Any*/()
@@ -347,10 +301,7 @@ interface TestGraph5 : Bindings {
 
     override val strings: Map<Int, Function0<String>>
       override get(): Map<Int, Function0<String>> {
-        return buildMap<Int, Function0<String>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<String>>.<anonymous>() {
-          $receiver.put(key = 1, value = <this>.#provideStringProvider)
-        }
-)
+        return <this>.#mapOfIntToStringProvider.invoke()
       }
 
   }

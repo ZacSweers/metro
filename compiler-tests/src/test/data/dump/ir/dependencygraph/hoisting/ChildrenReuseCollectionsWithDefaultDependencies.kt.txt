@@ -86,7 +86,7 @@ class Consumer {
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class MetroFactory : Factory<Consumer> {
-    private /* final field */ val adapters: Function0<Set<Adapter>> = adapters
+    private /* final field */ val adapters: Provider<Set<Adapter>> = adapters
     private /* final field */ val providers: Provider<Map<String, Function0<Adapter>>> = providers
     companion object Companion {
       private constructor() /* primary */ {
@@ -98,7 +98,7 @@ class Consumer {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(adapters: Function0<Set<Adapter>>, providers: Provider<Map<String, Function0<Adapter>>>): MetroFactory {
+      fun create(adapters: Provider<Set<Adapter>>, providers: Provider<Map<String, Function0<Adapter>>>): MetroFactory {
         return MetroFactory(adapters = adapters, providers = providers)
       }
 
@@ -112,7 +112,7 @@ class Consumer {
     }
 
     @HiddenFromObjC
-    private constructor(adapters: Function0<Set<Adapter>>, providers: Provider<Map<String, Function0<Adapter>>>) /* primary */ {
+    private constructor(adapters: Provider<Set<Adapter>>, providers: Provider<Map<String, Function0<Adapter>>>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -190,6 +190,9 @@ interface AppGraph {
     private val adapterProvider: Provider<Adapter>
       field = Adapter.MetroFactory/* companion */.create(present = create(instance = <this>))
 
+    private val mapOfStringToAdapterProvider: Provider<Map<String, Function0<Adapter>>>
+      field = singleton<String, Adapter>(key = "adapter", provider = <this>.#adapterProvider)
+
     private val setOfAdapterProvider: Provider<Set<Adapter>>
       field = singleton<Adapter>(provider = <this>.#adapterProvider)
 
@@ -205,6 +208,9 @@ interface AppGraph {
 
         private val adapterProvider: Provider<Adapter>
           field = Adapter.MetroFactory/* companion */.create(absent = create(instance = <this>), present = create(instance = <this>))
+
+        private val mapOfStringToAdapterProvider: Provider<Map<String, Function0<Adapter>>>
+          field = singleton<String, Adapter>(key = "adapter", provider = <this>.#adapterProvider)
 
         private val setOfAdapterProvider: Provider<Set<Adapter>>
           field = singleton<Adapter>(provider = <this>.#adapterProvider)
@@ -240,10 +246,7 @@ interface AppGraph {
 
         private val consumer2: Consumer
           private get(): Consumer {
-            return Consumer(adapters = <this>.#setOfAdapterProvider, providers = buildMap<String, Function0<Adapter>>(capacity = 1, builderAction = local fun MutableMap<String, Function0<Adapter>>.<anonymous>() {
-              $receiver.put(key = "adapter", value = <this>.#adapterProvider)
-            }
-))
+            return Consumer(adapters = <this>.#setOfAdapterProvider, providers = <this>.#mapOfStringToAdapterProvider.invoke())
           }
 
         override val unchanged: UnchangedGrandchild
@@ -294,7 +297,7 @@ interface AppGraph {
 
       private val consumer2: Consumer
         private get(): Consumer {
-          return Consumer(adapters = <this>.#appGraphImpl.#setOfAdapterProvider, providers = <this>.#appGraphImpl.<get-mapOfStringToAdapter>())
+          return Consumer(adapters = <this>.#appGraphImpl.#setOfAdapterProvider, providers = <this>.#appGraphImpl.#mapOfStringToAdapterProvider.invoke())
         }
 
       override val unchanged: UnchangedGrandchild
@@ -325,17 +328,9 @@ interface AppGraph {
         return ChildGraphImpl(appGraphImpl = <this>)
       }
 
-    private val mapOfStringToAdapter: Map<String, Function0<Adapter>>
-      private get(): Map<String, Function0<Adapter>> {
-        return buildMap<String, Function0<Adapter>>(capacity = 1, builderAction = local fun MutableMap<String, Function0<Adapter>>.<anonymous>() {
-          $receiver.put(key = "adapter", value = <this>.#adapterProvider)
-        }
-)
-      }
-
     override val providers: Map<String, Function0<Adapter>>
       override get(): Map<String, Function0<Adapter>> {
-        return <this>.<get-mapOfStringToAdapter>()
+        return <this>.#mapOfStringToAdapterProvider.invoke()
       }
 
   }
