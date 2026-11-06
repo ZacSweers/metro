@@ -18,6 +18,8 @@ import org.jetbrains.kotlin.ir.declarations.IrProperty
  *
  * @property property The binding property itself
  * @property storedKey The contextual type key the property was stored under
+ * @property isIncludedAccessor Whether this property represents an accessor from an included
+ *   dependency.
  * @property shardProperty If non-null, the property lives in a shard class and must be accessed
  *   through this shard property (e.g., `graph.shard1.providerProperty`)
  * @property shardIndex If non-null, the index of the shard containing this property
@@ -27,6 +29,7 @@ import org.jetbrains.kotlin.ir.declarations.IrProperty
 internal data class BindingProperty(
   val property: IrProperty,
   val storedKey: IrContextualTypeKey,
+  val isIncludedAccessor: Boolean,
   val shardProperty: IrProperty? = null,
   val shardIndex: Int? = null,
   val ownerGraphKey: IrTypeKey? = null,
@@ -224,9 +227,11 @@ internal class BindingPropertyContext(
   fun get(key: IrContextualTypeKey, searchParents: Boolean = false): BindingProperty? {
     fun localProperty(storedKey: IrContextualTypeKey): BindingProperty? {
       val property = properties[storedKey] ?: return null
+      val binding = bindingGraph.findBinding(storedKey.typeKey)
       return BindingProperty(
         property = property,
         storedKey = storedKey,
+        isIncludedAccessor = binding is IrBinding.GraphDependency && binding.getter != null,
         shardProperty = shardProperties[storedKey],
         shardIndex = shardIndices.getOrDefault(storedKey, -1).takeUnless { it == -1 },
       )

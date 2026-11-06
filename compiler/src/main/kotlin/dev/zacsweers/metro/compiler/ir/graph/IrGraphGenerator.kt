@@ -1387,8 +1387,10 @@ internal class IrGraphGenerator(
       )
     }
 
-    // Apply chunking logic to this shard's property initializers
-    if (shardPropertyInitializers.isNotEmpty()) {
+    // Apply chunking logic to this shard's property initializers.
+    // Nested shards need a constructor even when all their properties are getters.
+    // The constructor must call Any() and initialize the graph field.
+    if (shardPropertyInitializers.isNotEmpty() || !shard.isGraphAsShard) {
       trace("Generate shard chunking") {
         generateShardChunking(
           shard = shard,
@@ -1403,11 +1405,6 @@ internal class IrGraphGenerator(
           constructorStatements = constructorStatements,
         )
       }
-    } else if (!shard.isGraphAsShard) {
-      // For nested shards, we must always generate the constructor body even if there are no
-      // field-backed property initializers (e.g., all getter-based properties), since the
-      // constructor needs the delegating call to Any and graph field initialization.
-      shard.shardClass.buildShardConstructor()
     }
 
     // For graph-as-shard, add deferred setDelegate calls after property inits

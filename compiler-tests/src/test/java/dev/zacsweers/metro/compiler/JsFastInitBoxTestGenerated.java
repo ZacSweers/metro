@@ -1818,6 +1818,12 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
       }
 
       @Test
+      @TestMetadata("IncludedProviderIsReadLazilyInExtension.kt")
+      public void testIncludedProviderIsReadLazilyInExtension() {
+        run("IncludedProviderIsReadLazilyInExtension.kt");
+      }
+
+      @Test
       @TestMetadata("IncludesAcrossIntermediateUnpacking.kt")
       public void testIncludesAcrossIntermediateUnpacking() {
         run("IncludesAcrossIntermediateUnpacking.kt");
