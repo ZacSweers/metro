@@ -8765,6 +8765,7 @@
 <h2 id="unreleased"><strong>Unreleased</strong><a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
 <h3 id="fixes">Fixes<a class="headerlink" href="#fixes" title="Permanent link">&para;</a></h3>
 <ul>
+<li><strong>[FIR/IR]</strong> Fix contributed <code>@Inject</code> classes skipping declared and inherited member injection when <code>generateContributionProviders</code> is enabled.</li>
 <li><strong>[IR/interop]</strong> Fix an issue with Dagger-processed providers/constructors with default parameters with their generated factory. Previously, Metro would treat the source function&rsquo;s parameter as optional if it had a default value and not reconcile that correctly with Dagger&rsquo;s generated factory (which would not propagate that default since Dagger uses a different mechanism for optional bindings).</li>
 </ul>
 <h3 id="changes">Changes<a class="headerlink" href="#changes" title="Permanent link">&para;</a></h3>
