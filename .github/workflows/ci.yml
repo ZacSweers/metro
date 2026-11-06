@@ -24,11 +24,6 @@ jobs:
       idea: ${{ steps.changes.outputs.idea }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - name: Check CI scripts
-        run: |
-          python3 scripts/test-classify-ci-changes.py
-          python3 scripts/test-check-ci-status.py
-          python3 scripts/test-run-ci-gradle.py
       - uses: ./.github/actions/classify-changes
         id: changes
         with:

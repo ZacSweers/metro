@@ -88,6 +88,7 @@ For Compose-heavy JS tests that exhaust the default 2g heap, use `-Pmetro.compil
 - `multi-module-test/` - Complex multi-module dependency graph
 
 - Prefer fakes over mocks in tests. Do not use wiremock or mock-based testing approaches unless explicitly asked.
+- Scripts can have tests to verify behavior while iterating. These tests should usually stay uncommitted.
 
 ## Key Files for Development
 
