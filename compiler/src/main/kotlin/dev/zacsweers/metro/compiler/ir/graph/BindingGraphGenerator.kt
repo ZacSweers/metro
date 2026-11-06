@@ -985,9 +985,8 @@ internal class BindingGraphGenerator(
       }
 
       // Collect binds callables.
-      // Skip binds whose source type is graph-private in the parent — the child can't resolve
-      // the private source. The binds result type is promoted to the parent context instead, so
-      // the child resolves it as a GraphDependency.
+      // Private result keys aren't visible to child graphs.
+      // Public binds of private sources are resolved through the parent context.
       // Dynamic parent bindings take precedence over keys collected up-chain.
       for ((key, callables) in extendedNode.bindsCallables) {
         if (
@@ -1008,7 +1007,9 @@ internal class BindingGraphGenerator(
         }
         for (callable in callables) {
           val source = callable.source
-          if (source != null && source in extendedNode.graphPrivateKeys) {
+          val isPrivateBinding = key in extendedNode.graphPrivateKeys
+          val isPrivateSource = source != null && source in extendedNode.graphPrivateKeys
+          if (isPrivateBinding || isPrivateSource) {
             rejectedCandidates?.add(
               RejectedBindingDecision(
                 key,

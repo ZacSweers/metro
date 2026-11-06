@@ -1,0 +1,22 @@
+/GraphPrivateBindsNotVisibleToExtensions.kt:20:7: error: [Metro/MissingBinding] No binding found for Registry
+
+  trace (in ParentGraph.Impl.ChildGraphImpl):
+      Registry is requested at ChildGraph.plain
+
+  note: a binding for 'Registry' exists in a parent graph but is marked @GraphPrivate and cannot be
+        accessed from this graph
+  help: ensure Registry has an @Inject constructor or is provided by an @Provides or @Binds
+        declaration visible to ChildGraphImpl
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
+
+
+/GraphPrivateBindsNotVisibleToExtensions.kt:27:7: error: [Metro/MissingBinding] No binding found for Registry
+
+  trace (in ParentGraph.Impl.ChildGraphImpl.GrandchildGraphImpl):
+      Registry is requested at GrandchildGraph.plain
+
+  note: a binding for 'Registry' exists in a parent graph but is marked @GraphPrivate and cannot be
+        accessed from this graph
+  help: ensure Registry has an @Inject constructor or is provided by an @Provides or @Binds
+        declaration visible to GrandchildGraphImpl
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding

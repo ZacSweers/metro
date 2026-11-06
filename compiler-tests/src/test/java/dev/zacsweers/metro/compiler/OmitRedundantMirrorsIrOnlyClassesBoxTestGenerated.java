@@ -2122,6 +2122,12 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
       }
 
       @Test
+      @TestMetadata("GraphPrivateBindsAreGraphLocal.kt")
+      public void testGraphPrivateBindsAreGraphLocal() {
+        run("GraphPrivateBindsAreGraphLocal.kt");
+      }
+
+      @Test
       @TestMetadata("GraphPrivateDoesNotBlockNonPrivateBindings.kt")
       public void testGraphPrivateDoesNotBlockNonPrivateBindings() {
         run("GraphPrivateDoesNotBlockNonPrivateBindings.kt");
