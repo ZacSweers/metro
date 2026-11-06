@@ -8792,6 +8792,7 @@
 <h3 id="fixes">Fixes<a class="headerlink" href="#fixes" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>[FIR/IR]</strong> Fix contributed <code>@Inject</code> classes skipping declared and inherited member injection when <code>generateContributionProviders</code> is enabled.</li>
+<li><strong>[IR]</strong> Fix <code>@GraphPrivate @Binds</code> declarations leaking into graph extensions. Child graphs now resolve their own bindings or report a missing binding when the parent&rsquo;s alias is private.</li>
 <li><strong>[IR]</strong> Fix eager reads of included dependency accessors when graph extensions request <code>Provider</code> or <code>Lazy</code> values.</li>
 <li><strong>[IR]</strong> Fix missing graph references in getter-only shards when accessing included dependencies.</li>
 <li><strong>[IR]</strong> Fix graphs creating new providers every time a <code>Map&lt;K, Provider&lt;V&gt;&gt;</code> is requested. </li>
@@ -8807,6 +8808,8 @@
 <p>Special thanks to the following contributors for contributing to this release!</p>
 <ul>
 <li><a href="https://github.com/aglose">@aglose</a></li>
+<li><a href="https://github.com/falqadi">@falqadi</a></li>
+<li><a href="https://github.com/hossain-khan">@hossain-khan</a></li>
 </ul>
 <h3 id="consider-sponsoring-metros-development"><a href="https://www.zacsweers.dev/sponsoring-metro/">Consider sponsoring Metro&rsquo;s development</a><a class="headerlink" href="#consider-sponsoring-metros-development" title="Permanent link">&para;</a></h3>
 <h2 id="152">1.5.2<a class="headerlink" href="#152" title="Permanent link">&para;</a></h2>
