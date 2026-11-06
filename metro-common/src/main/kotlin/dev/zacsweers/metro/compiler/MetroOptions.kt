@@ -359,6 +359,18 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       valueMapper = { it.toInt() },
     ),
   ),
+  FORCE_PROVIDER_GETTERS(
+    RawMetroOption.boolean(
+      name = "force-provider-getters",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description =
+        "Temporary option to generate getters for unscoped providers and provider conversions." +
+          " Scoped providers and cycle delegates retain their fields.",
+      required = false,
+      allowMultipleOccurrences = false,
+    ),
+  ),
   ENABLE_SWITCHING_PROVIDERS(
     RawMetroOption.boolean(
       name = "enable-switching-providers",
@@ -1203,6 +1215,8 @@ public class MetroOptions(
     MetroOption.MERGED_SUPERTYPE_CHUNK_SIZE.raw.defaultValue.expectAs(),
   public val multibindingGetterThreshold: Int =
     MetroOption.MULTIBINDING_GETTER_THRESHOLD.raw.defaultValue.expectAs(),
+  public val forceProviderGetters: Boolean =
+    MetroOption.FORCE_PROVIDER_GETTERS.raw.defaultValue.expectAs(),
   public val enableSwitchingProviders: Boolean =
     MetroOption.ENABLE_SWITCHING_PROVIDERS.raw.defaultValue.expectAs(),
   public val publicScopedProviderSeverity: DiagnosticSeverity =
@@ -1624,6 +1638,7 @@ public class MetroOptions(
     public var keysPerGraphShard: Int = base.keysPerGraphShard
     public var mergedSupertypeChunkSize: Int = base.mergedSupertypeChunkSize
     public var multibindingGetterThreshold: Int = base.multibindingGetterThreshold
+    public var forceProviderGetters: Boolean = base.forceProviderGetters
     public var enableSwitchingProviders: Boolean = base.enableSwitchingProviders
     public var publicScopedProviderSeverity: DiagnosticSeverity = base.publicScopedProviderSeverity
     public var nonPublicContributionSeverity: DiagnosticSeverity =
@@ -1974,6 +1989,7 @@ public class MetroOptions(
         MetroOption.KEYS_PER_GRAPH_SHARD -> keysPerGraphShard = value.expectAs()
         MetroOption.MERGED_SUPERTYPE_CHUNK_SIZE -> mergedSupertypeChunkSize = value.expectAs()
         MetroOption.MULTIBINDING_GETTER_THRESHOLD -> multibindingGetterThreshold = value.expectAs()
+        MetroOption.FORCE_PROVIDER_GETTERS -> forceProviderGetters = value.expectAs()
         MetroOption.ENABLE_SWITCHING_PROVIDERS -> enableSwitchingProviders = value.expectAs()
         MetroOption.PUBLIC_SCOPED_PROVIDER_SEVERITY ->
           publicScopedProviderSeverity = value.diagnosticSeverity()
@@ -2114,6 +2130,7 @@ public class MetroOptions(
         keysPerGraphShard = keysPerGraphShard,
         mergedSupertypeChunkSize = mergedSupertypeChunkSize,
         multibindingGetterThreshold = multibindingGetterThreshold,
+        forceProviderGetters = forceProviderGetters,
         enableSwitchingProviders = enableSwitchingProviders,
         publicScopedProviderSeverity = publicScopedProviderSeverity,
         nonPublicContributionSeverity = nonPublicContributionSeverity,

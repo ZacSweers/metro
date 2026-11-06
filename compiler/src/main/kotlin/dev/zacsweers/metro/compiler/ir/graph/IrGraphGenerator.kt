@@ -1157,8 +1157,12 @@ internal class IrGraphGenerator(
           injectorRoots = injectorRoots,
           extraKeeps = bindingGraph.keeps(),
           cachedRequests =
-            convertedProviderKeys.associateWith {
-              it.asCanonicalProviderKey(usesSuspendProvider = false)
+            if (options.forceProviderGetters) {
+              emptyMap()
+            } else {
+              convertedProviderKeys.associateWith {
+                it.asCanonicalProviderKey(usesSuspendProvider = false)
+              }
             },
           deferredTypes = sealResult.deferredTypes,
           reachableKeys = sealResult.reachableKeys,
@@ -1225,11 +1229,17 @@ internal class IrGraphGenerator(
     }
     val conversions = convertedProviderKeys.map { key ->
       val binding = bindingGraph.requireBinding(key)
+      val propertyKind =
+        if (options.forceProviderGetters) {
+          PropertyKind.GETTER
+        } else {
+          PropertyKind.FIELD
+        }
       ShardBinding(
         binding = binding,
         typeKey = key.typeKey,
         contextKey = key,
-        propertyKind = PropertyKind.FIELD,
+        propertyKind = propertyKind,
         irType = key.toIrType(),
         nameHint = "${binding.nameHint.decapitalizeUS()}ConvertedProvider".asName(),
         kind = MemberNamer.Kind.PROVIDER,
@@ -1439,8 +1449,9 @@ internal class IrGraphGenerator(
       )
     }
 
-    // Apply chunking logic to this shard's property initializers
-    if (shardPropertyInitializers.isNotEmpty()) {
+    // Getter-only shards still need to initialize their graph reference.
+    val needsConstructorBody = shardPropertyInitializers.isNotEmpty() || !shard.isGraphAsShard
+    if (needsConstructorBody) {
       trace("Generate shard chunking") {
         generateShardChunking(
           shard = shard,
@@ -1455,11 +1466,6 @@ internal class IrGraphGenerator(
           constructorStatements = constructorStatements,
         )
       }
-    } else if (!shard.isGraphAsShard) {
-      // For nested shards, we must always generate the constructor body even if there are no
-      // field-backed property initializers (e.g., all getter-based properties), since the
-      // constructor needs the delegating call to Any and graph field initialization.
-      shard.shardClass.buildShardConstructor()
     }
 
     // For graph-as-shard, add deferred setDelegate calls after property inits
@@ -1545,27 +1551,44 @@ internal class IrGraphGenerator(
       val property = propertyInfo.property
 
       if (contextKey in convertedProviderKeys) {
-        shardPropertiesToTypeKeys[property] = binding.typeKey
-        shardPropertyInitializers +=
-          property to
-            { thisReceiver, _ ->
-              val providerKey = contextKey.asCanonicalProviderKey(usesSuspendProvider = false)
-              val provider =
-                expressionGeneratorFactory
-                  .create(thisReceiver, shardContext = fieldInitContext)
-                  .generateBindingCode(
-                    binding,
-                    providerKey,
-                    BindingExpressionGenerator.AccessType.PROVIDER,
-                  )
-              typeAsProviderArgument(
-                contextKey,
-                provider,
-                isAssisted = false,
-                isGraphInstance = false,
-                actualIsSuspendProvider = false,
-              )
+        fun IrBuilderWithScope.convertedProvider(thisReceiver: IrValueParameter): IrExpression {
+          val providerKey = contextKey.asCanonicalProviderKey(usesSuspendProvider = false)
+          val expressionContext =
+            if (property.backingField == null) {
+              shardExprContext
+            } else {
+              fieldInitContext
             }
+          val provider =
+            expressionGeneratorFactory
+              .create(thisReceiver, shardContext = expressionContext)
+              .generateBindingCode(
+                binding,
+                providerKey,
+                BindingExpressionGenerator.AccessType.PROVIDER,
+              )
+          return typeAsProviderArgument(
+            contextKey,
+            provider,
+            isAssisted = false,
+            isGraphInstance = false,
+            actualIsSuspendProvider = false,
+          )
+        }
+        if (property.backingField == null) {
+          val getter = property.getter!!
+          getter.body =
+            createIrBuilder(getter.symbol).run {
+              irExprBodySafe(convertedProvider(getter.dispatchReceiverParameter!!))
+            }
+        } else {
+          shardPropertiesToTypeKeys[property] = binding.typeKey
+          shardPropertyInitializers +=
+            property to
+              { thisReceiver, _ ->
+                convertedProvider(thisReceiver)
+              }
+        }
         continue
       }
 
@@ -1954,14 +1977,10 @@ internal class IrGraphGenerator(
     var isProviderType = collectedIsProviderType
     val isSuspendBinding = binding.isSuspendInGraph(collectedContextKey)
 
-    val canUseDepthLimitingGetter =
-      binding is IrBinding.ConstructorInjected || binding is IrBinding.Provided
     val isProviderGetter = propertyType == PropertyKind.GETTER && isProviderType
-    val isDepthLimitingGetter = canUseDepthLimitingGetter && isProviderGetter
+    val requiresProviderWrapper = propertyType == PropertyKind.FIELD || isProviderGetter
 
-    val requiresProviderWrapper = propertyType == PropertyKind.FIELD || isDepthLimitingGetter
-
-    // Suspend depth-limiting getters return a provider instead of invoking a suspend binding.
+    // A getter returns a suspend provider so its caller can invoke it in a suspend context.
     val usesSuspendProvider = isSuspendBinding && requiresProviderWrapper
     val finalContextKey =
       if (usesSuspendProvider) {
@@ -2200,8 +2219,9 @@ internal class IrGraphGenerator(
         val passesThroughGraphDependency =
           binding is IrBinding.GraphDependency && binding.canPassThrough(contextualTypeKey)
         val needsConvertedProvider = hasStoredProvider && convertsProvider
+        val cacheConvertedProvider = needsConvertedProvider && !options.forceProviderGetters
         val accessorProvider =
-          if (needsConvertedProvider && !passesThroughGraphDependency) {
+          if (cacheConvertedProvider && !passesThroughGraphDependency) {
             accessorProviders.getOrPut(accessorKey) {
               val property =
                 graphClass.createBindingProperty(

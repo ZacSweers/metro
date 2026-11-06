@@ -478,6 +478,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
       public void testConvertedProviderInitializersInlineSingleUseFactories() {
         run("ConvertedProviderInitializersInlineSingleUseFactories.kt");
       }
+
+      @Test
+      @TestMetadata("ForceProviderGetters.kt")
+      public void testForceProviderGetters() {
+        run("ForceProviderGetters.kt");
+      }
     }
 
     @Nested

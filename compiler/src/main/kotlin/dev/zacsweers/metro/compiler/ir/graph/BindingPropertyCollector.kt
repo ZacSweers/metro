@@ -382,10 +382,16 @@ internal class BindingPropertyCollector(
           // For multibindings with factory refs, the property returns a Provider type
           (binding is IrBinding.Multibinding && node.factoryRefCount > 0)
 
-      val switchingId = allocateSwitchingId(binding, knownPropertyType)
+      val propertyKind =
+        if (isField && isProviderType) {
+          providerPropertyKind(binding)
+        } else {
+          knownPropertyType
+        }
+      val switchingId = allocateSwitchingId(binding, propertyKind)
 
       keysWithBackingProperties[contextKey] =
-        CollectedProperty(binding, knownPropertyType, contextKey, isProviderType, switchingId)
+        CollectedProperty(binding, propertyKind, contextKey, isProviderType, switchingId)
       // Still process dependencies even for known property types
     }
 
@@ -429,25 +435,27 @@ internal class BindingPropertyCollector(
           } else {
             contextKey
           }
-        val switchingId = allocateSwitchingId(binding, PropertyKind.FIELD)
+        val propertyKind = providerPropertyKind(binding)
+        val switchingId = allocateSwitchingId(binding, propertyKind)
         keysWithBackingProperties[propertyContextKey] =
           CollectedProperty(
             binding,
-            PropertyKind.FIELD,
+            propertyKind,
             propertyContextKey,
+            isProviderType = true,
             switchingId = switchingId,
           )
       } else if (needsSharedGetter()) {
         if (binding.isSuspendInGraph) {
-          // A GETTER property is a non-suspend function and can't await suspend resolutions.
-          // Shared suspend bindings get a SuspendProvider<T> FIELD instead; each consumer awaits
-          // it in its own suspend context.
+          // The property returns a SuspendProvider so each consumer can await it.
+          val propertyKind = providerPropertyKind(binding)
           keysWithBackingProperties[contextKey] =
             CollectedProperty(
               binding,
-              PropertyKind.FIELD,
+              propertyKind,
               contextKey,
-              switchingId = allocateSwitchingId(binding, PropertyKind.FIELD),
+              isProviderType = true,
+              switchingId = allocateSwitchingId(binding, propertyKind),
             )
         } else {
           keysWithBackingProperties[contextKey] =
@@ -456,17 +464,14 @@ internal class BindingPropertyCollector(
       }
     }
 
-    // A binding is in a factory path if:
-    // - It has a FIELD property (factory created at graph init for scoped/assisted/etc)
-    // - It's accessed via Provider (factoryRefCount > 0, factory created inline)
-    //
-    // In both cases, its dependencies are accessed via Provider params in the factory.
-    // Note: GETTER properties are for sharing scalar access, not factory access.
+    // Provider properties and direct provider requests pass providers to their dependencies.
     //
     // Graph extensions are never in a factory path - their dependencies (just the parent graph)
     // are accessed as scalar values. If Provider access is needed for the extension itself,
     // the getter call is wrapped in InstanceFactory at the call site.
     val hasFieldProperty = keysWithBackingProperties[contextKey]?.propertyKind == PropertyKind.FIELD
+    val hasProviderProperty = keysWithBackingProperties[contextKey]?.isProviderType == true
+    val propertyUsesFactory = hasFieldProperty || hasProviderProperty
 
     // MembersInjected bindings that are injector function roots (like `fun inject(target: T)`)
     // don't create MembersInjector instances - they call static inject methods directly, so their
@@ -478,7 +483,7 @@ internal class BindingPropertyCollector(
 
     val inFactoryPath =
       !isGraphExtension &&
-        (hasFieldProperty ||
+        (propertyUsesFactory ||
           node.factoryRefCount > 0 ||
           contextKey.isMapProvider ||
           contextKey.isMapLazy ||
@@ -509,7 +514,7 @@ internal class BindingPropertyCollector(
       val needsFactory = inFactoryPath || dependency.requiresProviderInstance
       val switchingProviderRequestsDependency =
         dependency.requiresProviderInstance &&
-          shouldUseSwitchingProvider(binding, PropertyKind.FIELD)
+          shouldUseSwitchingProvider(binding, providerPropertyKind(binding))
       val hasDefaultFactoryArgument = inFactoryPath && dependency.hasDefault
       val usesCanonicalArgument = hasDefaultFactoryArgument && !switchingProviderRequestsDependency
       val dependencyKey =
@@ -523,6 +528,19 @@ internal class BindingPropertyCollector(
         isFactory = needsFactory && !isSupertypeInjector,
         isRepeated = !dependenciesCreatedAtInitialization || switchingProviderRequestsDependency,
       )
+    }
+  }
+
+  private fun providerPropertyKind(binding: IrBinding): PropertyKind {
+    if (!metroContext.options.forceProviderGetters) {
+      return PropertyKind.FIELD
+    }
+    val requiresStorage = binding.isScoped() || binding.typeKey in deferredTypes
+    val isAssistedFactory = binding is IrBinding.ConstructorInjected && binding.isAssisted
+    return if (requiresStorage || isAssistedFactory) {
+      PropertyKind.FIELD
+    } else {
+      PropertyKind.GETTER
     }
   }
 

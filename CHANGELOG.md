@@ -10,6 +10,7 @@ Changelog
   - Converted provider accessors and constructor parameters reuse their wrappers (i.e. different types of `Provider` types). Canonical providers used only to initialize one cached conversion can be inlined.
   - Repeated requests for multibinding providers reuse their set and map factories.
   - Unscoped values still create a fresh instance on each provider invocation.
+  - Note that this results in more fields to allow reuse, in exchange for less allocations at runtime. If you have any issues, please file an issue with details. you can force these to just be getters instead via temporary compiler option in the meantime via `metro { compilerOptions.put("force-provider-getters", "true") }`
 - **[IR/interop]** Fix an issue with Dagger-processed providers/constructors with default parameters with their generated factory. Previously, Metro would treat the source function's parameter as optional if it had a default value and not reconcile that correctly with Dagger's generated factory (which would not propagate that default since Dagger uses a different mechanism for optional bindings).
 
 ### Changes

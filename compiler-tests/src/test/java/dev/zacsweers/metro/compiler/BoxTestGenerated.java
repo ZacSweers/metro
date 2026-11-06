@@ -2609,6 +2609,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("ForceProviderGetters.kt")
+    public void testForceProviderGetters() {
+      run("ForceProviderGetters.kt");
+    }
+
+    @Test
     @TestMetadata("InjectWithEnumQualifiers.kt")
     public void testInjectWithEnumQualifiers() {
       run("InjectWithEnumQualifiers.kt");
@@ -3209,6 +3215,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       @TestMetadata("DaggerProviderFactoryDefaultedParams.kt")
       public void testDaggerProviderFactoryDefaultedParams() {
         run("DaggerProviderFactoryDefaultedParams.kt");
+      }
+
+      @Test
+      @TestMetadata("ForceConvertedProviderGetters.kt")
+      public void testForceConvertedProviderGetters() {
+        run("ForceConvertedProviderGetters.kt");
       }
 
       @Test
@@ -4304,6 +4316,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     @TestMetadata("DepInConstructorInjectedAccessor.kt")
     public void testDepInConstructorInjectedAccessor() {
       run("DepInConstructorInjectedAccessor.kt");
+    }
+
+    @Test
+    @TestMetadata("ForceSuspendProviderGetters.kt")
+    public void testForceSuspendProviderGetters() {
+      run("ForceSuspendProviderGetters.kt");
     }
 
     @Test

@@ -2263,6 +2263,12 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("ForceProviderGetters.kt")
+    public void testForceProviderGetters() {
+      run("ForceProviderGetters.kt");
+    }
+
+    @Test
     @TestMetadata("InjectWithEnumQualifiers.kt")
     public void testInjectWithEnumQualifiers() {
       run("InjectWithEnumQualifiers.kt");
@@ -3272,6 +3278,12 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
     @TestMetadata("DepInConstructorInjectedAccessor.kt")
     public void testDepInConstructorInjectedAccessor() {
       run("DepInConstructorInjectedAccessor.kt");
+    }
+
+    @Test
+    @TestMetadata("ForceSuspendProviderGetters.kt")
+    public void testForceSuspendProviderGetters() {
+      run("ForceSuspendProviderGetters.kt");
     }
 
     @Test
