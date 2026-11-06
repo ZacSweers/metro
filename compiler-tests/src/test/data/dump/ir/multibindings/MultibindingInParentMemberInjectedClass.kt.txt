@@ -670,11 +670,17 @@ interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
+    private val bViewModelProvider: Provider<BViewModel>
+      field = create()
+
+    private val aViewModelProvider: Provider<AViewModel>
+      field = create()
+
     private val viewModelFactoryProvider: Provider<ViewModelFactory>
       field = create(viewModels = { // BLOCK
         val tmp0_builder: MapProviderFactory.Builder<KClass<*>, ViewModel> = builder<KClass<*>, ViewModel>(size = 2)
-        tmp0_builder.put(key = BViewModel::class, providerOfValue = create())
-        tmp0_builder.put(key = AViewModel::class, providerOfValue = create())
+        tmp0_builder.put(key = BViewModel::class, providerOfValue = <this>.#bViewModelProvider)
+        tmp0_builder.put(key = AViewModel::class, providerOfValue = <this>.#aViewModelProvider)
         tmp0_builder.build()
       })
 

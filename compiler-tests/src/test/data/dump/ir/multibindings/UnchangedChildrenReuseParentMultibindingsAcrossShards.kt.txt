@@ -489,6 +489,7 @@ interface AppGraph {
     private class Shard3 {
       constructor(graph: Impl) /* primary */ {
         super/*Any*/()
+        <this>.#graph = graph
       }
 
       internal val graph: Impl

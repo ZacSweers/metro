@@ -1824,6 +1824,12 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
       }
 
       @Test
+      @TestMetadata("IncludedProviderIsReadLazilyInExtension.kt")
+      public void testIncludedProviderIsReadLazilyInExtension() {
+        run("IncludedProviderIsReadLazilyInExtension.kt");
+      }
+
+      @Test
       @TestMetadata("IncludesAcrossIntermediateUnpacking.kt")
       public void testIncludesAcrossIntermediateUnpacking() {
         run("IncludesAcrossIntermediateUnpacking.kt");
@@ -2882,6 +2888,12 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
     @TestMetadata("MapProviderLazyValues.kt")
     public void testMapProviderLazyValues() {
       run("MapProviderLazyValues.kt");
+    }
+
+    @Test
+    @TestMetadata("MapProviderValuesAreReusedAcrossReads.kt")
+    public void testMapProviderValuesAreReusedAcrossReads() {
+      run("MapProviderValuesAreReusedAcrossReads.kt");
     }
 
     @Test

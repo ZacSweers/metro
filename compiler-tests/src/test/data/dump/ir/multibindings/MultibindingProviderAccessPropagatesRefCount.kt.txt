@@ -451,6 +451,9 @@ interface TestGraph {
     private val xImplProvider: Provider<XImpl>
       field = create()
 
+    private val cProvider: Provider<C>
+      field = create(x = <this>.#xImplProvider)
+
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
@@ -465,7 +468,7 @@ interface TestGraph {
     override val providerMapConsumer: ProviderMapConsumer
       override get(): ProviderMapConsumer {
         return ProviderMapConsumer(map = buildMap<Int, Function0<C>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<C>>.<anonymous>() {
-          $receiver.put(key = 1, value = create(x = <this>.#xImplProvider))
+          $receiver.put(key = 1, value = <this>.#cProvider)
         }
 ))
       }
