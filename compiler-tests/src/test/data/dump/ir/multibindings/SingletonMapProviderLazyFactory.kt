@@ -1,5 +1,4 @@
-// A single-entry Map<K, Provider<Lazy<V>>> multibinding accessed through a Provider should emit
-// `MapProviderLazyFactory.singleton(key, provider)` rather than building a Builder.
+// A provider of a single-entry map of lazy providers should build a fresh map on each invocation.
 
 @DependencyGraph
 interface AppGraph {

@@ -24,7 +24,6 @@ import dev.zacsweers.metro.compiler.ir.buildBlockBody
 import dev.zacsweers.metro.compiler.ir.canonicalize
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.createMetroMetadata
-import dev.zacsweers.metro.compiler.ir.deepRemapperFor
 import dev.zacsweers.metro.compiler.ir.doubleCheck
 import dev.zacsweers.metro.compiler.ir.extensionReceiverParameterCompat
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
@@ -60,7 +59,7 @@ import dev.zacsweers.metro.compiler.ir.suspendDoubleCheck
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.toIrType
 import dev.zacsweers.metro.compiler.ir.toProto
-import dev.zacsweers.metro.compiler.ir.trackFunctionCall
+import dev.zacsweers.metro.compiler.ir.transformers.addMemberInjection
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.metro.compiler.ir.usesKlib
 import dev.zacsweers.metro.compiler.ir.withIrBuilder
@@ -1365,10 +1364,10 @@ internal class IrGraphGenerator(
         null
       }
 
-    // Generate switching provider classes if switching providers are enabled and there are
-    // eligible bindings.
+    // Collected IDs also cover shared included-accessor providers in normal mode.
+    val hasSwitchingBindings = shard.properties.values.any { it.shardBinding.switchingId != null }
     val switchingProviders =
-      if (options.enableSwitchingProviders) {
+      if (hasSwitchingBindings) {
         trace("Generate switching providers") {
           val switchingBindings =
             shard.properties.values
@@ -2292,79 +2291,47 @@ internal class IrGraphGenerator(
               contextualTypeKey = injectionTraceKey,
               kind = TRACE_KIND_MEMBER_INJECTOR,
             ) {
-              // TODO reuse, consolidate calling code with how we implement this in
-              //  constructor inject code gen
-              // val injectors =
-              // metroDeclarations.findAllInjectorsFor(declaration)
-              // val memberInjectParameters = injectors.flatMap { it.parameters.values.flatten()
-              // }
-
               val targetClass = graphClass.lookupClass(binding.targetClassId)!!.owner
-
-              // Create a single deep remapper from the target class - this handles the entire
-              // type hierarchy correctly (e.g., ExampleClass<Int> -> Parent<Int, String> ->
-              // GrandParent<String, Int>)
-              val remapper =
-                if (typeKey.hasTypeArgs) {
-                  targetClass.deepRemapperFor(wrappedType.type)
-                } else {
-                  null
+              val injectFunctions =
+                metroDeclarations.findAllInjectorsFor(targetClass).flatMap {
+                  it.declaredInjectFunctions.toList()
                 }
-
-              for (generatedInjector in metroDeclarations.findAllInjectorsFor(targetClass)) {
-                for ((function, unmappedParams) in generatedInjector.declaredInjectFunctions) {
-                  val parameters =
-                    if (remapper != null) {
-                      unmappedParams.remapTypes(remapper)
-                    } else {
-                      unmappedParams
-                    }
-                  // Record for IC
-                  trackFunctionCall(this@apply, function)
-
-                  var isOptional = false
-
-                  val args = buildList {
-                    add(irGet(targetParam))
-                    for (parameter in parameters.regularParameters) {
-                      val paramBinding = bindingGraph.requireBinding(parameter.contextualTypeKey)
-                      if (paramBinding is IrBinding.Absent) {
-                        isOptional = true
-                        if (parameters.regularParameters.size > 1) {
-                          reportCompilerBug(
-                            "Unexpected multiple parameters for member injection: $contextKey",
-                          )
-                        }
-                        break
-                      } else {
-                        add(
-                          typeAsProviderArgument(
-                            parameter.contextualTypeKey,
-                            expressionGeneratorFactory
-                              .create(overriddenFunction.ir.dispatchReceiverParameter!!)
-                              .generateBindingCode(
-                                paramBinding,
-                                contextualTypeKey = parameter.contextualTypeKey,
-                              ),
-                            isAssisted = false,
-                            isGraphInstance = false,
-                            actualIsSuspendProvider =
-                              BindingExpressionGenerator.AccessType.of(parameter.contextualTypeKey)
-                                .isSuspendProvider,
-                          ),
+              addMemberInjection(
+                callingFunction = this@apply,
+                instanceReceiver = targetParam,
+                injectFunctions = injectFunctions,
+              ) { unmappedParameters, typeRemapper ->
+                val parameters = unmappedParameters.remapTypes(typeRemapper)
+                buildList {
+                  for (parameter in parameters.regularParameters) {
+                    val paramBinding = bindingGraph.requireBinding(parameter.contextualTypeKey)
+                    if (paramBinding is IrBinding.Absent) {
+                      if (parameters.regularParameters.size > 1) {
+                        reportCompilerBug(
+                          "Unexpected multiple parameters for member injection: $contextKey",
                         )
                       }
+                      // Leave the property's default value intact when its binding is absent.
+                      return@addMemberInjection null
+                    } else {
+                      add(
+                        typeAsProviderArgument(
+                          parameter.contextualTypeKey,
+                          expressionGeneratorFactory
+                            .create(overriddenFunction.ir.dispatchReceiverParameter!!)
+                            .generateBindingCode(
+                              paramBinding,
+                              contextualTypeKey = parameter.contextualTypeKey,
+                            ),
+                          isAssisted = false,
+                          isGraphInstance = false,
+                          actualIsSuspendProvider =
+                            BindingExpressionGenerator.AccessType.of(parameter.contextualTypeKey)
+                              .isSuspendProvider,
+                        ),
+                      )
                     }
                   }
-
-                  // If it's a simple property with a default value and absent, omit injecting it
-                  // here
-                  if (isOptional) continue
-
-                  +irInvoke(
-                    callee = function.symbol,
-                    args = args,
-                  )
                 }
               }
             }

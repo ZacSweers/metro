@@ -156,8 +156,24 @@ interface TestGraph2 : Bindings {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : TestGraph2 {
+    @MultibindingElement(bindingId = "kotlin/Int|kotlin/String", elementId = "1070765913")
+    private val provideStringProvider: Provider<String>
+      field = create(instance = <this>)
+
     private val mapOfIntToStringProvider: Provider<Map<Int, Function0<String>>>
-      field = singleton<Int, String>(key = 1, provider = create(instance = <this>))
+      field = { // BLOCK
+        val tmp0_valueProviders: Map<Int, Function0<String>> = buildMap<Int, Function0<String>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<String>>.<anonymous>() {
+          $receiver.put(key = 1, value = <this>.#provideStringProvider)
+        }
+)
+        local fun <anonymous>(): Map<Int, Function0<String>> {
+          return buildMap<Int, Function0<String>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<String>>.<anonymous>() {
+            $receiver.putAll(from = tmp0_valueProviders)
+          }
+)
+        }
+ /*-> Provider<Map<Int, Function0<String>>> */
+      }
 
     private constructor() /* primary */ {
       super/*Any*/()
@@ -261,8 +277,24 @@ interface TestGraph4 : Bindings {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : TestGraph4 {
+    @MultibindingElement(bindingId = "kotlin/Int|kotlin/String", elementId = "1070765913")
+    private val provideStringProvider: Provider<String>
+      field = create(instance = <this>)
+
     private val mapOfIntToStringProvider: Provider<Map<Int, Function0<String>>>
-      field = singleton<Int, String>(key = 1, provider = create(instance = <this>))
+      field = { // BLOCK
+        val tmp0_valueProviders: Map<Int, Function0<String>> = buildMap<Int, Function0<String>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<String>>.<anonymous>() {
+          $receiver.put(key = 1, value = <this>.#provideStringProvider)
+        }
+)
+        local fun <anonymous>(): Map<Int, Function0<String>> {
+          return buildMap<Int, Function0<String>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<String>>.<anonymous>() {
+            $receiver.putAll(from = tmp0_valueProviders)
+          }
+)
+        }
+ /*-> Provider<Map<Int, Function0<String>>> */
+      }
 
     private constructor() /* primary */ {
       super/*Any*/()

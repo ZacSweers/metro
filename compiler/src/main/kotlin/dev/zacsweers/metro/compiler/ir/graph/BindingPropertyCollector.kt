@@ -86,6 +86,8 @@ internal class BindingPropertyCollector(
     var scalarRefCount: Int = 0,
     /** The part of [scalarRefCount] that comes from graph accessors. */
     var accessorScalarRefCount: Int = 0,
+    /** Map entries reuse their providers even when only one map accessor reads them. */
+    var requiresCachedProvider: Boolean = false,
   ) {
     /**
      * True when only graph accessors read this binding and they can share code. The first of those
@@ -127,6 +129,18 @@ internal class BindingPropertyCollector(
   private var nextSwitchingProviderId = 0
   private var nextSwitchingSuspendProviderId = 0
 
+  /** Plain included accessors share a provider class when ordinary factories need their values. */
+  private fun usesSharedAccessorProvider(binding: IrBinding): Boolean {
+    if (metroContext.options.enableSwitchingProviders) {
+      return false
+    }
+    if (binding !is IrBinding.GraphDependency) {
+      return false
+    }
+    val isLocalAccessor = binding.getter != null && binding.token == null
+    return isLocalAccessor && !binding.contextualTypeKey.isWrapped
+  }
+
   /**
    * Determines if a binding is eligible for switching-provider dispatch. Returns true only for
    * FIELD properties that can be lazily instantiated via the switching provider pattern.
@@ -136,8 +150,15 @@ internal class BindingPropertyCollector(
    * when a switchingId is assigned.
    */
   private fun shouldUseSwitchingProvider(binding: IrBinding, propertyKind: PropertyKind): Boolean {
-    if (!metroContext.options.enableSwitchingProviders) return false
-    if (propertyKind != PropertyKind.FIELD) return false
+    if (propertyKind != PropertyKind.FIELD) {
+      return false
+    }
+    if (usesSharedAccessorProvider(binding)) {
+      return true
+    }
+    if (!metroContext.options.enableSwitchingProviders) {
+      return false
+    }
 
     return when (binding) {
       // These use specialized initialization, not switching providers
@@ -403,7 +424,8 @@ internal class BindingPropertyCollector(
       val hasMixedAccess = node.factoryRefCount > 0 && node.scalarRefCount > 0
       val sharesComputedBinding = hasMixedAccess && binding !is IrBinding.BoundInstance
       val needsFactoryField = sharesFactory || sharesComputedBinding
-      val useField = !isGraphExtension && needsFactoryField
+      val needsProviderProperty = needsFactoryField || node.requiresCachedProvider
+      val useField = !isGraphExtension && needsProviderProperty
 
       // For graph extensions, convert factory refs to scalar refs for the purpose of deciding
       // whether to create a getter property
@@ -481,15 +503,14 @@ internal class BindingPropertyCollector(
     val isMembersInjectedInFactoryPath =
       binding is IrBinding.MembersInjected && !isInjectorFunctionRoot
 
-    val inFactoryPath =
-      !isGraphExtension &&
-        (propertyUsesFactory ||
-          node.factoryRefCount > 0 ||
-          contextKey.isMapProvider ||
-          contextKey.isMapLazy ||
-          contextKey.isMapSuspendProvider ||
-          contextKey.isMapProviderLazy ||
-          isMembersInjectedInFactoryPath)
+    val hasProviderAccess = propertyUsesFactory || node.factoryRefCount > 0
+    val hasMapProviders = contextKey.isMapProvider || contextKey.isMapSuspendProvider
+    val hasDeferredMapValues = hasMapProviders || contextKey.isMapLazy
+    val usesFactory = hasProviderAccess || hasDeferredMapValues
+    val needsFactoryParameters = usesFactory || isMembersInjectedInFactoryPath
+    // A shared accessor provider reads its included instance directly.
+    val hasFactoryParameters = !isGraphExtension && !usesSharedAccessorProvider(binding)
+    val inFactoryPath = hasFactoryParameters && needsFactoryParameters
 
     // Mark dependencies as factory accesses if:
     // - Explicitly Provider<T> or Lazy<T>
@@ -505,6 +526,7 @@ internal class BindingPropertyCollector(
     val factoryCreatedAtInitialization = hasOnlyFactoryAccess && !node.hasRepeatedFactoryAccess
     val dependenciesCreatedAtInitialization = hasFieldProperty || factoryCreatedAtInitialization
 
+    val cacheMapValueProviders = binding is IrBinding.Multibinding && contextKey.isMapProvider
     for (dependency in binding.dependencies) {
       // Skip dependencies covered by supertype injectors
       if (dependency in supertypeDependencies) continue
@@ -527,6 +549,7 @@ internal class BindingPropertyCollector(
         dependencyKey,
         isFactory = needsFactory && !isSupertypeInjector,
         isRepeated = !dependenciesCreatedAtInitialization || switchingProviderRequestsDependency,
+        requiresCachedProvider = cacheMapValueProviders,
       )
     }
   }
@@ -558,7 +581,14 @@ internal class BindingPropertyCollector(
     if (binding.isScoped()) return PropertyKind.FIELD
 
     return when (binding) {
-      is GraphDependency if (binding.token == null) -> graphDependencyPropertyKind(binding)
+      is GraphDependency if (binding.token == null) -> {
+        val needsAccessorProvider = usesSharedAccessorProvider(binding) && node.factoryRefCount > 0
+        if (needsAccessorProvider) {
+          PropertyKind.FIELD
+        } else {
+          graphDependencyPropertyKind(binding)
+        }
+      }
       // Assisted factories are stateless (they just wrap the target's MetroFactory),
       // so they don't need their own cached field. The target's MetroFactory field
       // is added separately in processBindingNode when Assisted bindings are encountered.
@@ -608,6 +638,7 @@ internal class BindingPropertyCollector(
     isFactory: Boolean,
     isAccessor: Boolean = false,
     isRepeated: Boolean = true,
+    requiresCachedProvider: Boolean = false,
   ) {
     if (contextualTypeKey in cachedRequests) {
       return
@@ -637,6 +668,7 @@ internal class BindingPropertyCollector(
     val graphDependency = targetBinding as? IrBinding.GraphDependency
     val localGraphDependency = if (graphDependency?.token == null) graphDependency else null
     val canPassThrough = localGraphDependency?.canPassThrough(contextualTypeKey) == true
+    val needsAccessorProvider = isFactory && usesSharedAccessorProvider(targetBinding)
     // A Lazy accessor's handle is cached so its value is computed once. A Provider accessor can be
     // read again on each access, so it's counted like any other binding.
     val flattensDeferredGraphAccessor =
@@ -653,7 +685,12 @@ internal class BindingPropertyCollector(
     nodes
       .getOrPut(canonicalKey) { Node(targetBinding) }
       .apply {
+        if (requiresCachedProvider) {
+          this.requiresCachedProvider = true
+        }
         when {
+          // Factory parameters need a provider even when their source parameter declares a value.
+          needsAccessorProvider -> factoryRefCount++
           // Exact graph accessor values bypass generated properties.
           canPassThrough -> Unit
           // Flattening a deferred accessor reads its provider handle and initializes its scalar

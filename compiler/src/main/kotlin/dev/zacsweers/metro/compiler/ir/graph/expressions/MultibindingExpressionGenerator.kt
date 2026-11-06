@@ -737,27 +737,59 @@ internal class MultibindingExpressionGenerator(
       val sourceBindings =
         binding.sourceBindings.map { sourceKey -> bindingGraph.requireBinding(sourceKey) }
 
-      val useInlineSuspendFunctionProvider =
-        platform.isJs() &&
-          accessType == AccessType.PROVIDER &&
-          valueWrappedType is WrappedType.SuspendProvider &&
-          valueWrappedType.providerType == Symbols.ClassIds.suspendFunction0
-
-      if (useInlineSuspendFunctionProvider) {
+      val hasProviderValues = valueIsWrappedInProvider || valueIsWrappedInSuspendProvider
+      val needsFreshMapProvider = accessType == AccessType.PROVIDER && hasProviderValues
+      if (needsFreshMapProvider) {
         val mapType = irBuiltIns.mapClass.typeWith(keyType, originalValueType)
+        val valueAccessType =
+          if (valueIsWrappedInSuspendProvider) {
+            AccessType.SUSPEND_PROVIDER
+          } else {
+            AccessType.PROVIDER
+          }
         val mapProvider =
-          scope.wrapInProviderFunction(mapType) {
-            generateMapBuilderExpression(
-              sourceBindings = sourceBindings,
-              keyType = keyType,
-              valueType = originalValueType,
-              canonicalValueContextKey = originalValueContextKey,
-              valueAccessType = AccessType.SUSPEND_PROVIDER,
-              wrapInLazy = false,
-              wrapInProviderLazy = false,
-              valueFrameworkSymbols = valueProviderSymbols,
-              fieldInitKey = fieldInitKey,
-            )
+          irBlock(resultType = mapType.wrapInProvider(metroSymbols.metroProvider)) {
+            // Capture one map of entry providers to keep large maps within JVM parameter limits.
+            val valueProviders =
+              createAndAddTemporaryVariable(
+                generateMapBuilderExpression(
+                  sourceBindings = sourceBindings,
+                  keyType = keyType,
+                  valueType = originalValueType,
+                  canonicalValueContextKey = originalValueContextKey,
+                  valueAccessType = valueAccessType,
+                  wrapInLazy = false,
+                  wrapInProviderLazy = false,
+                  valueFrameworkSymbols = valueProviderSymbols,
+                  fieldInitKey = fieldInitKey,
+                ),
+                nameHint = "valueProviders",
+              )
+            +scope.wrapInProviderFunction(mapType) {
+              irCall(
+                  callee = metroSymbols.buildMapWithCapacity,
+                  type = mapType,
+                  typeArguments = listOf(keyType, originalValueType),
+                )
+                .apply {
+                  arguments[0] = irInt(sourceBindings.size)
+                  arguments[1] =
+                    irLambda(
+                      parent = parent,
+                      receiverParameter =
+                        irBuiltIns.mutableMapClass.typeWith(keyType, originalValueType),
+                      valueParameters = emptyList(),
+                      returnType = irBuiltIns.unitType,
+                      suspend = false,
+                    ) { function ->
+                      +irInvoke(
+                        dispatchReceiver = irGet(function.extensionReceiverParameterCompat!!),
+                        callee = metroSymbols.mutableMapPutAll.symbol,
+                        args = listOf(irGet(valueProviders)),
+                      )
+                    }
+                }
+            }
           }
 
         return mapProvider.toTargetType(

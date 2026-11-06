@@ -866,21 +866,27 @@ private constructor(
         }
 
         is GraphDependency -> {
-          val ownerKey = binding.ownerKey
-          // When propertyAccessToken is set, resolve it and check if the property returns a
-          // Provider or scalar
-          // When getter is used, the result is wrapped in a provider function
-          val (bindingGetter, actual) =
-            if (binding.token != null) {
-              val propertyAccess = resolveToken(binding.token)
+          // Resolve the parent token and check whether its property returns a provider or a scalar.
+          // Wrap included accessor calls in a provider function when a provider is requested.
+          if (binding.token != null) {
+            val bindingProperty = resolveTokenBindingProperty(binding.token)
+            val deferGetter = bindingProperty.isIncludedAccessor
+            return withBindingPropertyAccess(bindingProperty, accessType, deferGetter) {
+              propertyAccess ->
+              propertyAccess.toTargetType(
+                contextualTypeKey = contextualTypeKey,
+                actual = AccessType.of(bindingProperty.storedKey),
+                requested = accessType,
+                useInstanceFactory = !deferGetter,
+                allowPropertyGetter = !deferGetter,
+                bindingKind = bindingKind,
+              )
+            }
+          }
 
-              propertyAccess.accessProperty(tokenAccessBase()) to
-                when {
-                  propertyAccess.isSuspendProviderProperty -> AccessType.SUSPEND_PROVIDER
-                  propertyAccess.isProviderProperty -> AccessType.PROVIDER
-                  else -> AccessType.INSTANCE
-                }
-            } else if (binding.getter != null) {
+          val ownerKey = binding.ownerKey
+          val (bindingGetter, actual) =
+            if (binding.getter != null) {
               val graphInstanceBindingProperty =
                 bindingPropertyContext.get(IrContextualTypeKey(ownerKey))
                   ?: reportCompilerBug(
@@ -955,8 +961,6 @@ private constructor(
           bindingGetter.toTargetType(
             contextualTypeKey = contextualTypeKey,
             actual = actual,
-            allowPropertyGetter =
-              binding.token?.let { !it.contextKey.isWrappedInProvider } ?: false,
             bindingKind = bindingKind,
           )
         }
@@ -1476,6 +1480,10 @@ private constructor(
    * property access expression, including ancestor chains and shard navigation.
    */
   private fun resolveToken(token: ParentContext.Token): ParentContext.PropertyAccess {
+    return resolveParentProperty(resolveTokenBindingProperty(token), token.ownerGraphKey)
+  }
+
+  private fun resolveTokenBindingProperty(token: ParentContext.Token): BindingProperty {
     // Look up the correct ancestor's context by traversing the parent chain
     val ancestorContext =
       bindingPropertyContext.findAncestorContext(token.ownerGraphKey)
@@ -1489,7 +1497,7 @@ private constructor(
           "Cannot resolve property access token - property not found for ${token.contextKey} in ${token.ownerGraphKey}",
         )
 
-    return resolveParentProperty(bindingProperty, token.ownerGraphKey)
+    return bindingProperty.copy(ownerGraphKey = token.ownerGraphKey)
   }
 
   private fun resolveParentProperty(
@@ -1545,13 +1553,15 @@ private constructor(
   private fun withBindingPropertyAccess(
     bindingProperty: BindingProperty,
     accessType: AccessType,
+    deferGetter: Boolean = true,
     transform: (IrExpression) -> IrExpression,
   ): IrExpression {
     val ownerGraphKey = bindingProperty.ownerGraphKey
     val wrapsGetter =
       AccessType.of(bindingProperty.storedKey) == AccessType.INSTANCE &&
         accessType != AccessType.INSTANCE
-    if (ownerGraphKey == null || !wrapsGetter) {
+    val defersGetter = wrapsGetter && deferGetter
+    if (ownerGraphKey == null || !defersGetter) {
       return transform(generatePropertyAccess(bindingProperty))
     }
     return scope.irBlock {

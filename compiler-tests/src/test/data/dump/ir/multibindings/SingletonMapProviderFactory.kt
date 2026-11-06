@@ -1,5 +1,5 @@
-// A single-entry Map<K, Provider<V>> multibinding accessed through a Provider should emit
-// `MapProviderFactory.singleton(key, provider)` rather than building a Builder.
+// A provider of a single-entry provider-valued map should reuse its entry provider and build a
+// fresh map on each invocation.
 
 @DependencyGraph
 interface AppGraph {

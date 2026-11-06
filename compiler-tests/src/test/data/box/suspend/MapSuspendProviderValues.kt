@@ -39,11 +39,17 @@ fun box(): String =
     )
 
     // Test () -> Map<Int, suspend () -> Int>
+    val provider = graph.providerOfSuspendProviderInts
+    assertSame(provider, graph.providerOfSuspendProviderInts)
+    val first = provider()
+    val second = provider()
+    assertNotSame(first, second)
+    for (key in expected.keys) {
+      assertSame(first.getValue(key), second.getValue(key))
+    }
     assertEquals(
       expected,
-      graph
-        .providerOfSuspendProviderInts()
-        .mapValues { (_, suspendProvider) -> suspendProvider() },
+      first.mapValues { (_, suspendProvider) -> suspendProvider() },
     )
 
     assertNull(graph.suspendProviderNullableStrings.getValue(0).invoke())

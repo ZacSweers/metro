@@ -31,9 +31,17 @@ fun box(): String {
 
   // Test () -> Map<Int, () -> Lazy<Int>>
   val providerOfProviderLazyInts = graph.providerOfProviderLazyInts
+  assertSame(providerOfProviderLazyInts, graph.providerOfProviderLazyInts)
+  val first = providerOfProviderLazyInts()
+  val second = providerOfProviderLazyInts()
+  assertNotSame(first, second)
+  for (key in first.keys) {
+    assertSame(first.getValue(key), second.getValue(key))
+    assertNotSame(first.getValue(key)(), second.getValue(key)())
+  }
   assertEquals(
     mapOf(0 to 0, 1 to 1, 2 to 2),
-    providerOfProviderLazyInts().mapValues { (_, provider) -> provider().value },
+    first.mapValues { (_, provider) -> provider().value },
   )
 
   // Test injected class

@@ -1,6 +1,9 @@
 // Copyright (C) 2026 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
 import com.dropbox.gradle.plugins.dependencyguard.DependencyGuardPluginExtension
+import com.vanniktech.maven.publish.JavadocJar
+import com.vanniktech.maven.publish.MavenPublishBaseExtension
+import com.vanniktech.maven.publish.SourcesJar
 import me.tylerbwong.gradle.metalava.Format
 import me.tylerbwong.gradle.metalava.extension.MetalavaExtension
 import org.gradle.api.publish.PublishingExtension
@@ -10,6 +13,18 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinProjectExtension
 import org.jetbrains.kotlin.gradle.plugin.KotlinBasePlugin
 
 apply(plugin = "com.vanniktech.maven.publish")
+
+val lightweightTestKitPublications =
+  providers
+    .gradleProperty("metro.testkitLightweightPublications")
+    .map(String::toBooleanStrict)
+    .orElse(false)
+
+if (lightweightTestKitPublications.get()) {
+  configure<MavenPublishBaseExtension> {
+    configureBasedOnAppliedPlugins(javadocJar = JavadocJar.None(), sourcesJar = SourcesJar.None())
+  }
+}
 
 apply(plugin = "com.autonomousapps.testkit")
 

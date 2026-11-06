@@ -562,6 +562,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
       }
 
       @Test
+      @TestMetadata("memberInjection.kt")
+      public void testMemberInjection() {
+        run("memberInjection.kt");
+      }
+
+      @Test
       @TestMetadata("memberInjectionAcrossModules.kt")
       public void testMemberInjectionAcrossModules() {
         run("memberInjectionAcrossModules.kt");
@@ -625,6 +631,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
       @TestMetadata("scoped.kt")
       public void testScoped() {
         run("scoped.kt");
+      }
+
+      @Test
+      @TestMetadata("scopedMemberInjectionAcrossModules.kt")
+      public void testScopedMemberInjectionAcrossModules() {
+        run("scopedMemberInjectionAcrossModules.kt");
       }
 
       @Test
@@ -2149,6 +2161,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
       @TestMetadata("GraphPrivatePreventsLeakingParentScopedInstance.kt")
       public void testGraphPrivatePreventsLeakingParentScopedInstance() {
         run("GraphPrivatePreventsLeakingParentScopedInstance.kt");
+      }
+
+      @Test
+      @TestMetadata("IncludedProviderIsReadLazilyInExtension.kt")
+      public void testIncludedProviderIsReadLazilyInExtension() {
+        run("IncludedProviderIsReadLazilyInExtension.kt");
       }
 
       @Test
@@ -3920,6 +3938,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
     @TestMetadata("MapProviderLazyValues.kt")
     public void testMapProviderLazyValues() {
       run("MapProviderLazyValues.kt");
+    }
+
+    @Test
+    @TestMetadata("MapProviderValuesAreReusedAcrossReads.kt")
+    public void testMapProviderValuesAreReusedAcrossReads() {
+      run("MapProviderValuesAreReusedAcrossReads.kt");
     }
 
     @Test

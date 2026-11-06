@@ -670,12 +670,26 @@ interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
+    private val bViewModelProvider: Provider<BViewModel>
+      field = create()
+
+    private val aViewModelProvider: Provider<AViewModel>
+      field = create()
+
     private val viewModelFactoryProvider: Provider<ViewModelFactory>
       field = create(viewModels = { // BLOCK
-        val tmp0_builder: MapProviderFactory.Builder<KClass<*>, ViewModel> = builder<KClass<*>, ViewModel>(size = 2)
-        tmp0_builder.put(key = BViewModel::class, providerOfValue = create())
-        tmp0_builder.put(key = AViewModel::class, providerOfValue = create())
-        tmp0_builder.build()
+        val tmp0_valueProviders: Map<KClass<*>, Function0<ViewModel>> = buildMap<KClass<*>, Function0<ViewModel>>(capacity = 2, builderAction = local fun MutableMap<KClass<*>, Function0<ViewModel>>.<anonymous>() {
+          $receiver.put(key = BViewModel::class, value = <this>.#bViewModelProvider)
+          $receiver.put(key = AViewModel::class, value = <this>.#aViewModelProvider)
+        }
+)
+        local fun <anonymous>(): Map<KClass<*>, Function0<ViewModel>> {
+          return buildMap<KClass<*>, Function0<ViewModel>>(capacity = 2, builderAction = local fun MutableMap<KClass<*>, Function0<ViewModel>>.<anonymous>() {
+            $receiver.putAll(from = tmp0_valueProviders)
+          }
+)
+        }
+ /*-> Provider<Map<KClass<*>, Function0<ViewModel>>> */
       })
 
     private val fragmentInjectorProvider: Provider<FragmentInjector>
