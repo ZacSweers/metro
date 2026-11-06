@@ -22,7 +22,7 @@ import dev.zacsweers.metro.compiler.ifNotEmpty
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
-import dev.zacsweers.metro.compiler.ir.parameters.toCanonicalProviderKey
+import dev.zacsweers.metro.compiler.ir.parameters.toFactoryProviderKey
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInLazy
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.isGraphImpl
@@ -816,11 +816,8 @@ internal fun IrBuilderWithScope.parametersAsProviderArguments(
 }
 
 /**
- * Converts generated factory parameters to their requested provider forms.
- *
- * Every key in [providerFieldsByKey] must come from [Parameter.toCanonicalProviderKey]. Raw
- * contextual keys retain consumer wrapper shapes and will not reliably match the canonical
- * `Provider` or `SuspendProvider` fields generated for them.
+ * Converts generated factory fields identified by [Parameter.toFactoryProviderKey] to the requested
+ * argument types.
  */
 context(context: IrMetroContext)
 internal fun IrBuilderWithScope.parametersAsProviderArguments(
@@ -837,15 +834,14 @@ internal fun IrBuilderWithScope.parametersAsProviderArguments(
       calleeParameters.allParameters
         .filterNot { it.isAssisted }
         .map { parameter ->
-          // When calling value getter on Provider<T>, make sure the dispatch
-          // receiver is the Provider instance itself
-          // Look up by name first (handles multiple params with same type key),
-          // fall back to the normalized contextual key when the parameter name was deduped
+          val providerKey = parameter.toFactoryProviderKey(defaultUsesSuspendProvider)
+          // Names distinguish parameters that have different defaults for the same binding.
           val field =
-            nameToField?.get(parameter.name)
-              ?: providerFieldsByKey.getValue(
-                parameter.toCanonicalProviderKey(defaultUsesSuspendProvider),
-              )
+            if (parameter.hasDefault) {
+              nameToField?.get(parameter.name) ?: providerFieldsByKey.getValue(providerKey)
+            } else {
+              providerFieldsByKey.getValue(providerKey)
+            }
           val providerInstance = irGetField(irGet(receiver), field)
           val contextKey =
             typeRemapper?.let { parameter.contextualTypeKey.remapType(it) }

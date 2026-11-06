@@ -161,10 +161,10 @@ internal class IrGraphShardGenerator(
       return listOf(shardBindings)
     }
 
-    // Use remove() to both lookup and track which bindings have been assigned to groups
-    val bindingsByKey = shardBindings.associateByTo(mutableMapOf()) { it.typeKey }
+    // Keep every contextual variant of each binding in the same shard.
+    val bindingsByKey = shardBindings.groupByTo(mutableMapOf()) { it.typeKey }
     val filteredGroups = plannedGroups.mapNotNull { group ->
-      group.mapNotNull(bindingsByKey::remove).takeIf { it.isNotEmpty() }
+      group.flatMap { bindingsByKey.remove(it).orEmpty() }.takeIf { it.isNotEmpty() }
     }
 
     // Add any remaining bindings not in planned groups
@@ -172,7 +172,7 @@ internal class IrGraphShardGenerator(
       if (bindingsByKey.isEmpty()) {
         filteredGroups
       } else {
-        filteredGroups + listOf(bindingsByKey.values.toList())
+        filteredGroups + listOf(bindingsByKey.values.flatten())
       }
 
     if (allGroups.isEmpty()) {

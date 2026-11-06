@@ -11,6 +11,7 @@ import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.compat.propertyIfAccessorCompat
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.expectAs
+import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
@@ -57,6 +58,7 @@ import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
 import dev.zacsweers.metro.compiler.ir.suspendDoubleCheck
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
+import dev.zacsweers.metro.compiler.ir.toIrType
 import dev.zacsweers.metro.compiler.ir.toProto
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
@@ -110,6 +112,7 @@ import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.functions
+import org.jetbrains.kotlin.ir.util.isSubtypeOf
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.primaryConstructor
@@ -177,6 +180,7 @@ internal class IrGraphGenerator(
     }
 
   private var _functionNameAllocatorInitialized = false
+  private var convertedProviderKeys: Set<IrContextualTypeKey> = emptySet()
   private val _functionNameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
   private val functionNameAllocator: NameAllocator
     get() {
@@ -374,6 +378,10 @@ internal class IrGraphGenerator(
         }
       }
 
+      trace("Implement overrides") {
+        node.implementOverrides(expressionGeneratorFactory, constructorStatements)
+      }
+
       // Add extra constructor statements
       trace("Finalize constructor body") {
         with(ctor) {
@@ -384,8 +392,6 @@ internal class IrGraphGenerator(
           }
         }
       }
-
-      trace("Implement overrides") { node.implementOverrides(expressionGeneratorFactory) }
 
       if (!graphClass.origin.isSyntheticGeneratedGraph) {
         trace("Generate Metro metadata") {
@@ -1124,6 +1130,25 @@ internal class IrGraphGenerator(
           injectorRoots.add(injector.contextKey)
         }
       }
+      val providerRequests = buildList {
+        addAll(roots)
+        for (key in sealResult.sortedKeys) {
+          if (key in sealResult.reachableKeys) {
+            val binding = bindingGraph.requireBinding(key)
+            if (bindingPropertyContext.reusableBinding(binding.contextualTypeKey) == null) {
+              addAll(binding.dependencies)
+            }
+          }
+        }
+      }
+      convertedProviderKeys =
+        providerRequests.filterTo(linkedSetOf()) { key ->
+          val binding = bindingGraph.findBinding(key.typeKey)
+          val passesThrough = binding is IrBinding.GraphDependency && binding.canPassThrough(key)
+          val hasBinding = binding != null && binding !is IrBinding.Absent
+          val needsLocalProvider = hasBinding && !passesThrough
+          needsLocalProvider && metroSymbols.providerTypeConverter.needsCachedConversion(key)
+        }
       BindingPropertyCollector(
           metroContext = metroContext,
           graph = bindingGraph,
@@ -1131,6 +1156,10 @@ internal class IrGraphGenerator(
           roots = roots,
           injectorRoots = injectorRoots,
           extraKeeps = bindingGraph.keeps(),
+          cachedRequests =
+            convertedProviderKeys.associateWith {
+              it.asCanonicalProviderKey(usesSuspendProvider = false)
+            },
           deferredTypes = sealResult.deferredTypes,
           reachableKeys = sealResult.reachableKeys,
           reuseBinding = { bindingPropertyContext.reusableBinding(it) != null },
@@ -1174,24 +1203,46 @@ internal class IrGraphGenerator(
 
   /** Converts collected bindings to [ShardBinding] for the shard generator. */
   private fun List<BindingPropertyCollector.CollectedProperty>.mapToShardBindings():
-    List<ShardBinding> = map { collectedProperty ->
-    val (binding, propertyType, collectedContextKey, collectedIsProviderType, switchingId) =
-      collectedProperty
-    val isDeferred = binding.typeKey in sealResult.deferredTypes
-    val metadata =
-      computeBindingMetadata(binding, propertyType, collectedContextKey, collectedIsProviderType)
-    ShardBinding(
-      binding = binding,
-      typeKey = binding.typeKey,
-      contextKey = metadata.contextKey,
-      propertyKind = metadata.propertyKind,
-      irType = metadata.irType,
-      nameHint = metadata.nameHint,
-      kind = metadata.kind,
-      isScoped = metadata.isScoped,
-      isDeferred = isDeferred,
-      switchingId = switchingId,
-    )
+    List<ShardBinding> {
+    val canonicalBindings = map { collectedProperty ->
+      val (binding, propertyType, collectedContextKey, collectedIsProviderType, switchingId) =
+        collectedProperty
+      val isDeferred = binding.typeKey in sealResult.deferredTypes
+      val metadata =
+        computeBindingMetadata(binding, propertyType, collectedContextKey, collectedIsProviderType)
+      ShardBinding(
+        binding = binding,
+        typeKey = binding.typeKey,
+        contextKey = metadata.contextKey,
+        propertyKind = metadata.propertyKind,
+        irType = metadata.irType,
+        nameHint = metadata.nameHint,
+        kind = metadata.kind,
+        isScoped = metadata.isScoped,
+        isDeferred = isDeferred,
+        switchingId = switchingId,
+      )
+    }
+    val conversions = convertedProviderKeys.map { key ->
+      val binding = bindingGraph.requireBinding(key)
+      ShardBinding(
+        binding = binding,
+        typeKey = key.typeKey,
+        contextKey = key,
+        propertyKind = PropertyKind.FIELD,
+        irType = key.toIrType(),
+        nameHint = "${binding.nameHint.decapitalizeUS()}ConvertedProvider".asName(),
+        kind = MemberNamer.Kind.PROVIDER,
+        isScoped = false,
+      )
+    }
+    val bindingsByKey = (canonicalBindings + conversions).groupByTo(linkedMapOf()) { it.typeKey }
+    return buildList {
+      for (key in sealResult.sortedKeys) {
+        addAll(bindingsByKey.remove(key).orEmpty())
+      }
+      addAll(bindingsByKey.values.flatten())
+    }
   }
 
   /**
@@ -1461,7 +1512,7 @@ internal class IrGraphGenerator(
       val isDeferred = shardBinding.isDeferred
       val switchingId = shardBinding.switchingId
 
-      val isSuspendBinding = binding.isSuspendInGraph
+      val isSuspendBinding = binding.isSuspendInGraph(contextKey)
       val requiresDoubleCheck = isScoped && (isProviderType || isSuspendBinding)
 
       context(scope: IrBuilderWithScope)
@@ -1492,6 +1543,31 @@ internal class IrGraphGenerator(
         }
 
       val property = propertyInfo.property
+
+      if (contextKey in convertedProviderKeys) {
+        shardPropertiesToTypeKeys[property] = binding.typeKey
+        shardPropertyInitializers +=
+          property to
+            { thisReceiver, _ ->
+              val providerKey = contextKey.asCanonicalProviderKey(usesSuspendProvider = false)
+              val provider =
+                expressionGeneratorFactory
+                  .create(thisReceiver, shardContext = fieldInitContext)
+                  .generateBindingCode(
+                    binding,
+                    providerKey,
+                    BindingExpressionGenerator.AccessType.PROVIDER,
+                  )
+              typeAsProviderArgument(
+                contextKey,
+                provider,
+                isAssisted = false,
+                isGraphInstance = false,
+                actualIsSuspendProvider = false,
+              )
+            }
+        continue
+      }
 
       // Handle getter properties directly (no chunking needed).
       // The binding-code generation is eager here, so trace it per-property to see outliers.
@@ -1524,8 +1600,6 @@ internal class IrGraphGenerator(
         // Deferred properties are initialized with empty DelegateFactory()
         // (or SuspendDelegateFactory() for suspend bindings), then setDelegate is called
         // after all properties in this shard are initialized.
-        shardDeferredProperties +=
-          DeferredPropertyInfo(contextKey.typeKey, property, switchingId, isSuspendBinding)
         val deferredType = contextKey.typeKey.type
         val delegateCtor =
           if (isSuspendBinding) {
@@ -1541,6 +1615,8 @@ internal class IrGraphGenerator(
           )
         }
         shardPropertyInitializers += property to init
+        shardDeferredProperties +=
+          DeferredPropertyInfo(contextKey.typeKey, property, switchingId, isSuspendBinding)
       } else {
         val switchingProvider = switchingProviders.forBinding(isSuspendBinding)
         val initExpression: PropertyInitializer =
@@ -1572,7 +1648,35 @@ internal class IrGraphGenerator(
             }
           }
 
-        shardPropertyInitializers += property to initExpression
+        val isLargeMultibinding =
+          binding is IrBinding.Multibinding &&
+            binding.sourceBindings.size > options.multibindingGetterThreshold
+        if (isLargeMultibinding) {
+          val initializerProperty =
+            shard.shardClass.createBindingProperty(
+              contextKey,
+              property.name.suffixIfNot("Initializer"),
+              property.backingField!!.type,
+              PropertyKind.GETTER,
+            )
+          val getter = initializerProperty.getter!!
+          getter.body =
+            createIrBuilder(getter.symbol).run {
+              val expression =
+                expressionGeneratorFactory
+                  .create(getter.dispatchReceiverParameter!!, shardContext = shardExprContext)
+                  .generateBindingCode(binding, contextKey, accessType, contextKey.typeKey)
+                  .applyScoping()
+              irExprBodySafe(expression)
+            }
+          shardPropertyInitializers +=
+            property to
+              { thisReceiver, _ ->
+                irGetProperty(irGet(thisReceiver), initializerProperty)
+              }
+        } else {
+          shardPropertyInitializers += property to initExpression
+        }
       }
     }
   }
@@ -1831,6 +1935,14 @@ internal class IrGraphGenerator(
   private val IrBinding.isSuspendInGraph: Boolean
     get() = isSuspend || bindingGraph.isTransitivelySuspend(typeKey)
 
+  private fun IrBinding.isSuspendInGraph(contextKey: IrContextualTypeKey): Boolean {
+    // Building a map of suspend providers doesn't invoke its contributions.
+    if (this is IrBinding.Multibinding && contextKey.isMapSuspendProvider) {
+      return false
+    }
+    return isSuspendInGraph
+  }
+
   /** Computes binding metadata for property generation. */
   private fun computeBindingMetadata(
     binding: IrBinding,
@@ -1840,7 +1952,7 @@ internal class IrGraphGenerator(
   ): BindingMetadata {
     val key = binding.typeKey
     var isProviderType = collectedIsProviderType
-    val isSuspendBinding = binding.isSuspendInGraph
+    val isSuspendBinding = binding.isSuspendInGraph(collectedContextKey)
 
     val canUseDepthLimitingGetter =
       binding is IrBinding.ConstructorInjected || binding is IrBinding.Provided
@@ -1865,7 +1977,7 @@ internal class IrGraphGenerator(
         suffix = "Factory"
         kind = MemberNamer.Kind.FACTORY
         binding.classFactory.factoryClass.typeWith()
-      } else if (propertyType == PropertyKind.GETTER) {
+      } else if (propertyType == PropertyKind.GETTER || binding is IrBinding.Multibinding) {
         if (isProviderType) {
           suffix =
             if (usesSuspendProvider) {
@@ -1964,7 +2076,7 @@ internal class IrGraphGenerator(
     applyScoping: Boolean,
   ): IrExpression =
     with(scope) {
-      val isSuspendBinding = binding.isSuspendInGraph
+      val isSuspendBinding = binding.isSuspendInGraph(contextKey)
       val switchingProvider = switchingProviders.forBinding(isSuspendBinding)
       val providerExpr =
         if (switchingId != null && switchingProvider != null) {
@@ -2017,6 +2129,7 @@ internal class IrGraphGenerator(
 
   private fun GraphNode.Local.implementOverrides(
     expressionGeneratorFactory: GraphExpressionGenerator.Factory,
+    constructorStatements: MutableList<InitStatement>,
   ) {
     // When several accessors request the same key and return type, later ones call the first. That
     // keeps the binding's code in one place without a separate private getter. Traced graphs skip
@@ -2024,6 +2137,7 @@ internal class IrGraphGenerator(
     // interop accessors with the same key can convert the value differently.
     val canShareAccessors = graphClass.runtimeTraceContextProperty == null
     val firstAccessors = mutableMapOf<Pair<IrContextualTypeKey, IrType>, IrSimpleFunction>()
+    val accessorProviders = mutableMapOf<Pair<IrContextualTypeKey, IrType>, IrProperty>()
 
     // Implement abstract getters for accessors
     for ((contextualTypeKey, function, isOptionalDep) in accessors) {
@@ -2059,6 +2173,60 @@ internal class IrGraphGenerator(
           return@apply
         }
         firstAccessors[accessorKey] = irFunction
+
+        fun IrBuilderWithScope.accessorExpression(thisReceiver: IrValueParameter): IrExpression {
+          return typeAsProviderArgument(
+            contextualTypeKey,
+            expressionGeneratorFactory
+              .create(thisReceiver)
+              .generateBindingCode(binding, contextualTypeKey = contextualTypeKey),
+            isAssisted = false,
+            isGraphInstance = false,
+            actualIsSuspendProvider =
+              BindingExpressionGenerator.AccessType.of(contextualTypeKey).isSuspendProvider,
+          )
+        }
+
+        val providerProperty = bindingPropertyContext.get(contextualTypeKey)
+        val hasStoredProvider =
+          providerProperty?.property?.backingField != null &&
+            providerProperty.storedKey.isWrappedInProvider
+        val convertsProvider =
+          contextualTypeKey.wrappedType is WrappedType.Provider &&
+            providerProperty
+              ?.storedKey
+              ?.toIrType()
+              ?.isSubtypeOf(irFunction.returnType, irTypeSystemContext) == false
+        val passesThroughGraphDependency =
+          binding is IrBinding.GraphDependency && binding.canPassThrough(contextualTypeKey)
+        val needsConvertedProvider = hasStoredProvider && convertsProvider
+        val accessorProvider =
+          if (needsConvertedProvider && !passesThroughGraphDependency) {
+            accessorProviders.getOrPut(accessorKey) {
+              val property =
+                graphClass.createBindingProperty(
+                  contextualTypeKey,
+                  memberNamer
+                    .suggest(MemberNamer.Kind.PROVIDER) {
+                      "${binding.nameHint.decapitalizeUS()}AccessorProvider"
+                    }
+                    .asName(),
+                  irFunction.returnType,
+                  PropertyKind.FIELD,
+                )
+              // Convert after the graph's provider fields and shards have been initialized.
+              constructorStatements += { thisReceiver ->
+                irSetField(
+                  irGet(thisReceiver),
+                  property.backingField!!,
+                  accessorExpression(thisReceiver),
+                )
+              }
+              property
+            }
+          } else {
+            null
+          }
         body =
           withIrBuilder(symbol) {
             irExprBodySafe(
@@ -2069,16 +2237,12 @@ internal class IrGraphGenerator(
                 kind = TRACE_KIND_ACCESSOR,
                 returnType = irFunction.returnType,
               ) {
-                typeAsProviderArgument(
-                  contextualTypeKey,
-                  expressionGeneratorFactory
-                    .create(irFunction.dispatchReceiverParameter!!)
-                    .generateBindingCode(binding, contextualTypeKey = contextualTypeKey),
-                  isAssisted = false,
-                  isGraphInstance = false,
-                  actualIsSuspendProvider =
-                    BindingExpressionGenerator.AccessType.of(contextualTypeKey).isSuspendProvider,
-                )
+                val thisReceiver = irFunction.dispatchReceiverParameter!!
+                if (accessorProvider != null) {
+                  irGetProperty(irGet(thisReceiver), accessorProvider)
+                } else {
+                  accessorExpression(thisReceiver)
+                }
               },
             )
           }

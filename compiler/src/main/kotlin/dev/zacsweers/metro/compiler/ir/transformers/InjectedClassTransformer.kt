@@ -43,7 +43,7 @@ import dev.zacsweers.metro.compiler.ir.metroMetadata
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.dedupeParameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
-import dev.zacsweers.metro.compiler.ir.parameters.toCanonicalProviderKey
+import dev.zacsweers.metro.compiler.ir.parameters.toFactoryProviderKey
 import dev.zacsweers.metro.compiler.ir.parametersAsProviderArguments
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.remapType
@@ -354,15 +354,11 @@ internal class InjectedClassTransformer(
     val allValueParameters = allParameters.flatMap { it.regularParameters }
     val nonAssistedParameters = allValueParameters.filterNot { it.isAssisted }
 
-    // Deduplicate parameters to match the FIR-generated factory constructor. The FIR side
-    // deduplicates by type key and whether the field uses SuspendProvider, so multiple source
-    // parameters share a field only when both facts match.
+    // Parameters share a field when they need the same provider type and binding.
     val dedupedParameters = nonAssistedParameters.dedupeParameters()
 
-    // Use parameter name as the primary field key to correctly handle multiple parameters
-    // with the same type key (e.g., two String params with different defaults).
-    // The contextual-key map is kept as a fallback for dedup cases where the original parameter
-    // name was deduped away but shares a field with the surviving parameter.
+    // Parameter names distinguish fields with different defaults for the same binding.
+    // Other parameters share fields by provider key.
     val nameToField = mutableMapOf<Name, IrField>()
     val providerFieldsByKey = mutableMapOf<IrContextualTypeKey, IrField>()
     val ctor: IrConstructor
@@ -390,7 +386,7 @@ internal class InjectedClassTransformer(
               val fieldName = fieldNameAllocator.newName(irParam.name.asString())
               val field = irParam.addBackingFieldTo(factoryCls, fieldName)
               nameToField[irParam.name] = field
-              providerFieldsByKey[parameter.toCanonicalProviderKey()] = field
+              providerFieldsByKey[parameter.toFactoryProviderKey()] = field
             }
             addHiddenFromObjCAnnotation(this)
             body = generateDefaultConstructorBody()
@@ -569,13 +565,17 @@ internal class InjectedClassTransformer(
             when (val parameterName = targetParam.originalName) {
               in constructorParameterNames -> {
                 val constructorParam = constructorParameterNames.getValue(parameterName)
+                val providerKey = constructorParam.toFactoryProviderKey()
+                val field =
+                  if (constructorParam.hasDefault) {
+                    nameToField.getValue(constructorParam.name)
+                  } else {
+                    providerFieldsByKey.getValue(providerKey)
+                  }
                 val providerInstance =
                   irGetField(
                     irGet(invokeFunction.dispatchReceiverParameter!!),
-                    // Look up by name first (handles multiple params with same type key),
-                    // fall back to the normalized contextual key when the name was deduped
-                    nameToField[constructorParam.name]
-                      ?: providerFieldsByKey.getValue(constructorParam.toCanonicalProviderKey()),
+                    field,
                   )
                 val contextKey = targetParam.contextualTypeKey.remapType(typeRemapper)
                 typeAsProviderArgument(
@@ -817,7 +817,7 @@ internal class InjectedClassTransformer(
       current.mergeValueParametersWithUntyped(next)
     }
 
-    // Deduplicate to match the FIR-generated create() function signature
+    // Deduplicate to match the factory constructor.
     val dedupedMerged =
       mergedParameters.copy(
         regularParameters = mergedParameters.regularParameters.dedupeParameters(),

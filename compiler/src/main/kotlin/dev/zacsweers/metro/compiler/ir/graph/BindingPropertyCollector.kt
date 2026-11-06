@@ -35,6 +35,8 @@ internal class BindingPropertyCollector(
   /** Injector function roots specifically, these don't create MembersInjector instances. */
   private val injectorRoots: Set<IrContextualTypeKey> = emptySet(),
   private val extraKeeps: Collection<IrContextualTypeKey> = emptyList(),
+  /** Requests served by cached expressions and the dependency each initializer reads. */
+  private val cachedRequests: Map<IrContextualTypeKey, IrContextualTypeKey> = emptyMap(),
   private val deferredTypes: Set<IrTypeKey> = emptySet(),
   /** Keys that are reachable from roots, used to filter the init order. */
   private val reachableKeys: Set<IrTypeKey> = emptySet(),
@@ -71,7 +73,7 @@ internal class BindingPropertyCollector(
   /**
    * Tracks factory reference counts for bindings. [factoryRefCount] is incremented when a binding
    * is accessed in a factory path context (explicit Provider/Lazy or as a dependency of something
-   * in a factory path). If factoryRefCount > 1, the binding needs a property to cache its factory.
+   * in a factory path). Multiple references or repeated runtime requests need a cached factory.
    *
    * [scalarRefCount] works the same, just for scalar references. These bindings would then need a
    * property getter for sharing.
@@ -79,6 +81,8 @@ internal class BindingPropertyCollector(
   private inner class Node(
     val binding: IrBinding,
     var factoryRefCount: Int = 0,
+    /** Whether a factory is requested from code that can run repeatedly after graph creation. */
+    var hasRepeatedFactoryAccess: Boolean = false,
     var scalarRefCount: Int = 0,
     /** The part of [scalarRefCount] that comes from graph accessors. */
     var accessorScalarRefCount: Int = 0,
@@ -143,7 +147,7 @@ internal class BindingPropertyCollector(
       is Absent,
       is AssistedFactory,
       is GraphExtension,
-      // Multibindings use GETTER properties, never FIELD (this check is redundant but explicit)
+      // Multibindings use specialized collection factories.
       is Multibinding,
       // Object classes cannot be scoped and are never stored in provider fields
       is ObjectClass,
@@ -206,7 +210,16 @@ internal class BindingPropertyCollector(
       )
     }
     for (contextKey in extraKeeps) {
-      markAccess(contextKey, isFactory = contextKey.requiresProviderInstance)
+      val keptKey = cachedRequests[contextKey] ?: contextKey
+      markAccess(keptKey, isFactory = keptKey.requiresProviderInstance)
+    }
+    for (contextKey in cachedRequests.values) {
+      // Child graphs can also read this dependency after graph initialization.
+      markAccess(
+        contextKey,
+        isFactory = contextKey.requiresProviderInstance,
+        isRepeated = graph.hasReservedKey(contextKey.typeKey),
+      )
     }
 
     fun visitKeys(keys: Collection<IrTypeKey>) {
@@ -378,21 +391,13 @@ internal class BindingPropertyCollector(
 
     // refcounts are finalized - check if we need a property to cache the factory
     if (contextKey !in keysWithBackingProperties) {
-      // Provider access normally means "build or reuse the binding's factory". For computed
-      // bindings, a scalar access and a provider access would otherwise generate the binding twice:
-      // once as a direct instance expression and once as a provider/factory expression. Cache the
-      // provider in that mixed case, and also cache it whenever multiple provider sites need it.
-      //
-      // Bound instances are different: their scalar value is already stored in an instance field by
-      // IrGraphGenerator. A single provider access can cheaply wrap that field at the call site, so
-      // only cache the provider wrapper when multiple provider sites need to share it.
-      val useField =
-        !isGraphExtension &&
-          if (binding is IrBinding.BoundInstance) {
-            node.factoryRefCount > 1
-          } else {
-            node.factoryRefCount > 1 || ((node.factoryRefCount == 1) && (node.scalarRefCount >= 1))
-          }
+      // A single provider site can run repeatedly through an accessor or an unscoped consumer.
+      // Cache its factory so those calls reuse it.
+      val sharesFactory = node.factoryRefCount > 1 || node.hasRepeatedFactoryAccess
+      val hasMixedAccess = node.factoryRefCount > 0 && node.scalarRefCount > 0
+      val sharesComputedBinding = hasMixedAccess && binding !is IrBinding.BoundInstance
+      val needsFactoryField = sharesFactory || sharesComputedBinding
+      val useField = !isGraphExtension && needsFactoryField
 
       // For graph extensions, convert factory refs to scalar refs for the purpose of deciding
       // whether to create a getter property
@@ -491,10 +496,33 @@ internal class BindingPropertyCollector(
     val supertypeDependencies =
       if (binding is IrBinding.MembersInjected) binding.supertypeDependencies else emptySet()
 
+    val hasOnlyFactoryAccess = node.factoryRefCount > 0 && node.scalarRefCount == 0
+    val factoryCreatedAtInitialization = hasOnlyFactoryAccess && !node.hasRepeatedFactoryAccess
+    val dependenciesCreatedAtInitialization = hasFieldProperty || factoryCreatedAtInitialization
+
     for (dependency in binding.dependencies) {
       // Skip dependencies covered by supertype injectors
       if (dependency in supertypeDependencies) continue
-      markAccess(dependency, isFactory = inFactoryPath || dependency.requiresProviderInstance)
+      // Supertype injector nodes describe inherited parameters without creating another injector.
+      val isSupertypeInjector =
+        binding is IrBinding.MembersInjected && dependency in binding.supertypeMembersInjectorKeys
+      val needsFactory = inFactoryPath || dependency.requiresProviderInstance
+      val switchingProviderRequestsDependency =
+        dependency.requiresProviderInstance &&
+          shouldUseSwitchingProvider(binding, PropertyKind.FIELD)
+      val hasDefaultFactoryArgument = inFactoryPath && dependency.hasDefault
+      val usesCanonicalArgument = hasDefaultFactoryArgument && !switchingProviderRequestsDependency
+      val dependencyKey =
+        if (usesCanonicalArgument) {
+          cachedRequests[dependency] ?: dependency
+        } else {
+          dependency
+        }
+      markAccess(
+        dependencyKey,
+        isFactory = needsFactory && !isSupertypeInjector,
+        isRepeated = !dependenciesCreatedAtInitialization || switchingProviderRequestsDependency,
+      )
     }
   }
 
@@ -516,9 +544,13 @@ internal class BindingPropertyCollector(
       // Assisted factories are stateless (they just wrap the target's MetroFactory),
       // so they don't need their own cached field. The target's MetroFactory field
       // is added separately in processBindingNode when Assisted bindings are encountered.
-      // Non-empty multibindings get a getter when more than one site reads them or a child graph
-      // may reuse them. A single reader builds the collection inline.
+      // Cache shared multibinding providers while keeping scalar collections fresh.
       is Multibinding if binding.sourceBindings.isNotEmpty() -> {
+        val sharesFactory = node.factoryRefCount > 1 || node.hasRepeatedFactoryAccess
+        val hasMixedAccess = node.factoryRefCount > 0 && node.scalarRefCount > 0
+        if (sharesFactory || hasMixedAccess) {
+          return PropertyKind.FIELD
+        }
         val isShared = node.factoryRefCount + node.scalarRefCount > 1 && !node.isHostedByAccessor
         // A large collection gets its own getter even with one reader. Inlining it could push a
         // reader like an init chunk or switching branch past method size limits. A lone accessor
@@ -557,7 +589,11 @@ internal class BindingPropertyCollector(
     contextualTypeKey: IrContextualTypeKey,
     isFactory: Boolean,
     isAccessor: Boolean = false,
+    isRepeated: Boolean = true,
   ) {
+    if (contextualTypeKey in cachedRequests) {
+      return
+    }
     val binding = graph.requireBinding(contextualTypeKey)
 
     // For aliases, resolve to the final target and mark that instead.
@@ -608,7 +644,10 @@ internal class BindingPropertyCollector(
             factoryRefCount++
             scalarRefCount++
           }
-          isFactory -> factoryRefCount++
+          isFactory -> {
+            factoryRefCount++
+            hasRepeatedFactoryAccess = hasRepeatedFactoryAccess || isRepeated
+          }
           else -> {
             scalarRefCount++
             if (isAccessor) {

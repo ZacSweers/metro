@@ -29,7 +29,6 @@ import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
 import dev.zacsweers.metro.compiler.fir.usesContributionProviderPath
-import dev.zacsweers.metro.compiler.fir.wrapInProviderIfNecessary
 import dev.zacsweers.metro.compiler.mapToArray
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.metroAnnotations
@@ -643,12 +642,9 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
             valueParameter(
               param.name,
               typeProvider = {
-                typeParamSubstitutor
-                  .substituteOrSelf(param.contextKey.typeKey.type)
-                  .wrapInProviderIfNecessary(
-                    session,
-                    param.canonicalProviderClassId(defaultUsesSuspendProvider),
-                  )
+                typeParamSubstitutor.substituteOrSelf(
+                  param.factoryProviderType(session, defaultUsesSuspendProvider),
+                )
               },
               key = Keys.RegularParameter,
             )

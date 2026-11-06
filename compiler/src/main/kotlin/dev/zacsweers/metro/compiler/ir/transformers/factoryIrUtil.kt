@@ -15,7 +15,6 @@ import dev.zacsweers.metro.compiler.ir.addStaticAnnotations
 import dev.zacsweers.metro.compiler.ir.annotationClass
 import dev.zacsweers.metro.compiler.ir.annotationsCompat
 import dev.zacsweers.metro.compiler.ir.annotationsIn
-import dev.zacsweers.metro.compiler.ir.asCanonicalProviderKey
 import dev.zacsweers.metro.compiler.ir.buildAnnotation
 import dev.zacsweers.metro.compiler.ir.canBeInlined
 import dev.zacsweers.metro.compiler.ir.copyParameterDefaultValues
@@ -29,6 +28,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.dedupeParameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
+import dev.zacsweers.metro.compiler.ir.parameters.toFactoryProviderKey
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.replaceAnnotationsCompat
 import dev.zacsweers.metro.compiler.ir.requireStaticIshDeclarationContainer
@@ -593,9 +593,7 @@ internal fun IrFunction.addParameters(
     val isInstanceParam = param.asValueParameter.kind == IrParameterKind.DispatchReceiver
     val baseType =
       if (wrapInProvider && !isInstanceParam) {
-        val ctxKey = param.contextualTypeKey
-        val usesSuspendProvider = ctxKey.wrappedType.usesSuspendProvider(wrapInSuspendProvider)
-        ctxKey.asCanonicalProviderKey(usesSuspendProvider).toIrType()
+        param.toFactoryProviderKey(wrapInSuspendProvider).toIrType()
       } else {
         param.contextualTypeKey.toIrType()
       }
