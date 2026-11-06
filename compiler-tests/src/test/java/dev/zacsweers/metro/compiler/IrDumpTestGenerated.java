@@ -490,6 +490,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
       public void testForceProviderGetters() {
         run("ForceProviderGetters.kt");
       }
+
+      @Test
+      @TestMetadata("UnreadConvertedProvidersGetNoFields.kt")
+      public void testUnreadConvertedProvidersGetNoFields() {
+        run("UnreadConvertedProvidersGetNoFields.kt");
+      }
     }
 
     @Nested

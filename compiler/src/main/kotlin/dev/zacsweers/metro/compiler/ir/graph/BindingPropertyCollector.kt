@@ -68,6 +68,8 @@ internal class BindingPropertyCollector(
   data class Result(
     val initOrder: List<CollectedProperty>,
     val cachedProviderContextKeys: Set<IrContextualTypeKey>,
+    /** The keys of [cachedRequests] that something reads. Unread ones need no property. */
+    val usedCachedRequests: Set<IrContextualTypeKey>,
   )
 
   /**
@@ -130,6 +132,9 @@ internal class BindingPropertyCollector(
    * provider on every call, so they skip this and inline single-site providers instead.
    */
   private val cachesRepeatedFactoryAccess = !metroContext.options.forceProviderGetters
+
+  /** Keys of [cachedRequests] that something reads. Only these need a cached conversion. */
+  private val usedCachedRequests = mutableSetOf<IrContextualTypeKey>()
 
   /** Counters for assigning IDs within each switching provider flavor. */
   private var nextSwitchingProviderId = 0
@@ -237,16 +242,12 @@ internal class BindingPropertyCollector(
       )
     }
     for (contextKey in extraKeeps) {
-      val keptKey = cachedRequests[contextKey] ?: contextKey
+      val cachedRequest = cachedRequests[contextKey]
+      if (cachedRequest != null) {
+        markCachedRequest(contextKey)
+      }
+      val keptKey = cachedRequest ?: contextKey
       markAccess(keptKey, isFactory = keptKey.requiresProviderInstance)
-    }
-    for (contextKey in cachedRequests.values) {
-      // Child graphs can also read this dependency after graph initialization.
-      markAccess(
-        contextKey,
-        isFactory = contextKey.requiresProviderInstance,
-        isRepeated = graph.hasReservedKey(contextKey.typeKey),
-      )
     }
 
     fun visitKeys(keys: Collection<IrTypeKey>) {
@@ -364,6 +365,7 @@ internal class BindingPropertyCollector(
     return Result(
       initOrder = orderedProperties,
       cachedProviderContextKeys = cachedProviderContextKeys,
+      usedCachedRequests = usedCachedRequests,
     )
   }
 
@@ -651,6 +653,7 @@ internal class BindingPropertyCollector(
     requiresCachedProvider: Boolean = false,
   ) {
     if (contextualTypeKey in cachedRequests) {
+      markCachedRequest(contextualTypeKey)
       return
     }
     val binding = graph.requireBinding(contextualTypeKey)
@@ -723,6 +726,23 @@ internal class BindingPropertyCollector(
           }
         }
       }
+  }
+
+  /**
+   * Records a read of a cached request. The first read also counts the canonical provider that the
+   * request's initializer reads.
+   */
+  private fun markCachedRequest(contextualTypeKey: IrContextualTypeKey) {
+    if (!usedCachedRequests.add(contextualTypeKey)) {
+      return
+    }
+    val canonicalKey = cachedRequests.getValue(contextualTypeKey)
+    // Child graphs can also read this dependency after graph initialization.
+    markAccess(
+      canonicalKey,
+      isFactory = canonicalKey.requiresProviderInstance,
+      isRepeated = graph.hasReservedKey(canonicalKey.typeKey),
+    )
   }
 
   /** Resolves an alias chain to its final non-alias target, caching all intermediate keys. */

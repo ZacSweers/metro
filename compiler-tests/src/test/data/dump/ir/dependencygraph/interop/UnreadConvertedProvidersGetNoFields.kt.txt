@@ -1,0 +1,149 @@
+@Inject
+class DefaultConsumer {
+  val foo: Provider<Foo>
+    field = foo
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<DefaultConsumer> {
+    private /* final field */ val foo: Provider<Foo> = foo
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(foo: Provider<Foo> = provider<Provider<Foo>>(provider = local fun <anonymous>(): Provider<Foo> {
+        return error(message = "The graph should supply Foo")
+      }
+)): MetroFactory {
+        return MetroFactory(foo = foo)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(foo: Provider<Foo> = error(message = "The graph should supply Foo")): DefaultConsumer {
+        return DefaultConsumer(foo = foo)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(foo: Provider<Foo>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(foo: Provider<Foo> = error(message = "Never called")): DefaultConsumer {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): DefaultConsumer {
+      return MetroFactory/* companion */.newInstance(foo = asJavaxProvider<Foo>(/* <this> = <this>.#foo */))
+    }
+
+  }
+
+  constructor(foo: Provider<Foo> = error(message = "The graph should supply Foo")) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@Inject
+class Foo {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  object MetroFactory : Factory<Foo> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun create(): MetroFactory {
+      return MetroFactory
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun newInstance(): Foo {
+      return Foo()
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): Foo {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Foo {
+      return MetroFactory.newInstance()
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@DependencyGraph
+interface AppGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : AppGraph {
+    private val defaultConsumerProvider: Provider<DefaultConsumer>
+      field = DefaultConsumer.MetroFactory/* companion */.create(foo = create())
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override val consumer: Provider<DefaultConsumer>
+      override get(): Provider<DefaultConsumer> {
+        return <this>.#defaultConsumerProvider
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
+    operator fun invoke(): AppGraph {
+      return Impl()
+    }
+
+  }
+
+  abstract val consumer: Provider<DefaultConsumer>
+    abstract get
+
+}
