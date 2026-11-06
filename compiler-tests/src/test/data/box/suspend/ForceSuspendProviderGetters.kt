@@ -30,7 +30,7 @@ fun box(): String = runBlocking {
   computations = 0
   val graph = createGraph<AppGraph>()
   assertNotSame(graph.consumer, graph.consumer)
-  assertNotSame(graph.providerMap, graph.providerMap)
+  assertSame(graph.providerMap, graph.providerMap)
   val mapProvider = graph.providerMap
   val map = mapProvider()
   val otherMap = mapProvider()

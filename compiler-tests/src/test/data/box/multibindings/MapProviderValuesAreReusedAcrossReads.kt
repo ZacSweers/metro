@@ -62,7 +62,7 @@ fun box(): String {
   val first = graph.handlers
   val second = graph.handlers
   assertEquals(0, dependencyReads)
-  assertNotSame(first, second)
+  assertSame(first, second)
   assertSame(first.getValue("alpha"), second.getValue("alpha"))
   assertSame(first.getValue("beta"), second.getValue("beta"))
   for (key in listOf("alpha", "beta")) {

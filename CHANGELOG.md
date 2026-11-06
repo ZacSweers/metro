@@ -19,7 +19,7 @@ Changelog
 - **[IR]** Fix `@GraphPrivate @Binds` declarations leaking into graph extensions. Child graphs now resolve their own bindings or report a missing binding when the parent's alias is private.
 - **[IR]** Fix eager reads of included dependency accessors when graph extensions request `Provider` or `Lazy` values.
 - **[IR]** Fix missing graph references in getter-only shards when accessing included dependencies.
-- **[IR]** Fix graphs creating new providers every time a `Map<K, Provider<V>>` is requested. 
+- **[IR]** Fix graphs creating new providers every time a `Map<K, Provider<V>>` is requested. The graph now stores one map of entry providers and returns it on every read.
 - **[IR/interop]** Fix an issue with Dagger-processed providers/constructors with default parameters with their generated factory. Previously, Metro would treat the source function's parameter as optional if it had a default value and not reconcile that correctly with Dagger's generated factory (which would not propagate that default since Dagger uses a different mechanism for optional bindings).
 
 ### Changes

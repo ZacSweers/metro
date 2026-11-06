@@ -88,8 +88,6 @@ internal class BindingPropertyCollector(
     var scalarRefCount: Int = 0,
     /** The part of [scalarRefCount] that comes from graph accessors. */
     var accessorScalarRefCount: Int = 0,
-    /** Map entries reuse their providers even when only one map accessor reads them. */
-    var requiresCachedProvider: Boolean = false,
   ) {
     /**
      * True when only graph accessors read this binding and they can share code. The first of those
@@ -135,6 +133,18 @@ internal class BindingPropertyCollector(
 
   /** Keys of [cachedRequests] that something reads. Only these need a cached conversion. */
   private val usedCachedRequests = mutableSetOf<IrContextualTypeKey>()
+
+  /**
+   * Whether this is a non-empty map of entry providers. The graph stores one copy of the map, so
+   * every read returns the same entry providers without a field for each entry.
+   */
+  private fun cachesEntryProviders(binding: IrBinding, contextKey: IrContextualTypeKey): Boolean {
+    if (binding !is IrBinding.Multibinding) {
+      return false
+    }
+    val hasProviderValues = contextKey.isMapProvider || contextKey.isMapSuspendProvider
+    return hasProviderValues && binding.sourceBindings.isNotEmpty()
+  }
 
   /** Counters for assigning IDs within each switching provider flavor. */
   private var nextSwitchingProviderId = 0
@@ -401,7 +411,7 @@ internal class BindingPropertyCollector(
     val isGraphExtension = binding is IrBinding.GraphExtension
 
     // Check known property type (applies to all bindings including aliases)
-    val knownPropertyType = knownPropertyType(binding, node)
+    val knownPropertyType = knownPropertyType(binding, node, contextKey)
     if (knownPropertyType != null) {
       val isField = knownPropertyType == PropertyKind.FIELD
       // Assisted-injected types are never factories
@@ -413,7 +423,7 @@ internal class BindingPropertyCollector(
 
       val propertyKind =
         if (isField && isProviderType) {
-          providerPropertyKind(binding, node)
+          providerPropertyKind(binding, contextKey)
         } else {
           knownPropertyType
         }
@@ -432,8 +442,7 @@ internal class BindingPropertyCollector(
       val hasMixedAccess = node.factoryRefCount > 0 && node.scalarRefCount > 0
       val sharesComputedBinding = hasMixedAccess && binding !is IrBinding.BoundInstance
       val needsFactoryField = sharesFactory || sharesComputedBinding
-      val needsProviderProperty = needsFactoryField || node.requiresCachedProvider
-      val useField = !isGraphExtension && needsProviderProperty
+      val useField = !isGraphExtension && needsFactoryField
 
       // For graph extensions, convert factory refs to scalar refs for the purpose of deciding
       // whether to create a getter property
@@ -465,7 +474,7 @@ internal class BindingPropertyCollector(
           } else {
             contextKey
           }
-        val propertyKind = providerPropertyKind(binding, node)
+        val propertyKind = providerPropertyKind(binding, contextKey)
         val switchingId = allocateSwitchingId(binding, propertyKind)
         keysWithBackingProperties[propertyContextKey] =
           CollectedProperty(
@@ -478,7 +487,7 @@ internal class BindingPropertyCollector(
       } else if (needsSharedGetter()) {
         if (binding.isSuspendInGraph) {
           // The property returns a SuspendProvider so each consumer can await it.
-          val propertyKind = providerPropertyKind(binding, node)
+          val propertyKind = providerPropertyKind(binding, contextKey)
           keysWithBackingProperties[contextKey] =
             CollectedProperty(
               binding,
@@ -534,7 +543,6 @@ internal class BindingPropertyCollector(
     val factoryCreatedAtInitialization = hasOnlyFactoryAccess && !node.hasRepeatedFactoryAccess
     val dependenciesCreatedAtInitialization = hasFieldProperty || factoryCreatedAtInitialization
 
-    val cacheMapValueProviders = binding is IrBinding.Multibinding && contextKey.isMapProvider
     for (dependency in binding.dependencies) {
       // Skip dependencies covered by supertype injectors
       if (dependency in supertypeDependencies) continue
@@ -544,7 +552,7 @@ internal class BindingPropertyCollector(
       val needsFactory = inFactoryPath || dependency.requiresProviderInstance
       val switchingProviderRequestsDependency =
         dependency.requiresProviderInstance &&
-          shouldUseSwitchingProvider(binding, providerPropertyKind(binding, node))
+          shouldUseSwitchingProvider(binding, providerPropertyKind(binding, contextKey))
       val hasDefaultFactoryArgument = inFactoryPath && dependency.hasDefault
       val usesCanonicalArgument = hasDefaultFactoryArgument && !switchingProviderRequestsDependency
       val dependencyKey =
@@ -557,17 +565,19 @@ internal class BindingPropertyCollector(
         dependencyKey,
         isFactory = needsFactory && !isSupertypeInjector,
         isRepeated = !dependenciesCreatedAtInitialization || switchingProviderRequestsDependency,
-        requiresCachedProvider = cacheMapValueProviders,
       )
     }
   }
 
-  private fun providerPropertyKind(binding: IrBinding, node: Node): PropertyKind {
+  private fun providerPropertyKind(
+    binding: IrBinding,
+    contextKey: IrContextualTypeKey,
+  ): PropertyKind {
     if (!metroContext.options.forceProviderGetters) {
       return PropertyKind.FIELD
     }
-    // Map entries keep a stored provider so each map read returns the same entry providers.
-    if (node.requiresCachedProvider) {
+    // A stored map keeps its entry providers the same across reads.
+    if (cachesEntryProviders(binding, contextKey)) {
       return PropertyKind.FIELD
     }
     val requiresStorage = binding.isScoped() || binding.typeKey in deferredTypes
@@ -583,7 +593,11 @@ internal class BindingPropertyCollector(
    * Returns the property type for bindings that statically require properties, or null if the
    * binding's property requirement depends on refcount.
    */
-  private fun knownPropertyType(binding: IrBinding, node: Node): PropertyKind? {
+  private fun knownPropertyType(
+    binding: IrBinding,
+    node: Node,
+    contextKey: IrContextualTypeKey,
+  ): PropertyKind? {
     val key = binding.typeKey
 
     // Deferred types always end up in DelegateFactory fields
@@ -608,6 +622,9 @@ internal class BindingPropertyCollector(
       // is added separately in processBindingNode when Assisted bindings are encountered.
       // Cache shared multibinding providers while keeping scalar collections fresh.
       is Multibinding if binding.sourceBindings.isNotEmpty() -> {
+        if (cachesEntryProviders(binding, contextKey)) {
+          return PropertyKind.FIELD
+        }
         val sharesFactory = node.factoryRefCount > 1 || node.hasRepeatedFactoryAccess
         val hasMixedAccess = node.factoryRefCount > 0 && node.scalarRefCount > 0
         if (sharesFactory || hasMixedAccess) {
@@ -652,7 +669,6 @@ internal class BindingPropertyCollector(
     isFactory: Boolean,
     isAccessor: Boolean = false,
     isRepeated: Boolean = true,
-    requiresCachedProvider: Boolean = false,
   ) {
     if (contextualTypeKey in cachedRequests) {
       markCachedRequest(contextualTypeKey)
@@ -700,9 +716,6 @@ internal class BindingPropertyCollector(
     nodes
       .getOrPut(canonicalKey) { Node(targetBinding) }
       .apply {
-        if (requiresCachedProvider) {
-          this.requiresCachedProvider = true
-        }
         when {
           // Factory parameters need a provider even when their source parameter declares a value.
           needsAccessorProvider -> factoryRefCount++

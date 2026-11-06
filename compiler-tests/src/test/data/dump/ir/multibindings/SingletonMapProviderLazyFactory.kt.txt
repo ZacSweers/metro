@@ -22,12 +22,9 @@ interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
-    private val provideValueProvider: Provider<Int>
-      field = create(instance = <this>)
-
     private val mapOfIntToIntProvider: Provider<Map<Int, Function0<Lazy<Int>>>>
       field = providerOf<Map<Int, Function0<Lazy<Int>>>>(value = buildMap<Int, Function0<Lazy<Int>>>(capacity = 1, builderAction = local fun MutableMap<Int, Function0<Lazy<Int>>>.<anonymous>() {
-        $receiver.put(key = 1, value = ProviderOfLazy/* companion */.create<Int>(provider = <this>.#provideValueProvider))
+        $receiver.put(key = 1, value = ProviderOfLazy/* companion */.create<Int>(provider = create(instance = <this>)))
       }
 ))
 

@@ -354,6 +354,12 @@ interface AppGraph {
     private val parentValueProvider: Provider<ParentValue>
       field = create()
 
+    private val mapOfStringToValueProvider: Provider<Map<String, Function0<Value>>>
+      field = providerOf<Map<String, Function0<Value>>>(value = buildMap<String, Function0<Value>>(capacity = 1, builderAction = local fun MutableMap<String, Function0<Value>>.<anonymous>() {
+        $receiver.put(key = "parent", value = <this>.#parentValueProvider)
+      }
+))
+
     @DependencyGraph
     private class ChildGraphImpl : ChildGraph {
       private val appGraphImpl: Impl
@@ -380,6 +386,13 @@ interface AppGraph {
 
         private val childValueProvider: Provider<ChildValue>
           field = create()
+
+        private val mapOfStringToValueProvider: Provider<Map<String, Function0<Value>>>
+          field = providerOf<Map<String, Function0<Value>>>(value = buildMap<String, Function0<Value>>(capacity = 2, builderAction = local fun MutableMap<String, Function0<Value>>.<anonymous>() {
+            $receiver.put(key = "child", value = <this>.#childValueProvider)
+            $receiver.put(key = "parent", value = <this>.#childGraphImpl.#appGraphImpl.#parentValueProvider)
+          }
+))
 
         private class FactoryImpl : GrandchildGraph.Factory {
           package /* final field */ val ChildGraphImpl: ChildGraphImpl = ChildGraphImpl
@@ -414,11 +427,7 @@ interface AppGraph {
               $receiver.put(key = "child", value = <this>.#childValueProvider.invoke())
               $receiver.put(key = "parent", value = <this>.#childGraphImpl.#appGraphImpl.#parentValueProvider.invoke())
             }
-), providers = buildMap<String, Function0<Value>>(capacity = 2, builderAction = local fun MutableMap<String, Function0<Value>>.<anonymous>() {
-              $receiver.put(key = "child", value = <this>.#childValueProvider)
-              $receiver.put(key = "parent", value = <this>.#childGraphImpl.#appGraphImpl.#parentValueProvider)
-            }
-))
+), providers = <this>.#mapOfStringToValueProvider.invoke())
           }
 
       }
@@ -430,7 +439,7 @@ interface AppGraph {
       }
 
       override fun inject(activity: Activity) {
-        injectHandler(instance = activity, handler = TrackingHandler(adapters = <this>.#appGraphImpl.<get-setOfAdapter>(), values = <this>.#appGraphImpl.<get-mapOfStringToValue>(), providers = <this>.#appGraphImpl.<get-mapOfStringToValue2>()))
+        injectHandler(instance = activity, handler = TrackingHandler(adapters = <this>.#appGraphImpl.<get-setOfAdapter>(), values = <this>.#appGraphImpl.<get-mapOfStringToValue>(), providers = <this>.#appGraphImpl.#mapOfStringToValueProvider.invoke()))
       }
 
       override val grandchildFactory: GrandchildGraph.Factory
@@ -464,17 +473,9 @@ interface AppGraph {
 )
       }
 
-    private val mapOfStringToValue2: Map<String, Function0<Value>>
-      private get(): Map<String, Function0<Value>> {
-        return buildMap<String, Function0<Value>>(capacity = 1, builderAction = local fun MutableMap<String, Function0<Value>>.<anonymous>() {
-          $receiver.put(key = "parent", value = <this>.#parentValueProvider)
-        }
-)
-      }
-
     override val providers: Map<String, Function0<Value>>
       override get(): Map<String, Function0<Value>> {
-        return <this>.<get-mapOfStringToValue2>()
+        return <this>.#mapOfStringToValueProvider.invoke()
       }
 
     private val setOfAdapter: Set<Adapter>

@@ -366,7 +366,7 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       valueDescription = "<true | false>",
       description =
         "Temporary option to generate getters for unscoped providers and provider conversions." +
-          " Scoped providers, cycle delegates, and Map<K, Provider<V>> entries retain their fields.",
+          " Scoped providers, cycle delegates, and maps of providers retain their fields.",
       required = false,
       allowMultipleOccurrences = false,
     ),
