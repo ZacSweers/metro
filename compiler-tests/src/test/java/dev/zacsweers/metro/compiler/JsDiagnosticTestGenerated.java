@@ -117,6 +117,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("ContributionProviderMemberInjectionCycle.kt")
+    public void testContributionProviderMemberInjectionCycle() {
+      run("ContributionProviderMemberInjectionCycle.kt");
+    }
+
+    @Test
     @TestMetadata("ContributionProviderMissingBindingShowsOrigin.kt")
     public void testContributionProviderMissingBindingShowsOrigin() {
       run("ContributionProviderMissingBindingShowsOrigin.kt");
