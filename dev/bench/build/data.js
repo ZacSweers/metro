@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793926504765,
+  "lastUpdate": 1793933793230,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -26768,6 +26768,62 @@ window.BENCHMARK_DATA = {
             "value": 18406.936999999998,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -2.72%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "falqadi",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "falqadi",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "675648b7~1",
+          "message": "[before] Fix eager reads of included dependency accessors (",
+          "timestamp": "2026-11-05T21:06:43-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/675648b73aecf7c3a13170193a06e2ace7df4b4c"
+        },
+        "date": 1793933793230,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 13924.437,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "falqadi",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "falqadi",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "675648b73aecf7c3a13170193a06e2ace7df4b4c",
+          "message": "[after] Fix eager reads of included dependency accessors (",
+          "timestamp": "2026-11-05T21:06:43-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/675648b73aecf7c3a13170193a06e2ace7df4b4c"
+        },
+        "date": 1793933793231,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 13687.385,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -1.70%"
           }
         ]
       }
