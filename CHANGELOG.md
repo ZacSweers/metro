@@ -28,6 +28,8 @@ Changelog
 Special thanks to the following contributors for contributing to this release!
 
 - [@aglose](https://github.com/aglose)
+- [@falqadi](https://github.com/falqadi)
+- [@hossain-khan](https://github.com/hossain-khan)
 
 ### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
 
