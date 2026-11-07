@@ -1,0 +1,19 @@
+scenario,fir_unrelated_body,ir_unrelated_body,fir_unrelated_abi,ir_unrelated_abi,fir_contribution_body,ir_contribution_body,fir_noop,ir_noop,fir_clean,ir_clean
+version,Gradle 9.8.2,Gradle 9.8.2,Gradle 9.8.2,Gradle 9.8.2,Gradle 9.8.2,Gradle 9.8.2,Gradle 9.8.2,Gradle 9.8.2,Gradle 9.8.2,Gradle 9.8.2
+tasks,:consumer:compileKotlin,:consumer:compileKotlin,:consumer:compileKotlin,:consumer:compileKotlin,:consumer:compileKotlin,:consumer:compileKotlin,:consumer:compileKotlin,:consumer:compileKotlin,:consumer:compileKotlin,:consumer:compileKotlin
+value,total execution time,total execution time,total execution time,total execution time,total execution time,total execution time,total execution time,total execution time,total execution time,total execution time
+warm-up build #1,11823.29,11217.59,11364.90,11288.39,11351.12,11798.09,11055.57,10039.89,8498.26,8332.97
+warm-up build #2,5187.52,1454.68,5493.53,1476.23,5464.53,1492.24,192.99,219.76,5157.29,5131.15
+warm-up build #3,4702.97,1351.71,4756.55,1396.32,4818.32,1382.45,179.54,203.81,4690.91,4815.23
+warm-up build #4,4671.25,1316.92,4855.63,1331.10,4546.64,1355.63,154.67,151.35,4429.75,4437.90
+warm-up build #5,4440.98,1316.84,4848.05,1334.36,4385.69,1349.62,144.29,143.30,4572.31,4443.33
+measured build #1,4429.81,1311.68,4537.52,1342.13,4411.71,1351.69,140.21,142.51,4415.28,4307.07
+measured build #2,4536.13,1296.91,4789.41,1299.11,4456.02,1420.46,136.36,128.49,4406.39,4354.90
+measured build #3,4376.87,1431.90,4606.66,1309.14,4330.12,1335.96,126.00,117.93,4232.24,4228.07
+measured build #4,4300.88,1294.65,4306.85,1411.93,4281.08,1342.41,116.57,117.48,4206.18,4277.08
+measured build #5,4288.09,1308.28,4270.67,1320.96,4224.47,1310.88,115.24,127.71,4240.96,4279.65
+measured build #6,4531.66,1305.86,4428.06,1418.49,4352.72,1321.18,103.24,116.35,4342.34,4283.59
+measured build #7,4285.45,1296.82,4328.20,1276.92,4273.04,1346.37,102.60,117.36,4336.26,4306.34
+measured build #8,4244.07,1394.53,4452.00,1303.04,4306.69,1322.43,117.07,116.57,4194.86,4299.74
+measured build #9,4352.52,1261.87,4369.94,1388.16,4271.62,1321.86,102.75,103.73,4369.67,4210.14
+measured build #10,4439.10,1267.15,4368.74,1280.86,4376.65,1309.88,114.76,117.99,4197.14,4310.64

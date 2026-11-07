@@ -2038,7 +2038,7 @@ internal fun addHiddenFromObjCAnnotation(function: IrFunction) {
 }
 
 context(context: IrMetroContext)
-internal fun IrClass.addDeprecatedHiddenAnnotation() {
+internal fun IrDeclaration.addDeprecatedHiddenAnnotation() {
   addAnnotationCompat(
     buildAnnotation(symbol, context.metroSymbols.deprecatedAnnotationConstructor) { annotation ->
       annotation.arguments[0] = irString("This synthesized declaration should not be used directly")

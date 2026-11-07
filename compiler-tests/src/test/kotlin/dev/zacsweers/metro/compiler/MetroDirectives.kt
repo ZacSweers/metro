@@ -28,6 +28,8 @@ object MetroDirectives : SimpleDirectivesContainer() {
     valueDirective("Enable/disable generation of contribution hint generation.") { it.toBoolean() }
   val GENERATE_CONTRIBUTION_HINTS_IN_FIR by
     directive("Enable/disable generation of contribution hint generation in FIR.")
+  val GENERATE_JVM_CONTRIBUTION_HINTS_IN_IR by
+    directive("Enable source-owned native JVM contribution hints in IR.")
   val GENERATE_CLASSES_IN_IR by
     valueDirective("Enable/disable generation of metadata-visible hidden classes in IR.") {
       it.toBoolean()

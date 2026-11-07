@@ -1,0 +1,62 @@
+{
+  "fir_unrelated_body": {
+    "status": "fail",
+    "reason": "half_drift_exceeds_limit",
+    "sampleCount": 10,
+    "samplesMs": [
+      424.84,
+      424.54,
+      388.99,
+      471.59,
+      375.73,
+      387.1,
+      386.06,
+      379.91,
+      350.84,
+      348.72
+    ],
+    "medianMs": 386.58000000000004,
+    "relativeMadPercent": 6.025919602669575,
+    "earlyMedianMs": 424.54,
+    "lateMedianMs": 379.91,
+    "halfDriftPercent": 11.544829013399553,
+    "outlierCount": 1,
+    "limits": {
+      "expectedSamples": 10,
+      "maxRelativeMadPercent": 10.0,
+      "maxHalfDriftPercent": 10.0,
+      "outlierThresholdPercent": 20.0,
+      "maxOutlierCount": 1
+    }
+  },
+  "ir_unrelated_body": {
+    "status": "pass",
+    "reason": null,
+    "sampleCount": 10,
+    "samplesMs": [
+      312.03,
+      388.47,
+      290.9,
+      276.87,
+      289.71,
+      276.14,
+      276.06,
+      273.94,
+      274.4,
+      262.05
+    ],
+    "medianMs": 276.505,
+    "relativeMadPercent": 2.8516663351476432,
+    "earlyMedianMs": 290.9,
+    "lateMedianMs": 274.4,
+    "halfDriftPercent": 5.967342362705919,
+    "outlierCount": 1,
+    "limits": {
+      "expectedSamples": 10,
+      "maxRelativeMadPercent": 10.0,
+      "maxHalfDriftPercent": 10.0,
+      "outlierThresholdPercent": 20.0,
+      "maxOutlierCount": 1
+    }
+  }
+}

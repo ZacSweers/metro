@@ -1,0 +1,302 @@
+{
+  "fir_unrelated_body": {
+    "status": "pass",
+    "reason": null,
+    "sampleCount": 10,
+    "samplesMs": [
+      4429.81,
+      4536.13,
+      4376.87,
+      4300.88,
+      4288.09,
+      4531.66,
+      4285.45,
+      4244.07,
+      4352.52,
+      4439.1
+    ],
+    "medianMs": 4364.695,
+    "relativeMadPercent": 1.7299032349339443,
+    "earlyMedianMs": 4376.87,
+    "lateMedianMs": 4352.52,
+    "halfDriftPercent": 0.5578854879894118,
+    "outlierCount": 0,
+    "limits": {
+      "expectedSamples": 10,
+      "maxRelativeMadPercent": 10.0,
+      "maxHalfDriftPercent": 10.0,
+      "outlierThresholdPercent": 20.0,
+      "maxOutlierCount": 1
+    }
+  },
+  "ir_unrelated_body": {
+    "status": "pass",
+    "reason": null,
+    "sampleCount": 10,
+    "samplesMs": [
+      1311.68,
+      1296.91,
+      1431.9,
+      1294.65,
+      1308.28,
+      1305.86,
+      1296.82,
+      1394.53,
+      1261.87,
+      1267.15
+    ],
+    "medianMs": 1301.385,
+    "relativeMadPercent": 0.6604502126580549,
+    "earlyMedianMs": 1308.28,
+    "lateMedianMs": 1296.82,
+    "halfDriftPercent": 0.880600283544073,
+    "outlierCount": 0,
+    "limits": {
+      "expectedSamples": 10,
+      "maxRelativeMadPercent": 10.0,
+      "maxHalfDriftPercent": 10.0,
+      "outlierThresholdPercent": 20.0,
+      "maxOutlierCount": 1
+    }
+  },
+  "fir_unrelated_abi": {
+    "status": "pass",
+    "reason": null,
+    "sampleCount": 10,
+    "samplesMs": [
+      4537.52,
+      4789.41,
+      4606.66,
+      4306.85,
+      4270.67,
+      4428.06,
+      4328.2,
+      4452.0,
+      4369.94,
+      4368.74
+    ],
+    "medianMs": 4399.0,
+    "relativeMadPercent": 1.8521254830643308,
+    "earlyMedianMs": 4537.52,
+    "lateMedianMs": 4369.94,
+    "halfDriftPercent": 3.809502159581742,
+    "outlierCount": 0,
+    "limits": {
+      "expectedSamples": 10,
+      "maxRelativeMadPercent": 10.0,
+      "maxHalfDriftPercent": 10.0,
+      "outlierThresholdPercent": 20.0,
+      "maxOutlierCount": 1
+    }
+  },
+  "ir_unrelated_abi": {
+    "status": "pass",
+    "reason": null,
+    "sampleCount": 10,
+    "samplesMs": [
+      1342.13,
+      1299.11,
+      1309.14,
+      1411.93,
+      1320.96,
+      1418.49,
+      1276.92,
+      1303.04,
+      1388.16,
+      1280.86
+    ],
+    "medianMs": 1315.0500000000002,
+    "relativeMadPercent": 2.3295692179004677,
+    "earlyMedianMs": 1320.96,
+    "lateMedianMs": 1303.04,
+    "halfDriftPercent": 1.3626858294361486,
+    "outlierCount": 0,
+    "limits": {
+      "expectedSamples": 10,
+      "maxRelativeMadPercent": 10.0,
+      "maxHalfDriftPercent": 10.0,
+      "outlierThresholdPercent": 20.0,
+      "maxOutlierCount": 1
+    }
+  },
+  "fir_contribution_body": {
+    "status": "pass",
+    "reason": null,
+    "sampleCount": 10,
+    "samplesMs": [
+      4411.71,
+      4456.02,
+      4330.12,
+      4281.08,
+      4224.47,
+      4352.72,
+      4273.04,
+      4306.69,
+      4271.62,
+      4376.65
+    ],
+    "medianMs": 4318.405,
+    "relativeMadPercent": 1.066944855797449,
+    "earlyMedianMs": 4330.12,
+    "lateMedianMs": 4306.69,
+    "halfDriftPercent": 0.5425614318249514,
+    "outlierCount": 0,
+    "limits": {
+      "expectedSamples": 10,
+      "maxRelativeMadPercent": 10.0,
+      "maxHalfDriftPercent": 10.0,
+      "outlierThresholdPercent": 20.0,
+      "maxOutlierCount": 1
+    }
+  },
+  "ir_contribution_body": {
+    "status": "pass",
+    "reason": null,
+    "sampleCount": 10,
+    "samplesMs": [
+      1351.69,
+      1420.46,
+      1335.96,
+      1342.41,
+      1310.88,
+      1321.18,
+      1346.37,
+      1322.43,
+      1321.86,
+      1309.88
+    ],
+    "medianMs": 1329.1950000000002,
+    "relativeMadPercent": 1.143173123582305,
+    "earlyMedianMs": 1342.41,
+    "lateMedianMs": 1321.86,
+    "halfDriftPercent": 1.5460485481814314,
+    "outlierCount": 0,
+    "limits": {
+      "expectedSamples": 10,
+      "maxRelativeMadPercent": 10.0,
+      "maxHalfDriftPercent": 10.0,
+      "outlierThresholdPercent": 20.0,
+      "maxOutlierCount": 1
+    }
+  },
+  "fir_noop": {
+    "status": "fail",
+    "reason": "half_drift_exceeds_limit",
+    "sampleCount": 10,
+    "samplesMs": [
+      140.21,
+      136.36,
+      126.0,
+      116.57,
+      115.24,
+      103.24,
+      102.6,
+      117.07,
+      102.75,
+      114.76
+    ],
+    "medianMs": 115.905,
+    "relativeMadPercent": 9.818385746947932,
+    "earlyMedianMs": 126.0,
+    "lateMedianMs": 103.24,
+    "halfDriftPercent": 19.636771493895864,
+    "outlierCount": 1,
+    "limits": {
+      "expectedSamples": 10,
+      "maxRelativeMadPercent": 10.0,
+      "maxHalfDriftPercent": 10.0,
+      "outlierThresholdPercent": 20.0,
+      "maxOutlierCount": 1
+    }
+  },
+  "ir_noop": {
+    "status": "pass",
+    "reason": null,
+    "sampleCount": 10,
+    "samplesMs": [
+      142.51,
+      128.49,
+      117.93,
+      117.48,
+      127.71,
+      116.35,
+      117.36,
+      116.57,
+      103.73,
+      117.99
+    ],
+    "medianMs": 117.70500000000001,
+    "relativeMadPercent": 1.0577290684338123,
+    "earlyMedianMs": 127.71,
+    "lateMedianMs": 116.57,
+    "halfDriftPercent": 9.46433881313453,
+    "outlierCount": 1,
+    "limits": {
+      "expectedSamples": 10,
+      "maxRelativeMadPercent": 10.0,
+      "maxHalfDriftPercent": 10.0,
+      "outlierThresholdPercent": 20.0,
+      "maxOutlierCount": 1
+    }
+  },
+  "fir_clean": {
+    "status": "pass",
+    "reason": null,
+    "sampleCount": 10,
+    "samplesMs": [
+      4415.28,
+      4406.39,
+      4232.24,
+      4206.18,
+      4240.96,
+      4342.34,
+      4336.26,
+      4194.86,
+      4369.67,
+      4197.14
+    ],
+    "medianMs": 4288.610000000001,
+    "relativeMadPercent": 1.9060954481755135,
+    "earlyMedianMs": 4240.96,
+    "lateMedianMs": 4336.26,
+    "halfDriftPercent": 2.2221652236971927,
+    "outlierCount": 0,
+    "limits": {
+      "expectedSamples": 10,
+      "maxRelativeMadPercent": 10.0,
+      "maxHalfDriftPercent": 10.0,
+      "outlierThresholdPercent": 20.0,
+      "maxOutlierCount": 1
+    }
+  },
+  "ir_clean": {
+    "status": "pass",
+    "reason": null,
+    "sampleCount": 10,
+    "samplesMs": [
+      4307.07,
+      4354.9,
+      4228.07,
+      4277.08,
+      4279.65,
+      4283.59,
+      4306.34,
+      4299.74,
+      4210.14,
+      4310.64
+    ],
+    "medianMs": 4291.665,
+    "relativeMadPercent": 0.3504467380375673,
+    "earlyMedianMs": 4279.65,
+    "lateMedianMs": 4299.74,
+    "halfDriftPercent": 0.46811668664726036,
+    "outlierCount": 0,
+    "limits": {
+      "expectedSamples": 10,
+      "maxRelativeMadPercent": 10.0,
+      "maxHalfDriftPercent": 10.0,
+      "outlierThresholdPercent": 20.0,
+      "maxOutlierCount": 1
+    }
+  }
+}

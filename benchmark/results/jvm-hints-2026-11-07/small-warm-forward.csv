@@ -1,0 +1,34 @@
+scenario,fir_unrelated_body,ir_unrelated_body
+version,Gradle 9.8.2,Gradle 9.8.2
+tasks,:consumer:compileKotlin,:consumer:compileKotlin
+value,total execution time,total execution time
+warm-up build #1,5322.29,5295.59
+warm-up build #2,674.32,459.61
+warm-up build #3,535.08,379.59
+warm-up build #4,593.30,351.55
+warm-up build #5,464.93,341.29
+warm-up build #6,448.23,340.28
+warm-up build #7,522.11,399.46
+warm-up build #8,459.75,338.69
+warm-up build #9,514.10,300.11
+warm-up build #10,415.01,304.41
+warm-up build #11,408.92,291.22
+warm-up build #12,402.40,280.61
+warm-up build #13,405.97,299.24
+warm-up build #14,360.50,280.28
+warm-up build #15,363.31,278.88
+warm-up build #16,366.80,286.44
+warm-up build #17,367.57,270.71
+warm-up build #18,368.23,276.71
+warm-up build #19,496.97,279.11
+warm-up build #20,351.87,274.37
+measured build #1,357.66,274.98
+measured build #2,366.19,274.40
+measured build #3,359.34,266.58
+measured build #4,336.53,269.73
+measured build #5,350.47,266.36
+measured build #6,354.78,364.36
+measured build #7,336.80,253.44
+measured build #8,362.43,254.32
+measured build #9,337.22,252.58
+measured build #10,327.01,249.59

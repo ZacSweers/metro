@@ -261,6 +261,16 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     ),
   ),
+  GENERATE_JVM_CONTRIBUTION_HINTS_IN_IR(
+    RawMetroOption.boolean(
+      name = "generate-jvm-contribution-hints-in-ir",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description =
+        "Experimentally generate Metro contribution hints in IR for non-multiplatform JVM " +
+          "compilations with IR class generation. External hints remain in FIR.",
+    ),
+  ),
   GENERATE_CLASSES_IN_IR(
     RawMetroOption.boolean(
       name = "generate-classes-in-ir",
@@ -1200,6 +1210,8 @@ public class MetroOptions(
     MetroOption.GENERATE_CONTRIBUTION_HINTS.raw.defaultValue.expectAs(),
   public val generateContributionHintsInFir: Boolean =
     MetroOption.GENERATE_CONTRIBUTION_HINTS_IN_FIR.raw.defaultValue.expectAs(),
+  public val generateJvmContributionHintsInIr: Boolean =
+    MetroOption.GENERATE_JVM_CONTRIBUTION_HINTS_IN_IR.raw.defaultValue.expectAs(),
   public val generateClassesInIr: Boolean =
     MetroOption.GENERATE_CLASSES_IN_IR.raw.defaultValue.expectAs(),
   public val enablePrivateProviderProperties: Boolean =
@@ -1630,6 +1642,7 @@ public class MetroOptions(
       base.functionInjectAnnotationsOverride
     public var generateContributionHints: Boolean = base.generateContributionHints
     public var generateContributionHintsInFir: Boolean = base.generateContributionHintsInFir
+    public var generateJvmContributionHintsInIr: Boolean = base.generateJvmContributionHintsInIr
     public var generateClassesInIr: Boolean = base.generateClassesInIr
     public var enablePrivateProviderProperties: Boolean = base.enablePrivateProviderProperties
     public var shrinkUnusedBindings: Boolean = base.shrinkUnusedBindings
@@ -1980,6 +1993,8 @@ public class MetroOptions(
         MetroOption.GENERATE_CONTRIBUTION_HINTS -> generateContributionHints = value.expectAs()
         MetroOption.GENERATE_CONTRIBUTION_HINTS_IN_FIR ->
           generateContributionHintsInFir = value.expectAs()
+        MetroOption.GENERATE_JVM_CONTRIBUTION_HINTS_IN_IR ->
+          generateJvmContributionHintsInIr = value.expectAs()
         MetroOption.GENERATE_CLASSES_IN_IR -> generateClassesInIr = value.expectAs()
         MetroOption.ENABLE_PRIVATE_PROVIDER_PROPERTIES ->
           enablePrivateProviderProperties = value.expectAs()
@@ -2122,6 +2137,7 @@ public class MetroOptions(
         functionInjectAnnotationsOverride = functionInjectAnnotationsOverride,
         generateContributionHints = generateContributionHints,
         generateContributionHintsInFir = generateContributionHintsInFir,
+        generateJvmContributionHintsInIr = generateJvmContributionHintsInIr,
         generateClassesInIr = generateClassesInIr,
         enablePrivateProviderProperties = enablePrivateProviderProperties,
         shrinkUnusedBindings = shrinkUnusedBindings,

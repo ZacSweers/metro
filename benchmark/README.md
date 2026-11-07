@@ -77,6 +77,8 @@ Results and generated reports are written to timestamped directories under `benc
 
 ### Measurement stability
 
+The [JVM contribution hint experiment](jvm-hints.md) provides a focused, fixed-source comparison of FIR and IR hints, including concentrated contributions, same-module graphs, and control workloads.
+
 Published build scenarios use five warm-ups for incremental scenarios and ten for Graph Processing. Every scenario then runs ten measured builds. The runner keeps every measured sample and reports their median. It does not discard outliers or retry a scenario until it passes.
 
 Kotlin compilation runs in the Gradle daemon with `kotlin.compiler.execution.strategy=in-process`. The 500-module workload starts hundreds of compiler invocations per iteration, and retaining them in a separate long-lived Kotlin daemon caused non-stationary timing as daemon state accumulated across the scenario. The in-process strategy keeps that state inside the Gradle process that Gradle Profiler warms and measures. The local build cache remains enabled.

@@ -1,0 +1,19 @@
+scenario,fir_unrelated_body,ir_unrelated_body
+version,Gradle 9.8.2,Gradle 9.8.2
+tasks,:consumer:compileKotlin,:consumer:compileKotlin
+value,total execution time,total execution time
+warm-up build #1,5188.89,5210.71
+warm-up build #2,620.29,431.99
+warm-up build #3,519.96,402.16
+warm-up build #4,579.31,341.57
+warm-up build #5,449.88,313.54
+measured build #1,424.84,312.03
+measured build #2,424.54,388.47
+measured build #3,388.99,290.90
+measured build #4,471.59,276.87
+measured build #5,375.73,289.71
+measured build #6,387.10,276.14
+measured build #7,386.06,276.06
+measured build #8,379.91,273.94
+measured build #9,350.84,274.40
+measured build #10,348.72,262.05
