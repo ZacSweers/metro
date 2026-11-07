@@ -97,11 +97,15 @@ class JvmContributionHintICTests(private val irHints: Boolean) :
     val source = project.libSource("First.kt")
     val original = source.readText()
     source.writeText(original.replace("AppScope::class", "OtherScope::class"))
+    val reportsBeforeWrongScope = project.buildReports()
     val wrongScope = project.compileKotlinAndFail(":compileKotlin", false, "-PirHints=$irHints")
     assertThat(wrongScope.output).contains("[Metro/MissingBinding]")
+    project.assertIncrementalCompilation(reportsBeforeWrongScope)
     source.writeText(original.replace("@ContributesBinding(AppScope::class)", ""))
+    val reportsBeforeRemoval = project.buildReports()
     val missing = project.compileKotlinAndFail(":compileKotlin", false, "-PirHints=$irHints")
     assertThat(missing.output).contains("[Metro/MissingBinding]")
+    project.assertIncrementalCompilation(reportsBeforeRemoval)
     source.writeText(original)
     project.compileAndCheck("first")
     project.compileAndCheck("first", clean = true)
@@ -281,7 +285,9 @@ class JvmContributionHintICTests(private val irHints: Boolean) :
     project.compileKotlin(":compileKotlin", false, "-PirHints=${!irHints}")
     assertThat(project.invokeMain<String>(target = null)).isEqualTo("first:")
     project.writeContribution("Second.kt", "Second", "second")
+    val reportsBeforeEdit = project.buildReports()
     project.compileKotlin(":compileKotlin", false, "-PirHints=${!irHints}")
+    project.assertIncrementalCompilation(reportsBeforeEdit)
     assertThat(project.invokeMain<String>(target = null)).isEqualTo("first,second:")
     project.compileAndCheck("first,second:", expectIncremental = false)
     project.libSource("First.kt").delete()
@@ -311,6 +317,47 @@ class JvmContributionHintICTests(private val irHints: Boolean) :
     nested.writeText(source)
     project.compileAndCheck("first,flat,nested:")
     project.compileAndCheck("first,flat,nested:", clean = true)
+  }
+
+  @Test
+  fun longNamesWithTheSameJavaHashKeepIndependentHintsAcrossRemovalAndRestoration() {
+    val project = ContributionsProject(maxGeneratedClassNameLength = 96).gradleProject
+    val prefix = "A".repeat(70)
+    assertThat("${prefix}Aa".hashCode()).isEqualTo("${prefix}BB".hashCode())
+    val first = project.libSource("LongFirst.kt")
+    val source =
+      """
+      package test.abcdefghijklmnopqrstuvwxyabcdefghijklmnopqrstuvwxy
+      import dev.zacsweers.metro.*
+      @ContributesTo(AppScope::class)
+      interface ${prefix}Aa { val left: String get() = "left" }
+      """
+        .trimIndent()
+    first.writeText(source)
+    project
+      .libSource("LongSecond.kt")
+      .writeText(
+        source.replace("${prefix}Aa", "${prefix}BB").replace("left", "right"),
+      )
+    project.rootDir
+      .resolve("src/main/kotlin/test/Main.kt")
+      .writeText(
+        """
+        package test
+        import dev.zacsweers.metro.*
+        @DependencyGraph(AppScope::class) interface AppGraph
+        fun main(): String = createGraph<AppGraph>().javaClass.methods
+          .filter { it.name == "getLeft" || it.name == "getRight" }
+          .map { it.invoke(createGraph<AppGraph>()) as String }.sorted().joinToString()
+        """
+          .trimIndent(),
+      )
+    project.compileAndCheck("left, right", clean = true)
+    first.delete()
+    project.compileAndCheck("right")
+    first.writeText(source)
+    project.compileAndCheck("left, right")
+    project.compileAndCheck("left, right", clean = true)
   }
 
   @Test
@@ -371,15 +418,22 @@ class JvmContributionHintICTests(private val irHints: Boolean) :
         compileKotlin(":compileKotlin", false, "-PirHints=$irHints")
       }
     if (incrementalRound) {
-      val reports = buildReports() - reportsBefore
-      assertThat(reports).isNotEmpty()
-      for (report in reports) {
-        assertThat(report.readText())
-          .doesNotContain("Non-incremental compilation will be performed")
-      }
+      assertIncrementalCompilation(reportsBefore)
     }
     assertThat(invokeMain<String>(target = null)).isEqualTo(expected)
     return result
+  }
+
+  private fun GradleProject.assertIncrementalCompilation(reportsBefore: Set<File>) {
+    val reports = buildReports() - reportsBefore
+    assertThat(reports).isNotEmpty()
+    for (report in reports) {
+      assertThat(report.readText()).doesNotContain("Non-incremental compilation will be performed")
+    }
+    val compiledSources = reports.flatMap {
+      compiledSourceNames(it, ":lib:compileKotlin") + compiledSourceNames(it, ":compileKotlin")
+    }
+    assertThat(compiledSources).isNotEmpty()
   }
 
   private fun GradleProject.libSource(name: String): File =
@@ -409,6 +463,7 @@ class JvmContributionHintICTests(private val irHints: Boolean) :
   private class ContributionsProject(
     private val requiredBinding: Boolean = false,
     private val hilt: Boolean = false,
+    private val maxGeneratedClassNameLength: Int = 233,
   ) :
     MetroProject(
       multiplatform = false,
@@ -420,6 +475,7 @@ class JvmContributionHintICTests(private val irHints: Boolean) :
       appendLine(
         """
         metro {
+          compilerOptions.put("max-generated-class-name-length", "$maxGeneratedClassNameLength")
           compilerOptions.put("generate-jvm-contribution-hints-in-ir", providers.gradleProperty("irHints"))
           ${if (hilt) "interop { includeHilt() }" else ""}
         }

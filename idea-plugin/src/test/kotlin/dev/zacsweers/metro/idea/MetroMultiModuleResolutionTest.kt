@@ -684,6 +684,15 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
   }
 
   fun testContributedInterfacesProvideInheritedRootsAcrossModules() {
+    assertContributedInterfacesProvideInheritedRootsAcrossModules()
+  }
+
+  fun testContributedInterfacesProvideInheritedRootsWithJvmIrHintsEnabled() {
+    fixture.project.setMetroOptions("generate-jvm-contribution-hints-in-ir" to "true")
+    assertContributedInterfacesProvideInheritedRootsAcrossModules()
+  }
+
+  private fun assertContributedInterfacesProvideInheritedRootsAcrossModules() {
     val apiFile =
       fixture.addFileToProject(
         "library/repro/api/GraphApi.kt",
