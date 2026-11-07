@@ -20,6 +20,7 @@ import dev.zacsweers.metro.compiler.ir.stubExpressionBody
 import dev.zacsweers.metro.compiler.ir.trackClassLookup
 import dev.zacsweers.metro.compiler.joinSimpleNames
 import dev.zacsweers.metro.compiler.symbols.Symbols
+import dev.zacsweers.metro.compiler.truncate
 import kotlin.io.path.Path
 import kotlin.io.path.absolutePathString
 import org.jetbrains.kotlin.backend.common.extensions.IrGeneratedDeclarationsRegistrar
@@ -107,7 +108,28 @@ internal class HintGenerator(context: IrMetroContext, val moduleFragment: IrModu
           }
         }
 
-    val fileName = hintFileName(sourceClass.classIdOrFail, hintName)
+    val legacyFileName = hintFileName(sourceClass.classIdOrFail, hintName)
+    val fileName =
+      if (sourceOwnedJvmHint) {
+        // Preserve nested-class boundaries in the identity even when the readable name flattens
+        // them.
+        val identity =
+          "jvm-contribution-hint:${sourceClass.classIdOrFail.asString()}#${hintName.asString()}"
+        val facade =
+          ClassId(
+              Symbols.FqNames.metroHintsPackage,
+              Name.identifier(legacyFileName.removeSuffix(".kt")),
+            )
+            .truncate(
+              maxLength = options.maxGeneratedClassNameLength,
+              reservedNestedBytes = 2,
+              hashSource = identity,
+              forceHash = true,
+            )
+        "${facade.shortClassName.asString()}.kt"
+      } else {
+        legacyFileName
+      }
     val firFile = buildFile {
       val metadataSource = metadataSourceClass.metadata as? FirMetadataSource.Class
       if (metadataSource == null) {

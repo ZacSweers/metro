@@ -283,19 +283,101 @@ class JvmContributionHintICTests(private val irHints: Boolean) :
     project.writeContribution("Second.kt", "Second", "second")
     project.compileKotlin(":compileKotlin", false, "-PirHints=${!irHints}")
     assertThat(project.invokeMain<String>(target = null)).isEqualTo("first,second:")
-    project.compileAndCheck("first,second:")
+    project.compileAndCheck("first,second:", expectIncremental = false)
     project.libSource("First.kt").delete()
     project.compileAndCheck("second:")
     project.compileAndCheck("second:", clean = true)
   }
 
-  private fun GradleProject.compileAndCheck(expected: String, clean: Boolean = false): BuildResult {
+  @Test
+  fun flattenedNestedNamesKeepIndependentHintsAcrossRemovalAndRestoration() {
+    val project = ContributionsProject().gradleProject
+    project.writeContribution("Flat.kt", "OuterNested", "flat")
+    val nested = project.libSource("Nested.kt")
+    val source =
+      """
+      package test
+      import dev.zacsweers.metro.*
+      class Outer {
+        @Inject @ContributesIntoSet(AppScope::class)
+        class Nested : Value { override val text = "nested" }
+      }
+      """
+        .trimIndent()
+    nested.writeText(source)
+    project.compileAndCheck("first,flat,nested:")
+    nested.delete()
+    project.compileAndCheck("first,flat:")
+    nested.writeText(source)
+    project.compileAndCheck("first,flat,nested:")
+    project.compileAndCheck("first,flat,nested:", clean = true)
+  }
+
+  @Test
+  fun mapKeyAndQualifierChangesUpdateExistingDownstreamMaps() {
+    val project = ContributionsProject().gradleProject
+    val contribution = project.libSource("Mapped.kt")
+    val source =
+      """
+      package test
+      import dev.zacsweers.metro.*
+      @MapKey annotation class EntryKey(val value: String)
+      @Qualifier annotation class Qualified
+      @Inject @EntryKey("before") @ContributesIntoMap(AppScope::class)
+      class Mapped : Value { override val text = "mapped" }
+      """
+        .trimIndent()
+    contribution.writeText(source)
+    project.rootDir
+      .resolve("src/main/kotlin/test/Main.kt")
+      .writeText(
+        """
+        package test
+        import dev.zacsweers.metro.*
+        @DependencyGraph(AppScope::class) interface AppGraph {
+          @Multibinds(allowEmpty = true) val values: Map<String, Value>
+          @Qualified @Multibinds(allowEmpty = true) val qualified: Map<String, Value>
+        }
+        fun main(): String {
+          val graph = createGraph<AppGraph>()
+          return graph.values.keys.sorted().joinToString() + ":" + graph.qualified.keys.sorted().joinToString()
+        }
+        """
+          .trimIndent(),
+      )
+    project.compileAndCheck("before:")
+    contribution.writeText(source.replace("before", "after"))
+    project.compileAndCheck("after:")
+    contribution.writeText(
+      source.replace("before", "after").replace("@Inject", "@Qualified @Inject"),
+    )
+    project.compileAndCheck(":after")
+    contribution.writeText(source)
+    project.compileAndCheck("before:")
+    project.compileAndCheck("before:", clean = true)
+  }
+
+  private fun GradleProject.compileAndCheck(
+    expected: String,
+    clean: Boolean = false,
+    expectIncremental: Boolean = true,
+  ): BuildResult {
+    val reportsBefore = buildReports()
+    val incrementalRound = expectIncremental && !clean && reportsBefore.isNotEmpty()
     val result =
       if (clean) {
         compileKotlin("clean", false, ":compileKotlin", "-PirHints=$irHints")
       } else {
         compileKotlin(":compileKotlin", false, "-PirHints=$irHints")
       }
+    if (incrementalRound) {
+      val reports = buildReports() - reportsBefore
+      assertThat(reports).isNotEmpty()
+      for (report in reports) {
+        assertThat(report.readText())
+          .doesNotContain("Non-incremental compilation will be performed")
+      }
+    }
     assertThat(invokeMain<String>(target = null)).isEqualTo(expected)
     return result
   }
