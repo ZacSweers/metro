@@ -43,7 +43,7 @@ import org.jetbrains.kotlin.platform.jvm.isJvm
  * both scoped @Inject classes and classes with contributing annotations. See [HintGenerator] for
  * more details about hint specifics.
  */
-// Top-level provider hints continue to be generated in FIR.
+// This transformer does not generate hints for top-level providers.
 @Inject
 @SingleIn(IrScope::class)
 internal class ContributionHintIrTransformer(
