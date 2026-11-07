@@ -10,7 +10,6 @@ import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.constructType
-import dev.zacsweers.metro.compiler.fir.isCli
 import dev.zacsweers.metro.compiler.fir.markAsDeprecatedHidden
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
@@ -58,13 +57,12 @@ internal class ContributionHintFirGenerator(
 ) : FirDeclarationGenerationExtension(session), CompatContext by compatContext {
 
   private fun contributedClassSymbols(): List<FirClassSymbol<*>> {
-    val nativeHintsInIr =
-      session.isCli() &&
-        session.metroFirBuiltIns.options.useJvmIrContributionHints(
-          session.moduleData.platform,
-          session.languageVersionSettings,
-        )
-    if (nativeHintsInIr) {
+    val metroHintsInIr =
+      session.metroFirBuiltIns.options.useJvmIrContributionHints(
+        session.moduleData.platform,
+        session.languageVersionSettings,
+      )
+    if (metroHintsInIr) {
       return emptyList()
     }
 
