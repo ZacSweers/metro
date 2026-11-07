@@ -436,10 +436,18 @@ internal class FileShardBuilder(
   private fun KaSession.graphOwnerDependency(target: KtDeclaration): KaContextualTypeKey? {
     val callable = target as? KtCallableDeclaration ?: return null
     val container = callable.containingClassOrObject ?: return null
-    if (container is KtObjectDeclaration) return null
+    if (container is KtObjectDeclaration) {
+      return null
+    }
     val symbol = container.symbol as? KaNamedClassSymbol ?: return null
     val graphAnnotations = options.dependencyGraphAnnotations + options.graphExtensionAnnotations
-    if (!symbol.hasAnyAnnotation(graphAnnotations)) return null
+    if (!symbol.hasAnyAnnotation(graphAnnotations)) {
+      return null
+    }
+    val callableSymbol = callable.symbol as? KaCallableSymbol ?: return null
+    if (isStaticMember(callableSymbol)) {
+      return null
+    }
     return typeKey(symbol.defaultType, qualifier = null).canonicalContextKey()
   }
 
