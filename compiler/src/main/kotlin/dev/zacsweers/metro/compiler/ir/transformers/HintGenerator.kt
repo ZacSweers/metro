@@ -110,9 +110,11 @@ internal class HintGenerator(context: IrMetroContext, val moduleFragment: IrModu
 
     val fileName =
       if (sourceOwnedJvmHint) {
-        // Keep the full digest so truncation and Java hash collisions cannot merge hint files.
+        val classIdString = sourceClass.classIdOrFail.asString()
+        // Backtick names can contain separators, so length-prefix the class ID.
         val identity =
-          "jvm-contribution-hint:${sourceClass.classIdOrFail.asString()}#${hintName.asString()}"
+          "jvm-contribution-hint:${classIdString.length}:$classIdString${hintName.asString()}"
+        // Keep the full digest so truncation and Java hash collisions cannot merge hint files.
         // The 71-byte JVM facade fits the minimum supported generated-class name limit (96).
         "Hint_${identity.encodeUtf8().sha256().hex()}.kt"
       } else {

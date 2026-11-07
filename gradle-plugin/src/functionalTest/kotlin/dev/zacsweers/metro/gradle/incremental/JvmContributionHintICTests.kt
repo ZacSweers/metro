@@ -398,6 +398,55 @@ class JvmContributionHintICTests(private val irHints: Boolean) :
   }
 
   @Test
+  fun separatorsInClassAndScopeNamesKeepIndependentHintsAcrossRemovalAndRestoration() {
+    val project = ContributionsProject().gradleProject
+    project.libSource("Scopes.kt").writeText("package test\nclass S2\nclass `S1#test_S2`\n")
+    val first = project.libSource("DelimitedFirst.kt")
+    val original =
+      """
+      package test
+      import dev.zacsweers.metro.*
+      @ContributesTo(S2::class)
+      interface `A#test_S1` { val first: String get() = "first" }
+      """
+        .trimIndent()
+    first.writeText(original)
+    project
+      .libSource("DelimitedSecond.kt")
+      .writeText(
+        """
+        package test
+        import dev.zacsweers.metro.*
+        @ContributesTo(`S1#test_S2`::class)
+        interface A { val second: String get() = "second" }
+        """
+          .trimIndent(),
+      )
+    project.rootDir
+      .resolve("src/main/kotlin/test/Main.kt")
+      .writeText(
+        """
+        package test
+        import dev.zacsweers.metro.*
+        @DependencyGraph(S2::class) interface Graph1
+        @DependencyGraph(`S1#test_S2`::class) interface Graph2
+        fun main(): String {
+          val graph = createGraph<Graph1>()
+          val first = graph.javaClass.methods.singleOrNull { it.name == "getFirst" }?.invoke(graph) ?: ""
+          return listOf(first, createGraph<Graph2>().second).joinToString(":")
+        }
+        """
+          .trimIndent(),
+      )
+    project.compileAndCheck("first:second", clean = true)
+    first.delete()
+    project.compileAndCheck(":second")
+    first.writeText(original)
+    project.compileAndCheck("first:second")
+    project.compileAndCheck("first:second", clean = true)
+  }
+
+  @Test
   fun mapKeyAndQualifierChangesUpdateExistingDownstreamMaps() {
     val project = ContributionsProject().gradleProject
     val contribution = project.libSource("Mapped.kt")
