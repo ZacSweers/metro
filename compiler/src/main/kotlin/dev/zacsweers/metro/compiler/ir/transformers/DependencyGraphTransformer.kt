@@ -259,8 +259,15 @@ internal class DependencyGraphTransformer(
       for (graphProperty in matchingProperties) {
         val graphGetter = graphProperty.getter ?: continue
         if (!graphGetter.hasSameParameterSignature(contributionGetter)) {
-          // A getter without an extension receiver can't override an extension getter with the same
-          // name.
+          // Matching properties by name alone can add an invalid overriddenSymbols link between
+          // getters with different signatures.
+          //
+          // Example:
+          // `val spaces` and `val Database.spaces` have valid overloads `getSpaces()` and
+          // `getSpaces(Database)`. The Database extension receiver becomes an extra JVM parameter.
+          //
+          // Linking these getters as overrides corrupts the IR and can make the JVM backend emit
+          // `getSpaces(Database)` twice.
           // https://github.com/ZacSweers/metro/issues/3082
           continue
         }
