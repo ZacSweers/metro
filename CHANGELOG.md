@@ -12,6 +12,7 @@ Changelog
 
 - **[FIR/IR]** Fix contributed `@Inject` classes skipping declared and inherited member injection when `generateContributionProviders` is enabled.
 - **[FIR/IR]** Fix dependency graphs with a user-declared `companion object` failing to compile or to call their generated creator, such as `AppGraph.create()`. User-declared `factory(...)` overloads in these companions now work. A user-declared no-arg `factory()` that clashes with the generated one now reports an error.
+- **[IR]** Fix dynamic graphs missing `internal` contributions from friend compilations (such as `main` contributions used by tests).
 - **[IR]** Better reuse provider instances across repeated graph accessor and unscoped consumer requests. 
   - Converted provider accessors and constructor parameters reuse their wrappers (i.e. different types of `Provider` types). Canonical providers used only to initialize one cached conversion can be inlined.
   - Repeated requests for multibinding providers reuse their providers. A `Provider<Map<K, Provider<V>>>` returns the same map of entry providers on each invocation, like Dagger.

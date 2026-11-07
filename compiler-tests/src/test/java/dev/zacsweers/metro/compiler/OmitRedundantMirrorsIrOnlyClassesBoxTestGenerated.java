@@ -1964,6 +1964,12 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
       }
 
       @Test
+      @TestMetadata("InternalContributionsFromFriendModule.kt")
+      public void testInternalContributionsFromFriendModule() {
+        run("InternalContributionsFromFriendModule.kt");
+      }
+
+      @Test
       @TestMetadata("MultiModuleDynamicGraph.kt")
       public void testMultiModuleDynamicGraph() {
         run("MultiModuleDynamicGraph.kt");
