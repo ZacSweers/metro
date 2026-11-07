@@ -21,6 +21,7 @@ import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.addMetadataVisibleHiddenCompanionObject
+import dev.zacsweers.metro.compiler.ir.addStaticAnnotations
 import dev.zacsweers.metro.compiler.ir.allSupertypesSequence
 import dev.zacsweers.metro.compiler.ir.annotationClass
 import dev.zacsweers.metro.compiler.ir.annotationsCompat
@@ -96,7 +97,6 @@ import org.jetbrains.kotlin.ir.types.typeWithParameters
 import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
-import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.copyTypeParametersFrom
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.defaultType
@@ -104,6 +104,7 @@ import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isInterface
+import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.nonDispatchParameters
@@ -227,7 +228,9 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
               } else {
                 params.callableId.callableName
               }
-            creatorsClass.requireSimpleFunction("inject${name.capitalizeUS().asString()}").owner
+            val helperName = "inject${name.capitalizeUS().asString()}"
+            creatorsClass.injectHelperOrNull(helperName)
+              ?: reportCompilerBug("No $helperName() helper in ${creatorsClass.kotlinFqName}")
           }
         } else {
           emptyMap()
@@ -301,10 +304,18 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
           }
       }
 
-    val companionObject = injectorClass.companionObject()!!
+    if (isExternal) {
+      // Binary injectors already have their helpers.
+      return trace("computeMemberInjectClass") {
+          computeMemberInjectClass(injectorClass, isDagger = false)
+        }
+        .also { generatedInjectors[injectedClassId] = Optional.of(it) }
+    }
+
+    val helperOwner = injectorClass.factoryHelperDeclarationContainer()
     if (
       options.generateClassesInIr &&
-        companionObject.functions.none { it.origin == Origins.MembersInjectorStaticInjectFunction }
+        helperOwner.functions.none { it.origin == Origins.MembersInjectorStaticInjectFunction }
     ) {
       val directMemberInjectParameters =
         declaration.getOrComputeMemberInjectParameters()[injectedClassId].orEmpty()
@@ -315,10 +326,12 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
           } else {
             params.callableId.callableName
           }
-        companionObject
+        helperOwner
           .addFunction(
             "inject${name.capitalizeUS().asString()}",
             irBuiltIns.unitType,
+            // Helpers on a class are companion-block members, which have no receiver.
+            isStatic = !helperOwner.isObject,
             origin = Origins.MembersInjectorStaticInjectFunction,
           )
           .apply {
@@ -341,6 +354,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
               stubDefaults = false,
               typeRemapper = typeRemapper::remapType,
             )
+            addStaticAnnotations(this)
             metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(this)
           }
       }
@@ -350,10 +364,6 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
       trace("computeMemberInjectClass") {
         computeMemberInjectClass(injectorClass, isDagger = false)
       }
-
-    if (isExternal) {
-      return memberInjectClass.also { generatedInjectors[injectedClassId] = Optional.of(it) }
-    }
 
     checkNotLocked()
 
@@ -406,10 +416,10 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
       // MembersInjector params are synthetic, so there are no source defaults to patch.
       if (
         options.generateClassesInIr &&
-          companionObject.functions.none { it.origin == Origins.FactoryCreateFunction }
+          helperOwner.functions.none { it.origin == Origins.FactoryCreateFunction }
       ) {
         generateStaticCreateFunction(
-          objectClassToGenerateIn = companionObject,
+          objectClassToGenerateIn = helperOwner,
           factoryClass = injectorClass,
           sourceTypeParameters = declaration,
           returnTypeProvider = { typeParams ->
@@ -425,7 +435,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
         )
       } else {
         transformStaticCreateFunction(
-          objectClassToGenerateIn = companionObject,
+          objectClassToGenerateIn = helperOwner,
           factoryClass = injectorClass,
           targetConstructor = ctor.symbol,
           parameters = createParameters,
@@ -531,6 +541,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
       }
     }
 
+    generateCompatibilityBridges(injectorClass)
     injectorClass.dumpToMetroLog()
 
     // Write metadata to indicate Metro generated this injector
@@ -588,7 +599,9 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
           )
           metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(this)
         }
-        addMetadataVisibleHiddenCompanionObject()
+        if (!options.companionMode.usesStaticHelpers) {
+          addMetadataVisibleHiddenCompanionObject()
+        }
       }
   }
 
@@ -763,6 +776,17 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
       }
   }
 
+  /**
+   * Finds an `inject{Name}()` helper. Companion-block helpers live on the injector next to its
+   * `injectMembers()` override, so a member named `members` gets a helper with the same name.
+   * Dagger's static helpers sit next to that override too.
+   */
+  private fun IrClass.injectHelperOrNull(name: String): IrSimpleFunction? {
+    return functions.firstOrNull { function ->
+      function.name.asString() == name && function.overriddenSymbols.isEmpty()
+    }
+  }
+
   private fun deriveParametersFromInjectFunctionNames(
     clazz: IrClass,
     injectFunctionNames: List<String>,
@@ -773,10 +797,10 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
     val injectorClass =
       clazz.nestedClasses.singleOrNull { it.name == injectorClassName } ?: return emptyList()
 
-    val companionObject = injectorClass.companionObject() ?: return emptyList()
+    val container = injectorClass.staticIshDeclarationContainerOrNull() ?: return emptyList()
 
     // Try to get create() function to determine the correct parameter order
-    val createFunction = companionObject.requireSimpleFunction(Symbols.StringNames.CREATE).owner
+    val createFunction = container.requireSimpleFunction(Symbols.StringNames.CREATE).owner
 
     val allCreateParams = createFunction.regularParameters
 
@@ -811,12 +835,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
 
     // Extract parameters in the determined order
     return sortedFunctionNames.mapNotNull { functionName ->
-      val injectFunction =
-        companionObject.declarations.filterIsInstance<IrSimpleFunction>().find {
-          it.name.asString() == functionName
-        }
-
-      injectFunction?.let { function ->
+      container.injectHelperOrNull(functionName)?.let { function ->
         extractParametersFromInjectFunction(
           clazz = clazz,
           nameAllocator = nameAllocator,

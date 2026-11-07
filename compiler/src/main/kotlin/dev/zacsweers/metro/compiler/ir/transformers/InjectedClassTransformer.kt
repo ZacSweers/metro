@@ -62,7 +62,6 @@ import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.Optional
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.jvm.optionals.getOrNull
-import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.ir.builders.declarations.addConstructor
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
@@ -85,7 +84,6 @@ import org.jetbrains.kotlin.ir.types.typeWithParameters
 import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
-import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.file
 import org.jetbrains.kotlin.ir.util.functions
@@ -515,7 +513,9 @@ internal class InjectedClassTransformer(
             buildAnnotation(symbol, metroSymbols.assistedMarkerConstructor),
           )
         }
-        addMetadataVisibleHiddenCompanionObject()
+        if (!options.companionMode.usesStaticHelpers) {
+          addMetadataVisibleHiddenCompanionObject()
+        }
       }
   }
 
@@ -788,14 +788,7 @@ internal class InjectedClassTransformer(
     isAssistedInject: Boolean,
     useCreatorSignatureCarrier: Boolean,
   ): IrSimpleFunction {
-    // If this is an object, we can generate directly into this object
-    val isObject = factoryCls.kind == ClassKind.OBJECT
-    val classToGenerateCreatorsIn =
-      if (isObject) {
-        factoryCls
-      } else {
-        factoryCls.companionObject()!!
-      }
+    val classToGenerateCreatorsIn = factoryCls.factoryHelperDeclarationContainer()
 
     val mergedParameters = allParameters.reduce { current, next ->
       current.mergeValueParametersWithUntyped(next)
@@ -845,6 +838,7 @@ internal class InjectedClassTransformer(
             }
           }
       }
+    generateCompatibilityBridges(factoryCls)
     return newInstanceFunction
   }
 }
