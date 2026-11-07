@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
+import dev.zacsweers.metro.compiler.CompanionMode
 import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.asName
@@ -14,13 +15,17 @@ import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.builders.declarations.buildClass
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
+import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.addChild
+import org.jetbrains.kotlin.ir.util.addFakeOverrides
 import org.jetbrains.kotlin.ir.util.copyTypeParametersFrom
 import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
+import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.nestedClasses
+import org.jetbrains.kotlin.ir.util.nonDispatchParameters
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.SpecialNames
@@ -78,7 +83,7 @@ internal fun IrClass.createMetadataVisibleHiddenNestedClass(
 
 context(context: IrMetroContext)
 internal fun IrClass.getOrCreateGraphImplClassShell(): IrClass {
-  nestedClassOrNull(Origins.GraphImplClassDeclaration)?.let {
+  metroGraphOrNull?.let {
     return it
   }
 
@@ -112,7 +117,13 @@ internal fun IrClass.getOrCreateGraphImplClassShell(): IrClass {
       context.metadataDeclarationRegistrarCompat.registerClassAsMetadataVisible(this)
       if (primaryConstructor == null) {
         addConstructor {
-          visibility = DescriptorVisibilities.PRIVATE
+          // Cross-module creation intrinsics need a callable constructor in NONE mode.
+          visibility =
+            if (context.options.companionMode == CompanionMode.NONE) {
+              DescriptorVisibilities.PUBLIC
+            } else {
+              DescriptorVisibilities.PRIVATE
+            }
           isPrimary = true
           origin = Origins.Default
         }
@@ -155,4 +166,32 @@ internal fun IrClass.addMetadataVisibleDefaultConstructor() {
     visibility = DescriptorVisibilities.PRIVATE
     context.metadataDeclarationRegistrarCompat.registerConstructorAsMetadataVisible(this)
   }
+}
+
+/** Creates the hidden factory header before intrinsics or graph generation need its instance. */
+context(context: IrMetroContext)
+internal fun IrClass.getOrCreateGraphFactoryImplClassShell(): IrClass {
+  val factoryClass = this
+  return getOrCreateMetadataVisibleHiddenNestedClass(
+      name = Symbols.Names.Impl,
+      origin = Origins.GraphFactoryImplClassDeclaration,
+      kind = ClassKind.OBJECT,
+      superTypesProvider = { listOf(factoryClass.symbol.defaultType) },
+      copyTypeParameters = false,
+    )
+    .apply {
+      addMetroImplMarkerAnnotation()
+      addMetadataVisibleDefaultConstructor()
+      addFakeOverrides(context.irTypeSystemContext)
+    }
+}
+
+/**
+ * Finds this companion's `factory()` getter for [factoryClass]. User-defined getters count too. A
+ * `factory` function with parameters or another return type is unrelated.
+ */
+internal fun IrClass.graphFactoryGetterOrNull(factoryClass: IrClass): IrSimpleFunction? {
+  return functions
+    .filter { it.name == Symbols.Names.factory && it.nonDispatchParameters.isEmpty() }
+    .singleOrNull { it.returnType.rawTypeOrNull() == factoryClass }
 }
