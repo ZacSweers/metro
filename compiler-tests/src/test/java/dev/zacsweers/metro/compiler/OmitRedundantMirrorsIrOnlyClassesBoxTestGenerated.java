@@ -2050,6 +2050,18 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
       }
 
       @Test
+      @TestMetadata("ConvertedProviderClassFileNameLength.kt")
+      public void testConvertedProviderClassFileNameLength() {
+        run("ConvertedProviderClassFileNameLength.kt");
+      }
+
+      @Test
+      @TestMetadata("ConvertedProviderClassFileNameLengthControl.kt")
+      public void testConvertedProviderClassFileNameLengthControl() {
+        run("ConvertedProviderClassFileNameLengthControl.kt");
+      }
+
+      @Test
       @TestMetadata("DefaultDependenciesPreserveChildBindings.kt")
       public void testDefaultDependenciesPreserveChildBindings() {
         run("DefaultDependenciesPreserveChildBindings.kt");
