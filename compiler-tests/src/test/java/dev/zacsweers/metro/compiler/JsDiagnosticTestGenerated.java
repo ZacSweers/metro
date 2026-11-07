@@ -630,6 +630,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
       run("UsefulHintsForMissingImplDeps.kt");
     }
 
+    @Test
+    @TestMetadata("UserDeclaredGraphCompanionFactoryConflict.kt")
+    public void testUserDeclaredGraphCompanionFactoryConflict() {
+      run("UserDeclaredGraphCompanionFactoryConflict.kt");
+    }
+
     @Nested
     @TestMetadata("compiler-tests/src/test/data/diagnostic/dependencygraph/dynamic")
     @TestDataPath("$PROJECT_ROOT")

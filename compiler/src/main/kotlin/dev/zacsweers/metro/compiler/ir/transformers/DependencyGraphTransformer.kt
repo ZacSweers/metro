@@ -69,6 +69,7 @@ import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.render
 import dev.zacsweers.metro.compiler.ir.reportCompat
+import dev.zacsweers.metro.compiler.ir.requireGraphFactoryAccessor
 import dev.zacsweers.metro.compiler.ir.requireNestedClass
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.resolveOverriddenTypeIfAny
@@ -1035,7 +1036,7 @@ internal class DependencyGraphTransformer(
       } else {
         companionObject.apply {
           // Implement a factory() function that returns the factory impl instance
-          requireSimpleFunction(Symbols.StringNames.FACTORY).owner.apply {
+          requireGraphFactoryAccessor().apply {
             if (origin == Origins.MetroGraphFactoryCompanionGetter) {
               if (isFakeOverride) {
                 finalizeFakeOverride(companionObject.thisReceiverOrFail)

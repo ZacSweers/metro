@@ -14,6 +14,7 @@ import dev.zacsweers.metro.compiler.fir.callableSymbols
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
+import dev.zacsweers.metro.compiler.fir.implements
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isEffectivelyOpen
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
@@ -32,6 +33,7 @@ import dev.zacsweers.metro.compiler.fir.validateInjectionSiteType
 import dev.zacsweers.metro.compiler.graph.SuspendDiagnosticMessages
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.metroAnnotations
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.trace
 import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.descriptors.Modality
@@ -43,10 +45,12 @@ import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.directOverriddenSymbolsSafe
+import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.constructors
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.declarations.utils.classId
+import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
 import org.jetbrains.kotlin.fir.declarations.utils.isOverride
 import org.jetbrains.kotlin.fir.declarations.utils.isSuspend
 import org.jetbrains.kotlin.fir.dispatchReceiverClassLookupTagOrNull
@@ -69,7 +73,6 @@ import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.StandardClassIds
 
 // TODO
-//  - if there's a factory(): Graph in the companion object, error because we'll generate it
 //  - if graph is scoped, check that accessors have matching scopes
 internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) {
 
@@ -155,6 +158,10 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
         )
         return
       }
+    }
+
+    if (graphAnnotationClassId in classIds.dependencyGraphAnnotations) {
+      checkCompanionFactoryAccessor(declaration)
     }
 
     val aggregationScopes = dependencyGraphAnno.allScopeClassIds(session)
@@ -532,6 +539,42 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
     }
 
     session.trace({ "Walk callables" }) { walkCallables() }
+  }
+
+  /**
+   * Reports a no-arg `factory()` function declared in a graph's companion object when Metro
+   * generates one there.
+   *
+   * Metro generates `factory()` when the graph factory is an abstract class or the companion
+   * doesn't implement it. A user declaration with the same signature would clash with it. Other
+   * `factory` overloads are fine.
+   */
+  @OptIn(DirectDeclarationsAccess::class)
+  context(context: CheckerContext, reporter: DiagnosticReporter)
+  private fun checkCompanionFactoryAccessor(declaration: FirClass) {
+    val session = context.session
+    val nestedClasses = declaration.symbol.nestedClasses()
+    val companion = nestedClasses.firstOrNull { it.isCompanion } ?: return
+    val creator =
+      nestedClasses.firstOrNull {
+        it.isAnnotatedWithAny(session, session.classIds.dependencyGraphFactoryAnnotations)
+      } ?: return
+    if (companion.implements(creator.classId, session)) {
+      return
+    }
+
+    for (function in companion.declarationSymbols.filterIsInstance<FirNamedFunctionSymbol>()) {
+      val isFactoryName = function.name == Symbols.Names.factory
+      val hasNoInputs = function.valueParameterSymbols.isEmpty()
+      val hasNoReceiver = function.receiverParameterSymbol == null
+      if (isFactoryName && hasNoInputs && hasNoReceiver) {
+        reporter.reportOn(
+          function.source,
+          MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
+          "Metro generates a `factory()` function in this companion object that returns `${creator.classId.shortClassName}`. Remove this function or give it parameters.",
+        )
+      }
+    }
   }
 
   context(context: CheckerContext, reporter: DiagnosticReporter)
