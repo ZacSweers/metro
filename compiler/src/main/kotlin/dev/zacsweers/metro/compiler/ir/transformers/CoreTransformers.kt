@@ -17,6 +17,7 @@ import dev.zacsweers.metro.compiler.ir.nestedClassOrNull
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.trace
+import dev.zacsweers.metro.compiler.useJvmIrContributionHints
 import org.jetbrains.kotlin.backend.common.IrElementTransformerVoidWithContext
 import org.jetbrains.kotlin.backend.common.ScopeWithIr
 import org.jetbrains.kotlin.descriptors.ClassKind
@@ -132,7 +133,13 @@ internal class CoreTransformers(
     // TODO can we eagerly check for known metro types and skip?
     // Native/Wasm/JS compilation hint gen can't be done in IR
     // https://youtrack.jetbrains.com/issue/KT-75865
-    val generateHints = options.generateContributionHints && !options.generateContributionHintsInFir
+    val legacyIrHints = options.generateContributionHints && !options.generateContributionHintsInFir
+    val nativeJvmIrHints =
+      options.useJvmIrContributionHints(
+        pluginContext.platform,
+        pluginContext.languageVersionSettings,
+      )
+    val generateHints = legacyIrHints || nativeJvmIrHints
     if (generateHints) {
       trace("ContributionHint") { contributionHintIrTransformer.value.visitClass(declaration) }
     }

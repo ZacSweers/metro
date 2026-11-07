@@ -703,6 +703,18 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
     }
 
     @Test
+    @TestMetadata("JvmIrHintsForGeneratedGraphFactory.kt")
+    public void testJvmIrHintsForGeneratedGraphFactory() {
+      run("JvmIrHintsForGeneratedGraphFactory.kt");
+    }
+
+    @Test
+    @TestMetadata("JvmIrHintsWithExternalContributions.kt")
+    public void testJvmIrHintsWithExternalContributions() {
+      run("JvmIrHintsWithExternalContributions.kt");
+    }
+
+    @Test
     @TestMetadata("MetroFirExtensionSample.kt")
     public void testMetroFirExtensionSample() {
       run("MetroFirExtensionSample.kt");

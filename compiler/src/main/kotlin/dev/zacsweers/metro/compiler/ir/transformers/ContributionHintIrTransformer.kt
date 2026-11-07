@@ -10,8 +10,6 @@ import dev.zacsweers.metro.compiler.api.fir.MetroContributions
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.annotationsIn
-import dev.zacsweers.metro.compiler.ir.buildAnnotation
-import dev.zacsweers.metro.compiler.ir.builtinsFinderCompat
 import dev.zacsweers.metro.compiler.ir.linkDeclarationsInCompilation
 import dev.zacsweers.metro.compiler.ir.lookupClass
 import dev.zacsweers.metro.compiler.ir.originClassId
@@ -22,11 +20,13 @@ import dev.zacsweers.metro.compiler.ir.trackClassLookup
 import dev.zacsweers.metro.compiler.ir.usesContributionProviderPath
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.scopeHintFunctionName
+import dev.zacsweers.metro.compiler.useJvmIrContributionHints
 import kotlin.io.path.Path
 import kotlin.io.path.absolutePathString
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
-import org.jetbrains.kotlin.ir.builders.irString
+import org.jetbrains.kotlin.fir.backend.FirMetadataSource
 import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.types.classOrFail
 import org.jetbrains.kotlin.ir.util.NaiveSourceBasedFileEntryImpl
@@ -34,10 +34,8 @@ import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.file
 import org.jetbrains.kotlin.ir.util.fileEntry
 import org.jetbrains.kotlin.ir.util.nestedClasses
-import org.jetbrains.kotlin.ir.util.primaryConstructor
-import org.jetbrains.kotlin.load.kotlin.PackagePartClassUtils
+import org.jetbrains.kotlin.ir.util.parentDeclarationsWithSelf
 import org.jetbrains.kotlin.name.ClassId
-import org.jetbrains.kotlin.name.JvmStandardClassIds
 import org.jetbrains.kotlin.platform.jvm.isJvm
 
 /**
@@ -45,14 +43,26 @@ import org.jetbrains.kotlin.platform.jvm.isJvm
  * both scoped @Inject classes and classes with contributing annotations. See [HintGenerator] for
  * more details about hint specifics.
  */
-// NOTE this doesn't have logic for generating hints for top-level providers since this IR impl will
-// go away
+// This transformer does not generate hints for top-level providers.
 @Inject
 @SingleIn(IrScope::class)
 internal class ContributionHintIrTransformer(
   context: IrMetroContext,
   private val hintGenerator: HintGenerator,
 ) : IrMetroContext by context {
+
+  private val sourceOwnedJvmHints =
+    options.useJvmIrContributionHints(pluginContext.platform, pluginContext.languageVersionSettings)
+
+  // External providers may advertise a contribution found by this visitor too. Its FIR hint wins.
+  private val firHintTargets by lazy {
+    hintGenerator.moduleFragment.files
+      .flatMap { it.declarations.filterIsInstance<IrSimpleFunction>() }
+      .filter { it.origin == Origins.ContributionHint }
+      .mapTo(mutableSetOf()) {
+        it.regularParameters.single().type.classOrFail.owner.classIdOrFail to it.name
+      }
+  }
 
   // Only executed if generateContributionHintsInFir is enabled
   // Implements the FIR-generated declarations with empty bodies
@@ -97,24 +107,10 @@ internal class ContributionHintIrTransformer(
         sourcePath.parent.resolve(hintFileName).absolutePathString()
       }
 
-    file.fileEntry = NaiveSourceBasedFileEntryImpl(hintPath)
     if (isJvm) {
-      file.clearTopLevelPluginFileMarkerCompat()
-      val jvmNameConstructor =
-        builtinsFinderCompat()
-          .findClass(ClassId.topLevel(JvmStandardClassIds.JVM_NAME))!!
-          .owner
-          .primaryConstructor!!
-
-      val jvmNameAnnotation =
-        with(pluginContext) {
-          buildAnnotation(hint.symbol, jvmNameConstructor.symbol) { annotation ->
-            annotation.arguments[0] =
-              irString(PackagePartClassUtils.getFilePartShortName(hintFileName))
-          }
-        }
-      file.addAnnotationCompat(jvmNameAnnotation)
+      hintGenerator.prepareJvmHintFile(file, hintPath, hintFileName)
     } else {
+      file.fileEntry = NaiveSourceBasedFileEntryImpl(hintPath)
       trackClassLookup(hint, sourceClass)
       linkDeclarationsInCompilation(callingFile = file, sourceClass)
     }
@@ -173,6 +169,10 @@ internal class ContributionHintIrTransformer(
       declaration.usesContributionProviderPath(options, metroSymbols.classIds)
 
     for (contributionScope in contributionScopes) {
+      val hintName = contributionScope.scopeHintFunctionName()
+      if (sourceOwnedJvmHints && (declaration.classIdOrFail to hintName) in firHintTargets) {
+        continue
+      }
       // Contribution-provider mode advertises the generated binding container, not the original
       // contributing class. The original class is still passed separately for hint file metadata.
       val sourceClass =
@@ -183,8 +183,17 @@ internal class ContributionHintIrTransformer(
         }
       hintGenerator.generateHint(
         sourceClass = sourceClass,
-        hintName = contributionScope.scopeHintFunctionName(),
-        metadataSourceClass = declaration,
+        hintName = hintName,
+        metadataSourceClass =
+          if (sourceOwnedJvmHints) {
+            declaration.parentDeclarationsWithSelf.filterIsInstance<IrClass>().firstOrNull {
+              it.origin !is IrDeclarationOrigin.GeneratedByPlugin &&
+                it.metadata is FirMetadataSource.Class
+            } ?: declaration
+          } else {
+            declaration
+          },
+        sourceOwnedJvmHint = sourceOwnedJvmHints,
       )
     }
   }

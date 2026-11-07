@@ -139,6 +139,8 @@ abstract class MetroCompilerTest {
                 entry.raw.cliOption,
                 this@toPluginOptions.generateContributionHintsInFir,
               )
+            GENERATE_JVM_CONTRIBUTION_HINTS_IN_IR ->
+              processor.option(entry.raw.cliOption, generateJvmContributionHintsInIr)
             GENERATE_CLASSES_IN_IR -> processor.option(entry.raw.cliOption, generateClassesInIr)
             ENABLE_PRIVATE_PROVIDER_PROPERTIES ->
               processor.option(entry.raw.cliOption, enablePrivateProviderProperties)

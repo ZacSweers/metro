@@ -61,6 +61,7 @@
     "enableTopLevelFunctionInjection": false,
     "generateContributionHints": true,
     "generateContributionHintsInFir": false,
+    "generateJvmContributionHintsInIr": false,
     "generateClassesInIr": false,
     "enablePrivateProviderProperties": false,
     "shrinkUnusedBindings": true,

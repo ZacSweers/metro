@@ -158,6 +158,8 @@ class MetroExtensionRegistrarConfigurator(
           testServices.shouldGenerateContributionHintsInFirForBackend()
 
       generateContributionHintsInFir = shouldGenerateContributionHintsInFir
+      generateJvmContributionHintsInIr =
+        MetroDirectives.GENERATE_JVM_CONTRIBUTION_HINTS_IN_IR in module.directives
 
       module.directives.singleOrZeroValue(MetroDirectives.PUBLIC_SCOPED_PROVIDER_SEVERITY)?.let {
         publicScopedProviderSeverity = it

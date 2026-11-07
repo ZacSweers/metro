@@ -10,6 +10,9 @@ import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrScope
+import dev.zacsweers.metro.compiler.ir.addDeprecatedHiddenAnnotation
+import dev.zacsweers.metro.compiler.ir.buildAnnotation
+import dev.zacsweers.metro.compiler.ir.builtinsFinderCompat
 import dev.zacsweers.metro.compiler.ir.effectiveVisibility
 import dev.zacsweers.metro.compiler.ir.linkDeclarationsInCompilation
 import dev.zacsweers.metro.compiler.ir.reportCompat
@@ -27,7 +30,9 @@ import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.builder.buildFile
 import org.jetbrains.kotlin.ir.builders.declarations.buildFun
 import org.jetbrains.kotlin.ir.builders.declarations.buildValueParameter
+import org.jetbrains.kotlin.ir.builders.irString
 import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.declarations.IrParameterKind
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
@@ -39,7 +44,10 @@ import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.fileEntry
+import org.jetbrains.kotlin.ir.util.primaryConstructor
+import org.jetbrains.kotlin.load.kotlin.PackagePartClassUtils
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.JvmStandardClassIds
 import org.jetbrains.kotlin.name.Name
 
 /**
@@ -76,6 +84,7 @@ internal class HintGenerator(context: IrMetroContext, val moduleFragment: IrModu
     // usable FirMetadataSource. Use the original source class for synthetic file metadata while the
     // hint parameter still points at the generated class that downstream lookups should load.
     metadataSourceClass: IrClass = sourceClass,
+    sourceOwnedJvmHint: Boolean = false,
   ): IrSimpleFunction {
     val function =
       pluginContext.irFactory
@@ -93,6 +102,9 @@ internal class HintGenerator(context: IrMetroContext, val moduleFragment: IrModu
               kind = IrParameterKind.Regular
             }
           body = stubExpressionBody()
+          if (sourceOwnedJvmHint) {
+            addDeprecatedHiddenAnnotation()
+          }
         }
 
     val fileName = hintFileName(sourceClass.classIdOrFail, hintName)
@@ -139,18 +151,46 @@ internal class HintGenerator(context: IrMetroContext, val moduleFragment: IrModu
           moduleFragment.addFile(it)
         }
     hintFile.addChild(function)
+    if (sourceOwnedJvmHint) {
+      val sourcePath = metadataSourceClass.fileEntry.name
+      check(Path(sourcePath).isAbsolute) {
+        "JVM contribution hints require an absolute source path for ${sourceClass.classId}"
+      }
+      prepareJvmHintFile(hintFile, sourcePath, fileName)
+    }
     metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(function)
-    // Link the hint back to the source class so source class changes in IC also mark this hint
-    // https://github.com/ZacSweers/metro/pull/1349
-    trackClassLookup(function, sourceClass)
-    // We do this extra step to cover cases where the scope changes or is removed from the source,
-    // and thus this hint file should ostensibly be recompiled or even removed. This appears to work
-    // for this scenario.
-    // https://github.com/ZacSweers/metro/pull/1637
-    // https://github.com/ZacSweers/metro/issues/1393
-    linkDeclarationsInCompilation(callingFile = hintFile, metadataSourceClass)
+    if (!sourceOwnedJvmHint) {
+      // Legacy synthetic paths need explicit links to invalidate their hints.
+      // https://github.com/ZacSweers/metro/pull/1349
+      trackClassLookup(function, sourceClass)
+      // Scope changes and annotation removal also need to invalidate the previous hint file.
+      // https://github.com/ZacSweers/metro/pull/1637
+      // https://github.com/ZacSweers/metro/issues/1393
+      linkDeclarationsInCompilation(callingFile = hintFile, metadataSourceClass)
+    }
     hintFile.dumpToMetroLog(fileName)
     return function
+  }
+
+  /**
+   * Lets JVM output tracking delete each hint when its originating source changes or disappears.
+   */
+  fun prepareJvmHintFile(file: IrFile, sourcePath: String, hintFileName: String) {
+    file.fileEntry = NaiveSourceBasedFileEntryImpl(sourcePath)
+    file.clearTopLevelPluginFileMarkerCompat()
+    val jvmNameConstructor =
+      builtinsFinderCompat()
+        .findClass(ClassId.topLevel(JvmStandardClassIds.JVM_NAME))!!
+        .owner
+        .primaryConstructor!!
+    val jvmNameAnnotation =
+      with(pluginContext) {
+        buildAnnotation(file.symbol, jvmNameConstructor.symbol) { annotation ->
+          annotation.arguments[0] =
+            irString(PackagePartClassUtils.getFilePartShortName(hintFileName))
+        }
+      }
+    file.addAnnotationCompat(jvmNameAnnotation)
   }
 
   companion object {

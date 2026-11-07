@@ -269,6 +269,22 @@ The cost grows with the number of contributing files in the module you edit. You
 
 Disabling `generateContributionHints` in a module doesn't help if that module also has a graph. Graphs find contributions in their own compilation the same way.
 
+### Experimental JVM contribution hints in IR
+
+Non-multiplatform JVM modules can opt into generating native contribution hints in IR:
+
+```kotlin
+metro {
+  compilerOptions.put("generate-jvm-contribution-hints-in-ir", "true")
+}
+```
+
+This avoids the FIR hint generator's annotation queries for native contributions. Each hint belongs to its original source file so Kotlin can remove its output when the source changes or disappears. External contribution extensions, including Hilt interop, continue to generate hints in FIR.
+
+The option defaults to `false`. It requires IR class generation, which is enabled by default on Kotlin 2.4.20 and later. It keeps the existing hint path for KMP compilations, non-JVM targets, and `generateContributionProviders`. Keep `generateContributionHints` and `generateContributionHintsInFir` enabled.
+
+Graph discovery retains its existing contribution queries. External hint extensions and top-level function injection also retain their annotation queries. The benefit depends on the contribution kinds and which graph files need recompiling. Measure your module's edit patterns before enabling the option broadly. It doesn't change Kotlin's KMP incremental compilation behavior described below.
+
 ### Kotlin Multiplatform
 
 By default, Kotlin's JVM incremental compiler falls back to a full rebuild when a file in a shared source set like `commonMain` needs recompiling ([KT-62686](https://youtrack.jetbrains.com/issue/KT-62686)). Contributing files always need recompiling. So a contribution in `commonMain` turns every incremental JVM build of that module into a full rebuild, including edits that only touch `jvmMain`.
