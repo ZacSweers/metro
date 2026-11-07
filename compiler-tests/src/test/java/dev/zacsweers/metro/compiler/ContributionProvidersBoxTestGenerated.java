@@ -1952,6 +1952,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
       }
 
       @Test
+      @TestMetadata("InternalContributionsFromFriendModule.kt")
+      public void testInternalContributionsFromFriendModule() {
+        run("InternalContributionsFromFriendModule.kt");
+      }
+
+      @Test
       @TestMetadata("MultiModuleDynamicGraph.kt")
       public void testMultiModuleDynamicGraph() {
         run("MultiModuleDynamicGraph.kt");

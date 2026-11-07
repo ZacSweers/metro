@@ -30,6 +30,7 @@ import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
@@ -175,7 +176,9 @@ internal class CreateGraphTransformer(
     val containerExpressions = varargArg.elements.map { it.expectAs<IrExpression>() }
     val containerTypeKeys = containerExpressions.map { IrTypeKey(it.type) }
 
-    val nearestDeclaration = expression.symbol.owner
+    val callingDeclaration =
+      context.currentScopeAccess?.irElement as? IrDeclaration
+        ?: reportCompilerBug("Dynamic graph creation has no containing declaration")
 
     // Generate or retrieve the dynamic graph class
     val dynamicGraph =
@@ -184,7 +187,7 @@ internal class CreateGraphTransformer(
         containerTypeKeys = containerTypeKeys,
         isFactory = isFactory,
         context = context,
-        containingFunction = nearestDeclaration,
+        callingDeclaration = callingDeclaration,
         sourceExpression = expression,
       )
 
