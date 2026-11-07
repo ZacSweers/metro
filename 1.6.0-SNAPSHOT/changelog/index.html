@@ -8802,13 +8802,14 @@
 <li><strong>[IR]</strong> Fix eager reads of included dependency accessors when graph extensions request <code>Provider</code> or <code>Lazy</code> values.</li>
 <li><strong>[IR]</strong> Fix missing graph references in getter-only shards when accessing included dependencies.</li>
 <li><strong>[IR]</strong> Fix graphs creating new providers every time a <code>Map&lt;K, Provider&lt;V&gt;&gt;</code> is requested. The graph now stores one map of entry providers and returns it on every read.</li>
+<li><strong>[IR]</strong> Fix a <code>ClassFormatError</code> when a contributed <code>@Binds</code> extension property or function shares a name with a graph accessor.</li>
 <li><strong>[IR/interop]</strong> Fix an issue with Dagger-processed providers/constructors with default parameters with their generated factory. Previously, Metro would treat the source function&rsquo;s parameter as optional if it had a default value and not reconcile that correctly with Dagger&rsquo;s generated factory (which would not propagate that default since Dagger uses a different mechanism for optional bindings).</li>
 </ul>
 <h3 id="changes">Changes<a class="headerlink" href="#changes" title="Permanent link">&para;</a></h3>
 <ul>
-<li>Test IntelliJ IDEA <code>2026.2.4</code> and <code>2026.3 RC</code>.</li>
-<li>Test Android Studio Rabbit 2 stable.</li>
-<li>Test Android Studio Rabbit 3 canaries (Canary 2).</li>
+<li>Test IntelliJ IDEA <code>2026.2.4</code> and <code>2026.3</code> stable.</li>
+<li>Test Android Studio Rabbit 2 stable and Patch 1.</li>
+<li>Test Android Studio Rabbit 3 canaries (Canary 3).</li>
 </ul>
 <h3 id="contributors">Contributors<a class="headerlink" href="#contributors" title="Permanent link">&para;</a></h3>
 <p>Special thanks to the following contributors for contributing to this release!</p>
