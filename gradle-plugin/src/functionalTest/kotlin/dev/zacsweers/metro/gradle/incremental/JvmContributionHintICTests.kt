@@ -361,6 +361,43 @@ class JvmContributionHintICTests(private val irHints: Boolean) :
   }
 
   @Test
+  fun longSourceClassNamesDoNotInheritTheLegacyHintNameLimit() {
+    assumeTrue("The legacy FIR hint naming path rejects this source class name", irHints)
+    val project = ContributionsProject(maxGeneratedClassNameLength = 96).gradleProject
+    val source = project.libSource("LongContribution.kt")
+    val original =
+      """
+      package test
+      import dev.zacsweers.metro.*
+      @ContributesTo(AppScope::class)
+      interface ${"A".repeat(240)} { val message: String }
+      """
+        .trimIndent()
+    source.writeText(original)
+    project.rootDir
+      .resolve("src/main/kotlin/test/Main.kt")
+      .writeText(
+        """
+        package test
+        import dev.zacsweers.metro.*
+        @DependencyGraph(AppScope::class) interface AppGraph {
+          @Provides fun provideMessage(): String = "ok"
+        }
+        fun main(): String = createGraph<AppGraph>().message
+        """
+          .trimIndent(),
+      )
+    project.compileAndCheck("ok", clean = true)
+    source.writeText(
+      original.replace("val message: String", "val message: String\nval other: String"),
+    )
+    project.compileAndCheck("ok")
+    source.writeText(original)
+    project.compileAndCheck("ok")
+    project.compileAndCheck("ok", clean = true)
+  }
+
+  @Test
   fun mapKeyAndQualifierChangesUpdateExistingDownstreamMaps() {
     val project = ContributionsProject().gradleProject
     val contribution = project.libSource("Mapped.kt")
