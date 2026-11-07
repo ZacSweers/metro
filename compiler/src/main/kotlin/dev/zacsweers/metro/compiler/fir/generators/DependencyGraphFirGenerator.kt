@@ -386,6 +386,32 @@ internal class DependencyGraphFirGenerator(session: FirSession, compatContext: C
     return names
   }
 
+  /**
+   * Returns the name that FIR requests when it generates a graph companion's creator.
+   *
+   * A graph without a factory gets `invoke()`. A companion that implements the factory gets the
+   * factory's SAM function. Any other companion gets `factory()`. User-declared companions request
+   * the creator by that name. Other companions use [PLACEHOLDER_SAM_FUNCTION].
+   */
+  private fun companionCreatorRequestName(
+    companion: FirClassSymbol<*>,
+    creator: GraphObject.Creator?,
+  ): Name {
+    val creatorName =
+      when {
+        creator == null -> Symbols.Names.invoke
+        companion.implements(creator.classSymbol.classId, session) -> {
+          creator.classSymbol.findSamFunction(session)?.name
+        }
+        else -> Symbols.Names.factory
+      }
+    val reservedNames = sourceCompanionCreatorNames(companion)
+    if (creatorName != null && creatorName in reservedNames) {
+      return creatorName
+    }
+    return PLACEHOLDER_SAM_FUNCTION
+  }
+
   override fun generateConstructors(context: MemberGenerationContext): List<FirConstructorSymbol> {
     val constructor =
       if (context.owner.classKind == ClassKind.OBJECT) {
@@ -513,29 +539,7 @@ internal class DependencyGraphFirGenerator(session: FirSession, compatContext: C
       val graphObject = graphObject(graphClass) ?: return emptyList()
       val creator =
         graphObject.findCreator(session, "generateFunctions ${context.owner.classId}", ::log)
-      val companionIsTheCreator =
-        creator != null && owner.implements(creator.classSymbol.classId, session)
-      val samFunction =
-        if (companionIsTheCreator) {
-          creator.classSymbol.findSamFunction(session)
-        } else {
-          null
-        }
-      val creatorName =
-        when {
-          creator == null -> Symbols.Names.invoke
-          companionIsTheCreator -> samFunction?.name
-          else -> Symbols.Names.factory
-        }
-      // A reserved creator name is requested directly. Otherwise, the creator uses the placeholder.
-      val hasReservedName = creatorName in sourceCompanionCreatorNames(owner)
-      val requestedName =
-        if (hasReservedName) {
-          creatorName
-        } else {
-          PLACEHOLDER_SAM_FUNCTION
-        }
-      if (callableId.callableName == requestedName) {
+      if (callableId.callableName == companionCreatorRequestName(owner, creator)) {
         if (creator == null) {
           // Generate a default invoke function
           log("Creator was null, generating a default invoke. ")
@@ -561,8 +565,9 @@ internal class DependencyGraphFirGenerator(session: FirSession, compatContext: C
                 )
               }
           functions += generatedFunction.symbol as FirNamedFunctionSymbol
-        } else if (companionIsTheCreator) {
+        } else if (owner.implements(creator.classSymbol.classId, session)) {
           // Companion is the interface
+          val samFunction = creator.classSymbol.findSamFunction(session)
           log("Generating graph creator function $samFunction")
           samFunction?.let { functions += generateSAMFunction(graphObject.classSymbol, it) }
         } else {
