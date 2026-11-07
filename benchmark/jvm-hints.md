@@ -35,44 +35,7 @@ python3 benchmark/check-jvm-hints-results.py tmp/jvm-hints-results/large/benchma
   --output tmp/jvm-hints-results/large/stability
 ```
 
-## Local results (2026-11-07)
-
-Measured on an Apple M5 Max with 64 GiB RAM, macOS 27.2, Amazon Corretto 25.0.5, Gradle 9.8.2, and Gradle Profiler 0.26.0. Both modes use Kotlin 2.4.21 and the same Metro snapshot. [Environment metadata](results/jvm-hints-2026-11-07/environment.json) records the compiler artifact hash. [Raw samples and stability results](results/jvm-hints-2026-11-07/) include every measured build.
-
-All values are median milliseconds. Changes are IR minus FIR. The stability column reports FIR / IR.
-
-| Workload and edit | FIR | IR | Absolute change | Relative change | Stability |
-|---|---:|---:|---:|---:|---|
-| 500 contributions, unrelated body | 4364.695 | 1301.385 | -3063.310 | -70.18% | pass / pass |
-| 500 contributions, unrelated ABI | 4399.000 | 1315.050 | -3083.950 | -70.11% | pass / pass |
-| 500 contributions, contribution body | 4318.405 | 1329.195 | -2989.210 | -69.22% | pass / pass |
-| 500 contributions, no-op | 115.905 | 117.705 | +1.800 | +1.55% | drift / pass |
-| 500 contributions, clean | 4288.610 | 4291.665 | +3.055 | +0.07% | pass / pass |
-| 10 contributions, unrelated body | 386.580 | 276.505 | -110.075 | -28.47% | drift / pass |
-| No contributions, unrelated body | 276.895 | 275.810 | -1.085 | -0.39% | pass / pass |
-| 500 contributions in graph module, unrelated body | 2671.955 | 286.985 | -2384.970 | -89.26% | pass / pass |
-| 500 contributions in graph module, graph file body | 3347.165 | 3369.720 | +22.555 | +0.67% | pass / pass |
-
-The large producer's incremental improvements passed the stability gate. Clean and no-contribution differences were small. The no-op and small-module baselines exceeded the half-run drift threshold, so their performance differences are inconclusive. Those scenarios were retained without retries. These synthetic workloads use set multibindings; they don't establish end-to-end application performance or the cost of external contribution extensions.
-
-Editing the graph's own source file showed little difference. That scenario requires graph discovery again. Its result illustrates why unrelated edits in the same module can't predict the benefit of every graph edit. [Follow-up environment metadata](results/jvm-hints-2026-11-07/followup-environment.json) records the artifact used for this measurement and the longer warm-up diagnostic; the intervening production edit only changed the option's help text and comments.
-
-The [initial invalid fixture run](results/jvm-hints-2026-11-07/initial-invalid-fixture.csv) used the ambiguous name `Scope` alongside Metro's wildcard import. The FIR baseline failed with a missing binding during warm-up. The run was stopped, the fixture scope was renamed to `BenchmarkScope`, and the full matrix was restarted. No measurements from that invalid fixture are included in the table.
-
-### Longer warm-up diagnostic
-
-The small-module baseline's first and last five measurements had medians of 424.540 ms and 379.910 ms. The 44.630 ms change was 11.54% of the overall median. Samples kept getting faster after the initial five warm-ups.
-
-A separate diagnostic used 20 warm-ups and ten measurements per mode. It ran FIR then IR, followed by IR then FIR. All four scenarios passed the same stability gate. Every sample from both protocols remains available.
-
-| Order | FIR median | IR median | Absolute change | Relative change | FIR / IR half-run drift |
-|---|---:|---:|---:|---:|---:|
-| FIR then IR | 352.625 ms | 266.470 ms | -86.155 ms | -24.43% | 5.80% / 6.11% |
-| IR then FIR | 350.235 ms | 273.710 ms | -76.525 ms | -21.85% | 0.57% / 3.91% |
-
-This is consistent with insufficient warm-up in the initial small-module run. It doesn't identify whether JIT compilation, caches, or another source of warm-up dominated; that would require profiling. The no-op drift remains unresolved.
-
-Reproduce using `--count 10 --warm-ups 20` when generating the fixture. Run `fir_unrelated_body ir_unrelated_body`, then run `ir_unrelated_body fir_unrelated_body` into a separate output directory. Use the same stability checker for each result.
+Recorded measurements and raw benchmark data are linked from [PR #3079](https://github.com/ZacSweers/metro/pull/3079).
 
 ## Correctness and historical regressions
 
