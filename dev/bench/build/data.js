@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794089169941,
+  "lastUpdate": 1794091830293,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -27104,6 +27104,62 @@ window.BENCHMARK_DATA = {
             "value": 17633.583,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -1.42%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "f299bbbf~1",
+          "message": "[before] Factor in receivers in deduping property accessors",
+          "timestamp": "2026-11-07T16:50:01-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/f299bbbf6aef1c7bc36f38b2541fadfb0f87f840"
+        },
+        "date": 1794091830293,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18499.472,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "f299bbbf6aef1c7bc36f38b2541fadfb0f87f840",
+          "message": "[after] Factor in receivers in deduping property accessors",
+          "timestamp": "2026-11-07T16:50:01-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/f299bbbf6aef1c7bc36f38b2541fadfb0f87f840"
+        },
+        "date": 1794091830294,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18549.078,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +0.27%"
           }
         ]
       }
