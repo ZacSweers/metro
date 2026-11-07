@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794040641335,
+  "lastUpdate": 1794089169941,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -27048,6 +27048,62 @@ window.BENCHMARK_DATA = {
             "value": 10341.634,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -3.83%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "5b365281~1",
+          "message": "[before] Fix calling declaration for dynamic graphs (#3084)",
+          "timestamp": "2026-11-07T21:09:32Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/5b3652814e861f91972b63d9584f3f3d7b1d6ca8"
+        },
+        "date": 1794089169941,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 17888.151,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "5b3652814e861f91972b63d9584f3f3d7b1d6ca8",
+          "message": "[after] Fix calling declaration for dynamic graphs (#3084)",
+          "timestamp": "2026-11-07T21:09:32Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/5b3652814e861f91972b63d9584f3f3d7b1d6ca8"
+        },
+        "date": 1794089169942,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 17633.583,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -1.42%"
           }
         ]
       }
