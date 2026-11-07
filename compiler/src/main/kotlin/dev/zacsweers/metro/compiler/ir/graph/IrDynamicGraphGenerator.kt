@@ -24,9 +24,9 @@ import dev.zacsweers.metro.compiler.ir.transformers.TransformerContextAccess
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationContainer
 import org.jetbrains.kotlin.ir.declarations.IrFile
-import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.irAttribute
@@ -71,7 +71,7 @@ internal class IrDynamicGraphGenerator(
     containerTypeKeys: List<IrTypeKey>,
     isFactory: Boolean,
     context: TransformerContextAccess,
-    containingFunction: IrSimpleFunction,
+    callingDeclaration: IrDeclaration,
     sourceExpression: IrCall,
   ): IrClass {
     val cacheKey =
@@ -90,13 +90,13 @@ internal class IrDynamicGraphGenerator(
           cacheKey = cacheKey,
           isFactory = isFactory,
           context = context,
-          containingFunction = containingFunction,
+          callingDeclaration = callingDeclaration,
           sourceExpression = sourceExpression,
         )
       }
       .also {
         // link for IC
-        trackClassLookup(containingFunction, it)
+        trackClassLookup(callingDeclaration, it)
       }
   }
 
@@ -107,7 +107,7 @@ internal class IrDynamicGraphGenerator(
     cacheKey: CacheKey,
     isFactory: Boolean,
     context: TransformerContextAccess,
-    containingFunction: IrSimpleFunction,
+    callingDeclaration: IrDeclaration,
     sourceExpression: IrCall,
   ): IrClass {
     val rawType = targetType.rawType()
@@ -140,7 +140,7 @@ internal class IrDynamicGraphGenerator(
         bindingContainerResolver = bindingContainerResolver,
         sourceAnnotation = targetGraphAnno,
         parentGraph = null,
-        originDeclaration = containingFunction,
+        originDeclaration = callingDeclaration,
         containerToAddTo = containerToAddTo,
         traceScope = traceScope,
       )
