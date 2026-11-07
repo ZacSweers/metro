@@ -675,6 +675,7 @@ class MetroArtifactsTest {
             @OptIn(dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi::class)
             val metadata = dev.zacsweers.metro.gradle.analysis.GraphMetadata(
               graph = "test.AppGraph",
+              key = "test/AppGraph",
               scopes = emptyList(),
               aggregationScopes = emptyList(),
               bindings = emptyList(),
