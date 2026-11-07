@@ -57,6 +57,18 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     }
 
     @Test
+    @TestMetadata("BindsExtensionFunctionWithAccessorName.kt")
+    public void testBindsExtensionFunctionWithAccessorName() {
+      run("BindsExtensionFunctionWithAccessorName.kt");
+    }
+
+    @Test
+    @TestMetadata("BindsExtensionPropertyWithAccessorName.kt")
+    public void testBindsExtensionPropertyWithAccessorName() {
+      run("BindsExtensionPropertyWithAccessorName.kt");
+    }
+
+    @Test
     @TestMetadata("ChunkMergedSupertypesBasic.kt")
     public void testChunkMergedSupertypesBasic() {
       run("ChunkMergedSupertypesBasic.kt");

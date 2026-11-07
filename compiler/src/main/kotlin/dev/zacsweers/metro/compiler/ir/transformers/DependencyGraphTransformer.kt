@@ -66,7 +66,6 @@ import dev.zacsweers.metro.compiler.ir.metroGraphOrFail
 import dev.zacsweers.metro.compiler.ir.nestedClassOrNull
 import dev.zacsweers.metro.compiler.ir.padForConsole
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
-import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.render
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireNestedClass
@@ -114,6 +113,7 @@ import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isInterface
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.kotlinFqName
+import org.jetbrains.kotlin.ir.util.nonDispatchParameters
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.properties
 import org.jetbrains.kotlin.name.ClassId
@@ -255,11 +255,24 @@ internal class DependencyGraphTransformer(
     val graphProperties = metroGraph.properties.groupBy { it.name }
     for (contributionProperty in contributionClasses.flatMap { it.properties }) {
       val matchingProperties = graphProperties[contributionProperty.name] ?: continue
+      val contributionGetter = contributionProperty.getter ?: continue
       for (graphProperty in matchingProperties) {
-        graphProperty.addOverriddenSymbol(contributionProperty.symbol)
-        graphProperty.getter?.let { graphGetter ->
-          contributionProperty.getter?.let { graphGetter.addOverriddenSymbol(it.symbol) }
+        val graphGetter = graphProperty.getter ?: continue
+        if (!graphGetter.hasSameParameterSignature(contributionGetter)) {
+          // Matching properties by name alone can add an invalid overriddenSymbols link between
+          // getters with different signatures.
+          //
+          // Example:
+          // `val spaces` and `val Database.spaces` have valid overloads `getSpaces()` and
+          // `getSpaces(Database)`. The Database extension receiver becomes an extra JVM parameter.
+          //
+          // Linking these getters as overrides corrupts the IR and can make the JVM backend emit
+          // `getSpaces(Database)` twice.
+          // https://github.com/ZacSweers/metro/issues/3082
+          continue
         }
+        graphProperty.addOverriddenSymbol(contributionProperty.symbol)
+        graphGetter.addOverriddenSymbol(contributionGetter.symbol)
         graphProperty.setter?.let { graphSetter ->
           contributionProperty.setter?.let { graphSetter.addOverriddenSymbol(it.symbol) }
         }
@@ -270,17 +283,19 @@ internal class DependencyGraphTransformer(
     for (contributionFunction in contributionClasses.flatMap { it.functions }) {
       val matchingFunctions = graphFunctions[contributionFunction.name] ?: continue
       matchingFunctions
-        .filter { it.hasSameValueParameterShape(contributionFunction) }
+        .filter { it.hasSameParameterSignature(contributionFunction) }
         .forEach { it.addOverriddenSymbol(contributionFunction.symbol) }
     }
   }
 
-  private fun IrSimpleFunction.hasSameValueParameterShape(other: IrSimpleFunction): Boolean {
-    val parameters = regularParameters
-    val otherParameters = other.regularParameters
-    if (parameters.size != otherParameters.size) return false
+  private fun IrSimpleFunction.hasSameParameterSignature(other: IrSimpleFunction): Boolean {
+    val parameters = nonDispatchParameters
+    val otherParameters = other.nonDispatchParameters
+    if (parameters.size != otherParameters.size) {
+      return false
+    }
     return parameters.zip(otherParameters).all { (parameter, otherParameter) ->
-      parameter.type == otherParameter.type
+      parameter.kind == otherParameter.kind && parameter.type == otherParameter.type
     }
   }
 
