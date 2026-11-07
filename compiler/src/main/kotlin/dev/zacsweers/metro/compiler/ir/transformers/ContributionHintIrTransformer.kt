@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.api.fir.MetroContributions
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.annotationsIn
+import dev.zacsweers.metro.compiler.ir.effectiveVisibility
 import dev.zacsweers.metro.compiler.ir.linkDeclarationsInCompilation
 import dev.zacsweers.metro.compiler.ir.lookupClass
 import dev.zacsweers.metro.compiler.ir.originClassId
@@ -20,6 +21,7 @@ import dev.zacsweers.metro.compiler.ir.trackClassLookup
 import dev.zacsweers.metro.compiler.ir.usesContributionProviderPath
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.scopeHintFunctionName
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.useJvmIrContributionHints
 import kotlin.io.path.Path
 import kotlin.io.path.absolutePathString
@@ -29,13 +31,17 @@ import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.types.classOrFail
+import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.util.NaiveSourceBasedFileEntryImpl
+import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.file
 import org.jetbrains.kotlin.ir.util.fileEntry
 import org.jetbrains.kotlin.ir.util.nestedClasses
+import org.jetbrains.kotlin.ir.util.packageFqName
 import org.jetbrains.kotlin.ir.util.parentDeclarationsWithSelf
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.platform.jvm.isJvm
 
 /**
@@ -54,14 +60,22 @@ internal class ContributionHintIrTransformer(
   private val sourceOwnedJvmHints =
     options.useJvmIrContributionHints(pluginContext.platform, pluginContext.languageVersionSettings)
 
-  // External providers may advertise a contribution found by this visitor too. Its FIR hint wins.
-  private val firHintTargets by lazy {
-    hintGenerator.moduleFragment.files
-      .flatMap { it.declarations.filterIsInstance<IrSimpleFunction>() }
-      .filter { it.origin == Origins.ContributionHint }
-      .mapTo(mutableSetOf()) {
-        it.regularParameters.single().type.classOrFail.owner.classIdOrFail to it.name
+  private val existingHints by lazy {
+    val hints = mutableMapOf<Pair<ClassId, Name>, MutableList<IrSimpleFunction>>()
+    for (file in hintGenerator.moduleFragment.files) {
+      if (file.packageFqName != Symbols.FqNames.metroHintsPackage) {
+        continue
       }
+      for (function in file.declarations.filterIsInstance<IrSimpleFunction>()) {
+        if (function.returnType != pluginContext.irBuiltIns.unitType) {
+          continue
+        }
+        val parameter = function.regularParameters.singleOrNull() ?: continue
+        val classId = parameter.type.classOrNull?.owner?.classId ?: continue
+        hints.getOrPut(classId to function.name) { mutableListOf() }.add(function)
+      }
+    }
+    hints
   }
 
   // Only executed if generateContributionHintsInFir is enabled
@@ -165,13 +179,35 @@ internal class ContributionHintIrTransformer(
       declaration.annotationsIn(metroSymbols.classIds.allContributesAnnotations).toList()
 
     val contributionScopes = contributions.mapNotNullToSet { it.scopeOrNull() }
+    if (contributionScopes.isEmpty()) {
+      return
+    }
+    val metadataSourceClass =
+      if (sourceOwnedJvmHints) {
+        declaration.parentDeclarationsWithSelf.filterIsInstance<IrClass>().firstOrNull {
+          it.origin !is IrDeclarationOrigin.GeneratedByPlugin &&
+            it.metadata is FirMetadataSource.Class
+        } ?: declaration
+      } else {
+        declaration
+      }
     val useContributionProviderPath =
       declaration.usesContributionProviderPath(options, metroSymbols.classIds)
 
     for (contributionScope in contributionScopes) {
       val hintName = contributionScope.scopeHintFunctionName()
-      if (sourceOwnedJvmHints && (declaration.classIdOrFail to hintName) in firHintTargets) {
-        continue
+      if (sourceOwnedJvmHints) {
+        val hints = existingHints[declaration.classIdOrFail to hintName].orEmpty()
+        // A hint owned by another source can disappear without recompiling this contribution.
+        val alreadyAdvertised = hints.any {
+          val sameSourceAndVisibility =
+            it.fileEntry.name == metadataSourceClass.fileEntry.name &&
+              it.visibility == declaration.effectiveVisibility()
+          it.origin == Origins.ContributionHint || sameSourceAndVisibility
+        }
+        if (alreadyAdvertised) {
+          continue
+        }
       }
       // Contribution-provider mode advertises the generated binding container, not the original
       // contributing class. The original class is still passed separately for hint file metadata.
@@ -181,20 +217,16 @@ internal class ContributionHintIrTransformer(
         } else {
           declaration
         }
-      hintGenerator.generateHint(
-        sourceClass = sourceClass,
-        hintName = hintName,
-        metadataSourceClass =
-          if (sourceOwnedJvmHints) {
-            declaration.parentDeclarationsWithSelf.filterIsInstance<IrClass>().firstOrNull {
-              it.origin !is IrDeclarationOrigin.GeneratedByPlugin &&
-                it.metadata is FirMetadataSource.Class
-            } ?: declaration
-          } else {
-            declaration
-          },
-        sourceOwnedJvmHint = sourceOwnedJvmHints,
-      )
+      val hint =
+        hintGenerator.generateHint(
+          sourceClass = sourceClass,
+          hintName = hintName,
+          metadataSourceClass = metadataSourceClass,
+          sourceOwnedJvmHint = sourceOwnedJvmHints,
+        )
+      if (sourceOwnedJvmHints) {
+        existingHints.getOrPut(sourceClass.classIdOrFail to hintName) { mutableListOf() }.add(hint)
+      }
     }
   }
 

@@ -447,6 +447,55 @@ class JvmContributionHintICTests(private val irHints: Boolean) :
   }
 
   @Test
+  fun existingHintsAreReusedOnlyWhenTheyShareTheContributionsSource() {
+    assumeTrue("FIR generation cannot coexist with a handwritten overload", irHints)
+    val project = ContributionsProject().gradleProject
+    val source = project.libSource("Manual.kt")
+    val contribution =
+      """
+      package metro.hints
+      import dev.zacsweers.metro.*
+      import test.Value
+      @Inject @ContributesIntoSet(AppScope::class)
+      class ManualValue : Value { override val text = "manual" }
+      """
+        .trimIndent()
+    val hint =
+      """
+      @Deprecated("Generated hint", level = DeprecationLevel.HIDDEN)
+      fun dev_zacsweers_metro_AppScope(contributed: ManualValue) {}
+      """
+        .trimIndent()
+    source.writeText("$contribution\n$hint")
+    project.compileAndCheck("first,manual:", clean = true)
+    val classes = project.rootDir.resolve("lib/build/classes/kotlin/main")
+    val initialClassCount = classes.walkTopDown().count { it.extension == "class" }
+
+    // Moving the hint to another source requires an independently owned native hint.
+    source.writeText(contribution)
+    val separateHint = project.libSource("SeparateHint.kt")
+    separateHint.writeText("package metro.hints\n$hint")
+    project.compileAndCheck("first,manual:")
+    assertThat(classes.walkTopDown().count { it.extension == "class" })
+      .isEqualTo(initialClassCount + 1)
+
+    separateHint.delete()
+    project.compileAndCheck("first,manual:")
+    assertThat(classes.walkTopDown().count { it.extension == "class" }).isEqualTo(initialClassCount)
+
+    source.writeText("$contribution\n$hint")
+    project.compileAndCheck("first,manual:")
+    assertThat(classes.walkTopDown().count { it.extension == "class" }).isEqualTo(initialClassCount)
+
+    source.writeText("$contribution\n${hint.replace("fun ", "private fun ")}")
+    project.compileAndCheck("first,manual:")
+    assertThat(classes.walkTopDown().count { it.extension == "class" })
+      .isEqualTo(initialClassCount + 1)
+    source.writeText("$contribution\n$hint")
+    project.compileAndCheck("first,manual:", clean = true)
+  }
+
+  @Test
   fun mapKeyAndQualifierChangesUpdateExistingDownstreamMaps() {
     val project = ContributionsProject().gradleProject
     val contribution = project.libSource("Mapped.kt")
