@@ -1884,6 +1884,18 @@ internal fun IrClass.requireSimpleFunction(name: String) =
       "No function $name in class $classId. Available: ${functions.joinToString { it.name.asString() }}",
     )
 
+/**
+ * Returns the generated `factory()` accessor in a graph's companion object.
+ *
+ * Users can declare their own `factory` overloads in the companion, so this matches the no-arg
+ * signature. It doesn't check the origin because graphs from other modules have stub origins.
+ */
+internal fun IrClass.requireGraphFactoryAccessor(): IrSimpleFunction =
+  functions.singleOrNull { it.name == Symbols.Names.factory && it.nonDispatchParameters.isEmpty() }
+    ?: reportCompilerBug(
+      "No factory() function in class $classId. Available: ${functions.joinToString { it.name.asString() }}",
+    )
+
 internal fun IrClass.declarationMirrorFunctionOrNull(): IrSimpleFunction? {
   val declaration =
     declarations.filterIsInstance<IrDeclarationWithName>().singleOrNull {

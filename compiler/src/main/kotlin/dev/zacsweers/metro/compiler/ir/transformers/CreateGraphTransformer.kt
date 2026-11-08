@@ -17,7 +17,7 @@ import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.metroGraphOrFail
 import dev.zacsweers.metro.compiler.ir.rawType
-import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
+import dev.zacsweers.metro.compiler.ir.requireGraphFactoryAccessor
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.withIrBuilder
 import dev.zacsweers.metro.compiler.reportCompilerBug
@@ -86,7 +86,7 @@ internal class CreateGraphTransformer(
               irGetObject(factoryImpl.symbol)
             } else {
               irInvoke(
-                callee = companion.requireSimpleFunction(Symbols.StringNames.FACTORY),
+                callee = companion.requireGraphFactoryAccessor().symbol,
                 typeArgs = type.expectAsOrNull<IrSimpleType>()?.arguments?.map { it.typeOrFail },
               )
             }
@@ -98,13 +98,7 @@ internal class CreateGraphTransformer(
         if (companionIsTheFactory) {
           withIrBuilder(expression.symbol) { irGetObject(companion.symbol) }
         } else {
-          val factoryFunction =
-            companion.functions.single {
-              // Note we don't filter on Origins.MetroGraphFactoryCompanionGetter, because
-              // sometimes a user may have already defined one. An FIR checker will validate that
-              // any such function is valid, so just trust it if one is found
-              it.name == Symbols.Names.factory
-            }
+          val factoryFunction = companion.requireGraphFactoryAccessor()
 
           // Replace it with a call directly to the factory function
           withIrBuilder(expression.symbol) {

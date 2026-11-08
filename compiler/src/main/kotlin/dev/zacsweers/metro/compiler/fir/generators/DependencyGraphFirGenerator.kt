@@ -31,6 +31,7 @@ import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
+import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameter
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
 import org.jetbrains.kotlin.fir.declarations.utils.isInterface
@@ -341,6 +342,9 @@ internal class DependencyGraphFirGenerator(session: FirSession, compatContext: C
     if (isCreatorImpl) {
       names += SpecialNames.INIT
       names += PLACEHOLDER_SAM_FUNCTION
+      if (isGraphCompanion) {
+        names += sourceCompanionCreatorNames(classSymbol)
+      }
     } else if (classSymbol.hasOrigin(Keys.GraphImplClassDeclaration)) {
       // `Impl`, generate a constructor
       names += SpecialNames.INIT
@@ -350,6 +354,62 @@ internal class DependencyGraphFirGenerator(session: FirSession, compatContext: C
       log("Will generate callables into ${classSymbol.classId}: $names")
     }
     return names
+  }
+
+  /**
+   * Returns the creator function names that a user-declared graph companion reserves.
+   *
+   * FIR asks for a source class's generated member names during supertype resolution. Later, it
+   * only looks up generated members by those names. A creator generated under the placeholder name
+   * is then invisible to calls like `AppGraph.create()` and to override checks. So we reserve every
+   * name the creator could have and generate the creator under its real name.
+   *
+   * Supertypes aren't resolved yet when FIR asks, so this only reads declarations directly. A SAM
+   * function inherited from a factory's supertype isn't covered and still uses the placeholder.
+   * Companions that Metro generates return an empty set because the placeholder already works for
+   * them.
+   */
+  @OptIn(DirectDeclarationsAccess::class)
+  private fun sourceCompanionCreatorNames(companion: FirClassSymbol<*>): Set<Name> {
+    if (companion.origin !is FirDeclarationOrigin.Source) {
+      return emptySet()
+    }
+    val names = mutableSetOf(Symbols.Names.invoke, Symbols.Names.factory)
+    val graphClass = companion.requireContainingClassSymbol() as? FirClassSymbol<*> ?: return names
+    val creator =
+      graphClass.declarationSymbols.filterIsInstance<FirClassSymbol<*>>().firstOrNull {
+        it.isGraphFactory(session)
+      }
+    creator?.declarationSymbols?.filterIsInstance<FirNamedFunctionSymbol>()?.mapTo(names) {
+      it.name
+    }
+    return names
+  }
+
+  /**
+   * Returns the name that FIR requests when it generates a graph companion's creator.
+   *
+   * A graph without a factory gets `invoke()`. A companion that implements the factory gets the
+   * factory's SAM function. Any other companion gets `factory()`. User-declared companions request
+   * the creator by that name. Other companions use [PLACEHOLDER_SAM_FUNCTION].
+   */
+  private fun companionCreatorRequestName(
+    companion: FirClassSymbol<*>,
+    creator: GraphObject.Creator?,
+  ): Name {
+    val creatorName =
+      when {
+        creator == null -> Symbols.Names.invoke
+        companion.implements(creator.classSymbol.classId, session) -> {
+          creator.classSymbol.findSamFunction(session)?.name
+        }
+        else -> Symbols.Names.factory
+      }
+    val reservedNames = sourceCompanionCreatorNames(companion)
+    if (creatorName != null && creatorName in reservedNames) {
+      return creatorName
+    }
+    return PLACEHOLDER_SAM_FUNCTION
   }
 
   override fun generateConstructors(context: MemberGenerationContext): List<FirConstructorSymbol> {
@@ -477,9 +537,9 @@ internal class DependencyGraphFirGenerator(session: FirSession, compatContext: C
       log("... into companion")
       val graphClass = owner.requireContainingClassSymbol()
       val graphObject = graphObject(graphClass) ?: return emptyList()
-      if (callableId.callableName == PLACEHOLDER_SAM_FUNCTION) {
-        val creator =
-          graphObject.findCreator(session, "generateFunctions ${context.owner.classId}", ::log)
+      val creator =
+        graphObject.findCreator(session, "generateFunctions ${context.owner.classId}", ::log)
+      if (callableId.callableName == companionCreatorRequestName(owner, creator)) {
         if (creator == null) {
           // Generate a default invoke function
           log("Creator was null, generating a default invoke. ")

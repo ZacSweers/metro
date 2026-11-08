@@ -1,0 +1,1 @@
+/UserDeclaredGraphCompanionFactoryConflict.kt:14:9: error: Metro generates a `factory()` function in this companion object that returns `Factory`. Remove this function or give it parameters.
