@@ -548,6 +548,8 @@ tasks.withType<Test> {
     inputs.property("d8ExecutableName", d8EnvSpec.executable.map { File(it).name })
     setLocationProperty("javascript.engine.path.V8", d8EnvSpec.executable.get())
   }
+  // Test frameworks before Kotlin 2.5.0 read the REPL script from this path.
+  // Newer frameworks ignore it and use their bundled copy.
   setFilesProperty("javascript.engine.path.repl", files(layout.projectDirectory.file("repl.js")))
   setLocationProperty(
     "kotlin.js.test.root.out.dir",
