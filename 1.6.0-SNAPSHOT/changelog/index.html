@@ -8792,6 +8792,7 @@
 <h3 id="fixes">Fixes<a class="headerlink" href="#fixes" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>[FIR/IR]</strong> Fix contributed <code>@Inject</code> classes skipping declared and inherited member injection when <code>generateContributionProviders</code> is enabled.</li>
+<li><strong>[FIR/IR]</strong> Fix dependency graphs with a user-declared <code>companion object</code> failing to compile or to call their generated creator, such as <code>AppGraph.create()</code>. User-declared <code>factory(...)</code> overloads in these companions now work. A user-declared no-arg <code>factory()</code> that clashes with the generated one now reports an error.</li>
 <li><strong>[IR]</strong> Fix dynamic graphs missing <code>internal</code> contributions from friend compilations (such as <code>main</code> contributions used by tests).</li>
 <li><strong>[IR]</strong> Better reuse provider instances across repeated graph accessor and unscoped consumer requests. </li>
 <li>Converted provider accessors and constructor parameters reuse their wrappers (i.e. different types of <code>Provider</code> types). Canonical providers used only to initialize one cached conversion can be inlined.</li>
