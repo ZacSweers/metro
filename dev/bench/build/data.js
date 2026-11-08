@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794091830293,
+  "lastUpdate": 1794155924302,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -27160,6 +27160,62 @@ window.BENCHMARK_DATA = {
             "value": 18549.078,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +0.27%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "d061fba5~1",
+          "message": "[before] Fix graph creators in user-declared companion obje",
+          "timestamp": "2026-11-08T10:49:55-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/d061fba54f270e3b9499904891ddd93a5f906212"
+        },
+        "date": 1794155924302,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 13343.835000000001,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "d061fba54f270e3b9499904891ddd93a5f906212",
+          "message": "[after] Fix graph creators in user-declared companion obje",
+          "timestamp": "2026-11-08T10:49:55-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/d061fba54f270e3b9499904891ddd93a5f906212"
+        },
+        "date": 1794155924303,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 13639.842,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +2.22%"
           }
         ]
       }
