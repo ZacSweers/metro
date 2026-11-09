@@ -1,0 +1,3 @@
+/StaticCreatorCollision.kt:9:18: error: Function `invoke` in AppGraph's companion block has the same platform signature as the graph creator `invoke` that Metro generates in the same companion block. Change its name or parameters, or use a different `companion-mode`.
+
+/StaticCreatorCollision.kt:21:9: error: Function `factory` in AbstractFactoryGraph's companion block has the same platform signature as the graph creator `factory` that Metro generates in the same companion block. Change its name or parameters, or use a different `companion-mode`.

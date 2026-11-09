@@ -1,0 +1,1 @@
+/StaticCreatorCompatibilityCollision.kt:10:18: error: Function `invoke` in BlockGraph's companion block has the same platform signature as the graph creator `invoke` that Metro generates in the same companion block. Change its name or parameters, or use a different `companion-mode`.

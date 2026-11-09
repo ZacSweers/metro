@@ -17,6 +17,14 @@ import org.jetbrains.kotlin.diagnostics.KtDiagnosticWithParameters4
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticWithoutSource
 import org.jetbrains.kotlin.diagnostics.KtSimpleDiagnostic
 import org.jetbrains.kotlin.diagnostics.Severity
+import org.jetbrains.kotlin.fir.containingClassForStaticMemberAttr
+import org.jetbrains.kotlin.fir.declarations.FirFunction
+import org.jetbrains.kotlin.fir.declarations.FirNamedFunction
+import org.jetbrains.kotlin.fir.declarations.builder.buildNamedFunctionCopy
+import org.jetbrains.kotlin.fir.declarations.impl.FirDeclarationStatusImpl
+import org.jetbrains.kotlin.fir.declarations.utils.isCompanionBlockMember
+import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.declarations.IrPackageFragment
@@ -64,6 +72,22 @@ public class CompatContextImpl : CompatContext by DelegateType() {
 
   override fun LanguageVersionSettings.companionBlocksEnabledCompat(): Boolean {
     return supportsFeature(LanguageFeature.CompanionBlocks)
+  }
+
+  override val FirCallableSymbol<*>.isCompanionBlockMemberCompat: Boolean
+    get() = isCompanionBlockMember
+
+  override fun FirFunction.markAsCompanionBlockMemberCompat(owner: FirClassSymbol<*>): FirFunction {
+    // FIR sets the dispatch receiver type when it builds a declaration, so build a receiverless
+    // copy.
+    val function = this as FirNamedFunction
+    return buildNamedFunctionCopy(function) {
+        symbol = function.symbol
+        dispatchReceiverType = null
+        // The copy shares the original's status object. The original is discarded after this.
+        (status as FirDeclarationStatusImpl).isStatic = true
+      }
+      .also { it.containingClassForStaticMemberAttr = owner.toLookupTag() }
   }
 
   public class Factory : CompatContext.Factory {

@@ -1,0 +1,21 @@
+FILE: StaticDeclarations.kt
+    @R|dev/zacsweers/metro/Inject|() public final class Value : R|kotlin/Any| {
+        private constructor(text: R|kotlin/String|): R|Value| {
+            super<R|kotlin/Any|>()
+        }
+
+        public final val text: R|kotlin/String| = R|<local>/text|
+            public get(): R|kotlin/String|
+
+    }
+    @R|dev/zacsweers/metro/DependencyGraph|() public abstract interface AppGraph : R|kotlin/Any| {
+        public abstract val value: R|Value|
+            public get(): R|Value|
+
+        @R|dev/zacsweers/metro/Provides|() public final static fun text(): R|kotlin/String| {
+            ^text String(OK)
+        }
+
+        @R|dev/zacsweers/metro/internal/GraphFactoryInvokeFunctionMarker|() public final static operator fun invoke(): R|AppGraph|
+
+    }

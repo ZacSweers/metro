@@ -44,6 +44,8 @@ message ProviderFactoryProto {
   InlinedProviderProto inlined = 7;
   // The generated function that carries the source callable's signature.
   SignatureCarrier signature_carrier = 8;
+  // Source companion-block providers have no dispatch receiver.
+  bool is_companion_block_member = 9;
 }
 
 // Records the producer's companion-mode compiler option.

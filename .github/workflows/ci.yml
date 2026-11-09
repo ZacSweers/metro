@@ -227,6 +227,17 @@ jobs:
             "${fixture_cache_args[@]}" \
             ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
 
+      # Multiplatform tests use the default compiler, which skips the companion-block fixtures.
+      - name: Test companion blocks on every KMP target
+        if: github.ref == 'refs/heads/main' && matrix.kotlin-compiler == needs.generate-matrix.outputs.latest_kotlin_version
+        run: |
+          ./scripts/run-ci-gradle.sh :gradle-plugin:functionalTest --continue --quiet \
+            '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' \
+            "-Pmetro.testOmitRedundantMirrors=$METRO_TEST_OMIT_REDUNDANT_MIRRORS" \
+            -Pmetro.functionalTestKmpTarget=all \
+            -Pmetro.testkitLightweightPublications=true \
+            --tests 'dev.zacsweers.metro.gradle.CompanionBlocksKmpTest'
+
       - name: (Fail-only) Upload reports
         if: failure()
         uses: actions/upload-artifact@v7
@@ -346,6 +357,15 @@ jobs:
             --tests 'dev.zacsweers.metro.compiler.JsBoxTestGenerated$Suspend.testMixedSuspendChain' \
             --tests 'dev.zacsweers.metro.compiler.JsFastInitBoxTestGenerated$Dependencygraph$Sharding.testSwitchingSuspendProvidersWithShards' \
             ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+
+      # Companion blocks need the latest compiler.
+      - name: Run companion-block JS box smoke test
+        if: matrix.suite == 'smoke'
+        run: |
+          ./scripts/run-ci-gradle.sh :compiler-tests:test --quiet \
+            '-Pmetro.testCompilerVersion=${{ needs.generate-matrix.outputs.latest_kotlin_version }}' \
+            --tests 'dev.zacsweers.metro.compiler.JsBoxTestGenerated$Companionblocks.testGraphBlockInheritedFactory' \
+            -Dorg.gradle.configuration-cache.read-only=true
 
       - name: Run Wasm contribution hint smoke tests
         if: matrix.suite == 'smoke'
