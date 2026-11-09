@@ -269,6 +269,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     public void testMapsUseMapBuilderIfNoProvider() {
       run("MapsUseMapBuilderIfNoProvider.kt");
     }
+    @Test
+    @TestMetadata("ConvertedProviderLongNames.kt")
+    public void testConvertedProviderLongNames() {
+      run("ConvertedProviderLongNames.kt");
+    }
+
 
     @Test
     @TestMetadata("MixedUseFactoryAcrossMultipleMultis.kt")

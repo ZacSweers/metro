@@ -1,0 +1,372 @@
+class DependencyTargetForConvertedProviderNameLength {
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+class DependencyTargetHolderForNameLengthChecks {
+  val target: DependencyTargetForConvertedProviderNameLength
+    field = target
+    get
+
+  constructor(target: DependencyTargetForConvertedProviderNameLength) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@DependencyGraph
+interface AlphaRootGraphForNameLengthChecks {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : AlphaRootGraphForNameLengthChecks {
+    private val dependencyTargetHolderForNameLengthChecksInstance: DependencyTargetHolderForNameLengthChecks
+      field = holder
+
+    private val dependencyTargetHolderForNameLengthChecksTargetProvider: Provider<DependencyTargetForConvertedProviderNameLength>
+      field = SwitchingProvider<DependencyTargetForConvertedProviderNameLength>(graph = <this>, id = 0)
+
+    private class SwitchingProvider<T : Any?> : Provider<T> {
+      constructor(graph: Impl, id: Int) /* primary */ {
+        super/*Any*/()
+        <this>.#graph = graph
+        <this>.#id = id
+      }
+
+      override fun invoke(): T {
+        return { // BLOCK
+          val tmp0_id: Int = <this>.#id
+          when {
+            EQEQ(arg0 = tmp0_id, arg1 = 0) -> <this>.#graph.#dependencyTargetHolderForNameLengthChecksInstance.<get-target>() /*as T */
+            else -> throw error(message = "Unexpected SwitchingProvider id: " + tmp0_id)
+          }
+        }
+      }
+
+      private val graph: Impl
+
+      private val id: Int
+
+    }
+
+    @DependencyGraph
+    private class BetaFeatureLevelOneGraphExtensionNameImpl : BetaFeatureLevelOneGraphExtensionName {
+      private val alphaRootGraphForNameLengthChecksImpl: Impl
+        field = alphaRootGraphForNameLengthChecksImpl
+
+      private class FactoryImpl : BetaFeatureLevelOneGraphExtensionName.Factory {
+        package /* final field */ val AlphaRootGraphForNameLengthChecksImpl: Impl = AlphaRootGraphForNameLengthChecksImpl
+        constructor(AlphaRootGraphForNameLengthChecksImpl: Impl) /* primary */ {
+          super/*Any*/()
+          /* <init>() */
+
+        }
+
+        override fun create(): BetaFeatureLevelOneGraphExtensionName {
+          return BetaFeatureLevelOneGraphExtensionNameImpl(alphaRootGraphForNameLengthChecksImpl = <this>.#AlphaRootGraphForNameLengthChecksImpl)
+        }
+
+      }
+
+      @DependencyGraph
+      private class GammaFeatureLevelTwoGraphExtensionNameWithAdditionalDescriptiveTextImpl : GammaFeatureLevelTwoGraphExtensionNameWithAdditionalDescriptiveText {
+        private val betaFeatureLevelOneGraphExtensionNameImpl: BetaFeatureLevelOneGraphExtensionNameImpl
+          field = betaFeatureLevelOneGraphExtensionNameImpl
+
+        private class FactoryImpl : GammaFeatureLevelTwoGraphExtensionNameWithAdditionalDescriptiveText.Factory {
+          package /* final field */ val BetaFeatureLevelOneGraphExtensionNameImpl: BetaFeatureLevelOneGraphExtensionNameImpl = BetaFeatureLevelOneGraphExtensionNameImpl
+          constructor(BetaFeatureLevelOneGraphExtensionNameImpl: BetaFeatureLevelOneGraphExtensionNameImpl) /* primary */ {
+            super/*Any*/()
+            /* <init>() */
+
+          }
+
+          override fun create(): GammaFeatureLevelTwoGraphExtensionNameWithAdditionalDescriptiveText {
+            return GammaFeatureLevelTwoGraphExtensionNameWithAdditionalDescriptiveTextImpl(betaFeatureLevelOneGraphExtensionNameImpl = <this>.#BetaFeatureLevelOneGraphExtensionNameImpl)
+          }
+
+        }
+
+        @DependencyGraph
+        private class DeltaFeatureLevelThreeGraphExtensionNameWithLongerSuffixImpl : DeltaFeatureLevelThreeGraphExtensionNameWithLongerSuffix {
+          private val gammaFeatureLevelTwoGraphExtensionNameWithAdditionalDescriptiveTextImpl: GammaFeatureLevelTwoGraphExtensionNameWithAdditionalDescriptiveTextImpl
+            field = gammaFeatureLevelTwoGraphExtensionNameWithAdditionalDescriptiveTextImpl
+
+          private class Impl_b4ec5 : DeltaFeatureLevelThreeGraphExtensionNameWithLongerSuffix.Factory {
+            package /* final field */ val GammaFeatureLevelTwoGraphExtensionNameWithAdditionalDescriptiveTextImpl: GammaFeatureLevelTwoGraphExtensionNameWithAdditionalDescriptiveTextImpl = GammaFeatureLevelTwoGraphExtensionNameWithAdditionalDescriptiveTextImpl
+            constructor(GammaFeatureLevelTwoGraphExtensionNameWithAdditionalDescriptiveTextImpl: GammaFeatureLevelTwoGraphExtensionNameWithAdditionalDescriptiveTextImpl) /* primary */ {
+              super/*Any*/()
+              /* <init>() */
+
+            }
+
+            override fun create(): DeltaFeatureLevelThreeGraphExtensionNameWithLongerSuffix {
+              return DeltaFeatureLevelThreeGraphExtensionNameWithLongerSuffixImpl(gammaFeatureLevelTwoGraphExtensionNameWithAdditionalDescriptiveTextImpl = <this>.#GammaFeatureLevelTwoGraphExtensionNameWithAdditionalDescriptiveTextImpl)
+            }
+
+          }
+
+          @DependencyGraph
+          private class Impl_laadb : EpsilonFeatureLevelFourGraphExtensionName {
+            private val deltaFeatureLevelThreeGraphExtensionNameWithLongerSuffixImpl: DeltaFeatureLevelThreeGraphExtensionNameWithLongerSuffixImpl
+              field = deltaFeatureLevelThreeGraphExtensionNameWithLongerSuffixImpl
+
+            private class Impl_n8b5f : EpsilonFeatureLevelFourGraphExtensionName.Factory {
+              package /* final field */ val DeltaFeatureLevelThreeGraphExtensionNameWithLongerSuffixImpl: DeltaFeatureLevelThreeGraphExtensionNameWithLongerSuffixImpl = DeltaFeatureLevelThreeGraphExtensionNameWithLongerSuffixImpl
+              constructor(DeltaFeatureLevelThreeGraphExtensionNameWithLongerSuffixImpl: DeltaFeatureLevelThreeGraphExtensionNameWithLongerSuffixImpl) /* primary */ {
+                super/*Any*/()
+                /* <init>() */
+
+              }
+
+              override fun create(): EpsilonFeatureLevelFourGraphExtensionName {
+                return Impl_laadb(deltaFeatureLevelThreeGraphExtensionNameWithLongerSuffixImpl = <this>.#DeltaFeatureLevelThreeGraphExtensionNameWithLongerSuffixImpl)
+              }
+
+            }
+
+            @DependencyGraph
+            private class Impl_j8761 : ZetaFeatureLevelFiveGraphExtensionName {
+              private val impl_laadb: Impl_laadb
+                field = impl_laadb
+
+              private class Impl_r81e5 : ZetaFeatureLevelFiveGraphExtensionName.Factory {
+                package /* final field */ val Impl_laadb: Impl_laadb = Impl_laadb
+                constructor(Impl_laadb: Impl_laadb) /* primary */ {
+                  super/*Any*/()
+                  /* <init>() */
+
+                }
+
+                override fun create(): ZetaFeatureLevelFiveGraphExtensionName {
+                  return Impl_j8761(impl_laadb = <this>.#Impl_laadb)
+                }
+
+              }
+
+              @DependencyGraph
+              private class Impl_d9837 : EtaFeatureLevelSixGraphExtensionName {
+                private val impl_j8761: Impl_j8761
+                  field = impl_j8761
+
+                private val impl_d9837DependencyTargetForConvertedProviderNameLengthConvertedProvider: Provider<DependencyTargetForConvertedProviderNameLength>
+                  field = asJavaxProvider<DependencyTargetForConvertedProviderNameLength>(/* <this> = <this>.#impl_j8761.#impl_laadb.#deltaFeatureLevelThreeGraphExtensionNameWithLongerSuffixImpl.#gammaFeatureLevelTwoGraphExtensionNameWithAdditionalDescriptiveTextImpl.#betaFeatureLevelOneGraphExtensionNameImpl.#alphaRootGraphForNameLengthChecksImpl.#dependencyTargetHolderForNameLengthChecksTargetProvider */)
+
+                private class Impl_s5cbb : EtaFeatureLevelSixGraphExtensionName.Factory {
+                  package /* final field */ val Impl_j8761: Impl_j8761 = Impl_j8761
+                  constructor(Impl_j8761: Impl_j8761) /* primary */ {
+                    super/*Any*/()
+                    /* <init>() */
+
+                  }
+
+                  override fun create(): EtaFeatureLevelSixGraphExtensionName {
+                    return Impl_d9837(impl_j8761 = <this>.#Impl_j8761)
+                  }
+
+                }
+
+                constructor(impl_j8761: Impl_j8761) /* primary */ {
+                  super/*Any*/()
+                  /* <init>() */
+
+                }
+
+                override val targetProvider: Provider<DependencyTargetForConvertedProviderNameLength>
+                  override get(): Provider<DependencyTargetForConvertedProviderNameLength> {
+                    return <this>.#impl_d9837DependencyTargetForConvertedProviderNameLengthConvertedProvider
+                  }
+
+              }
+
+              constructor(impl_laadb: Impl_laadb) /* primary */ {
+                super/*Any*/()
+                /* <init>() */
+
+              }
+
+              override fun etaFactory(): EtaFeatureLevelSixGraphExtensionName.Factory {
+                return AlphaRootGraphForNameLengthChecks.Impl.BetaFeatureLevelOneGraphExtensionNameImpl.GammaFeatureLevelTwoGraphExtensionNameWithAdditionalDescriptiveTextImpl.DeltaFeatureLevelThreeGraphExtensionNameWithLongerSuffixImpl.Impl_laadb.Impl_j8761.Impl_d9837.Impl_s5cbb(Impl_j8761 = <this>)
+              }
+
+            }
+
+            constructor(deltaFeatureLevelThreeGraphExtensionNameWithLongerSuffixImpl: DeltaFeatureLevelThreeGraphExtensionNameWithLongerSuffixImpl) /* primary */ {
+              super/*Any*/()
+              /* <init>() */
+
+            }
+
+            override fun zetaFactory(): ZetaFeatureLevelFiveGraphExtensionName.Factory {
+              return AlphaRootGraphForNameLengthChecks.Impl.BetaFeatureLevelOneGraphExtensionNameImpl.GammaFeatureLevelTwoGraphExtensionNameWithAdditionalDescriptiveTextImpl.DeltaFeatureLevelThreeGraphExtensionNameWithLongerSuffixImpl.Impl_laadb.Impl_j8761.Impl_r81e5(Impl_laadb = <this>)
+            }
+
+          }
+
+          constructor(gammaFeatureLevelTwoGraphExtensionNameWithAdditionalDescriptiveTextImpl: GammaFeatureLevelTwoGraphExtensionNameWithAdditionalDescriptiveTextImpl) /* primary */ {
+            super/*Any*/()
+            /* <init>() */
+
+          }
+
+          override fun epsilonFactory(): EpsilonFeatureLevelFourGraphExtensionName.Factory {
+            return AlphaRootGraphForNameLengthChecks.Impl.BetaFeatureLevelOneGraphExtensionNameImpl.GammaFeatureLevelTwoGraphExtensionNameWithAdditionalDescriptiveTextImpl.DeltaFeatureLevelThreeGraphExtensionNameWithLongerSuffixImpl.Impl_laadb.Impl_n8b5f(DeltaFeatureLevelThreeGraphExtensionNameWithLongerSuffixImpl = <this>)
+          }
+
+        }
+
+        constructor(betaFeatureLevelOneGraphExtensionNameImpl: BetaFeatureLevelOneGraphExtensionNameImpl) /* primary */ {
+          super/*Any*/()
+          /* <init>() */
+
+        }
+
+        override fun deltaFactory(): DeltaFeatureLevelThreeGraphExtensionNameWithLongerSuffix.Factory {
+          return AlphaRootGraphForNameLengthChecks.Impl.BetaFeatureLevelOneGraphExtensionNameImpl.GammaFeatureLevelTwoGraphExtensionNameWithAdditionalDescriptiveTextImpl.DeltaFeatureLevelThreeGraphExtensionNameWithLongerSuffixImpl.Impl_b4ec5(GammaFeatureLevelTwoGraphExtensionNameWithAdditionalDescriptiveTextImpl = <this>)
+        }
+
+      }
+
+      constructor(alphaRootGraphForNameLengthChecksImpl: Impl) /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      override fun gammaFactory(): GammaFeatureLevelTwoGraphExtensionNameWithAdditionalDescriptiveText.Factory {
+        return AlphaRootGraphForNameLengthChecks.Impl.BetaFeatureLevelOneGraphExtensionNameImpl.GammaFeatureLevelTwoGraphExtensionNameWithAdditionalDescriptiveTextImpl.FactoryImpl(BetaFeatureLevelOneGraphExtensionNameImpl = <this>)
+      }
+
+    }
+
+    private constructor(@Includes holder: DependencyTargetHolderForNameLengthChecks) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override fun betaFactory(): BetaFeatureLevelOneGraphExtensionName.Factory {
+      return AlphaRootGraphForNameLengthChecks.Impl.BetaFeatureLevelOneGraphExtensionNameImpl.FactoryImpl(AlphaRootGraphForNameLengthChecksImpl = <this>)
+    }
+
+  }
+
+  companion object Companion : Factory {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
+    override fun create(@Includes holder: DependencyTargetHolderForNameLengthChecks): AlphaRootGraphForNameLengthChecks {
+      return Impl(holder = holder)
+    }
+
+  }
+
+  @DependencyGraph.Factory
+  fun interface Factory {
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    @MetroImplMarker
+    object Impl : Factory {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @GraphFactoryInvokeFunctionMarker
+      override fun create(@Includes holder: DependencyTargetHolderForNameLengthChecks): AlphaRootGraphForNameLengthChecks {
+        return Impl(holder = holder)
+      }
+
+    }
+
+    abstract fun create(@Includes holder: DependencyTargetHolderForNameLengthChecks): AlphaRootGraphForNameLengthChecks
+
+  }
+
+  abstract fun betaFactory(): BetaFeatureLevelOneGraphExtensionName.Factory
+
+}
+
+@GraphExtension
+interface BetaFeatureLevelOneGraphExtensionName {
+  @GraphExtension.Factory
+  fun interface Factory {
+    abstract fun create(): BetaFeatureLevelOneGraphExtensionName
+
+  }
+
+  abstract fun gammaFactory(): GammaFeatureLevelTwoGraphExtensionNameWithAdditionalDescriptiveText.Factory
+
+}
+
+@GraphExtension
+interface DeltaFeatureLevelThreeGraphExtensionNameWithLongerSuffix {
+  @GraphExtension.Factory
+  fun interface Factory {
+    abstract fun create(): DeltaFeatureLevelThreeGraphExtensionNameWithLongerSuffix
+
+  }
+
+  abstract fun epsilonFactory(): EpsilonFeatureLevelFourGraphExtensionName.Factory
+
+}
+
+@GraphExtension
+interface EpsilonFeatureLevelFourGraphExtensionName {
+  @GraphExtension.Factory
+  fun interface Factory {
+    abstract fun create(): EpsilonFeatureLevelFourGraphExtensionName
+
+  }
+
+  abstract fun zetaFactory(): ZetaFeatureLevelFiveGraphExtensionName.Factory
+
+}
+
+@GraphExtension
+interface EtaFeatureLevelSixGraphExtensionName {
+  @GraphExtension.Factory
+  fun interface Factory {
+    abstract fun create(): EtaFeatureLevelSixGraphExtensionName
+
+  }
+
+  abstract val targetProvider: Provider<DependencyTargetForConvertedProviderNameLength>
+    abstract get
+
+}
+
+@GraphExtension
+interface GammaFeatureLevelTwoGraphExtensionNameWithAdditionalDescriptiveText {
+  @GraphExtension.Factory
+  fun interface Factory {
+    abstract fun create(): GammaFeatureLevelTwoGraphExtensionNameWithAdditionalDescriptiveText
+
+  }
+
+  abstract fun deltaFactory(): DeltaFeatureLevelThreeGraphExtensionNameWithLongerSuffix.Factory
+
+}
+
+@GraphExtension
+interface ZetaFeatureLevelFiveGraphExtensionName {
+  @GraphExtension.Factory
+  fun interface Factory {
+    abstract fun create(): ZetaFeatureLevelFiveGraphExtensionName
+
+  }
+
+  abstract fun etaFactory(): EtaFeatureLevelSixGraphExtensionName.Factory
+
+}
