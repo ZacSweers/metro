@@ -43,6 +43,8 @@ internal object Origins {
     IrDeclarationOrigin.GeneratedByPlugin(Keys.FactoryCreateFunction)
   val FactoryNewInstanceFunction: IrDeclarationOrigin =
     IrDeclarationOrigin.GeneratedByPlugin(Keys.FactoryNewInstanceFunction)
+  val StaticHelperBridgeFunction: IrDeclarationOrigin =
+    IrDeclarationOrigin.GeneratedByPlugin(Keys.StaticHelperBridgeFunction)
   val ProviderFactoryClassDeclaration: IrDeclarationOrigin =
     IrDeclarationOrigin.GeneratedByPlugin(Keys.ProviderFactoryClassDeclaration)
   val TopLevelInjectFunctionClassFunction: IrDeclarationOrigin =
