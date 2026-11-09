@@ -118,13 +118,13 @@ interface AlphaRootGraphForNameLengthChecks {
           }
 
           override fun epsilonFactory(): EpsilonFeatureLevelFourGraphExtensionName.Factory {
-            return AlphaRootGraphForNameLengthChecks.Impl.BetaFeatureLevelOneGraphExtensionNameImpl.GammaFeatureLevelTwoGraphExtensionNameWithAdditionalDescriptiveTextImpl.EpsilonFeatureLevelFourGraphExtensionNameImpl.FactoryImpl(DeltaFeatureLevelThreeGraphExtensionNameWithLongerSuffixImpl = <this>)
+            return AlphaRootGraphForNameLengthChecks.Impl.BetaFeatureLevelOneGraphExtensionNameImpl.GammaFeatureLevelTwoGraphExtensionNameWithAdditionalDescriptiveTextImpl._4cec37da4b7b666d.FactoryImpl(DeltaFeatureLevelThreeGraphExtensionNameWithLongerSuffixImpl = <this>)
           }
 
         }
 
         @DependencyGraph
-        private class EpsilonFeatureLevelFourGraphExtensionNameImpl : EpsilonFeatureLevelFourGraphExtensionName {
+        private class _4cec37da4b7b666d : EpsilonFeatureLevelFourGraphExtensionName {
           private val deltaFeatureLevelThreeGraphExtensionNameWithLongerSuffixImpl: DeltaFeatureLevelThreeGraphExtensionNameWithLongerSuffixImpl
             field = deltaFeatureLevelThreeGraphExtensionNameWithLongerSuffixImpl
 
@@ -137,74 +137,74 @@ interface AlphaRootGraphForNameLengthChecks {
             }
 
             override fun create(): EpsilonFeatureLevelFourGraphExtensionName {
-              return EpsilonFeatureLevelFourGraphExtensionNameImpl(deltaFeatureLevelThreeGraphExtensionNameWithLongerSuffixImpl = <this>.#DeltaFeatureLevelThreeGraphExtensionNameWithLongerSuffixImpl)
+              return _4cec37da4b7b666d(deltaFeatureLevelThreeGraphExtensionNameWithLongerSuffixImpl = <this>.#DeltaFeatureLevelThreeGraphExtensionNameWithLongerSuffixImpl)
             }
 
           }
 
           @DependencyGraph
-          private class Impl_j8761 : ZetaFeatureLevelFiveGraphExtensionName {
-            private val epsilonFeatureLevelFourGraphExtensionNameImpl: EpsilonFeatureLevelFourGraphExtensionNameImpl
-              field = epsilonFeatureLevelFourGraphExtensionNameImpl
+          private class ZetaFeatureLevelFiveGraphExtensionNameImpl : ZetaFeatureLevelFiveGraphExtensionName {
+            private val _4cec37da4b7b666d: _4cec37da4b7b666d
+              field = _4cec37da4b7b666d
 
             private class Impl_r81e5 : ZetaFeatureLevelFiveGraphExtensionName.Factory {
-              package /* final field */ val EpsilonFeatureLevelFourGraphExtensionNameImpl: EpsilonFeatureLevelFourGraphExtensionNameImpl = EpsilonFeatureLevelFourGraphExtensionNameImpl
-              constructor(EpsilonFeatureLevelFourGraphExtensionNameImpl: EpsilonFeatureLevelFourGraphExtensionNameImpl) /* primary */ {
+              package /* final field */ val _4cec37da4b7b666d: _4cec37da4b7b666d = _4cec37da4b7b666d
+              constructor(_4cec37da4b7b666d: _4cec37da4b7b666d) /* primary */ {
                 super/*Any*/()
                 /* <init>() */
 
               }
 
               override fun create(): ZetaFeatureLevelFiveGraphExtensionName {
-                return Impl_j8761(epsilonFeatureLevelFourGraphExtensionNameImpl = <this>.#EpsilonFeatureLevelFourGraphExtensionNameImpl)
+                return ZetaFeatureLevelFiveGraphExtensionNameImpl(_4cec37da4b7b666d = <this>.#_4cec37da4b7b666d)
               }
 
             }
 
-            @DependencyGraph
-            private class Impl_d9837 : EtaFeatureLevelSixGraphExtensionName {
-              private val impl_j8761: Impl_j8761
-                field = impl_j8761
-
-              private val impl_d9837DependencyTargetForConvertedProviderNameLengthConvertedProvider: Provider<DependencyTargetForConvertedProviderNameLength>
-                field = asJavaxProvider<DependencyTargetForConvertedProviderNameLength>(/* <this> = <this>.#impl_j8761.#epsilonFeatureLevelFourGraphExtensionNameImpl.#deltaFeatureLevelThreeGraphExtensionNameWithLongerSuffixImpl.#gammaFeatureLevelTwoGraphExtensionNameWithAdditionalDescriptiveTextImpl.#betaFeatureLevelOneGraphExtensionNameImpl.#alphaRootGraphForNameLengthChecksImpl.#dependencyTargetHolderForNameLengthChecksTargetProvider */)
-
-              private class Impl_s5cbb : EtaFeatureLevelSixGraphExtensionName.Factory {
-                package /* final field */ val Impl_j8761: Impl_j8761 = Impl_j8761
-                constructor(Impl_j8761: Impl_j8761) /* primary */ {
-                  super/*Any*/()
-                  /* <init>() */
-
-                }
-
-                override fun create(): EtaFeatureLevelSixGraphExtensionName {
-                  return Impl_d9837(impl_j8761 = <this>.#Impl_j8761)
-                }
-
-              }
-
-              constructor(impl_j8761: Impl_j8761) /* primary */ {
-                super/*Any*/()
-                /* <init>() */
-
-              }
-
-              override val targetProvider: Provider<DependencyTargetForConvertedProviderNameLength>
-                override get(): Provider<DependencyTargetForConvertedProviderNameLength> {
-                  return <this>.#impl_d9837DependencyTargetForConvertedProviderNameLengthConvertedProvider
-                }
-
-            }
-
-            constructor(epsilonFeatureLevelFourGraphExtensionNameImpl: EpsilonFeatureLevelFourGraphExtensionNameImpl) /* primary */ {
+            constructor(_4cec37da4b7b666d: _4cec37da4b7b666d) /* primary */ {
               super/*Any*/()
               /* <init>() */
 
             }
 
             override fun etaFactory(): EtaFeatureLevelSixGraphExtensionName.Factory {
-              return AlphaRootGraphForNameLengthChecks.Impl.BetaFeatureLevelOneGraphExtensionNameImpl.GammaFeatureLevelTwoGraphExtensionNameWithAdditionalDescriptiveTextImpl.EpsilonFeatureLevelFourGraphExtensionNameImpl.Impl_j8761.Impl_d9837.Impl_s5cbb(Impl_j8761 = <this>)
+              return AlphaRootGraphForNameLengthChecks.Impl.BetaFeatureLevelOneGraphExtensionNameImpl.GammaFeatureLevelTwoGraphExtensionNameWithAdditionalDescriptiveTextImpl._4cec37da4b7b666d.e5d37f0d73aa4cde.FactoryImpl(ZetaFeatureLevelFiveGraphExtensionNameImpl = <this>)
             }
+
+          }
+
+          @DependencyGraph
+          private class e5d37f0d73aa4cde : EtaFeatureLevelSixGraphExtensionName {
+            private val zetaFeatureLevelFiveGraphExtensionNameImpl: ZetaFeatureLevelFiveGraphExtensionNameImpl
+              field = zetaFeatureLevelFiveGraphExtensionNameImpl
+
+            private val e5d37f0d73aa4cdeDependencyTargetForConvertedProviderNameLengthConvertedProvider: Provider<DependencyTargetForConvertedProviderNameLength>
+              field = asJavaxProvider<DependencyTargetForConvertedProviderNameLength>(/* <this> = <this>.#zetaFeatureLevelFiveGraphExtensionNameImpl.#_4cec37da4b7b666d.#deltaFeatureLevelThreeGraphExtensionNameWithLongerSuffixImpl.#gammaFeatureLevelTwoGraphExtensionNameWithAdditionalDescriptiveTextImpl.#betaFeatureLevelOneGraphExtensionNameImpl.#alphaRootGraphForNameLengthChecksImpl.#dependencyTargetHolderForNameLengthChecksTargetProvider */)
+
+            private class FactoryImpl : EtaFeatureLevelSixGraphExtensionName.Factory {
+              package /* final field */ val ZetaFeatureLevelFiveGraphExtensionNameImpl: ZetaFeatureLevelFiveGraphExtensionNameImpl = ZetaFeatureLevelFiveGraphExtensionNameImpl
+              constructor(ZetaFeatureLevelFiveGraphExtensionNameImpl: ZetaFeatureLevelFiveGraphExtensionNameImpl) /* primary */ {
+                super/*Any*/()
+                /* <init>() */
+
+              }
+
+              override fun create(): EtaFeatureLevelSixGraphExtensionName {
+                return e5d37f0d73aa4cde(zetaFeatureLevelFiveGraphExtensionNameImpl = <this>.#ZetaFeatureLevelFiveGraphExtensionNameImpl)
+              }
+
+            }
+
+            constructor(zetaFeatureLevelFiveGraphExtensionNameImpl: ZetaFeatureLevelFiveGraphExtensionNameImpl) /* primary */ {
+              super/*Any*/()
+              /* <init>() */
+
+            }
+
+            override val targetProvider: Provider<DependencyTargetForConvertedProviderNameLength>
+              override get(): Provider<DependencyTargetForConvertedProviderNameLength> {
+                return <this>.#e5d37f0d73aa4cdeDependencyTargetForConvertedProviderNameLengthConvertedProvider
+              }
 
           }
 
@@ -215,7 +215,7 @@ interface AlphaRootGraphForNameLengthChecks {
           }
 
           override fun zetaFactory(): ZetaFeatureLevelFiveGraphExtensionName.Factory {
-            return AlphaRootGraphForNameLengthChecks.Impl.BetaFeatureLevelOneGraphExtensionNameImpl.GammaFeatureLevelTwoGraphExtensionNameWithAdditionalDescriptiveTextImpl.EpsilonFeatureLevelFourGraphExtensionNameImpl.Impl_j8761.Impl_r81e5(EpsilonFeatureLevelFourGraphExtensionNameImpl = <this>)
+            return AlphaRootGraphForNameLengthChecks.Impl.BetaFeatureLevelOneGraphExtensionNameImpl.GammaFeatureLevelTwoGraphExtensionNameWithAdditionalDescriptiveTextImpl._4cec37da4b7b666d.ZetaFeatureLevelFiveGraphExtensionNameImpl.Impl_r81e5(_4cec37da4b7b666d = <this>)
           }
 
         }

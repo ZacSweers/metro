@@ -1183,8 +1183,9 @@ internal class GraphNodes(
 
       // Add parent node if it's a generated graph extension
       if (graphDeclaration.origin == Origins.GeneratedGraphExtension) {
-        val parentGraphClass = graphDeclaration.parentAsClass
-        val graphTypeKey = graphDeclaration.generatedGraphExtensionData!!.typeKey
+        val extension = graphDeclaration.generatedGraphExtensionData!!
+        val parentGraphClass = extension.parentGraph
+        val graphTypeKey = extension.typeKey
         checkGraphSelfCycle(graphDeclaration, graphTypeKey, bindingStack)
 
         // Add its parent node

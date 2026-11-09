@@ -34,7 +34,6 @@ import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.kotlinFqName
-import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.name.ClassId
 
 /** Represents a dependency graph's structure and relationships. */
@@ -111,7 +110,7 @@ internal sealed class GraphNode {
         return@memoize source
       }
     }
-    return@memoize generateSequence(sourceGraph) { it.parentClassOrNull }
+    return@memoize generateSequence(sourceGraph) { it.graphParentOrOuterClass }
       .firstOrNull {
         // Skip impl graphs
         it.sourceGraphIfMetroGraph == it && it.fileOrNull != null
