@@ -6,7 +6,7 @@ Changelog
 
 ### New
 
-- **[FIR/IR]** Support companion-block `@Provides` functions and properties on Kotlin `2.5.0-Beta1` and later. Use `companion-mode` to configure generated graph creators, factory helpers, and member-injection helpers. In `companion-block` and `compatibility` modes, Metro reports graph creators that conflict with companion-block functions or with companion methods annotated with `@JvmStatic` or `@JsStatic`. See [companion-block configuration](docs/installation.md#companion-blocks).
+- **[FIR/IR]** Experimental support for companion block `@Provides` functions and properties on Kotlin `2.5.0-Beta1` and later. See [companion-block configuration](docs/installation.md#companion-blocks).
 
 ### Enhancements
 
