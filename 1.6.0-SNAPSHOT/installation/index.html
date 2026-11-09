@@ -703,6 +703,45 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#companion-blocks" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Companion blocks
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Companion blocks">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#generated-creators-and-helpers" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Generated creators and helpers
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#libraries" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Libraries
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#ide-support" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2069,6 +2108,45 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#companion-blocks" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Companion blocks
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Companion blocks">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#generated-creators-and-helpers" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Generated creators and helpers
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#libraries" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Libraries
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#ide-support" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2194,6 +2272,64 @@
 <span class="n">metro-compiler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">module</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">"dev.zacsweers.metro:compiler"</span><span class="p">,</span><span class="w"> </span><span class="n">version</span><span class="p">.</span><span class="n">ref</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">"metro"</span><span class="w"> </span><span class="p">}</span>
 <span class="n">metro-runtime</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">module</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">"dev.zacsweers.metro:runtime"</span><span class="p">,</span><span class="w"> </span><span class="n">version</span><span class="p">.</span><span class="n">ref</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">"metro"</span><span class="w"> </span><span class="p">}</span>
 </code></pre></div>
+<h2 id="companion-blocks">Companion blocks<a class="headerlink" href="#companion-blocks" title="Permanent link">&para;</a></h2>
+<p>Kotlin 2.5 introduces experimental companion blocks. A <code>companion { }</code> block declares static members directly in a class or interface, so you don&rsquo;t need a companion object to hold them. On Kotlin 2.5.0-Beta1 and later, you can put <code>@Provides</code> functions and properties in these blocks.</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@BindingContainer</span>
+<span class="kd">interface</span><span class="w"> </span><span class="nc">AppBindings</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="n">companion</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nd">@Provides</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">endpoint</span><span class="p">():</span><span class="w"> </span><span class="kt">String</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"https://example.com"</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Companion blocks are off by default. Enable them with Kotlin&rsquo;s <code>-Xcompanion-blocks</code> or <code>-Xcompanion-blocks-and-extensions</code> option in every compilation that uses them.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Kotlin 2.5.0-Beta1 has a <a href="https://youtrack.jetbrains.com/issue/KT-85853">JVM bytecode issue</a> with backing fields in interface companion blocks. Until it&rsquo;s fixed, give properties in interface companion blocks a getter, like <code>val endpoint: String get() = "..."</code>. Properties in class companion blocks can use backing fields.</p>
+</div>
+<h3 id="generated-creators-and-helpers">Generated creators and helpers<a class="headerlink" href="#generated-creators-and-helpers" title="Permanent link">&para;</a></h3>
+<p>Metro generates graph creators, like the <code>AppGraph()</code> call for a graph without a factory. It also generates helper functions for its factory and member injector classes. By default, all of these live on companion objects, even after you enable companion blocks. To move them into companion blocks, set Metro&rsquo;s <code>companion-mode</code> option:</p>
+<div class="highlight"><pre><span></span><code><span class="n">kotlin</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="n">compilerOptions</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">freeCompilerArgs</span><span class="p">.</span><span class="na">add</span><span class="p">(</span><span class="s">"-Xcompanion-blocks"</span><span class="p">)</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+
+<span class="n">metro</span><span class="p">.</span><span class="na">compilerOptions</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="n">put</span><span class="p">(</span><span class="s">"companion-mode"</span><span class="p">,</span><span class="w"> </span><span class="s">"companion-block"</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></div>
+<p><code>companion-mode</code> accepts the values below. They&rsquo;re case-insensitive, and you can use hyphens or underscores.</p>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>What Metro generates</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>companion-object</code> (default)</td>
+<td>Graph creators and helpers on companion objects. A graph&rsquo;s companion object implements its factory interface or has a <code>factory()</code> function.</td>
+</tr>
+<tr>
+<td><code>companion-block</code></td>
+<td>Graph creators and helpers as companion-block members. Metro skips companion objects that only existed to hold them.</td>
+</tr>
+<tr>
+<td><code>compatibility</code></td>
+<td>The <code>companion-object</code> APIs, plus companion-block functions that delegate to them.</td>
+</tr>
+<tr>
+<td><code>none</code></td>
+<td>No graph creators. Factory and member-injection helpers stay on companion objects. Create graphs with <code>createGraph()</code> and <code>createGraphFactory()</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>The <code>companion-block</code> and <code>compatibility</code> modes need companion blocks enabled. They also need the <code>generate-classes-in-ir=true</code> option. The Metro Gradle plugin turns it on by default for Kotlin versions that support companion blocks.</p>
+<p>Creator names come from your graph&rsquo;s factory. If an interface factory declares <code>fun build(...)</code>, you call <code>AppGraph.build(...)</code>. A graph without a factory uses <code>AppGraph()</code>. A graph with an abstract class factory uses <code>AppGraph.factory()</code>.</p>
+<p>Metro generates some factories as objects. Kotlin doesn&rsquo;t allow companion blocks in objects, so these factories keep their helpers on the object in every mode.</p>
+<h3 id="libraries">Libraries<a class="headerlink" href="#libraries" title="Permanent link">&para;</a></h3>
+<p>If other projects use your graphs or call Metro&rsquo;s generated helpers, set <code>companion-mode</code> explicitly. The mode decides which APIs your library publishes. To migrate a published library, start with <code>compatibility</code>. Existing calls like <code>AppGraph.Companion.build(...)</code> keep working, and so does code that uses a graph&rsquo;s companion object as its factory. Projects that call companion-block members also need companion blocks enabled.</p>
 <h2 id="ide-support">IDE Support<a class="headerlink" href="#ide-support" title="Permanent link">&para;</a></h2>
 <p>The K2 Kotlin IntelliJ plugin supports running third party FIR plugins in the IDE, but this feature is hidden behind a flag. Some Metro features can take advantage of this, namely diagnostic reporting directly in the IDE and some opt-in features to see generated declarations. </p>
 <p>To enable it, do the following:</p>
