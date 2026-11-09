@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794155924302,
+  "lastUpdate": 1794202606513,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -27216,6 +27216,62 @@ window.BENCHMARK_DATA = {
             "value": 13639.842,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +2.22%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "f4714230~1",
+          "message": "[before] Recognize companion-block providers in IDEA (#2913",
+          "timestamp": "2026-11-09T04:51:00Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/f471423088ccebd76d841670341e982c5aa9cc7a"
+        },
+        "date": 1794202606513,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 13808.682999999999,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "f471423088ccebd76d841670341e982c5aa9cc7a",
+          "message": "[after] Recognize companion-block providers in IDEA (#2913",
+          "timestamp": "2026-11-09T04:51:00Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/f471423088ccebd76d841670341e982c5aa9cc7a"
+        },
+        "date": 1794202606514,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 13905.297,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +0.70%"
           }
         ]
       }
