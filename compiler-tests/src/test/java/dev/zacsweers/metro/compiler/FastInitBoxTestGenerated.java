@@ -2128,6 +2128,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       }
 
       @Test
+      @TestMetadata("GraphExtensionInLongUnicodeOwner.kt")
+      public void testGraphExtensionInLongUnicodeOwner() {
+        run("GraphExtensionInLongUnicodeOwner.kt");
+      }
+
+      @Test
       @TestMetadata("GraphPrivateBindsAliasVisibleToChild.kt")
       public void testGraphPrivateBindsAliasVisibleToChild() {
         run("GraphPrivateBindsAliasVisibleToChild.kt");

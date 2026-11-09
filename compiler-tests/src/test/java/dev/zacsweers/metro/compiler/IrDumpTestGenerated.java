@@ -181,6 +181,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("ConvertedProviderLongNames.kt")
+    public void testConvertedProviderLongNames() {
+      run("ConvertedProviderLongNames.kt");
+    }
+
+    @Test
     @TestMetadata("CreatorParamsDoNotGetChunked.kt")
     public void testCreatorParamsDoNotGetChunked() {
       run("CreatorParamsDoNotGetChunked.kt");
@@ -269,12 +275,6 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     public void testMapsUseMapBuilderIfNoProvider() {
       run("MapsUseMapBuilderIfNoProvider.kt");
     }
-    @Test
-    @TestMetadata("ConvertedProviderLongNames.kt")
-    public void testConvertedProviderLongNames() {
-      run("ConvertedProviderLongNames.kt");
-    }
-
 
     @Test
     @TestMetadata("MixedUseFactoryAcrossMultipleMultis.kt")
