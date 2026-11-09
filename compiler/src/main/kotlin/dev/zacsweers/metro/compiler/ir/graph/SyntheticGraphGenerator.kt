@@ -104,8 +104,8 @@ internal data class SyntheticGraphParameter(
  * this is usually the parent graph, because the generated impl has no source of its own.
  *
  * [parentExclusionDeclaration] is the graph whose inherited `excludes` should be applied during
- * contribution merging. Graph-extension impls are generated under their parent graph, so they need
- * the parent exclusion chain even when their annotation comes from the extension source.
+ * contribution merging. An extension inherits its parent graph's exclusions even when its
+ * implementation is emitted in another declaration.
  */
 internal class SyntheticGraphGenerator(
   metroContext: IrMetroContext,
@@ -119,8 +119,8 @@ internal class SyntheticGraphGenerator(
   private val traceScope: TraceScope,
 ) : IrMetroContext by metroContext, TraceScope by traceScope {
 
-  // Graph-extension impls merge contributions in the parent graph's context. The extension source
-  // may live in another compilation, but the generated impl is nested in the parent graph.
+  // Extensions use the parent graph's lookup context because the source can live in another
+  // compilation.
   private val contributionLookupDeclaration = parentGraph ?: originDeclaration
 
   val contributions = sourceAnnotation?.let {

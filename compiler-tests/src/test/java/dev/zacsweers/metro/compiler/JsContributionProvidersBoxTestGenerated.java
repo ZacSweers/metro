@@ -1978,6 +1978,18 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
       }
 
       @Test
+      @TestMetadata("ConvertedProviderClassFileNameLength.kt")
+      public void testConvertedProviderClassFileNameLength() {
+        run("ConvertedProviderClassFileNameLength.kt");
+      }
+
+      @Test
+      @TestMetadata("ConvertedProviderClassFileNameLengthControl.kt")
+      public void testConvertedProviderClassFileNameLengthControl() {
+        run("ConvertedProviderClassFileNameLengthControl.kt");
+      }
+
+      @Test
       @TestMetadata("DefaultDependenciesPreserveChildBindings.kt")
       public void testDefaultDependenciesPreserveChildBindings() {
         run("DefaultDependenciesPreserveChildBindings.kt");
@@ -2020,6 +2032,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
       }
 
       @Test
+      @TestMetadata("FactoryImplSiblingNameCollision.kt")
+      public void testFactoryImplSiblingNameCollision() {
+        run("FactoryImplSiblingNameCollision.kt");
+      }
+
+      @Test
       @TestMetadata("FactoryIncludedBindingContainerInstancesPlumbDown.kt")
       public void testFactoryIncludedBindingContainerInstancesPlumbDown() {
         run("FactoryIncludedBindingContainerInstancesPlumbDown.kt");
@@ -2041,6 +2059,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
       @TestMetadata("GraphExtensionIgnoresOwnTypeBinding.kt")
       public void testGraphExtensionIgnoresOwnTypeBinding() {
         run("GraphExtensionIgnoresOwnTypeBinding.kt");
+      }
+
+      @Test
+      @TestMetadata("GraphExtensionInLongUnicodeOwner.kt")
+      public void testGraphExtensionInLongUnicodeOwner() {
+        run("GraphExtensionInLongUnicodeOwner.kt");
       }
 
       @Test

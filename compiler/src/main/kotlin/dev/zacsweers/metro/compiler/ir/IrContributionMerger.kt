@@ -15,6 +15,7 @@ import dev.zacsweers.metro.compiler.fir.resolveClassId
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.graph.explanation.BindingExplanationCandidate
+import dev.zacsweers.metro.compiler.ir.graph.generatedGraphExtensionData
 import dev.zacsweers.metro.compiler.ir.graph.reporting.ContributionDecisionCapture
 import dev.zacsweers.metro.compiler.ir.graph.reporting.bindingExplanationDeclaration
 import dev.zacsweers.metro.compiler.safePathString
@@ -152,11 +153,7 @@ internal class IrContributionMerger(
 
     // Get parent's cumulative exclusions (recursively, which also caches intermediate levels)
     val parentExclusions =
-      if (irClass.origin == Origins.GeneratedGraphExtension) {
-        parentExcludedForClass(irClass.parentAsClass)
-      } else {
-        emptySet()
-      }
+      irClass.generatedGraphExtensionData?.let { parentExcludedForClass(it.parentGraph) }.orEmpty()
 
     // Combine and cache the cumulative result
     val totalExclusions =

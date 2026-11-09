@@ -2324,6 +2324,18 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       }
 
       @Test
+      @TestMetadata("ConvertedProviderClassFileNameLength.kt")
+      public void testConvertedProviderClassFileNameLength() {
+        run("ConvertedProviderClassFileNameLength.kt");
+      }
+
+      @Test
+      @TestMetadata("ConvertedProviderClassFileNameLengthControl.kt")
+      public void testConvertedProviderClassFileNameLengthControl() {
+        run("ConvertedProviderClassFileNameLengthControl.kt");
+      }
+
+      @Test
       @TestMetadata("DefaultDependenciesPreserveChildBindings.kt")
       public void testDefaultDependenciesPreserveChildBindings() {
         run("DefaultDependenciesPreserveChildBindings.kt");
@@ -2366,6 +2378,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       }
 
       @Test
+      @TestMetadata("FactoryImplSiblingNameCollision.kt")
+      public void testFactoryImplSiblingNameCollision() {
+        run("FactoryImplSiblingNameCollision.kt");
+      }
+
+      @Test
       @TestMetadata("FactoryIncludedBindingContainerInstancesPlumbDown.kt")
       public void testFactoryIncludedBindingContainerInstancesPlumbDown() {
         run("FactoryIncludedBindingContainerInstancesPlumbDown.kt");
@@ -2387,6 +2405,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       @TestMetadata("GraphExtensionIgnoresOwnTypeBinding.kt")
       public void testGraphExtensionIgnoresOwnTypeBinding() {
         run("GraphExtensionIgnoresOwnTypeBinding.kt");
+      }
+
+      @Test
+      @TestMetadata("GraphExtensionInLongUnicodeOwner.kt")
+      public void testGraphExtensionInLongUnicodeOwner() {
+        run("GraphExtensionInLongUnicodeOwner.kt");
       }
 
       @Test

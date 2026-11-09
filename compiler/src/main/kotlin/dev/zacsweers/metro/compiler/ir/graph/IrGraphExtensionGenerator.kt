@@ -3,11 +3,12 @@
 package dev.zacsweers.metro.compiler.ir.graph
 
 import androidx.collection.MutableScatterMap
-import dev.zacsweers.metro.compiler.NameAllocator
+import dev.zacsweers.metro.compiler.NESTED_CLASS_BINARY_NAME_LIMIT
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
+import dev.zacsweers.metro.compiler.generatedNameIdentity
 import dev.zacsweers.metro.compiler.ir.IrBindingContainerResolver
 import dev.zacsweers.metro.compiler.ir.IrContributionMerger
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
@@ -16,6 +17,8 @@ import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.linkDeclarationsInCompilation
+import dev.zacsweers.metro.compiler.ir.lookupClass
+import dev.zacsweers.metro.compiler.ir.nestedClassOrNull
 import dev.zacsweers.metro.compiler.ir.overriddenSymbolsSequence
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.reportCompat
@@ -24,18 +27,24 @@ import dev.zacsweers.metro.compiler.ir.typeRemapperFor
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.safeNestedSimpleName
 import dev.zacsweers.metro.compiler.symbols.Symbols
+import dev.zacsweers.metro.compiler.toSafeIdentifier
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.trace
+import okio.utf8Size
+import org.jetbrains.kotlin.backend.common.serialization.cityHash64
 import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationContainer
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.irAttribute
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.defaultType
+import org.jetbrains.kotlin.ir.util.file
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.remapTypes
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.Name
 
 internal class IrGraphExtensionGenerator(
   context: IrMetroContext,
@@ -44,8 +53,7 @@ internal class IrGraphExtensionGenerator(
   private val parentGraph: IrClass,
 ) : IrMetroContext by context {
 
-  private val classNameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
-  // The main compiler thread builds extension classes under their generated parent.
+  // The main compiler thread builds and caches extensions for this parent graph.
   private val generatedClassesCache = MutableScatterMap<CacheKey, IrClass>()
 
   private data class CacheKey(val typeKey: IrTypeKey, val parentGraph: ClassId)
@@ -121,6 +129,7 @@ internal class IrGraphExtensionGenerator(
       graphExtensionAnno
         ?: reportCompilerBug("Expected @GraphExtension on ${sourceGraph.kotlinFqName}")
 
+    val (owner, name) = allocateExtensionName(sourceGraph, typeKey)
     val syntheticGraphGenerator =
       SyntheticGraphGenerator(
         metroContext = metroContext,
@@ -130,19 +139,11 @@ internal class IrGraphExtensionGenerator(
         parentGraph = parentGraph,
         originDeclaration = parentGraph,
         parentExclusionDeclaration = parentGraph,
-        containerToAddTo = parentGraph,
+        containerToAddTo = owner,
         traceScope = traceScope,
       )
 
-    // Falls back to a hashed name when chain depth would push the basename past the FS limit.
-    val parentClassId = parentGraph.classIdOrFail
-    val candidate = "${sourceGraph.name.asString().capitalizeUS()}${Symbols.StringNames.IMPL}"
-    val name =
-      classNameAllocator
-        .newName(parentClassId.safeNestedSimpleName(candidate, sourceGraph.classIdOrFail))
-        .asName()
-
-    val chainDepth = parentClassId.relativeClassName.pathSegments().size - 1
+    val chainDepth = generateSequence(parentGraph) { it.graphParentOrOuterClass }.count() - 1
     if (chainDepth >= GRAPH_EXTENSION_CHAIN_DEPTH_WARNING) {
       reportCompat(
         sourceGraph,
@@ -165,15 +166,84 @@ internal class IrGraphExtensionGenerator(
       )
 
     graphImpl.generatedGraphExtensionData =
-      GeneratedGraphExtensionData(typeKey = typeKey, factoryImpl = factoryImpl)
+      GeneratedGraphExtensionData(
+        typeKey = typeKey,
+        parentGraph = parentGraph,
+        factoryImpl = factoryImpl,
+      )
 
     return graphImpl
+  }
+
+  /** Uses the closest enclosing class that leaves room for the extension's factory and helpers. */
+  private fun allocateExtensionName(
+    sourceGraph: IrClass,
+    typeKey: IrTypeKey,
+  ): Pair<IrDeclarationContainer, Name> {
+    val parentId = parentGraph.classIdOrFail
+    val preferred = "${sourceGraph.name.asString().capitalizeUS()}${Symbols.StringNames.IMPL}"
+    val hint = parentId.safeNestedSimpleName(preferred, sourceGraph.classIdOrFail)
+    val name = parentGraph.availableNestedName(toSafeIdentifier(hint).asName())
+    if (name != null) {
+      return parentGraph to name
+    }
+
+    // A moved extension keeps the identity of its logical parent in every destination.
+    val identity = generatedNameIdentity(parentId.asString(), typeKey.identity.encoded)
+    val base = toSafeIdentifier(identity.cityHash64().toHexString()).asName()
+    for (owner in generateSequence(parentGraph) { it.parentClassOrNull }) {
+      val compact = owner.availableNestedName(base)
+      if (compact != null) {
+        return owner to compact
+      }
+    }
+
+    // A long source class can leave room for the extension only at file scope.
+    val file = parentGraph.file
+    val compact =
+      firstUnusedName(base) { parentGraph.lookupClass(ClassId(file.packageFqName, it)) != null }
+    return file to compact
   }
 }
 
 private const val GRAPH_EXTENSION_CHAIN_DEPTH_WARNING = 10
 
-internal class GeneratedGraphExtensionData(val typeKey: IrTypeKey, val factoryImpl: IrClass? = null)
+/** The JVM joins the enclosing name and the generated simple name with one '$' byte. */
+private fun ClassId.nestedNameBudget(): Long =
+  NESTED_CLASS_BINARY_NAME_LIMIT - relativeClassName.asString().utf8Size() - 1
+
+/** A numbered collision suffix can use up the last bytes under this owner. */
+private fun IrClass.availableNestedName(base: Name): Name? {
+  val budget = classIdOrFail.nestedNameBudget()
+  return firstUnusedName(base) { candidate ->
+    if (candidate.asString().length > budget) {
+      return null
+    }
+    nestedClassOrNull(candidate) != null
+  }
+}
+
+/** Tries the base name before allocating a numbered alternative. */
+private inline fun firstUnusedName(base: Name, isTaken: (Name) -> Boolean): Name {
+  var name = base
+  var suffix = 2
+  while (isTaken(name)) {
+    name = "${base.asString()}$suffix".asName()
+    suffix++
+  }
+  return name
+}
+
+/** [parentGraph] supplies inherited bindings and exclusions even when the implementation moves. */
+internal class GeneratedGraphExtensionData(
+  val typeKey: IrTypeKey,
+  val parentGraph: IrClass,
+  val factoryImpl: IrClass? = null,
+)
 
 internal var IrClass.generatedGraphExtensionData: GeneratedGraphExtensionData? by
   irAttribute(copyByDefault = false)
+
+/** Follows the logical extension chain before walking the enclosing source declarations. */
+internal val IrClass.graphParentOrOuterClass: IrClass?
+  get() = generatedGraphExtensionData?.parentGraph ?: parentClassOrNull

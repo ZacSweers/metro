@@ -207,9 +207,9 @@ public fun ClassId.generatedClass(suffix: String): ClassId {
 }
 
 /**
- * Returns [candidate] unchanged if a class with that simple name nested inside this [ClassId] would
- * still produce a class file basename within the filesystem per-segment limit. Otherwise returns a
- * short, stable fallback `Impl_${hashSource.hashSuffix}`.
+ * Returns [candidate] if the nested binary name fits [NESTED_CLASS_BINARY_NAME_LIMIT] UTF-8 bytes.
+ * Otherwise returns the stable fallback `Impl_${hashSource.hashSuffix}`. The caller must check
+ * whether the parent has room for the fallback.
  *
  * The basename of a nested class's `.class` file joins all relative class name segments with `$`,
  * so chained nested generation, like deep `@GraphExtension` impls and their factory impls, can
@@ -217,9 +217,8 @@ public fun ClassId.generatedClass(suffix: String): ClassId {
  * across compilations via [hashSource]. See https://github.com/ZacSweers/metro/issues/2268.
  */
 public fun ClassId.safeNestedSimpleName(candidate: String, hashSource: Any): String {
-  // `.`-separated and `$`-separated names have the same length.
-  val parentBinaryLength = relativeClassName.asString().length
-  val projected = parentBinaryLength + 1 + candidate.length
+  // Both the JVM's '$' separator and '.' in the relative class name take one byte.
+  val projected = relativeClassName.asString().utf8Size() + 1 + candidate.utf8Size()
   return if (projected <= NESTED_CLASS_BINARY_NAME_LIMIT) {
     candidate
   } else {
