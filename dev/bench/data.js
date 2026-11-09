@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794202606343,
+  "lastUpdate": 1794265486291,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -27272,6 +27272,62 @@ window.BENCHMARK_DATA = {
             "value": 0.14342691591810824,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: -3.04%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "falqadi",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "falqadi",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "2bfa6e70~1",
+          "message": "[before] Add repro for too-long name lengths for graph exte",
+          "timestamp": "2026-11-09T17:13:51-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/2bfa6e70d8e4c348326c891ff8a8b2665ca73011"
+        },
+        "date": 1794265486291,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.2231851288652525,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "falqadi",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "falqadi",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "2bfa6e70d8e4c348326c891ff8a8b2665ca73011",
+          "message": "[after] Add repro for too-long name lengths for graph exte",
+          "timestamp": "2026-11-09T17:13:51-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/2bfa6e70d8e4c348326c891ff8a8b2665ca73011"
+        },
+        "date": 1794265486292,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.2191357454809273,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: -1.81%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }

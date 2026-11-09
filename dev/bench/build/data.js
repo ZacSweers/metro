@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794202606513,
+  "lastUpdate": 1794265486975,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -27272,6 +27272,62 @@ window.BENCHMARK_DATA = {
             "value": 13905.297,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +0.70%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "falqadi",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "falqadi",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "2bfa6e70~1",
+          "message": "[before] Add repro for too-long name lengths for graph exte",
+          "timestamp": "2026-11-09T17:13:51-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/2bfa6e70d8e4c348326c891ff8a8b2665ca73011"
+        },
+        "date": 1794265486975,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 14319.997,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "falqadi",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "falqadi",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "2bfa6e70d8e4c348326c891ff8a8b2665ca73011",
+          "message": "[after] Add repro for too-long name lengths for graph exte",
+          "timestamp": "2026-11-09T17:13:51-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/2bfa6e70d8e4c348326c891ff8a8b2665ca73011"
+        },
+        "date": 1794265486976,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 13673.670999999998,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -4.51%"
           }
         ]
       }
