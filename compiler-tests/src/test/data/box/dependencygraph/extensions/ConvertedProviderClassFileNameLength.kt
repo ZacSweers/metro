@@ -33,6 +33,7 @@ interface BetaFeatureLevelOneGraphExtensionName {
 @GraphExtension
 interface GammaFeatureLevelTwoGraphExtensionNameWithAdditionalDescriptiveText {
   fun deltaFactory(): DeltaFeatureLevelThreeGraphExtensionNameWithLongerSuffix.Factory
+  fun thetaFactory(): ThetaFeatureLevelThreeGraphExtensionNameWithLongerSuffix.Factory
 
   @GraphExtension.Factory
   fun interface Factory {
@@ -46,7 +47,17 @@ interface DeltaFeatureLevelThreeGraphExtensionNameWithLongerSuffix {
 
   @GraphExtension.Factory
   fun interface Factory {
-    fun create(): DeltaFeatureLevelThreeGraphExtensionNameWithLongerSuffix
+    fun create(@Provides value: String): DeltaFeatureLevelThreeGraphExtensionNameWithLongerSuffix
+  }
+}
+
+@GraphExtension
+interface ThetaFeatureLevelThreeGraphExtensionNameWithLongerSuffix {
+  fun epsilonFactory(): EpsilonFeatureLevelFourGraphExtensionName.Factory
+
+  @GraphExtension.Factory
+  fun interface Factory {
+    fun create(@Provides value: String): ThetaFeatureLevelThreeGraphExtensionNameWithLongerSuffix
   }
 }
 
@@ -72,6 +83,7 @@ interface ZetaFeatureLevelFiveGraphExtensionName {
 
 @GraphExtension
 interface EtaFeatureLevelSixGraphExtensionName {
+  val inheritedValue: String
   val targetProvider: javax.inject.Provider<DependencyTargetForConvertedProviderNameLength>
 
   @GraphExtension.Factory
@@ -92,20 +104,14 @@ fun box(): String {
       .create(
         DependencyTargetHolderForNameLengthChecks(DependencyTargetForConvertedProviderNameLength())
       )
-  val innermost =
-    root
-      .betaFactory()
-      .create()
-      .gammaFactory()
-      .create()
-      .deltaFactory()
-      .create()
-      .epsilonFactory()
-      .create()
-      .zetaFactory()
-      .create()
-      .etaFactory()
-      .create()
+  val gamma = root.betaFactory().create().gammaFactory().create()
+  val epsilon = gamma.deltaFactory().create("from Delta").epsilonFactory().create()
+  val otherEpsilon = gamma.thetaFactory().create("from Theta").epsilonFactory().create()
+  // Both branches emit an Epsilon implementation under Gamma.
+  assertEquals(gamma.javaClass, epsilon.javaClass.enclosingClass)
+  assertEquals(gamma.javaClass, otherEpsilon.javaClass.enclosingClass)
+  assertNotEquals(epsilon.javaClass, otherEpsilon.javaClass)
+  val innermost = epsilon.zetaFactory().create().etaFactory().create()
   val generatedNames =
     listOf(innermost.javaClass.name) + innermost.javaClass.nestedClassNamesRecursive()
   val overLimit = generatedNames.filter { classFileNameBytes(it) > 255 }
@@ -115,5 +121,8 @@ fun box(): String {
       overLimit.joinToString { "$it (${classFileNameBytes(it)} bytes)" },
   )
   assertNotNull(innermost.targetProvider.get())
+  assertEquals("from Delta", innermost.inheritedValue)
+  val otherInnermost = otherEpsilon.zetaFactory().create().etaFactory().create()
+  assertEquals("from Theta", otherInnermost.inheritedValue)
   return "OK"
 }
