@@ -1758,6 +1758,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
       }
 
       @Test
+      @TestMetadata("FactoryImplSiblingNameCollision.kt")
+      public void testFactoryImplSiblingNameCollision() {
+        run("FactoryImplSiblingNameCollision.kt");
+      }
+
+      @Test
       @TestMetadata("FactoryIncludedBindingContainerInstancesPlumbDown.kt")
       public void testFactoryIncludedBindingContainerInstancesPlumbDown() {
         run("FactoryIncludedBindingContainerInstancesPlumbDown.kt");
