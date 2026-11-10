@@ -1241,24 +1241,6 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
-    @TestMetadata("GraphLifecycleInitBytecode.kt")
-    public void testGraphLifecycleInitBytecode() {
-      run("GraphLifecycleInitBytecode.kt");
-    }
-
-    @Test
-    @TestMetadata("GraphLifecycleSuspendCloseBytecode.kt")
-    public void testGraphLifecycleSuspendCloseBytecode() {
-      run("GraphLifecycleSuspendCloseBytecode.kt");
-    }
-
-    @Test
-    @TestMetadata("GraphLifecycleSuspendFactoryBytecode.kt")
-    public void testGraphLifecycleSuspendFactoryBytecode() {
-      run("GraphLifecycleSuspendFactoryBytecode.kt");
-    }
-
-    @Test
     @TestMetadata("SwitchingProvidersGenerateTableSwitch.kt")
     public void testSwitchingProvidersGenerateTableSwitch() {
       run("SwitchingProvidersGenerateTableSwitch.kt");
