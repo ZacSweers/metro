@@ -281,6 +281,17 @@ internal class GraphNodes(
         GraphLifecyclePhase.entries.filterTo(LinkedHashSet()) {
           original.hasAnnotation(it.annotation)
         }
+      // An upstream module can declare the callback without running Metro's FIR checker.
+      if (phases.size > 1) {
+        reportCompat(
+          graphDeclaration.sourceGraphIfMetroGraph,
+          MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
+          LifecycleDiagnosticMessages.conflictingCallbackAnnotations(
+            original.kotlinFqName.asString(),
+          ),
+        )
+        exitProcessing()
+      }
       checkOverriddenQualifiers(original)
       // The original declares the parameters. The graph's member has their types as seen here.
       val parameters =
@@ -342,14 +353,6 @@ internal class GraphNodes(
             suspendClose.original.name.asString(),
           ),
         )
-      }
-
-      // A parent closes its extensions from its own close(), which can't await a suspend one.
-      val parent = node.parentGraph as? GraphNode.Local
-      val parentClosesSynchronously = parent?.lifecycleClose?.isSuspend == false
-      if (parentClosesSynchronously && close.isSuspend) {
-        val parentName = checkNotNull(parent).sourceGraph.name.asString()
-        fail(LifecycleDiagnosticMessages.syncParentCannotCloseSuspendChild(parentName, graphName))
       }
 
       // Suspend init runs inside a suspend creation function, so the graph needs one.

@@ -164,7 +164,7 @@ interface AppGraph : CloseableGraph {
 
 ### Callbacks
 
-Callbacks are ordinary functions with a body that return `Unit`. A graph can have any number of them, with or without parameters. They run in no particular order.
+Callbacks are ordinary functions with a body that return `Unit`. Each function can have only one lifecycle annotation. A graph can have any number of callbacks, with or without parameters. They run in no particular order.
 
 Only Metro may *invoke* these functions. Calling one directly (including through `super`) or taking a reference to it is an error.
 
@@ -231,7 +231,7 @@ The first call to `close()` marks the graph closed and runs any `@OnGraphClose` 
 
 #### Graph extensions
 
-Closing a graph closes its closeable extensions first, then runs its own close callbacks. Each extension closes its own extensions the same way. Closing an extension yourself removes it from its parent's internal references. A graph that isn't closeable doesn't track its extensions, so close them yourself.
+A graph that creates a closeable extension must implement `CloseableGraph` or `SuspendCloseableGraph`. Closing a graph closes its closeable extensions first, then runs its own close callbacks. Each extension closes its own extensions the same way. Closing an extension yourself removes it from its parent's internal references.
 
 ```kotlin
 val factory = appGraph.userGraphFactory

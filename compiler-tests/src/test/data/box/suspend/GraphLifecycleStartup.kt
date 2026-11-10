@@ -26,7 +26,7 @@ interface Child : CloseableGraph {
 }
 
 @DependencyGraph
-interface Parent : Child.Factory {
+interface Parent : CloseableGraph, Child.Factory {
   val childFactory: Child.Factory
 }
 

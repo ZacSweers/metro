@@ -4,6 +4,7 @@
 interface Callbacks {
   @OnGraphInit fun <!DEPENDENCY_GRAPH_ERROR!>missingBody<!>()
   @OnGraphClose fun <!DEPENDENCY_GRAPH_ERROR!>wrongReturn<!>(): Int = 1
+  @OnGraphInit @OnGraphClose fun <!DEPENDENCY_GRAPH_ERROR!>bothPhases<!>() {}
   @OnGraphInit fun startup() {}
 }
 
@@ -13,6 +14,14 @@ interface SubCallbacks : Callbacks {
 
 interface OtherCallbacks {
   @OnGraphInit fun startup() {}
+}
+
+interface CloseCallbacks {
+  @OnGraphClose fun startup() {}
+}
+
+interface ConflictingOverride : Callbacks, CloseCallbacks {
+  @OnGraphInit override fun <!DEPENDENCY_GRAPH_ERROR!>startup<!>() {}
 }
 
 // Each missing annotation is reported once, however many overridden functions have it.

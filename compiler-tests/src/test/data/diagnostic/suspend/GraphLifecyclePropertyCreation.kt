@@ -4,6 +4,6 @@
 @GraphExtension interface Child : CloseableGraph {
   @OnGraphInit suspend fun <!DEPENDENCY_GRAPH_ERROR!>start<!>() {}
 }
-@DependencyGraph interface Parent {
+@DependencyGraph interface Parent : CloseableGraph {
   val child: Child
 }

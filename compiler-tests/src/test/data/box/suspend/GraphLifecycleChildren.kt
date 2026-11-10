@@ -31,8 +31,8 @@ interface StartingChild : CloseableGraph {
 }
 
 @DependencyGraph interface ExternalParent : CloseableGraph {
-  val supplied: Child
-  @DependencyGraph.Factory fun interface Factory { fun create(@Provides supplied: Child): ExternalParent }
+  val supplied: SuspendChild
+  @DependencyGraph.Factory fun interface Factory { fun create(@Provides supplied: SuspendChild): ExternalParent }
 }
 
 @DependencyGraph
@@ -56,8 +56,8 @@ private suspend fun closingTheParentClosesItsChildren() {
   val second = parent.child
   val other = parent.suspendChild
   // A graph passed in as an input keeps its owner.
-  val external = createGraphFactory<ExternalParent.Factory>().create(first)
-  check(external.supplied === first)
+  val external = createGraphFactory<ExternalParent.Factory>().create(other)
+  check(external.supplied === other)
   external.close()
   check(events == listOf("start", "start"))
   // Closing a child directly removes it from its parent.

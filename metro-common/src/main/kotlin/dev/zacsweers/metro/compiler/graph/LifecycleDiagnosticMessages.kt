@@ -3,8 +3,8 @@
 package dev.zacsweers.metro.compiler.graph
 
 /**
- * Graph lifecycle wording shared by FIR and IR. FIR checks the declarations it can see. IR repeats
- * the graph-level checks only for graphs whose contributions are merged in IR.
+ * FIR checks lifecycle declarations. IR checks the assembled graphs after merging contributions and
+ * resolving extension bindings.
  */
 public object LifecycleDiagnosticMessages {
   public const val CLOSE_IS_GENERATED: String =
@@ -27,6 +27,9 @@ public object LifecycleDiagnosticMessages {
   public const val CALLBACK_CANNOT_HAVE_TYPE_PARAMETERS: String =
     "Lifecycle callbacks can't have type parameters."
 
+  public fun conflictingCallbackAnnotations(callback: String): String =
+    "'$callback' can't serve as both @OnGraphInit and @OnGraphClose. Use a separate function for each phase."
+
   public fun overrideMustRepeatAnnotation(annotation: String): String =
     "An override of a lifecycle callback must repeat @$annotation."
 
@@ -43,14 +46,22 @@ public object LifecycleDiagnosticMessages {
     "Suspend @OnGraphInit callback '$callback' requires '$graph' to have a graph factory with a " +
       "suspend creation function."
 
-  public fun syncParentCannotCloseSuspendChild(parent: String, child: String): String =
-    "CloseableGraph '$parent' can't close SuspendCloseableGraph extension '$child'. Make '$parent' " +
-      "implement SuspendCloseableGraph."
+  /** Names the close contract the parent needs for an extension it creates. */
+  public fun parentCannotCloseExtension(
+    parent: String,
+    child: String,
+    suspendClose: Boolean,
+  ): String {
+    val required =
+      if (suspendClose) {
+        "SuspendCloseableGraph"
+      } else {
+        "CloseableGraph or SuspendCloseableGraph"
+      }
+    return "'$parent' creates closeable extension '$child', so it must implement $required."
+  }
 
-  /**
-   * A callback's annotations, like `@OnGraphInit @OnGraphClose`. They're sorted by phase so the
-   * label doesn't depend on the order they're written in.
-   */
+  /** Formats the lifecycle annotations shown in a diagnostic. */
   public fun annotationLabel(phases: Collection<GraphLifecyclePhase>): String =
     phases.sorted().joinToString(" ") { "@${it.annotation.shortClassName}" }
 

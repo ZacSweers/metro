@@ -21,7 +21,7 @@ import org.jetbrains.kotlin.ir.util.parentAsClass
  * A callback is a graph entry point even when it has no parameters.
  */
 internal data class LifecycleCallback(
-  /** The phases that run this callback. A function with both annotations runs in both. */
+  /** The lifecycle annotation on the original declaration determines when this callback runs. */
   val phases: Set<GraphLifecyclePhase>,
   /** The graph's own member, often a fake override. Generated code calls this one. */
   val graphFunction: IrSimpleFunction,
@@ -30,7 +30,7 @@ internal data class LifecycleCallback(
   val parameters: List<LifecycleParameter>,
 )
 
-/** The callback's annotations as they appear in source, like `@OnGraphInit @OnGraphClose`. */
+/** The callback's lifecycle annotation as it appears in source. */
 internal val LifecycleCallback.annotationLabel: String
   get() = LifecycleDiagnosticMessages.annotationLabel(phases)
 

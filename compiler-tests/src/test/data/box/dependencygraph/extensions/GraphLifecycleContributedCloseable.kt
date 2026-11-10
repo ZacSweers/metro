@@ -17,8 +17,10 @@ interface Child {
   }
 }
 
+@ContributesTo(AppScope::class) interface ParentCloseable : CloseableGraph
+
 @DependencyGraph(AppScope::class)
-interface AppGraph : CloseableGraph {
+interface AppGraph {
   val childFactory: Child.Factory
 
   @OnGraphClose fun stop() {
@@ -29,6 +31,6 @@ interface AppGraph : CloseableGraph {
 fun box(): String {
   val graph = createGraph<AppGraph>()
   graph.childFactory.create()
-  graph.close()
+  (graph as ParentCloseable).close()
   return if (events == listOf("child", "parent")) "OK" else "Fail: $events"
 }

@@ -40,12 +40,12 @@ class MetroGraphLifecycleTest : BasePlatformTestCase() {
       .map { it.render() }
   }
 
-  fun testDiamondRequestsEachParameterOnceForBothPhases() {
+  fun testDiamondRequestsEachCallbackParameterOnce() {
     val file =
       myFixture.configureMetroFile(
         """
       interface Base {
-        @OnGraphInit @OnGraphClose fun run(value: String) {}
+        @OnGraphClose fun stop(value: String) {}
       }
       interface Left : Base
       interface Right : Base
@@ -60,7 +60,7 @@ class MetroGraphLifecycleTest : BasePlatformTestCase() {
         .filter { it.lifecycleRequest != null }
     assertEquals(listOf("LIFECYCLE_PARAMETER"), requests.map { it.graphRequestKind?.name })
     assertEquals(
-      setOf(GraphLifecyclePhase.INIT, GraphLifecyclePhase.CLOSE),
+      setOf(GraphLifecyclePhase.CLOSE),
       requests.single().lifecycleRequest?.phases,
     )
   }
@@ -97,22 +97,6 @@ class MetroGraphLifecycleTest : BasePlatformTestCase() {
     assertTrue(diagnostics.toString(), diagnostics.isEmpty())
   }
 
-  fun testCallbackWithBothAnnotationsReportsItsParameterOnce() {
-    val diagnostics =
-      validate(
-        """
-      @DependencyGraph interface AppGraph : CloseableGraph {
-        @Provides suspend fun provideText(): String = ""
-        @OnGraphInit @OnGraphClose fun run(text: String) {}
-      }
-    """,
-      )
-    val suspendDiagnostics = diagnostics.filter {
-      it.contains(MetroDiagnosticId.SUSPEND_BINDING_FROM_NON_SUSPEND_ACCESSOR.fullId)
-    }
-    assertEquals(diagnostics.toString(), 1, suspendDiagnostics.size)
-  }
-
   fun testEagerSuspendParametersRequireSuspendCallback() {
     val diagnostics =
       validate(
@@ -123,11 +107,9 @@ class MetroGraphLifecycleTest : BasePlatformTestCase() {
       }
     """,
       )
-    assertTrue(
-      diagnostics.toString(),
-      diagnostics.any {
-        it.contains(MetroDiagnosticId.SUSPEND_BINDING_FROM_NON_SUSPEND_ACCESSOR.fullId)
-      },
-    )
+    val suspendDiagnostics = diagnostics.filter {
+      it.contains(MetroDiagnosticId.SUSPEND_BINDING_FROM_NON_SUSPEND_ACCESSOR.fullId)
+    }
+    assertEquals(diagnostics.toString(), 1, suspendDiagnostics.size)
   }
 }

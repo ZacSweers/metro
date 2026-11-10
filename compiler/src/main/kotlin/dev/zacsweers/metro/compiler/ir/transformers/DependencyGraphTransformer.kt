@@ -19,6 +19,7 @@ import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
+import dev.zacsweers.metro.compiler.graph.LifecycleDiagnosticMessages
 import dev.zacsweers.metro.compiler.graph.LocationDiagnostic
 import dev.zacsweers.metro.compiler.graph.toText
 import dev.zacsweers.metro.compiler.ir.IrBindingContainerResolver
@@ -75,6 +76,7 @@ import dev.zacsweers.metro.compiler.ir.render
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireNestedClass
 import dev.zacsweers.metro.compiler.ir.resolveOverriddenTypeIfAny
+import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
 import dev.zacsweers.metro.compiler.ir.stubExpressionBody
 import dev.zacsweers.metro.compiler.ir.supportsTracing
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
@@ -357,6 +359,49 @@ internal class DependencyGraphTransformer(
     }
   }
 
+  /** Checks ownership before a generated extension binding is added to the parent. */
+  private fun validateExtensionCloseability(
+    parent: GraphNode.Local,
+    bindings: IrBindingGraph,
+    extension: ExtensionValidationTask,
+  ): Boolean {
+    val child = extension.validation.node
+    val childClose = child.lifecycleClose ?: return true
+    val parentClose = parent.lifecycleClose
+    if (parentClose?.isSuspend == true) {
+      return true
+    }
+    if (parentClose != null && !childClose.isSuspend) {
+      return true
+    }
+    val key = extension.contributedGraphKey
+    val createsChild =
+      parent.graphExtensions.getValue(key).any { accessor ->
+        if (accessor.isFactory) {
+          val factory = bindings.findBinding(accessor.key.typeKey, allowLookup = true)
+          factory is IrBinding.GraphExtensionFactory
+        } else {
+          // An existing binding supplies the extension from its original owner.
+          bindings.findBinding(key, allowLookup = true) == null
+        }
+      }
+    if (!createsChild) {
+      return true
+    }
+    val parentGraph = parent.sourceGraph.sourceGraphIfMetroGraph
+    val childGraph = child.sourceGraph.sourceGraphIfMetroGraph
+    reportCompat(
+      parentGraph,
+      MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
+      LifecycleDiagnosticMessages.parentCannotCloseExtension(
+        parentGraph.name.asString(),
+        childGraph.name.asString(),
+        childClose.isSuspend,
+      ),
+    )
+    return false
+  }
+
   /**
    * Prepares a complete extension tree before analysis starts. Child results determine parent
    * roots, so binding population and analysis proceed in bottom-up batches afterward.
@@ -551,6 +596,10 @@ internal class DependencyGraphTransformer(
           if (task.validation.hasErrors) {
             hasErrors = true
             continue
+          }
+
+          if (!validateExtensionCloseability(node, bindingGraph, task)) {
+            hasErrors = true
           }
 
           if (task.isDirectExtension) {

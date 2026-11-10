@@ -79,7 +79,6 @@ internal class GraphMetadataReporter(
         put(
           "lifecycleCallbacks",
           buildJsonArray {
-            // Each phase gets its own entry, so a callback with both annotations appears twice.
             for (callback in node.lifecycleCallbacks) {
               for (phase in callback.phases) {
                 add(

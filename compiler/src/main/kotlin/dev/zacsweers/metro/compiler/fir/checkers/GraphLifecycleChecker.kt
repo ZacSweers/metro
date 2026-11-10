@@ -8,7 +8,6 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.generators.collectAbstractFunctions
-import dev.zacsweers.metro.compiler.fir.implements
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.nestedClasses
@@ -19,7 +18,6 @@ import dev.zacsweers.metro.compiler.graph.SuspendDiagnosticMessages
 import dev.zacsweers.metro.compiler.metroAnnotations
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.contract
-import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
@@ -63,22 +61,36 @@ internal object GraphLifecycleChecker : FirCallableDeclarationChecker(MppChecker
     val session = context.session
     val function = declaration.symbol
     val phases = function.lifecyclePhases()
+    if (phases.isEmpty() && !declaration.isOverride) {
+      return
+    }
 
-    // An override must repeat each lifecycle annotation of the functions it overrides. Otherwise
-    // the override would silently stop being a callback. Each missing annotation is reported once,
-    // even when the override has several overridden functions.
-    if (declaration.isOverride) {
-      val inheritedPhases =
+    // An override must repeat each inherited lifecycle annotation or it would stop being a
+    // callback.
+    val inheritedPhases =
+      if (declaration.isOverride) {
         function.directOverriddenSymbolsSafe().flatMapTo(mutableSetOf()) { it.lifecyclePhases() }
-      for (phase in inheritedPhases - phases) {
-        reporter.reportOn(
-          declaration.source,
-          MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
-          LifecycleDiagnosticMessages.overrideMustRepeatAnnotation(
-            phase.annotation.shortClassName.asString(),
-          ),
-        )
+      } else {
+        emptySet()
       }
+    if (phases.size > 1 || inheritedPhases.size > 1) {
+      reporter.reportOn(
+        declaration.source,
+        MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
+        LifecycleDiagnosticMessages.conflictingCallbackAnnotations(function.name.asString()),
+      )
+      return
+    }
+
+    // Annotations inherited through several supertypes get one diagnostic.
+    for (phase in inheritedPhases - phases) {
+      reporter.reportOn(
+        declaration.source,
+        MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
+        LifecycleDiagnosticMessages.overrideMustRepeatAnnotation(
+          phase.annotation.shortClassName.asString(),
+        ),
+      )
     }
     if (phases.isEmpty()) {
       return
@@ -249,30 +261,6 @@ internal fun checkGraphLifecycle(
       )
     }
   }
-}
-
-/**
- * Checks that a [parent] whose `close()` doesn't suspend can close the [extension] it creates
- * through the callable at [source]. Callers only call this for `CloseableGraph` parents.
- */
-context(context: CheckerContext, reporter: DiagnosticReporter)
-internal fun checkSyncParentCanClose(
-  parent: FirClass,
-  extension: FirClassSymbol<*>,
-  source: KtSourceElement?,
-) {
-  // A parent closes its extensions from its own close(), which can't await a suspend one.
-  if (!extension.implements(MetroClassIds.suspendCloseableGraph, context.session)) {
-    return
-  }
-  reporter.reportOn(
-    source,
-    MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
-    LifecycleDiagnosticMessages.syncParentCannotCloseSuspendChild(
-      parent.classId.shortClassName.asString(),
-      extension.classId.shortClassName.asString(),
-    ),
-  )
 }
 
 /** True when this callback is declared in a supertype of [graph] instead of the graph itself. */

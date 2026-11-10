@@ -9,7 +9,7 @@ class Input
   @OnGraphInit fun start(<!UNSCOPED_LIFECYCLE_PARAMETER!>service: Service<!>, later: () -> Service, input: Input) {}
   @Suppress("UNSCOPED_LIFECYCLE_PARAMETER")
   @OnGraphClose fun stop(service: Service) {}
-  @OnGraphInit @OnGraphClose fun run(<!UNSCOPED_LIFECYCLE_PARAMETER!>other: Service<!>) {}
+  @OnGraphClose fun run(<!UNSCOPED_LIFECYCLE_PARAMETER!>other: Service<!>) {}
 
   @DependencyGraph.Factory fun interface Factory {
     fun create(@Provides input: Input): AppGraph

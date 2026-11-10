@@ -239,9 +239,6 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
       )
     }
 
-    // A CloseableGraph closes its extensions from a close() that can't suspend.
-    val closesSynchronously = isCloseable && !isSuspendCloseable
-
     // Check supertype extensions
     if (graphExtensionFactorySupertypes.isNotEmpty()) {
       fun validateGraphExtensions() {
@@ -258,7 +255,6 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
             source = supertypeRef.source,
             parentScopeAnnotations = scopeAnnotations,
             parentAggregationScopes = aggregationScopes,
-            parentClosesSynchronously = closesSynchronously,
           )
         }
       }
@@ -402,7 +398,6 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
             source = callable.source,
             parentScopeAnnotations = scopeAnnotations,
             parentAggregationScopes = aggregationScopes,
-            parentClosesSynchronously = closesSynchronously,
           )
           continue
         } else if (callable.isOverride) {
@@ -437,7 +432,6 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
               source = callable.source,
               parentScopeAnnotations = scopeAnnotations,
               parentAggregationScopes = aggregationScopes,
-              parentClosesSynchronously = closesSynchronously,
             )
             continue
           }
@@ -445,9 +439,6 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
 
         when {
           isGraphExtension -> {
-            if (closesSynchronously) {
-              checkSyncParentCanClose(declaration, returnTypeClassSymbol, callable.source)
-            }
             // Functions with parameters are already handled above as ad-hoc factories.
             // Check if that extension has a creator. If so, we either must implement that creator
             // or it's an error because they need to use it.
@@ -661,16 +652,11 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
     graphExtension: FirClassLikeSymbol<*>,
     parentAggregationScopes: Set<ClassId>,
     parentScopeAnnotations: Set<MetroFirAnnotation>,
-    parentClosesSynchronously: Boolean,
   ) {
     val dependencyGraphAnno =
       graphExtension.resolvedCompilerAnnotationsWithClassIds
         .annotationsIn(session, classIds.graphExtensionAnnotations)
         .firstOrNull()
-
-    if (parentClosesSynchronously && graphExtension is FirClassSymbol<*>) {
-      checkSyncParentCanClose(parentGraph, graphExtension, source ?: parentGraph.source)
-    }
 
     val targetGraphScopes = dependencyGraphAnno?.allScopeClassIds(session).orEmpty()
     val targetGraphScopeAnnotations =

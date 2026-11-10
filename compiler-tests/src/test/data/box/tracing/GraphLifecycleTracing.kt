@@ -24,7 +24,7 @@ import dev.zacsweers.metro.trace.internal.testMetroTrace
   @GraphExtension.Factory fun interface Factory { fun create(): ChildGraph }
 }
 
-@DependencyGraph interface ParentGraph : ChildGraph.Factory {
+@DependencyGraph interface ParentGraph : CloseableGraph, ChildGraph.Factory {
   @DependencyGraph.Factory fun interface Factory { fun create(@Provides tracer: Tracer): ParentGraph }
 }
 

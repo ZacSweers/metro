@@ -31,7 +31,7 @@ interface AppGraph : CloseableGraph {
   ) {}
 
   @OnGraphClose fun stop(<!CLOSE_ONLY_BINDING!>closeOnly: CloseOnly<!>) {}
-  @OnGraphInit @OnGraphClose fun run(<!UNSCOPED_LIFECYCLE_PARAMETER!>other: Service<!>) {}
+  @OnGraphClose fun run(<!UNSCOPED_LIFECYCLE_PARAMETER!>other: Service<!>) {}
 
   @DependencyGraph.Factory
   fun interface Factory {

@@ -579,6 +579,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("GraphLifecycleCompiledPhases.kt")
+    public void testGraphLifecycleCompiledPhases() {
+      run("GraphLifecycleCompiledPhases.kt");
+    }
+
+    @Test
     @TestMetadata("GraphLifecycleDeclarations.kt")
     public void testGraphLifecycleDeclarations() {
       run("GraphLifecycleDeclarations.kt");
