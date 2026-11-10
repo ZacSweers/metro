@@ -1,4 +1,5 @@
 // ENABLE_SUSPEND_PROVIDERS
+// RENDER_DIAGNOSTICS_FULL_TEXT
 
 // A property accessor can't suspend, so it can't create a child whose init suspends.
 @GraphExtension interface Child : CloseableGraph {

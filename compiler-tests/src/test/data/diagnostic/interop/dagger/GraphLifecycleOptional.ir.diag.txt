@@ -1,0 +1,6 @@
+/GraphLifecycleOptional.kt:27:5: warning: [Metro/UnscopedLifecycleParameter] Unscoped Optional<Unscoped> is injected into parameter 'unscoped'
+    of @OnGraphInit AppGraph.start. This instance may be discarded after the callback.
+
+  help: request () -> Optional<Unscoped> or Lazy<Optional<Unscoped>> to resolve Optional<Unscoped>
+        explicitly
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#unscopedlifecycleparameter

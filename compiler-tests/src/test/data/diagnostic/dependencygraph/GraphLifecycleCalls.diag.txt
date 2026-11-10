@@ -1,0 +1,7 @@
+/GraphLifecycleCalls.kt:10:11: error: Only Metro can call lifecycle callback 'start'.
+
+/GraphLifecycleCalls.kt:15:11: error: Only Metro can call lifecycle callback 'start'.
+
+/GraphLifecycleCalls.kt:16:24: error: Only Metro can call lifecycle callback 'start'.
+
+/GraphLifecycleCalls.kt:17:26: error: Only Metro can call lifecycle callback 'start'.

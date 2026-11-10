@@ -1,3 +1,5 @@
+// RENDER_DIAGNOSTICS_FULL_TEXT
+
 interface Startup {
   @OnGraphInit fun start() {}
 }

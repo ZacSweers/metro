@@ -1,0 +1,1 @@
+/module_main_GraphLifecycleCompiledClose.kt:14:11: error: Metro implements close(). Move this cleanup into an @OnGraphClose callback.

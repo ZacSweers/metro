@@ -1,0 +1,12 @@
+/GraphLifecycleUnscoped.kt:11:26: warning: [Metro/UnscopedLifecycleParameter] Unscoped Service is injected into parameter 'service' of
+    @OnGraphInit AppGraph.start. This instance may be discarded after the callback.
+
+  help: request () -> Service or Lazy<Service> to resolve Service explicitly
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#unscopedlifecycleparameter
+
+
+/GraphLifecycleUnscoped.kt:14:25: warning: [Metro/UnscopedLifecycleParameter] Unscoped Service is injected into parameter 'other' of
+    @OnGraphClose AppGraph.run. This instance may be discarded after the callback.
+
+  help: request () -> Service or Lazy<Service> to resolve Service explicitly
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#unscopedlifecycleparameter

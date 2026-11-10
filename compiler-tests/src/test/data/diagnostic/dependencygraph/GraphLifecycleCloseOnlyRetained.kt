@@ -1,4 +1,5 @@
 // RUN_PIPELINE_TILL: BACKEND
+// RENDER_IR_DIAGNOSTICS_FULL_TEXT
 // METRO_JVM_ONLY
 // SHRINK_UNUSED_BINDINGS: false
 // Same as GraphLifecycleCloseOnly with shrinking off, which keeps unrequested bindings in the

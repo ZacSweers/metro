@@ -1,0 +1,1 @@
+/GraphLifecycleInjectionSites.kt:10:35: error: Metro does not support injecting Lazy<WorkerFactory> because WorkerFactory is an @AssistedFactory-annotated type.

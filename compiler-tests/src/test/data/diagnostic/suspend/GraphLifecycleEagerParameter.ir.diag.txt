@@ -1,0 +1,9 @@
+/GraphLifecycleEagerParameter.kt:10:26: error: [Metro/SuspendBindingFromNonSuspendAccessor] String depends on a suspend binding, so this callback must be suspend to receive it.
+
+Trace:
+    String is injected at
+        [AppGraph] @OnGraphInit AppGraph.start(message) // ❌ needs suspend support
+    String is provided at
+        [AppGraph] suspend AppGraph.message(…)
+
+Mark this callback as suspend or request `suspend () -> String`.

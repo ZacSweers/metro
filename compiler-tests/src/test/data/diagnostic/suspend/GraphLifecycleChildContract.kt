@@ -1,5 +1,6 @@
 // ENABLE_SUSPEND_PROVIDERS
 // RUN_PIPELINE_TILL: FIR2IR
+// RENDER_IR_DIAGNOSTICS_FULL_TEXT
 
 @GraphExtension interface SuspendChild : SuspendCloseableGraph
 

@@ -1,4 +1,5 @@
 // RUN_PIPELINE_TILL: FRONTEND
+// RENDER_DIAGNOSTICS_FULL_TEXT
 
 @AssistedInject class Worker(@Assisted val id: String)
 @AssistedFactory fun interface WorkerFactory { fun create(id: String): Worker }

@@ -1,0 +1,1 @@
+/AppGraph.kt:17:11: error: 'Hooks.run' can't serve as both @OnGraphInit and @OnGraphClose. Use a separate function for each phase.
