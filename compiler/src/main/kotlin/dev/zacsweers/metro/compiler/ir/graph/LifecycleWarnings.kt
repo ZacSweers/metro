@@ -21,19 +21,23 @@ import org.jetbrains.kotlin.ir.util.parentAsClass
 /**
  * Warns about lifecycle callback parameters in one sealed graph.
  *
- * The close-only warning compares against the keys that [IrBindingGraph.rootsOutsideClose] reaches,
- * which include the keys child graphs read from this graph. Requests from children count as uses,
- * so bindings a child reads from a parent never trigger it.
+ * Validation includes close callbacks among its roots. The close-only warning follows
+ * [forwardAdjacency] from [IrBindingGraph.rootsOutsideClose]. Keys that child graphs request count
+ * as uses outside close.
  */
 context(context: IrMetroContext)
-internal fun reportLifecycleWarnings(node: GraphNode.Local, graph: IrBindingGraph) {
+internal fun reportLifecycleWarnings(
+  node: GraphNode.Local,
+  graph: IrBindingGraph,
+  forwardAdjacency: Map<IrTypeKey, Set<IrTypeKey>>,
+) {
   val hasParameters = node.lifecycleCallbacks.any { it.parameters.isNotEmpty() }
   if (!hasParameters) {
     return
   }
   val findBinding: (IrTypeKey) -> IrBinding? = { graph.findBinding(it) }
   // Only graphs with close callbacks need this walk, so it runs at most once and only on demand.
-  val usedOutsideClose by lazy { keysReachableFrom(graph.rootsOutsideClose(), findBinding) }
+  val usedOutsideClose by lazy { keysReachableFrom(graph.rootsOutsideClose(), forwardAdjacency) }
   for (callback in node.lifecycleCallbacks) {
     for (parameter in callback.parameters) {
       val key = parameter.key
@@ -268,20 +272,17 @@ private fun deferredRequestHelp(typeKey: IrTypeKey, graph: IrBindingGraph): Stri
   return "request $provider or $lazy to resolve $type explicitly"
 }
 
+/** Deferred dependencies also count as uses outside close. */
 private fun keysReachableFrom(
   roots: Collection<IrTypeKey>,
-  findBinding: (IrTypeKey) -> IrBinding?,
+  forwardAdjacency: Map<IrTypeKey, Set<IrTypeKey>>,
 ): Set<IrTypeKey> {
   val reached = HashSet<IrTypeKey>()
   val pending = ArrayDeque(roots)
   while (pending.isNotEmpty()) {
     val key = pending.removeLast()
-    if (!reached.add(key)) {
-      continue
-    }
-    val binding = findBinding(key) ?: continue
-    for (dependency in binding.dependencies) {
-      pending.addLast(dependency.typeKey)
+    if (reached.add(key)) {
+      pending.addAll(forwardAdjacency[key].orEmpty())
     }
   }
   return reached

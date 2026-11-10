@@ -825,7 +825,9 @@ internal class IrBindingGraph(
     }
 
     trace("report empty multibindings") { reportEmptyMultibindings(onError) }
-    trace("report lifecycle warnings") { reportLifecycleWarnings(node, this@IrBindingGraph) }
+    trace("report lifecycle warnings") {
+      reportLifecycleWarnings(node, this@IrBindingGraph, topologyResult.adjacency.forward)
+    }
     trace("check for absent bindings") {
       check(!realGraph.bindings.any { _, v -> v is IrBinding.Absent }) {
         "Found absent bindings in the binding graph: ${dumpGraph("Absent bindings", short = true)}"
