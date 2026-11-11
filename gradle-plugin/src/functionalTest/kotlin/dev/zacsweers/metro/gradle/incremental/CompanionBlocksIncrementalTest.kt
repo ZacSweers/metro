@@ -152,7 +152,7 @@ class CompanionBlocksIncrementalTest :
                 ),
                 source(
                   """
-                // Defaults from another file stay on the factory, not the static creator.
+                // Only the factory can use defaults declared in another file.
                 fun main(): String {
                   val defaultsName = "build" + '$' + "default"
                   val hasStaticDefault =
