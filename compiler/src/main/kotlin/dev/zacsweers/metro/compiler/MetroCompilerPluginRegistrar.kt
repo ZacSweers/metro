@@ -169,13 +169,10 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
       return
     }
 
-    // When the parallel pool isn't engaged, drop memoize() down to LazyThreadSafetyMode.NONE
-    memoizeThreadSafetyMode =
-      if (options.parallelThreads > 0) {
-        LazyThreadSafetyMode.PUBLICATION
-      } else {
-        LazyThreadSafetyMode.NONE
-      }
+    // The IDE runs FIR extensions on several analysis threads, so it needs thread-safe memoize()
+    // just like the parallel pool.
+    val usesParallelPool = options.parallelThreads > 0
+    updateMemoizeThreadSafetyMode(needsThreadSafety = usesParallelPool || isIde)
 
     if (version != null) {
       val valid =
@@ -274,5 +271,34 @@ private class DebugMessageCollector(private val delegate: MessageCollector) : Me
 
   override fun hasErrors(): Boolean {
     return delegate.hasErrors()
+  }
+}
+
+/** Guards [threadSafeMemoizeRequired] and writes to [memoizeThreadSafetyMode]. */
+private val memoizeModeLock = Any()
+
+/** Whether any registration in this process has needed thread-safe [memoize]. */
+private var threadSafeMemoizeRequired = false
+
+/**
+ * Sets the process-global [memoizeThreadSafetyMode] for a new registration.
+ *
+ * [LazyThreadSafetyMode.NONE] is used only while every registration so far has been
+ * single-threaded. Once one needs thread safety, the mode stays at
+ * [LazyThreadSafetyMode.PUBLICATION] for the rest of the process. A Kotlin daemon can run several
+ * compilations at once, and a later single-threaded one mustn't downgrade lazies that a running
+ * parallel or IDE session still creates.
+ */
+internal fun updateMemoizeThreadSafetyMode(needsThreadSafety: Boolean) {
+  synchronized(memoizeModeLock) {
+    if (needsThreadSafety) {
+      threadSafeMemoizeRequired = true
+    }
+    memoizeThreadSafetyMode =
+      if (threadSafeMemoizeRequired) {
+        LazyThreadSafetyMode.PUBLICATION
+      } else {
+        LazyThreadSafetyMode.NONE
+      }
   }
 }

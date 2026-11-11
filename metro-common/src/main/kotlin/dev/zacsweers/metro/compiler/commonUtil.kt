@@ -11,13 +11,14 @@ public const val REPORT_METRO_MESSAGE: String =
 /**
  * Thread-safety mode used by [memoize]. Defaults to [LazyThreadSafetyMode.PUBLICATION] so callers
  * remain safe under the compiler's parallel transformation pool. The compiler registrar swaps this
- * to [LazyThreadSafetyMode.NONE] when `parallelThreads == 0`, removing the per-access CAS/volatile
- * cost from memoized properties on the hot compile path.
+ * to [LazyThreadSafetyMode.NONE] for single-threaded CLI compilations, removing the per-access
+ * CAS/volatile cost from memoized properties on the hot compile path.
  *
  * Mutable global state, one copy per classloader. The CLI compiler ships its own copy inside the
- * shaded compiler jar and the IDEA plugin bundles another, so the registrar's swap never reaches
- * IDE callers. Only swap to an unsynchronized mode when everything in the owning classloader is
- * single-threaded.
+ * shaded compiler jar. The IDEA plugin bundles another copy, and the registrar never touches that
+ * one. The IDE also loads the compiler jar and runs its registrar, so FIR extensions there use the
+ * compiler jar's copy. Only swap to an unsynchronized mode when everything in the owning
+ * classloader is single-threaded.
  */
 @Volatile
 public var memoizeThreadSafetyMode: LazyThreadSafetyMode = LazyThreadSafetyMode.PUBLICATION

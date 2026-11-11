@@ -20,6 +20,8 @@ Changelog
 
 ### Fixes
 
+- **[FIR]** Fix Metro's FIR extensions using unsynchronized lazy values in IDE mode, where the IDE analyzes code on several threads at once. 
+- **[FIR]** Stop a single-threaded compilation from turning off thread-safe lazy values for other compilations running in the same Kotlin daemon.
 - **[FIR/IR]** Fix contributed `@Inject` classes skipping declared and inherited member injection when `generateContributionProviders` is enabled.
 - **[FIR/IR]** Fix dependency graphs with a user-declared `companion object` failing to compile or to call their generated creator, such as `AppGraph.create()`. User-declared `factory(...)` overloads in these companions now work. A user-declared no-arg `factory()` that clashes with the generated one now reports an error.
 - **[IR]** Fix dynamic graphs missing `internal` contributions from friend compilations (such as `main` contributions used by tests).

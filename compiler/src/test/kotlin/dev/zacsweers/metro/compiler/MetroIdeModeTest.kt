@@ -91,6 +91,16 @@ class MetroIdeModeTest {
     assertThat(valid).isTrue()
   }
 
+  @Test
+  fun `thread-safe memoize mode is not downgraded by a later single-threaded registration`() {
+    // An IDE or parallel registration needs thread safety, and it sticks for the process.
+    updateMemoizeThreadSafetyMode(needsThreadSafety = true)
+    assertThat(memoizeThreadSafetyMode).isEqualTo(LazyThreadSafetyMode.PUBLICATION)
+
+    updateMemoizeThreadSafetyMode(needsThreadSafety = false)
+    assertThat(memoizeThreadSafetyMode).isEqualTo(LazyThreadSafetyMode.PUBLICATION)
+  }
+
   private fun configuration(ideMode: Boolean? = null): CompilerConfiguration {
     val configuration = with(compatContext) { createCompilerConfigurationCompat() }
     if (ideMode != null) {
