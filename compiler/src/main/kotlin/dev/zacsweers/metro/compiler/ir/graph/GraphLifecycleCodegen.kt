@@ -147,6 +147,44 @@ internal fun IrBuilderWithScope.irInitializedGraph(
  *
  * A closeable extension registers with its parent's state after init. Closing a graph closes its
  * registered children first and then runs its own close callbacks.
+ *
+ * The generated code for a closeable extension looks roughly like this. A root graph skips the
+ * `parent` calls. The `trace` spans only appear when runtime tracing is on.
+ *
+ * ```kotlin
+ * class ChildGraphImpl(parent: AppGraphImpl) : ChildGraph {
+ *   private val metroLifecycle = GraphLifecycleState()
+ *
+ *   init {
+ *     parent.metroLifecycle.checkOpen()
+ *     // ...binding fields...
+ *     // With a suspend init callback, the next two statements move to metroInit().
+ *     trace("ChildGraph.init") { trace("ChildGraph.start") { start(database) } }
+ *     parent.metroLifecycle.addChild(this, metroLifecycle)
+ *   }
+ *
+ *   // Only generated with a suspend init callback. Suspend creators call it before returning the
+ *   // graph, like `ChildGraphImpl(this).also { it.metroInit() }`.
+ *   internal suspend fun metroInit() { ... }
+ *
+ *   override fun close() {
+ *     if (metroLifecycle.markClosed()) {
+ *       try {
+ *         // A suspend close() runs this block inside runGraphCleanup { }.
+ *         trace("ChildGraph.close") {
+ *           for (child in metroLifecycle.takeChildren()) {
+ *             // A suspend close() awaits the suspend close() of SuspendCloseableGraph children.
+ *             (child as CloseableGraph).close()
+ *           }
+ *           trace("ChildGraph.stop") { stop(database) }
+ *         }
+ *       } finally {
+ *         parent.metroLifecycle.removeChild(this)
+ *       }
+ *     }
+ *   }
+ * }
+ * ```
  */
 internal class IrGraphLifecycleGenerator(
   context: IrMetroContext,
