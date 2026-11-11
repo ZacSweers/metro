@@ -116,8 +116,9 @@ internal sealed interface IrMetroFactory {
     with(scope) {
       // Anvil may generate the factory
       val creatorClass = factoryClass.requireStaticIshDeclarationContainer()
+      // Companion-block helpers can share a name with instance members of the factory class.
       val createFunction =
-        creatorClass.simpleFunctions().firstOrNull(functionPredicate)
+        creatorClass.simpleFunctions().firstOrNull { it.isStaticIsh && functionPredicate(it) }
           ?: reportCompilerBug(
             "No matching creator function for '$expectedCreatorDescription' found in ${factoryClass.classId} with typeKey $typeKey. Available are ${creatorClass.simpleFunctions().joinToString { it.name.asString() }}",
           )
@@ -169,8 +170,7 @@ internal fun Parameters.withDaggerFactorySignature(
   val newInstanceFunction =
     factoryClass
       .requireStaticIshDeclarationContainer()
-      .requireSimpleFunction(newInstanceName.asString())
-      .owner
+      .requireStaticIshFunction(newInstanceName.asString())
   val declaringType =
     if (sourceFunction is IrConstructor) {
       sourceFunction.returnType

@@ -190,6 +190,7 @@ import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.properties
 import org.jetbrains.kotlin.ir.util.remapTypes
+import org.jetbrains.kotlin.ir.util.simpleFunctions
 import org.jetbrains.kotlin.ir.util.superClass
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
@@ -1893,6 +1894,18 @@ internal fun IrClass.requireSimpleFunction(name: String) =
     )
 
 /**
+ * Finds a static-ish helper named [name] in this static-ish declaration container. Companion-block
+ * helpers share their class with instance members, like a factory's `invoke()` override. A provider
+ * named `invoke` gets a helper with that same name.
+ */
+internal fun IrClass.requireStaticIshFunction(name: String): IrSimpleFunction {
+  return simpleFunctions().firstOrNull { it.isStaticIsh && it.name.asString() == name }
+    ?: reportCompilerBug(
+      "No static-ish function $name in class $classId. Available: ${functions.joinToString { it.name.asString() }}",
+    )
+}
+
+/**
  * Returns the generated `factory()` accessor for [factoryClass] in a graph's companion object.
  *
  * Users can declare their own `factory` overloads in the companion, so this uses
@@ -2513,11 +2526,11 @@ internal fun checkSignatureCarrierParamMismatches(
   val staticContainer = factoryClass.requireStaticIshDeclarationContainer()
 
   val newInstanceFunction by memoize {
-    staticContainer.requireSimpleFunction(newInstanceFunctionName).owner
+    staticContainer.requireStaticIshFunction(newInstanceFunctionName)
   }
   val newInstanceFunctionParams by memoize { extractParams(newInstanceFunction) }
 
-  val createFunction = staticContainer.requireSimpleFunction(Symbols.StringNames.CREATE).owner
+  val createFunction = staticContainer.requireStaticIshFunction(Symbols.StringNames.CREATE)
   val createFunctionParams = extractParams(createFunction)
 
   var hadUnpatchedMismatch = false

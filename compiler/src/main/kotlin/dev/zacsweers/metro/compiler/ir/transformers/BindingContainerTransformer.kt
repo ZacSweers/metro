@@ -72,8 +72,8 @@ import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.reportMissingRuntimeCoroutines
 import dev.zacsweers.metro.compiler.ir.requireDeclarationMirrorFunction
-import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.requireStaticIshDeclarationContainer
+import dev.zacsweers.metro.compiler.ir.requireStaticIshFunction
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.subcomponentsArgument
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
@@ -1013,7 +1013,7 @@ internal class BindingContainerTransformer(
     return when (signatureCarrier) {
       SignatureCarrier.MIRROR_FUNCTION -> requireDeclarationMirrorFunction()
       SignatureCarrier.CREATOR_FUNCTION ->
-        requireStaticIshDeclarationContainer().requireSimpleFunction(entry.new_instance_name).owner
+        requireStaticIshDeclarationContainer().requireStaticIshFunction(entry.new_instance_name)
     }
   }
 

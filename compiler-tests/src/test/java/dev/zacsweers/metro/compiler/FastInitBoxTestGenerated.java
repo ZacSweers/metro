@@ -1453,6 +1453,18 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("ProviderNamedInvoke.kt")
+    public void testProviderNamedInvoke() {
+      run("ProviderNamedInvoke.kt");
+    }
+
+    @Test
+    @TestMetadata("ProviderNamedInvokeAcrossModules.kt")
+    public void testProviderNamedInvokeAcrossModules() {
+      run("ProviderNamedInvokeAcrossModules.kt");
+    }
+
+    @Test
     @TestMetadata("Providers.kt")
     public void testProviders() {
       run("Providers.kt");
