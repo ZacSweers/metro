@@ -29,7 +29,7 @@ class GraphLifecycleStateTest {
     val secondState = GraphLifecycleState()
     state.addChild(second, secondState)
     state.removeChild(secondState)
-    assertSame(first, state.takeChildren().single())
+    assertSame(first, state.takeChildren().single().second)
     assertEquals(emptyList(), state.takeChildren())
   }
 
@@ -47,7 +47,7 @@ class GraphLifecycleStateTest {
         state.removeChild(childState)
       }
     }
-    val taken = state.takeChildren()
+    val taken = state.takeChildren().map { it.second }
     assertEquals(kept.size, taken.size)
     assertEquals(kept, taken.toSet())
   }

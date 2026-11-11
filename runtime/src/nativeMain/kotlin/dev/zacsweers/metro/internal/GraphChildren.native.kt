@@ -15,8 +15,8 @@ internal actual class GraphChildren actual constructor() : DoubleCheckInitGuard(
 
   actual fun remove(childState: GraphLifecycleState): Any? = guarded { children.remove(childState) }
 
-  actual fun removeAll(): List<Any> = guarded {
-    val removed = children.values.toList()
+  actual fun removeAll(): List<Pair<GraphLifecycleState, Any>> = guarded {
+    val removed = children.map { (childState, child) -> childState to child }
     children.clear()
     removed
   }

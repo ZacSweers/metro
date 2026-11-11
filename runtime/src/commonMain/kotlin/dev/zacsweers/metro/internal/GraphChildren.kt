@@ -18,6 +18,6 @@ internal expect class GraphChildren() {
   /** Stops tracking the child registered under [childState] and returns it, or null. */
   fun remove(childState: GraphLifecycleState): Any?
 
-  /** Stops tracking every child and returns them in no particular order. */
-  fun removeAll(): List<Any>
+  /** Stops tracking every child and returns them with their states in no particular order. */
+  fun removeAll(): List<Pair<GraphLifecycleState, Any>>
 }

@@ -72,7 +72,8 @@ private val guardWaiters = AtomicInt(0)
  * Parks the current thread until [guard] is released.
  *
  * The parker is shared across all guards, so a wakeup can come from an unrelated guard. Callers
- * loop and recheck their own guard's [DoubleCheckInitGuard.owner] before proceeding.
+ * loop and recheck their own guard's [DoubleCheckInitGuard.owner] before proceeding. Graphs that
+ * wait for an extension to close share it too (see [awaitCloseFinished]).
  */
 internal fun awaitGuardRelease(guard: DoubleCheckInitGuard) {
   parkerLock()

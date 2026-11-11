@@ -10,10 +10,14 @@ import dev.zacsweers.metro.SuspendCloseableGraph
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.yield
 
@@ -121,5 +125,68 @@ class GraphCleanupTest {
     }
     assertEquals(1, closes)
     assertEquals(emptyList(), parent.takeChildren())
+  }
+
+  @Test
+  fun closingChildrenAwaitsAChildClosingElsewhere() =
+    runTest(timeout = 5.seconds) {
+      val events = mutableListOf<String>()
+      val parent = GraphLifecycleState()
+      val release = CompletableDeferred<Unit>()
+      val child = SuspendingChild(parent) { release.await() }
+      val childClose = launch { child.close() }
+      runCurrent()
+      val parentClose = launch {
+        closeGraphChildren(parent)
+        events += "parent closed its children"
+      }
+      runCurrent()
+      assertFalse(parentClose.isCompleted)
+      events += "child released"
+      release.complete(Unit)
+      joinAll(childClose, parentClose)
+      assertEquals(listOf("child released", "parent closed its children"), events)
+    }
+
+  @Test
+  fun closingChildrenFromACloseCallbackDoesNotWait() =
+    runTest(timeout = 5.seconds) {
+      val parent = GraphLifecycleState()
+      val release = CompletableDeferred<Unit>()
+      val child = SuspendingChild(parent) { release.await() }
+      val childClose = launch { child.close() }
+      runCurrent()
+      // This would hang if it waited, because the child only finishes after it returns.
+      runGraphCloseCallbacks { closeGraphChildren(parent) }
+      assertFalse(child.state.isCloseFinished())
+      release.complete(Unit)
+      childClose.join()
+      assertTrue(child.state.isCloseFinished())
+    }
+
+  /** Models the generated suspend `close()` of an extension of [parent]. */
+  private class SuspendingChild(
+    private val parent: GraphLifecycleState,
+    private val onClose: suspend () -> Unit,
+  ) : SuspendCloseableGraph {
+    val state = GraphLifecycleState()
+
+    init {
+      parent.addChild(this, state)
+    }
+
+    override suspend fun close() {
+      if (state.markClosed()) {
+        try {
+          runGraphCleanup {
+            closeGraphChildren(state)
+            runGraphCloseCallbacks { onClose() }
+          }
+        } finally {
+          parent.removeChild(state)
+          state.markCloseFinished()
+        }
+      }
+    }
   }
 }

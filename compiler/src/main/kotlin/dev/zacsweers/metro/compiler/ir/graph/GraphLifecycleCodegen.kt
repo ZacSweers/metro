@@ -191,16 +191,25 @@ internal fun checkAccessorRunsInit(graph: IrClass, accessor: IrSimpleFunction) {
  *         // A suspend close() runs this block inside runGraphCleanup { }.
  *         trace("ChildGraph.close") {
  *           // A suspend close() calls closeGraphChildren(metroLifecycle), which also awaits the
- *           // suspend close() of SuspendCloseableGraph children.
+ *           // suspend close() of SuspendCloseableGraph children. Both wait for children that are
+ *           // already closing elsewhere.
  *           metroLifecycle.closeChildren()
+ *           // A suspend close() with a suspend callback runs the callbacks inside
+ *           // runGraphCloseCallbacks { }.
  *           try {
- *             trace("ChildGraph.stop") { stop(database) }
+ *             metroLifecycle.enterCloseCallback() // Only around callbacks that don't suspend.
+ *             try {
+ *               trace("ChildGraph.stop") { stop(database) }
+ *             } finally {
+ *               metroLifecycle.exitCloseCallback()
+ *             }
  *           } catch (failure: Throwable) {
  *             metroLifecycle.recordCloseFailure(failure)
  *           }
  *         }
  *       } finally {
  *         parent.metroLifecycle.removeChild(metroLifecycle)
+ *         metroLifecycle.markCloseFinished()
  *       }
  *       metroLifecycle.throwCloseFailure()
  *     }
@@ -300,7 +309,7 @@ internal class IrGraphLifecycleGenerator(
         )
       val firstClose =
         irBlock(resultType = irBuiltIns.unitType) {
-          +releaseFromParentAfter(receiver, cleanup)
+          +finishCloseAfter(receiver, state, cleanup)
           +throwFailure
         }
       +irIfThen(irBuiltIns.unitType, isFirstClose, firstClose)
@@ -314,11 +323,75 @@ internal class IrGraphLifecycleGenerator(
   ): IrExpression =
     irLifecyclePhase(GraphLifecyclePhase.CLOSE, receiver, isSuspend) {
       closeChildren(receiver, state, isSuspend)
-      // A callback that throws is recorded so the callbacks after it still run.
-      invokeCallbacks(GraphLifecyclePhase.CLOSE, receiver) { callback ->
-        irRecordingCloseFailure(receiver, state, callback)
+      val hasSuspendCallback =
+        isSuspend &&
+          node.lifecycleCallbacks.any {
+            it.phase == GraphLifecyclePhase.CLOSE && it.graphFunction.isSuspend
+          }
+      if (hasSuspendCallback) {
+        // Marks the coroutine as inside close callbacks, which a thread-local can't follow.
+        +irRunGraphCloseCallbacks { invokeCloseCallbacks(receiver, state) }
+      } else {
+        invokeCloseCallbacks(receiver, state)
       }
     }
+
+  /**
+   * Calls the close callbacks. A callback that throws is recorded so the callbacks after it still
+   * run. Each callback that doesn't suspend runs between `enterCloseCallback()` and
+   * `exitCloseCallback()`, so graphs it closes on this thread don't wait for extensions that are
+   * still closing.
+   */
+  private fun IrStatementsBuilder<*>.invokeCloseCallbacks(
+    receiver: IrValueParameter,
+    state: IrField,
+  ) {
+    invokeCallbacks(GraphLifecyclePhase.CLOSE, receiver) { callback, isSuspend ->
+      val marked =
+        if (isSuspend) {
+          callback
+        } else {
+          irMarkedAsCloseCallback(receiver, state, callback)
+        }
+      irRecordingCloseFailure(receiver, state, marked)
+    }
+  }
+
+  /** Builds `enterCloseCallback()`, then [callback], then `exitCloseCallback()` in a `finally`. */
+  private fun IrBuilderWithScope.irMarkedAsCloseCallback(
+    receiver: IrValueParameter,
+    state: IrField,
+    callback: IrExpression,
+  ): IrExpression =
+    irBlock(resultType = irBuiltIns.unitType) {
+      +irInvoke(
+        callee = metroSymbols.graphLifecycleEnterCloseCallback,
+        dispatchReceiver = irGetField(irGet(receiver), state),
+      )
+      val exit =
+        irInvoke(
+          callee = metroSymbols.graphLifecycleExitCloseCallback,
+          dispatchReceiver = irGetField(irGet(receiver), state),
+        )
+      +irTry(irBuiltIns.unitType, callback, catches = emptyList(), finallyExpression = exit)
+    }
+
+  /** Builds `runGraphCloseCallbacks { content }` inside the current function or lambda. */
+  private fun IrBuilderWithScope.irRunGraphCloseCallbacks(
+    content: IrBlockBodyBuilder.() -> Unit,
+  ): IrExpression {
+    val block =
+      irLambda(
+        parent = parent,
+        receiverParameter = null,
+        valueParameters = emptyList(),
+        returnType = irBuiltIns.unitType,
+        suspend = true,
+      ) {
+        content()
+      }
+    return irInvoke(callee = metroSymbols.runGraphCloseCallbacks, args = listOf(block))
+  }
 
   /** Runs [step] and records what it throws with this graph's state instead of rethrowing it. */
   private fun IrBuilderWithScope.irRecordingCloseFailure(
@@ -384,20 +457,31 @@ internal class IrGraphLifecycleGenerator(
     +registration
   }
 
-  /** Stops the parent from tracking this graph once [cleanup] finishes, even if cleanup throws. */
-  private fun IrBuilderWithScope.releaseFromParentAfter(
+  /**
+   * Once [cleanup] finishes, even if it throws, stops the parent from tracking this graph and then
+   * marks cleanup finished. A parent that found this graph already closing waits for that mark.
+   */
+  private fun IrBuilderWithScope.finishCloseAfter(
     receiver: IrValueParameter,
+    state: IrField,
     cleanup: IrExpression,
   ): IrExpression {
-    val state = stateField ?: return cleanup
-    val parentState = parentState(receiver) ?: return cleanup
-    val release =
-      irInvoke(
-        callee = metroSymbols.graphLifecycleRemoveChild,
-        dispatchReceiver = parentState,
-        args = listOf(irGetField(irGet(receiver), state)),
-      )
-    return irTry(irBuiltIns.unitType, cleanup, catches = emptyList(), finallyExpression = release)
+    val finish =
+      irBlock(resultType = irBuiltIns.unitType) {
+        val parentState = parentState(receiver)
+        if (parentState != null) {
+          +irInvoke(
+            callee = metroSymbols.graphLifecycleRemoveChild,
+            dispatchReceiver = parentState,
+            args = listOf(irGetField(irGet(receiver), state)),
+          )
+        }
+        +irInvoke(
+          callee = metroSymbols.graphLifecycleMarkCloseFinished,
+          dispatchReceiver = irGetField(irGet(receiver), state),
+        )
+      }
+    return irTry(irBuiltIns.unitType, cleanup, catches = emptyList(), finallyExpression = finish)
   }
 
   private fun IrBuilderWithScope.parentState(receiver: IrValueParameter): IrExpression? {
@@ -456,12 +540,14 @@ internal class IrGraphLifecycleGenerator(
   /**
    * Calls each [phase] callback on [receiver] in declaration order. Each callback's arguments are
    * resolved from the binding graph right before that callback runs. [wrap] decorates each call,
-   * including the code that resolves its arguments.
+   * including the code that resolves its arguments. It also gets whether the callback suspends.
    */
-  private fun IrBlockBuilder.invokeCallbacks(
+  private fun IrStatementsBuilder<*>.invokeCallbacks(
     phase: GraphLifecyclePhase,
     receiver: IrValueParameter,
-    wrap: IrBuilderWithScope.(IrExpression) -> IrExpression = { it },
+    wrap: IrBuilderWithScope.(IrExpression, Boolean) -> IrExpression = { invocation, _ ->
+      invocation
+    },
   ) {
     val generator = expressionGeneratorFactory.create(receiver)
     for (callback in node.lifecycleCallbacks) {
@@ -496,7 +582,7 @@ internal class IrGraphLifecycleGenerator(
             args = arguments,
           )
         }
-      +wrap(invocation)
+      +wrap(invocation, isSuspend)
     }
   }
 

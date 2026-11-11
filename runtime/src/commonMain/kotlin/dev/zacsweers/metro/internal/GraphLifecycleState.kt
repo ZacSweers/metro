@@ -16,6 +16,11 @@ import kotlin.concurrent.atomics.ExperimentalAtomicApi
  *
  * Cleanup runs every step even when one fails. Each failure goes to [recordCloseFailure], and
  * [throwCloseFailure] reports them once cleanup finishes.
+ *
+ * The generated `close()` calls [markCloseFinished] when its cleanup is done. A parent that finds
+ * an extension already closing on another thread waits for that before it runs its own close
+ * callbacks. A thread that's inside a close callback never waits, so a callback that closes an
+ * ancestor graph can't deadlock. That ancestor doesn't wait for extensions that are still closing.
  */
 @OptIn(ExperimentalAtomicApi::class)
 public class GraphLifecycleState {
@@ -26,6 +31,9 @@ public class GraphLifecycleState {
 
   // The first failure of this graph's cleanup. Later failures are attached to it as suppressed.
   private val closeFailure = AtomicReference<Throwable?>(null)
+
+  // Null or a list of waiters while cleanup hasn't finished. CloseFinished once it has.
+  private val closeWaiters = AtomicReference<Any?>(null)
 
   /** Throws if this graph is closed. Extensions call this before they initialize. */
   public fun checkOpen() {
@@ -84,23 +92,97 @@ public class GraphLifecycleState {
     children.remove(childState)
   }
 
-  /** Stops tracking all children and returns them in no particular order. */
-  public fun takeChildren(): List<Any> = children.removeAll()
+  /**
+   * Stops tracking all children and returns them in no particular order. Each child comes with the
+   * state it registered with.
+   */
+  public fun takeChildren(): List<Pair<GraphLifecycleState, Any>> = children.removeAll()
 
   /**
    * Closes the tracked children. A graph whose `close()` doesn't suspend calls this. Such a graph
    * only tracks children whose `close()` doesn't suspend either.
    *
+   * A child that's already closing on another thread returns from `close()` right away. This then
+   * blocks until that child's cleanup finishes, unless [shouldAwaitClose] says not to.
+   *
    * A child that fails to close doesn't stop the others. Its failure goes to [recordCloseFailure].
    */
   public fun closeChildren() {
-    for (child in takeChildren()) {
+    for ((childState, child) in takeChildren()) {
       try {
         (child as AutoCloseable).close()
       } catch (failure: Throwable) {
         recordCloseFailure(failure)
       }
+      if (childState.shouldAwaitClose()) {
+        awaitCloseFinished(childState)
+      }
     }
+  }
+
+  /**
+   * Marks this graph's cleanup finished and wakes anything waiting for it. The generated `close()`
+   * calls this last, after it leaves its parent, even when cleanup throws.
+   */
+  public fun markCloseFinished() {
+    val waiters = closeWaiters.exchange(CloseFinished)
+    if (waiters is List<*>) {
+      for (waiter in waiters) {
+        @Suppress("UNCHECKED_CAST") (waiter as () -> Unit).invoke()
+      }
+    }
+  }
+
+  /** Returns true once [markCloseFinished] has run. */
+  public fun isCloseFinished(): Boolean = closeWaiters.load() === CloseFinished
+
+  /**
+   * Calls [waiter] once [markCloseFinished] runs, on the thread that runs it. Returns false without
+   * calling [waiter] if cleanup already finished.
+   */
+  public fun invokeOnCloseFinished(waiter: () -> Unit): Boolean {
+    while (true) {
+      val current = closeWaiters.load()
+      if (current === CloseFinished) {
+        return false
+      }
+      @Suppress("UNCHECKED_CAST") val waiters = (current as List<() -> Unit>?).orEmpty()
+      if (closeWaiters.compareAndSet(current, waiters + waiter)) {
+        return true
+      }
+    }
+  }
+
+  /**
+   * Returns true if a parent that just called this graph's `close()` should wait for its cleanup.
+   *
+   * That's when another caller marked this graph closed and its cleanup is still running. A state
+   * that was never marked closed has no such caller, so nothing waits for it. The generated
+   * `close()` marks cleanup finished in a `finally`, so a close that throws still ends the wait.
+   *
+   * A thread that's inside a close callback never waits. Outside its callbacks, generated `close()`
+   * only closes descendants. So every wait points from a graph to one of its descendants, and waits
+   * can't form a cycle.
+   */
+  public fun shouldAwaitClose(): Boolean {
+    val hasOtherCloser = closed.load()
+    if (!hasOtherCloser || isCloseFinished()) {
+      return false
+    }
+    return !isInCloseCallback()
+  }
+
+  /**
+   * Marks the current thread as running a close callback that doesn't suspend. The generated
+   * `close()` calls this before each such callback and [exitCloseCallback] after it.
+   */
+  public fun enterCloseCallback() {
+    setCloseCallbackDepth(closeCallbackDepth() + 1)
+  }
+
+  /** Undoes one [enterCloseCallback] call. */
+  public fun exitCloseCallback() {
+    setCloseCallbackDepth(closeCallbackDepth() - 1)
   }
 
   /**
@@ -127,3 +209,20 @@ public class GraphLifecycleState {
     }
   }
 }
+
+/** Marks a [GraphLifecycleState] whose cleanup finished. */
+private object CloseFinished
+
+/** Returns true if the current thread is running a close callback that doesn't suspend. */
+internal fun isInCloseCallback(): Boolean = closeCallbackDepth() > 0
+
+/**
+ * Returns how many close callbacks the current thread is running. Each thread has its own count.
+ */
+internal expect fun closeCallbackDepth(): Int
+
+/** Sets the current thread's count for [closeCallbackDepth]. */
+internal expect fun setCloseCallbackDepth(depth: Int)
+
+/** Blocks the current thread until [state]'s cleanup finishes. */
+internal expect fun awaitCloseFinished(state: GraphLifecycleState)

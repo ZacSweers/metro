@@ -2104,6 +2104,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
       }
 
       @Test
+      @TestMetadata("GraphLifecycleCloseParentFromChild.kt")
+      public void testGraphLifecycleCloseParentFromChild() {
+        run("GraphLifecycleCloseParentFromChild.kt");
+      }
+
+      @Test
       @TestMetadata("GraphLifecycleClosedParent.kt")
       public void testGraphLifecycleClosedParent() {
         run("GraphLifecycleClosedParent.kt");
@@ -3768,6 +3774,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     @TestMetadata("GraphLifecycleSuspendClose.kt")
     public void testGraphLifecycleSuspendClose() {
       run("GraphLifecycleSuspendClose.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleSuspendCloseParentFromChild.kt")
+    public void testGraphLifecycleSuspendCloseParentFromChild() {
+      run("GraphLifecycleSuspendCloseParentFromChild.kt");
     }
 
     @Test
