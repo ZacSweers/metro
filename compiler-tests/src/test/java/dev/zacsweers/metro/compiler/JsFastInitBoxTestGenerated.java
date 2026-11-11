@@ -2116,6 +2116,12 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
       }
 
       @Test
+      @TestMetadata("GraphLifecycleLateChild.kt")
+      public void testGraphLifecycleLateChild() {
+        run("GraphLifecycleLateChild.kt");
+      }
+
+      @Test
       @TestMetadata("GraphPrivateBindsAliasVisibleToChild.kt")
       public void testGraphPrivateBindsAliasVisibleToChild() {
         run("GraphPrivateBindsAliasVisibleToChild.kt");

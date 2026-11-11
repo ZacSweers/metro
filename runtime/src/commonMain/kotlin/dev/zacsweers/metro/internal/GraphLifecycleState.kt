@@ -66,6 +66,26 @@ public class GraphLifecycleState {
   }
 
   /**
+   * Tracks [child] like [addChild], for a child whose `close()` doesn't suspend.
+   *
+   * This graph can close while the child runs its init callbacks. Registration then fails, and
+   * nothing else would close the child. Its init callbacks finished, so this closes it before it
+   * throws.
+   */
+  public fun addCloseableChild(child: AutoCloseable, childState: GraphLifecycleState) {
+    try {
+      addChild(child, childState)
+    } catch (rejection: IllegalStateException) {
+      try {
+        child.close()
+      } catch (failure: Throwable) {
+        rejection.addSuppressed(failure)
+      }
+      throw rejection
+    }
+  }
+
+  /**
    * Returns [head] with a link to [childState] in front.
    *
    * A child that leaves only clears its [trackedGraph], so its link stays in the chain. This drops

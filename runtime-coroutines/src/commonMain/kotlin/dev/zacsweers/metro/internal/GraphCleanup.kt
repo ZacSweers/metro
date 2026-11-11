@@ -41,3 +41,28 @@ public suspend fun closeGraphChildren(state: GraphLifecycleState) {
     }
   }
 }
+
+/**
+ * Tracks [child] with [parent] like [GraphLifecycleState.addCloseableChild], for a child whose
+ * `close()` suspends.
+ *
+ * Generated code calls this from the suspend function that runs the child's init callbacks. A child
+ * that registers from its constructor has nowhere to await its `close()`, so it calls
+ * [GraphLifecycleState.addChild] and stays open if [parent] is already closed.
+ */
+public suspend fun addSuspendCloseableChild(
+  parent: GraphLifecycleState,
+  child: SuspendCloseableGraph,
+  childState: GraphLifecycleState,
+) {
+  try {
+    parent.addChild(child, childState)
+  } catch (rejection: IllegalStateException) {
+    try {
+      child.close()
+    } catch (failure: Throwable) {
+      rejection.addSuppressed(failure)
+    }
+    throw rejection
+  }
+}

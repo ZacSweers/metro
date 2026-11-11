@@ -103,4 +103,23 @@ class GraphCleanupTest {
     val failure = assertFailsWith<IllegalStateException> { state.throwCloseFailure() }
     assertEquals("failed", failure.message)
   }
+
+  @Test
+  fun aSuspendChildRegisteredAfterCloseIsClosed() = runTest {
+    val parent = GraphLifecycleState()
+    parent.markClosed()
+    var closes = 0
+    val child =
+      object : SuspendCloseableGraph {
+        override suspend fun close() {
+          yield()
+          closes++
+        }
+      }
+    assertFailsWith<IllegalStateException> {
+      addSuspendCloseableChild(parent, child, GraphLifecycleState())
+    }
+    assertEquals(1, closes)
+    assertEquals(emptyList(), parent.takeChildren())
+  }
 }

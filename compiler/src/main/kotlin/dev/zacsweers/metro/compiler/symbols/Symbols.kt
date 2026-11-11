@@ -495,6 +495,9 @@ internal class Symbols(
   val graphLifecycleCheckOpen by lazy { graphLifecycleState.requireSimpleFunction("checkOpen") }
   val graphLifecycleMarkClosed by lazy { graphLifecycleState.requireSimpleFunction("markClosed") }
   val graphLifecycleAddChild by lazy { graphLifecycleState.requireSimpleFunction("addChild") }
+  val graphLifecycleAddCloseableChild by lazy {
+    graphLifecycleState.requireSimpleFunction("addCloseableChild")
+  }
   val graphLifecycleLeaveParent by lazy { graphLifecycleState.requireSimpleFunction("leaveParent") }
   val graphLifecycleCloseChildren by lazy {
     graphLifecycleState.requireSimpleFunction("closeChildren")
@@ -510,6 +513,13 @@ internal class Symbols(
   val closeGraphChildren by lazy {
     builtinsFinder
       .findFunctions(CallableId(FqNames.metroRuntimeInternalPackage, "closeGraphChildren".asName()))
+      .single()
+  }
+  val addSuspendCloseableChild by lazy {
+    builtinsFinder
+      .findFunctions(
+        CallableId(FqNames.metroRuntimeInternalPackage, "addSuspendCloseableChild".asName()),
+      )
       .single()
   }
   val runGraphCleanup by lazy {

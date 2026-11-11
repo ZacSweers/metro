@@ -78,6 +78,29 @@ class GraphLifecycleStateTest {
   }
 
   @Test
+  fun aChildRegisteredAfterCloseIsClosed() {
+    val parent = GraphLifecycleState()
+    parent.markClosed()
+    var closes = 0
+    val child =
+      object : AutoCloseable {
+        override fun close() {
+          closes++
+          error("failed")
+        }
+      }
+    val rejection =
+      assertFailsWith<IllegalStateException> {
+        parent.addCloseableChild(child, GraphLifecycleState())
+      }
+    assertEquals(1, closes)
+    // The creator sees the registration failure. The child's own failure rides along.
+    assertEquals("Cannot create an extension of a closed graph.", rejection.message)
+    assertEquals("failed", rejection.suppressedExceptions.single().message)
+    assertEquals(emptyList(), parent.takeChildren())
+  }
+
+  @Test
   fun aFailingChildDoesNotStopTheOthers() {
     val state = GraphLifecycleState()
     var closes = 0

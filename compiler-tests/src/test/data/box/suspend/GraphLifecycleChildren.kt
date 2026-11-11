@@ -27,7 +27,15 @@ interface SuspendChild : SuspendCloseableGraph {
 @GraphExtension
 interface StartingChild : CloseableGraph {
   @OnGraphInit suspend fun start() { suspendCoroutine<Unit> { pending = it } }
+  @OnGraphClose fun stop() { events += "starting child" }
   @GraphExtension.Factory fun interface Factory { suspend fun create(): StartingChild }
+}
+
+@GraphExtension
+interface SuspendStartingChild : SuspendCloseableGraph {
+  @OnGraphInit suspend fun start() { suspendCoroutine<Unit> { pending = it } }
+  @OnGraphClose suspend fun stop() { events += "suspend starting child" }
+  @GraphExtension.Factory fun interface Factory { suspend fun create(): SuspendStartingChild }
 }
 
 @DependencyGraph interface ExternalParent : CloseableGraph {
@@ -39,6 +47,7 @@ interface StartingChild : CloseableGraph {
 interface Parent : SuspendCloseableGraph {
   val child: Child
   val starting: StartingChild.Factory
+  val suspendStarting: SuspendStartingChild.Factory
   val suspendChild: SuspendChild
   @OnGraphClose fun stop() { events += "parent" }
 }
@@ -84,17 +93,33 @@ private suspend fun aFailingChildDoesNotStopParentCleanup() {
   check(events.takeLast(2) == listOf("child", "parent"))
 }
 
+/** Starts [create] and returns a function that reports its outcome once it has one. */
+private fun <T> start(create: suspend () -> T): () -> Result<T>? {
+  var result: Result<T>? = null
+  create.startCoroutine(object : Continuation<T> {
+    override val context = EmptyCoroutineContext
+    override fun resumeWith(outcome: Result<T>) { result = outcome }
+  })
+  return { result }
+}
+
 private suspend fun aClosedParentRejectsAChildStillStarting() {
   val parent = createGraph<Parent>()
   val factory = parent.starting
-  var result: Result<StartingChild>? = null
-  val create: suspend () -> StartingChild = { factory.create() }
-  create.startCoroutine(object : Continuation<StartingChild> {
-    override val context = EmptyCoroutineContext
-    override fun resumeWith(outcome: Result<StartingChild>) { result = outcome }
-  })
-  check(result == null)
+  val suspendFactory = parent.suspendStarting
+  val outcome = start { factory.create() }
+  val starting = checkNotNull(pending)
+  val suspendOutcome = start { suspendFactory.create() }
+  val suspendStarting = checkNotNull(pending)
+  check(outcome() == null)
+  check(suspendOutcome() == null)
   parent.close()
-  checkNotNull(pending).resume(Unit)
-  check(result?.exceptionOrNull() is IllegalStateException)
+  // Each child finishes starting after its parent closed. Nothing else would close it, so it's
+  // closed before its creator sees the failure.
+  starting.resume(Unit)
+  check(outcome()?.exceptionOrNull() is IllegalStateException)
+  check(events.last() == "starting child") { events }
+  suspendStarting.resume(Unit)
+  check(suspendOutcome()?.exceptionOrNull() is IllegalStateException)
+  check(events.last() == "suspend starting child") { events }
 }

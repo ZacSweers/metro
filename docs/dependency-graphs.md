@@ -247,7 +247,7 @@ appGraph.close() // Closes second, then runs appGraph's close callbacks. `first`
 
     A `CloseableGraph` keeps a reference to each closeable extension it creates until the extension or the parent graph closes. Close extensions you're done with them so they can be garbage collected.
 
-An extension joins its parent's cleanup once its init callbacks succeed. A graph that receives another graph as an `@Includes` input *doesn't* close it as there's no parent/child relationship there. Sibling extensions close in no particular order when they are closed by their parents.
+An extension joins its parent's cleanup once its init callbacks succeed. If the parent closes while those callbacks run, creating the extension fails and Metro closes the extension first. The exception is an extension with a suspend `close()` that a non-suspend function creates, which stays open. A graph that receives another graph as an `@Includes` input *doesn't* close it as there's no parent/child relationship there. Sibling extensions close in no particular order when they are closed by their parents.
 
 A `CloseableGraph` can't own a `SuspendCloseableGraph` extension, but a `SuspendCloseableGraph` can own both kinds.
 

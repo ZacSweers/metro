@@ -177,7 +177,8 @@ internal fun checkAccessorRunsInit(graph: IrClass, accessor: IrSimpleFunction) {
  *     // ...binding fields...
  *     // With a suspend init callback, the next two statements move to metroInit().
  *     trace("ChildGraph.init") { trace("ChildGraph.start") { start(database) } }
- *     parent.metroLifecycle.addChild(this, metroLifecycle)
+ *     // Also closes this graph if the parent closed while it was starting.
+ *     parent.metroLifecycle.addCloseableChild(this, metroLifecycle)
  *   }
  *
  *   // Only generated with a suspend init callback. Suspend creators call it before returning the
@@ -247,7 +248,7 @@ internal class IrGraphLifecycleGenerator(
         invokeCallbacks(GraphLifecyclePhase.INIT, receiver)
       }
     }
-    registerWithParent(receiver)
+    registerWithParent(receiver, isSuspend = false)
   }
 
   /** Fills in `metroInit()` with the init callbacks when one of them suspends. */
@@ -261,7 +262,7 @@ internal class IrGraphLifecycleGenerator(
       +irLifecyclePhase(GraphLifecyclePhase.INIT, receiver, isSuspend = true) {
         invokeCallbacks(GraphLifecyclePhase.INIT, receiver)
       }
-      registerWithParent(receiver)
+      registerWithParent(receiver, isSuspend = true)
     }
   }
 
@@ -344,15 +345,43 @@ internal class IrGraphLifecycleGenerator(
     return irTry(irBuiltIns.unitType, step, catches = listOf(catch), finallyExpression = null)
   }
 
-  /** Registers this graph with its parent so that closing the parent closes it too. */
-  private fun IrStatementsBuilder<*>.registerWithParent(receiver: IrValueParameter) {
+  /**
+   * Registers this graph with its parent so that closing the parent closes it too.
+   *
+   * The parent can close while this graph runs its init callbacks. Registration then fails, and the
+   * runtime closes this graph first because nothing else would. A graph whose `close()` suspends
+   * can only be closed that way from `metroInit()`, which [isSuspend] marks. Its constructor has
+   * nowhere to await `close()`, so registration there only fails.
+   */
+  private fun IrStatementsBuilder<*>.registerWithParent(
+    receiver: IrValueParameter,
+    isSuspend: Boolean,
+  ) {
     val state = stateField ?: return
     val parentState = parentState(receiver) ?: return
-    +irInvoke(
-      callee = metroSymbols.graphLifecycleAddChild,
-      dispatchReceiver = parentState,
-      args = listOf(irGet(receiver), irGetField(irGet(receiver), state)),
-    )
+    val closeSuspends = checkNotNull(node.lifecycleClose).isSuspend
+    val child = irGet(receiver)
+    val childState = irGetField(irGet(receiver), state)
+    val registration =
+      if (!closeSuspends) {
+        irInvoke(
+          callee = metroSymbols.graphLifecycleAddCloseableChild,
+          dispatchReceiver = parentState,
+          args = listOf(child, childState),
+        )
+      } else if (isSuspend) {
+        irInvoke(
+          callee = metroSymbols.addSuspendCloseableChild,
+          args = listOf(parentState, child, childState),
+        )
+      } else {
+        irInvoke(
+          callee = metroSymbols.graphLifecycleAddChild,
+          dispatchReceiver = parentState,
+          args = listOf(child, childState),
+        )
+      }
+    +registration
   }
 
   /** Stops the parent from tracking this graph once [cleanup] finishes, even if cleanup throws. */
