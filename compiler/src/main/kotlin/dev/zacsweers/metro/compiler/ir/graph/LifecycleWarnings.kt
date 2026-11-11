@@ -159,9 +159,9 @@ private fun contributionLocations(contributions: List<IrBinding>): List<Diagnost
 /**
  * Returns the bindings that create a new instance for each request of [binding]. That's [binding]
  * itself, its unscoped contributions when it's a multibinding, or nothing when requests share one
- * instance. A binding read from a parent graph asks that graph. A wrapper like `Optional` is
- * checked through the value it holds. [allowLookup] lets a graph that isn't sealed yet look up
- * bindings it hasn't added.
+ * instance. A binding read from a parent graph asks that graph. A value from an included graph's
+ * accessor is never reported. A wrapper like `Optional` is checked through the value it holds.
+ * [allowLookup] lets a graph that isn't sealed yet look up bindings it hasn't added.
  */
 internal fun IrBindingGraph.freshInstanceBindings(
   binding: IrBinding,
@@ -173,6 +173,11 @@ internal fun IrBindingGraph.freshInstanceBindings(
   }
   if (binding.isParentOwned) {
     return listOfNotNull(binding.takeIf { parentCreatesFreshInstances(it.typeKey) })
+  }
+  // An included graph supplies this value through an accessor. Metro can't see whether that
+  // accessor returns a new instance, and a deferred request would call the same accessor.
+  if (binding is IrBinding.GraphDependency) {
+    return emptyList()
   }
   if (binding is IrBinding.Multibinding) {
     return binding.sourceBindings.flatMap { source ->

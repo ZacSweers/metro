@@ -1,42 +1,35 @@
-/GraphLifecycleWarningText.kt:17:26: warning: [Metro/UnscopedLifecycleParameter] Unscoped String is injected into parameter 'label' of
-    @OnGraphInit Child.start. This instance may be discarded after the callback.
-
-  help: request () -> String or Lazy<String> to resolve String explicitly
-  docs: https://zacsweers.github.io/metro/latest/diagnostics/#unscopedlifecycleparameter
-
-
-/GraphLifecycleWarningText.kt:18:26: warning: [Metro/CloseOnlyBinding] ChildCloseOnly is reachable only from @OnGraphClose callbacks in Child.
+/GraphLifecycleWarningText.kt:19:26: warning: [Metro/CloseOnlyBinding] ChildCloseOnly is reachable only from @OnGraphClose callbacks in Child.
     Resolving parameter 'closeOnly' of Child.stop may create ChildCloseOnly for the first time
     during graph close.
 
   docs: https://zacsweers.github.io/metro/latest/diagnostics/#closeonlybinding
 
 
-/GraphLifecycleWarningText.kt:32:5: warning: [Metro/UnscopedLifecycleParameter] Unscoped Service is injected into parameter 'service' of
+/GraphLifecycleWarningText.kt:33:5: warning: [Metro/UnscopedLifecycleParameter] Unscoped Service is injected into parameter 'service' of
     @OnGraphInit AppGraph.start. This instance may be discarded after the callback.
 
   help: request () -> Service or Lazy<Service> to resolve Service explicitly
   docs: https://zacsweers.github.io/metro/latest/diagnostics/#unscopedlifecycleparameter
 
 
-/GraphLifecycleWarningText.kt:33:5: warning: [Metro/UnscopedLifecycleParameter] Unscoped contributions to Set<Plugin> are injected into parameter
+/GraphLifecycleWarningText.kt:34:5: warning: [Metro/UnscopedLifecycleParameter] Unscoped contributions to Set<Plugin> are injected into parameter
     'plugins' of @OnGraphInit AppGraph.start. These instances may be discarded after the callback.
 
-      GraphLifecycleWarningText.kt:28:22
+      GraphLifecycleWarningText.kt:29:22
         @Provides @IntoSet fun fresh(): Plugin
 
   help: scope these contributions to share their instances with the rest of the graph
   docs: https://zacsweers.github.io/metro/latest/diagnostics/#unscopedlifecycleparameter
 
 
-/GraphLifecycleWarningText.kt:37:26: warning: [Metro/CloseOnlyBinding] CloseOnly is reachable only from @OnGraphClose callbacks in AppGraph.
+/GraphLifecycleWarningText.kt:38:26: warning: [Metro/CloseOnlyBinding] CloseOnly is reachable only from @OnGraphClose callbacks in AppGraph.
     Resolving parameter 'closeOnly' of AppGraph.stop may create CloseOnly for the first time during
     graph close.
 
   docs: https://zacsweers.github.io/metro/latest/diagnostics/#closeonlybinding
 
 
-/GraphLifecycleWarningText.kt:38:25: warning: [Metro/UnscopedLifecycleParameter] Unscoped Service is injected into parameter 'other' of
+/GraphLifecycleWarningText.kt:39:25: warning: [Metro/UnscopedLifecycleParameter] Unscoped Service is injected into parameter 'other' of
     @OnGraphClose AppGraph.run. This instance may be discarded after the callback.
 
   help: request () -> Service or Lazy<Service> to resolve Service explicitly

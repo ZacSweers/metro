@@ -222,7 +222,7 @@ Enable Metro in the upstream module too. If this happens while using framework i
 
 **Summary:** A lifecycle callback requests an unscoped binding directly.
 
-The callback gets its own instance, which usually isn't the one the rest of the graph uses. Scope the binding to share one instance. Request a provider or lazy value if the callback should create its own. For a multibinding, Metro checks each contribution. For an `Optional`, it checks the value inside. Graph inputs, factories, and members injectors are exempt.
+The callback gets its own instance, which usually isn't the one the rest of the graph uses. Scope the binding to share one instance. Request a provider or lazy value if the callback should create its own. For a multibinding, Metro checks each contribution. For an `Optional`, it checks the value inside. Graph inputs, included graph accessors, factories, and members injectors are exempt.
 
 ## UnusedGraphInputs
 

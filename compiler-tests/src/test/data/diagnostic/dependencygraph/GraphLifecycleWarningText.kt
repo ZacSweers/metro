@@ -13,7 +13,8 @@ interface Included { val label: String }
 
 @GraphExtension(ChildScope::class)
 interface Child : CloseableGraph {
-  @OnGraphInit fun start(<!UNSCOPED_LIFECYCLE_PARAMETER!>label: String<!>) {}
+  // A value from an included graph's accessor isn't reported.
+  @OnGraphInit fun start(label: String) {}
   @OnGraphClose fun stop(<!CLOSE_ONLY_BINDING!>closeOnly: ChildCloseOnly<!>) {}
   @GraphExtension.Factory fun interface Factory { fun create(): Child }
 }

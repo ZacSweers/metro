@@ -223,11 +223,11 @@ internal class IrBindingGraph(
   /**
    * Returns true when each request for [typeKey] gets a new instance from this graph.
    *
-   * A child graph reads some bindings from this graph's instance, like a value from one of this
-   * graph's `@Includes` dependencies. The child can't see how this graph creates that value. When a
-   * child's lifecycle callback requests one of these bindings, the child asks the graph that owns
-   * it through [parentCreatesFreshInstances] and [ParentContext]. A true answer means the callback
-   * can get an instance that nothing else uses, so the child reports UnscopedLifecycleParameter.
+   * A child graph reads some bindings from this graph's instance, like a `@Binds` type whose source
+   * is `@GraphPrivate`. The child can't see how this graph creates that value. When a child's
+   * lifecycle callback requests one of these bindings, the child asks the graph that owns it
+   * through [parentCreatesFreshInstances] and [ParentContext]. A true answer means the callback can
+   * get an instance that nothing else uses, so the child reports UnscopedLifecycleParameter.
    *
    * Children are validated before this graph seals, so this can still look up bindings.
    */

@@ -214,7 +214,7 @@ Callback parameters use normal dependency resolution and get the same compile-ti
     1. A binding that nothing else requests can be created during close just to be cleaned up.
     2. An unscoped binding gives the callback a new instance, so cleaning it up leaves the one the rest of the graph used untouched.
 
-    [UnscopedLifecycleParameter](diagnostics.md#unscopedlifecycleparameter) reports any callback parameter that requests an unscoped binding directly (not including graph inputs). Request `() -> T` or `Lazy<T>` to circumvent this, but only if you need to!
+    [UnscopedLifecycleParameter](diagnostics.md#unscopedlifecycleparameter) reports any callback parameter that requests an unscoped binding directly (not including graph inputs or values from included graphs). Request `() -> T` or `Lazy<T>` to circumvent this, but only if you need to!
 
     [CloseOnlyBinding](diagnostics.md#closeonlybinding) reports a binding that only `close` callbacks request.
 
