@@ -207,6 +207,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("CycleWithSingleUseDependency.kt")
+    public void testCycleWithSingleUseDependency() {
+      run("CycleWithSingleUseDependency.kt");
+    }
+
+    @Test
     @TestMetadata("SelfCycle.kt")
     public void testSelfCycle() {
       run("SelfCycle.kt");

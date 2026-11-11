@@ -975,8 +975,8 @@ internal class GraphNodes(
                 declaration.regularParameters.size == 1 && !annotations.isBinds
 
               // Single pass through overridden symbols
-              for (overridden in declaration.overriddenSymbolsSequence()) {
-                if (canDeferToDefaultImpl) {
+              if (canDeferToDefaultImpl) {
+                for (overridden in declaration.overriddenSymbolsSequence()) {
                   if (overridden.owner.modality == Modality.OPEN || overridden.owner.body != null) {
                     if (!isOptionalBinding) {
                       isOptionalBinding =

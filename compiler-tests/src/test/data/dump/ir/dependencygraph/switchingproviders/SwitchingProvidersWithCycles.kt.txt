@@ -3,14 +3,11 @@ interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
-    private val provideIntProvider: Provider<Int>
-      field = SwitchingProvider<Int>(graph = <this>, id = 2)
-
     private val provideStringProvider: Provider<String>
       field = DelegateFactory<String>()
 
     private val provideLongProvider: Provider<Long>
-      field = provider<Provider<Long>, Long>(delegate = SwitchingProvider<Long>(graph = <this>, id = 0))
+      field = provider<Provider<Long>, Long>(delegate = SwitchingProvider<Long>(graph = <this>, id = 1))
 
     private class SwitchingProvider<T : Any?> : Provider<T> {
       constructor(graph: Impl, id: Int) /* primary */ {
@@ -24,9 +21,8 @@ interface AppGraph {
           val tmp0_id: Int = <this>.#id
           val tmp1_graph: AppGraph.Impl = <this>.#graph
           when {
-            EQEQ(arg0 = tmp0_id, arg1 = 0) -> tmp1_graph.provideLong(string = tmp1_graph.#provideStringProvider.invoke()) /*as T */
-            EQEQ(arg0 = tmp0_id, arg1 = 1) -> tmp1_graph.provideString(int = tmp1_graph.#provideIntProvider.invoke(), long = lazy<Provider<Long>, Long>(provider = tmp1_graph.#provideLongProvider)) /*as T */
-            EQEQ(arg0 = tmp0_id, arg1 = 2) -> tmp1_graph.provideInt() /*as T */
+            EQEQ(arg0 = tmp0_id, arg1 = 0) -> tmp1_graph.provideString(int = tmp1_graph.provideInt(), long = lazy<Provider<Long>, Long>(provider = tmp1_graph.#provideLongProvider)) /*as T */
+            EQEQ(arg0 = tmp0_id, arg1 = 1) -> tmp1_graph.provideLong(string = tmp1_graph.#provideStringProvider.invoke()) /*as T */
             else -> throw error(message = "Unexpected SwitchingProvider id: " + tmp0_id)
           }
         }
@@ -42,7 +38,7 @@ interface AppGraph {
       super/*Any*/()
       /* <init>() */
 
-      setDelegate<String>(delegateFactory = <this>.#provideStringProvider, delegate = provider<Provider<String>, String>(delegate = SwitchingProvider<String>(graph = <this>, id = 1)))
+      setDelegate<String>(delegateFactory = <this>.#provideStringProvider, delegate = provider<Provider<String>, String>(delegate = SwitchingProvider<String>(graph = <this>, id = 0)))
     }
 
     override val long: Long
