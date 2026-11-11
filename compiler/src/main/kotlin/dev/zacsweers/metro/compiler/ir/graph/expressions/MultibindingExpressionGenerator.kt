@@ -922,22 +922,11 @@ internal class MultibindingExpressionGenerator(
                 nameHint = "builder",
               )
 
-            // .put(key, provider) for each binding
+            // .put(key, provider) for each binding.
+            // Each source is one @IntoMap entry, even when its value type is itself a Map.
             for (sourceBinding in sourceBindings) {
-              val providerTypeMetadata = sourceBinding.contextualTypeKey
-
-              val isMap = providerTypeMetadata.typeKey.type.rawType().symbol == irBuiltIns.mapClass
-
-              val putter =
-                if (isMap) {
-                  // use putAllFunction
-                  // .putAll(1, FileSystemModule_Companion_ProvideMapInt1Factory.create())
-                  // TODO is this only for inheriting in GraphExtensions?
-                  TODO("putAll isn't yet supported")
-                } else {
-                  // .put(1, FileSystemModule_Companion_ProvideMapInt1Factory.create())
-                  putFunction
-                }
+              // .put(1, FileSystemModule_Companion_ProvideMapInt1Factory.create())
+              val putter = putFunction
 
               // Ensure we match the expected parameter type of the put() function we're calling
               val providerType = putter.owner.nonDispatchParameters[1].type.rawType()

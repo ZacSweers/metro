@@ -4323,6 +4323,12 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
     }
 
     @Test
+    @TestMetadata("MapValuedMapMultibinding.kt")
+    public void testMapValuedMapMultibinding() {
+      run("MapValuedMapMultibinding.kt");
+    }
+
+    @Test
     @TestMetadata("MultibindingGraphWithWithScopedMapProviderDeps.kt")
     public void testMultibindingGraphWithWithScopedMapProviderDeps() {
       run("MultibindingGraphWithWithScopedMapProviderDeps.kt");
