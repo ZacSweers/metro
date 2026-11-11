@@ -73,11 +73,15 @@ public abstract class BaseDoubleCheck<T>(provider: Provider<T>) :
  * Checks to see if creating the new instance has resulted in a recursive call. If it has, and the
  * new instance is the same as the current instance, return the instance. However, if the new
  * instance differs from the current instance, an [IllegalStateException] is thrown.
+ *
+ * Instances are compared by identity, like Dagger. Two equal but distinct instances would mean the
+ * scoped provider handed out more than one object. Boxed primitives and value classes can also fail
+ * this check if each call boxes them separately.
  */
 @Suppress("NOTHING_TO_INLINE")
 internal inline fun reentrantCheck(currentInstance: Any?, newInstance: Any?): Any? {
   val isReentrant = currentInstance !== UNINITIALIZED
-  check(!isReentrant || currentInstance == newInstance) {
+  check(!isReentrant || currentInstance === newInstance) {
     "Scoped provider was invoked recursively returning different results: $currentInstance & $newInstance. This is likely due to a circular dependency."
   }
   return newInstance
