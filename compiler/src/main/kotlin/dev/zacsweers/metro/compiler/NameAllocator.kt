@@ -13,13 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-@file:OptIn(ExperimentalUuidApi::class)
-
 package dev.zacsweers.metro.compiler
 
 import java.util.concurrent.ConcurrentHashMap
-import kotlin.uuid.ExperimentalUuidApi
-import kotlin.uuid.Uuid
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.renderer.KeywordStringsGenerated.KEYWORDS
 
@@ -121,10 +117,10 @@ private val RESERVED_KEYWORDS = KEYWORDS + CROSS_PLATFORM_RESERVED_KEYWORDS
  * nameAllocator.newName("sb", "string builder")
  * ```
  *
- * Pass a unique tag object to each allocation. The tag scopes the name, and can be used to look up
- * the allocated name later. Typically the tag is the object that is being named. In the above
- * example we use `property` for the user-supplied property names, and `"string builder"` for our
- * constant string builder.
+ * You can pass a unique tag object to an allocation. The tag lets you look up the allocated name
+ * later with [get]. Typically the tag is the object that is being named. In the above example we use
+ * `property` for the user-supplied property names, and `"string builder"` for our constant string
+ * builder. Untagged allocations only reserve the name, and you can't look them up later.
  *
  * Once we've allocated names we can use them when generating code:
  * ```kotlin
@@ -162,7 +158,8 @@ private val RESERVED_KEYWORDS = KEYWORDS + CROSS_PLATFORM_RESERVED_KEYWORDS
  * NameAllocator used for the outer scope to further refine name allocation for a specific inner
  * scope.
  *
- * Changes from upstream: added [Mode] support for use with member inject parameters.
+ * Changes from upstream: added [Mode] support for use with member inject parameters. Tags are
+ * optional, and untagged allocations skip the tag map.
  */
 // TODO change to Name?
 internal class NameAllocator
@@ -219,44 +216,54 @@ private constructor(
 
   fun allocatedNames(): Set<String> = allocatedNames.keys
 
-  fun reserveName(suggestedName: String, tag: Any = Uuid.random().toString()) {
+  fun reserveName(suggestedName: String, tag: Any? = null) {
     @Suppress("RETURN_VALUE_NOT_USED")
     newNameImpl(suggestedName, tag, generateNewIfExisting = false)
   }
 
   /**
    * Return a new name using [suggestion] that will not be a Java identifier or clash with other
-   * names. The returned value can be queried multiple times by passing `tag` to
-   * [NameAllocator.get].
+   * names. If [tag] is non-null, the returned value can be queried multiple times by passing `tag`
+   * to [NameAllocator.get].
    */
-  fun newName(suggestion: String, tag: Any = Uuid.random().toString()): String {
+  fun newName(suggestion: String, tag: Any? = null): String {
     return newNameImpl(suggestion, tag, generateNewIfExisting = true)
   }
 
   /**
    * Return a new name using [suggestion] that will not be a Java identifier or clash with other
-   * names. The returned value can be queried multiple times by passing `tag` to
-   * [NameAllocator.get].
+   * names. Only tagged allocations are recorded in [tagToName].
    */
-  private fun newNameImpl(suggestion: String, tag: Any, generateNewIfExisting: Boolean): String {
+  private fun newNameImpl(suggestion: String, tag: Any?, generateNewIfExisting: Boolean): String {
     val cleanedSuggestion = toSafeIdentifier(suggestion)
+    if (tag == null) {
+      return allocate(cleanedSuggestion, generateNewIfExisting)
+    }
     return tagToName.compute(tag) { _, existing ->
       require(existing == null) { "tag $tag cannot be used for both '$existing' and '$suggestion'" }
-      buildString {
-        append(cleanedSuggestion)
-        var count = 1
-        while (allocatedNames.putIfAbsent(toString(), Unit) != null) {
-          if (!generateNewIfExisting) break
-          when (mode) {
-            UNDERSCORE -> append('_')
-            COUNT -> {
-              deleteRange(cleanedSuggestion.length, length)
-              append(++count)
-            }
+      allocate(cleanedSuggestion, generateNewIfExisting)
+    }!!
+  }
+
+  /**
+   * Claims a name based on [cleanedSuggestion] in [allocatedNames]. If the name is taken and
+   * [generateNewIfExisting] is false, this returns the taken name without claiming a new one.
+   */
+  private fun allocate(cleanedSuggestion: String, generateNewIfExisting: Boolean): String {
+    return buildString {
+      append(cleanedSuggestion)
+      var count = 1
+      while (allocatedNames.putIfAbsent(toString(), Unit) != null) {
+        if (!generateNewIfExisting) break
+        when (mode) {
+          UNDERSCORE -> append('_')
+          COUNT -> {
+            deleteRange(cleanedSuggestion.length, length)
+            append(++count)
           }
         }
       }
-    }!!
+    }
   }
 
   /** Retrieve a name created with [NameAllocator.newName]. */
@@ -339,10 +346,10 @@ internal fun toSafeIdentifier(suggestion: String) = buildString {
   }
 }
 
-internal fun NameAllocator.newName(suggestion: Name, tag: Any = Uuid.random().toString()): Name {
+internal fun NameAllocator.newName(suggestion: Name, tag: Any? = null): Name {
   return newName(suggestion.asString(), tag).asName()
 }
 
-internal fun NameAllocator.reserveName(suggestion: Name, tag: Any = Uuid.random().toString()) {
+internal fun NameAllocator.reserveName(suggestion: Name, tag: Any? = null) {
   return reserveName(suggestion.asString(), tag)
 }

@@ -47,4 +47,11 @@ class MapLazyFactoryTest {
     val singleton = MapProviderLazyFactory.singleton("singleton", provider)
     assertSame(singleton(), singleton())
   }
+
+  @Test
+  fun `lazy map factories share the read-only empty map provider`() {
+    val empty: Provider<*> = MapFactory.empty<String, Int>()
+    assertSame(empty, MapLazyFactory.empty<String, Int>())
+    assertSame(empty, MapProviderLazyFactory.empty<String, Int>())
+  }
 }
