@@ -74,6 +74,21 @@ class DoubleCheckTest {
   }
 
   @Test
+  fun `reentrance returning equal but distinct instances throws IllegalStateException`() {
+    val doubleCheck =
+      DoubleCheck.provider(
+        Provider<Any> {
+          if (invocationCount.incrementAndFetch() == 1) {
+            doubleCheckReference.load()!!.invoke()
+          }
+          EqualValue("value")
+        }
+      )
+    doubleCheckReference.store(doubleCheck)
+    assertFailsWith<IllegalStateException> { doubleCheck() }
+  }
+
+  @Test
   fun `provider exception releases the guard and a later call can initialize`() {
     val obj = Any()
     val doubleCheck =
@@ -105,6 +120,9 @@ class DoubleCheckTest {
     doubleCheck.value
     assertTrue(doubleCheck.isInitialized())
   }
+
+  /** Instances with the same [name] are equal but have different identities. */
+  private data class EqualValue(val name: String)
 
   companion object {
     private val DOUBLE_CHECK_OBJECT_PROVIDER: Provider<Any> =
