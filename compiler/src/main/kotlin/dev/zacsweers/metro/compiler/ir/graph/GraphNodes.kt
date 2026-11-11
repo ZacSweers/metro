@@ -362,6 +362,7 @@ internal class GraphNodes(
           LifecycleDiagnosticMessages.suspendInitNeedsSuspendFactory(
             graphName,
             suspendInit.name.asString(),
+            creationFunction?.callableId,
           ),
         )
       }

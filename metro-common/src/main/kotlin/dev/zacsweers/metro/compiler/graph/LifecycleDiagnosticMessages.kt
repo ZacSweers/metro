@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.graph
 
+import org.jetbrains.kotlin.name.CallableId
+
 /**
  * FIR checks lifecycle declarations. IR checks the assembled graphs after merging contributions and
  * resolving extension bindings.
@@ -42,9 +44,23 @@ public object LifecycleDiagnosticMessages {
   public fun suspendCloseNeedsSuspendGraph(graph: String, callback: String): String =
     "Suspend @OnGraphClose callback '$callback' requires '$graph' to implement SuspendCloseableGraph."
 
-  public fun suspendInitNeedsSuspendFactory(graph: String, callback: String): String =
-    "Suspend @OnGraphInit callback '$callback' requires '$graph' to have a graph factory with a " +
-      "suspend creation function."
+  /**
+   * Explains why the graph's creation function must suspend. [factoryFunction] is that function, or
+   * null when the graph has no factory.
+   */
+  public fun suspendInitNeedsSuspendFactory(
+    graph: String,
+    callback: String,
+    factoryFunction: CallableId?,
+  ): String {
+    val reason = "because @OnGraphInit callback '$callback' suspends."
+    val factoryClass = factoryFunction?.className
+    if (factoryFunction == null || factoryClass == null) {
+      return "'$graph' needs a graph factory with a suspend creation function $reason"
+    }
+    val function = factoryClass.child(factoryFunction.callableName)
+    return "'$function()' must be a suspend function $reason"
+  }
 
   /** Names the close contract the parent needs for an extension it creates. */
   public fun parentCannotCloseExtension(

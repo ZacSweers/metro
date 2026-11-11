@@ -2,6 +2,6 @@
 
 /GraphLifecycleGraphChecks.kt:15:29: error: Suspend @OnGraphClose callback 'stop' requires 'SyncClose' to implement SuspendCloseableGraph.
 
-/GraphLifecycleGraphChecks.kt:19:28: error: Suspend @OnGraphInit callback 'start' requires 'SyncFactory' to have a graph factory with a suspend creation function.
+/GraphLifecycleGraphChecks.kt:19:28: error: 'SyncFactory.Factory.create()' must be a suspend function because @OnGraphInit callback 'start' suspends.
 
-/GraphLifecycleGraphChecks.kt:32:28: error: Suspend @OnGraphInit callback 'start' requires 'GenericInit' to have a graph factory with a suspend creation function.
+/GraphLifecycleGraphChecks.kt:32:28: error: 'GenericInit' needs a graph factory with a suspend creation function because @OnGraphInit callback 'start' suspends.

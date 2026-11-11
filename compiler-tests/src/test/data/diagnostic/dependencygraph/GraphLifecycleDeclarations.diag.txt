@@ -12,7 +12,7 @@
 
 /GraphLifecycleDeclarations.kt:34:28: error: Metro implements close(). Move this cleanup into an @OnGraphClose callback.
 
-/GraphLifecycleDeclarations.kt:39:28: error: Suspend @OnGraphInit callback 'start' requires 'SyncCallbacks' to have a graph factory with a suspend creation function.
+/GraphLifecycleDeclarations.kt:39:28: error: 'SyncCallbacks' needs a graph factory with a suspend creation function because @OnGraphInit callback 'start' suspends.
 
 /GraphLifecycleDeclarations.kt:39:28: error: Suspend provider support is disabled. Enable the `enable-suspend-providers` compiler option or set `metro.enableSuspendProviders` to true.
 

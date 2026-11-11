@@ -1,1 +1,1 @@
-/GraphLifecycleStartupFactory.kt:7:28: error: Suspend @OnGraphInit callback 'start' requires 'AppGraph' to have a graph factory with a suspend creation function.
+/GraphLifecycleStartupFactory.kt:7:28: error: 'AppGraph' needs a graph factory with a suspend creation function because @OnGraphInit callback 'start' suspends.

@@ -257,7 +257,11 @@ internal fun checkGraphLifecycle(
       reporter.reportOn(
         source,
         MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
-        LifecycleDiagnosticMessages.suspendInitNeedsSuspendFactory(graphName, callbackName),
+        LifecycleDiagnosticMessages.suspendInitNeedsSuspendFactory(
+          graphName,
+          callbackName,
+          factoryFunction?.callableId,
+        ),
       )
     }
   }
