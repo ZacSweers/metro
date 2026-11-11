@@ -275,6 +275,16 @@ internal class BindingPropertyCollector(
       markAccess(keptKey, isFactory = keptKey.requiresProviderInstance)
     }
 
+    // Deferred types are visited in both passes below. A node that's processed twice marks its
+    // dependencies twice and inflates their ref counts, so each one is processed once.
+    val processedContextKeys = HashSet<IrContextualTypeKey>()
+
+    fun processOnce(binding: IrBinding, contextKey: IrContextualTypeKey) {
+      if (processedContextKeys.add(contextKey)) {
+        processBindingNode(binding, contextKey, keysWithBackingProperties)
+      }
+    }
+
     fun visitKeys(keys: Collection<IrTypeKey>) {
       for (key in keys) {
         val binding = graph.findBinding(key) ?: continue
@@ -289,16 +299,16 @@ internal class BindingPropertyCollector(
         if (binding is IrBinding.Multibinding) {
           if (binding.isSet) {
             // Set multibindings use a simple contextual key (no provider value variants)
-            processBindingNode(binding, binding.contextualTypeKey, keysWithBackingProperties)
+            processOnce(binding, binding.contextualTypeKey)
           } else {
             // Map multibindings may have multiple variants (Map<K, V> vs Map<K, Provider<V>>)
             val variants = mapMultibindingContextKeys[key]
             if (variants.isNullOrEmpty()) {
               // Nothing else depends on this multibinding, just process it plainly with no variants
-              processBindingNode(binding, binding.contextualTypeKey, keysWithBackingProperties)
+              processOnce(binding, binding.contextualTypeKey)
             } else {
               for (contextKey in variants) {
-                processBindingNode(binding, contextKey, keysWithBackingProperties)
+                processOnce(binding, contextKey)
               }
             }
           }
@@ -312,12 +322,14 @@ internal class BindingPropertyCollector(
             } else {
               binding.contextualTypeKey
             }
-          processBindingNode(binding, contextKey, keysWithBackingProperties)
+          processOnce(binding, contextKey)
         }
       }
     }
 
-    // Mark an initial visit from deferred types since they form a cycle and will appear at the end
+    // Visit deferred types first. They sort before the cycle members that depend on them, so the
+    // reverse pass would reach them too late to count their references to those members. They
+    // always get a field, so their own ref counts don't need to be final yet.
     visitKeys(deferredTypes)
 
     // Single pass in reverse topological order (dependents before dependencies).

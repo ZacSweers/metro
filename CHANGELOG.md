@@ -15,6 +15,7 @@ Changelog
 ### Enhancements
 
 - **[IR]** Generate fewer classes for `@Includes` dependencies.
+- **[IR]** Generate fewer provider fields in graphs with dependency cycles. Previously, bindings used by a cycle-breaking binding were accidentally counted twice and always resulted in a shared provider field.
 
 ### Fixes
 
