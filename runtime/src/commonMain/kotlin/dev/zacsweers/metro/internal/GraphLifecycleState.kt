@@ -16,14 +16,9 @@ import kotlin.concurrent.atomics.ExperimentalAtomicApi
  *
  * Cleanup runs every step even when one fails. Each failure goes to [recordCloseFailure], and
  * [throwCloseFailure] reports them once cleanup finishes.
- *
- * A graph whose `close()` doesn't suspend runs its cleanup in [runCleanup], which holds this
- * state's [DoubleCheckInitGuard]. [closeChildren] takes each child's guard after closing it, so it
- * waits for a child that another thread is closing. A child that's between [markClosed] and
- * [runCleanup] isn't waited for.
  */
 @OptIn(ExperimentalAtomicApi::class)
-public class GraphLifecycleState : DoubleCheckInitGuard() {
+public class GraphLifecycleState {
   private val closed = AtomicBoolean(false)
 
   // Keyed by each child's own state, so a child that closes is removed without a search.
@@ -89,39 +84,25 @@ public class GraphLifecycleState : DoubleCheckInitGuard() {
     children.remove(childState)
   }
 
-  /**
-   * Stops tracking all children and returns them in no particular order. Each child comes with the
-   * state it registered with.
-   */
-  public fun takeChildren(): List<Pair<GraphLifecycleState, Any>> = children.removeAll()
-
-  /**
-   * Runs [cleanup] while holding this state's guard. The generated `close()` of a graph that
-   * doesn't suspend calls this after [markClosed] succeeds. The guard is reentrant, so cleanup can
-   * close this graph's ancestors on the same thread.
-   */
-  public fun runCleanup(cleanup: () -> Unit) {
-    guarded(cleanup)
-  }
+  /** Stops tracking all children and returns them in no particular order. */
+  public fun takeChildren(): List<Any> = children.removeAll()
 
   /**
    * Closes the tracked children. A graph whose `close()` doesn't suspend calls this. Such a graph
    * only tracks children whose `close()` doesn't suspend either.
    *
-   * A child that another thread is closing returns from `close()` right away. Taking its guard then
-   * waits until that thread's [runCleanup] finishes. The guard is free or already held by this
-   * thread in every other case, so this doesn't wait then.
+   * A child that's already closing elsewhere returns from `close()` right away, and this doesn't
+   * wait for it. Waiting can deadlock with a close callback that closes or waits on an ancestor.
    *
    * A child that fails to close doesn't stop the others. Its failure goes to [recordCloseFailure].
    */
   public fun closeChildren() {
-    for ((childState, child) in takeChildren()) {
+    for (child in takeChildren()) {
       try {
         (child as AutoCloseable).close()
       } catch (failure: Throwable) {
         recordCloseFailure(failure)
       }
-      childState.guarded {}
     }
   }
 

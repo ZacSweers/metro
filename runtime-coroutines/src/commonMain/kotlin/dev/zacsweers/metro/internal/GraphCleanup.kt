@@ -26,13 +26,13 @@ public suspend fun runGraphCleanup(cleanup: suspend () -> Unit) {
  * graph can track both kinds of closeable graph, so this awaits the children whose `close()`
  * suspends.
  *
- * This doesn't wait for a child that's already closing somewhere else. A thread-owned guard can't
- * span a suspension, so that child's cleanup can overlap this graph's close callbacks.
+ * A child that's already closing elsewhere returns from `close()` right away, and this doesn't wait
+ * for it. Waiting can deadlock with a close callback that closes or waits on an ancestor.
  *
  * A child that fails to close doesn't stop the others. Its failure is recorded with [state].
  */
 public suspend fun closeGraphChildren(state: GraphLifecycleState) {
-  for ((_, child) in state.takeChildren()) {
+  for (child in state.takeChildren()) {
     try {
       if (child is SuspendCloseableGraph) {
         child.close()

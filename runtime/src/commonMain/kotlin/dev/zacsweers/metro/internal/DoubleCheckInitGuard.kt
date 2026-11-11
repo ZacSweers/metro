@@ -12,11 +12,6 @@ package dev.zacsweers.metro.internal
  *
  * On native, [GraphChildren] also uses it to serialize single map operations. Any other use has to
  * keep its guarded sections that short, because contended callers share one parker there.
- *
- * [GraphLifecycleState] is the exception. It holds its guard for a graph's whole cleanup, and a
- * parent takes a child's guard to wait for that cleanup. It only relies on the guard being
- * reentrant. On native, a parent waiting on a long cleanup shares the process-wide parker and wakes
- * up whenever any contended guard is released.
  */
 public expect open class DoubleCheckInitGuard()
 

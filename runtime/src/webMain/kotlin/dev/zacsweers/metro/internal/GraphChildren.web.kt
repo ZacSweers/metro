@@ -12,8 +12,8 @@ internal actual class GraphChildren actual constructor() {
 
   actual fun remove(childState: GraphLifecycleState): Any? = children.remove(childState)
 
-  actual fun removeAll(): List<Pair<GraphLifecycleState, Any>> {
-    val removed = children.map { (childState, child) -> childState to child }
+  actual fun removeAll(): List<Any> {
+    val removed = children.values.toList()
     children.clear()
     return removed
   }

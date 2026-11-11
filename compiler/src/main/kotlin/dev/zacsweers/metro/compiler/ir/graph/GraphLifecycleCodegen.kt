@@ -187,23 +187,20 @@ internal fun checkAccessorRunsInit(graph: IrClass, accessor: IrSimpleFunction) {
  *
  *   override fun close() {
  *     if (metroLifecycle.markClosed()) {
- *       // A suspend close() skips runCleanup and runs the try block directly.
- *       metroLifecycle.runCleanup {
- *         try {
- *           // A suspend close() runs this block inside runGraphCleanup { }.
- *           trace("ChildGraph.close") {
- *             // A suspend close() calls closeGraphChildren(metroLifecycle), which also awaits the
- *             // suspend close() of SuspendCloseableGraph children.
- *             metroLifecycle.closeChildren()
- *             try {
- *               trace("ChildGraph.stop") { stop(database) }
- *             } catch (failure: Throwable) {
- *               metroLifecycle.recordCloseFailure(failure)
- *             }
+ *       try {
+ *         // A suspend close() runs this block inside runGraphCleanup { }.
+ *         trace("ChildGraph.close") {
+ *           // A suspend close() calls closeGraphChildren(metroLifecycle), which also awaits the
+ *           // suspend close() of SuspendCloseableGraph children.
+ *           metroLifecycle.closeChildren()
+ *           try {
+ *             trace("ChildGraph.stop") { stop(database) }
+ *           } catch (failure: Throwable) {
+ *             metroLifecycle.recordCloseFailure(failure)
  *           }
- *         } finally {
- *           parent.metroLifecycle.removeChild(metroLifecycle)
  *         }
+ *       } finally {
+ *         parent.metroLifecycle.removeChild(metroLifecycle)
  *       }
  *       metroLifecycle.throwCloseFailure()
  *     }
@@ -271,9 +268,7 @@ internal class IrGraphLifecycleGenerator(
 
   /**
    * Implements `close()`. Only the first call runs cleanup. A suspend `close()` runs it through
-   * `runGraphCleanup` so cancelling the caller doesn't stop cleanup partway through. Any other
-   * `close()` runs it through `runCleanup`, which holds the state's guard so a parent can wait for
-   * it. Later calls return before they touch the guard, so a callback can close a closing ancestor.
+   * `runGraphCleanup` so cancelling the caller doesn't stop cleanup partway through.
    *
    * A child or callback that throws doesn't stop cleanup either. The graph's state records each
    * failure and `close()` throws the first one after every step has run.
@@ -291,13 +286,9 @@ internal class IrGraphLifecycleGenerator(
         )
       val cleanup =
         if (close.isSuspend) {
-          val phase = irRunGraphCleanup(close) { +irClosePhase(receiver, state, isSuspend = true) }
-          releaseFromParentAfter(receiver, phase)
+          irRunGraphCleanup(close) { +irClosePhase(receiver, state, isSuspend = true) }
         } else {
-          // Holding this graph's guard lets a parent closing on another thread wait for cleanup.
-          irRunCleanup(close, receiver, state) {
-            +releaseFromParentAfter(receiver, irClosePhase(receiver, state, isSuspend = false))
-          }
+          irClosePhase(receiver, state, isSuspend = false)
         }
       // The recorded failure is thrown from close() itself. Throwing it through runGraphCleanup
       // would let kotlinx-coroutines' stack trace recovery replace it with a copy that has no
@@ -309,7 +300,7 @@ internal class IrGraphLifecycleGenerator(
         )
       val firstClose =
         irBlock(resultType = irBuiltIns.unitType) {
-          +cleanup
+          +releaseFromParentAfter(receiver, cleanup)
           +throwFailure
         }
       +irIfThen(irBuiltIns.unitType, isFirstClose, firstClose)
@@ -449,29 +440,6 @@ internal class IrGraphLifecycleGenerator(
         content()
       }
     return irInvoke(callee = metroSymbols.runGraphCleanup, args = listOf(block))
-  }
-
-  /** Builds `state.runCleanup { content }`, which holds this graph's guard while it runs. */
-  private fun IrBuilderWithScope.irRunCleanup(
-    owner: IrSimpleFunction,
-    receiver: IrValueParameter,
-    state: IrField,
-    content: IrBlockBodyBuilder.() -> Unit,
-  ): IrExpression {
-    val block =
-      irLambda(
-        parent = owner,
-        receiverParameter = null,
-        valueParameters = emptyList(),
-        returnType = irBuiltIns.unitType,
-      ) {
-        content()
-      }
-    return irInvoke(
-      callee = metroSymbols.graphLifecycleRunCleanup,
-      dispatchReceiver = irGetField(irGet(receiver), state),
-      args = listOf(block),
-    )
   }
 
   /** Wraps one lifecycle phase in a runtime trace span when tracing is enabled. */

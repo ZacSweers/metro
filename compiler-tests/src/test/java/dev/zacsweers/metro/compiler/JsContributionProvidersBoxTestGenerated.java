@@ -2104,12 +2104,6 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
       }
 
       @Test
-      @TestMetadata("GraphLifecycleCloseParentFromChild.kt")
-      public void testGraphLifecycleCloseParentFromChild() {
-        run("GraphLifecycleCloseParentFromChild.kt");
-      }
-
-      @Test
       @TestMetadata("GraphLifecycleClosedParent.kt")
       public void testGraphLifecycleClosedParent() {
         run("GraphLifecycleClosedParent.kt");

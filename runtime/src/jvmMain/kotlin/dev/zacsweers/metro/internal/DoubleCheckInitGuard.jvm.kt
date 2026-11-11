@@ -19,9 +19,7 @@ public actual typealias DoubleCheckInitGuard = Any
  * trade-off because this monitor is only ever contended during a binding's one-time initialization
  * (typically startup and/or in-memory construction), and pinning affects scalability, not
  * correctness. If a scoped provider does blocking I/O during first init on a JDK 21-23
- * virtual-thread-heavy server, that one initialization may briefly pin a carrier. A
- * [GraphLifecycleState] also holds its monitor while a graph closes, so a graph closed on a virtual
- * thread pins it for the length of its cleanup.
+ * virtual-thread-heavy server, that one initialization may briefly pin a carrier.
  */
 @OptIn(ExperimentalContracts::class)
 internal actual inline fun <T> DoubleCheckInitGuard.guarded(block: () -> T): T {

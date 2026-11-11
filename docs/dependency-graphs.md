@@ -232,7 +232,7 @@ The first call to `close()` marks the graph closed and runs any `@OnGraphClose` 
 
 #### Graph extensions
 
-Closing a graph closes its closeable extensions first, then runs its own close callbacks. Each extension closes its own extensions the same way. Closing an extension yourself removes it from its parent's internal references. A `CloseableGraph` waits for an extension that is already closing on another thread. A `SuspendCloseableGraph` parent doesn't wait.
+Closing a graph closes its closeable extensions first, then runs its own close callbacks. Each extension closes its own extensions the same way. Closing an extension yourself removes it from its parent's internal references. A parent doesn't wait for an extension that is already closing on another thread or coroutine, so the parent's close callbacks can run while that extension is still closing.
 
 ```kotlin
 val factory = appGraph.userGraphFactory
@@ -246,10 +246,6 @@ appGraph.close() // Closes second, then runs appGraph's close callbacks. `first`
 !!! warning
 
     A `CloseableGraph` keeps a reference to each closeable extension it creates until the extension or the parent graph closes. Close extensions when you're done with them so they can be garbage collected.
-
-!!! warning
-
-    A close callback that closes an ancestor graph can hang if another thread is closing a graph between the two at the same time. A close callback that blocks on another thread while that thread closes an ancestor of this graph also hangs.
 
 An extension joins its parent's cleanup once its init callbacks succeed. If the parent closes while those callbacks run, creating the extension fails and Metro closes the extension first. The exception is an extension with a suspend `close()` that a non-suspend function creates, which stays open. A graph that receives another graph as an `@Includes` input *doesn't* close it as there's no parent/child relationship there. Sibling extensions close in no particular order when they are closed by their parents.
 
