@@ -1,7 +1,12 @@
 // Copyright (C) 2026 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
+@file:OptIn(ExperimentalMetroApi::class, ExperimentalMetroCoroutinesApi::class)
+
 package dev.zacsweers.metro.internal
 
+import dev.zacsweers.metro.ExperimentalMetroApi
+import dev.zacsweers.metro.ExperimentalMetroCoroutinesApi
+import dev.zacsweers.metro.SuspendCloseableGraph
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 
@@ -14,4 +19,19 @@ import kotlinx.coroutines.withContext
  */
 public suspend fun runGraphCleanup(cleanup: suspend () -> Unit) {
   withContext(NonCancellable) { cleanup() }
+}
+
+/**
+ * Closes the children that [state] tracks. A graph whose `close()` suspends calls this. Such a
+ * graph can track both kinds of closeable graph, so this awaits the children whose `close()`
+ * suspends.
+ */
+public suspend fun closeGraphChildren(state: GraphLifecycleState) {
+  for (child in state.takeChildren()) {
+    if (child is SuspendCloseableGraph) {
+      child.close()
+    } else {
+      (child as AutoCloseable).close()
+    }
+  }
 }

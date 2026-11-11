@@ -73,4 +73,14 @@ public class GraphLifecycleState {
 
   /** Stops tracking all children and returns them in registration order. */
   public fun takeChildren(): List<Any> = children.exchange(emptyList())
+
+  /**
+   * Closes the tracked children. A graph whose `close()` doesn't suspend calls this. Such a graph
+   * only tracks children whose `close()` doesn't suspend either.
+   */
+  public fun closeChildren() {
+    for (child in takeChildren()) {
+      (child as AutoCloseable).close()
+    }
+  }
 }

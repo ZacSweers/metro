@@ -27,25 +27,19 @@ import org.jetbrains.kotlin.ir.builders.IrBlockBuilder
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.IrStatementsBuilder
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
-import org.jetbrains.kotlin.ir.builders.irAs
 import org.jetbrains.kotlin.ir.builders.irBlock
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.builders.irIfThen
-import org.jetbrains.kotlin.ir.builders.irIfThenElse
-import org.jetbrains.kotlin.ir.builders.irIs
 import org.jetbrains.kotlin.ir.builders.irTemporary
 import org.jetbrains.kotlin.ir.builders.irTry
-import org.jetbrains.kotlin.ir.builders.irWhile
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.irAttribute
-import org.jetbrains.kotlin.ir.types.defaultType
-import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.kotlinFqName
@@ -190,10 +184,9 @@ internal fun checkAccessorRunsInit(graph: IrClass, accessor: IrSimpleFunction) {
  *       try {
  *         // A suspend close() runs this block inside runGraphCleanup { }.
  *         trace("ChildGraph.close") {
- *           for (child in metroLifecycle.takeChildren()) {
- *             // A suspend close() awaits the suspend close() of SuspendCloseableGraph children.
- *             (child as CloseableGraph).close()
- *           }
+ *           // A suspend close() calls closeGraphChildren(metroLifecycle), which also awaits the
+ *           // suspend close() of SuspendCloseableGraph children.
+ *           metroLifecycle.closeChildren()
  *           trace("ChildGraph.stop") { stop(database) }
  *         }
  *       } finally {
@@ -330,73 +323,20 @@ internal class IrGraphLifecycleGenerator(
   }
 
   /**
-   * Closes the children registered with this graph in registration order. A suspend graph can own
-   * both kinds of closeable graph. A non-suspend graph only owns `CloseableGraph` children.
+   * Closes the children registered with this graph. A suspend graph can own both kinds of closeable
+   * graph, so its runtime helper awaits the children whose `close()` suspends. A non-suspend graph
+   * only owns `CloseableGraph` children.
    */
   private fun IrBlockBuilder.closeChildren(
     receiver: IrValueParameter,
     state: IrField,
     isSuspend: Boolean,
   ) {
-    val anyType = irBuiltIns.anyType
-    val children =
-      irTemporary(
-        irInvoke(
-          callee = metroSymbols.graphLifecycleTakeChildren,
-          dispatchReceiver = irGetField(irGet(receiver), state),
-        ),
-        "children",
-      )
-    val iteratorFunction =
-      irBuiltIns.listClass.owner.functions.single { it.name.asString() == "iterator" }
-    val iterator =
-      irTemporary(
-        irInvoke(
-          callee = iteratorFunction.symbol,
-          dispatchReceiver = irGet(children),
-          typeHint = irBuiltIns.iteratorClass.typeWith(anyType),
-        ),
-        "iterator",
-      )
-    val iteratorClass = irBuiltIns.iteratorClass.owner
-    val hasNext = iteratorClass.functions.single { it.name.asString() == "hasNext" }
-    val next = iteratorClass.functions.single { it.name.asString() == "next" }
-    +irWhile().apply {
-      condition = irInvoke(callee = hasNext.symbol, dispatchReceiver = irGet(iterator))
-      body =
-        irBlock(resultType = irBuiltIns.unitType) {
-          val child =
-            irTemporary(
-              irInvoke(
-                callee = next.symbol,
-                dispatchReceiver = irGet(iterator),
-                typeHint = anyType,
-              ),
-              "child",
-            )
-          val closeableType = metroSymbols.closeableGraph.defaultType
-          val closeCloseable =
-            irInvoke(
-              callee = metroSymbols.closeableGraphClose,
-              dispatchReceiver = irAs(irGet(child), closeableType),
-            )
-          if (isSuspend) {
-            val suspendType = metroSymbols.suspendCloseableGraph.defaultType
-            val closeSuspending =
-              irInvoke(
-                callee = metroSymbols.suspendCloseableGraphClose,
-                dispatchReceiver = irAs(irGet(child), suspendType),
-              )
-            +irIfThenElse(
-              irBuiltIns.unitType,
-              irIs(irGet(child), suspendType),
-              closeSuspending,
-              closeCloseable,
-            )
-          } else {
-            +closeCloseable
-          }
-        }
+    val ownState = irGetField(irGet(receiver), state)
+    +if (isSuspend) {
+      irInvoke(callee = metroSymbols.closeGraphChildren, args = listOf(ownState))
+    } else {
+      irInvoke(callee = metroSymbols.graphLifecycleCloseChildren, dispatchReceiver = ownState)
     }
   }
 

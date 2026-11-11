@@ -44,6 +44,22 @@ class GraphLifecycleStateTest {
   }
 
   @Test
+  fun closingChildrenStopsTrackingThem() {
+    val state = GraphLifecycleState()
+    var closes = 0
+    val child =
+      object : AutoCloseable {
+        override fun close() {
+          closes++
+        }
+      }
+    state.addChild(child, GraphLifecycleState())
+    state.closeChildren()
+    state.closeChildren()
+    assertEquals(1, closes)
+  }
+
+  @Test
   fun aClosedGraphRejectsNewChildren() {
     val state = GraphLifecycleState()
     state.markClosed()
