@@ -570,7 +570,8 @@ internal class IrBindingGraph(
 
   /**
    * The last key of each `@Binds` alias chain, stored for every key along a resolved chain. Child
-   * graphs resolve keys in this graph while they're analyzed, and siblings analyze in parallel.
+   * graphs resolve keys in this graph while they're analyzed. Those reads happen when a graph is
+   * prepared or finished, and both steps run on the main compiler thread.
    */
   private val aliasTargetKeys = ConcurrentHashMap<IrTypeKey, IrTypeKey>()
 
