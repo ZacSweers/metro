@@ -16,6 +16,7 @@ import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.padForConsole
 import dev.zacsweers.metro.compiler.ir.render
 import dev.zacsweers.metro.compiler.ir.reportCompat
+import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
 import org.jetbrains.kotlin.ir.util.parentAsClass
 
 /**
@@ -108,7 +109,7 @@ internal fun reportLifecycleWarnings(
       if (closeOnlyBindings.isEmpty()) {
         continue
       }
-      val graphName = node.sourceGraph.name.asString()
+      val graphName = node.sourceGraph.sourceGraphIfMetroGraph.name.asString()
       val diagnostic =
         MetroDiagnostic(
           id = MetroDiagnosticId.CLOSE_ONLY_BINDING,

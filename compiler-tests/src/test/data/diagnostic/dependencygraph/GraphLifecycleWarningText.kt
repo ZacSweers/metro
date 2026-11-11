@@ -7,11 +7,14 @@ class SharedPlugin : Plugin
 class FreshPlugin : Plugin
 @Inject class Service
 @SingleIn(AppScope::class) @Inject class CloseOnly
+class ChildScope
+@SingleIn(ChildScope::class) @Inject class ChildCloseOnly
 interface Included { val label: String }
 
-@GraphExtension
+@GraphExtension(ChildScope::class)
 interface Child : CloseableGraph {
   @OnGraphInit fun start(<!UNSCOPED_LIFECYCLE_PARAMETER!>label: String<!>) {}
+  @OnGraphClose fun stop(<!CLOSE_ONLY_BINDING!>closeOnly: ChildCloseOnly<!>) {}
   @GraphExtension.Factory fun interface Factory { fun create(): Child }
 }
 
