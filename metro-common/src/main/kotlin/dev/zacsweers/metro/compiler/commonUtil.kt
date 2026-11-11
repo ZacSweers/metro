@@ -14,8 +14,10 @@ public const val REPORT_METRO_MESSAGE: String =
  * to [LazyThreadSafetyMode.NONE] for single-threaded CLI compilations, removing the per-access
  * CAS/volatile cost from memoized properties on the hot compile path.
  *
- * Mutable global state, one copy per classloader. The IDE also runs the compiler registrar, so its
- * FIR extensions share this copy. Only swap to an unsynchronized mode when everything in the owning
+ * Mutable global state, one copy per classloader. The CLI compiler ships its own copy inside the
+ * shaded compiler jar. The IDEA plugin bundles another copy, and the registrar never touches that
+ * one. The IDE also loads the compiler jar and runs its registrar, so FIR extensions there use the
+ * compiler jar's copy. Only swap to an unsynchronized mode when everything in the owning
  * classloader is single-threaded.
  */
 @Volatile
