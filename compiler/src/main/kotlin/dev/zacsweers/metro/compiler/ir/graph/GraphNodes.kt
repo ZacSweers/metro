@@ -21,7 +21,6 @@ import dev.zacsweers.metro.compiler.diagnostics.factory
 import dev.zacsweers.metro.compiler.diagnostics.textOf
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
-import dev.zacsweers.metro.compiler.filterToSet
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.getOrInit
@@ -274,11 +273,10 @@ internal class GraphNodes(
      */
     private fun addLifecycleCallbacks(declaration: IrSimpleFunction): Boolean {
       val original = declaration.resolveFakeOverrideMaybeAbstract() ?: return false
-      val isCallback = GraphLifecyclePhase.entries.any { original.hasAnnotation(it.annotation) }
-      if (!isCallback) {
+      val phases = GraphLifecyclePhase.entries.filter { original.hasAnnotation(it.annotation) }
+      if (phases.isEmpty()) {
         return false
       }
-      val phases = GraphLifecyclePhase.entries.filterToSet { original.hasAnnotation(it.annotation) }
       // An upstream module can declare the callback without running Metro's FIR checker.
       if (phases.size > 1) {
         reportCompat(
@@ -290,6 +288,7 @@ internal class GraphNodes(
         )
         exitProcessing()
       }
+      val phase = phases.single()
       checkOverriddenQualifiers(original)
       // The original declares the parameters. The graph's member has their types as seen here.
       val parameters =
@@ -298,7 +297,7 @@ internal class GraphNodes(
           val key = IrContextualTypeKey.from(source, type, original.parameterHasMetroDefault(index))
           LifecycleParameter(source, key)
         }
-      lifecycleCallbacks += LifecycleCallback(phases, declaration, original, parameters)
+      lifecycleCallbacks += LifecycleCallback(phase, declaration, original, parameters)
       return true
     }
 
@@ -342,7 +341,7 @@ internal class GraphNodes(
       // Only SuspendCloseableGraph has a close() that can await a suspend callback.
       val suspendClose =
         node.lifecycleCallbacks.firstOrNull {
-          GraphLifecyclePhase.CLOSE in it.phases && it.graphFunction.isSuspend
+          it.phase == GraphLifecyclePhase.CLOSE && it.graphFunction.isSuspend
         }
       if (suspendClose != null && !close.isSuspend) {
         fail(

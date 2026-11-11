@@ -22,7 +22,7 @@ import org.jetbrains.kotlin.ir.util.parentAsClass
  */
 internal data class LifecycleCallback(
   /** The lifecycle annotation on the original declaration determines when this callback runs. */
-  val phases: Set<GraphLifecyclePhase>,
+  val phase: GraphLifecyclePhase,
   /** The graph's own member, often a fake override. Generated code calls this one. */
   val graphFunction: IrSimpleFunction,
   /** The annotated declaration that [graphFunction] resolves to. Diagnostics and reports use it. */
@@ -32,7 +32,7 @@ internal data class LifecycleCallback(
 
 /** The callback's lifecycle annotation as it appears in source. */
 internal val LifecycleCallback.annotationLabel: String
-  get() = LifecycleDiagnosticMessages.annotationLabel(phases)
+  get() = LifecycleDiagnosticMessages.annotationLabel(phase)
 
 /** A callback parameter. [key] uses the parameter's type as seen from the assembled graph. */
 internal data class LifecycleParameter(val source: IrValueParameter, val key: IrContextualTypeKey)

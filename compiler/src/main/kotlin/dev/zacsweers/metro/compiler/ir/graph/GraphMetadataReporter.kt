@@ -80,28 +80,26 @@ internal class GraphMetadataReporter(
           "lifecycleCallbacks",
           buildJsonArray {
             for (callback in node.lifecycleCallbacks) {
-              for (phase in callback.phases) {
-                add(
-                  buildJsonObject {
-                    put("phase", JsonPrimitive(phase.name))
-                    put("declaration", JsonPrimitive(callback.original.kotlinFqName.asString()))
-                    put("isSuspend", JsonPrimitive(callback.graphFunction.isSuspend))
-                    put(
-                      "parameters",
-                      buildJsonArray {
-                        for (parameter in callback.parameters) {
-                          add(
-                            buildJsonObject {
-                              put("name", JsonPrimitive(parameter.source.name.asString()))
-                              put("request", buildDependencyJson(parameter.key))
-                            },
-                          )
-                        }
-                      },
-                    )
-                  },
-                )
-              }
+              add(
+                buildJsonObject {
+                  put("phase", JsonPrimitive(callback.phase.name))
+                  put("declaration", JsonPrimitive(callback.original.kotlinFqName.asString()))
+                  put("isSuspend", JsonPrimitive(callback.graphFunction.isSuspend))
+                  put(
+                    "parameters",
+                    buildJsonArray {
+                      for (parameter in callback.parameters) {
+                        add(
+                          buildJsonObject {
+                            put("name", JsonPrimitive(parameter.source.name.asString()))
+                            put("request", buildDependencyJson(parameter.key))
+                          },
+                        )
+                      }
+                    },
+                  )
+                },
+              )
             }
           },
         )

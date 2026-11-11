@@ -329,14 +329,15 @@ internal class GraphMemberExtractor(
     return GraphCallableReference(ptr(psi), signature)
   }
 
-  /** The lifecycle phases [symbol] is annotated for. */
-  private fun KaSession.lifecyclePhasesOf(symbol: KaCallableSymbol): Set<GraphLifecyclePhase> {
+  /**
+   * The lifecycle phase [symbol] is annotated for, or null when it isn't a callback. The compiler
+   * rejects a function with both annotations, so this uses the first one while it's being edited.
+   */
+  private fun KaSession.lifecyclePhaseOf(symbol: KaCallableSymbol): GraphLifecyclePhase? {
     if (!symbol.hasAnyAnnotation(MetroClassIds.lifecycleCallbacks)) {
-      return emptySet()
+      return null
     }
-    return symbol.annotations.mapNotNullTo(mutableSetOf()) {
-      GraphLifecyclePhase.forAnnotation(it.classId)
-    }
+    return symbol.annotations.firstNotNullOfOrNull { GraphLifecyclePhase.forAnnotation(it.classId) }
   }
 
   /** The same callable classification is used for written and contributed graph supertypes. */
@@ -349,9 +350,9 @@ internal class GraphMemberExtractor(
     if (callable !is KaNamedFunctionSymbol && callable !is KaPropertySymbol) return
     if (view.receiver != null) return
     recordAnnotations(this, callable, psi)
-    // Each callback parameter is one graph request, whichever phases the callback runs in.
-    val phases = lifecyclePhasesOf(callable)
-    if (callable is KaNamedFunctionSymbol && phases.isNotEmpty()) {
+    // Each callback parameter is one graph request.
+    val phase = lifecyclePhaseOf(callable)
+    if (callable is KaNamedFunctionSymbol && phase != null) {
       val declaration = graphCallableReference(view, psi)
       for ((index, parameter) in view.valueParameters.withIndex()) {
         val source = parameter.symbol.psi as? KtElement ?: psi
@@ -368,7 +369,7 @@ internal class GraphMemberExtractor(
             graphRequestKind = ConsumerEntry.GraphRequestKind.LIFECYCLE_PARAMETER,
             isSuspend = callable.isSuspend,
             isOptional = parameter.symbol.isOptionalConsumer(options),
-            lifecycleRequest = LifecycleRequest(declaration, phases, index),
+            lifecycleRequest = LifecycleRequest(declaration, phase, index),
           )
       }
       return

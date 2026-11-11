@@ -96,9 +96,9 @@ public object LifecycleDiagnosticMessages {
     return "'$parent' creates closeable extension '$child', so it must implement $required."
   }
 
-  /** Formats the lifecycle annotations shown in a diagnostic. */
-  public fun annotationLabel(phases: Collection<GraphLifecyclePhase>): String =
-    phases.sorted().joinToString(" ") { "@${it.annotation.shortClassName}" }
+  /** Formats a callback's lifecycle annotation as it appears in source, like `@OnGraphInit`. */
+  public fun annotationLabel(phase: GraphLifecyclePhase): String =
+    "@${phase.annotation.shortClassName}"
 
   /**
    * Shows a callback parameter in its callback's signature, like `AppGraph.stop(…, database)`. The

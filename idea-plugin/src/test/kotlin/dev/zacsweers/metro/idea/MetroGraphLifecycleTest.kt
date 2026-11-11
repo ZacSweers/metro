@@ -59,10 +59,7 @@ class MetroGraphLifecycleTest : BasePlatformTestCase() {
         .accessorsFor(checkNotNull(index.queryContext(index.contextsFor(graph).single())))
         .filter { it.lifecycleRequest != null }
     assertEquals(listOf("LIFECYCLE_PARAMETER"), requests.map { it.graphRequestKind?.name })
-    assertEquals(
-      setOf(GraphLifecyclePhase.CLOSE),
-      requests.single().lifecycleRequest?.phases,
-    )
+    assertEquals(GraphLifecyclePhase.CLOSE, requests.single().lifecycleRequest?.phase)
   }
 
   fun testParametersAreGraphRequests() {

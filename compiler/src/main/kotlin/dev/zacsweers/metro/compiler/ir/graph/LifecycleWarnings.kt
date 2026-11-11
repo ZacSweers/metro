@@ -100,7 +100,7 @@ internal fun reportLifecycleWarnings(
 
       // Anything this graph owns that only close requests is created during close just to be
       // cleaned up. A multibinding is checked through its contributions.
-      if (GraphLifecyclePhase.CLOSE !in callback.phases) {
+      if (callback.phase != GraphLifecyclePhase.CLOSE) {
         continue
       }
       val closeOnlyBindings =

@@ -220,7 +220,7 @@ internal class IrGraphLifecycleGenerator(
   private val parentStateField = parentGraphParam?.type?.rawTypeOrNull()?.lifecycleStateField
   private val hasSuspendInit = graphClass.suspendInitCallback() != null
   private val hasInitCallbacks =
-    node.lifecycleCallbacks.any { GraphLifecyclePhase.INIT in it.phases }
+    node.lifecycleCallbacks.any { it.phase == GraphLifecyclePhase.INIT }
 
   /** Rejects construction when the parent is closed, before any of this graph's code runs. */
   fun IrBuilderWithScope.irCheckParentOpen(): IrExpression? {
@@ -439,7 +439,7 @@ internal class IrGraphLifecycleGenerator(
   ) {
     val generator = expressionGeneratorFactory.create(receiver)
     for (callback in node.lifecycleCallbacks) {
-      if (phase !in callback.phases) {
+      if (callback.phase != phase) {
         continue
       }
       trackFunctionCall(node.sourceGraph, callback.original)

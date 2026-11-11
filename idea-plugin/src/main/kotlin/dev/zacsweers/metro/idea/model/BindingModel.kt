@@ -90,7 +90,7 @@ internal class ConsumerEntry(
   enum class GraphRequestKind {
     ACCESSOR,
     MEMBERS_INJECTOR,
-    /** A lifecycle callback parameter, requested once for every phase the callback runs in. */
+    /** A lifecycle callback parameter. */
     LIFECYCLE_PARAMETER,
   }
 }
@@ -98,7 +98,7 @@ internal class ConsumerEntry(
 /** The lifecycle callback behind a [ConsumerEntry] for one of its parameters. */
 internal class LifecycleRequest(
   val declaration: GraphCallableReference,
-  val phases: Set<GraphLifecyclePhase>,
+  val phase: GraphLifecyclePhase,
   /** The parameter's position in [declaration], used to show the callback signature in traces. */
   val parameterIndex: Int,
 )

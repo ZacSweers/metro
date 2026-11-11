@@ -73,7 +73,7 @@ internal class KaBindingStack(override val graph: KaGraphDeclaration) :
         val signature = request?.let { lifecycleSignature(it, name) }
         if (request != null && signature != null) {
           // Matches the compiler's trace for a callback parameter.
-          val label = LifecycleDiagnosticMessages.annotationLabel(request.phases)
+          val label = LifecycleDiagnosticMessages.annotationLabel(request.phase)
           return Entry(
             contextKey = contextKey,
             usage = "is injected at",

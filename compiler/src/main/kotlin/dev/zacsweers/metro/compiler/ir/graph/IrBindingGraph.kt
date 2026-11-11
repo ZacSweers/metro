@@ -440,7 +440,7 @@ internal class IrBindingGraph(
     injectors.keys.mapTo(this) { it.typeKey }
     keeps().mapTo(this) { it.typeKey }
     for (callback in node.lifecycleCallbacks) {
-      if (GraphLifecyclePhase.INIT in callback.phases) {
+      if (callback.phase == GraphLifecyclePhase.INIT) {
         callback.parameters.mapTo(this) { it.key.typeKey }
       }
     }
