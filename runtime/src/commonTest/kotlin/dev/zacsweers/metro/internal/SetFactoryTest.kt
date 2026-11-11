@@ -36,6 +36,19 @@ class SetFactoryTest {
     assertEquals(setOf(2, 12, 24, 25, 34, 35), factory())
   }
 
+  // InstanceFactory compares by its value, so these two providers are equal.
+  @Test
+  fun equalProvidersAreAllowed() {
+    val factory: Factory<Set<String>> =
+      SetFactory.builder<String>(2, 2)
+        .addProvider(InstanceFactory("a"))
+        .addProvider(InstanceFactory("a"))
+        .addCollectionProvider(InstanceFactory(setOf("b")))
+        .addCollectionProvider(InstanceFactory(setOf("b")))
+        .build()
+    assertEquals(setOf("a", "b"), factory())
+  }
+
   @Test
   fun singletonInvokesProviderEveryTime() {
     val factory: Factory<Set<Int>> = SetFactory.singleton(incrementingIntProvider(0))

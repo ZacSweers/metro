@@ -3315,6 +3315,24 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
     }
 
     @Test
+    @TestMetadata("SetProviderAcceptsAliasesOfOneScopedBinding.kt")
+    public void testSetProviderAcceptsAliasesOfOneScopedBinding() {
+      run("SetProviderAcceptsAliasesOfOneScopedBinding.kt");
+    }
+
+    @Test
+    @TestMetadata("SetProviderAcceptsAliasesOfOneUnscopedBinding.kt")
+    public void testSetProviderAcceptsAliasesOfOneUnscopedBinding() {
+      run("SetProviderAcceptsAliasesOfOneUnscopedBinding.kt");
+    }
+
+    @Test
+    @TestMetadata("SetProviderAcceptsEqualElementProviders.kt")
+    public void testSetProviderAcceptsEqualElementProviders() {
+      run("SetProviderAcceptsEqualElementProviders.kt");
+    }
+
+    @Test
     @TestMetadata("SingleSourceMultibindingsAreReadOnly.kt")
     public void testSingleSourceMultibindingsAreReadOnly() {
       run("SingleSourceMultibindingsAreReadOnly.kt");

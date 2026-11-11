@@ -41,6 +41,7 @@ Changelog
 - **[IR]** Fix the invalid assisted injection error naming the injection site as `null` when the request has no declaration to name.
 - **[IR]** Fix a compiler crash for map multibindings with two or more entries whose values are maps, such as `Map<String, Map<String, Int>>`, when the map is requested through a `Provider`.
 - **[IR/interop]** Fix an issue with Dagger-processed providers/constructors with default parameters with their generated factory. Previously, Metro would treat the source function's parameter as optional if it had a default value and not reconcile that correctly with Dagger's generated factory (which would not propagate that default since Dagger uses a different mechanism for optional bindings).
+- **[Runtime]** Fix `Provider<Set<T>>` throwing `IllegalStateException: Codegen error? Duplicates in the provider list` when two contributions have equal providers, such as two `@Binds @IntoSet` aliases of bound instances with equal values.
 - **[Runtime]** Fix scoped providers that recursively invoke themselves accepting two equal but distinct instances. `DoubleCheck` compares the instances by identity, like Dagger, and throws if they differ.
 
 ### Changes
