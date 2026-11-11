@@ -1303,6 +1303,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("GraphBlockGenericBaseFactoryDefaults.kt")
+    public void testGraphBlockGenericBaseFactoryDefaults() {
+      run("GraphBlockGenericBaseFactoryDefaults.kt");
+    }
+
+    @Test
     @TestMetadata("GraphBlockImportedBaseFactory.kt")
     public void testGraphBlockImportedBaseFactory() {
       run("GraphBlockImportedBaseFactory.kt");
@@ -1360,6 +1366,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     @TestMetadata("GraphCompatibilityDefaultsAcrossModules.kt")
     public void testGraphCompatibilityDefaultsAcrossModules() {
       run("GraphCompatibilityDefaultsAcrossModules.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphCompatibilityGenericBaseFactoryDefaults.kt")
+    public void testGraphCompatibilityGenericBaseFactoryDefaults() {
+      run("GraphCompatibilityGenericBaseFactoryDefaults.kt");
     }
 
     @Test
