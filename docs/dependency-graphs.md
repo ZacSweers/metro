@@ -166,7 +166,7 @@ interface AppGraph : CloseableGraph {
 
 Callbacks are ordinary functions with a body that return `Unit`. Each function can have only one lifecycle annotation. A graph can have any number of callbacks, with or without parameters. They run in no particular order.
 
-Only Metro may *invoke* these functions. Calling one directly (including through `super`) or taking a reference to it is an error.
+Only Metro may *invoke* these functions. Calling one directly or taking a reference to it is an error. An override can still call the callback it overrides through `super`.
 
 The names are hopefully self-explanatory! Init callbacks run after the graph's own initialization. If one fails or creation is cancelled, creation stops there.
 
@@ -245,7 +245,7 @@ appGraph.close() // Closes second, then runs appGraph's close callbacks. `first`
 
 !!! warning
 
-    A `CloseableGraph` keeps a reference to each closeable extension it creates until the extension or the parent graph closes. Close extensions you're done with them so they can be garbage collected.
+    A `CloseableGraph` keeps a reference to each closeable extension it creates until the extension or the parent graph closes. Close extensions when you're done with them so they can be garbage collected.
 
 An extension joins its parent's cleanup once its init callbacks succeed. If the parent closes while those callbacks run, creating the extension fails and Metro closes the extension first. The exception is an extension with a suspend `close()` that a non-suspend function creates, which stays open. A graph that receives another graph as an `@Includes` input *doesn't* close it as there's no parent/child relationship there. Sibling extensions close in no particular order when they are closed by their parents.
 
@@ -288,7 +288,7 @@ Suspend `@OnGraphClose` callbacks require `SuspendCloseableGraph`. Cancelling th
 
 ### Coroutines and resources
 
-Scoped suspend bindings initialize in the caller's coroutine context, so the graph doesn't own that work. Closing a graph also doesn't cancel or dispose of the instances it created, such as a `CoroutineScope` binding. The user is ultimately responsible for closing resources you own in their own `@OnGraphInit` callback.
+Scoped suspend bindings initialize in the caller's coroutine context, so the graph doesn't own that work. Closing a graph also doesn't cancel or dispose of the instances it created, such as a `CoroutineScope` binding. You're responsible for closing resources you own in an `@OnGraphClose` callback.
 
 ### Tracing
 
