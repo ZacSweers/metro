@@ -8818,9 +8818,13 @@
 <h3 id="enhancements">Enhancements<a class="headerlink" href="#enhancements" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>[IR]</strong> Generate fewer classes for <code>@Includes</code> dependencies.</li>
+<li><strong>[IR]</strong> Generate fewer provider fields in graphs with dependency cycles. Previously, bindings used by a cycle-breaking binding were accidentally counted twice and always resulted in a shared provider field.</li>
+<li><strong>[Runtime]</strong> Map multibinding providers such as <code>Provider&lt;Map&lt;K, V&gt;&gt;</code> and <code>Provider&lt;Map&lt;K, Lazy&lt;V&gt;&gt;&gt;</code> now only copy their result map once per call.</li>
 </ul>
 <h3 id="fixes">Fixes<a class="headerlink" href="#fixes" title="Permanent link">&para;</a></h3>
 <ul>
+<li><strong>[FIR]</strong> Fix Metro&rsquo;s FIR extensions using unsynchronized lazy values in IDE mode, where the IDE analyzes code on several threads at once. </li>
+<li><strong>[FIR]</strong> Stop a single-threaded compilation from turning off thread-safe lazy values for other compilations running in the same Kotlin daemon.</li>
 <li><strong>[FIR/IR]</strong> Fix contributed <code>@Inject</code> classes skipping declared and inherited member injection when <code>generateContributionProviders</code> is enabled.</li>
 <li><strong>[FIR/IR]</strong> Fix dependency graphs with a user-declared <code>companion object</code> failing to compile or to call their generated creator, such as <code>AppGraph.create()</code>. User-declared <code>factory(...)</code> overloads in these companions now work. A user-declared no-arg <code>factory()</code> that clashes with the generated one now reports an error.</li>
 <li><strong>[IR]</strong> Fix dynamic graphs missing <code>internal</code> contributions from friend compilations (such as <code>main</code> contributions used by tests).</li>
@@ -8836,6 +8840,9 @@
 <li><strong>[IR]</strong> Fix missing graph references in getter-only shards when accessing included dependencies.</li>
 <li><strong>[IR]</strong> Fix graphs creating new providers every time a <code>Map&lt;K, Provider&lt;V&gt;&gt;</code> is requested. The graph now stores one map of entry providers and returns it on every read.</li>
 <li><strong>[IR]</strong> Fix a <code>ClassFormatError</code> when a contributed <code>@Binds</code> extension property or function shares a name with a graph accessor.</li>
+<li><strong>[IR]</strong> Fix an internal compiler error replacing a missing-binding error when another binding in the graph has an error type.</li>
+<li><strong>[IR]</strong> Fix the invalid assisted injection error naming the injection site as <code>null</code> when the request has no declaration to name.</li>
+<li><strong>[IR]</strong> Fix a compiler crash for map multibindings with two or more entries whose values are maps, such as <code>Map&lt;String, Map&lt;String, Int&gt;&gt;</code>, when the map is requested through a <code>Provider</code>.</li>
 <li><strong>[IR/interop]</strong> Fix an issue with Dagger-processed providers/constructors with default parameters with their generated factory. Previously, Metro would treat the source function&rsquo;s parameter as optional if it had a default value and not reconcile that correctly with Dagger&rsquo;s generated factory (which would not propagate that default since Dagger uses a different mechanism for optional bindings).</li>
 <li><strong>[Runtime]</strong> Fix scoped providers that recursively invoke themselves accepting two equal but distinct instances. <code>DoubleCheck</code> compares the instances by identity, like Dagger, and throws if they differ.</li>
 </ul>
