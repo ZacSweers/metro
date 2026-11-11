@@ -5,16 +5,13 @@ package dev.zacsweers.metro.internal
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 
-// TODO: Revisit inlining. It compiles direct references to kotlinx-coroutines' withContext and
-//  NonCancellable into each graph whose close() suspends, but this artifact only has an
-//  implementation dependency on kotlinx-coroutines.
 /**
  * Runs a suspend graph's cleanup to completion even when the caller is cancelled.
  *
  * Generated code calls this instead of `withContext(NonCancellable)` because this artifact doesn't
- * expose kotlinx-coroutines to the modules that use it. It's inline, so each call compiles to that
- * same `withContext` call.
+ * expose kotlinx-coroutines to the modules that use it. An inline function would compile that same
+ * `withContext` call into each graph, so this one isn't inline.
  */
-public suspend inline fun runGraphCleanup(crossinline cleanup: suspend () -> Unit) {
+public suspend fun runGraphCleanup(cleanup: suspend () -> Unit) {
   withContext(NonCancellable) { cleanup() }
 }
