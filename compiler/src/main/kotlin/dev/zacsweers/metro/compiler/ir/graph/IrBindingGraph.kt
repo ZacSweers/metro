@@ -87,6 +87,7 @@ import dev.zacsweers.metro.compiler.safePathString
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.trace
+import java.util.concurrent.ConcurrentHashMap
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactory1
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
@@ -232,9 +233,8 @@ internal class IrBindingGraph(
    */
   internal fun createsFreshInstancesForChild(typeKey: IrTypeKey): Boolean {
     val canLookUp = _bindingLookup != null
-    val lookup: (IrTypeKey) -> IrBinding? = { findBinding(it, allowLookup = canLookUp) }
-    val binding = resolveAliases(typeKey, lookup) ?: return false
-    return freshInstanceBindings(binding, lookup).isNotEmpty()
+    val binding = findAliasTarget(typeKey, allowLookup = canLookUp) ?: return false
+    return freshInstanceBindings(binding, allowLookup = canLookUp).isNotEmpty()
   }
 
   /** Asks the parent graph that owns [typeKey] whether each request gets a new instance. */
@@ -567,6 +567,38 @@ internal class IrBindingGraph(
           null
         }
       }
+
+  /**
+   * The last key of each `@Binds` alias chain, stored for every key along a resolved chain. Child
+   * graphs resolve keys in this graph while they're analyzed, and siblings analyze in parallel.
+   */
+  private val aliasTargetKeys = ConcurrentHashMap<IrTypeKey, IrTypeKey>()
+
+  /**
+   * Returns the binding at the end of [key]'s `@Binds` alias chain. That's [key]'s own binding when
+   * it isn't an alias or when it aliases itself, like a multibinding declaration does. Returns null
+   * when a key in the chain has no binding.
+   */
+  fun findAliasTarget(key: IrTypeKey, allowLookup: Boolean = false): IrBinding? {
+    val targetKey = aliasTargetKey(key, allowLookup) ?: return null
+    return findBinding(targetKey, allowLookup)
+  }
+
+  private fun aliasTargetKey(key: IrTypeKey, allowLookup: Boolean): IrTypeKey? {
+    aliasTargetKeys[key]?.let {
+      return it
+    }
+    val binding = findBinding(key, allowLookup) ?: return null
+    val alias = binding as? IrBinding.Alias
+    val target =
+      if (alias == null || alias.aliasedType == key) {
+        key
+      } else {
+        aliasTargetKey(alias.aliasedType, allowLookup) ?: return null
+      }
+    aliasTargetKeys[key] = target
+    return target
+  }
 
   // For bindings we expect to already be cached
   fun requireBinding(key: IrTypeKey): IrBinding {

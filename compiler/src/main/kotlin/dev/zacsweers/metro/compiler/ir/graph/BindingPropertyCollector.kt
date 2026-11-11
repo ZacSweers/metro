@@ -115,9 +115,6 @@ internal class BindingPropertyCollector(
   /** Child graph property requests indexed by their canonical binding key. */
   private val reservedContextKeysByType = graph.reservedContextKeys().groupBy { it.typeKey }
 
-  /** Cache of alias type keys to their resolved non-alias target type keys. */
-  private val resolvedAliasTargets = HashMap<IrTypeKey, IrTypeKey>()
-
   /**
    * Tracks assisted-inject target bindings and their usage counts. Only targets used by multiple
    * Assisted bindings need FIELD properties for sharing.
@@ -679,13 +676,7 @@ internal class BindingPropertyCollector(
     // For aliases, resolve to the final target and mark that instead.
     val targetBinding =
       if (binding is IrBinding.Alias) {
-        val aliasedType = binding.aliasedType
-        if (binding.typeKey == aliasedType) {
-          binding
-        } else {
-          val targetKey = resolveAliasTarget(aliasedType) ?: return
-          graph.findBinding(targetKey) ?: return
-        }
+        graph.findAliasTarget(binding.typeKey) ?: return
       } else {
         binding
       }
@@ -758,33 +749,5 @@ internal class BindingPropertyCollector(
       isFactory = canonicalKey.requiresProviderInstance,
       isRepeated = graph.hasReservedKey(canonicalKey.typeKey),
     )
-  }
-
-  /** Resolves an alias chain to its final non-alias target, caching all intermediate keys. */
-  private fun resolveAliasTarget(current: IrTypeKey): IrTypeKey? {
-    // Check cache
-    resolvedAliasTargets[current]?.let {
-      return it
-    }
-
-    val binding = graph.findBinding(current) ?: return null
-
-    val target =
-      if (binding is IrBinding.Alias) {
-        val aliasedType = binding.aliasedType
-        if (binding.typeKey == aliasedType) {
-          current
-        } else {
-          resolveAliasTarget(aliasedType)
-        }
-      } else {
-        current
-      }
-
-    // Cache on the way back up
-    if (target != null) {
-      resolvedAliasTargets[current] = target
-    }
-    return target
   }
 }

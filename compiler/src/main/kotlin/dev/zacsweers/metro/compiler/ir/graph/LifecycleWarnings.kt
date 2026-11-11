@@ -36,13 +36,12 @@ internal fun reportLifecycleWarnings(
   if (!hasParameters) {
     return
   }
-  val findBinding: (IrTypeKey) -> IrBinding? = { graph.findBinding(it) }
   // Only graphs with close callbacks need this walk, so it runs at most once and only on demand.
   val usedOutsideClose by lazy { keysReachableFrom(graph.rootsOutsideClose(), forwardAdjacency) }
   for (callback in node.lifecycleCallbacks) {
     for (parameter in callback.parameters) {
       val key = parameter.key
-      val binding = resolveAliases(key.typeKey, findBinding) ?: continue
+      val binding = graph.findAliasTarget(key.typeKey) ?: continue
       val source = sequenceOf(parameter.source, node.sourceGraph)
       val parameterName = parameter.source.name.asString()
       val callbackName = "${callback.original.parentAsClass.name}.${callback.original.name}"
@@ -54,7 +53,7 @@ internal fun reportLifecycleWarnings(
         if (key.wrappedType.isDeferrable()) {
           emptyList()
         } else {
-          graph.freshInstanceBindings(binding, findBinding)
+          graph.freshInstanceBindings(binding, allowLookup = false)
         }
       if (freshBindings.isNotEmpty()) {
         val callbackLabel = "${callback.annotationLabel} $callbackName"
@@ -105,7 +104,7 @@ internal fun reportLifecycleWarnings(
         continue
       }
       val closeOnlyBindings =
-        ownedInstanceBindings(binding, findBinding).filter { it.typeKey !in usedOutsideClose }
+        graph.ownedInstanceBindings(binding).filter { it.typeKey !in usedOutsideClose }
       if (closeOnlyBindings.isEmpty()) {
         continue
       }
@@ -161,11 +160,12 @@ private fun contributionLocations(contributions: List<IrBinding>): List<Diagnost
  * Returns the bindings that create a new instance for each request of [binding]. That's [binding]
  * itself, its unscoped contributions when it's a multibinding, or nothing when requests share one
  * instance. A binding read from a parent graph asks that graph. A wrapper like `Optional` is
- * checked through the value it holds.
+ * checked through the value it holds. [allowLookup] lets a graph that isn't sealed yet look up
+ * bindings it hasn't added.
  */
 internal fun IrBindingGraph.freshInstanceBindings(
   binding: IrBinding,
-  findBinding: (IrTypeKey) -> IrBinding?,
+  allowLookup: Boolean,
 ): List<IrBinding> {
   // Graph inputs, like @Provides parameters, are one instance whichever graph owns them.
   if (binding is IrBinding.BoundInstance) {
@@ -176,13 +176,13 @@ internal fun IrBindingGraph.freshInstanceBindings(
   }
   if (binding is IrBinding.Multibinding) {
     return binding.sourceBindings.flatMap { source ->
-      val contribution = resolveAliases(source, findBinding) ?: return@flatMap emptyList()
-      freshInstanceBindings(contribution, findBinding)
+      val contribution = findAliasTarget(source, allowLookup) ?: return@flatMap emptyList()
+      freshInstanceBindings(contribution, allowLookup)
     }
   }
   if (binding is IrBinding.CustomWrapper) {
-    val value = binding.wrappedBinding(findBinding) ?: return emptyList()
-    return freshInstanceBindings(value, findBinding)
+    val value = wrappedBinding(binding, allowLookup) ?: return emptyList()
+    return freshInstanceBindings(value, allowLookup)
   }
   return listOfNotNull(binding.takeIf { it.createsFreshInstances })
 }
@@ -192,10 +192,7 @@ internal fun IrBindingGraph.freshInstanceBindings(
  * receives. Graph inputs already exist, and children count as users of their parent's bindings, so
  * both are skipped. So are bindings whose instances hold no state.
  */
-private fun ownedInstanceBindings(
-  binding: IrBinding,
-  findBinding: (IrTypeKey) -> IrBinding?,
-): List<IrBinding> {
+private fun IrBindingGraph.ownedInstanceBindings(binding: IrBinding): List<IrBinding> {
   val isGraphInput = binding is IrBinding.BoundInstance || binding is IrBinding.GraphDependency
   if (isGraphInput || binding.isParentOwned) {
     return emptyList()
@@ -203,12 +200,12 @@ private fun ownedInstanceBindings(
   return when (binding) {
     is IrBinding.Multibinding ->
       binding.sourceBindings.flatMap { source ->
-        val contribution = resolveAliases(source, findBinding) ?: return@flatMap emptyList()
-        ownedInstanceBindings(contribution, findBinding)
+        val contribution = findAliasTarget(source) ?: return@flatMap emptyList()
+        ownedInstanceBindings(contribution)
       }
     is IrBinding.CustomWrapper -> {
-      val value = binding.wrappedBinding(findBinding) ?: return emptyList()
-      ownedInstanceBindings(value, findBinding)
+      val value = wrappedBinding(binding, allowLookup = false) ?: return emptyList()
+      ownedInstanceBindings(value)
     }
     else -> listOfNotNull(binding.takeIf { it.holdsState })
   }
@@ -218,22 +215,15 @@ private fun ownedInstanceBindings(
  * Returns the binding for the value inside a wrapper like `Optional`. Returns null when the wrapper
  * defers that value, like `Optional<Provider<T>>`, because the callback decides when to create it.
  */
-private fun IrBinding.CustomWrapper.wrappedBinding(
-  findBinding: (IrTypeKey) -> IrBinding?,
+private fun IrBindingGraph.wrappedBinding(
+  wrapper: IrBinding.CustomWrapper,
+  allowLookup: Boolean,
 ): IrBinding? {
-  if (wrappedContextKey.wrappedType.isDeferrable()) {
+  val valueKey = wrapper.wrappedContextKey
+  if (valueKey.wrappedType.isDeferrable()) {
     return null
   }
-  return resolveAliases(wrappedContextKey.typeKey, findBinding)
-}
-
-/** Follows `@Binds` aliases in this graph to the binding that creates the value. */
-internal fun resolveAliases(key: IrTypeKey, findBinding: (IrTypeKey) -> IrBinding?): IrBinding? {
-  var binding = findBinding(key) ?: return null
-  while (binding is IrBinding.Alias && binding.aliasedType != binding.typeKey) {
-    binding = findBinding(binding.aliasedType) ?: return null
-  }
-  return binding
+  return findAliasTarget(valueKey.typeKey, allowLookup)
 }
 
 /** True when a request for this binding can create an object with state of its own. */
