@@ -58,6 +58,8 @@ import dev.zacsweers.metro.compiler.ir.graph.IrGraphGenerator
 import dev.zacsweers.metro.compiler.ir.graph.expressions.BindingExpressionDecorator
 import dev.zacsweers.metro.compiler.ir.graph.generatedGraphExtensionData
 import dev.zacsweers.metro.compiler.ir.graph.irInitializedGraph
+import dev.zacsweers.metro.compiler.ir.graph.originalDeclarationIfOverride
+import dev.zacsweers.metro.compiler.ir.graph.suspendInitCallback
 import dev.zacsweers.metro.compiler.ir.graphFactoryGetterOrNull
 import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.irCallConstructorWithSameParameters
@@ -102,6 +104,7 @@ import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
@@ -121,6 +124,7 @@ import org.jetbrains.kotlin.ir.util.isInterface
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nonDispatchParameters
 import org.jetbrains.kotlin.ir.util.parentAsClass
+import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.properties
 import org.jetbrains.kotlin.name.ClassId
@@ -357,6 +361,43 @@ internal class DependencyGraphTransformer(
         validationResult.sealResult
       }
     }
+  }
+
+  /**
+   * Checks that the parent doesn't return an extension directly when its init callbacks suspend.
+   *
+   * Only the extension's suspend factory runs those callbacks. FIR reports a direct accessor on the
+   * graphs it sees in full. An accessor that merges in IR, like one contributed to another
+   * extension, only shows up here.
+   */
+  private fun validateExtensionInit(
+    parent: GraphNode.Local,
+    extension: ExtensionValidationTask,
+  ): Boolean {
+    if (!extension.isDirectExtension) {
+      return true
+    }
+    val child = extension.validation.node
+    val suspendInit = child.metroGraphOrFail.suspendInitCallback() ?: return true
+    val accessors = parent.graphExtensions.getValue(extension.contributedGraphKey)
+    val directAccessor = accessors.firstOrNull { it.isSimpleAccessor } ?: return true
+    val declaration =
+      directAccessor.accessor.ir.propertyIfAccessorCompat
+        .originalDeclarationIfOverride()
+        .expectAs<IrDeclarationWithName>()
+    val parentGraph = parent.sourceGraph.sourceGraphIfMetroGraph
+    val childGraph = child.sourceGraph.sourceGraphIfMetroGraph
+    val owner = declaration.parentClassOrNull ?: parentGraph
+    reportCompat(
+      sequenceOf(declaration, parentGraph),
+      MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
+      LifecycleDiagnosticMessages.suspendInitNeedsFactoryCall(
+        accessor = "${owner.name}.${declaration.name}",
+        child = childGraph.name.asString(),
+        callback = suspendInit.name.asString(),
+      ),
+    )
+    return false
   }
 
   /** Checks ownership before a generated extension binding is added to the parent. */
@@ -599,6 +640,9 @@ internal class DependencyGraphTransformer(
           }
 
           if (!validateExtensionCloseability(node, bindingGraph, task)) {
+            hasErrors = true
+          }
+          if (!validateExtensionInit(node, task)) {
             hasErrors = true
           }
 

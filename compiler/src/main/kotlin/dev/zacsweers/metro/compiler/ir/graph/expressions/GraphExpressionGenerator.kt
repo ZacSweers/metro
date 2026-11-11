@@ -21,6 +21,7 @@ import dev.zacsweers.metro.compiler.ir.graph.GraphSuspendFactoryGenerator
 import dev.zacsweers.metro.compiler.ir.graph.IrBinding
 import dev.zacsweers.metro.compiler.ir.graph.IrBindingGraph
 import dev.zacsweers.metro.compiler.ir.graph.IrGraphExtensionGenerator
+import dev.zacsweers.metro.compiler.ir.graph.checkAccessorRunsInit
 import dev.zacsweers.metro.compiler.ir.graph.generatedGraphExtensionData
 import dev.zacsweers.metro.compiler.ir.graph.irInitializedGraph
 import dev.zacsweers.metro.compiler.ir.graph.sharding.ShardExpressionContext
@@ -805,6 +806,7 @@ private constructor(
             binding.accessor.returnType = extensionImpl.defaultType
           }
 
+          checkAccessorRunsInit(extensionImpl, binding.accessor)
           val ctor = extensionImpl.primaryConstructor!!
           irCallConstructor(ctor.symbol, node.sourceGraph.typeParameters.map { it.defaultType })
             .apply {

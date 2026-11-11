@@ -20,6 +20,7 @@ import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
 import org.jetbrains.kotlin.ir.builders.IrBlockBuilder
@@ -47,6 +48,7 @@ import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.hasAnnotation
+import org.jetbrains.kotlin.ir.util.kotlinFqName
 
 /** The `GraphLifecycleState` field of a closeable graph. Its extensions read it to register. */
 internal var IrClass.lifecycleStateField: IrField? by irAttribute(copyByDefault = false)
@@ -135,6 +137,22 @@ internal fun IrBuilderWithScope.irInitializedGraph(
     val instance = irTemporary(construction, "graph")
     +irInvoke(dispatchReceiver = irGet(instance), callee = init.symbol)
     +irGet(instance)
+  }
+}
+
+/**
+ * Fails when [accessor] would return [graph] without running its suspend init callbacks.
+ *
+ * Validation reports such an accessor to the user first, so reaching one here is a compiler bug.
+ */
+context(context: IrMetroContext)
+internal fun checkAccessorRunsInit(graph: IrClass, accessor: IrSimpleFunction) {
+  val suspendInit = graph.suspendInitCallback() ?: return
+  if (!accessor.isSuspend) {
+    reportCompilerBug(
+      "${accessor.kotlinFqName} returns ${graph.kotlinFqName} without running its suspend " +
+        "@OnGraphInit callback '${suspendInit.name}'.",
+    )
   }
 }
 

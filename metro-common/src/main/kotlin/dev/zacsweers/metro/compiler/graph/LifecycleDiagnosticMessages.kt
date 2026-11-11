@@ -62,6 +62,17 @@ public object LifecycleDiagnosticMessages {
     return "'$function()' must be a suspend function $reason"
   }
 
+  /**
+   * Explains why [accessor] can't return [child] directly. Only the extension's suspend factory
+   * runs its suspend init callbacks.
+   */
+  public fun suspendInitNeedsFactoryCall(
+    accessor: String,
+    child: String,
+    callback: String,
+  ): String =
+    "'$accessor' can't create '$child' directly because @OnGraphInit callback '$callback' suspends. Create '$child' through its graph factory."
+
   /** Names the close contract the parent needs for an extension it creates. */
   public fun parentCannotCloseExtension(
     parent: String,
