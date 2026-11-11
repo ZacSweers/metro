@@ -2,6 +2,6 @@
 
 Trace:
     Set<String> is requested at
-        [ExampleGraph] ExampleGraph.values() // <-- not suspend
+        [ExampleGraph] ExampleGraph.values() // ❌ needs suspend support
     @MultibindingElement("kotlin/String", "1020704780") String is provided at
         [ExampleGraph] suspend ExampleGraph.provideOne(…)

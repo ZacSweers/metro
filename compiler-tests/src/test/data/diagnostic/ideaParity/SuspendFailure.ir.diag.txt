@@ -2,7 +2,7 @@
 
 Trace:
     Database is injected at
-        [parity.suspend.failure.AppGraph] parity.suspend.failure.ProviderRepository(…, database) // <-- not suspend
+        [parity.suspend.failure.AppGraph] parity.suspend.failure.ProviderRepository(…, database) // ❌ needs suspend support
     Database is provided at
         [parity.suspend.failure.AppGraph] suspend parity.suspend.failure.AppGraph.provideDatabase(…)
 
@@ -10,9 +10,9 @@ Trace:
 
 Trace:
     Repository is requested at
-        [parity.suspend.failure.AppGraph] parity.suspend.failure.AppGraph.repository // <-- not suspend
+        [parity.suspend.failure.AppGraph] parity.suspend.failure.AppGraph.repository // ❌ needs suspend support
     Database is injected at
-        [parity.suspend.failure.AppGraph] parity.suspend.failure.Repository(…, database) // <-- not suspend
+        [parity.suspend.failure.AppGraph] parity.suspend.failure.Repository(…, database) // ❌ needs suspend support
     Database is provided at
         [parity.suspend.failure.AppGraph] suspend parity.suspend.failure.AppGraph.provideDatabase(…)
 

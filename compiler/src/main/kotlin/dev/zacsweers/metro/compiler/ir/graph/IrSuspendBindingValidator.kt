@@ -281,8 +281,8 @@ internal class IrSuspendBindingValidator(
   /**
    * Traces dependency edges to a directly suspend source. Each step uses
    * [bindingStackEntryForDependency], and the trace ends with a `providedAt` entry naming the
-   * suspend function. Non-suspend steps are annotated with [NOT_SUSPEND] so the user can see which
-   * declarations stand in the way.
+   * suspend function. Non-suspend steps are annotated with [NEEDS_SUSPEND_SUPPORT] so the user can
+   * see which declarations stand in the way.
    */
   private fun issueTrace(
     issue: SuspendValidationIssue<IrTypeKey, IrContextualTypeKey, IrBinding, IrBindingStack.Entry>,
@@ -302,12 +302,12 @@ internal class IrSuspendBindingValidator(
         }
         SuspendValidationSite.Graph -> return emptyList()
       }
-    val result = mutableListOf(head.withAnnotation(NOT_SUSPEND))
+    val result = mutableListOf(head.withAnnotation(NEEDS_SUSPEND_SUPPORT))
     for (edge in path.edges) {
       val binding = bindings[edge.consumerKey] ?: break
       result +=
         bindingStackEntryForDependency(binding, edge.dependency, edge.dependency.typeKey)
-          .withAnnotation(NOT_SUSPEND)
+          .withAnnotation(NEEDS_SUSPEND_SUPPORT)
     }
     if (path.sourceIsSuspend) {
       val source = bindings[path.sourceKey]
@@ -334,7 +334,7 @@ internal class IrSuspendBindingValidator(
   }
 
   private companion object {
-    private const val NOT_SUSPEND = "<-- not suspend"
+    private const val NEEDS_SUSPEND_SUPPORT = "❌ needs suspend support"
   }
 }
 

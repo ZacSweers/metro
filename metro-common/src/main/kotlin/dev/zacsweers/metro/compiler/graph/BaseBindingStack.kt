@@ -58,8 +58,9 @@ public interface BaseBindingStack<
       get() = contextKey.typeKey
 
     /**
-     * Optional trailing comment for the [graphContext] line, such as `// <-- not suspend`. Used by
-     * diagnostics that want to call out specific entries in a trace.
+     * Optional trailing comment appended to the [graphContext] line when rendered, such as `// ❌
+     * needs suspend support`. Used by diagnostics that want to call out specific entries in a
+     * trace.
      */
     public val trailingComment: String?
       get() = null

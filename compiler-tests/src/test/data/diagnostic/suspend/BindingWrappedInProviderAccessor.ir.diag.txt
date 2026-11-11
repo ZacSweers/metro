@@ -2,7 +2,7 @@
 
 Trace:
     String is injected at
-        [ExampleGraph] Creator(…, db) // <-- not suspend
+        [ExampleGraph] Creator(…, db) // ❌ needs suspend support
     String is provided at
         [ExampleGraph] suspend ExampleGraph.provideString(…)
 
@@ -10,7 +10,7 @@ Trace:
 
 Trace:
     String is requested at
-        [ExampleGraph] ExampleGraph.value // <-- not suspend
+        [ExampleGraph] ExampleGraph.value // ❌ needs suspend support
     String is provided at
         [ExampleGraph] suspend ExampleGraph.provideString(…)
 
@@ -18,7 +18,7 @@ Trace:
 
 Trace:
     String is requested at
-        [ExampleGraph] ExampleGraph.lazyValue // <-- not suspend
+        [ExampleGraph] ExampleGraph.lazyValue // ❌ needs suspend support
     String is provided at
         [ExampleGraph] suspend ExampleGraph.provideString(…)
 
@@ -26,7 +26,7 @@ Trace:
 
 Trace:
     String is requested at
-        [ExampleGraph] ExampleGraph.nestedProvider // <-- not suspend
+        [ExampleGraph] ExampleGraph.nestedProvider // ❌ needs suspend support
     String is provided at
         [ExampleGraph] suspend ExampleGraph.provideString(…)
 
@@ -34,6 +34,6 @@ Trace:
 
 Trace:
     String is requested at
-        [ExampleGraph] ExampleGraph.nestedLazy // <-- not suspend
+        [ExampleGraph] ExampleGraph.nestedLazy // ❌ needs suspend support
     String is provided at
         [ExampleGraph] suspend ExampleGraph.provideString(…)

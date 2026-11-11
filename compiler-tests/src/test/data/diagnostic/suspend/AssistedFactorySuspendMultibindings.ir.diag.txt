@@ -2,7 +2,7 @@
 
 Trace:
     Set<String> is injected at
-        [ExampleGraph] Target(…, values) // <-- not suspend
+        [ExampleGraph] Target(…, values) // ❌ needs suspend support
     @MultibindingElement("kotlin/String", "2040696630") String is provided at
         [ExampleGraph] suspend ExampleGraph.provideElement(…)
 
@@ -10,6 +10,6 @@ Trace:
 
 Trace:
     Map<String, String> is injected at
-        [ExampleGraph] Target(…, valuesByName) // <-- not suspend
+        [ExampleGraph] Target(…, valuesByName) // ❌ needs suspend support
     @MultibindingElement("kotlin/String|kotlin/String", "1626177339") String is provided at
         [ExampleGraph] suspend ExampleGraph.provideMapValue(…)
