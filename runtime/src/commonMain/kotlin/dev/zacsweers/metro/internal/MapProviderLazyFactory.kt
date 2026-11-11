@@ -54,8 +54,6 @@ private constructor(map: Map<K, Provider<V>>) : AbstractMapFactory<K, V, Provide
   }
 
   public companion object {
-    private val EMPTY: Provider<Map<Any, Any>> = InstanceFactory(mutableMapOf())
-
     /** Returns a new [Builder] */
     @JvmStatic
     @JsStatic
@@ -94,9 +92,9 @@ private class SingletonMapProviderLazyFactory<K : Any, V>(key: K, provider: Prov
 
 /** Wraps each provider so every invocation of the wrapper creates a new [Lazy]. */
 private fun <K : Any, V> providersOfLazy(map: Map<K, Provider<V>>): Map<K, Provider<Lazy<V>>> {
-  val result = newLinkedHashMapWithExpectedSize<K, Provider<Lazy<V>>>(map.size)
-  for (entry in map.entries) {
-    result[entry.key] = Provider { DoubleCheck.lazy<Provider<V>, V>(entry.value) }
+  return buildMap(map.size) {
+    for (entry in map.entries) {
+      put(entry.key, ProviderOfLazy.create(entry.value))
+    }
   }
-  return result.toUnmodifiableMap()
 }

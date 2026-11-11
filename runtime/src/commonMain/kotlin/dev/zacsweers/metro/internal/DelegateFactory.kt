@@ -30,7 +30,7 @@ public class DelegateFactory<T : Any> : Factory<T> {
   /**
    * Returns the factory's delegate.
    *
-   * @throws NullPointerException if the delegate has not been set
+   * @throws IllegalStateException if the delegate has not been set
    */
   public fun getDelegate(): Provider<T> {
     return checkNotNull(delegate) { "Backing delegate was never set!" }

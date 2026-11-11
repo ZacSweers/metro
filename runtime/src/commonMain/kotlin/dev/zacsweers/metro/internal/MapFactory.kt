@@ -31,11 +31,12 @@ public class MapFactory<K : Any, V> private constructor(map: Map<K, Provider<V>>
    * providers, which are invoked in the order given at creation.
    */
   override fun invoke(): Map<K, V> {
-    val result = newLinkedHashMapWithExpectedSize<K, V>(contributingMap().size)
-    for (entry in contributingMap().entries) {
-      result[entry.key] = entry.value()
+    // buildMap is already read-only and insertion-ordered, so the result needs no second copy.
+    return buildMap(contributingMap().size) {
+      for (entry in contributingMap().entries) {
+        put(entry.key, entry.value())
+      }
     }
-    return result.toUnmodifiableMap()
   }
 
   /** A builder for [MapFactory]. */

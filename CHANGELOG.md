@@ -16,6 +16,7 @@ Changelog
 
 - **[IR]** Generate fewer classes for `@Includes` dependencies.
 - **[IR]** Generate fewer provider fields in graphs with dependency cycles. Previously, bindings used by a cycle-breaking binding were accidentally counted twice and always resulted in a shared provider field.
+- **[Runtime]** Map multibinding providers such as `Provider<Map<K, V>>` and `Provider<Map<K, Lazy<V>>>` now only copy their result map once per call.
 
 ### Fixes
 
