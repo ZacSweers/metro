@@ -70,7 +70,7 @@ class GraphLifecycleStateConcurrentTest {
               if (index % 7 == 0) {
                 kept += child
               } else {
-                childState.leaveParent()
+                parent.removeChild(childState)
               }
             }
             kept

@@ -200,7 +200,7 @@ internal fun checkAccessorRunsInit(graph: IrClass, accessor: IrSimpleFunction) {
  *           }
  *         }
  *       } finally {
- *         metroLifecycle.leaveParent()
+ *         parent.metroLifecycle.removeChild(metroLifecycle)
  *       }
  *       metroLifecycle.throwCloseFailure()
  *     }
@@ -389,14 +389,13 @@ internal class IrGraphLifecycleGenerator(
     receiver: IrValueParameter,
     cleanup: IrExpression,
   ): IrExpression {
-    val state = stateField
-    if (state == null || parentStateField == null) {
-      return cleanup
-    }
+    val state = stateField ?: return cleanup
+    val parentState = parentState(receiver) ?: return cleanup
     val release =
       irInvoke(
-        callee = metroSymbols.graphLifecycleLeaveParent,
-        dispatchReceiver = irGetField(irGet(receiver), state),
+        callee = metroSymbols.graphLifecycleRemoveChild,
+        dispatchReceiver = parentState,
+        args = listOf(irGetField(irGet(receiver), state)),
       )
     return irTry(irBuiltIns.unitType, cleanup, catches = emptyList(), finallyExpression = release)
   }

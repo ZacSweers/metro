@@ -5,10 +5,13 @@ package dev.zacsweers.metro.internal
 /**
  * Platform-specific guard for [BaseDoubleCheck]'s first value publication.
  *
- * This is private [BaseDoubleCheck] machinery, not a reusable lock abstraction. Implementations may
- * rely on the fact that the guard is only used until `_value` is initialized. Same-thread
+ * This is runtime-internal machinery, not a general lock abstraction. Implementations may rely on
+ * the fact that [BaseDoubleCheck] only uses the guard until `_value` is initialized. Same-thread
  * reentrancy is intentional: recursive providers should reach [reentrantCheck] instead of
  * deadlocking.
+ *
+ * On native, [GraphChildren] also uses it to serialize single map operations. Any other use has to
+ * keep its guarded sections that short, because contended callers share one parker there.
  */
 public expect open class DoubleCheckInitGuard()
 

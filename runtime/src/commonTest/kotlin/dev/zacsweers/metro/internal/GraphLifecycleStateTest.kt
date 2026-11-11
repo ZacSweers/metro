@@ -28,7 +28,7 @@ class GraphLifecycleStateTest {
     state.addChild(first, GraphLifecycleState())
     val secondState = GraphLifecycleState()
     state.addChild(second, secondState)
-    secondState.leaveParent()
+    state.removeChild(secondState)
     assertSame(first, state.takeChildren().single())
     assertEquals(emptyList(), state.takeChildren())
   }
@@ -36,8 +36,7 @@ class GraphLifecycleStateTest {
   @Test
   fun childrenThatLeaveAreNotTakenLater() {
     val state = GraphLifecycleState()
-    val kept = mutableListOf<Any>()
-    // Enough children to prune the links of the ones that left several times over.
+    val kept = mutableSetOf<Any>()
     repeat(1_000) { index ->
       val child = Child(index)
       val childState = GraphLifecycleState()
@@ -45,11 +44,12 @@ class GraphLifecycleStateTest {
       if (index % 10 == 0) {
         kept += child
       } else {
-        childState.leaveParent()
+        state.removeChild(childState)
       }
     }
-    // Most recently added first.
-    assertEquals(kept.reversed(), state.takeChildren())
+    val taken = state.takeChildren()
+    assertEquals(kept.size, taken.size)
+    assertEquals(kept, taken.toSet())
   }
 
   @Test

@@ -11,8 +11,8 @@ import kotlin.concurrent.atomics.ExperimentalAtomicApi
  * it.
  *
  * The generated `close()` calls [markClosed] first, so only one caller runs cleanup. Extensions
- * register in [addChild] after their init callbacks finish and call [leaveParent] when they close
- * on their own.
+ * register in [addChild] after their init callbacks finish and leave through [removeChild] when
+ * they close on their own.
  *
  * Cleanup runs every step even when one fails. Each failure goes to [recordCloseFailure], and
  * [throwCloseFailure] reports them once cleanup finishes.
@@ -21,13 +21,8 @@ import kotlin.concurrent.atomics.ExperimentalAtomicApi
 public class GraphLifecycleState {
   private val closed = AtomicBoolean(false)
 
-  // The graph that owns this state, set while its parent tracks it. Clearing it is how a child
-  // stops being tracked, so that never has to search the parent's chain.
-  private val trackedGraph = AtomicReference<Any?>(null)
-
-  // The states of this graph's children, newest first. Links are immutable, so registration is one
-  // compare-and-set and doesn't need a lock.
-  private val children = AtomicReference<ChildLink?>(null)
+  // Keyed by each child's own state, so a child that closes is removed without a search.
+  private val children = GraphChildren()
 
   // The first failure of this graph's cleanup. Later failures are attached to it as suppressed.
   private val closeFailure = AtomicReference<Throwable?>(null)
@@ -45,22 +40,18 @@ public class GraphLifecycleState {
    *
    * [childState] is the child's own state. A child registers once, after its init callbacks. It can
    * close itself during those callbacks, before it registers here. Its close then had nothing to
-   * stop, so registration drops it.
+   * remove, so registration drops it.
    */
   public fun addChild(child: Any, childState: GraphLifecycleState) {
-    childState.trackedGraph.store(child)
-    while (!closed.load()) {
-      val head = children.load()
-      if (children.compareAndSet(head, linkChild(head, childState))) {
-        break
-      }
-    }
+    checkOpen()
+    children.put(childState, child)
     if (childState.closed.load()) {
-      childState.leaveParent()
+      children.remove(childState)
     }
-    // A close that started after the last open check may have already taken the children.
+    // A close that started after the open check may have already taken the children. If it took
+    // this one, it closes it. If it didn't, this graph still can't track it.
     if (closed.load()) {
-      childState.leaveParent()
+      children.remove(childState)
       checkOpen()
     }
   }
@@ -86,59 +77,15 @@ public class GraphLifecycleState {
   }
 
   /**
-   * Returns [head] with a link to [childState] in front.
-   *
-   * A child that leaves only clears its [trackedGraph], so its link stays in the chain. This drops
-   * those links each time the chain has doubled since it last did. The chain stays proportional to
-   * the number of tracked children, and the copying averages out to a constant cost per child.
+   * Stops tracking the child that registered with [childState]. A child calls this on its parent's
+   * state when it closes on its own.
    */
-  private fun linkChild(head: ChildLink?, childState: GraphLifecycleState): ChildLink {
-    if (head == null) {
-      return ChildLink(childState, next = null, size = 1, prunedSize = 0)
-    }
-    val hasDoubled = head.size >= 2 * head.prunedSize + MIN_PRUNING_SIZE
-    if (!hasDoubled) {
-      return ChildLink(childState, head, head.size + 1, head.prunedSize)
-    }
-    val tracked = ArrayList<GraphLifecycleState>()
-    var link: ChildLink? = head
-    while (link != null) {
-      if (link.state.trackedGraph.load() != null) {
-        tracked += link.state
-      }
-      link = link.next
-    }
-    // Rebuild from the oldest child so the chain stays newest first.
-    var rest: ChildLink? = null
-    for (index in tracked.indices.reversed()) {
-      rest = ChildLink(tracked[index], rest, size = tracked.size - index, prunedSize = tracked.size)
-    }
-    return ChildLink(childState, rest, size = tracked.size + 1, prunedSize = tracked.size)
+  public fun removeChild(childState: GraphLifecycleState) {
+    children.remove(childState)
   }
 
-  /**
-   * Stops this graph's parent from tracking it. A graph calls this on its own state when it closes.
-   */
-  public fun leaveParent() {
-    trackedGraph.store(null)
-  }
-
-  /** Stops tracking all children and returns them, most recently added first. */
-  public fun takeChildren(): List<Any> {
-    var link = children.exchange(null)
-    if (link == null) {
-      return emptyList()
-    }
-    val taken = ArrayList<Any>(link.size)
-    while (link != null) {
-      val graph = link.state.trackedGraph.exchange(null)
-      if (graph != null) {
-        taken += graph
-      }
-      link = link.next
-    }
-    return taken
-  }
+  /** Stops tracking all children and returns them in no particular order. */
+  public fun takeChildren(): List<Any> = children.removeAll()
 
   /**
    * Closes the tracked children. A graph whose `close()` doesn't suspend calls this. Such a graph
@@ -180,17 +127,3 @@ public class GraphLifecycleState {
     }
   }
 }
-
-/**
- * One entry in a graph's chain of children. [size] counts the links from this one to the end of the
- * chain. [prunedSize] is the chain's size right after the last time [linkChild] pruned it.
- */
-private class ChildLink(
-  val state: GraphLifecycleState,
-  val next: ChildLink?,
-  val size: Int,
-  val prunedSize: Int,
-)
-
-// A chain this short isn't worth pruning.
-private const val MIN_PRUNING_SIZE = 8
