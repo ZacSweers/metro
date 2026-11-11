@@ -116,6 +116,24 @@ internal class BindingPropertyCollector(
   private val reservedContextKeysByType = graph.reservedContextKeys().groupBy { it.typeKey }
 
   /**
+   * Targets of the `@Binds` aliases that child graphs read from this graph. A child can't build an
+   * alias's `@GraphPrivate` source, so it reads the target's property here. Aliases don't get
+   * properties of their own.
+   */
+  private val childReadAliasTargets: Set<IrTypeKey> = buildSet {
+    for (key in reservedContextKeysByType.keys) {
+      if (graph.findBinding(key) !is IrBinding.Alias) {
+        continue
+      }
+      val target = graph.findAliasTarget(key) ?: continue
+      // Bound instances already have an instance field.
+      if (target !is IrBinding.BoundInstance) {
+        add(target.typeKey)
+      }
+    }
+  }
+
+  /**
    * Tracks assisted-inject target bindings and their usage counts. Only targets used by multiple
    * Assisted bindings need FIELD properties for sharing.
    */
@@ -440,6 +458,8 @@ internal class BindingPropertyCollector(
       val sharesComputedBinding = hasMixedAccess && binding !is IrBinding.BoundInstance
       val needsFactoryField = sharesFactory || sharesComputedBinding
       val useField = !isGraphExtension && needsFactoryField
+      // A child reads this through an alias, so it needs a getter even with no other reader.
+      val servesChildAlias = binding.typeKey in childReadAliasTargets
 
       // For graph extensions, convert factory refs to scalar refs for the purpose of deciding
       // whether to create a getter property
@@ -481,7 +501,7 @@ internal class BindingPropertyCollector(
             isProviderType = true,
             switchingId = switchingId,
           )
-      } else if (needsSharedGetter()) {
+      } else if (needsSharedGetter() || servesChildAlias) {
         if (binding.isSuspendInGraph) {
           // The property returns a SuspendProvider so each consumer can await it.
           val propertyKind = providerPropertyKind(binding, contextKey)

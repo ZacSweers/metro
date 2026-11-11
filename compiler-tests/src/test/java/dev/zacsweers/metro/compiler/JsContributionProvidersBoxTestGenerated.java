@@ -2128,6 +2128,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
       }
 
       @Test
+      @TestMetadata("GraphPrivateBindsAliasToReusedBindingVisibleToChild.kt")
+      public void testGraphPrivateBindsAliasToReusedBindingVisibleToChild() {
+        run("GraphPrivateBindsAliasToReusedBindingVisibleToChild.kt");
+      }
+
+      @Test
       @TestMetadata("GraphPrivateBindsAliasVisibleToChild.kt")
       public void testGraphPrivateBindsAliasVisibleToChild() {
         run("GraphPrivateBindsAliasVisibleToChild.kt");
@@ -2179,6 +2185,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
       @TestMetadata("GraphPrivatePreventsLeakingParentScopedInstance.kt")
       public void testGraphPrivatePreventsLeakingParentScopedInstance() {
         run("GraphPrivatePreventsLeakingParentScopedInstance.kt");
+      }
+
+      @Test
+      @TestMetadata("GraphPrivateUnscopedBindsAliasVisibleToChild.kt")
+      public void testGraphPrivateUnscopedBindsAliasVisibleToChild() {
+        run("GraphPrivateUnscopedBindsAliasVisibleToChild.kt");
       }
 
       @Test

@@ -873,7 +873,14 @@ private constructor(
           // Wrap included accessor calls in a provider function when a provider is requested.
           if (binding.token != null) {
             val bindingProperty = resolveTokenBindingProperty(binding.token)
-            val deferGetter = bindingProperty.isIncludedAccessor
+            // A getter the token's owner reuses from its ancestor builds a new value on each read.
+            val isReusedByOwner = bindingProperty.ownerGraphKey != binding.token.ownerGraphKey
+            // So does the getter behind a published @Binds alias. A stored instance stays as is.
+            val requestedKey = binding.token.contextKey.typeKey
+            val isAliasTarget = bindingProperty.storedKey.typeKey != requestedKey
+            val isAliasTargetGetter = isAliasTarget && bindingProperty.property.backingField == null
+            val buildsNewValue = isReusedByOwner || isAliasTargetGetter
+            val deferGetter = bindingProperty.isIncludedAccessor || buildsNewValue
             return withBindingPropertyAccess(bindingProperty, accessType, deferGetter) {
               propertyAccess ->
               propertyAccess.toTargetType(
@@ -1483,7 +1490,9 @@ private constructor(
    * property access expression, including ancestor chains and shard navigation.
    */
   private fun resolveToken(token: ParentContext.Token): ParentContext.PropertyAccess {
-    return resolveParentProperty(resolveTokenBindingProperty(token), token.ownerGraphKey)
+    val bindingProperty = resolveTokenBindingProperty(token)
+    val ownerGraphKey = bindingProperty.ownerGraphKey ?: token.ownerGraphKey
+    return resolveParentProperty(bindingProperty, ownerGraphKey)
   }
 
   private fun resolveTokenBindingProperty(token: ParentContext.Token): BindingProperty {
@@ -1500,7 +1509,10 @@ private constructor(
           "Cannot resolve property access token - property not found for ${token.contextKey} in ${token.ownerGraphKey}",
         )
 
-    return bindingProperty.copy(ownerGraphKey = token.ownerGraphKey)
+    // The token's owner can reuse this property from one of its own ancestors. That ancestor holds
+    // the property, so it stays the owner.
+    val ownerGraphKey = bindingProperty.ownerGraphKey ?: token.ownerGraphKey
+    return bindingProperty.copy(ownerGraphKey = ownerGraphKey)
   }
 
   private fun resolveParentProperty(

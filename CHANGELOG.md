@@ -28,6 +28,7 @@ Changelog
   - Note that this results in more fields to allow reuse, in exchange for less allocations at runtime. If you have any issues, please file an issue with details. you can force these to just be getters instead via temporary compiler option in the meantime via `metro { compilerOptions.put("force-provider-getters", "true") }`
 - **[IR]** Fix JVM compilation failures when nested `@GraphExtension` implementations would produce class file names longer than 255 bytes.
 - **[IR]** Fix `@GraphPrivate @Binds` declarations leaking into graph extensions. Child graphs now resolve their own bindings or report a missing binding when the parent's alias is private.
+- **[IR]** Fix a compiler crash when a graph extension reads a `@Binds` alias whose `@GraphPrivate` source is unscoped. Also fix a crash when that source is a `@Binds` alias of an unscoped binding that an ancestor graph builds too.
 - **[IR]** Fix eager reads of included dependency accessors when graph extensions request `Provider` or `Lazy` values.
 - **[IR]** Fix missing graph references in getter-only shards when accessing included dependencies.
 - **[IR]** Fix graphs creating new providers every time a `Map<K, Provider<V>>` is requested. The graph now stores one map of entry providers and returns it on every read.
