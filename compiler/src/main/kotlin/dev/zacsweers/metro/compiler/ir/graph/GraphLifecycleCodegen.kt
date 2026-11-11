@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.ir.graph
 
 import dev.zacsweers.metro.compiler.MetroClassIds
+import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.graph.GraphLifecyclePhase
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.allSupertypesSequence
@@ -37,7 +38,6 @@ import org.jetbrains.kotlin.ir.builders.irTemporary
 import org.jetbrains.kotlin.ir.builders.irTry
 import org.jetbrains.kotlin.ir.builders.parent
 import org.jetbrains.kotlin.ir.declarations.IrClass
-import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
@@ -331,7 +331,7 @@ internal class IrGraphLifecycleGenerator(
         parent = parent,
         startOffset = startOffset,
         endOffset = endOffset,
-        origin = IrDeclarationOrigin.CATCH_PARAMETER,
+        origin = Origins.FirstParty.CATCH_PARAMETER,
         name = Name.identifier("failure"),
         type = irBuiltIns.throwableType,
       )

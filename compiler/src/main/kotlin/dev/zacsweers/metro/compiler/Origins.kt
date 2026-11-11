@@ -86,6 +86,7 @@ internal object Origins {
     val IR_EXTERNAL_JAVA_DECLARATION_STUB: IrDeclarationOrigin by
       getConstant("IR_EXTERNAL_JAVA_DECLARATION_STUB")
     val DEFAULT_PROPERTY_ACCESSOR: IrDeclarationOrigin by getConstant("DEFAULT_PROPERTY_ACCESSOR")
+    val CATCH_PARAMETER: IrDeclarationOrigin by getConstant("CATCH_PARAMETER")
   }
 }
 
