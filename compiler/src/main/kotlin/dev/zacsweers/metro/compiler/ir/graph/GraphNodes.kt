@@ -21,6 +21,7 @@ import dev.zacsweers.metro.compiler.diagnostics.factory
 import dev.zacsweers.metro.compiler.diagnostics.textOf
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
+import dev.zacsweers.metro.compiler.filterToSet
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.getOrInit
@@ -277,10 +278,7 @@ internal class GraphNodes(
       if (!isCallback) {
         return false
       }
-      val phases =
-        GraphLifecyclePhase.entries.filterTo(LinkedHashSet()) {
-          original.hasAnnotation(it.annotation)
-        }
+      val phases = GraphLifecyclePhase.entries.filterToSet { original.hasAnnotation(it.annotation) }
       // An upstream module can declare the callback without running Metro's FIR checker.
       if (phases.size > 1) {
         reportCompat(
