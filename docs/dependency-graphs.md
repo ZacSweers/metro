@@ -200,6 +200,7 @@ interface AnalyticsLifecycle {
 - The graph that the interface is contributed to **must** implement `CloseableGraph` or `SuspendCloseableGraph` (the interface itself doesn't have to).
 - Metro calls an inherited callback exactly once, even through diamond inheritance.
 - An override replaces the inherited callback.
+- It can call the inherited callback with `super`.
 - It must re-declare the callback's annotation and the qualifiers on its own parameters.
 
 ### Callback parameters

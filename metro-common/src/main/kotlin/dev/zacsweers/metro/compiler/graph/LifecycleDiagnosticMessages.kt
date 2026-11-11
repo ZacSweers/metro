@@ -34,7 +34,7 @@ public object LifecycleDiagnosticMessages {
     "An override of a lifecycle callback must repeat @$annotation."
 
   public fun callbackIsCalledByMetro(callback: String): String =
-    "Only Metro can call lifecycle callback '$callback'."
+    "Graph lifecycle callback '$callback' should not be invoked directly."
 
   public fun graphMustBeCloseable(graph: String): String =
     "'$graph' has lifecycle callbacks, so it must implement CloseableGraph or SuspendCloseableGraph."
