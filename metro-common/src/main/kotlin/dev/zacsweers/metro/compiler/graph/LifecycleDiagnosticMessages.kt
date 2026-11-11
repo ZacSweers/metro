@@ -81,20 +81,37 @@ public object LifecycleDiagnosticMessages {
   ): String =
     "'$accessor' can't create '$child' directly because @OnGraphInit callback '$callback' suspends. Create '$child' through its graph factory."
 
-  /** Names the close contract the parent needs for an extension it creates. */
+  /** Names the close contract a closeable parent needs for an extension it creates. */
   public fun parentCannotCloseExtension(
     parent: String,
     child: String,
     suspendClose: Boolean,
   ): String {
-    val required =
-      if (suspendClose) {
-        "SuspendCloseableGraph"
-      } else {
-        "CloseableGraph or SuspendCloseableGraph"
-      }
+    val required = requiredCloseContract(suspendClose)
     return "'$parent' creates closeable extension '$child', so it must implement $required."
   }
+
+  /**
+   * Explains why [parent] must be closeable. Closing [ancestor] closes the graphs below it, but it
+   * can't reach [child] through a graph that doesn't track its extensions.
+   */
+  public fun parentBreaksCloseChain(
+    parent: String,
+    child: String,
+    ancestor: String,
+    suspendClose: Boolean,
+  ): String {
+    val required = requiredCloseContract(suspendClose)
+    return "'$parent' creates closeable extension '$child' but isn't closeable, so closing '$ancestor' can't close '$child'. '$parent' must implement $required."
+  }
+
+  /** The interfaces that let a graph close an extension whose `close()` may suspend. */
+  private fun requiredCloseContract(suspendClose: Boolean): String =
+    if (suspendClose) {
+      "SuspendCloseableGraph"
+    } else {
+      "CloseableGraph or SuspendCloseableGraph"
+    }
 
   /** Formats a callback's lifecycle annotation as it appears in source, like `@OnGraphInit`. */
   public fun annotationLabel(phase: GraphLifecyclePhase): String =

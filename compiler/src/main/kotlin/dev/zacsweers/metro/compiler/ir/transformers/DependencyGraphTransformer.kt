@@ -400,7 +400,13 @@ internal class DependencyGraphTransformer(
     return false
   }
 
-  /** Checks ownership before a generated extension binding is added to the parent. */
+  /**
+   * Checks ownership before a generated extension binding is added to the parent.
+   *
+   * A closeable parent has to be able to close the extensions it creates. A parent that isn't
+   * closeable doesn't track them, so whoever creates one closes it. That's only allowed when no
+   * graph above the parent is closeable, because closing that graph couldn't reach the extension.
+   */
   private fun validateExtensionCloseability(
     parent: GraphNode.Local,
     bindings: IrBindingGraph,
@@ -413,6 +419,16 @@ internal class DependencyGraphTransformer(
       return true
     }
     if (parentClose != null && !childClose.isSuspend) {
+      return true
+    }
+    val closeableAncestor =
+      if (parentClose == null) {
+        closeableAncestorOf(parent)
+      } else {
+        null
+      }
+    val isSelfManaged = parentClose == null && closeableAncestor == null
+    if (isSelfManaged) {
       return true
     }
     val key = extension.contributedGraphKey
@@ -431,16 +447,35 @@ internal class DependencyGraphTransformer(
     }
     val parentGraph = parent.sourceGraph.sourceGraphIfMetroGraph
     val childGraph = child.sourceGraph.sourceGraphIfMetroGraph
-    reportCompat(
-      parentGraph,
-      MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
-      LifecycleDiagnosticMessages.parentCannotCloseExtension(
-        parentGraph.name.asString(),
-        childGraph.name.asString(),
-        childClose.isSuspend,
-      ),
-    )
+    val message =
+      if (closeableAncestor == null) {
+        LifecycleDiagnosticMessages.parentCannotCloseExtension(
+          parentGraph.name.asString(),
+          childGraph.name.asString(),
+          childClose.isSuspend,
+        )
+      } else {
+        LifecycleDiagnosticMessages.parentBreaksCloseChain(
+          parent = parentGraph.name.asString(),
+          child = childGraph.name.asString(),
+          ancestor = closeableAncestor.sourceGraph.sourceGraphIfMetroGraph.name.asString(),
+          suspendClose = childClose.isSuspend,
+        )
+      }
+    reportCompat(parentGraph, MetroDiagnostics.DEPENDENCY_GRAPH_ERROR, message)
     return false
+  }
+
+  /** The nearest graph above [node] that Metro generates `close()` for, or null. */
+  private fun closeableAncestorOf(node: GraphNode.Local): GraphNode.Local? {
+    var ancestor = node.parentGraph
+    while (ancestor != null) {
+      if (ancestor is GraphNode.Local && ancestor.lifecycleClose != null) {
+        return ancestor
+      }
+      ancestor = ancestor.parentGraph
+    }
+    return null
   }
 
   /**

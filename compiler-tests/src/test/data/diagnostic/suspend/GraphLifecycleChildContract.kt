@@ -9,8 +9,9 @@ interface <!DEPENDENCY_GRAPH_ERROR!>SyncParent<!> : CloseableGraph {
   val child: SuspendChild
 }
 
+// A graph that isn't closeable doesn't track its extensions. Whoever creates one closes it.
 @DependencyGraph
-interface <!DEPENDENCY_GRAPH_ERROR!>PlainParent<!> {
+interface PlainParent {
   val child: SuspendChild
 }
 
@@ -23,10 +24,28 @@ interface Child {
   @GraphExtension.Factory fun interface Factory { fun create(): Child }
 }
 
-@DependencyGraph interface <!DEPENDENCY_GRAPH_ERROR!>FactoryParent<!> : Child.Factory
+@DependencyGraph interface FactoryParent : Child.Factory
 
-@DependencyGraph interface <!DEPENDENCY_GRAPH_ERROR!>FactoryAccessorParent<!> {
+@DependencyGraph interface FactoryAccessorParent {
   val factory: Child.Factory
+}
+
+// Closing Root can't reach Leaf through Middle, so Middle has to be closeable too.
+@GraphExtension interface Leaf : CloseableGraph
+
+@GraphExtension interface <!DEPENDENCY_GRAPH_ERROR!>Middle<!> {
+  val leaf: Leaf
+}
+
+@DependencyGraph interface Root : CloseableGraph {
+  val middle: Middle
+}
+
+// The same goes for a contributed closeable extension under a contributed factory.
+@GraphExtension interface <!DEPENDENCY_GRAPH_ERROR!>FactoryMiddle<!> : Child.Factory
+
+@DependencyGraph interface FactoryRoot : SuspendCloseableGraph {
+  val middle: FactoryMiddle
 }
 
 // Returning an existing child leaves it with its original owner.

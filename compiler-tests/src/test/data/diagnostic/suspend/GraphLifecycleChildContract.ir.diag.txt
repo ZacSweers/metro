@@ -1,7 +1,5 @@
 /GraphLifecycleChildContract.kt:9:11: error: 'SyncParent' creates closeable extension 'SuspendChild', so it must implement SuspendCloseableGraph.
 
-/GraphLifecycleChildContract.kt:14:11: error: 'PlainParent' creates closeable extension 'SuspendChild', so it must implement SuspendCloseableGraph.
+/GraphLifecycleChildContract.kt:37:27: error: 'Middle' creates closeable extension 'Leaf' but isn't closeable, so closing 'Root' can't close 'Leaf'. 'Middle' must implement CloseableGraph or SuspendCloseableGraph.
 
-/GraphLifecycleChildContract.kt:27:28: error: 'FactoryParent' creates closeable extension 'Child', so it must implement CloseableGraph or SuspendCloseableGraph.
-
-/GraphLifecycleChildContract.kt:29:28: error: 'FactoryAccessorParent' creates closeable extension 'Child', so it must implement CloseableGraph or SuspendCloseableGraph.
+/GraphLifecycleChildContract.kt:46:27: error: 'FactoryMiddle' creates closeable extension 'Child' but isn't closeable, so closing 'FactoryRoot' can't close 'Child'. 'FactoryMiddle' must implement CloseableGraph or SuspendCloseableGraph.

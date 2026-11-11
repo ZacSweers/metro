@@ -2122,6 +2122,12 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
       }
 
       @Test
+      @TestMetadata("GraphLifecycleSelfManagedChild.kt")
+      public void testGraphLifecycleSelfManagedChild() {
+        run("GraphLifecycleSelfManagedChild.kt");
+      }
+
+      @Test
       @TestMetadata("GraphPrivateBindsAliasVisibleToChild.kt")
       public void testGraphPrivateBindsAliasVisibleToChild() {
         run("GraphPrivateBindsAliasVisibleToChild.kt");
