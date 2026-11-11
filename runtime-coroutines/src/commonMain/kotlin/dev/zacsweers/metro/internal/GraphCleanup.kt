@@ -25,13 +25,19 @@ public suspend fun runGraphCleanup(cleanup: suspend () -> Unit) {
  * Closes the children that [state] tracks. A graph whose `close()` suspends calls this. Such a
  * graph can track both kinds of closeable graph, so this awaits the children whose `close()`
  * suspends.
+ *
+ * A child that fails to close doesn't stop the others. Its failure is recorded with [state].
  */
 public suspend fun closeGraphChildren(state: GraphLifecycleState) {
   for (child in state.takeChildren()) {
-    if (child is SuspendCloseableGraph) {
-      child.close()
-    } else {
-      (child as AutoCloseable).close()
+    try {
+      if (child is SuspendCloseableGraph) {
+        child.close()
+      } else {
+        (child as AutoCloseable).close()
+      }
+    } catch (failure: Throwable) {
+      state.recordCloseFailure(failure)
     }
   }
 }

@@ -4755,6 +4755,12 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
     }
 
     @Test
+    @TestMetadata("GraphLifecycleCloseFailures.kt")
+    public void testGraphLifecycleCloseFailures() {
+      run("GraphLifecycleCloseFailures.kt");
+    }
+
+    @Test
     @TestMetadata("GraphLifecycleFactory.kt")
     public void testGraphLifecycleFactory() {
       run("GraphLifecycleFactory.kt");

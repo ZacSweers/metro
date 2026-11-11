@@ -220,7 +220,7 @@ Callback parameters use normal dependency resolution and get the same compile-ti
 
 ### Closing a graph
 
-The first call to `close()` marks the graph closed and runs any `@OnGraphClose` callbacks. Later calls return immediately, even while cleanup is running, so close callbacks run at most once. If cleanup fails, the error is rethrown and the rest of cleanup doesn't run.
+The first call to `close()` marks the graph closed and runs any `@OnGraphClose` callbacks. Later calls return immediately, even while cleanup is running, so close callbacks run at most once. A close callback or extension that fails doesn't stop the rest of cleanup. `close()` throws the first failure after cleanup finishes, with later failures attached as suppressed exceptions.
 
 !!! note "Post-close graph usage"
 
@@ -278,7 +278,7 @@ val graph = factory.create(config) // Returns after initialize() finishes
 
 Obtaining the factory instance alone doesn't suspend, only invoking its `create` function does. Graph extensions and dynamic graph factories follow the same rule through their `@GraphExtension.Factory`.
 
-Suspend `@OnGraphClose` callbacks require `SuspendCloseableGraph`. Cancelling the caller of `close()` doesn't interrupt cleanup. A failure still stops cleanup and reaches the caller.
+Suspend `@OnGraphClose` callbacks require `SuspendCloseableGraph`. Cancelling the caller of `close()` doesn't interrupt cleanup. A failure still reaches the caller after cleanup finishes.
 
 !!! tip
 

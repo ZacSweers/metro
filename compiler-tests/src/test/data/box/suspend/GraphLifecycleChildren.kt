@@ -45,7 +45,7 @@ interface Parent : SuspendCloseableGraph {
 
 fun box(): String = runBlocking {
   closingTheParentClosesItsChildren()
-  aFailingChildStopsParentCleanup()
+  aFailingChildDoesNotStopParentCleanup()
   aClosedParentRejectsAChildStillStarting()
   "OK"
 }
@@ -72,13 +72,16 @@ private suspend fun closingTheParentClosesItsChildren() {
   check(events.size == 6)
 }
 
-private suspend fun aFailingChildStopsParentCleanup() {
+private suspend fun aFailingChildDoesNotStopParentCleanup() {
   val parent = createGraph<Parent>()
   parent.child
   fail = true
   check(runCatching { parent.close() }.exceptionOrNull()?.message == "child failed")
+  fail = false
+  // The parent's own callback still ran after the child failed.
+  check(events.takeLast(2) == listOf("child", "parent"))
   parent.close()
-  check(events.last() == "child")
+  check(events.takeLast(2) == listOf("child", "parent"))
 }
 
 private suspend fun aClosedParentRejectsAChildStillStarting() {

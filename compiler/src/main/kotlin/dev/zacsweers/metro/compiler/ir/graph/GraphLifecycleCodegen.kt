@@ -27,6 +27,7 @@ import org.jetbrains.kotlin.ir.builders.IrBlockBuilder
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.IrStatementsBuilder
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
+import org.jetbrains.kotlin.ir.builders.declarations.buildVariable
 import org.jetbrains.kotlin.ir.builders.irBlock
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irGet
@@ -34,15 +35,19 @@ import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.builders.irIfThen
 import org.jetbrains.kotlin.ir.builders.irTemporary
 import org.jetbrains.kotlin.ir.builders.irTry
+import org.jetbrains.kotlin.ir.builders.parent
 import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrExpression
+import org.jetbrains.kotlin.ir.expressions.impl.IrCatchImpl
 import org.jetbrains.kotlin.ir.irAttribute
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.kotlinFqName
+import org.jetbrains.kotlin.name.Name
 
 /** The `GraphLifecycleState` field of a closeable graph. Its extensions read it to register. */
 internal var IrClass.lifecycleStateField: IrField? by irAttribute(copyByDefault = false)
@@ -187,11 +192,16 @@ internal fun checkAccessorRunsInit(graph: IrClass, accessor: IrSimpleFunction) {
  *           // A suspend close() calls closeGraphChildren(metroLifecycle), which also awaits the
  *           // suspend close() of SuspendCloseableGraph children.
  *           metroLifecycle.closeChildren()
- *           trace("ChildGraph.stop") { stop(database) }
+ *           try {
+ *             trace("ChildGraph.stop") { stop(database) }
+ *           } catch (failure: Throwable) {
+ *             metroLifecycle.recordCloseFailure(failure)
+ *           }
  *         }
  *       } finally {
  *         parent.metroLifecycle.removeChild(this)
  *       }
+ *       metroLifecycle.throwCloseFailure()
  *     }
  *   }
  * }
@@ -258,6 +268,9 @@ internal class IrGraphLifecycleGenerator(
   /**
    * Implements `close()`. Only the first call runs cleanup. A suspend `close()` runs it through
    * `runGraphCleanup` so cancelling the caller doesn't stop cleanup partway through.
+   *
+   * A child or callback that throws doesn't stop cleanup either. The graph's state records each
+   * failure and `close()` throws the first one after every step has run.
    */
   fun implementClose() {
     val close = node.lifecycleClose ?: return
@@ -276,7 +289,20 @@ internal class IrGraphLifecycleGenerator(
         } else {
           irClosePhase(receiver, state, isSuspend = false)
         }
-      +irIfThen(irBuiltIns.unitType, isFirstClose, releaseFromParentAfter(receiver, cleanup))
+      // The recorded failure is thrown from close() itself. Throwing it through runGraphCleanup
+      // would let kotlinx-coroutines' stack trace recovery replace it with a copy that has no
+      // suppressed exceptions.
+      val throwFailure =
+        irInvoke(
+          callee = metroSymbols.graphLifecycleThrowCloseFailure,
+          dispatchReceiver = irGetField(irGet(receiver), state),
+        )
+      val firstClose =
+        irBlock(resultType = irBuiltIns.unitType) {
+          +releaseFromParentAfter(receiver, cleanup)
+          +throwFailure
+        }
+      +irIfThen(irBuiltIns.unitType, isFirstClose, firstClose)
     }
   }
 
@@ -287,8 +313,36 @@ internal class IrGraphLifecycleGenerator(
   ): IrExpression =
     irLifecyclePhase(GraphLifecyclePhase.CLOSE, receiver, isSuspend) {
       closeChildren(receiver, state, isSuspend)
-      invokeCallbacks(GraphLifecyclePhase.CLOSE, receiver)
+      // A callback that throws is recorded so the callbacks after it still run.
+      invokeCallbacks(GraphLifecyclePhase.CLOSE, receiver) { callback ->
+        irRecordingCloseFailure(receiver, state, callback)
+      }
     }
+
+  /** Runs [step] and records what it throws with this graph's state instead of rethrowing it. */
+  private fun IrBuilderWithScope.irRecordingCloseFailure(
+    receiver: IrValueParameter,
+    state: IrField,
+    step: IrExpression,
+  ): IrExpression {
+    val failure =
+      buildVariable(
+        parent = parent,
+        startOffset = startOffset,
+        endOffset = endOffset,
+        origin = IrDeclarationOrigin.CATCH_PARAMETER,
+        name = Name.identifier("failure"),
+        type = irBuiltIns.throwableType,
+      )
+    val record =
+      irInvoke(
+        callee = metroSymbols.graphLifecycleRecordCloseFailure,
+        dispatchReceiver = irGetField(irGet(receiver), state),
+        args = listOf(irGet(failure)),
+      )
+    val catch = IrCatchImpl(startOffset, endOffset, failure, record)
+    return irTry(irBuiltIns.unitType, step, catches = listOf(catch), finallyExpression = null)
+  }
 
   /** Registers this graph with its parent so that closing the parent closes it too. */
   private fun IrStatementsBuilder<*>.registerWithParent(receiver: IrValueParameter) {
@@ -371,11 +425,13 @@ internal class IrGraphLifecycleGenerator(
 
   /**
    * Calls each [phase] callback on [receiver] in declaration order. Each callback's arguments are
-   * resolved from the binding graph right before that callback runs.
+   * resolved from the binding graph right before that callback runs. [wrap] decorates each call,
+   * including the code that resolves its arguments.
    */
   private fun IrBlockBuilder.invokeCallbacks(
     phase: GraphLifecyclePhase,
     receiver: IrValueParameter,
+    wrap: IrBuilderWithScope.(IrExpression) -> IrExpression = { it },
   ) {
     val generator = expressionGeneratorFactory.create(receiver)
     for (callback in node.lifecycleCallbacks) {
@@ -385,30 +441,32 @@ internal class IrGraphLifecycleGenerator(
       trackFunctionCall(node.sourceGraph, callback.original)
       val name = "$graphName.${callback.original.name}"
       val isSuspend = callback.graphFunction.isSuspend
-      +irTraced(receiver, name, phase.callbackTraceKind, isSuspend) {
-        val arguments =
-          callback.parameters.map { parameter ->
-            val key = parameter.key
-            val binding = bindingGraph.requireBinding(key)
-            // An optional parameter without a binding passes no argument, so its default applies.
-            if (binding is IrBinding.Absent) {
-              return@map null
+      val invocation =
+        irTraced(receiver, name, phase.callbackTraceKind, isSuspend) {
+          val arguments =
+            callback.parameters.map { parameter ->
+              val key = parameter.key
+              val binding = bindingGraph.requireBinding(key)
+              // An optional parameter without a binding passes no argument, so its default applies.
+              if (binding is IrBinding.Absent) {
+                return@map null
+              }
+              typeAsProviderArgument(
+                key,
+                generator.generateBindingCode(binding, contextualTypeKey = key),
+                isAssisted = false,
+                isGraphInstance = false,
+                actualIsSuspendProvider =
+                  BindingExpressionGenerator.AccessType.of(key).isSuspendProvider,
+              )
             }
-            typeAsProviderArgument(
-              key,
-              generator.generateBindingCode(binding, contextualTypeKey = key),
-              isAssisted = false,
-              isGraphInstance = false,
-              actualIsSuspendProvider =
-                BindingExpressionGenerator.AccessType.of(key).isSuspendProvider,
-            )
-          }
-        irInvoke(
-          callee = callback.graphFunction.symbol,
-          dispatchReceiver = irGet(receiver),
-          args = arguments,
-        )
-      }
+          irInvoke(
+            callee = callback.graphFunction.symbol,
+            dispatchReceiver = irGet(receiver),
+            args = arguments,
+          )
+        }
+      +wrap(invocation)
     }
   }
 

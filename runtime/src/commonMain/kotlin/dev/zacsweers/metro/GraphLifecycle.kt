@@ -5,6 +5,9 @@ package dev.zacsweers.metro
 /**
  * A graph with lifecycle callbacks. Metro generates [close], which closes the graph's extensions
  * and then runs its [OnGraphClose] callbacks. Only the first call does anything.
+ *
+ * An extension or callback that fails doesn't stop the others. [close] throws the first failure
+ * after they've all run, with later failures attached as suppressed exceptions.
  */
 @ExperimentalMetroApi public interface CloseableGraph : AutoCloseable
 

@@ -60,6 +60,47 @@ class GraphLifecycleStateTest {
   }
 
   @Test
+  fun aFailingChildDoesNotStopTheOthers() {
+    val state = GraphLifecycleState()
+    var closes = 0
+    val failing =
+      object : AutoCloseable {
+        override fun close() {
+          closes++
+          error("failed")
+        }
+      }
+    val other =
+      object : AutoCloseable {
+        override fun close() {
+          closes++
+        }
+      }
+    state.addChild(failing, GraphLifecycleState())
+    state.addChild(other, GraphLifecycleState())
+    state.closeChildren()
+    assertEquals(2, closes)
+    val failure = assertFailsWith<IllegalStateException> { state.throwCloseFailure() }
+    assertEquals("failed", failure.message)
+    // A recorded failure is only thrown once.
+    state.throwCloseFailure()
+  }
+
+  @Test
+  fun laterFailuresAreSuppressedByTheFirst() {
+    val state = GraphLifecycleState()
+    val first = IllegalStateException("first")
+    val second = IllegalStateException("second")
+    state.recordCloseFailure(first)
+    state.recordCloseFailure(second)
+    // The same exception thrown twice can't suppress itself.
+    state.recordCloseFailure(first)
+    val thrown = assertFailsWith<IllegalStateException> { state.throwCloseFailure() }
+    assertSame(first, thrown)
+    assertEquals(listOf<Throwable>(second), thrown.suppressedExceptions)
+  }
+
+  @Test
   fun aClosedGraphRejectsNewChildren() {
     val state = GraphLifecycleState()
     state.markClosed()

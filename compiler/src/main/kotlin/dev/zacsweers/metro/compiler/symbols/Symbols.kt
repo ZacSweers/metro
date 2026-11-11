@@ -499,6 +499,12 @@ internal class Symbols(
   val graphLifecycleCloseChildren by lazy {
     graphLifecycleState.requireSimpleFunction("closeChildren")
   }
+  val graphLifecycleRecordCloseFailure by lazy {
+    graphLifecycleState.requireSimpleFunction("recordCloseFailure")
+  }
+  val graphLifecycleThrowCloseFailure by lazy {
+    graphLifecycleState.requireSimpleFunction("throwCloseFailure")
+  }
 
   // Only suspend graphs use these. They live in runtime-coroutines.
   val closeGraphChildren by lazy {

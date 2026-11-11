@@ -78,4 +78,29 @@ class GraphCleanupTest {
     assertEquals(setOf("blocking", "suspending"), closed)
     assertEquals(emptyList(), state.takeChildren())
   }
+
+  @Test
+  fun aFailingChildDoesNotStopTheOthers() = runTest {
+    var closes = 0
+    val state = GraphLifecycleState()
+    val failing =
+      object : SuspendCloseableGraph {
+        override suspend fun close() {
+          closes++
+          error("failed")
+        }
+      }
+    val other =
+      object : AutoCloseable {
+        override fun close() {
+          closes++
+        }
+      }
+    state.addChild(failing, GraphLifecycleState())
+    state.addChild(other, GraphLifecycleState())
+    closeGraphChildren(state)
+    assertEquals(2, closes)
+    val failure = assertFailsWith<IllegalStateException> { state.throwCloseFailure() }
+    assertEquals("failed", failure.message)
+  }
 }

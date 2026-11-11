@@ -13,6 +13,9 @@ import kotlin.concurrent.atomics.ExperimentalAtomicApi
  * The generated `close()` calls [markClosed] first, so only one caller runs cleanup. Extensions
  * register in [addChild] after their init callbacks finish and leave in [removeChild] when they
  * close on their own.
+ *
+ * Cleanup runs every step even when one fails. Each failure goes to [recordCloseFailure], and
+ * [throwCloseFailure] reports them once cleanup finishes.
  */
 @OptIn(ExperimentalAtomicApi::class)
 public class GraphLifecycleState {
@@ -20,6 +23,9 @@ public class GraphLifecycleState {
 
   // Copy-on-write so registration doesn't need a lock. Graphs usually own few extensions.
   private val children = AtomicReference<List<Any>>(emptyList())
+
+  // The first failure of this graph's cleanup. Later failures are attached to it as suppressed.
+  private val closeFailure = AtomicReference<Throwable?>(null)
 
   /** Throws if this graph is closed. Extensions call this before they initialize. */
   public fun checkOpen() {
@@ -77,10 +83,40 @@ public class GraphLifecycleState {
   /**
    * Closes the tracked children. A graph whose `close()` doesn't suspend calls this. Such a graph
    * only tracks children whose `close()` doesn't suspend either.
+   *
+   * A child that fails to close doesn't stop the others. Its failure goes to [recordCloseFailure].
    */
   public fun closeChildren() {
     for (child in takeChildren()) {
-      (child as AutoCloseable).close()
+      try {
+        (child as AutoCloseable).close()
+      } catch (failure: Throwable) {
+        recordCloseFailure(failure)
+      }
+    }
+  }
+
+  /**
+   * Records the failure of one cleanup step so the remaining steps still run. Generated `close()`
+   * functions call this for each child and close callback that throws, then call
+   * [throwCloseFailure] once cleanup finishes.
+   */
+  public fun recordCloseFailure(failure: Throwable) {
+    if (closeFailure.compareAndSet(null, failure)) {
+      return
+    }
+    val first = closeFailure.load()
+    // Two steps can throw the same exception instance, and an exception can't suppress itself.
+    if (first != null && first !== failure) {
+      first.addSuppressed(failure)
+    }
+  }
+
+  /** Throws the first recorded cleanup failure. The later ones are attached to it as suppressed. */
+  public fun throwCloseFailure() {
+    val failure = closeFailure.exchange(null)
+    if (failure != null) {
+      throw failure
     }
   }
 }
