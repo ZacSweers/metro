@@ -30,11 +30,12 @@ public class MapLazyFactory<K : Any, V> private constructor(map: Map<K, Provider
    * providers, which are invoked in the order given at creation.
    */
   override fun invoke(): Map<K, Lazy<V>> {
-    val result = newLinkedHashMapWithExpectedSize<K, Lazy<V>>(contributingMap().size)
-    for (entry in contributingMap().entries) {
-      result[entry.key] = DoubleCheck.lazy<Provider<V>, V>(entry.value)
+    // buildMap is already read-only and insertion-ordered, so the result needs no second copy.
+    return buildMap(contributingMap().size) {
+      for (entry in contributingMap().entries) {
+        put(entry.key, DoubleCheck.lazy<Provider<V>, V>(entry.value))
+      }
     }
-    return result.toUnmodifiableMap()
   }
 
   /** A builder for [MapLazyFactory]. */
@@ -55,8 +56,6 @@ public class MapLazyFactory<K : Any, V> private constructor(map: Map<K, Provider
   }
 
   public companion object {
-    private val EMPTY: Provider<Map<Any, Any>> = InstanceFactory(mutableMapOf())
-
     /** Returns a new [Builder] */
     @JvmStatic
     @JsStatic
