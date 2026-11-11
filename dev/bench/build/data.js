@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794425429773,
+  "lastUpdate": 1794426026575,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -27496,6 +27496,62 @@ window.BENCHMARK_DATA = {
             "value": 19019.162,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +6.94%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "d26fcfd4~1",
+          "message": "[before] Fix two diagnostic edge cases in IrBindingGraph (#",
+          "timestamp": "2026-11-11T12:37:46-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/d26fcfd452e25da259b4e62376d68e422dba2c4d"
+        },
+        "date": 1794426026575,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 12052.058,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "d26fcfd452e25da259b4e62376d68e422dba2c4d",
+          "message": "[after] Fix two diagnostic edge cases in IrBindingGraph (#",
+          "timestamp": "2026-11-11T12:37:46-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/d26fcfd452e25da259b4e62376d68e422dba2c4d"
+        },
+        "date": 1794426026576,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 12492.937,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +3.66%"
           }
         ]
       }

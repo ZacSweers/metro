@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794425429466,
+  "lastUpdate": 1794426026413,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -27496,6 +27496,62 @@ window.BENCHMARK_DATA = {
             "value": 0.14533898883913218,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: -2.26%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "d26fcfd4~1",
+          "message": "[before] Fix two diagnostic edge cases in IrBindingGraph (#",
+          "timestamp": "2026-11-11T12:37:46-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/d26fcfd452e25da259b4e62376d68e422dba2c4d"
+        },
+        "date": 1794426026413,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.22334686706139406,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "d26fcfd452e25da259b4e62376d68e422dba2c4d",
+          "message": "[after] Fix two diagnostic edge cases in IrBindingGraph (#",
+          "timestamp": "2026-11-11T12:37:46-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/d26fcfd452e25da259b4e62376d68e422dba2c4d"
+        },
+        "date": 1794426026414,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.2353441978846264,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: +5.37%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }
