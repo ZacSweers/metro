@@ -1393,6 +1393,24 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("InjectedFunctionNamedMembers.kt")
+    public void testInjectedFunctionNamedMembers() {
+      run("InjectedFunctionNamedMembers.kt");
+    }
+
+    @Test
+    @TestMetadata("InjectedFunctionNamedMembersAcrossModules.kt")
+    public void testInjectedFunctionNamedMembersAcrossModules() {
+      run("InjectedFunctionNamedMembersAcrossModules.kt");
+    }
+
+    @Test
+    @TestMetadata("InjectedFunctionNamedMembersCompatibility.kt")
+    public void testInjectedFunctionNamedMembersCompatibility() {
+      run("InjectedFunctionNamedMembersCompatibility.kt");
+    }
+
+    @Test
     @TestMetadata("InjectedMemberNamedMembers.kt")
     public void testInjectedMemberNamedMembers() {
       run("InjectedMemberNamedMembers.kt");

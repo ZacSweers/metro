@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.ir.transformers
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.applyIf
+import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.compat.propertyIfAccessorCompat
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
@@ -80,6 +81,7 @@ import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nonDispatchParameters
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
+import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.platform.jvm.isJvm
 
 /**
@@ -532,6 +534,22 @@ internal fun IrClass.factoryHelperDeclarationContainer(): IrClass {
 }
 
 /**
+ * Returns the name of a receiverless `inject{Name}` helper on a members injector class.
+ *
+ * A no-arg `members()` function would get `injectMembers(instance)`. That has the same JVM
+ * signature as the injector's `injectMembers()` override, so the helper gets a `_` suffix.
+ */
+internal fun receiverlessInjectHelperName(helperName: Name, memberParameterCount: Int): Name {
+  val matchesOverrideName = helperName == Symbols.Names.injectMembers
+  val takesOnlyInstance = memberParameterCount == 0
+  return if (matchesOverrideName && takesOnlyInstance) {
+    "${helperName.asString()}_".asName()
+  } else {
+    helperName
+  }
+}
+
+/**
  * Adds receiverless functions to [factoryClass] that delegate to its companion helpers. Assisted
  * implementations keep their binary signatures in proto metadata, so they skip metadata
  * registration.
@@ -572,6 +590,11 @@ internal fun generateCompatibilityBridges(
     bridge.origin = Origins.StaticHelperBridgeFunction
     val defaultReceiver = bridge.dispatchReceiverParameter
     bridge.setDispatchReceiver(null)
+    if (canonical.origin == Origins.MembersInjectorStaticInjectFunction) {
+      // The first regular parameter is the instance.
+      val memberParameterCount = bridge.regularParameters.size - 1
+      bridge.name = receiverlessInjectHelperName(bridge.name, memberParameterCount)
+    }
     factoryClass.declarations.add(bridge)
     if (defaultReceiver != null) {
       // Copied defaults can read the canonical companion through their former dispatch receiver.

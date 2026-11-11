@@ -228,8 +228,14 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
               } else {
                 params.callableId.callableName
               }
-            val helperName = "inject${name.capitalizeUS().asString()}"
-            creatorsClass.injectHelperOrNull(helperName)
+            val baseHelperName = "inject${name.capitalizeUS().asString()}".asName()
+            val helperName =
+              if (creatorsClass.isObject) {
+                baseHelperName
+              } else {
+                receiverlessInjectHelperName(baseHelperName, params.regularParameters.size)
+              }
+            creatorsClass.injectHelperOrNull(helperName.asString())
               ?: reportCompilerBug("No $helperName() helper in ${creatorsClass.kotlinFqName}")
           }
         } else {
@@ -326,12 +332,20 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
           } else {
             params.callableId.callableName
           }
+        // Helpers on a class are companion-block members, which have no receiver.
+        val isStatic = !helperOwner.isObject
+        val baseHelperName = "inject${name.capitalizeUS().asString()}".asName()
+        val helperName =
+          if (isStatic) {
+            receiverlessInjectHelperName(baseHelperName, params.regularParameters.size)
+          } else {
+            baseHelperName
+          }
         helperOwner
           .addFunction(
-            "inject${name.capitalizeUS().asString()}",
+            helperName.asString(),
             irBuiltIns.unitType,
-            // Helpers on a class are companion-block members, which have no receiver.
-            isStatic = !helperOwner.isObject,
+            isStatic = isStatic,
             origin = Origins.MembersInjectorStaticInjectFunction,
           )
           .apply {
