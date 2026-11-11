@@ -56,6 +56,7 @@ import dev.zacsweers.metro.compiler.ir.deepRemapperFor
 import dev.zacsweers.metro.compiler.ir.excludedClasses
 import dev.zacsweers.metro.compiler.ir.findInjectableConstructor
 import dev.zacsweers.metro.compiler.ir.graph.reporting.contributionDecisions
+import dev.zacsweers.metro.compiler.ir.implementsAny
 import dev.zacsweers.metro.compiler.ir.isAccessorCandidate
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isBindingContainer
@@ -246,9 +247,8 @@ internal class GraphNodes(
     private var hasGraphExtensions = false
     private var hasErrors = false
 
-    private val isCloseableGraph = supertypes.any {
-      it.classOrNull?.owner?.classId in MetroClassIds.lifecycleGraphs
-    }
+    private val isCloseableGraph =
+      (metroGraph ?: graphDeclaration).implementsAny(MetroClassIds.lifecycleGraphs)
 
     /** True for the `close()` that Metro implements on this closeable graph. */
     private fun IrSimpleFunction.isGeneratedClose(): Boolean = isCloseableGraph && hasCloseSignature
