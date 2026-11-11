@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794372587176,
+  "lastUpdate": 1794421044373,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -27384,6 +27384,62 @@ window.BENCHMARK_DATA = {
             "value": 0.15135612915744495,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: -1.20%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "8b9f7eb8~1",
+          "message": "[before] Tidy up map multibinding symbol selection and grap",
+          "timestamp": "2026-11-11T11:52:58-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/8b9f7eb8d0d029475b2f3950948f7eb30cc69198"
+        },
+        "date": 1794421044373,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.21871345431120465,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "8b9f7eb8d0d029475b2f3950948f7eb30cc69198",
+          "message": "[after] Tidy up map multibinding symbol selection and grap",
+          "timestamp": "2026-11-11T11:52:58-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/8b9f7eb8d0d029475b2f3950948f7eb30cc69198"
+        },
+        "date": 1794421044374,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.21864056719770425,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: -0.03%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }

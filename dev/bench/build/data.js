@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794372587318,
+  "lastUpdate": 1794421044524,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -27384,6 +27384,62 @@ window.BENCHMARK_DATA = {
             "value": 14145.498000000001,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +0.17%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "8b9f7eb8~1",
+          "message": "[before] Tidy up map multibinding symbol selection and grap",
+          "timestamp": "2026-11-11T11:52:58-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/8b9f7eb8d0d029475b2f3950948f7eb30cc69198"
+        },
+        "date": 1794421044524,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 11485.416000000001,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "8b9f7eb8d0d029475b2f3950948f7eb30cc69198",
+          "message": "[after] Tidy up map multibinding symbol selection and grap",
+          "timestamp": "2026-11-11T11:52:58-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/8b9f7eb8d0d029475b2f3950948f7eb30cc69198"
+        },
+        "date": 1794421044525,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 10783.872,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -6.11%"
           }
         ]
       }
