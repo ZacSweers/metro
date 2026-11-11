@@ -11,8 +11,8 @@ import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.graph.expressions.BindingExpressionGenerator
 import dev.zacsweers.metro.compiler.ir.graph.expressions.GraphExpressionGenerator
+import dev.zacsweers.metro.compiler.ir.graph.expressions.GraphTraceContextAccessor
 import dev.zacsweers.metro.compiler.ir.graph.expressions.irRuntimeTraceSpan
-import dev.zacsweers.metro.compiler.ir.irGetProperty
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.irLambda
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
@@ -465,10 +465,18 @@ internal class IrGraphLifecycleGenerator(
     isSuspend: Boolean,
     body: IrBuilderWithScope.() -> IrExpression,
   ): IrExpression {
-    val traceContextProperty = graphClass.runtimeTraceContextProperty ?: return body()
+    val accessor =
+      GraphTraceContextAccessor(
+        context = this@IrGraphLifecycleGenerator,
+        thisReceiver = receiver,
+        traceContextProperty = graphClass.runtimeTraceContextProperty,
+        // Lifecycle code runs in the graph class itself, never in a shard.
+        shardContext = null,
+      )
+    val traceContext = accessor.traceContextExpression() ?: return body()
     val traced =
       irRuntimeTraceSpan(
-        traceContext = irGetProperty(irGet(receiver), traceContextProperty),
+        traceContext = traceContext,
         qualifier = null,
         type = name,
         contextualType = null,
