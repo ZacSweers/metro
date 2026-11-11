@@ -95,10 +95,10 @@ import {
   invert3i8k5n0dd6oib as invert,
   countTrailingZeroBits1k55x07cygoff as countTrailingZeroBits,
   getOrNull1d60i0672n7ns as getOrNull,
-  joinToString1cxrrlmo0chqs as joinToString,
   indexOf3ic8eacwbbrog as indexOf,
   contentToString3ujacv8hqfipd as contentToString,
   Enum3alwj03lh1n41 as Enum,
+  joinToString1cxrrlmo0chqs as joinToString,
   HashSet_init_$Create$2izef1i1668r1 as HashSet_init_$Create$_1,
   toString30pk9tzaqopn as toString_0,
   KTypeParameter1s8efufd4mbj5 as KTypeParameter,
@@ -313,9 +313,9 @@ initMetadataForClass(PrimitiveArraySerializer, 'PrimitiveArraySerializer', VOID,
 initMetadataForClass(PrimitiveArrayBuilder, 'PrimitiveArrayBuilder');
 initMetadataForCompanion(Companion);
 initMetadataForClass(ElementMarker, 'ElementMarker');
+initMetadataForClass(EnumSerializer, 'EnumSerializer', VOID, VOID, [KSerializer]);
 initMetadataForClass(PluginGeneratedSerialDescriptor, 'PluginGeneratedSerialDescriptor', VOID, VOID, [SerialDescriptor, CachedNames]);
 initMetadataForClass(EnumDescriptor, 'EnumDescriptor', VOID, PluginGeneratedSerialDescriptor);
-initMetadataForClass(EnumSerializer, 'EnumSerializer', VOID, VOID, [KSerializer]);
 initMetadataForClass(InlineClassDescriptor, 'InlineClassDescriptor', VOID, PluginGeneratedSerialDescriptor);
 function typeParametersSerializers() {
   return get_EMPTY_SERIALIZER_ARRAY();
@@ -2702,6 +2702,9 @@ protoOf(ElementMarker).nextUnmarkedIndex_u6mxd2_k$ = function () {
   }
   return -1;
 };
+function createSimpleEnumSerializer(serialName, values) {
+  return new EnumSerializer(serialName, values);
+}
 function createAnnotatedEnumSerializer(serialName, values, names, entryAnnotations, classAnnotations) {
   var descriptor = new EnumDescriptor(serialName, values.length);
   if (classAnnotations == null)
@@ -2744,6 +2747,71 @@ function createAnnotatedEnumSerializer(serialName, values, names, entryAnnotatio
   }
   return EnumSerializer_init_$Create$(serialName, values, descriptor);
 }
+function EnumSerializer_init_$Init$(serialName, values, descriptor, $this) {
+  EnumSerializer.call($this, serialName, values);
+  $this.overriddenDescriptor_1 = descriptor;
+  return $this;
+}
+function EnumSerializer_init_$Create$(serialName, values, descriptor) {
+  return EnumSerializer_init_$Init$(serialName, values, descriptor, objectCreate(protoOf(EnumSerializer)));
+}
+function createUnmarkedDescriptor($this, serialName) {
+  var d = new EnumDescriptor(serialName, $this.values_1.length);
+  // Inline function 'kotlin.collections.forEach' call
+  var indexedObject = $this.values_1;
+  var inductionVariable = 0;
+  var last = indexedObject.length;
+  while (inductionVariable < last) {
+    var element = indexedObject[inductionVariable];
+    inductionVariable = inductionVariable + 1 | 0;
+    d.addElement$default_mty55e_k$(element.name_1);
+  }
+  return d;
+}
+function EnumSerializer$descriptor$delegate$lambda(this$0, $serialName) {
+  return function () {
+    var tmp0_elvis_lhs = this$0.overriddenDescriptor_1;
+    return tmp0_elvis_lhs == null ? createUnmarkedDescriptor(this$0, $serialName) : tmp0_elvis_lhs;
+  };
+}
+function EnumSerializer$_get_descriptor_$ref_j67dlw() {
+  return constructCallableReference(function (p0) {
+    return p0.get_descriptor_wjt6a0_k$();
+  }, 1, 0, 2);
+}
+function EnumSerializer(serialName, values) {
+  this.values_1 = values;
+  this.overriddenDescriptor_1 = null;
+  var tmp = this;
+  tmp.descriptor$delegate_1 = lazy_0(EnumSerializer$descriptor$delegate$lambda(this, serialName));
+}
+protoOf(EnumSerializer).get_descriptor_wjt6a0_k$ = function () {
+  var tmp0 = this.descriptor$delegate_1;
+  var tmp = KProperty1;
+  // Inline function 'kotlin.getValue' call
+  getPropertyCallableRef('descriptor', 1, tmp, EnumSerializer$_get_descriptor_$ref_j67dlw(), null);
+  return tmp0.get_value_j01efc_k$();
+};
+protoOf(EnumSerializer).serialize_dc42ix_k$ = function (encoder, value) {
+  var index = indexOf(this.values_1, value);
+  if (index === -1) {
+    throw SerializationException_init_$Create$_0(toString(value) + ' is not a valid enum ' + this.get_descriptor_wjt6a0_k$().get_serialName_u2rqhk_k$() + ', ' + ('must be one of ' + contentToString(this.values_1)));
+  }
+  encoder.encodeEnum_2qin0y_k$(this.get_descriptor_wjt6a0_k$(), index);
+};
+protoOf(EnumSerializer).serialize_5ase3y_k$ = function (encoder, value) {
+  return this.serialize_dc42ix_k$(encoder, value instanceof Enum ? value : THROW_CCE());
+};
+protoOf(EnumSerializer).deserialize_sy6x50_k$ = function (decoder) {
+  var index = decoder.decodeEnum_slg6lu_k$(this.get_descriptor_wjt6a0_k$());
+  if (!(0 <= index ? index <= (this.values_1.length - 1 | 0) : false)) {
+    throw SerializationException_init_$Create$_0('' + index + ' is not among valid ' + this.get_descriptor_wjt6a0_k$().get_serialName_u2rqhk_k$() + ' enum values, ' + ('values size is ' + this.values_1.length));
+  }
+  return this.values_1[index];
+};
+protoOf(EnumSerializer).toString = function () {
+  return 'kotlinx.serialization.internal.EnumSerializer<' + this.get_descriptor_wjt6a0_k$().get_serialName_u2rqhk_k$() + '>';
+};
 function _get_elementDescriptors__y23q9p($this) {
   var tmp0 = $this.elementDescriptors$delegate_1;
   var tmp = KProperty1;
@@ -2768,7 +2836,7 @@ function EnumDescriptor$elementDescriptors$delegate$lambda($elementsCount, $name
 function EnumDescriptor$_get_elementDescriptors_$ref_5lvk4a() {
   return constructCallableReference(function (p0) {
     return _get_elementDescriptors__y23q9p(p0);
-  }, 1, 0, 2);
+  }, 1, 0, 3);
 }
 function EnumDescriptor(name, elementsCount) {
   PluginGeneratedSerialDescriptor.call(this, name, VOID, elementsCount);
@@ -2817,71 +2885,6 @@ protoOf(EnumDescriptor).hashCode = function () {
   var elementsHashCode = accumulator;
   result = imul(31, result) + elementsHashCode | 0;
   return result;
-};
-function EnumSerializer_init_$Init$(serialName, values, descriptor, $this) {
-  EnumSerializer.call($this, serialName, values);
-  $this.overriddenDescriptor_1 = descriptor;
-  return $this;
-}
-function EnumSerializer_init_$Create$(serialName, values, descriptor) {
-  return EnumSerializer_init_$Init$(serialName, values, descriptor, objectCreate(protoOf(EnumSerializer)));
-}
-function createUnmarkedDescriptor($this, serialName) {
-  var d = new EnumDescriptor(serialName, $this.values_1.length);
-  // Inline function 'kotlin.collections.forEach' call
-  var indexedObject = $this.values_1;
-  var inductionVariable = 0;
-  var last = indexedObject.length;
-  while (inductionVariable < last) {
-    var element = indexedObject[inductionVariable];
-    inductionVariable = inductionVariable + 1 | 0;
-    d.addElement$default_mty55e_k$(element.name_1);
-  }
-  return d;
-}
-function EnumSerializer$descriptor$delegate$lambda(this$0, $serialName) {
-  return function () {
-    var tmp0_elvis_lhs = this$0.overriddenDescriptor_1;
-    return tmp0_elvis_lhs == null ? createUnmarkedDescriptor(this$0, $serialName) : tmp0_elvis_lhs;
-  };
-}
-function EnumSerializer$_get_descriptor_$ref_j67dlw() {
-  return constructCallableReference(function (p0) {
-    return p0.get_descriptor_wjt6a0_k$();
-  }, 1, 0, 3);
-}
-function EnumSerializer(serialName, values) {
-  this.values_1 = values;
-  this.overriddenDescriptor_1 = null;
-  var tmp = this;
-  tmp.descriptor$delegate_1 = lazy_0(EnumSerializer$descriptor$delegate$lambda(this, serialName));
-}
-protoOf(EnumSerializer).get_descriptor_wjt6a0_k$ = function () {
-  var tmp0 = this.descriptor$delegate_1;
-  var tmp = KProperty1;
-  // Inline function 'kotlin.getValue' call
-  getPropertyCallableRef('descriptor', 1, tmp, EnumSerializer$_get_descriptor_$ref_j67dlw(), null);
-  return tmp0.get_value_j01efc_k$();
-};
-protoOf(EnumSerializer).serialize_dc42ix_k$ = function (encoder, value) {
-  var index = indexOf(this.values_1, value);
-  if (index === -1) {
-    throw SerializationException_init_$Create$_0(toString(value) + ' is not a valid enum ' + this.get_descriptor_wjt6a0_k$().get_serialName_u2rqhk_k$() + ', ' + ('must be one of ' + contentToString(this.values_1)));
-  }
-  encoder.encodeEnum_2qin0y_k$(this.get_descriptor_wjt6a0_k$(), index);
-};
-protoOf(EnumSerializer).serialize_5ase3y_k$ = function (encoder, value) {
-  return this.serialize_dc42ix_k$(encoder, value instanceof Enum ? value : THROW_CCE());
-};
-protoOf(EnumSerializer).deserialize_sy6x50_k$ = function (decoder) {
-  var index = decoder.decodeEnum_slg6lu_k$(this.get_descriptor_wjt6a0_k$());
-  if (!(0 <= index ? index <= (this.values_1.length - 1 | 0) : false)) {
-    throw SerializationException_init_$Create$_0('' + index + ' is not among valid ' + this.get_descriptor_wjt6a0_k$().get_serialName_u2rqhk_k$() + ' enum values, ' + ('values size is ' + this.values_1.length));
-  }
-  return this.values_1[index];
-};
-protoOf(EnumSerializer).toString = function () {
-  return 'kotlinx.serialization.internal.EnumSerializer<' + this.get_descriptor_wjt6a0_k$().get_serialName_u2rqhk_k$() + '>';
 };
 function InlinePrimitiveDescriptor(name, primitiveSerializer) {
   return new InlineClassDescriptor(name, new InlinePrimitiveDescriptor$1(primitiveSerializer));
@@ -5993,6 +5996,7 @@ export {
   PluginGeneratedSerialDescriptor as PluginGeneratedSerialDescriptorqdzeg5asqhfg,
   SerializerFactory as SerializerFactory1qv9hivitncuv,
   createAnnotatedEnumSerializer as createAnnotatedEnumSerializer20ay4pme9p2h9,
+  createSimpleEnumSerializer as createSimpleEnumSerializer2guioz11kk1m0,
   jsonCachedSerialNames as jsonCachedSerialNameslxufy2gu43jt,
   missingFieldExceptionWithNewMessage as missingFieldExceptionWithNewMessage2gqddjx5jxge9,
   throwMissingFieldException as throwMissingFieldException2cmke0v3ynf14,

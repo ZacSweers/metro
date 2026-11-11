@@ -8810,6 +8810,10 @@
 <h3 id="new">New<a class="headerlink" href="#new" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>[FIR/IR]</strong> Experimental support for companion block <code>@Provides</code> functions and properties on Kotlin <code>2.5.0-Beta1</code> and later. See <a href="../docs/installation/#companion-blocks">companion-block configuration</a>.</li>
+<li>Add experimental graph lifecycle callbacks.</li>
+<li>A graph that implements <code>CloseableGraph</code> can annotate functions with <code>@OnGraphInit</code> and <code>@OnGraphClose</code>. Metro injects their parameters and generates <code>close()</code>, which also closes the graph&rsquo;s extensions.</li>
+<li>With suspend provider support, callbacks can suspend and graphs can implement <code>SuspendCloseableGraph</code>.</li>
+<li>See <a href="../docs/dependency-graphs/#graph-lifecycle">graph lifecycle</a>.</li>
 </ul>
 <h3 id="enhancements">Enhancements<a class="headerlink" href="#enhancements" title="Permanent link">&para;</a></h3>
 <ul>
@@ -8827,6 +8831,7 @@
 <li>Note that this results in more fields to allow reuse, in exchange for less allocations at runtime. If you have any issues, please file an issue with details. you can force these to just be getters instead via temporary compiler option in the meantime via <code>metro { compilerOptions.put("force-provider-getters", "true") }</code></li>
 <li><strong>[IR]</strong> Fix JVM compilation failures when nested <code>@GraphExtension</code> implementations would produce class file names longer than 255 bytes.</li>
 <li><strong>[IR]</strong> Fix <code>@GraphPrivate @Binds</code> declarations leaking into graph extensions. Child graphs now resolve their own bindings or report a missing binding when the parent&rsquo;s alias is private.</li>
+<li><strong>[IR]</strong> Fix a compiler crash when a graph extension reads a <code>@Binds</code> alias whose <code>@GraphPrivate</code> source is unscoped. Also fix a crash when that source is a <code>@Binds</code> alias of an unscoped binding that an ancestor graph builds too.</li>
 <li><strong>[IR]</strong> Fix eager reads of included dependency accessors when graph extensions request <code>Provider</code> or <code>Lazy</code> values.</li>
 <li><strong>[IR]</strong> Fix missing graph references in getter-only shards when accessing included dependencies.</li>
 <li><strong>[IR]</strong> Fix graphs creating new providers every time a <code>Map&lt;K, Provider&lt;V&gt;&gt;</code> is requested. The graph now stores one map of entry providers and returns it on every read.</li>

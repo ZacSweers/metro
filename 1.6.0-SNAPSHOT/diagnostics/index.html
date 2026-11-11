@@ -1072,6 +1072,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#closeonlybinding" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        CloseOnlyBinding
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#dependencycycle" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1285,6 +1296,17 @@
     <span class="md-ellipsis">
       <span class="md-typeset">
         UnprocessedUpstreamDeclaration
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#unscopedlifecycleparameter" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        UnscopedLifecycleParameter
       </span>
     </span>
   </a>
@@ -2189,6 +2211,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#closeonlybinding" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        CloseOnlyBinding
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#dependencycycle" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2409,6 +2442,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#unscopedlifecycleparameter" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        UnscopedLifecycleParameter
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#unusedgraphinputs" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2470,6 +2514,10 @@
 <tr>
 <td><a href="#assistedfactorysuspendrequired"><code>Metro/AssistedFactorySuspendRequired</code></a></td>
 <td>An assisted factory creates a target that depends on suspend bindings.</td>
+</tr>
+<tr>
+<td><a href="#closeonlybinding"><code>Metro/CloseOnlyBinding</code></a></td>
+<td>Only close callbacks request a binding.</td>
 </tr>
 <tr>
 <td><a href="#dependencycycle"><code>Metro/DependencyCycle</code></a></td>
@@ -2552,6 +2600,10 @@
 <td>An upstream declaration does not appear to have been processed by Metro.</td>
 </tr>
 <tr>
+<td><a href="#unscopedlifecycleparameter"><code>Metro/UnscopedLifecycleParameter</code></a></td>
+<td>A lifecycle callback requests an unscoped binding directly.</td>
+</tr>
+<tr>
 <td><a href="#unusedgraphinputs"><code>Metro/UnusedGraphInputs</code></a></td>
 <td>A graph input is unused and can be removed.</td>
 </tr>
@@ -2561,6 +2613,10 @@
 <p><strong>Diagnostic:</strong> <code>Metro/AssistedFactorySuspendRequired</code></p>
 <p><strong>Summary:</strong> An assisted factory creates a target that depends on suspend bindings.</p>
 <p>An <code>@AssistedFactory</code> creates a type whose non-assisted dependencies include suspend bindings. The factory function must await them. Declare the factory function as a <code>suspend</code> function so the generated implementation can await the suspend dependencies.</p>
+<h2 id="closeonlybinding">CloseOnlyBinding<a class="headerlink" href="#closeonlybinding" title="Permanent link">&para;</a></h2>
+<p><strong>Diagnostic:</strong> <code>Metro/CloseOnlyBinding</code></p>
+<p><strong>Summary:</strong> Only close callbacks request a binding.</p>
+<p>Closing the graph creates the instance just so a close callback can receive it. For a multibinding, Metro checks each contribution. Graph inputs, included graph accessors, bindings from parent graphs, factories, and members injectors are exempt.</p>
 <h2 id="dependencycycle">DependencyCycle<a class="headerlink" href="#dependencycycle" title="Permanent link">&para;</a></h2>
 <p><strong>Diagnostic:</strong> <code>Metro/DependencyCycle</code></p>
 <p><strong>Summary:</strong> A binding cycle has no deferred edge.</p>
@@ -2643,6 +2699,10 @@
 <p><strong>Summary:</strong> An upstream declaration does not appear to have been processed by Metro.</p>
 <p>Metro was asked to use an injected declaration from another module or compilation unit, but that declaration does not appear to have been processed by Metro. This usually means Metro was enabled only in the downstream module while the referenced declaration lives upstream.</p>
 <p>Enable Metro in the upstream module too. If this happens while using framework interop, make sure the upstream module also runs that framework&rsquo;s code generation when Metro relies on its generated code.</p>
+<h2 id="unscopedlifecycleparameter">UnscopedLifecycleParameter<a class="headerlink" href="#unscopedlifecycleparameter" title="Permanent link">&para;</a></h2>
+<p><strong>Diagnostic:</strong> <code>Metro/UnscopedLifecycleParameter</code></p>
+<p><strong>Summary:</strong> A lifecycle callback requests an unscoped binding directly.</p>
+<p>The callback gets its own instance, which usually isn&rsquo;t the one the rest of the graph uses. Scope the binding to share one instance. Request a provider or lazy value if the callback should create its own. For a multibinding, Metro checks each contribution. For an <code>Optional</code>, it checks the value inside. Graph inputs, included graph accessors, factories, and members injectors are exempt.</p>
 <h2 id="unusedgraphinputs">UnusedGraphInputs<a class="headerlink" href="#unusedgraphinputs" title="Permanent link">&para;</a></h2>
 <p><strong>Diagnostic:</strong> <code>Metro/UnusedGraphInputs</code></p>
 <p><strong>Summary:</strong> A graph input is unused and can be removed.</p>

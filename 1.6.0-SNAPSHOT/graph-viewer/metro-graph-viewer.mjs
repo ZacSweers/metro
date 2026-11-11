@@ -44,8 +44,10 @@ import {
   plus310ted5e4i90h as plus_0,
   distinct10qe1scfdvu5k as distinct,
   checkIndexOverflow3frtmheghr0th as checkIndexOverflow,
-  startsWith26w8qjqapeeq6 as startsWith,
+  noWhenBranchMatchedException2a6r7ubxgky5j as noWhenBranchMatchedException,
   _Char___init__impl__6a9atxrzocepzq3zgi as _Char___init__impl__6a9atx,
+  substringAfterLast3r0t0my8cpqhk as substringAfterLast,
+  startsWith26w8qjqapeeq6 as startsWith,
   substringAfter1hku067gwr5ve as substringAfter,
   dropLastlqc2oyv04br0 as dropLast,
   endsWith278181ii8uuo as endsWith,
@@ -68,7 +70,6 @@ import {
   charSequenceLength3278n89t01tmv as charSequenceLength,
   charCodeAt1yspne1d8erbm as charCodeAt,
   isUpperCase16ivdixranflt as isUpperCase,
-  substringAfterLast3r0t0my8cpqhk as substringAfterLast,
   joinToString1cxrrlmo0chqs as joinToString,
   replaceqbix900hl8kl as replace,
   mapsbvh18eqox7a as map,
@@ -131,6 +132,7 @@ import {
   BindingExplanationOutcome_SELECTED_getInstance2tfy6rsok1hmq as BindingExplanationOutcome_SELECTED_getInstance,
   BindingCandidateStatus_SELECTED_getInstance2cfyov6j2a6z8 as BindingCandidateStatus_SELECTED_getInstance,
   DependencyMetadata8rtjsv2z9kiq as DependencyMetadata,
+  LifecycleParameterMetadata2tcyrwfwut3hm as LifecycleParameterMetadata,
   MultibindingMetadata29e72hjz84wjv as MultibindingMetadata,
   OptionalWrapperMetadata325xthvr1c6hr as OptionalWrapperMetadata,
   GraphDependencyMetadata10z3tse19c59g as GraphDependencyMetadata,
@@ -1785,7 +1787,7 @@ function buildRootMembers($this) {
   }
   var tmp0_safe_receiver = $this.metadata_1.roots_1;
   // Inline function 'kotlin.collections.orEmpty' call
-  var tmp0_elvis_lhs = tmp0_safe_receiver == null ? null : tmp0_safe_receiver.injectors_1;
+  var tmp0_elvis_lhs = tmp0_safe_receiver == null ? null : tmp0_safe_receiver.lifecycleCallbacks_1;
   // Inline function 'kotlin.collections.forEachIndexed' call
   var index_1 = 0;
   var _iterator__ex2g4s_0 = (tmp0_elvis_lhs == null ? emptyList() : tmp0_elvis_lhs).iterator_jk1svi_k$();
@@ -1794,7 +1796,33 @@ function buildRootMembers($this) {
     var _unary__edvuaz_0 = index_1;
     index_1 = _unary__edvuaz_0 + 1 | 0;
     var index_2 = checkIndexOverflow(_unary__edvuaz_0);
-    this_0.add_utx5q5_k$(new RootMemberInfo('root:' + $this.metadata_1.graph_1 + ':injector:' + index_2 + ':' + item_0.renderedKey_1, item_0.renderedKey_1, item_0.key_1, 'injector', item_0.name_1, VOID, VOID, $this.membersInjectedRoots_1.get_wei43m_k$(item_0.key_1)));
+    var tmp;
+    switch (item_0.phase_1.ordinal_1) {
+      case 0:
+        tmp = 'OnGraphInit';
+        break;
+      case 1:
+        tmp = 'OnGraphClose';
+        break;
+      default:
+        noWhenBranchMatchedException();
+        break;
+    }
+    var kind = tmp;
+    this_0.add_utx5q5_k$(new RootMemberInfo('root:' + $this.metadata_1.graph_1 + ':lifecycle:' + index_2, item_0.declaration_1, item_0.declaration_1, kind, item_0.declaration_1, VOID, VOID, VOID, VOID, VOID, VOID, VOID, VOID, VOID, item_0));
+  }
+  var tmp1_safe_receiver = $this.metadata_1.roots_1;
+  // Inline function 'kotlin.collections.orEmpty' call
+  var tmp0_elvis_lhs_0 = tmp1_safe_receiver == null ? null : tmp1_safe_receiver.injectors_1;
+  // Inline function 'kotlin.collections.forEachIndexed' call
+  var index_3 = 0;
+  var _iterator__ex2g4s_1 = (tmp0_elvis_lhs_0 == null ? emptyList() : tmp0_elvis_lhs_0).iterator_jk1svi_k$();
+  while (_iterator__ex2g4s_1.hasNext_bitz1p_k$()) {
+    var item_1 = _iterator__ex2g4s_1.next_20eer_k$();
+    var _unary__edvuaz_1 = index_3;
+    index_3 = _unary__edvuaz_1 + 1 | 0;
+    var index_4 = checkIndexOverflow(_unary__edvuaz_1);
+    this_0.add_utx5q5_k$(new RootMemberInfo('root:' + $this.metadata_1.graph_1 + ':injector:' + index_4 + ':' + item_1.renderedKey_1, item_1.renderedKey_1, item_1.key_1, 'injector', item_1.name_1, VOID, VOID, $this.membersInjectedRoots_1.get_wei43m_k$(item_1.key_1)));
   }
   return this_0.build_nmwvly_k$();
 }
@@ -1935,6 +1963,13 @@ function buildGraphNode($this) {
   return builder.build_bkh6qh_k$();
 }
 function rootDisplayName($this, member) {
+  var tmp0_safe_receiver = member.lifecycle_1;
+  if (tmp0_safe_receiver == null)
+    null;
+  else {
+    // Inline function 'kotlin.let' call
+    return '@' + member.kind_1 + ' ' + substringAfterLast(tmp0_safe_receiver.declaration_1, _Char___init__impl__6a9atx(46)) + '()';
+  }
   var declaration = member.name_1;
   var isAccessor = member.kind_1 === 'accessor';
   var displayType = extractDisplayName(member.renderedKey_1, $this.typeNames_1);
@@ -1986,7 +2021,9 @@ function buildRootNode($this, member) {
   builder.put_mrde5n_k$('targetKey', JsonPrimitive(member.key_1));
   builder.put_mrde5n_k$('pkg', JsonPrimitive($this.graphPackage_1));
   var tmp_0;
-  if (isAccessor) {
+  if (!(member.lifecycle_1 == null)) {
+    tmp_0 = member.kind_1;
+  } else if (isAccessor) {
     tmp_0 = 'Accessor';
   } else {
     tmp_0 = 'Injector';
@@ -2032,33 +2069,64 @@ function buildRootNode($this, member) {
   builder_0.put_mrde5n_k$('color', JsonPrimitive(color));
   var tmp$ret$4 = builder_0.build_bkh6qh_k$();
   builder.put_mrde5n_k$('itemStyle', tmp$ret$4);
-  if (isAccessor) {
+  if (!(member.lifecycle_1 == null)) {
     var tmp0 = $this.$this_1.json_1;
     // Inline function 'kotlinx.serialization.json.encodeToJsonElement' call
-    var value = listOf_0(new DependencyMetadata(member.key_1, false, member.wrapperType_1, member.renderedKey_1));
+    var value = member.lifecycle_1.parameters_1;
     // Inline function 'kotlinx.serialization.serializer' call
     var this_0 = tmp0.get_serializersModule_piitvg_k$();
     // Inline function 'kotlinx.serialization.internal.cast' call
-    var this_1 = serializer(this_0, createKType(getKClass(KtList), arrayOf([createInvariantKTypeProjection(createKType(getKClass(DependencyMetadata), arrayOf([]), false))]), false));
+    var this_1 = serializer(this_0, createKType(getKClass(KtList), arrayOf([createInvariantKTypeProjection(createKType(getKClass(LifecycleParameterMetadata), arrayOf([]), false))]), false));
     var tmp$ret$7 = isInterface(this_1, KSerializer) ? this_1 : THROW_CCE();
     var tmp$ret$6 = tmp0.encodeToJsonElement_w5lo4o_k$(tmp$ret$7, value);
-    builder.put_mrde5n_k$('rawDependencies', tmp$ret$6);
+    builder.put_mrde5n_k$('parameters', tmp$ret$6);
+    var tmp0_0 = $this.$this_1.json_1;
+    // Inline function 'kotlin.collections.map' call
+    var this_2 = member.lifecycle_1.parameters_1;
+    // Inline function 'kotlin.collections.mapTo' call
+    var destination = ArrayList_init_$Create$_0(collectionSizeOrDefault(this_2, 10));
+    var _iterator__ex2g4s = this_2.iterator_jk1svi_k$();
+    while (_iterator__ex2g4s.hasNext_bitz1p_k$()) {
+      var item = _iterator__ex2g4s.next_20eer_k$();
+      var tmp$ret$11 = item.request_1;
+      destination.add_utx5q5_k$(tmp$ret$11);
+    }
+    // Inline function 'kotlinx.serialization.json.encodeToJsonElement' call
+    // Inline function 'kotlinx.serialization.serializer' call
+    var this_3 = tmp0_0.get_serializersModule_piitvg_k$();
+    // Inline function 'kotlinx.serialization.internal.cast' call
+    var this_4 = serializer(this_3, createKType(getKClass(KtList), arrayOf([createInvariantKTypeProjection(createKType(getKClass(DependencyMetadata), arrayOf([]), false))]), false));
+    var tmp$ret$13 = isInterface(this_4, KSerializer) ? this_4 : THROW_CCE();
+    var tmp$ret$12 = tmp0_0.encodeToJsonElement_w5lo4o_k$(tmp$ret$13, destination);
+    builder.put_mrde5n_k$('rawDependencies', tmp$ret$12);
+    builder.put_mrde5n_k$('isSuspend', JsonPrimitive_0(member.lifecycle_1.isSuspend_1));
+  } else if (isAccessor) {
+    var tmp0_1 = $this.$this_1.json_1;
+    // Inline function 'kotlinx.serialization.json.encodeToJsonElement' call
+    var value_0 = listOf_0(new DependencyMetadata(member.key_1, false, member.wrapperType_1, member.renderedKey_1));
+    // Inline function 'kotlinx.serialization.serializer' call
+    var this_5 = tmp0_1.get_serializersModule_piitvg_k$();
+    // Inline function 'kotlinx.serialization.internal.cast' call
+    var this_6 = serializer(this_5, createKType(getKClass(KtList), arrayOf([createInvariantKTypeProjection(createKType(getKClass(DependencyMetadata), arrayOf([]), false))]), false));
+    var tmp$ret$16 = isInterface(this_6, KSerializer) ? this_6 : THROW_CCE();
+    var tmp$ret$15 = tmp0_1.encodeToJsonElement_w5lo4o_k$(tmp$ret$16, value_0);
+    builder.put_mrde5n_k$('rawDependencies', tmp$ret$15);
     builder.put_mrde5n_k$('resolutionUnavailable', JsonPrimitive_0(member.resolvedKey_1 == null));
   } else {
     builder.put_mrde5n_k$('injectorTarget', JsonPrimitive(member.renderedKey_1));
-    var tmp0_0 = $this.$this_1.json_1;
+    var tmp0_2 = $this.$this_1.json_1;
     var tmp2_safe_receiver = member.binding_1;
     // Inline function 'kotlin.collections.orEmpty' call
     var tmp0_elvis_lhs_2 = tmp2_safe_receiver == null ? null : tmp2_safe_receiver.dependencies_1;
     // Inline function 'kotlinx.serialization.json.encodeToJsonElement' call
-    var value_0 = tmp0_elvis_lhs_2 == null ? emptyList() : tmp0_elvis_lhs_2;
+    var value_1 = tmp0_elvis_lhs_2 == null ? emptyList() : tmp0_elvis_lhs_2;
     // Inline function 'kotlinx.serialization.serializer' call
-    var this_2 = tmp0_0.get_serializersModule_piitvg_k$();
+    var this_7 = tmp0_2.get_serializersModule_piitvg_k$();
     // Inline function 'kotlinx.serialization.internal.cast' call
-    var this_3 = serializer(this_2, createKType(getKClass(KtList), arrayOf([createInvariantKTypeProjection(createKType(getKClass(DependencyMetadata), arrayOf([]), false))]), false));
-    var tmp$ret$11 = isInterface(this_3, KSerializer) ? this_3 : THROW_CCE();
-    var tmp$ret$10 = tmp0_0.encodeToJsonElement_w5lo4o_k$(tmp$ret$11, value_0);
-    builder.put_mrde5n_k$('rawDependencies', tmp$ret$10);
+    var this_8 = serializer(this_7, createKType(getKClass(KtList), arrayOf([createInvariantKTypeProjection(createKType(getKClass(DependencyMetadata), arrayOf([]), false))]), false));
+    var tmp$ret$20 = isInterface(this_8, KSerializer) ? this_8 : THROW_CCE();
+    var tmp$ret$19 = tmp0_2.encodeToJsonElement_w5lo4o_k$(tmp$ret$20, value_1);
+    builder.put_mrde5n_k$('rawDependencies', tmp$ret$19);
     builder.put_mrde5n_k$('resolutionUnavailable', JsonPrimitive_0(member.binding_1 == null));
   }
   return builder.build_bkh6qh_k$();
@@ -2571,7 +2639,20 @@ function buildRootLinks($this, member) {
   builder_0.put_mrde5n_k$('rootMembership', JsonPrimitive_0(true));
   var tmp$ret$2 = builder_0.build_bkh6qh_k$();
   builder.add_i0x14v_k$(tmp$ret$2);
-  if (member.kind_1 === 'accessor') {
+  if (!(member.lifecycle_1 == null)) {
+    var _iterator__ex2g4s = member.lifecycle_1.parameters_1.iterator_jk1svi_k$();
+    while (_iterator__ex2g4s.hasNext_bitz1p_k$()) {
+      var parameter = _iterator__ex2g4s.next_20eer_k$();
+      var request = parameter.request_1;
+      var tmp0 = $this.keyToProviderNodeId_1;
+      // Inline function 'kotlin.collections.contains' call
+      // Inline function 'kotlin.collections.containsKey' call
+      var key = request.key_1;
+      if ((isInterface(tmp0, KtMap) ? tmp0 : THROW_CCE()).containsKey_aw81wo_k$(key)) {
+        builder.add_i0x14v_k$(buildAccessorLink($this, member, request.key_1, request, parameter.name_1));
+      }
+    }
+  } else if (member.kind_1 === 'accessor') {
     var targetKey = member.resolvedKey_1;
     if (!(targetKey == null)) {
       builder.add_i0x14v_k$(buildAccessorLink($this, member, targetKey));
@@ -2581,33 +2662,46 @@ function buildRootLinks($this, member) {
   }
   return builder.build_bkh6qh_k$();
 }
-function buildAccessorLink($this, member, targetKey) {
+function buildAccessorLink($this, member, targetKey, request, parameter) {
+  request = request === VOID ? null : request;
+  parameter = parameter === VOID ? null : parameter;
   // Inline function 'kotlinx.serialization.json.buildJsonObject' call
   var builder = new JsonObjectBuilder();
+  var tmp1_elvis_lhs = request == null ? null : request.get_isDeferrable_x0h2s3_k$();
+  var deferred = tmp1_elvis_lhs == null ? member.isDeferrable_1 : tmp1_elvis_lhs;
+  var tmp3_elvis_lhs = request == null ? null : request.wrapperType_1;
+  var wrapper = tmp3_elvis_lhs == null ? member.wrapperType_1 : tmp3_elvis_lhs;
   builder.put_mrde5n_k$('source', JsonPrimitive(member.id_1));
   builder.put_mrde5n_k$('target', JsonPrimitive(targetKey));
   var tmp;
-  if (member.isDeferrable_1) {
+  if (deferred) {
     tmp = 'deferrable';
   } else {
     tmp = 'accessor';
   }
   builder.put_mrde5n_k$('edgeType', JsonPrimitive(tmp));
-  builder.put_mrde5n_k$('rootKind', JsonPrimitive('accessor'));
-  builder.put_mrde5n_k$('requestedKey', JsonPrimitive(member.renderedKey_1));
-  builder.put_mrde5n_k$('isDeferrable', JsonPrimitive_0(member.isDeferrable_1));
-  if (!(member.wrapperType_1 == null)) {
-    builder.put_mrde5n_k$('wrapperType', JsonPrimitive(member.wrapperType_1));
+  builder.put_mrde5n_k$('rootKind', JsonPrimitive(member.kind_1));
+  if (parameter == null)
+    null;
+  else {
+    // Inline function 'kotlin.let' call
+    builder.put_mrde5n_k$('parameter', JsonPrimitive(parameter));
+  }
+  var tmp6_elvis_lhs = request == null ? null : request.renderedKey_1;
+  builder.put_mrde5n_k$('requestedKey', JsonPrimitive(tmp6_elvis_lhs == null ? member.renderedKey_1 : tmp6_elvis_lhs));
+  builder.put_mrde5n_k$('isDeferrable', JsonPrimitive_0(deferred));
+  if (!(wrapper == null)) {
+    builder.put_mrde5n_k$('wrapperType', JsonPrimitive(wrapper));
   }
   // Inline function 'kotlinx.serialization.json.buildJsonObject' call
   var builder_0 = new JsonObjectBuilder();
   builder_0.put_mrde5n_k$('color', JsonPrimitive('#009952'));
   builder_0.put_mrde5n_k$('width', JsonPrimitive_1(2));
-  if (member.isDeferrable_1) {
+  if (deferred) {
     builder_0.put_mrde5n_k$('type', JsonPrimitive('dashed'));
   }
-  var tmp$ret$2 = builder_0.build_bkh6qh_k$();
-  builder.put_mrde5n_k$('lineStyle', tmp$ret$2);
+  var tmp$ret$4 = builder_0.build_bkh6qh_k$();
+  builder.put_mrde5n_k$('lineStyle', tmp$ret$4);
   return builder.build_bkh6qh_k$();
 }
 function buildInjectorLinks($this, member) {
@@ -3253,7 +3347,7 @@ protoOf(DefaultValueInfo).equals = function (other) {
     return false;
   return true;
 };
-function RootMemberInfo(id, renderedKey, key, kind, name, isProperty, resolvedKey, binding, isDeferrable, wrapperType, isInherited, declaringGraph, declaringType, origin) {
+function RootMemberInfo(id, renderedKey, key, kind, name, isProperty, resolvedKey, binding, isDeferrable, wrapperType, isInherited, declaringGraph, declaringType, origin, lifecycle) {
   name = name === VOID ? null : name;
   isProperty = isProperty === VOID ? false : isProperty;
   resolvedKey = resolvedKey === VOID ? null : resolvedKey;
@@ -3264,6 +3358,7 @@ function RootMemberInfo(id, renderedKey, key, kind, name, isProperty, resolvedKe
   declaringGraph = declaringGraph === VOID ? null : declaringGraph;
   declaringType = declaringType === VOID ? null : declaringType;
   origin = origin === VOID ? null : origin;
+  lifecycle = lifecycle === VOID ? null : lifecycle;
   this.id_1 = id;
   this.renderedKey_1 = renderedKey;
   this.key_1 = key;
@@ -3278,9 +3373,10 @@ function RootMemberInfo(id, renderedKey, key, kind, name, isProperty, resolvedKe
   this.declaringGraph_1 = declaringGraph;
   this.declaringType_1 = declaringType;
   this.origin_1 = origin;
+  this.lifecycle_1 = lifecycle;
 }
 protoOf(RootMemberInfo).toString = function () {
-  return 'RootMemberInfo(id=' + this.id_1 + ', renderedKey=' + this.renderedKey_1 + ', key=' + this.key_1 + ', kind=' + this.kind_1 + ', name=' + this.name_1 + ', isProperty=' + this.isProperty_1 + ', resolvedKey=' + this.resolvedKey_1 + ', binding=' + toString_0(this.binding_1) + ', isDeferrable=' + this.isDeferrable_1 + ', wrapperType=' + this.wrapperType_1 + ', isInherited=' + this.isInherited_1 + ', declaringGraph=' + this.declaringGraph_1 + ', declaringType=' + this.declaringType_1 + ', origin=' + this.origin_1 + ')';
+  return 'RootMemberInfo(id=' + this.id_1 + ', renderedKey=' + this.renderedKey_1 + ', key=' + this.key_1 + ', kind=' + this.kind_1 + ', name=' + this.name_1 + ', isProperty=' + this.isProperty_1 + ', resolvedKey=' + this.resolvedKey_1 + ', binding=' + toString_0(this.binding_1) + ', isDeferrable=' + this.isDeferrable_1 + ', wrapperType=' + this.wrapperType_1 + ', isInherited=' + this.isInherited_1 + ', declaringGraph=' + this.declaringGraph_1 + ', declaringType=' + this.declaringType_1 + ', origin=' + this.origin_1 + ', lifecycle=' + toString_0(this.lifecycle_1) + ')';
 };
 protoOf(RootMemberInfo).hashCode = function () {
   var result = getStringHashCode(this.id_1);
@@ -3297,6 +3393,7 @@ protoOf(RootMemberInfo).hashCode = function () {
   result = imul(result, 31) + (this.declaringGraph_1 == null ? 0 : getStringHashCode(this.declaringGraph_1)) | 0;
   result = imul(result, 31) + (this.declaringType_1 == null ? 0 : getStringHashCode(this.declaringType_1)) | 0;
   result = imul(result, 31) + (this.origin_1 == null ? 0 : getStringHashCode(this.origin_1)) | 0;
+  result = imul(result, 31) + (this.lifecycle_1 == null ? 0 : this.lifecycle_1.hashCode()) | 0;
   return result;
 };
 protoOf(RootMemberInfo).equals = function (other) {
@@ -3331,6 +3428,8 @@ protoOf(RootMemberInfo).equals = function (other) {
   if (!(this.declaringType_1 == other.declaringType_1))
     return false;
   if (!(this.origin_1 == other.origin_1))
+    return false;
+  if (!equals(this.lifecycle_1, other.lifecycle_1))
     return false;
   return true;
 };
@@ -4465,32 +4564,49 @@ function readGraph($this, document) {
       this_4.add_utx5q5_k$(element_1.key_1);
     }
   }
-  // Inline function 'kotlin.collections.forEach' call
-  var _iterator__ex2g4s_2 = graph.bindings_1.iterator_jk1svi_k$();
-  while (_iterator__ex2g4s_2.hasNext_bitz1p_k$()) {
-    var element_2 = _iterator__ex2g4s_2.next_20eer_k$();
+  var tmp4_safe_receiver = graph.roots_1;
+  var tmp5_safe_receiver = tmp4_safe_receiver == null ? null : tmp4_safe_receiver.lifecycleCallbacks_1;
+  if (tmp5_safe_receiver == null)
+    null;
+  else {
     // Inline function 'kotlin.collections.forEach' call
-    var _iterator__ex2g4s_3 = element_2.dependencies_1.iterator_jk1svi_k$();
-    while (_iterator__ex2g4s_3.hasNext_bitz1p_k$()) {
-      var element_3 = _iterator__ex2g4s_3.next_20eer_k$();
-      this_4.add_utx5q5_k$(element_3.key_1);
+    var _iterator__ex2g4s_2 = tmp5_safe_receiver.iterator_jk1svi_k$();
+    while (_iterator__ex2g4s_2.hasNext_bitz1p_k$()) {
+      var element_2 = _iterator__ex2g4s_2.next_20eer_k$();
+      // Inline function 'kotlin.collections.forEach' call
+      var _iterator__ex2g4s_3 = element_2.parameters_1.iterator_jk1svi_k$();
+      while (_iterator__ex2g4s_3.hasNext_bitz1p_k$()) {
+        var element_3 = _iterator__ex2g4s_3.next_20eer_k$();
+        this_4.add_utx5q5_k$(element_3.request_1.key_1);
+      }
     }
-    var tmp0_safe_receiver_0 = element_2.assistedTarget_1;
+  }
+  // Inline function 'kotlin.collections.forEach' call
+  var _iterator__ex2g4s_4 = graph.bindings_1.iterator_jk1svi_k$();
+  while (_iterator__ex2g4s_4.hasNext_bitz1p_k$()) {
+    var element_4 = _iterator__ex2g4s_4.next_20eer_k$();
+    // Inline function 'kotlin.collections.forEach' call
+    var _iterator__ex2g4s_5 = element_4.dependencies_1.iterator_jk1svi_k$();
+    while (_iterator__ex2g4s_5.hasNext_bitz1p_k$()) {
+      var element_5 = _iterator__ex2g4s_5.next_20eer_k$();
+      this_4.add_utx5q5_k$(element_5.key_1);
+    }
+    var tmp0_safe_receiver_0 = element_4.assistedTarget_1;
     if (tmp0_safe_receiver_0 == null)
       null;
     else {
       // Inline function 'kotlin.let' call
       this_4.add_utx5q5_k$(tmp0_safe_receiver_0.key_1);
       // Inline function 'kotlin.collections.forEach' call
-      var _iterator__ex2g4s_4 = tmp0_safe_receiver_0.dependencies_1.iterator_jk1svi_k$();
-      while (_iterator__ex2g4s_4.hasNext_bitz1p_k$()) {
-        var element_4 = _iterator__ex2g4s_4.next_20eer_k$();
-        this_4.add_utx5q5_k$(element_4.key_1);
+      var _iterator__ex2g4s_6 = tmp0_safe_receiver_0.dependencies_1.iterator_jk1svi_k$();
+      while (_iterator__ex2g4s_6.hasNext_bitz1p_k$()) {
+        var element_6 = _iterator__ex2g4s_6.next_20eer_k$();
+        this_4.add_utx5q5_k$(element_6.key_1);
       }
     }
   }
   var referencedKeys = this_4.build_nmwvly_k$();
-  var tmp$ret$27;
+  var tmp$ret$31;
   $l$block_0: {
     // Inline function 'kotlin.collections.none' call
     var tmp_0;
@@ -4500,26 +4616,26 @@ function readGraph($this, document) {
       tmp_0 = false;
     }
     if (tmp_0) {
-      tmp$ret$27 = true;
+      tmp$ret$31 = true;
       break $l$block_0;
     }
-    var _iterator__ex2g4s_5 = referencedKeys.iterator_jk1svi_k$();
-    while (_iterator__ex2g4s_5.hasNext_bitz1p_k$()) {
-      var element_5 = _iterator__ex2g4s_5.next_20eer_k$();
-      if (isBlank(element_5)) {
-        tmp$ret$27 = false;
+    var _iterator__ex2g4s_7 = referencedKeys.iterator_jk1svi_k$();
+    while (_iterator__ex2g4s_7.hasNext_bitz1p_k$()) {
+      var element_7 = _iterator__ex2g4s_7.next_20eer_k$();
+      if (isBlank(element_7)) {
+        tmp$ret$31 = false;
         break $l$block_0;
       }
     }
-    tmp$ret$27 = true;
+    tmp$ret$31 = true;
   }
   // Inline function 'kotlin.require' call
-  if (!tmp$ret$27) {
+  if (!tmp$ret$31) {
     var message_1 = graph.graph_1 + ' contains an empty root or dependency key.';
     throw IllegalArgumentException_init_$Create$(toString(message_1));
   }
   var tmp0 = graph.bindings_1;
-  var tmp$ret$31;
+  var tmp$ret$35;
   $l$block_2: {
     // Inline function 'kotlin.collections.all' call
     var tmp_1;
@@ -4529,31 +4645,31 @@ function readGraph($this, document) {
       tmp_1 = false;
     }
     if (tmp_1) {
-      tmp$ret$31 = true;
+      tmp$ret$35 = true;
       break $l$block_2;
     }
-    var _iterator__ex2g4s_6 = tmp0.iterator_jk1svi_k$();
-    while (_iterator__ex2g4s_6.hasNext_bitz1p_k$()) {
-      var element_6 = _iterator__ex2g4s_6.next_20eer_k$();
+    var _iterator__ex2g4s_8 = tmp0.iterator_jk1svi_k$();
+    while (_iterator__ex2g4s_8.hasNext_bitz1p_k$()) {
+      var element_8 = _iterator__ex2g4s_8.next_20eer_k$();
       var tmp_2;
       // Inline function 'kotlin.text.isNotBlank' call
-      var this_5 = element_6.key_1;
+      var this_5 = element_8.key_1;
       if (!isBlank(this_5)) {
         // Inline function 'kotlin.text.isNotBlank' call
-        var this_6 = element_6.bindingKind_1;
+        var this_6 = element_8.bindingKind_1;
         tmp_2 = !isBlank(this_6);
       } else {
         tmp_2 = false;
       }
       if (!tmp_2) {
-        tmp$ret$31 = false;
+        tmp$ret$35 = false;
         break $l$block_2;
       }
     }
-    tmp$ret$31 = true;
+    tmp$ret$35 = true;
   }
   // Inline function 'kotlin.require' call
-  if (!tmp$ret$31) {
+  if (!tmp$ret$35) {
     var message_2 = graph.graph_1 + ' contains a binding without a key or kind.';
     throw IllegalArgumentException_init_$Create$(toString(message_2));
   }
@@ -4561,11 +4677,11 @@ function readGraph($this, document) {
   var this_7 = graph.bindings_1;
   // Inline function 'kotlin.collections.mapTo' call
   var destination = ArrayList_init_$Create$_0(collectionSizeOrDefault(this_7, 10));
-  var _iterator__ex2g4s_7 = this_7.iterator_jk1svi_k$();
-  while (_iterator__ex2g4s_7.hasNext_bitz1p_k$()) {
-    var item = _iterator__ex2g4s_7.next_20eer_k$();
-    var tmp$ret$39 = item.key_1;
-    destination.add_utx5q5_k$(tmp$ret$39);
+  var _iterator__ex2g4s_9 = this_7.iterator_jk1svi_k$();
+  while (_iterator__ex2g4s_9.hasNext_bitz1p_k$()) {
+    var item = _iterator__ex2g4s_9.next_20eer_k$();
+    var tmp$ret$43 = item.key_1;
+    destination.add_utx5q5_k$(tmp$ret$43);
   }
   var identities = destination;
   // Inline function 'kotlin.require' call
