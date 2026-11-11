@@ -29,6 +29,14 @@ public object LifecycleDiagnosticMessages {
   public const val CALLBACK_CANNOT_HAVE_TYPE_PARAMETERS: String =
     "Lifecycle callbacks can't have type parameters."
 
+  /** A final class or an object has no subtypes, so no graph ever calls its callbacks. */
+  public fun callbackOwnerIsFinal(owner: String): String =
+    "'$owner' is final, so no graph can inherit this lifecycle callback. Declare it on a graph or on an interface that the graph extends."
+
+  /** Graphs include binding containers without extending them, so their callbacks never run. */
+  public fun callbackOwnerIsBindingContainer(owner: String): String =
+    "'$owner' is a binding container, so no graph inherits this lifecycle callback. Declare it on a graph or on an interface that the graph extends."
+
   public fun conflictingCallbackAnnotations(callback: String): String =
     "'$callback' can't serve as both @OnGraphInit and @OnGraphClose. Use a separate function for each phase."
 

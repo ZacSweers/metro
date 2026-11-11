@@ -549,6 +549,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("GraphLifecycleCallbackOwners.kt")
+    public void testGraphLifecycleCallbackOwners() {
+      run("GraphLifecycleCallbackOwners.kt");
+    }
+
+    @Test
     @TestMetadata("GraphLifecycleCalls.kt")
     public void testGraphLifecycleCalls() {
       run("GraphLifecycleCalls.kt");

@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.generators.collectAbstractFunctions
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.fir.isBindingContainer
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.nestedClasses
 import dev.zacsweers.metro.compiler.fir.validateInjectionSiteType
@@ -21,6 +22,7 @@ import kotlin.contracts.contract
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
+import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirCallableDeclarationChecker
@@ -30,12 +32,15 @@ import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.declarations.utils.classId
+import org.jetbrains.kotlin.fir.declarations.utils.isFinal
 import org.jetbrains.kotlin.fir.declarations.utils.isOverride
 import org.jetbrains.kotlin.fir.declarations.utils.isSuspend
 import org.jetbrains.kotlin.fir.declarations.utils.visibility
 import org.jetbrains.kotlin.fir.dispatchReceiverClassLookupTagOrNull
+import org.jetbrains.kotlin.fir.resolve.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.resolve.lookupSuperTypes
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
@@ -122,6 +127,11 @@ internal object GraphLifecycleChecker : FirCallableDeclarationChecker(MppChecker
       reporter.reportOn(declaration.source, MetroDiagnostics.DEPENDENCY_GRAPH_ERROR, shapeError)
     }
 
+    val ownerError = declaration.getContainingClassSymbol()?.callbackOwnerError(session)
+    if (ownerError != null) {
+      reporter.reportOn(declaration.source, MetroDiagnostics.DEPENDENCY_GRAPH_ERROR, ownerError)
+    }
+
     val suspendProvidersDisabled = !session.metroFirBuiltIns.options.enableSuspendProviders
     if (declaration.isSuspend && suspendProvidersDisabled) {
       reporter.reportOn(
@@ -144,6 +154,24 @@ internal object GraphLifecycleChecker : FirCallableDeclarationChecker(MppChecker
       )
     }
   }
+}
+
+/**
+ * Returns why no graph can run a callback declared in this class, or null when one can.
+ *
+ * A graph only runs the callbacks it inherits. It can't extend a final class or an object, and it
+ * includes a binding container without extending it. A callback in one of those compiles but never
+ * runs, so it's reported where it's declared.
+ */
+private fun FirClassLikeSymbol<*>.callbackOwnerError(session: FirSession): String? {
+  val owner = classId.shortClassName.asString()
+  if (isBindingContainer(session)) {
+    return LifecycleDiagnosticMessages.callbackOwnerIsBindingContainer(owner)
+  }
+  if (isFinal) {
+    return LifecycleDiagnosticMessages.callbackOwnerIsFinal(owner)
+  }
+  return null
 }
 
 /**
