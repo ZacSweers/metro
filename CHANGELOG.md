@@ -18,6 +18,7 @@ Changelog
 
 ### Fixes
 
+- **[FIR]** Fix Metro's FIR extensions using unsynchronized lazy values in IDE mode, where the IDE analyzes code on several threads at once. Also stop a single-threaded compilation from turning off thread-safe lazy values for other compilations running in the same Kotlin daemon.
 - **[FIR/IR]** Fix contributed `@Inject` classes skipping declared and inherited member injection when `generateContributionProviders` is enabled.
 - **[FIR/IR]** Fix dependency graphs with a user-declared `companion object` failing to compile or to call their generated creator, such as `AppGraph.create()`. User-declared `factory(...)` overloads in these companions now work. A user-declared no-arg `factory()` that clashes with the generated one now reports an error.
 - **[IR]** Fix dynamic graphs missing `internal` contributions from friend compilations (such as `main` contributions used by tests).
@@ -34,7 +35,6 @@ Changelog
 - **[IR]** Fix graphs creating new providers every time a `Map<K, Provider<V>>` is requested. The graph now stores one map of entry providers and returns it on every read.
 - **[IR]** Fix a `ClassFormatError` when a contributed `@Binds` extension property or function shares a name with a graph accessor.
 - **[IR/interop]** Fix an issue with Dagger-processed providers/constructors with default parameters with their generated factory. Previously, Metro would treat the source function's parameter as optional if it had a default value and not reconcile that correctly with Dagger's generated factory (which would not propagate that default since Dagger uses a different mechanism for optional bindings).
-- **[FIR]** Fix Metro's FIR extensions using unsynchronized lazy values in IDE mode, where the IDE analyzes code on several threads at once. Also stop a single-threaded compilation from turning off thread-safe lazy values for other compilations running in the same Kotlin daemon.
 
 ### Changes
 
