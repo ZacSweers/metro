@@ -605,7 +605,7 @@ internal class DependencyGraphFirGenerator(session: FirSession, compatContext: C
         graphObject(graphClass) ?: reportCompilerBug("No graph object found for $graphClass")
       val creator = graphObject.findCreator(session, "generateFunctions ${owner.classId}", ::log)!!
       val sam = creator.classSymbol.findSamFunction(session) ?: return null
-      return CreatorPlan(graphClass, creator, sam, sam.name)
+      return createCreatorPlan(graphClass, creator, sam, sam.name, owner)
     }
 
     val isBlockCreator = generatesBlockCreators && owner.isDependencyGraph(session)
@@ -633,7 +633,19 @@ internal class DependencyGraphFirGenerator(session: FirSession, compatContext: C
         sam = creatorClass.findSamFunction(session) ?: return null
       }
     }
-    return CreatorPlan(graphClass, creator, sam, graphCreatorName(creatorClass, sam))
+    return createCreatorPlan(graphClass, creator, sam, graphCreatorName(creatorClass, sam), owner)
+  }
+
+  private fun createCreatorPlan(
+    graphClass: FirClassSymbol<*>,
+    creator: GraphObject.Creator?,
+    sam: FirNamedFunctionSymbol?,
+    creatorName: Name,
+    owner: FirClassSymbol<*>,
+  ): CreatorPlan {
+    // Computing callable names walks the factory hierarchy, so do it once per owner.
+    val isCreatorNameReserved = creatorName in computeCallableNames(owner)
+    return CreatorPlan(graphClass, creator, sam, creatorName, isCreatorNameReserved)
   }
 
   override fun generateFunctions(
@@ -648,7 +660,7 @@ internal class DependencyGraphFirGenerator(session: FirSession, compatContext: C
     val matchesCreatorName = requestedName == plan.creatorName
     // External extensions can supply a factory after this generator reserves the owner's names.
     val isPlaceholderRequest = requestedName == PLACEHOLDER_SAM_FUNCTION && plan.sam != null
-    val isUnreservedName = plan.creatorName !in computeCallableNames(owner)
+    val isUnreservedName = !plan.isCreatorNameReserved
     val needsPlaceholderSam = isPlaceholderRequest && isUnreservedName
     val generatesCreator = matchesCreatorName || needsPlaceholderSam
     if (!generatesCreator) {
@@ -783,6 +795,8 @@ internal class DependencyGraphFirGenerator(session: FirSession, compatContext: C
     /** The factory function to implement. It's null for the default `invoke()` and `factory()`. */
     val sam: FirNamedFunctionSymbol?,
     val creatorName: Name,
+    /** Whether [creatorName] is one of the owner's reserved callable names. */
+    val isCreatorNameReserved: Boolean,
   )
 
   fun graphObject(classLikeSymbol: FirClassLikeSymbol<*>) =
