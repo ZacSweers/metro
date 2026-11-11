@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794421044524,
+  "lastUpdate": 1794425429773,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -27440,6 +27440,62 @@ window.BENCHMARK_DATA = {
             "value": 10783.872,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -6.11%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "9d92434b~1",
+          "message": "[before] Fix a compiler crash for map multibindings whose v",
+          "timestamp": "2026-11-11T17:21:05Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/9d92434b53a3abb0d64dbc5b49df9a24bdd375b9"
+        },
+        "date": 1794425429773,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 17784.576999999997,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "9d92434b53a3abb0d64dbc5b49df9a24bdd375b9",
+          "message": "[after] Fix a compiler crash for map multibindings whose v",
+          "timestamp": "2026-11-11T17:21:05Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/9d92434b53a3abb0d64dbc5b49df9a24bdd375b9"
+        },
+        "date": 1794425429774,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19019.162,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +6.94%"
           }
         ]
       }
