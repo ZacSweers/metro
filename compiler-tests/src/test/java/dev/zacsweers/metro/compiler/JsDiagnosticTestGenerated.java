@@ -549,6 +549,102 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("GraphLifecycleCallbackOwners.kt")
+    public void testGraphLifecycleCallbackOwners() {
+      run("GraphLifecycleCallbackOwners.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleCalls.kt")
+    public void testGraphLifecycleCalls() {
+      run("GraphLifecycleCalls.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleCloseOnly.kt")
+    public void testGraphLifecycleCloseOnly() {
+      run("GraphLifecycleCloseOnly.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleCloseOnlyContents.kt")
+    public void testGraphLifecycleCloseOnlyContents() {
+      run("GraphLifecycleCloseOnlyContents.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleCloseOnlyRetained.kt")
+    public void testGraphLifecycleCloseOnlyRetained() {
+      run("GraphLifecycleCloseOnlyRetained.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleCompiledClose.kt")
+    public void testGraphLifecycleCompiledClose() {
+      run("GraphLifecycleCompiledClose.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleCompiledPhases.kt")
+    public void testGraphLifecycleCompiledPhases() {
+      run("GraphLifecycleCompiledPhases.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleDeclarations.kt")
+    public void testGraphLifecycleDeclarations() {
+      run("GraphLifecycleDeclarations.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleGraphInputs.kt")
+    public void testGraphLifecycleGraphInputs() {
+      run("GraphLifecycleGraphInputs.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleInjectionSites.kt")
+    public void testGraphLifecycleInjectionSites() {
+      run("GraphLifecycleInjectionSites.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleOptionalAccessor.kt")
+    public void testGraphLifecycleOptionalAccessor() {
+      run("GraphLifecycleOptionalAccessor.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleOptionalParameter.kt")
+    public void testGraphLifecycleOptionalParameter() {
+      run("GraphLifecycleOptionalParameter.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleQualifierOverride.kt")
+    public void testGraphLifecycleQualifierOverride() {
+      run("GraphLifecycleQualifierOverride.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleRoots.kt")
+    public void testGraphLifecycleRoots() {
+      run("GraphLifecycleRoots.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleUnscoped.kt")
+    public void testGraphLifecycleUnscoped() {
+      run("GraphLifecycleUnscoped.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleWarningText.kt")
+    public void testGraphLifecycleWarningText() {
+      run("GraphLifecycleWarningText.kt");
+    }
+
+    @Test
     @TestMetadata("GraphPrivateAccessorIsAnError.kt")
     public void testGraphPrivateAccessorIsAnError() {
       run("GraphPrivateAccessorIsAnError.kt");
@@ -1960,6 +2056,42 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     @TestMetadata("GraphExtensionParentSuspendBindingFromNonSuspendAccessor.kt")
     public void testGraphExtensionParentSuspendBindingFromNonSuspendAccessor() {
       run("GraphExtensionParentSuspendBindingFromNonSuspendAccessor.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleChildContract.kt")
+    public void testGraphLifecycleChildContract() {
+      run("GraphLifecycleChildContract.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleContributedAccessor.kt")
+    public void testGraphLifecycleContributedAccessor() {
+      run("GraphLifecycleContributedAccessor.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleEagerParameter.kt")
+    public void testGraphLifecycleEagerParameter() {
+      run("GraphLifecycleEagerParameter.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleGraphChecks.kt")
+    public void testGraphLifecycleGraphChecks() {
+      run("GraphLifecycleGraphChecks.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecyclePropertyCreation.kt")
+    public void testGraphLifecyclePropertyCreation() {
+      run("GraphLifecyclePropertyCreation.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleStartupFactory.kt")
+    public void testGraphLifecycleStartupFactory() {
+      run("GraphLifecycleStartupFactory.kt");
     }
 
     @Test

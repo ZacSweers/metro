@@ -1,0 +1,19 @@
+/GraphLifecycleCloseOnly.kt:21:26: warning: [Metro/CloseOnlyBinding] OnlyClose is reachable only from @OnGraphClose callbacks in AppGraph.
+    Resolving parameter 'only' of AppGraph.stop may create OnlyClose for the first time during graph
+    close.
+
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#closeonlybinding
+
+
+/GraphLifecycleCloseOnly.kt:21:26: warning: [Metro/UnscopedLifecycleParameter] Unscoped OnlyClose is injected into parameter 'only' of
+    @OnGraphClose AppGraph.stop. This instance may be discarded after the callback.
+
+  help: request () -> OnlyClose or Lazy<OnlyClose> to resolve OnlyClose explicitly
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#unscopedlifecycleparameter
+
+
+/GraphLifecycleCloseOnly.kt:25:32: warning: [Metro/UnscopedLifecycleParameter] Unscoped OnlyClose is injected into parameter 'only' of
+    @OnGraphClose AppGraph.suppressed. This instance may be discarded after the callback.
+
+  help: request () -> OnlyClose or Lazy<OnlyClose> to resolve OnlyClose explicitly
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#unscopedlifecycleparameter

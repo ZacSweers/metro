@@ -1,0 +1,8 @@
+/GraphLifecycleOptionalParameter.kt:12:7: error: [Metro/MissingBinding] No binding found for Foo
+
+  trace (in AppGraph):
+      Foo is requested at AppGraph.foo
+
+  help: ensure Foo has an @Inject constructor or is provided by an @Provides or @Binds declaration
+        visible to AppGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding

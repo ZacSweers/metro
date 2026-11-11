@@ -1,0 +1,14 @@
+/GraphLifecycleCloseOnlyContents.kt:31:30: warning: [Metro/CloseOnlyBinding] Contributions to Set<Resource> are reachable only from @OnGraphClose
+    callbacks in AppGraph. Resolving parameter 'resources' of AppGraph.closeAll may create them for
+    the first time during graph close.
+
+      GraphLifecycleCloseOnlyContents.kt:21:51
+        @Provides
+        @IntoSet
+        @dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class)
+        fun logs(): Resource
+
+      GraphLifecycleCloseOnlyContents.kt:8:1
+        @dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class) class Cache
+
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#closeonlybinding

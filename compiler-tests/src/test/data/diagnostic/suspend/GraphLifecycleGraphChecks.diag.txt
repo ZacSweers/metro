@@ -1,0 +1,7 @@
+/GraphLifecycleGraphChecks.kt:12:42: error: 'NotCloseable' has lifecycle callbacks, so it must implement CloseableGraph or SuspendCloseableGraph.
+
+/GraphLifecycleGraphChecks.kt:15:29: error: Suspend @OnGraphClose callback 'stop' requires 'SyncClose' to implement SuspendCloseableGraph.
+
+/GraphLifecycleGraphChecks.kt:19:28: error: 'SyncFactory.Factory.create()' must be a suspend function because @OnGraphInit callback 'start' suspends.
+
+/GraphLifecycleGraphChecks.kt:32:28: error: 'GenericInit' needs a graph factory with a suspend creation function because @OnGraphInit callback 'start' suspends.

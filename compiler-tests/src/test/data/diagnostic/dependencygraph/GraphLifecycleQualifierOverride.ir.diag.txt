@@ -1,0 +1,8 @@
+/GraphLifecycleQualifierOverride.kt:12:11: error: [Metro/QualifierOverrideMismatch] Overridden lifecycle callback parameter AppGraph.start(label) must
+    have the same qualifier annotations as the overridden lifecycle callback parameter
+
+  The final lifecycle callback parameter qualifier is absent but overridden symbol Base.start(label)
+  has '@Named("label")'
+
+  help: match the qualifier annotations on overrides with their overridden declarations
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#qualifieroverridemismatch

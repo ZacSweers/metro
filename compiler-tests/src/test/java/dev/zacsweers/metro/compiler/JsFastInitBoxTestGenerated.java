@@ -1415,6 +1415,42 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("GraphLifecycleClose.kt")
+    public void testGraphLifecycleClose() {
+      run("GraphLifecycleClose.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleCompiledCallbacks.kt")
+    public void testGraphLifecycleCompiledCallbacks() {
+      run("GraphLifecycleCompiledCallbacks.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleDefaultValues.kt")
+    public void testGraphLifecycleDefaultValues() {
+      run("GraphLifecycleDefaultValues.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleInheritedDefaults.kt")
+    public void testGraphLifecycleInheritedDefaults() {
+      run("GraphLifecycleInheritedDefaults.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleInit.kt")
+    public void testGraphLifecycleInit() {
+      run("GraphLifecycleInit.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleQualifiedOverride.kt")
+    public void testGraphLifecycleQualifiedOverride() {
+      run("GraphLifecycleQualifiedOverride.kt");
+    }
+
+    @Test
     @TestMetadata("GraphPrivateIntraGraphUsageWorks.kt")
     public void testGraphPrivateIntraGraphUsageWorks() {
       run("GraphPrivateIntraGraphUsageWorks.kt");
@@ -2068,6 +2104,36 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
       }
 
       @Test
+      @TestMetadata("GraphLifecycleClosedParent.kt")
+      public void testGraphLifecycleClosedParent() {
+        run("GraphLifecycleClosedParent.kt");
+      }
+
+      @Test
+      @TestMetadata("GraphLifecycleContributedCloseable.kt")
+      public void testGraphLifecycleContributedCloseable() {
+        run("GraphLifecycleContributedCloseable.kt");
+      }
+
+      @Test
+      @TestMetadata("GraphLifecycleLateChild.kt")
+      public void testGraphLifecycleLateChild() {
+        run("GraphLifecycleLateChild.kt");
+      }
+
+      @Test
+      @TestMetadata("GraphLifecycleSelfManagedChild.kt")
+      public void testGraphLifecycleSelfManagedChild() {
+        run("GraphLifecycleSelfManagedChild.kt");
+      }
+
+      @Test
+      @TestMetadata("GraphPrivateBindsAliasToReusedBindingVisibleToChild.kt")
+      public void testGraphPrivateBindsAliasToReusedBindingVisibleToChild() {
+        run("GraphPrivateBindsAliasToReusedBindingVisibleToChild.kt");
+      }
+
+      @Test
       @TestMetadata("GraphPrivateBindsAliasVisibleToChild.kt")
       public void testGraphPrivateBindsAliasVisibleToChild() {
         run("GraphPrivateBindsAliasVisibleToChild.kt");
@@ -2119,6 +2185,12 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
       @TestMetadata("GraphPrivatePreventsLeakingParentScopedInstance.kt")
       public void testGraphPrivatePreventsLeakingParentScopedInstance() {
         run("GraphPrivatePreventsLeakingParentScopedInstance.kt");
+      }
+
+      @Test
+      @TestMetadata("GraphPrivateUnscopedBindsAliasVisibleToChild.kt")
+      public void testGraphPrivateUnscopedBindsAliasVisibleToChild() {
+        run("GraphPrivateUnscopedBindsAliasVisibleToChild.kt");
       }
 
       @Test
@@ -3663,6 +3735,42 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("GraphLifecycleChildren.kt")
+    public void testGraphLifecycleChildren() {
+      run("GraphLifecycleChildren.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleCloseFailures.kt")
+    public void testGraphLifecycleCloseFailures() {
+      run("GraphLifecycleCloseFailures.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleFactory.kt")
+    public void testGraphLifecycleFactory() {
+      run("GraphLifecycleFactory.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleInitNameClash.kt")
+    public void testGraphLifecycleInitNameClash() {
+      run("GraphLifecycleInitNameClash.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleStartup.kt")
+    public void testGraphLifecycleStartup() {
+      run("GraphLifecycleStartup.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleSuspendClose.kt")
+    public void testGraphLifecycleSuspendClose() {
+      run("GraphLifecycleSuspendClose.kt");
+    }
+
+    @Test
     @TestMetadata("IncludedGraphSuspendAccessor.kt")
     public void testIncludedGraphSuspendAccessor() {
       run("IncludedGraphSuspendAccessor.kt");
@@ -3872,6 +3980,12 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
     @Test
     public void testAllFilesPresentInTracing() {
       KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/tracing"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
+    }
+
+    @Test
+    @TestMetadata("GraphLifecycleTracing.kt")
+    public void testGraphLifecycleTracing() {
+      run("GraphLifecycleTracing.kt");
     }
 
     @Test

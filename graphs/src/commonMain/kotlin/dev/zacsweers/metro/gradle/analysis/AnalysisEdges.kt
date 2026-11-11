@@ -19,6 +19,15 @@ public fun GraphMetadata.analysisEdges(): List<AnalysisEdge> = buildList {
       }
     }
   }
+  for (callback in roots?.lifecycleCallbacks.orEmpty()) {
+    for (parameter in callback.parameters) {
+      val request = parameter.request
+      if (request.key in bindingKeys) {
+        val eager = callback.phase == LifecyclePhase.INIT && !request.isDeferrable
+        add(AnalysisEdge(key, request.key, eager))
+      }
+    }
+  }
   for (accessor in roots?.accessors.orEmpty()) {
     if (accessor.key in bindingKeys) {
       add(AnalysisEdge(key, accessor.key, eager = false))

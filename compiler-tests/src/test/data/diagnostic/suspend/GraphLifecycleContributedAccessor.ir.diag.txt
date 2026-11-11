@@ -1,0 +1,1 @@
+/GraphLifecycleContributedAccessor.kt:17:7: error: 'ChildAccessor.child' can't create 'Child' directly because @OnGraphInit callback 'start' suspends. Create 'Child' through its graph factory.

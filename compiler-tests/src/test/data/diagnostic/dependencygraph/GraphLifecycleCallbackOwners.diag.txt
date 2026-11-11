@@ -1,0 +1,9 @@
+/GraphLifecycleCallbackOwners.kt:7:20: error: 'ContainerObject' is a binding container, so no graph inherits this lifecycle callback. Declare it on a graph or on an interface that the graph extends.
+
+/GraphLifecycleCallbackOwners.kt:12:21: error: 'ContainerInterface' is a binding container, so no graph inherits this lifecycle callback. Declare it on a graph or on an interface that the graph extends.
+
+/GraphLifecycleCallbackOwners.kt:16:20: error: 'Service' is final, so no graph can inherit this lifecycle callback. Declare it on a graph or on an interface that the graph extends.
+
+/GraphLifecycleCallbackOwners.kt:20:21: error: 'Singleton' is final, so no graph can inherit this lifecycle callback. Declare it on a graph or on an interface that the graph extends.
+
+/GraphLifecycleCallbackOwners.kt:25:22: error: 'Companion' is final, so no graph can inherit this lifecycle callback. Declare it on a graph or on an interface that the graph extends.

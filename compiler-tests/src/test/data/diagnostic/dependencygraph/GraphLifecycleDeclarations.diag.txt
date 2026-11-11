@@ -1,0 +1,41 @@
+/GraphLifecycleDeclarations.kt:7:20: error: Lifecycle callbacks must have a body.
+
+/GraphLifecycleDeclarations.kt:8:21: error: Lifecycle callbacks must return Unit.
+
+/GraphLifecycleDeclarations.kt:9:34: error: 'bothPhases' can't serve as both @OnGraphInit and @OnGraphClose. Use a separate function for each phase.
+
+/GraphLifecycleDeclarations.kt:14:16: error: An override of a lifecycle callback must repeat @OnGraphInit.
+
+/GraphLifecycleDeclarations.kt:26:29: error: 'startup' can't serve as both @OnGraphInit and @OnGraphClose. Use a separate function for each phase.
+
+/GraphLifecycleDeclarations.kt:31:16: error: An override of a lifecycle callback must repeat @OnGraphInit.
+
+/GraphLifecycleDeclarations.kt:34:28: error: Metro implements close(). Move this cleanup into an @OnGraphClose callback.
+
+/GraphLifecycleDeclarations.kt:39:28: error: 'SyncCallbacks' needs a graph factory with a suspend creation function because @OnGraphInit callback 'start' suspends.
+
+/GraphLifecycleDeclarations.kt:39:28: error: Suspend provider support is disabled. Enable the `enable-suspend-providers` compiler option or set `metro.enableSuspendProviders` to true.
+
+/GraphLifecycleDeclarations.kt:42:28: error: Suspend provider support is disabled. Enable the `enable-suspend-providers` compiler option or set `metro.enableSuspendProviders` to true.
+
+/GraphLifecycleDeclarations.kt:46:17: error: Suspend provider support is disabled. Enable the `enable-suspend-providers` compiler option or set `metro.enableSuspendProviders` to true.
+
+/GraphLifecycleDeclarations.kt:51:28: error: Lifecycle callbacks can't be private.
+
+/GraphLifecycleDeclarations.kt:52:27: error: Lifecycle callbacks can't have an extension receiver.
+
+/GraphLifecycleDeclarations.kt:54:20: error: Lifecycle callbacks can't have context parameters.
+
+/GraphLifecycleDeclarations.kt:55:24: error: Lifecycle callbacks can't have type parameters.
+
+/GraphLifecycleDeclarations.kt:59:28: error: Suspend provider support is disabled. Enable the `enable-suspend-providers` compiler option or set `metro.enableSuspendProviders` to true.
+
+/GraphLifecycleDeclarations.kt:60:28: error: Suspend provider support is disabled. Enable the `enable-suspend-providers` compiler option or set `metro.enableSuspendProviders` to true.
+
+/GraphLifecycleDeclarations.kt:63:28: error: Suspend provider support is disabled. Enable the `enable-suspend-providers` compiler option or set `metro.enableSuspendProviders` to true.
+
+/GraphLifecycleDeclarations.kt:65:17: error: Suspend provider support is disabled. Enable the `enable-suspend-providers` compiler option or set `metro.enableSuspendProviders` to true.
+
+/GraphLifecycleDeclarations.kt:70:28: error: Suspend provider support is disabled. Enable the `enable-suspend-providers` compiler option or set `metro.enableSuspendProviders` to true.
+
+/GraphLifecycleDeclarations.kt:72:17: error: Suspend provider support is disabled. Enable the `enable-suspend-providers` compiler option or set `metro.enableSuspendProviders` to true.

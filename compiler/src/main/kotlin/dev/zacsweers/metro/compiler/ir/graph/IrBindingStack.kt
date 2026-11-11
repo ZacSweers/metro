@@ -17,6 +17,7 @@ import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.graph.IrBindingStack.Entry
 import dev.zacsweers.metro.compiler.ir.rawType
+import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.resolveOverriddenTypeIfAny
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
@@ -68,6 +69,7 @@ internal interface IrBindingStack :
      */
     graphContextProvider: (() -> String?)? = null,
     override val trailingComment: String? = null,
+    override val chainRoot: String? = null,
   ) : BaseBindingStack.BaseEntry<IrType, IrTypeKey, IrContextualTypeKey> {
 
     private val graphContextLazy: Lazy<String?> =
@@ -92,6 +94,7 @@ internal interface IrBindingStack :
         isSynthetic = isSynthetic,
         graphContextProvider = { graphContextLazy.value },
         trailingComment = annotation,
+        chainRoot = chainRoot,
       )
     }
 
@@ -127,6 +130,23 @@ internal interface IrBindingStack :
               }
             "$targetFqName.$accessorString"
           },
+        )
+      }
+
+      /*
+      Database is injected at
+            [AppGraph] @OnGraphClose AppGraph.closeDatabase(database)
+       */
+      fun lifecycleParameterAt(callback: LifecycleCallback, parameter: LifecycleParameter): Entry {
+        val function = callback.original
+        val signature =
+          function.parameterSignature(function.regularParameters.indexOf(parameter.source))
+        return Entry(
+          contextKey = parameter.key,
+          usage = "is injected at",
+          graphContext = "${callback.annotationLabel} $signature",
+          declaration = parameter.source,
+          chainRoot = signature,
         )
       }
 

@@ -28,6 +28,7 @@ internal val metroDiagnosticNames: Set<String> by lazy {
 internal val irReportedDiagnosticNames: Set<String> by lazy {
   setOf(
       MetroDiagnostics.ASSISTED_FACTORY_SUSPEND_REQUIRED,
+      MetroDiagnostics.CLOSE_ONLY_BINDING,
       MetroDiagnostics.DUPLICATE_BINDING,
       MetroDiagnostics.DUPLICATE_MAP_KEY,
       MetroDiagnostics.EMPTY_MULTIBINDING,
@@ -56,6 +57,7 @@ internal val irReportedDiagnosticNames: Set<String> by lazy {
       MetroDiagnostics.SUSPICIOUS_MEMBER_INJECT_FUNCTION,
       MetroDiagnostics.SUSPICIOUS_UNUSED_MULTIBINDING,
       MetroDiagnostics.UNPROCESSED_UPSTREAM_DECLARATION,
+      MetroDiagnostics.UNSCOPED_LIFECYCLE_PARAMETER,
       MetroDiagnostics.UNUSED_GRAPH_INPUT_ERROR,
       MetroDiagnostics.UNUSED_GRAPH_INPUT_WARNING,
     )

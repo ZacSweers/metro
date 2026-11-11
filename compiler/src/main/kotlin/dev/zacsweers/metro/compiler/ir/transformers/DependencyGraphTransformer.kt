@@ -19,6 +19,7 @@ import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
+import dev.zacsweers.metro.compiler.graph.LifecycleDiagnosticMessages
 import dev.zacsweers.metro.compiler.graph.LocationDiagnostic
 import dev.zacsweers.metro.compiler.graph.toText
 import dev.zacsweers.metro.compiler.ir.IrBindingContainerResolver
@@ -56,6 +57,9 @@ import dev.zacsweers.metro.compiler.ir.graph.IrGraphExtensionGenerator
 import dev.zacsweers.metro.compiler.ir.graph.IrGraphGenerator
 import dev.zacsweers.metro.compiler.ir.graph.expressions.BindingExpressionDecorator
 import dev.zacsweers.metro.compiler.ir.graph.generatedGraphExtensionData
+import dev.zacsweers.metro.compiler.ir.graph.irInitializedGraph
+import dev.zacsweers.metro.compiler.ir.graph.originalDeclarationIfOverride
+import dev.zacsweers.metro.compiler.ir.graph.suspendInitCallback
 import dev.zacsweers.metro.compiler.ir.graphFactoryGetterOrNull
 import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.irCallConstructorWithSameParameters
@@ -74,6 +78,7 @@ import dev.zacsweers.metro.compiler.ir.render
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireNestedClass
 import dev.zacsweers.metro.compiler.ir.resolveOverriddenTypeIfAny
+import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
 import dev.zacsweers.metro.compiler.ir.stubExpressionBody
 import dev.zacsweers.metro.compiler.ir.supportsTracing
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
@@ -99,6 +104,7 @@ import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
@@ -118,6 +124,7 @@ import org.jetbrains.kotlin.ir.util.isInterface
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nonDispatchParameters
 import org.jetbrains.kotlin.ir.util.parentAsClass
+import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.properties
 import org.jetbrains.kotlin.name.ClassId
@@ -357,6 +364,121 @@ internal class DependencyGraphTransformer(
   }
 
   /**
+   * Checks that the parent doesn't return an extension directly when its init callbacks suspend.
+   *
+   * Only the extension's suspend factory runs those callbacks. FIR reports a direct accessor on the
+   * graphs it sees in full. An accessor that merges in IR, like one contributed to another
+   * extension, only shows up here.
+   */
+  private fun validateExtensionInit(
+    parent: GraphNode.Local,
+    extension: ExtensionValidationTask,
+  ): Boolean {
+    if (!extension.isDirectExtension) {
+      return true
+    }
+    val child = extension.validation.node
+    val suspendInit = child.metroGraphOrFail.suspendInitCallback() ?: return true
+    val accessors = parent.graphExtensions.getValue(extension.contributedGraphKey)
+    val directAccessor = accessors.firstOrNull { it.isSimpleAccessor } ?: return true
+    val declaration =
+      directAccessor.accessor.ir.propertyIfAccessorCompat
+        .originalDeclarationIfOverride()
+        .expectAs<IrDeclarationWithName>()
+    val parentGraph = parent.sourceGraph.sourceGraphIfMetroGraph
+    val childGraph = child.sourceGraph.sourceGraphIfMetroGraph
+    val owner = declaration.parentClassOrNull ?: parentGraph
+    reportCompat(
+      sequenceOf(declaration, parentGraph),
+      MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
+      LifecycleDiagnosticMessages.suspendInitNeedsFactoryCall(
+        accessor = "${owner.name}.${declaration.name}",
+        child = childGraph.name.asString(),
+        callback = suspendInit.name.asString(),
+      ),
+    )
+    return false
+  }
+
+  /**
+   * Checks ownership before a generated extension binding is added to the parent.
+   *
+   * A closeable parent has to be able to close the extensions it creates. A parent that isn't
+   * closeable doesn't track them, so whoever creates one closes it. That's only allowed when no
+   * graph above the parent is closeable, because closing that graph couldn't reach the extension.
+   */
+  private fun validateExtensionCloseability(
+    parent: GraphNode.Local,
+    bindings: IrBindingGraph,
+    extension: ExtensionValidationTask,
+  ): Boolean {
+    val child = extension.validation.node
+    val childClose = child.lifecycleClose ?: return true
+    val parentClose = parent.lifecycleClose
+    if (parentClose?.isSuspend == true) {
+      return true
+    }
+    if (parentClose != null && !childClose.isSuspend) {
+      return true
+    }
+    val closeableAncestor =
+      if (parentClose == null) {
+        closeableAncestorOf(parent)
+      } else {
+        null
+      }
+    val isSelfManaged = parentClose == null && closeableAncestor == null
+    if (isSelfManaged) {
+      return true
+    }
+    val key = extension.contributedGraphKey
+    val createsChild =
+      parent.graphExtensions.getValue(key).any { accessor ->
+        if (accessor.isFactory) {
+          val factory = bindings.findBinding(accessor.key.typeKey, allowLookup = true)
+          factory is IrBinding.GraphExtensionFactory
+        } else {
+          // An existing binding supplies the extension from its original owner.
+          bindings.findBinding(key, allowLookup = true) == null
+        }
+      }
+    if (!createsChild) {
+      return true
+    }
+    val parentGraph = parent.sourceGraph.sourceGraphIfMetroGraph
+    val childGraph = child.sourceGraph.sourceGraphIfMetroGraph
+    val message =
+      if (closeableAncestor == null) {
+        LifecycleDiagnosticMessages.parentCannotCloseExtension(
+          parentGraph.name.asString(),
+          childGraph.name.asString(),
+          childClose.isSuspend,
+        )
+      } else {
+        LifecycleDiagnosticMessages.parentBreaksCloseChain(
+          parent = parentGraph.name.asString(),
+          child = childGraph.name.asString(),
+          ancestor = closeableAncestor.sourceGraph.sourceGraphIfMetroGraph.name.asString(),
+          suspendClose = childClose.isSuspend,
+        )
+      }
+    reportCompat(parentGraph, MetroDiagnostics.DEPENDENCY_GRAPH_ERROR, message)
+    return false
+  }
+
+  /** The nearest graph above [node] that Metro generates `close()` for, or null. */
+  private fun closeableAncestorOf(node: GraphNode.Local): GraphNode.Local? {
+    var ancestor = node.parentGraph
+    while (ancestor != null) {
+      if (ancestor is GraphNode.Local && ancestor.lifecycleClose != null) {
+        return ancestor
+      }
+      ancestor = ancestor.parentGraph
+    }
+    return null
+  }
+
+  /**
    * Prepares a complete extension tree before analysis starts. Child results determine parent
    * roots, so binding population and analysis proceed in bottom-up batches afterward.
    *
@@ -494,6 +616,7 @@ internal class DependencyGraphTransformer(
         node,
         bindingGraph::isTransitivelySuspendForChild,
         bindingGraph::declaresSameBindingAs,
+        bindingGraph::createsFreshInstancesForChild,
       )
 
       // Build each extension's implementation class before preparing its graph node.
@@ -549,6 +672,13 @@ internal class DependencyGraphTransformer(
           if (task.validation.hasErrors) {
             hasErrors = true
             continue
+          }
+
+          if (!validateExtensionCloseability(node, bindingGraph, task)) {
+            hasErrors = true
+          }
+          if (!validateExtensionInit(node, task)) {
+            hasErrors = true
           }
 
           if (task.isDirectExtension) {
@@ -956,6 +1086,7 @@ internal class DependencyGraphTransformer(
             .plus(node.injectors.map { it.metroFunction.ir })
             .plus(node.bindsCallables.values.flatten().map { it.callableMetadata.function })
             .plus(node.graphExtensions.flatMap { it.value }.map { it.accessor.ir })
+            .plus(listOfNotNull(node.lifecycleClose))
             .filterNot { it.isExternalParent }
             .forEach { function ->
               with(function) {
@@ -1129,7 +1260,8 @@ internal class DependencyGraphTransformer(
 
   /**
    * Gives a graph creator a body that calls the graph's constructor. Inherited factory methods are
-   * finalized first.
+   * finalized first. A suspend creator also runs the graph's suspend init callbacks before it
+   * returns the graph.
    */
   private fun implementGraphConstructorCall(function: IrSimpleFunction, metroGraph: IrClass) {
     if (function.isFakeOverride) {
@@ -1138,7 +1270,12 @@ internal class DependencyGraphTransformer(
     function.body =
       pluginContext.createIrBuilder(function.symbol).run {
         irExprBodySafe(
-          irCallConstructorWithSameParameters(function, metroGraph.primaryConstructor!!.symbol),
+          irInitializedGraph(
+            graph = metroGraph,
+            construction =
+              irCallConstructorWithSameParameters(function, metroGraph.primaryConstructor!!.symbol),
+            isSuspendCreator = function.isSuspend,
+          ),
         )
       }
   }

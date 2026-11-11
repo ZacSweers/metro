@@ -1,0 +1,9 @@
+/GraphLifecycleCalls.kt:23:11: error: Graph lifecycle callback 'stop' should not be invoked directly.
+
+/GraphLifecycleCalls.kt:27:11: error: Graph lifecycle callback 'start' should not be invoked directly.
+
+/GraphLifecycleCalls.kt:32:11: error: Graph lifecycle callback 'start' should not be invoked directly.
+
+/GraphLifecycleCalls.kt:33:24: error: Graph lifecycle callback 'start' should not be invoked directly.
+
+/GraphLifecycleCalls.kt:34:26: error: Graph lifecycle callback 'start' should not be invoked directly.

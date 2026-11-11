@@ -5,6 +5,7 @@ package dev.zacsweers.metro.idea.model
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
 import com.intellij.psi.SmartPsiElementPointer
+import dev.zacsweers.metro.compiler.graph.GraphLifecyclePhase
 import dev.zacsweers.metro.compiler.graph.MergeContribution
 import dev.zacsweers.metro.compiler.graph.identity.TypeIdentity
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModule
@@ -53,6 +54,8 @@ internal class ConsumerEntry(
   val isOptional: Boolean = false,
   /** Exact implicit interface contribution that must survive in the owning graph path. */
   val graphContribution: GraphReference? = null,
+  /** Set for a lifecycle callback parameter. Keeps override selection on the callback. */
+  val lifecycleRequest: LifecycleRequest? = null,
 ) {
   val sourceIdentity: BindingIndex.SourcePointerIdentity? = sourcePointerIdentity(pointer)
   val injectedMemberSourceIdentity: BindingIndex.SourcePointerIdentity? =
@@ -80,14 +83,25 @@ internal class ConsumerEntry(
       isSuspend = isSuspend,
       isOptional = isOptional,
       graphContribution = contribution.declarationId,
+      lifecycleRequest = lifecycleRequest,
     )
   }
 
   enum class GraphRequestKind {
     ACCESSOR,
     MEMBERS_INJECTOR,
+    /** A lifecycle callback parameter. */
+    LIFECYCLE_PARAMETER,
   }
 }
+
+/** The lifecycle callback behind a [ConsumerEntry] for one of its parameters. */
+internal class LifecycleRequest(
+  val declaration: GraphCallableReference,
+  val phase: GraphLifecyclePhase,
+  /** The parameter's position in [declaration], used to show the callback signature in traces. */
+  val parameterIndex: Int,
+)
 
 /**
  * Selects the consumer represented by one editor declaration. Graph requests retain their first
@@ -306,6 +320,11 @@ internal class GraphMemberOverride(
   val overriddenDeclarations: List<GraphCallableReference>,
   val isOptional: Boolean,
   val isAbstract: Boolean,
+  /**
+   * Lifecycle callbacks stay active even though they have bodies, so they don't supersede
+   * themselves.
+   */
+  val isLifecycleCallback: Boolean = false,
 )
 
 /** A real graph accessor whose result is an extension factory. */

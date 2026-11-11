@@ -29,6 +29,9 @@ internal fun syntheticThreadId(): Long = SyntheticThread.id
  * initialization in [BaseDoubleCheck], so the contended path is rare (a first-read race per
  * instance) and the uncontended fast path never touches any process-wide state.
  *
+ * [GraphChildren] also holds it for single map operations when graph extensions register and close.
+ * Those sections are a few instructions long, so they rarely contend either.
+ *
  * Each guard has its own [owner] field, so unrelated [BaseDoubleCheck] instances can initialize at
  * the same time. Contended callers share a process-wide parker (see [awaitGuardRelease]) only while
  * they go to sleep or are woken; provider code never runs under that shared parker. On Apple

@@ -487,6 +487,47 @@ internal class Symbols(
       .first()
   }
 
+  val graphLifecycleState by lazy {
+    builtinsFinder.findClass(
+      ClassId(FqNames.metroRuntimeInternalPackage, "GraphLifecycleState".asName()),
+    )!!
+  }
+  val graphLifecycleCheckOpen by lazy { graphLifecycleState.requireSimpleFunction("checkOpen") }
+  val graphLifecycleMarkClosed by lazy { graphLifecycleState.requireSimpleFunction("markClosed") }
+  val graphLifecycleAddChild by lazy { graphLifecycleState.requireSimpleFunction("addChild") }
+  val graphLifecycleAddCloseableChild by lazy {
+    graphLifecycleState.requireSimpleFunction("addCloseableChild")
+  }
+  val graphLifecycleRemoveChild by lazy { graphLifecycleState.requireSimpleFunction("removeChild") }
+  val graphLifecycleCloseChildren by lazy {
+    graphLifecycleState.requireSimpleFunction("closeChildren")
+  }
+  val graphLifecycleRecordCloseFailure by lazy {
+    graphLifecycleState.requireSimpleFunction("recordCloseFailure")
+  }
+  val graphLifecycleThrowCloseFailure by lazy {
+    graphLifecycleState.requireSimpleFunction("throwCloseFailure")
+  }
+
+  // Only suspend graphs use these. They live in runtime-coroutines.
+  val closeGraphChildren by lazy {
+    builtinsFinder
+      .findFunctions(CallableId(FqNames.metroRuntimeInternalPackage, "closeGraphChildren".asName()))
+      .single()
+  }
+  val addSuspendCloseableChild by lazy {
+    builtinsFinder
+      .findFunctions(
+        CallableId(FqNames.metroRuntimeInternalPackage, "addSuspendCloseableChild".asName()),
+      )
+      .single()
+  }
+  val runGraphCleanup by lazy {
+    builtinsFinder
+      .findFunctions(CallableId(FqNames.metroRuntimeInternalPackage, "runGraphCleanup".asName()))
+      .single()
+  }
+
   private val doubleCheck: IrClassSymbol by lazy {
     builtinsFinder.findClass(ClassId(metroRuntimeInternal.packageFqName, "DoubleCheck".asName()))!!
   }

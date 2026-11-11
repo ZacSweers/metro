@@ -191,7 +191,7 @@ internal class SyntheticGraphGenerator(
     // Implement the SAM method body
     samFunction.body =
       metroContext.createIrBuilder(samFunction.symbol).run {
-        irExprBodySafe(
+        val construction =
           irCallConstructor(graphCtor.symbol, emptyList()).apply {
             val storedFields = paramsToFields.values.toMutableList()
             val samParams = samFunction.regularParameters
@@ -208,8 +208,8 @@ internal class SyntheticGraphGenerator(
               arguments[paramIndex++] =
                 irGetField(irGet(samFunction.dispatchReceiverParameter!!), field)
             }
-          },
-        )
+          }
+        irExprBodySafe(irInitializedGraph(graphImpl, construction, samFunction.isSuspend))
       }
 
     return factoryImpl

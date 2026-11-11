@@ -57,7 +57,7 @@ internal class GraphMetadataReporter(
         .sortedBy { it.typeKey }
         .map { binding -> buildBindingJson(binding, node.typeKey) }
 
-    // Build roots object with accessors and injectors
+    // Build roots object with accessors, lifecycle callbacks, and injectors
     val rootsJson = buildJsonObject {
       put(
         "accessors",
@@ -74,6 +74,36 @@ internal class GraphMetadataReporter(
           }
         },
       )
+      // Callbacks are roots even when they request no bindings.
+      if (node.lifecycleCallbacks.isNotEmpty()) {
+        put(
+          "lifecycleCallbacks",
+          buildJsonArray {
+            for (callback in node.lifecycleCallbacks) {
+              add(
+                buildJsonObject {
+                  put("phase", JsonPrimitive(callback.phase.name))
+                  put("declaration", JsonPrimitive(callback.original.kotlinFqName.asString()))
+                  put("isSuspend", JsonPrimitive(callback.graphFunction.isSuspend))
+                  put(
+                    "parameters",
+                    buildJsonArray {
+                      for (parameter in callback.parameters) {
+                        add(
+                          buildJsonObject {
+                            put("name", JsonPrimitive(parameter.source.name.asString()))
+                            put("request", buildDependencyJson(parameter.key))
+                          },
+                        )
+                      }
+                    },
+                  )
+                },
+              )
+            }
+          },
+        )
+      }
       put(
         "injectors",
         buildJsonArray {
@@ -431,25 +461,27 @@ internal class GraphMetadataReporter(
     val isMembersInjected = binding is IrBinding.MembersInjected
     return buildJsonArray {
       for (dependency in deps) {
-        add(
-          buildJsonObject {
-            put("key", JsonPrimitive(dependency.typeKey.identity.encoded))
-            put(
-              "renderedKey",
-              JsonPrimitive(dependency.render(short = false, includeQualifier = true)),
-            )
-            put("hasDefault", JsonPrimitive(dependency.hasDefault))
-            // Get the wrapper type name if wrapped (Provider, Lazy, etc.)
-            // MembersInjected dependencies are treated as deferrable
-            val wrapperType =
-              dependency.wrappedType.wrapperTypeName()
-                ?: if (isMembersInjected) "MembersInjected" else null
-            if (wrapperType != null) {
-              put("wrapperType", JsonPrimitive(wrapperType))
-            }
-          },
-        )
+        add(buildDependencyJson(dependency, isMembersInjected))
       }
+    }
+  }
+
+  private fun buildDependencyJson(
+    dependency: IrContextualTypeKey,
+    isMembersInjected: Boolean = false,
+  ): JsonObject = buildJsonObject {
+    put("key", JsonPrimitive(dependency.typeKey.identity.encoded))
+    put(
+      "renderedKey",
+      JsonPrimitive(dependency.render(short = false, includeQualifier = true)),
+    )
+    put("hasDefault", JsonPrimitive(dependency.hasDefault))
+    // Get the wrapper type name if wrapped (Provider, Lazy, etc.)
+    // MembersInjected dependencies are treated as deferrable
+    val wrapperType =
+      dependency.wrappedType.wrapperTypeName() ?: if (isMembersInjected) "MembersInjected" else null
+    if (wrapperType != null) {
+      put("wrapperType", JsonPrimitive(wrapperType))
     }
   }
 
