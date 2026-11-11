@@ -15,7 +15,7 @@ Changelog
 ### Enhancements
 
 - **[IR]** Generate fewer classes for `@Includes` dependencies.
-- **[Runtime]** Map multibinding providers such as `Provider<Map<K, V>>` and `Provider<Map<K, Lazy<V>>>` copy their result map once per call.
+- **[Runtime]** Map multibinding providers such as `Provider<Map<K, V>>` and `Provider<Map<K, Lazy<V>>>` now only copy their result map once per call.
 
 ### Fixes
 
