@@ -2,6 +2,6 @@
 
 Trace:
     Database is injected at
-        [ExampleGraph] AccountCreator.injectDatabase.database // ❌ needs suspend support
+        [ExampleGraph] AccountCreator.injectDatabase.database // <-- not suspend
     Database is provided at
         [ExampleGraph] suspend ExampleGraph.provideDatabase(…)

@@ -184,13 +184,13 @@ internal class KaSuspendBindingValidator(
             graphName,
             sources.name(request.source),
           )
-        stack.push(if (path == null) entry else entry.withTrailingComment(NEEDS_SUSPEND_SUPPORT))
+        stack.push(if (path == null) entry else entry.withTrailingComment(NOT_SUSPEND))
       }
       is SuspendValidationSite.BindingDependency -> {
         val binding = site.binding
         val dependency = site.dependency
         val entry = KaBindingStack.Entry.injectedAt(dependency, binding, sources.location(binding))
-        stack.push(if (path == null) entry else entry.withTrailingComment(NEEDS_SUSPEND_SUPPORT))
+        stack.push(if (path == null) entry else entry.withTrailingComment(NOT_SUSPEND))
       }
     }
     if (path == null) return stack
@@ -199,7 +199,7 @@ internal class KaSuspendBindingValidator(
       val binding = bindings[edge.consumerKey] ?: break
       stack.push(
         KaBindingStack.Entry.injectedAt(edge.dependency, binding, sources.location(binding))
-          .withTrailingComment(NEEDS_SUSPEND_SUPPORT),
+          .withTrailingComment(NOT_SUSPEND),
       )
     }
     if (path.sourceIsSuspend) {
@@ -211,6 +211,6 @@ internal class KaSuspendBindingValidator(
   }
 
   private companion object {
-    private const val NEEDS_SUSPEND_SUPPORT = "needs suspend support"
+    private const val NOT_SUSPEND = "<-- not suspend"
   }
 }

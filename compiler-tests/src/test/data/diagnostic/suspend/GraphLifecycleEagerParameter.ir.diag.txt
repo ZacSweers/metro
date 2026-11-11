@@ -2,7 +2,7 @@
 
 Trace:
     String is injected at
-        [AppGraph] @OnGraphInit AppGraph.start(message) // ❌ needs suspend support
+        [AppGraph] @OnGraphInit AppGraph.start(message) // <-- not suspend
     String is provided at
         [AppGraph] suspend AppGraph.message(…)
 

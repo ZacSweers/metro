@@ -2,9 +2,9 @@
 
 Trace:
     Foo is requested at
-        [ExampleGraph] ExampleGraph.foo // ❌ needs suspend support
+        [ExampleGraph] ExampleGraph.foo // <-- not suspend
     String is injected at
-        [ExampleGraph] Foo(…, dep) // ❌ needs suspend support
+        [ExampleGraph] Foo(…, dep) // <-- not suspend
     String is provided at
         [ExampleGraph] suspend ExampleGraph.provideString(…)
 

@@ -2,6 +2,6 @@
 
 Trace:
     Int is injected at
-        [ExampleGraph] AccountCreator(…, database) // ❌ needs suspend support
+        [ExampleGraph] AccountCreator(…, database) // <-- not suspend
     Int is provided at
         [ExampleGraph] suspend ExampleGraph.provideDatabase(…)

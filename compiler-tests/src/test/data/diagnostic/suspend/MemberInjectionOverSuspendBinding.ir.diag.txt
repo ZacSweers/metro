@@ -2,7 +2,7 @@
 
 Trace:
     String is injected at
-        [ExampleGraph] Target.database // ❌ needs suspend support
+        [ExampleGraph] Target.database // <-- not suspend
     String is provided at
         [ExampleGraph] suspend ExampleGraph.provideDatabase(…)
 
@@ -10,6 +10,6 @@ Trace:
 
 Trace:
     String is injected at
-        [ExampleGraph] ConstructedTarget.injectDatabase.database // ❌ needs suspend support
+        [ExampleGraph] ConstructedTarget.injectDatabase.database // <-- not suspend
     String is provided at
         [ExampleGraph] suspend ExampleGraph.provideDatabase(…)

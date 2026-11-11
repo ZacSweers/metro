@@ -6,11 +6,11 @@
 
 Trace:
     Worker is requested at
-        [ExampleGraph] ExampleGraph.worker // ❌ needs suspend support
+        [ExampleGraph] ExampleGraph.worker // <-- not suspend
     Database is injected at
-        [ExampleGraph] Worker(…, database) // ❌ needs suspend support
+        [ExampleGraph] Worker(…, database) // <-- not suspend
     Config is injected at
-        [ExampleGraph] Database(…, config) // ❌ needs suspend support
+        [ExampleGraph] Database(…, config) // <-- not suspend
     Config is provided at
         [ExampleGraph] suspend ExampleGraph.provideConfig(…)
 

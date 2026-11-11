@@ -2,7 +2,7 @@
 
 Trace:
     String is requested at
-        [AppGraph] AppGraph.database // ❌ needs suspend support
+        [AppGraph] AppGraph.database // <-- not suspend
 
 Either:
   - Mark this accessor as `suspend fun` so it can await suspend dependencies, or

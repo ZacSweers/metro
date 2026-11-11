@@ -2,7 +2,7 @@
 
 Trace:
     String is requested at
-        [ExampleGraph] ExampleGraph.eagerValue // ❌ needs suspend support
+        [ExampleGraph] ExampleGraph.eagerValue // <-- not suspend
     String is provided at
         [ExampleGraph] suspend ExampleGraph.provideString(…)
 

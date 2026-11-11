@@ -2,6 +2,6 @@
 
 Trace:
     String is injected at
-        [ExampleGraph] ExampleGraph.provideInt(…, dep) // ❌ needs suspend support
+        [ExampleGraph] ExampleGraph.provideInt(…, dep) // <-- not suspend
     String is provided at
         [ExampleGraph] suspend ExampleGraph.provideString(…)

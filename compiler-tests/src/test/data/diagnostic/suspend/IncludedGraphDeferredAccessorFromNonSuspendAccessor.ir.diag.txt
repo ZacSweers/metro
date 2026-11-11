@@ -2,7 +2,7 @@
 
 Trace:
     Int is requested at
-        [ProviderConsumerGraph] ProviderConsumerGraph.value // ❌ needs suspend support
+        [ProviderConsumerGraph] ProviderConsumerGraph.value // <-- not suspend
 
 Either:
   - Mark this accessor as `suspend fun` so it can await suspend dependencies, or
@@ -12,7 +12,7 @@ Either:
 
 Trace:
     Long is requested at
-        [LazyConsumerGraph] LazyConsumerGraph.value // ❌ needs suspend support
+        [LazyConsumerGraph] LazyConsumerGraph.value // <-- not suspend
 
 Either:
   - Mark this accessor as `suspend fun` so it can await suspend dependencies, or
