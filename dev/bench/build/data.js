@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794426026575,
+  "lastUpdate": 1794426442529,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -27552,6 +27552,62 @@ window.BENCHMARK_DATA = {
             "value": 12492.937,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +3.66%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "24df2b30~1",
+          "message": "[before] Stop double-counting dependency references of defe",
+          "timestamp": "2026-11-11T17:34:48Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/24df2b30106ee5abf4ac88ad2bbf8ef89928882d"
+        },
+        "date": 1794426442529,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 14178.514000000001,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "24df2b30106ee5abf4ac88ad2bbf8ef89928882d",
+          "message": "[after] Stop double-counting dependency references of defe",
+          "timestamp": "2026-11-11T17:34:48Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/24df2b30106ee5abf4ac88ad2bbf8ef89928882d"
+        },
+        "date": 1794426442530,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 14095.789,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -0.58%"
           }
         ]
       }
