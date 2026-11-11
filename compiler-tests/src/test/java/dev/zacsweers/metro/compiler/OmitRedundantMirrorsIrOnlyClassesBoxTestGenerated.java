@@ -1261,6 +1261,12 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
     }
 
     @Test
+    @TestMetadata("CompatibilityHelperCallsBytecode.kt")
+    public void testCompatibilityHelperCallsBytecode() {
+      run("CompatibilityHelperCallsBytecode.kt");
+    }
+
+    @Test
     @TestMetadata("CompatibilityHelpersAcrossModules.kt")
     public void testCompatibilityHelpersAcrossModules() {
       run("CompatibilityHelpersAcrossModules.kt");

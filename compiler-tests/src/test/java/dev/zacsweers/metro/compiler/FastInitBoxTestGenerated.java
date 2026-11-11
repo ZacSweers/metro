@@ -1261,6 +1261,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("CompatibilityHelperCallsBytecode.kt")
+    public void testCompatibilityHelperCallsBytecode() {
+      run("CompatibilityHelperCallsBytecode.kt");
+    }
+
+    @Test
     @TestMetadata("CompatibilityHelpersAcrossModules.kt")
     public void testCompatibilityHelpersAcrossModules() {
       run("CompatibilityHelpersAcrossModules.kt");

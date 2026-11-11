@@ -516,6 +516,10 @@ private fun IrBuilderWithScope.jvmStaticCalleeOrNull(
   if (callee.owner.parent != receiver.symbol.owner) return null
   val metroContext = context as? IrMetroContext ?: return null
   val staticCallee = with(metroContext) { callee.jvmStaticOrSelf() }
+  // A compatibility bridge delegates to its companion helper, so it must not call itself.
+  if (staticCallee == scope.scopeOwnerSymbol) {
+    return null
+  }
   return staticCallee.takeIf { it != callee }
 }
 
