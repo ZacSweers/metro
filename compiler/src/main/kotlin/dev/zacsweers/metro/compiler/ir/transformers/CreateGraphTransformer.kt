@@ -105,7 +105,7 @@ internal class CreateGraphTransformer(
           // Replace it with a call directly to the factory creator
           return withIrBuilder(expression.symbol) {
             irInvoke(
-              callee = factoryCompanion.requireGraphFactoryAccessor().symbol,
+              callee = factoryCompanion.requireGraphFactoryAccessor(rawType).symbol,
               dispatchReceiver = companionReceiver(factoryCompanion),
               typeArgs = type.expectAsOrNull<IrSimpleType>()?.arguments?.map { it.typeOrFail },
             )

@@ -1893,13 +1893,14 @@ internal fun IrClass.requireSimpleFunction(name: String) =
     )
 
 /**
- * Returns the generated `factory()` accessor in a graph's companion object.
+ * Returns the generated `factory()` accessor for [factoryClass] in a graph's companion object.
  *
- * Users can declare their own `factory` overloads in the companion, so this matches the no-arg
- * signature. It doesn't check the origin because graphs from other modules have stub origins.
+ * Users can declare their own `factory` overloads in the companion, so this uses
+ * [graphFactoryGetterOrNull] to match the no-arg signature. It doesn't check the origin because
+ * graphs from other modules have stub origins.
  */
-internal fun IrClass.requireGraphFactoryAccessor(): IrSimpleFunction =
-  functions.singleOrNull { it.name == Symbols.Names.factory && it.nonDispatchParameters.isEmpty() }
+internal fun IrClass.requireGraphFactoryAccessor(factoryClass: IrClass): IrSimpleFunction =
+  graphFactoryGetterOrNull(factoryClass)
     ?: reportCompilerBug(
       "No factory() function in class $classId. Available: ${functions.joinToString { it.name.asString() }}",
     )
