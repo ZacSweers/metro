@@ -9,9 +9,10 @@ package dev.zacsweers.metro
  * An extension or callback that fails doesn't stop the others. [close] throws the first failure
  * after they've all run, with later failures attached as suppressed exceptions.
  *
- * [close] waits for an extension that's already closing on another thread. An ancestor that an
- * [OnGraphClose] callback closes doesn't wait. A callback that blocks on another thread while that
- * thread closes an ancestor graph hangs.
+ * [close] waits for an extension that's already closing on another thread. A
+ * `SuspendCloseableGraph` parent doesn't wait. A close callback that closes an ancestor graph can
+ * hang if another thread is closing a graph between the two at the same time. A close callback that
+ * blocks on another thread while that thread closes an ancestor of this graph also hangs.
  */
 @ExperimentalMetroApi public interface CloseableGraph : AutoCloseable
 

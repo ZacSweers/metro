@@ -3777,12 +3777,6 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
     }
 
     @Test
-    @TestMetadata("GraphLifecycleSuspendCloseParentFromChild.kt")
-    public void testGraphLifecycleSuspendCloseParentFromChild() {
-      run("GraphLifecycleSuspendCloseParentFromChild.kt");
-    }
-
-    @Test
     @TestMetadata("IncludedGraphSuspendAccessor.kt")
     public void testIncludedGraphSuspendAccessor() {
       run("IncludedGraphSuspendAccessor.kt");

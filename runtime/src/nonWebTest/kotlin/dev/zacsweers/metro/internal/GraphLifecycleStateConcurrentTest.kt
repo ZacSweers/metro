@@ -96,26 +96,39 @@ class GraphLifecycleStateConcurrentTest {
   }
 
   /**
-   * A parent blocks until a child that another caller is closing finishes. A thread stuck in the
-   * wait can't be cancelled, so this polls with a deadline and fails instead of hanging.
+   * A parent blocks until another thread finishes a child's cleanup. A thread stuck in the guard
+   * can't be cancelled, so this polls with deadlines and fails instead of hanging.
    */
   @Test
   fun aParentWaitsForAChildClosingElsewhere() = runBlocking {
     val parent = GraphLifecycleState()
     val childState = GraphLifecycleState()
     parent.addChild(AutoCloseable {}, childState)
-    // Another caller owns the child's cleanup.
-    assertTrue(childState.markClosed())
+    val isChildClosing = AtomicBoolean(false)
+    val releaseChild = AtomicBoolean(false)
     val isParentDone = AtomicBoolean(false)
-    // Not a child of runBlocking, which would otherwise wait for a stuck closer.
+    val deadline = TimeSource.Monotonic.markNow() + 5.seconds
+    // These aren't children of runBlocking, which would otherwise wait for a stuck closer.
+    CoroutineScope(Dispatchers.Default).launch {
+      assertTrue(childState.markClosed())
+      childState.runCleanup {
+        isChildClosing.store(true)
+        while (!releaseChild.load() && deadline.hasNotPassedNow()) {
+          // Holds the child's guard until the test releases it.
+        }
+      }
+    }
+    while (!isChildClosing.load()) {
+      assertTrue(deadline.hasNotPassedNow(), "The child never started closing")
+      delay(10)
+    }
     CoroutineScope(Dispatchers.Default).launch {
       parent.closeChildren()
       isParentDone.store(true)
     }
     delay(100)
     assertFalse(isParentDone.load(), "The parent didn't wait for the child")
-    childState.markCloseFinished()
-    val deadline = TimeSource.Monotonic.markNow() + 5.seconds
+    releaseChild.store(true)
     while (!isParentDone.load()) {
       assertTrue(deadline.hasNotPassedNow(), "The parent never woke up")
       delay(10)

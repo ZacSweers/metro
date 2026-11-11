@@ -14,7 +14,7 @@ import kotlin.test.fail
 
 /** Closes graphs from several threads. Each thread is a daemon, so a deadlock fails a join. */
 class GraphLifecycleConcurrentCloseTest {
-  /** Models the generated `close()` of a closeable graph with the state API. */
+  /** Models the generated `close()` of a graph whose `close()` doesn't suspend. */
   private class FakeGraph(val parent: FakeGraph?, val onClose: () -> Unit = {}) : AutoCloseable {
     val state = GraphLifecycleState()
 
@@ -24,21 +24,17 @@ class GraphLifecycleConcurrentCloseTest {
 
     override fun close() {
       if (state.markClosed()) {
-        try {
-          state.closeChildren()
+        state.runCleanup {
           try {
-            state.enterCloseCallback()
+            state.closeChildren()
             try {
               onClose()
-            } finally {
-              state.exitCloseCallback()
+            } catch (failure: Throwable) {
+              state.recordCloseFailure(failure)
             }
-          } catch (failure: Throwable) {
-            state.recordCloseFailure(failure)
+          } finally {
+            parent?.state?.removeChild(state)
           }
-        } finally {
-          parent?.state?.removeChild(state)
-          state.markCloseFinished()
         }
         state.throwCloseFailure()
       }
@@ -63,7 +59,7 @@ class GraphLifecycleConcurrentCloseTest {
     val childCloser = daemonThread { child.close() }
     assertTrue(childCallbackStarted.await(5, TimeUnit.SECONDS))
     val parentCloser = daemonThread { parent.close() }
-    awaitWaiting(parentCloser)
+    awaitBlocked(parentCloser)
     releaseChild.countDown()
     joinAll(childCloser, parentCloser)
 
@@ -93,35 +89,31 @@ class GraphLifecycleConcurrentCloseTest {
   }
 
   /**
-   * One thread closes a child, which waits for a grandchild that another thread is closing. The
-   * grandchild's callback closes the root. That close doesn't wait for the child, so nothing hangs.
+   * A child's callback closes its parent while another thread is closing that parent and waiting
+   * for the child. The parent is already marked closed, so the callback's close returns at once.
    */
   @Test
-  fun aCallbackThatClosesAnAncestorDoesNotDeadlock() {
-    val grandchildCallbackStarted = CountDownLatch(1)
-    val closeRoot = CountDownLatch(1)
-    val root = FakeGraph(parent = null) { events += "root callback" }
-    val child = FakeGraph(root) { events += "child callback" }
-    val grandchild =
-      FakeGraph(child) {
-        grandchildCallbackStarted.countDown()
-        check(closeRoot.await(5, TimeUnit.SECONDS))
-        root.close()
-        events += "grandchild callback finished"
+  fun aChildCallbackCanCloseAParentThatAnotherThreadIsClosing() {
+    val childCallbackStarted = CountDownLatch(1)
+    val closeParent = CountDownLatch(1)
+    lateinit var parent: FakeGraph
+    parent = FakeGraph(parent = null) { events += "parent callback" }
+    val child =
+      FakeGraph(parent) {
+        childCallbackStarted.countDown()
+        check(closeParent.await(5, TimeUnit.SECONDS))
+        parent.close()
+        events += "child callback finished"
       }
 
-    val grandchildCloser = daemonThread { grandchild.close() }
-    assertTrue(grandchildCallbackStarted.await(5, TimeUnit.SECONDS))
     val childCloser = daemonThread { child.close() }
-    awaitWaiting(childCloser)
-    closeRoot.countDown()
-    joinAll(grandchildCloser, childCloser)
+    assertTrue(childCallbackStarted.await(5, TimeUnit.SECONDS))
+    val parentCloser = daemonThread { parent.close() }
+    awaitBlocked(parentCloser)
+    closeParent.countDown()
+    joinAll(childCloser, parentCloser)
 
-    // The root ran its callback without waiting for the child. The child waited for the grandchild.
-    assertEquals(
-      listOf("root callback", "grandchild callback finished", "child callback"),
-      events.toList(),
-    )
+    assertEquals(listOf("child callback finished", "parent callback"), events.toList())
   }
 
   private fun daemonThread(block: () -> Unit): Thread = thread(isDaemon = true) { block() }
@@ -133,12 +125,12 @@ class GraphLifecycleConcurrentCloseTest {
     }
   }
 
-  /** Waits until [thread] blocks in a wait. */
-  private fun awaitWaiting(thread: Thread) {
+  /** Waits until [thread] blocks on a monitor, which is how the JVM guard waits. */
+  private fun awaitBlocked(thread: Thread) {
     val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5)
-    while (thread.state != Thread.State.WAITING) {
+    while (thread.state != Thread.State.BLOCKED) {
       if (System.nanoTime() > deadline) {
-        fail("The thread never started waiting")
+        fail("The thread never blocked")
       }
       Thread.sleep(1)
     }
