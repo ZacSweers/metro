@@ -21,17 +21,35 @@ class GraphLifecycleStateTest {
   }
 
   @Test
-  fun childrenAreTrackedByIdentity() {
+  fun equalChildrenAreTrackedSeparately() {
     val state = GraphLifecycleState()
     val first = Child(1)
     val second = Child(1)
     state.addChild(first, GraphLifecycleState())
     val secondState = GraphLifecycleState()
     state.addChild(second, secondState)
-    state.addChild(second, secondState)
-    state.removeChild(second)
+    secondState.leaveParent()
     assertSame(first, state.takeChildren().single())
     assertEquals(emptyList(), state.takeChildren())
+  }
+
+  @Test
+  fun childrenThatLeaveAreNotTakenLater() {
+    val state = GraphLifecycleState()
+    val kept = mutableListOf<Any>()
+    // Enough children to prune the links of the ones that left several times over.
+    repeat(1_000) { index ->
+      val child = Child(index)
+      val childState = GraphLifecycleState()
+      state.addChild(child, childState)
+      if (index % 10 == 0) {
+        kept += child
+      } else {
+        childState.leaveParent()
+      }
+    }
+    // Most recently added first.
+    assertEquals(kept.reversed(), state.takeChildren())
   }
 
   @Test

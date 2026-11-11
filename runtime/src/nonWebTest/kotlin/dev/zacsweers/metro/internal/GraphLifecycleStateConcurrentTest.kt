@@ -54,4 +54,35 @@ class GraphLifecycleStateConcurrentTest {
       assertEquals(taken.size, taken.distinct().size)
     }
   }
+
+  /** Children that register and leave from several threads at once leave only the open ones. */
+  @Test
+  fun concurrentChurnKeepsExactlyTheOpenChildren() = runBlocking {
+    val parent = GraphLifecycleState()
+    val open =
+      List(8) {
+          async(Dispatchers.Default) {
+            val kept = mutableListOf<Any>()
+            repeat(500) { index ->
+              val child = Any()
+              val childState = GraphLifecycleState()
+              parent.addChild(child, childState)
+              if (index % 7 == 0) {
+                kept += child
+              } else {
+                childState.leaveParent()
+              }
+            }
+            kept
+          }
+        }
+        .awaitAll()
+        .flatten()
+
+    val taken = parent.takeChildren()
+    assertEquals(open.size, taken.size)
+    for (child in open) {
+      assertTrue(taken.any { it === child }, "An open child was left out of cleanup")
+    }
+  }
 }

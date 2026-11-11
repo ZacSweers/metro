@@ -495,7 +495,7 @@ internal class Symbols(
   val graphLifecycleCheckOpen by lazy { graphLifecycleState.requireSimpleFunction("checkOpen") }
   val graphLifecycleMarkClosed by lazy { graphLifecycleState.requireSimpleFunction("markClosed") }
   val graphLifecycleAddChild by lazy { graphLifecycleState.requireSimpleFunction("addChild") }
-  val graphLifecycleRemoveChild by lazy { graphLifecycleState.requireSimpleFunction("removeChild") }
+  val graphLifecycleLeaveParent by lazy { graphLifecycleState.requireSimpleFunction("leaveParent") }
   val graphLifecycleCloseChildren by lazy {
     graphLifecycleState.requireSimpleFunction("closeChildren")
   }
