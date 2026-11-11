@@ -945,9 +945,21 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
     }
 
     @Test
+    @TestMetadata("GraphBlockEnclosingSupertypeFactory.kt")
+    public void testGraphBlockEnclosingSupertypeFactory() {
+      run("GraphBlockEnclosingSupertypeFactory.kt");
+    }
+
+    @Test
     @TestMetadata("GraphBlockExtensions.kt")
     public void testGraphBlockExtensions() {
       run("GraphBlockExtensions.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphBlockImportedBaseFactory.kt")
+    public void testGraphBlockImportedBaseFactory() {
+      run("GraphBlockImportedBaseFactory.kt");
     }
 
     @Test
@@ -978,6 +990,12 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
     @TestMetadata("GraphBlockSingleton.kt")
     public void testGraphBlockSingleton() {
       run("GraphBlockSingleton.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphBlockTypeAliasBaseFactory.kt")
+    public void testGraphBlockTypeAliasBaseFactory() {
+      run("GraphBlockTypeAliasBaseFactory.kt");
     }
 
     @Test
