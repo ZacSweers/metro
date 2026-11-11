@@ -18,14 +18,6 @@ internal fun <T : Any> presizedList(size: Int): MutableList<T> =
     ArrayList(size)
   }
 
-/** Returns true if at least one pair of items in [this] are equal. */
-internal fun List<*>.hasDuplicates(): Boolean =
-  if (size < 2) {
-    false
-  } else {
-    size != toSet().size
-  }
-
 internal fun <K, V> Map<K, V>.toUnmodifiableMap(): Map<K, V> {
   return if (isEmpty()) {
     // This actually uses a singleton instance

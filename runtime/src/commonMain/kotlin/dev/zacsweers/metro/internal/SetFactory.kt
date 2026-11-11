@@ -51,14 +51,11 @@ private constructor(
       return this
     }
 
+    /**
+     * Builds the factory. Equal providers are allowed because a valid graph can contribute them,
+     * like two bound instances with equal values. Set semantics collapse their equal elements.
+     */
     public fun build(): SetFactory<T> {
-      check(!individualProviders.hasDuplicates()) {
-        "Codegen error? Duplicates in the provider list"
-      }
-      check(!collectionProviders.hasDuplicates()) {
-        "Codegen error? Duplicates in the provider list"
-      }
-
       return SetFactory(individualProviders, collectionProviders)
     }
   }
@@ -66,9 +63,9 @@ private constructor(
   /** Returns a [Set] that contains the elements given by each of the providers. */
   override fun invoke(): Set<T> {
     // Dagger used C-style for-each loops for performance, but we'll wait for someone to report and
+    // issue before premature optimization here
     val collectionProviderElements = collectionProviders.flatMap { it() }
 
-    // issue before premature optimization here
     val providedValues =
       buildSet(individualProviders.size + collectionProviderElements.size) {
         for (provider in individualProviders) {

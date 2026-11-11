@@ -4347,6 +4347,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
     }
 
     @Test
+    @TestMetadata("SetProviderAcceptsEqualElementProviders.kt")
+    public void testSetProviderAcceptsEqualElementProviders() {
+      run("SetProviderAcceptsEqualElementProviders.kt");
+    }
+
+    @Test
     @TestMetadata("SingleSourceMultibindingsAreReadOnly.kt")
     public void testSingleSourceMultibindingsAreReadOnly() {
       run("SingleSourceMultibindingsAreReadOnly.kt");
