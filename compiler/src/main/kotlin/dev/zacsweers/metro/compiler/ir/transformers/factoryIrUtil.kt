@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.transformers
 
+import dev.zacsweers.metro.compiler.CompanionMode
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.applyIf
@@ -26,6 +27,7 @@ import dev.zacsweers.metro.compiler.ir.hasMetroDefault
 import dev.zacsweers.metro.compiler.ir.irCallConstructorWithSameParameters
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irInvoke
+import dev.zacsweers.metro.compiler.ir.isStaticIsh
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.dedupeParameters
@@ -40,6 +42,7 @@ import dev.zacsweers.metro.compiler.ir.stubExpression
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.mirrorIrConstructorCalls
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.Modality
@@ -527,10 +530,24 @@ internal fun shouldUseCreatorSignatureCarrier(): Boolean {
 /** Chooses the helper owner for this compilation. Object factories own their helpers directly. */
 context(context: IrMetroContext)
 internal fun IrClass.factoryHelperDeclarationContainer(): IrClass {
-  if (!isObject && context.options.companionMode.usesStaticHelpers) {
+  return factoryHelperDeclarationContainer(context.options.companionMode)
+}
+
+/**
+ * Chooses the helper owner that [companionMode] generates for this Metro factory or injector.
+ * External classes pass their producer's mode from Metro metadata because it can differ from this
+ * compilation's mode. Interop classes have no recorded mode and use
+ * [requireStaticIshDeclarationContainer] instead.
+ */
+internal fun IrClass.factoryHelperDeclarationContainer(companionMode: CompanionMode): IrClass {
+  if (isObject) {
     return this
   }
-  return requireStaticIshDeclarationContainer()
+  if (companionMode.usesStaticHelpers) {
+    return this
+  }
+  return companionObject()
+    ?: reportCompilerBug("No companion object holds the helpers of $kotlinFqName.")
 }
 
 /**
@@ -647,8 +664,8 @@ private fun IrClass.shouldRegisterGeneratedFactoryMembersAsMetadataVisible(): Bo
  * consumer references the stubs during compilation. The producer's factory supplies the
  * implementation at runtime.
  *
- * Invisible factories come from FIR class generation. Their helpers live on the object or
- * companion.
+ * The producer's [companionMode] decides where the helpers live. Helpers on the factory class are
+ * companion-block members, which have no receiver.
  */
 context(context: IrMetroContext)
 internal fun generateStubCreatorFunctions(
@@ -656,8 +673,10 @@ internal fun generateStubCreatorFunctions(
   callableName: String,
   returnType: IrType,
   sourceFunction: IrSimpleFunction,
+  companionMode: CompanionMode,
 ) {
-  val creatorClass = factoryClass.requireStaticIshDeclarationContainer()
+  val creatorClass = factoryClass.factoryHelperDeclarationContainer(companionMode)
+  val isStaticHelper = !creatorClass.isObject
 
   val sourceParameters = sourceFunction.parameters()
   val createParameters =
@@ -670,24 +689,35 @@ internal fun generateStubCreatorFunctions(
 
   // create() function, parameters are Provider-wrapped
   if (creatorClass.functions.none { it.name == Symbols.Names.create }) {
-    creatorClass.addFunction(Symbols.StringNames.CREATE, factoryClass.defaultType).apply {
-      setDispatchReceiver(creatorClass.thisReceiverOrFail.copyTo(this))
-      addParameters(
-        createParameters.nonDispatchParameters,
-        wrapInProvider = true,
-        copyQualifiers = true,
-        wrapInSuspendProvider = sourceFunction.isSuspend,
+    creatorClass
+      .addFunction(
+        Symbols.StringNames.CREATE,
+        factoryClass.defaultType,
+        isStatic = isStaticHelper,
       )
-      addStaticAnnotations(this)
-      body = context.createIrBuilder(symbol).run { irExprBodySafe(stubExpression()) }
-    }
+      .apply {
+        if (!isStaticHelper) {
+          setDispatchReceiver(creatorClass.thisReceiverOrFail.copyTo(this))
+        }
+        addParameters(
+          createParameters.nonDispatchParameters,
+          wrapInProvider = true,
+          copyQualifiers = true,
+          wrapInSuspendProvider = sourceFunction.isSuspend,
+        )
+        addStaticAnnotations(this)
+        body = context.createIrBuilder(symbol).run { irExprBodySafe(stubExpression()) }
+      }
   }
 
   // Named function (e.g., "provideImplAsBase")
-  if (creatorClass.functions.none { it.name.asString() == callableName }) {
-    creatorClass.addFunction(callableName, returnType).apply {
+  // Companion-block helpers can share a name with instance members of the factory class.
+  if (creatorClass.functions.none { it.isStaticIsh && it.name.asString() == callableName }) {
+    creatorClass.addFunction(callableName, returnType, isStatic = isStaticHelper).apply {
       isSuspend = sourceFunction.isSuspend
-      setDispatchReceiver(creatorClass.thisReceiverOrFail.copyTo(this))
+      if (!isStaticHelper) {
+        setDispatchReceiver(creatorClass.thisReceiverOrFail.copyTo(this))
+      }
       addParameters(
         sourceParameters.nonDispatchParameters,
         wrapInProvider = false,

@@ -57,6 +57,7 @@ import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.requireStaticIshDeclarationContainer
 import dev.zacsweers.metro.compiler.ir.staticIshDeclarationContainerOrNull
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
+import dev.zacsweers.metro.compiler.ir.toCompanionMode
 import dev.zacsweers.metro.compiler.ir.trackClassLookup
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.ir.typeRemapperFor
@@ -127,6 +128,8 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
      * inject.
      */
     val injectorClass: IrClass?,
+    /** The class that declares [injectorClass]'s `create()` and `inject{Name}()` helpers. */
+    val helperOwner: IrClass?,
     val typeKey: IrTypeKey,
     val requiredParametersByClass: Map<ClassId, List<Parameters>>,
     val declaredInjectFunctions: Map<IrSimpleFunction, Parameters>,
@@ -184,6 +187,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
           MemberInjectClass(
             sourceClass = clazz,
             injectorClass = null,
+            helperOwner = null,
             typeKey =
               IrTypeKey(clazz.defaultType.wrapInMembersInjector(), clazz.qualifierAnnotation()),
             requiredParametersByClass = emptyMap(),
@@ -211,14 +215,17 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
     val typeKey =
       IrTypeKey(declaration.defaultType.wrapInMembersInjector(), declaration.qualifierAnnotation())
 
-    fun computeMemberInjectClass(injectorClass: IrClass, isDagger: Boolean): MemberInjectClass {
+    fun computeMemberInjectClass(
+      injectorClass: IrClass,
+      creatorsClass: IrClass?,
+      isDagger: Boolean,
+    ): MemberInjectClass {
       // Use cached member inject parameters if available, otherwise fall back to fresh lookup
       val injectedMembersByClass = declaration.getOrComputeMemberInjectParameters()
       // This map is sparse: classes with no direct injected members are omitted, even if inherited
       // members still require an injector for this class.
       val directInjectedMembers = injectedMembersByClass[injectedClassId].orEmpty()
 
-      val creatorsClass = injectorClass.staticIshDeclarationContainerOrNull()
       val declaredInjectFunctions =
         if (creatorsClass != null) {
           directInjectedMembers.associateBy { params ->
@@ -245,6 +252,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
       return MemberInjectClass(
         declaration,
         injectorClass,
+        creatorsClass,
         typeKey,
         injectedMembersByClass,
         declaredInjectFunctions,
@@ -252,7 +260,8 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
       )
     }
 
-    val lazyClassMetadata = memoize { declaration.metroMetadata?.injected_class?.member_injections }
+    val lazyInjectedClassMetadata = memoize { declaration.metroMetadata?.injected_class }
+    val lazyClassMetadata = memoize { lazyInjectedClassMetadata.value?.member_injections }
 
     // For external classes with no Metro metadata, the only option is Dagger (if enabled)
     if (isExternal) {
@@ -261,9 +270,14 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
           val daggerInjector =
             declaration.lookupClass(declaration.classIdOrFail.generatedClass("_MembersInjector"))
           if (daggerInjector != null) {
-            return computeMemberInjectClass(daggerInjector.owner, isDagger = true).also {
-              generatedInjectors[injectedClassId] = Optional.of(it)
-            }
+            // Dagger records no helper owner, so this reads the injector's shape.
+            val daggerCreatorsClass = daggerInjector.owner.staticIshDeclarationContainerOrNull()
+            return computeMemberInjectClass(
+                daggerInjector.owner,
+                daggerCreatorsClass,
+                isDagger = true,
+              )
+              .also { generatedInjectors[injectedClassId] = Optional.of(it) }
           }
         }
         // No Metro metadata and no Dagger injector found - assume no members to inject
@@ -312,8 +326,10 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
 
     if (isExternal) {
       // Binary injectors already have their helpers.
+      val producerCompanionMode = lazyInjectedClassMetadata.value!!.companion_mode.toCompanionMode()
+      val creatorsClass = injectorClass.factoryHelperDeclarationContainer(producerCompanionMode)
       return trace("computeMemberInjectClass") {
-          computeMemberInjectClass(injectorClass, isDagger = false)
+          computeMemberInjectClass(injectorClass, creatorsClass, isDagger = false)
         }
         .also { generatedInjectors[injectedClassId] = Optional.of(it) }
     }
@@ -376,7 +392,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
 
     val memberInjectClass =
       trace("computeMemberInjectClass") {
-        computeMemberInjectClass(injectorClass, isDagger = false)
+        computeMemberInjectClass(injectorClass, helperOwner, isDagger = false)
       }
 
     checkNotLocked()
@@ -806,12 +822,13 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
     injectFunctionNames: List<String>,
     nameAllocator: NameAllocator,
   ): List<Parameters> {
-    val injectorClassName =
-      clazz.metroMetadata?.injected_class?.member_injections?.injector_class_name!!.asName()
+    val injectedClassMetadata = clazz.metroMetadata?.injected_class!!
+    val injectorClassName = injectedClassMetadata.member_injections?.injector_class_name!!.asName()
     val injectorClass =
       clazz.nestedClasses.singleOrNull { it.name == injectorClassName } ?: return emptyList()
 
-    val container = injectorClass.staticIshDeclarationContainerOrNull() ?: return emptyList()
+    val producerCompanionMode = injectedClassMetadata.companion_mode.toCompanionMode()
+    val container = injectorClass.factoryHelperDeclarationContainer(producerCompanionMode)
 
     // Try to get create() function to determine the correct parameter order
     val createFunction = container.requireSimpleFunction(Symbols.StringNames.CREATE).owner

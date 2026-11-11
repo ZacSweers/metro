@@ -2,10 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
+import dev.zacsweers.metro.compiler.CompanionMode
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parameters.remapTypes as remapParameterTypes
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
+import dev.zacsweers.metro.compiler.ir.transformers.factoryHelperDeclarationContainer
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.proto.SignatureCarrier
 import dev.zacsweers.metro.compiler.reportCompilerBug
@@ -41,6 +43,9 @@ internal sealed interface IrMetroFactory {
    */
   val realDeclaration: IrDeclaration?
   val factoryClass: IrClass
+
+  /** The class that declares [factoryClass]'s `create()` and `newInstance`-style helpers. */
+  val helperOwner: IrClass
 
   fun supportsDirectInvocation(from: IrDeclarationWithVisibility): Boolean
 
@@ -114,8 +119,7 @@ internal sealed interface IrMetroFactory {
         >,
   ): IrExpression =
     with(scope) {
-      // Anvil may generate the factory
-      val creatorClass = factoryClass.requireStaticIshDeclarationContainer()
+      val creatorClass = helperOwner
       // Companion-block helpers can share a name with instance members of the factory class.
       val createFunction =
         creatorClass.simpleFunctions().firstOrNull { it.isStaticIsh && functionPredicate(it) }
@@ -226,9 +230,15 @@ internal sealed class ClassFactory : IrMetroFactory {
     override val targetFunctionParameters: Parameters,
     override val targetConstructor: IrConstructor?,
     val signatureCarrier: SignatureCarrier,
+    /** The producer's mode, which can differ from this compilation's mode. */
+    private val companionMode: CompanionMode,
   ) : ClassFactory() {
     override val function: IrSimpleFunction = targetFunctionParameters.ir!! as IrSimpleFunction
     override val isDaggerFactory: Boolean = false
+
+    override val helperOwner: IrClass by memoize {
+      factoryClass.factoryHelperDeclarationContainer(companionMode)
+    }
 
     override val isAssistedInject: Boolean by memoize {
       // Check if the factory has the @AssistedMarker annotation
@@ -258,6 +268,7 @@ internal sealed class ClassFactory : IrMetroFactory {
         remappedParameters,
         targetConstructor,
         signatureCarrier,
+        companionMode,
       )
     }
   }
@@ -275,6 +286,12 @@ internal sealed class ClassFactory : IrMetroFactory {
     }
 
     override val function: IrConstructor = targetConstructor
+
+    // Dagger and Anvil record no helper owner, so this reads the factory's shape.
+    override val helperOwner: IrClass by memoize {
+      factoryClass.requireStaticIshDeclarationContainer()
+    }
+
     override val createFunctionNames: Set<Name> =
       setOf(Symbols.Names.create, Symbols.Names.createFactoryProvider)
     override val isAssistedInject: Boolean by memoize {

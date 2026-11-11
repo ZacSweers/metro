@@ -436,6 +436,7 @@ internal class IrGraphGenerator(
               bindingGraph = bindingGraph,
               ownProviderFactories = ownProviderFactories,
               generateClassesInIr = options.generateClassesInIr,
+              companionMode = options.companionMode,
             )
           val metroMetadata = createMetroMetadata(dependency_graph = graphProto)
 

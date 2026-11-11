@@ -1077,6 +1077,12 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("InvisibleStaticHelpersAcrossModules.kt")
+    public void testInvisibleStaticHelpersAcrossModules() {
+      run("InvisibleStaticHelpersAcrossModules.kt");
+    }
+
+    @Test
     @TestMetadata("ProviderBackingFieldsCreatorCarrier.kt")
     public void testProviderBackingFieldsCreatorCarrier() {
       run("ProviderBackingFieldsCreatorCarrier.kt");

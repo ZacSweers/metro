@@ -2,11 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
+import dev.zacsweers.metro.compiler.CompanionMode
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.ir.graph.IrBinding
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parameters.remapTypes
+import dev.zacsweers.metro.compiler.ir.transformers.factoryHelperDeclarationContainer
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.proto.SignatureCarrier
 import dev.zacsweers.metro.compiler.reportCompilerBug
@@ -106,10 +108,16 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
     override val realDeclaration: IrDeclaration?,
     private val callableMetadata: IrCallableMetadata,
     val signatureCarrier: SignatureCarrier,
+    /** The producer's mode, which can differ from this compilation's mode. */
+    private val companionMode: CompanionMode,
     parametersLazy: Lazy<Parameters>,
     override val inlinedValue: IrInlinedProvider? = null,
     override val creatorTypeArguments: List<IrType>? = null,
   ) : ProviderFactory() {
+    override val helperOwner: IrClass by memoize {
+      factoryClass.factoryHelperDeclarationContainer(companionMode)
+    }
+
     val signatureFunction: IrSimpleFunction
       get() = callableMetadata.signatureFunction
 
@@ -159,6 +167,7 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
         realDeclaration = realDeclaration,
         callableMetadata = callableMetadata,
         signatureCarrier = signatureCarrier,
+        companionMode = companionMode,
         parametersLazy = lazy { parameters.remapTypes(factoryRemapper) },
         inlinedValue = inlinedValue,
         creatorTypeArguments = concreteTypes,
@@ -180,6 +189,11 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
     override val realDeclaration: IrFunction,
   ) : ProviderFactory() {
     override val isDaggerFactory: Boolean = true
+
+    // Dagger and Anvil record no helper owner, so this reads the factory's shape.
+    override val helperOwner: IrClass by memoize {
+      factoryClass.requireStaticIshDeclarationContainer()
+    }
 
     fun withRemappedTypes(remapper: TypeRemapper): Dagger {
       return Dagger(
@@ -205,6 +219,8 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
       clazz: IrClass,
       signatureFunction: IrSimpleFunction,
       signatureCarrier: SignatureCarrier,
+      /** The producer's mode, read from Metro metadata for external factories. */
+      companionMode: CompanionMode,
       sourceAnnotations: MetroAnnotations<IrAnnotation>?,
       callableMetadata: IrCallableMetadata,
       /** Pre-computed real declaration for in-compilation case. If null, will be looked up. */
@@ -223,6 +239,7 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
       val hadUnpatchedMismatch =
         checkSignatureCarrierParamMismatches(
           factoryClass = clazz,
+          helperOwner = clazz.factoryHelperDeclarationContainer(companionMode),
           newInstanceFunctionName = callableMetadata.newInstanceName!!.asString(),
           signatureFunction = signatureFunction,
           signatureParams = {
@@ -279,6 +296,7 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
         realDeclaration = realDecl,
         parametersLazy = lazyParams,
         signatureCarrier = signatureCarrier,
+        companionMode = companionMode,
         inlinedValue = computedInlinedValue,
       )
     }

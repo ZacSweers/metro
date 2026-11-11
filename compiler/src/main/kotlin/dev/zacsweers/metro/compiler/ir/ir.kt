@@ -2503,7 +2503,8 @@ internal fun patchQualifierAnnotation(
  * This is used to work around https://github.com/ZacSweers/metro/issues/1556 where klib
  * deserialization can produce incorrect qualifier annotations on parameters.
  *
- * @param factoryClass the factory class containing the create/newInstance functions
+ * @param factoryClass the factory class whose primary constructor may need patching
+ * @param helperOwner the class containing the create/newInstance functions
  * @param newInstanceFunctionName the name of the newInstance function to look up
  * @param signatureParams the parameters from the signature carrier to compare against
  * @param reportingFunction the function to report diagnostics on (for error messages)
@@ -2514,6 +2515,7 @@ internal fun patchQualifierAnnotation(
 context(context: IrMetroContext)
 internal fun checkSignatureCarrierParamMismatches(
   factoryClass: IrClass,
+  helperOwner: IrClass,
   newInstanceFunctionName: String,
   signatureFunction: IrSimpleFunction,
   signatureParams: () -> List<Parameter>,
@@ -2523,14 +2525,12 @@ internal fun checkSignatureCarrierParamMismatches(
 ): Boolean {
   if (!factoryClass.shouldCheckSignatureCarrierParamMismatches()) return false
 
-  val staticContainer = factoryClass.requireStaticIshDeclarationContainer()
-
   val newInstanceFunction by memoize {
-    staticContainer.requireStaticIshFunction(newInstanceFunctionName)
+    helperOwner.requireStaticIshFunction(newInstanceFunctionName)
   }
   val newInstanceFunctionParams by memoize { extractParams(newInstanceFunction) }
 
-  val createFunction = staticContainer.requireStaticIshFunction(Symbols.StringNames.CREATE)
+  val createFunction = helperOwner.requireStaticIshFunction(Symbols.StringNames.CREATE)
   val createFunctionParams = extractParams(createFunction)
 
   var hadUnpatchedMismatch = false
