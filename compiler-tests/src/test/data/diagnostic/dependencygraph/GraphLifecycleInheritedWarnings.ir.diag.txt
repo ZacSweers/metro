@@ -1,0 +1,23 @@
+/AppGraph.kt:19:1: warning: [Metro/CloseOnlyBinding] First is reachable only from @OnGraphClose callbacks in AppGraph. Resolving
+    parameter 'first' of Hooks.stop may create First for the first time during graph close.
+
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#closeonlybinding
+
+[Metro/CloseOnlyBinding] Second is reachable only from @OnGraphClose callbacks in AppGraph.
+    Resolving parameter 'second' of Hooks.stop may create Second for the first time during graph
+    close.
+
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#closeonlybinding
+
+
+/AppGraph.kt:19:1: warning: [Metro/UnscopedLifecycleParameter] Unscoped First is injected into parameter 'first' of
+    @OnGraphClose Hooks.stop. This instance may be discarded after the callback.
+
+  help: request () -> First or Lazy<First> to resolve First explicitly
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#unscopedlifecycleparameter
+
+[Metro/UnscopedLifecycleParameter] Unscoped Second is injected into parameter 'second' of
+    @OnGraphClose Hooks.stop. This instance may be discarded after the callback.
+
+  help: request () -> Second or Lazy<Second> to resolve Second explicitly
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#unscopedlifecycleparameter
