@@ -39,6 +39,16 @@ internal fun <A : Any> IrMetroContext.reportCompat(
   a: A,
   includeDeclarationContext: Boolean = true,
 ) {
+  val toReport = reportTarget(irDeclarations)
+  reportCompat(toReport, factory, a, includeDeclarationContext = includeDeclarationContext)
+}
+
+/**
+ * Picks the declaration that [reportCompat] reports on from [irDeclarations]. It's the first one
+ * with a source or location, or the first non-null one when none has either. Callers that batch
+ * messages per element use this to group them the same way.
+ */
+internal fun reportTarget(irDeclarations: Sequence<IrDeclaration?>): IrDeclaration {
   val toReport =
     irDeclarations.filterNotNull().firstOrNull {
       (it.fileOrNull != null && it.sourceElement() != null) || it.locationOrNull() != null
@@ -46,7 +56,7 @@ internal fun <A : Any> IrMetroContext.reportCompat(
   if (toReport == null) {
     reportCompilerBug("No non-null declarations to report on!")
   }
-  reportCompat(toReport, factory, a, includeDeclarationContext = includeDeclarationContext)
+  return toReport
 }
 
 // AnalyzerWithCompilerReport removed this API in 2.3.20, so we copy it in

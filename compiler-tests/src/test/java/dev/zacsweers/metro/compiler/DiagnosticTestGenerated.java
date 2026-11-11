@@ -731,6 +731,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("GraphLifecycleInheritedWarnings.kt")
+    public void testGraphLifecycleInheritedWarnings() {
+      run("GraphLifecycleInheritedWarnings.kt");
+    }
+
+    @Test
     @TestMetadata("GraphLifecycleInjectionSites.kt")
     public void testGraphLifecycleInjectionSites() {
       run("GraphLifecycleInjectionSites.kt");

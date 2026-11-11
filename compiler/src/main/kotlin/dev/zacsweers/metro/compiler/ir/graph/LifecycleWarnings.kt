@@ -16,7 +16,10 @@ import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.padForConsole
 import dev.zacsweers.metro.compiler.ir.render
 import dev.zacsweers.metro.compiler.ir.reportCompat
+import dev.zacsweers.metro.compiler.ir.reportTarget
 import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
+import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactory1
+import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.util.parentAsClass
 
 /**
@@ -25,6 +28,10 @@ import org.jetbrains.kotlin.ir.util.parentAsClass
  * Validation includes close callbacks among its roots. The close-only warning follows
  * [forwardAdjacency] from [IrBindingGraph.rootsOutsideClose]. Keys that child graphs request count
  * as uses outside close.
+ *
+ * Warnings are batched by the element they're reported on and their factory. kotlinc drops a
+ * repeated factory on the same element, which happens when inherited parameters fall back to the
+ * graph declaration.
  */
 context(context: IrMetroContext)
 internal fun reportLifecycleWarnings(
@@ -38,11 +45,13 @@ internal fun reportLifecycleWarnings(
   }
   // Only graphs with close callbacks need this walk, so it runs at most once and only on demand.
   val usedOutsideClose by lazy { keysReachableFrom(graph.rootsOutsideClose(), forwardAdjacency) }
+  val pending =
+    LinkedHashMap<Pair<KtDiagnosticFactory1<String>, IrDeclaration>, MutableList<String>>()
   for (callback in node.lifecycleCallbacks) {
     for (parameter in callback.parameters) {
       val key = parameter.key
       val binding = graph.findAliasTarget(key.typeKey) ?: continue
-      val source = sequenceOf(parameter.source, node.sourceGraph)
+      val source = reportTarget(sequenceOf(parameter.source, node.sourceGraph))
       val parameterName = parameter.source.name.asString()
       val callbackName = "${callback.original.parentAsClass.name}.${callback.original.name}"
       val isMultibinding = binding is IrBinding.Multibinding
@@ -91,11 +100,9 @@ internal fun reportLifecycleWarnings(
               },
             notes = listOf(Note.help(help)),
           )
-        context.reportCompat(
-          source,
-          MetroDiagnostics.UNSCOPED_LIFECYCLE_PARAMETER,
-          context.render(diagnostic).padForConsole(),
-        )
+        pending.getOrPut(MetroDiagnostics.UNSCOPED_LIFECYCLE_PARAMETER to source) {
+          mutableListOf()
+        } += context.render(diagnostic)
       }
 
       // Anything this graph owns that only close requests is created during close just to be
@@ -136,12 +143,14 @@ internal fun reportLifecycleWarnings(
               emptyList()
             },
         )
-      context.reportCompat(
-        source,
-        MetroDiagnostics.CLOSE_ONLY_BINDING,
-        context.render(diagnostic).padForConsole(),
-      )
+      pending.getOrPut(MetroDiagnostics.CLOSE_ONLY_BINDING to source) { mutableListOf() } +=
+        context.render(diagnostic)
     }
+  }
+  for ((key, messages) in pending) {
+    val (factory, declaration) = key
+    val combinedMessage = messages.joinToString(separator = "\n\n")
+    context.reportCompat(declaration, factory, combinedMessage.padForConsole())
   }
 }
 
