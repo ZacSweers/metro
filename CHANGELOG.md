@@ -34,6 +34,7 @@ Changelog
 - **[IR]** Fix graphs creating new providers every time a `Map<K, Provider<V>>` is requested. The graph now stores one map of entry providers and returns it on every read.
 - **[IR]** Fix a `ClassFormatError` when a contributed `@Binds` extension property or function shares a name with a graph accessor.
 - **[IR]** Fix an internal compiler error replacing a missing-binding error when another binding in the graph has an error type.
+- **[IR]** Fix the invalid assisted injection error naming the injection site as `null` when the request has no declaration to name.
 - **[IR/interop]** Fix an issue with Dagger-processed providers/constructors with default parameters with their generated factory. Previously, Metro would treat the source function's parameter as optional if it had a default value and not reconcile that correctly with Dagger's generated factory (which would not propagate that default since Dagger uses a different mechanism for optional bindings).
 
 ### Changes
