@@ -1261,6 +1261,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("CompatibilityHelperCallsBytecode.kt")
+    public void testCompatibilityHelperCallsBytecode() {
+      run("CompatibilityHelperCallsBytecode.kt");
+    }
+
+    @Test
     @TestMetadata("CompatibilityHelpersAcrossModules.kt")
     public void testCompatibilityHelpersAcrossModules() {
       run("CompatibilityHelpersAcrossModules.kt");
@@ -1291,9 +1297,27 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("GraphBlockEnclosingSupertypeFactory.kt")
+    public void testGraphBlockEnclosingSupertypeFactory() {
+      run("GraphBlockEnclosingSupertypeFactory.kt");
+    }
+
+    @Test
     @TestMetadata("GraphBlockExtensions.kt")
     public void testGraphBlockExtensions() {
       run("GraphBlockExtensions.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphBlockGenericBaseFactoryDefaults.kt")
+    public void testGraphBlockGenericBaseFactoryDefaults() {
+      run("GraphBlockGenericBaseFactoryDefaults.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphBlockImportedBaseFactory.kt")
+    public void testGraphBlockImportedBaseFactory() {
+      run("GraphBlockImportedBaseFactory.kt");
     }
 
     @Test
@@ -1327,6 +1351,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("GraphBlockTypeAliasBaseFactory.kt")
+    public void testGraphBlockTypeAliasBaseFactory() {
+      run("GraphBlockTypeAliasBaseFactory.kt");
+    }
+
+    @Test
     @TestMetadata("GraphBlockUserFactoryFunction.kt")
     public void testGraphBlockUserFactoryFunction() {
       run("GraphBlockUserFactoryFunction.kt");
@@ -1342,6 +1372,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     @TestMetadata("GraphCompatibilityDefaultsAcrossModules.kt")
     public void testGraphCompatibilityDefaultsAcrossModules() {
       run("GraphCompatibilityDefaultsAcrossModules.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphCompatibilityGenericBaseFactoryDefaults.kt")
+    public void testGraphCompatibilityGenericBaseFactoryDefaults() {
+      run("GraphCompatibilityGenericBaseFactoryDefaults.kt");
     }
 
     @Test
@@ -1363,6 +1399,24 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("InjectedFunctionNamedMembers.kt")
+    public void testInjectedFunctionNamedMembers() {
+      run("InjectedFunctionNamedMembers.kt");
+    }
+
+    @Test
+    @TestMetadata("InjectedFunctionNamedMembersAcrossModules.kt")
+    public void testInjectedFunctionNamedMembersAcrossModules() {
+      run("InjectedFunctionNamedMembersAcrossModules.kt");
+    }
+
+    @Test
+    @TestMetadata("InjectedFunctionNamedMembersCompatibility.kt")
+    public void testInjectedFunctionNamedMembersCompatibility() {
+      run("InjectedFunctionNamedMembersCompatibility.kt");
+    }
+
+    @Test
     @TestMetadata("InjectedMemberNamedMembers.kt")
     public void testInjectedMemberNamedMembers() {
       run("InjectedMemberNamedMembers.kt");
@@ -1372,6 +1426,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     @TestMetadata("InvisibleHelpersAcrossModules.kt")
     public void testInvisibleHelpersAcrossModules() {
       run("InvisibleHelpersAcrossModules.kt");
+    }
+
+    @Test
+    @TestMetadata("InvisibleStaticHelpersAcrossModules.kt")
+    public void testInvisibleStaticHelpersAcrossModules() {
+      run("InvisibleStaticHelpersAcrossModules.kt");
     }
 
     @Test
@@ -1402,6 +1462,18 @@ public class BoxTestGenerated extends AbstractBoxTest {
     @TestMetadata("ProviderMirrorSignatureCarriers.kt")
     public void testProviderMirrorSignatureCarriers() {
       run("ProviderMirrorSignatureCarriers.kt");
+    }
+
+    @Test
+    @TestMetadata("ProviderNamedInvoke.kt")
+    public void testProviderNamedInvoke() {
+      run("ProviderNamedInvoke.kt");
+    }
+
+    @Test
+    @TestMetadata("ProviderNamedInvokeAcrossModules.kt")
+    public void testProviderNamedInvokeAcrossModules() {
+      run("ProviderNamedInvokeAcrossModules.kt");
     }
 
     @Test

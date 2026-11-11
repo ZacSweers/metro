@@ -33,6 +33,7 @@ import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.MetroDeclarations
 import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
+import dev.zacsweers.metro.compiler.ir.NOOP_TYPE_REMAPPER
 import dev.zacsweers.metro.compiler.ir.ParentContext
 import dev.zacsweers.metro.compiler.ir.ParentContextReader
 import dev.zacsweers.metro.compiler.ir.RuntimeTracingAvailability
@@ -42,6 +43,7 @@ import dev.zacsweers.metro.compiler.ir.chunkSupertypesIfNeeded
 import dev.zacsweers.metro.compiler.ir.computePromotedParents
 import dev.zacsweers.metro.compiler.ir.copyParameterDefaultValues
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
+import dev.zacsweers.metro.compiler.ir.deepRemapperFor
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.getOrCreateGraphFactoryImplClassShell
 import dev.zacsweers.metro.compiler.ir.graph.BindingGraphGenerator
@@ -115,6 +117,7 @@ import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.copyTo
+import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.file
 import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.functions
@@ -127,6 +130,7 @@ import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.properties
+import org.jetbrains.kotlin.ir.util.remapTypes
 import org.jetbrains.kotlin.name.ClassId
 
 /**
@@ -1364,6 +1368,16 @@ internal class DependencyGraphTransformer(
           pluginContext.createIrBuilder(staticCreator.symbol).irGetObject(receiver.symbol)
         },
       )
+    }
+    // Inherited defaults can use a generic supertype's type parameters, like `emptyList<T>()`.
+    // Those parameters aren't in scope on the static creator, so substitute the factory's type
+    // arguments.
+    val factoryClass = factoryCreator.type
+    val remapper = factoryClass.deepRemapperFor(factoryClass.defaultType)
+    if (remapper !== NOOP_TYPE_REMAPPER) {
+      for (parameter in targetParameters) {
+        parameter.defaultValue?.remapTypes(remapper)
+      }
     }
   }
 

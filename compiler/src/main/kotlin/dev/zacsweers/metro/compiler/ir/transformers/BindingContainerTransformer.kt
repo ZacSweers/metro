@@ -6,6 +6,7 @@ import dev.zacsweers.metro.ContributesIntoSet
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.binding
+import dev.zacsweers.metro.compiler.CompanionMode
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Origins
@@ -72,12 +73,12 @@ import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.reportMissingRuntimeCoroutines
 import dev.zacsweers.metro.compiler.ir.requireDeclarationMirrorFunction
-import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
-import dev.zacsweers.metro.compiler.ir.requireStaticIshDeclarationContainer
+import dev.zacsweers.metro.compiler.ir.requireStaticIshFunction
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.subcomponentsArgument
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.toClassReferences
+import dev.zacsweers.metro.compiler.ir.toCompanionMode
 import dev.zacsweers.metro.compiler.ir.toProto
 import dev.zacsweers.metro.compiler.ir.transformIfIntoMultibinding
 import dev.zacsweers.metro.compiler.ir.typeRemapperFor
@@ -310,7 +311,10 @@ internal class BindingContainerTransformer(
           createMetroMetadata(
             dependency_graph =
               if (shouldGenerateMetadata) {
-                container.toProto(generateClassesInIr = options.generateClassesInIr)
+                container.toProto(
+                  generateClassesInIr = options.generateClassesInIr,
+                  companionMode = options.companionMode,
+                )
               } else {
                 null
               },
@@ -652,6 +656,7 @@ internal class BindingContainerTransformer(
           clazz = factoryCls,
           signatureFunction = signatureFunction,
           signatureCarrier = signatureCarrier,
+          companionMode = options.companionMode,
           sourceAnnotations = reference.annotations,
           callableMetadata = callableMetadata,
           realDeclaration = realDeclaration,
@@ -980,11 +985,13 @@ internal class BindingContainerTransformer(
   private fun externalProviderFactoryFor(
     factoryCls: IrClass,
     entry: ProviderFactoryProto,
+    producerCompanionMode: CompanionMode,
   ): ProviderFactory.Metro {
     // Extract IrTypeKey from Factory supertype
     // Qualifier will be populated in ProviderFactory construction
     val signatureCarrier = entry.signature_carrier
-    val signatureFunction = factoryCls.signatureFunction(entry, signatureCarrier)
+    val signatureFunction =
+      factoryCls.signatureFunction(entry, signatureCarrier, producerCompanionMode)
     val sourceAnnotations = signatureFunction.metroAnnotations(metroSymbols.classIds)
     val callableMetadata =
       factoryCls.irCallableMetadata(
@@ -999,6 +1006,7 @@ internal class BindingContainerTransformer(
       factoryCls,
       signatureFunction,
       signatureCarrier,
+      producerCompanionMode,
       sourceAnnotations,
       callableMetadata,
       inlinedValue = entry.inlinedValueIfEnabled(),
@@ -1009,11 +1017,13 @@ internal class BindingContainerTransformer(
   private fun IrClass.signatureFunction(
     entry: ProviderFactoryProto,
     signatureCarrier: SignatureCarrier,
+    producerCompanionMode: CompanionMode,
   ): IrSimpleFunction {
     return when (signatureCarrier) {
       SignatureCarrier.MIRROR_FUNCTION -> requireDeclarationMirrorFunction()
       SignatureCarrier.CREATOR_FUNCTION ->
-        requireStaticIshDeclarationContainer().requireSimpleFunction(entry.new_instance_name).owner
+        factoryHelperDeclarationContainer(producerCompanionMode)
+          .requireStaticIshFunction(entry.new_instance_name)
     }
   }
 
@@ -1207,6 +1217,7 @@ internal class BindingContainerTransformer(
     }
 
     // Add any provider factories
+    val producerCompanionMode = graphProto.companion_mode.toCompanionMode()
     val providerFactories =
       trace("Load external provider factories") {
         graphProto.provider_factories
@@ -1225,13 +1236,14 @@ internal class BindingContainerTransformer(
               }
               val providerFactory =
                 trace("Load invisible factory ${classId.shortClassName}") {
-                  loadInvisibleProviderFactory(declaration, classId, entry)
+                  loadInvisibleProviderFactory(declaration, classId, entry, producerCompanionMode)
                 } ?: return@mapNotNull null
               providerFactory.callableId to providerFactory
             } else {
               trace("External factory ${classId.shortClassName}") {
                 val factoryClass = declaration.lookupClass(classId)!!.owner
-                val providerFactory = externalProviderFactoryFor(factoryClass, entry)
+                val providerFactory =
+                  externalProviderFactoryFor(factoryClass, entry, producerCompanionMode)
                 providerFactory.callableId to providerFactory
               }
             }
@@ -1275,13 +1287,19 @@ internal class BindingContainerTransformer(
     container: IrClass,
     classId: ClassId,
     entry: ProviderFactoryProto,
+    producerCompanionMode: CompanionMode,
   ): ProviderFactory.Metro? {
     val providesFunction = findProvidesForInvisibleFactory(container, entry.callable_name)
 
     val existingFactory = container.lookupClass(classId)?.owner
     val stub =
       existingFactory
-        ?: createContributionProviderFactoryStub(container, classId, isObject = entry.is_object)
+        ?: createContributionProviderFactoryStub(
+          container,
+          classId,
+          isObject = entry.is_object,
+          companionMode = producerCompanionMode,
+        )
 
     val mirrorFunction =
       if (existingFactory != null) {
@@ -1325,6 +1343,7 @@ internal class BindingContainerTransformer(
       callableName = entry.new_instance_name,
       returnType = sourceFunction.returnType,
       sourceFunction = sourceFunction,
+      companionMode = producerCompanionMode,
     )
 
     val callableId = CallableId(container.classIdOrFail, Name.identifier(entry.callable_name))
@@ -1354,6 +1373,7 @@ internal class BindingContainerTransformer(
       clazz = stub,
       signatureFunction = mirrorFunction,
       signatureCarrier = SignatureCarrier.MIRROR_FUNCTION,
+      companionMode = producerCompanionMode,
       sourceAnnotations = sourceAnnotations,
       callableMetadata = callableMetadata,
       realDeclaration = originClass ?: providesFunction,
@@ -1385,12 +1405,14 @@ internal class BindingContainerTransformer(
   /**
    * Creates a provider factory class stub in IR for contribution provider objects. The stub has its
    * parent set but is NOT added as a child declaration. Used for both in-compilation (where the
-   * caller adds it) and external (where it's a phantom).
+   * caller adds it) and external (where it's a phantom). External stubs take the producer's
+   * [companionMode] so they match the producer's helper owner.
    */
   private fun createContributionProviderFactoryStub(
     parentClass: IrClass,
     classId: ClassId,
     isObject: Boolean,
+    companionMode: CompanionMode,
   ): IrClass {
     val classKind = if (isObject) ClassKind.OBJECT else ClassKind.CLASS
 
@@ -1411,7 +1433,7 @@ internal class BindingContainerTransformer(
 
         if (isObject) {
           addDefaultConstructor().apply { visibility = DescriptorVisibilities.PRIVATE }
-        } else if (!options.companionMode.usesStaticHelpers) {
+        } else if (!companionMode.usesStaticHelpers) {
           // The companion owns the create() and newInstance() helpers.
           val factoryCls = this
           pluginContext.irFactory
@@ -1443,13 +1465,19 @@ internal class BindingContainerTransformer(
     // Generic factory owners require a class even when the source provider has no dependencies.
     val hasCopiedTypeParameters = parentClass.typeParameters.isNotEmpty()
     val isObject = reference.parameters.allParameters.isEmpty() && !hasCopiedTypeParameters
-    return createContributionProviderFactoryStub(parentClass, generatedClassId, isObject).also {
-      it.addCallableMetadataAnnotation(reference)
-      if (options.generateClassesInIr) {
-        metadataDeclarationRegistrarCompat.registerClassAsMetadataVisible(it)
+    return createContributionProviderFactoryStub(
+        parentClass,
+        generatedClassId,
+        isObject,
+        options.companionMode,
+      )
+      .also {
+        it.addCallableMetadataAnnotation(reference)
+        if (options.generateClassesInIr) {
+          metadataDeclarationRegistrarCompat.registerClassAsMetadataVisible(it)
+        }
+        parentClass.declarations.add(it)
       }
-      parentClass.declarations.add(it)
-    }
   }
 
   private fun IrClass.addCallableMetadataAnnotation(reference: CallableReference) {

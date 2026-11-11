@@ -1,0 +1,54 @@
+@DependencyGraph
+interface AppGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : AppGraph {
+    private val valuesInstance: List<String>
+      field = values
+
+    private constructor(@Provides values: List<String>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override val values: List<String>
+      override get(): List<String> {
+        return <this>.#valuesInstance
+      }
+
+  }
+
+  @DependencyGraph.Factory
+  fun interface Factory : BaseFactory<String, AppGraph> {
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    @MetroImplMarker
+    object Impl : Factory {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      override fun create(@Provides values: List<String>): AppGraph {
+        return Impl(values = values)
+      }
+
+    }
+
+  }
+
+  @GraphFactoryInvokeFunctionMarker
+  final companion fun create(@Provides values: List<String> = emptyList<String>()): AppGraph {
+    return Impl(values = values)
+  }
+
+  abstract val values: List<String>
+    abstract get
+
+}
+
+interface BaseFactory<T : Any?, G : Any?> {
+  abstract fun create(@Provides values: List<T> = emptyList<T>()): G
+
+}

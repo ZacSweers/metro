@@ -12,6 +12,7 @@ import dev.zacsweers.metro.compiler.fir.buildSimpleAnnotation
 import dev.zacsweers.metro.compiler.fir.buildStaticAnnotations
 import dev.zacsweers.metro.compiler.fir.constructType
 import dev.zacsweers.metro.compiler.fir.copyTypeParametersFrom
+import dev.zacsweers.metro.compiler.fir.expandedClassId
 import dev.zacsweers.metro.compiler.fir.hasOrigin
 import dev.zacsweers.metro.compiler.fir.implements
 import dev.zacsweers.metro.compiler.fir.isDependencyGraph
@@ -64,6 +65,7 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
 import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.types.FirUserTypeRef
+import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
 import org.jetbrains.kotlin.fir.types.constructType
 import org.jetbrains.kotlin.name.CallableId
@@ -454,33 +456,8 @@ internal class DependencyGraphFirGenerator(session: FirSession, compatContext: C
         names += it.name
       }
 
-      val typeResolver = session.metroFirBuiltIns.typeAliasResolverFactory.create(classSymbol)
-      val sourceClass =
-        if (classSymbol.origin is FirDeclarationOrigin.Source) {
-          classSymbol.moduleData.session.firProvider.getFirClassifierByFqName(classSymbol.classId)
-            as? FirClass
-        } else {
-          null
-        }
-
-      val superTypeRefs =
-        if (sourceClass != null) {
-          sourceClass.superTypeRefs
-        } else {
-          classSymbol.resolvedSuperTypeRefs
-        }
-
-      for (superTypeRef in superTypeRefs) {
-        val resolvedSuperType = superTypeRef.coneTypeOrNull
-        val superClass =
-          if (resolvedSuperType != null) {
-            resolvedSuperType.toRegularClassSymbol(session)
-          } else {
-            unresolvedSuperClassOrNull(superTypeRef, classSymbol.classId, typeResolver)
-          }
-        if (superClass != null) {
-          collect(superClass)
-        }
+      for (superClass in directSuperClasses(classSymbol, mutableSetOf())) {
+        collect(superClass)
       }
     }
 
@@ -489,24 +466,82 @@ internal class DependencyGraphFirGenerator(session: FirSession, compatContext: C
   }
 
   /**
-   * Finds an unresolved supertype from its written name. Like Kotlin, this checks classes nested in
-   * the enclosing classes before the file's imports.
+   * Returns the classes that [classSymbol] directly extends or implements. Unresolved source
+   * supertypes are looked up by their written names. [visited] is passed to
+   * [unresolvedSuperClassOrNull].
    */
+  private fun directSuperClasses(
+    classSymbol: FirClassSymbol<*>,
+    visited: MutableSet<Pair<ClassId, List<Name>>>,
+  ): List<FirRegularClassSymbol> {
+    val typeResolver = session.metroFirBuiltIns.typeAliasResolverFactory.create(classSymbol)
+    val sourceClass =
+      if (classSymbol.origin is FirDeclarationOrigin.Source) {
+        classSymbol.moduleData.session.firProvider.getFirClassifierByFqName(classSymbol.classId)
+          as? FirClass
+      } else {
+        null
+      }
+
+    val superTypeRefs =
+      if (sourceClass != null) {
+        sourceClass.superTypeRefs
+      } else {
+        classSymbol.resolvedSuperTypeRefs
+      }
+
+    return superTypeRefs.mapNotNull { superTypeRef ->
+      val resolvedSuperType = superTypeRef.coneTypeOrNull
+      if (resolvedSuperType != null) {
+        resolvedSuperType.toRegularClassSymbol(session)
+      } else {
+        unresolvedSuperClassOrNull(superTypeRef, classSymbol.classId, typeResolver, visited)
+      }
+    }
+  }
+
+  /**
+   * Finds an unresolved supertype from its written name. Like Kotlin, this checks each enclosing
+   * class before the file's imports. At each enclosing class, it checks the class's nested
+   * classifiers, then its companion's, then those inherited from its superclasses. Typealiases are
+   * expanded.
+   *
+   * Enclosing classes' supertypes can be unresolved too, so this looks them up recursively.
+   * [visited] holds each class and written name already searched, which stops cycles in invalid
+   * code.
+   */
+  @OptIn(DirectDeclarationsAccess::class)
   private fun unresolvedSuperClassOrNull(
     superTypeRef: FirTypeRef,
     owner: ClassId,
     typeResolver: MetroFirTypeResolver?,
+    visited: MutableSet<Pair<ClassId, List<Name>>>,
   ): FirRegularClassSymbol? {
     val userTypeRef = superTypeRef as? FirUserTypeRef ?: return null
     val qualifiers = userTypeRef.qualifier.map { it.name }
 
     var outerClassId = owner.outerClassId
     while (outerClassId != null) {
-      val nestedClassId =
-        qualifiers.fold(outerClassId) { classId, name -> classId.createNestedClassId(name) }
-      val nestedClass = session.symbolProvider.getClassLikeSymbolByClassId(nestedClassId)
-      if (nestedClass is FirRegularClassSymbol) {
-        return nestedClass
+      val nestedClassifierId = nestedClassifierOrNull(outerClassId, qualifiers)
+      if (nestedClassifierId != null) {
+        return expandedRegularClassOrNull(nestedClassifierId)
+      }
+      val outerClass = session.symbolProvider.getClassLikeSymbolByClassId(outerClassId)
+      if (outerClass is FirClassSymbol<*>) {
+        val companion =
+          outerClass.declarationSymbols.filterIsInstance<FirRegularClassSymbol>().firstOrNull {
+            it.isCompanion
+          }
+        if (companion != null) {
+          val companionClassifierId = nestedClassifierOrNull(companion.classId, qualifiers)
+          if (companionClassifierId != null) {
+            return expandedRegularClassOrNull(companionClassifierId)
+          }
+        }
+        val inheritedClassifierId = inheritedClassifierOrNull(outerClass, qualifiers, visited)
+        if (inheritedClassifierId != null) {
+          return expandedRegularClassOrNull(inheritedClassifierId)
+        }
       }
       outerClassId = outerClassId.outerClassId
     }
@@ -519,7 +554,52 @@ internal class DependencyGraphFirGenerator(session: FirSession, compatContext: C
           part(name)
         }
       }
-    return typeResolver?.resolveType(classifierTypeRef)?.toRegularClassSymbol(session)
+    val classifierId = typeResolver?.resolveType(classifierTypeRef)?.classId ?: return null
+    return expandedRegularClassOrNull(classifierId)
+  }
+
+  /** Returns the ID of the classifier at [qualifiers] inside [classId], or null if none exists. */
+  private fun nestedClassifierOrNull(classId: ClassId, qualifiers: List<Name>): ClassId? {
+    val nestedClassId = qualifiers.fold(classId) { id, name -> id.createNestedClassId(name) }
+    val nestedClassifier = session.symbolProvider.getClassLikeSymbolByClassId(nestedClassId)
+    return nestedClassifier?.classId
+  }
+
+  /**
+   * Finds a classifier nested in one of [classSymbol]'s superclasses. Kotlin puts these in scope
+   * for classes nested in [classSymbol]. It skips superinterfaces, so this does too.
+   */
+  private fun inheritedClassifierOrNull(
+    classSymbol: FirClassSymbol<*>,
+    qualifiers: List<Name>,
+    visited: MutableSet<Pair<ClassId, List<Name>>>,
+  ): ClassId? {
+    if (!visited.add(classSymbol.classId to qualifiers)) {
+      return null
+    }
+    for (superClass in directSuperClasses(classSymbol, visited)) {
+      if (superClass.classKind != ClassKind.CLASS) {
+        continue
+      }
+      val nestedClassifierId = nestedClassifierOrNull(superClass.classId, qualifiers)
+      if (nestedClassifierId != null) {
+        return nestedClassifierId
+      }
+      val inheritedClassifierId = inheritedClassifierOrNull(superClass, qualifiers, visited)
+      if (inheritedClassifierId != null) {
+        return inheritedClassifierId
+      }
+    }
+    return null
+  }
+
+  /**
+   * Expands [classifierId] if it's a typealias. The alias's expansion can still be unresolved, so
+   * this reads its written name.
+   */
+  private fun expandedRegularClassOrNull(classifierId: ClassId): FirRegularClassSymbol? {
+    val classId = classifierId.expandedClassId(session) ?: return null
+    return session.symbolProvider.getClassLikeSymbolByClassId(classId) as? FirRegularClassSymbol
   }
 
   override fun generateConstructors(context: MemberGenerationContext): List<FirConstructorSymbol> {
@@ -605,7 +685,7 @@ internal class DependencyGraphFirGenerator(session: FirSession, compatContext: C
         graphObject(graphClass) ?: reportCompilerBug("No graph object found for $graphClass")
       val creator = graphObject.findCreator(session, "generateFunctions ${owner.classId}", ::log)!!
       val sam = creator.classSymbol.findSamFunction(session) ?: return null
-      return CreatorPlan(graphClass, creator, sam, sam.name)
+      return createCreatorPlan(graphClass, creator, sam, sam.name, owner)
     }
 
     val isBlockCreator = generatesBlockCreators && owner.isDependencyGraph(session)
@@ -633,7 +713,19 @@ internal class DependencyGraphFirGenerator(session: FirSession, compatContext: C
         sam = creatorClass.findSamFunction(session) ?: return null
       }
     }
-    return CreatorPlan(graphClass, creator, sam, graphCreatorName(creatorClass, sam))
+    return createCreatorPlan(graphClass, creator, sam, graphCreatorName(creatorClass, sam), owner)
+  }
+
+  private fun createCreatorPlan(
+    graphClass: FirClassSymbol<*>,
+    creator: GraphObject.Creator?,
+    sam: FirNamedFunctionSymbol?,
+    creatorName: Name,
+    owner: FirClassSymbol<*>,
+  ): CreatorPlan {
+    // Computing callable names walks the factory hierarchy, so do it once per owner.
+    val isCreatorNameReserved = creatorName in computeCallableNames(owner)
+    return CreatorPlan(graphClass, creator, sam, creatorName, isCreatorNameReserved)
   }
 
   override fun generateFunctions(
@@ -648,7 +740,7 @@ internal class DependencyGraphFirGenerator(session: FirSession, compatContext: C
     val matchesCreatorName = requestedName == plan.creatorName
     // External extensions can supply a factory after this generator reserves the owner's names.
     val isPlaceholderRequest = requestedName == PLACEHOLDER_SAM_FUNCTION && plan.sam != null
-    val isUnreservedName = plan.creatorName !in computeCallableNames(owner)
+    val isUnreservedName = !plan.isCreatorNameReserved
     val needsPlaceholderSam = isPlaceholderRequest && isUnreservedName
     val generatesCreator = matchesCreatorName || needsPlaceholderSam
     if (!generatesCreator) {
@@ -783,6 +875,8 @@ internal class DependencyGraphFirGenerator(session: FirSession, compatContext: C
     /** The factory function to implement. It's null for the default `invoke()` and `factory()`. */
     val sam: FirNamedFunctionSymbol?,
     val creatorName: Name,
+    /** Whether [creatorName] is one of the owner's reserved callable names. */
+    val isCreatorNameReserved: Boolean,
   )
 
   fun graphObject(classLikeSymbol: FirClassLikeSymbol<*>) =

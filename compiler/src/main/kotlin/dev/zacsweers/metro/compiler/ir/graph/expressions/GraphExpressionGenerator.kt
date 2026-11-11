@@ -36,7 +36,6 @@ import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider as wrapTypeInPr
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
-import dev.zacsweers.metro.compiler.ir.requireStaticIshDeclarationContainer
 import dev.zacsweers.metro.compiler.ir.toIrType
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.metro.compiler.letIf
@@ -662,15 +661,15 @@ private constructor(
           // When looking for an injector, try the current class.
           // If the current class doesn't have one but the parent does have injections, traverse up
           // until we hit the first injector that does work and use that
-          val injectorClass =
+          val injectorHelperOwner =
             generateSequence(injectedClass) { clazz ->
                 clazz.superClass?.takeIf { it.hasAnnotation(Symbols.ClassIds.HasMemberInjections) }
               }
               .firstNotNullOfOrNull { clazz ->
-                metroDeclarations.findInjector(clazz)?.injectorClass
+                metroDeclarations.findInjector(clazz)?.helperOwner
               }
 
-          if (injectorClass == null) {
+          if (injectorHelperOwner == null) {
             // Return a noop
             val membersInjector =
               irInvoke(
@@ -689,9 +688,8 @@ private constructor(
                 bindingKind = bindingKind,
               )
           } else {
-            val injectorCreatorClass = injectorClass.requireStaticIshDeclarationContainer()
             val createFunction =
-              injectorCreatorClass.requireSimpleFunction(Symbols.StringNames.CREATE)
+              injectorHelperOwner.requireSimpleFunction(Symbols.StringNames.CREATE)
             val args =
               generateBindingArguments(
                 targetParams = binding.parameters,

@@ -190,6 +190,7 @@ import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.properties
 import org.jetbrains.kotlin.ir.util.remapTypes
+import org.jetbrains.kotlin.ir.util.simpleFunctions
 import org.jetbrains.kotlin.ir.util.superClass
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
@@ -515,6 +516,10 @@ private fun IrBuilderWithScope.jvmStaticCalleeOrNull(
   if (callee.owner.parent != receiver.symbol.owner) return null
   val metroContext = context as? IrMetroContext ?: return null
   val staticCallee = with(metroContext) { callee.jvmStaticOrSelf() }
+  // A compatibility bridge delegates to its companion helper, so it must not call itself.
+  if (staticCallee == scope.scopeOwnerSymbol) {
+    return null
+  }
   return staticCallee.takeIf { it != callee }
 }
 
@@ -1893,13 +1898,26 @@ internal fun IrClass.requireSimpleFunction(name: String) =
     )
 
 /**
- * Returns the generated `factory()` accessor in a graph's companion object.
- *
- * Users can declare their own `factory` overloads in the companion, so this matches the no-arg
- * signature. It doesn't check the origin because graphs from other modules have stub origins.
+ * Finds a static-ish helper named [name] in this static-ish declaration container. Companion-block
+ * helpers share their class with instance members, like a factory's `invoke()` override. A provider
+ * named `invoke` gets a helper with that same name.
  */
-internal fun IrClass.requireGraphFactoryAccessor(): IrSimpleFunction =
-  functions.singleOrNull { it.name == Symbols.Names.factory && it.nonDispatchParameters.isEmpty() }
+internal fun IrClass.requireStaticIshFunction(name: String): IrSimpleFunction {
+  return simpleFunctions().firstOrNull { it.isStaticIsh && it.name.asString() == name }
+    ?: reportCompilerBug(
+      "No static-ish function $name in class $classId. Available: ${functions.joinToString { it.name.asString() }}",
+    )
+}
+
+/**
+ * Returns the generated `factory()` accessor for [factoryClass] in a graph's companion object.
+ *
+ * Users can declare their own `factory` overloads in the companion, so this uses
+ * [graphFactoryGetterOrNull] to match the no-arg signature. It doesn't check the origin because
+ * graphs from other modules have stub origins.
+ */
+internal fun IrClass.requireGraphFactoryAccessor(factoryClass: IrClass): IrSimpleFunction =
+  graphFactoryGetterOrNull(factoryClass)
     ?: reportCompilerBug(
       "No factory() function in class $classId. Available: ${functions.joinToString { it.name.asString() }}",
     )
@@ -2489,7 +2507,8 @@ internal fun patchQualifierAnnotation(
  * This is used to work around https://github.com/ZacSweers/metro/issues/1556 where klib
  * deserialization can produce incorrect qualifier annotations on parameters.
  *
- * @param factoryClass the factory class containing the create/newInstance functions
+ * @param factoryClass the factory class whose primary constructor may need patching
+ * @param helperOwner the class containing the create/newInstance functions
  * @param newInstanceFunctionName the name of the newInstance function to look up
  * @param signatureParams the parameters from the signature carrier to compare against
  * @param reportingFunction the function to report diagnostics on (for error messages)
@@ -2500,6 +2519,7 @@ internal fun patchQualifierAnnotation(
 context(context: IrMetroContext)
 internal fun checkSignatureCarrierParamMismatches(
   factoryClass: IrClass,
+  helperOwner: IrClass,
   newInstanceFunctionName: String,
   signatureFunction: IrSimpleFunction,
   signatureParams: () -> List<Parameter>,
@@ -2509,14 +2529,12 @@ internal fun checkSignatureCarrierParamMismatches(
 ): Boolean {
   if (!factoryClass.shouldCheckSignatureCarrierParamMismatches()) return false
 
-  val staticContainer = factoryClass.requireStaticIshDeclarationContainer()
-
   val newInstanceFunction by memoize {
-    staticContainer.requireSimpleFunction(newInstanceFunctionName).owner
+    helperOwner.requireStaticIshFunction(newInstanceFunctionName)
   }
   val newInstanceFunctionParams by memoize { extractParams(newInstanceFunction) }
 
-  val createFunction = staticContainer.requireSimpleFunction(Symbols.StringNames.CREATE).owner
+  val createFunction = helperOwner.requireStaticIshFunction(Symbols.StringNames.CREATE)
   val createFunctionParams = extractParams(createFunction)
 
   var hadUnpatchedMismatch = false

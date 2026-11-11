@@ -1094,7 +1094,7 @@ private fun ClassId?.usableClassIdOrNull(): ClassId? {
 }
 
 /** Expands typealiases without forcing their declarations into a later FIR phase. */
-private fun ClassId.expandedClassId(session: FirSession): ClassId? {
+internal fun ClassId.expandedClassId(session: FirSession): ClassId? {
   var currentClassId = usableClassIdOrNull() ?: return null
   val visitedAliases = mutableSetOf<ClassId>()
   while (true) {

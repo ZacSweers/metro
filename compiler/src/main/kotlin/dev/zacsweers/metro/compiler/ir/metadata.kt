@@ -104,6 +104,7 @@ internal fun GraphNode.toProto(
   bindingGraph: IrBindingGraph,
   ownProviderFactories: Set<ProviderFactory>,
   generateClassesInIr: Boolean,
+  companionMode: CompanionMode,
 ): DependencyGraphProto {
   val multibindingAccessors = BitFieldBuilder()
   val accessorNames =
@@ -122,16 +123,21 @@ internal fun GraphNode.toProto(
     isGraph = true,
     providerFactories = ownProviderFactories,
     generateClassesInIr = generateClassesInIr,
+    companionMode = companionMode,
     accessorNames = accessorNames,
     multibindingAccessorIndices = multibindingAccessors.build().toIntList(),
   )
 }
 
-internal fun BindingContainer.toProto(generateClassesInIr: Boolean): DependencyGraphProto {
+internal fun BindingContainer.toProto(
+  generateClassesInIr: Boolean,
+  companionMode: CompanionMode,
+): DependencyGraphProto {
   return createGraphProto(
     isGraph = false,
     providerFactories = providerFactories.values,
     generateClassesInIr = generateClassesInIr,
+    companionMode = companionMode,
     includedBindingContainers = includes.map { it.asString() },
   )
 }
@@ -142,6 +148,7 @@ private fun createGraphProto(
   isGraph: Boolean,
   providerFactories: Collection<ProviderFactory> = emptyList(),
   generateClassesInIr: Boolean,
+  companionMode: CompanionMode,
   accessorNames: Collection<String> = emptyList(),
   multibindingAccessorIndices: List<Int> = emptyList(),
   includedBindingContainers: Collection<String> = emptyList(),
@@ -181,6 +188,7 @@ private fun createGraphProto(
     accessor_callable_names = accessorNames.sorted(),
     multibinding_accessor_indices = multibindingAccessorIndices,
     included_binding_containers = includedBindingContainers.sorted(),
+    companion_mode = companionMode.toProto(),
   )
 }
 

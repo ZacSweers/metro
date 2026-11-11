@@ -7,6 +7,7 @@ import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.createMetroMetadata
 import dev.zacsweers.metro.compiler.ir.isBindingContainer
 import dev.zacsweers.metro.compiler.ir.metroMetadata
+import dev.zacsweers.metro.compiler.ir.toProto
 import dev.zacsweers.metro.compiler.proto.InjectedClassProto
 import dev.zacsweers.metro.compiler.proto.SignatureCarrier
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -31,6 +32,7 @@ internal fun IrClass.writeInjectedClassMetadata(
           is ClassFactory.DaggerFactory,
           null -> SignatureCarrier.MIRROR_FUNCTION
         },
+      companion_mode = metroContext.options.companionMode.toProto(),
     )
 
   if (isBindingContainer()) {

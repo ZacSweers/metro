@@ -51,8 +51,8 @@ import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.reportMissingRuntimeCoroutines
 import dev.zacsweers.metro.compiler.ir.requireDeclarationMirrorFunction
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
-import dev.zacsweers.metro.compiler.ir.requireStaticIshDeclarationContainer
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
+import dev.zacsweers.metro.compiler.ir.toCompanionMode
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.metro.compiler.ir.typeRemapperFor
 import dev.zacsweers.metro.compiler.ir.usesContributionProviderPath
@@ -179,15 +179,14 @@ internal class InjectedClassTransformer(
               ?: reportCompilerBug(
                 "Expected nested class '$factoryClassName' not found in '${declaration.kotlinFqName}'.",
               )
+          val producerCompanionMode = metadata.companion_mode.toCompanionMode()
+          val helperOwner = factoryCls.factoryHelperDeclarationContainer(producerCompanionMode)
           val signatureCarrier = metadata.signature_carrier
           val signatureFunction =
             when (signatureCarrier) {
               SignatureCarrier.MIRROR_FUNCTION -> factoryCls.requireDeclarationMirrorFunction()
               SignatureCarrier.CREATOR_FUNCTION ->
-                factoryCls
-                  .requireStaticIshDeclarationContainer()
-                  .requireSimpleFunction(Symbols.StringNames.NEW_INSTANCE)
-                  .owner
+                helperOwner.requireSimpleFunction(Symbols.StringNames.NEW_INSTANCE).owner
             }
           val parameters = signatureFunction.parameters()
 
@@ -199,6 +198,7 @@ internal class InjectedClassTransformer(
           val hadUnpatchedMismatch =
             checkSignatureCarrierParamMismatches(
               factoryClass = factoryCls,
+              helperOwner = helperOwner,
               newInstanceFunctionName = Symbols.StringNames.NEW_INSTANCE,
               signatureFunction = signatureFunction,
               signatureParams = { parameters.nonDispatchParameters.filterNot { it.isAssisted } },
@@ -218,6 +218,7 @@ internal class InjectedClassTransformer(
               parameters,
               externalTargetConstructor,
               signatureCarrier,
+              producerCompanionMode,
             )
           // If it's from another module, we're done!
           // TODO this doesn't work as expected in KMP, where things compiled in common are seen
@@ -458,6 +459,7 @@ internal class InjectedClassTransformer(
         signatureFunction.parameters(),
         targetConstructor,
         signatureCarrier,
+        options.companionMode,
       )
 
     // Write metadata to indicate Metro generated this factory

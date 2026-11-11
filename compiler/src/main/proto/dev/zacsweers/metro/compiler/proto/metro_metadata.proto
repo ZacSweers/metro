@@ -22,6 +22,9 @@ message DependencyGraphProto {
 
   // Set of all transitively included binding container class IDs (strings)
   repeated string included_binding_containers = 5;
+
+  // The producer's mode determines the helper owner of each provider factory.
+  CompanionMode companion_mode = 6;
 }
 
 // Extended provider factory entry with visibility metadata.
@@ -111,6 +114,8 @@ message InjectedClassProto {
   optional MemberInjectionsProto member_injections = 2;
   // The generated function that carries the injectable constructor's signature.
   SignatureCarrier signature_carrier = 3;
+  // The producer's mode determines the helper owner of the factory and members injector.
+  CompanionMode companion_mode = 4;
 }
 
 message MemberInjectionsProto {

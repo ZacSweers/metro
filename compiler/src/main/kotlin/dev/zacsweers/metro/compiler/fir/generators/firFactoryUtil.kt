@@ -255,7 +255,9 @@ internal fun FirClassSymbol<*>.collectAbstractFunctions(
 ): Collection<FirNamedFunctionSymbol>? {
   val scope = factoryScope(session)
   if (exitOnAbstractProperties) {
-    if (scope.collectAllProperties().any { it.isAbstractBeforeStatus() }) return null
+    if (scope.collectAllProperties().any { it.isAbstractBeforeStatus() }) {
+      return null
+    }
   }
   return scope.collectAllFunctions().filter { it.isAbstractBeforeStatus() }
 }

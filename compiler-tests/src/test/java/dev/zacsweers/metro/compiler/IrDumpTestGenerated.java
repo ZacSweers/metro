@@ -143,6 +143,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("GenericBaseFactoryDefaults.kt")
+    public void testGenericBaseFactoryDefaults() {
+      run("GenericBaseFactoryDefaults.kt");
+    }
+
+    @Test
     @TestMetadata("GraphCreators.kt")
     public void testGraphCreators() {
       run("GraphCreators.kt");

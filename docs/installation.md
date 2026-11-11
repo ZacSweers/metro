@@ -122,6 +122,8 @@ The `companion-block` and `compatibility` modes need companion blocks enabled. T
 
 Creator names come from your graph's factory. If an interface factory declares `fun build(...)`, you call `AppGraph.build(...)`. A graph without a factory uses `AppGraph()`. A graph with an abstract class factory uses `AppGraph.factory()`.
 
+Companion-block creators copy default values only from factory functions declared in the graph's file. If your factory inherits `build(...)` with defaults from another file, pass the arguments to `AppGraph.build(...)` or call `createGraphFactory<AppGraph.Factory>().build()`.
+
 Metro generates some factories as objects. Kotlin doesn't allow companion blocks in objects, so these factories keep their helpers on the object in every mode.
 
 ### Libraries
