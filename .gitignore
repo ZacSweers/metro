@@ -39,3 +39,4 @@ tmp/
 
 # Claude Code local state
 .claude/scheduled_tasks.lock
+.claude/worktrees

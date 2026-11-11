@@ -11,7 +11,6 @@ import org.jetbrains.kotlin.test.builders.TestConfigurationBuilder
 import org.jetbrains.kotlin.test.builders.configureIrHandlersStep
 import org.jetbrains.kotlin.test.builders.configureJvmArtifactsHandlersStep
 import org.jetbrains.kotlin.test.directives.AdditionalFilesDirectives.WITH_COROUTINES as WITH_COROUTINE_HELPERS
-import org.jetbrains.kotlin.test.directives.CodegenTestDirectives.IGNORE_DEXING
 import org.jetbrains.kotlin.test.directives.ConfigurationDirectives.WITH_STDLIB
 import org.jetbrains.kotlin.test.directives.JvmEnvironmentConfigurationDirectives.FULL_JDK
 import org.jetbrains.kotlin.test.directives.JvmEnvironmentConfigurationDirectives.JVM_TARGET
@@ -55,7 +54,7 @@ open class AbstractBoxTest : AbstractFirLightTreeBlackBoxCodegenTest() {
         +WITH_COROUTINE_HELPERS
         commonMetroTestDirectives()
 
-        +IGNORE_DEXING // Avoids loading R8 from the classpath.
+        +IGNORE_DEXING_COMPAT // Avoids loading R8 from the classpath.
       }
 
       forTestsMatching("CircuitSerializerRegistrationExpectActual.kt") {

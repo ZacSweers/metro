@@ -17,7 +17,6 @@ import org.jetbrains.kotlin.test.configuration.commonHandlersForCodegenTest
 import org.jetbrains.kotlin.test.directives.CodegenTestDirectives
 import org.jetbrains.kotlin.test.directives.CodegenTestDirectives.DUMP_IR
 import org.jetbrains.kotlin.test.directives.CodegenTestDirectives.DUMP_KT_IR
-import org.jetbrains.kotlin.test.directives.CodegenTestDirectives.IGNORE_DEXING
 import org.jetbrains.kotlin.test.directives.ConfigurationDirectives.WITH_STDLIB
 import org.jetbrains.kotlin.test.directives.FirDiagnosticsDirectives.DISABLE_GENERATED_FIR_TAGS
 import org.jetbrains.kotlin.test.directives.JvmEnvironmentConfigurationDirectives.FULL_JDK
@@ -75,7 +74,7 @@ open class AbstractIrDumpTest : AbstractKotlinCompilerWithTargetBackendTest(Targ
         commonMetroTestDirectives()
 
         LATEST_PHASE_IN_PIPELINE with backendTestPhase
-        +IGNORE_DEXING // Avoids loading R8 from the classpath.
+        +IGNORE_DEXING_COMPAT // Avoids loading R8 from the classpath.
         +DISABLE_GENERATED_FIR_TAGS
 
         -DUMP_IR

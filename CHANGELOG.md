@@ -46,6 +46,7 @@ Changelog
 
 ### Changes
 
+- **[compat]** Support Kotlin `2.5.20-dev-4223`.
 - Test Kotlin `2.5.0-RC`.
 - Test IntelliJ IDEA `2026.2.4` and `2026.3` stable.
 - Test Android Studio Rabbit 2 stable and Patch 1.

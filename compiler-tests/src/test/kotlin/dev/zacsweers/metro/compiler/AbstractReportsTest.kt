@@ -4,7 +4,6 @@ package dev.zacsweers.metro.compiler
 
 import org.jetbrains.kotlin.config.JvmTarget
 import org.jetbrains.kotlin.test.builders.TestConfigurationBuilder
-import org.jetbrains.kotlin.test.directives.CodegenTestDirectives.IGNORE_DEXING
 import org.jetbrains.kotlin.test.directives.ConfigurationDirectives.WITH_STDLIB
 import org.jetbrains.kotlin.test.directives.FirDiagnosticsDirectives.DISABLE_GENERATED_FIR_TAGS
 import org.jetbrains.kotlin.test.directives.JvmEnvironmentConfigurationDirectives.FULL_JDK
@@ -47,7 +46,7 @@ open class AbstractReportsTest : AbstractPhasedJvmDiagnosticLightTreeTest() {
         JVM_TARGET.with(JvmTarget.JVM_11)
         +FULL_JDK
         +WITH_STDLIB
-        +IGNORE_DEXING
+        +IGNORE_DEXING_COMPAT
         +DISABLE_GENERATED_FIR_TAGS
         commonMetroTestDirectives()
       }
