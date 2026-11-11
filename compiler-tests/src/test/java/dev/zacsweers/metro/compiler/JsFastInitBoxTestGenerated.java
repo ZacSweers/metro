@@ -3309,6 +3309,18 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("SetProviderAcceptsAliasesOfOneScopedBinding.kt")
+    public void testSetProviderAcceptsAliasesOfOneScopedBinding() {
+      run("SetProviderAcceptsAliasesOfOneScopedBinding.kt");
+    }
+
+    @Test
+    @TestMetadata("SetProviderAcceptsAliasesOfOneUnscopedBinding.kt")
+    public void testSetProviderAcceptsAliasesOfOneUnscopedBinding() {
+      run("SetProviderAcceptsAliasesOfOneUnscopedBinding.kt");
+    }
+
+    @Test
     @TestMetadata("SetProviderAcceptsEqualElementProviders.kt")
     public void testSetProviderAcceptsEqualElementProviders() {
       run("SetProviderAcceptsEqualElementProviders.kt");
