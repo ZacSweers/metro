@@ -8837,6 +8837,7 @@
 <li><strong>[IR]</strong> Fix graphs creating new providers every time a <code>Map&lt;K, Provider&lt;V&gt;&gt;</code> is requested. The graph now stores one map of entry providers and returns it on every read.</li>
 <li><strong>[IR]</strong> Fix a <code>ClassFormatError</code> when a contributed <code>@Binds</code> extension property or function shares a name with a graph accessor.</li>
 <li><strong>[IR/interop]</strong> Fix an issue with Dagger-processed providers/constructors with default parameters with their generated factory. Previously, Metro would treat the source function&rsquo;s parameter as optional if it had a default value and not reconcile that correctly with Dagger&rsquo;s generated factory (which would not propagate that default since Dagger uses a different mechanism for optional bindings).</li>
+<li><strong>[Runtime]</strong> Fix scoped providers that recursively invoke themselves accepting two equal but distinct instances. <code>DoubleCheck</code> compares the instances by identity, like Dagger, and throws if they differ.</li>
 </ul>
 <h3 id="changes">Changes<a class="headerlink" href="#changes" title="Permanent link">&para;</a></h3>
 <ul>
