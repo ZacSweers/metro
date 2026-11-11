@@ -1325,7 +1325,8 @@ internal class IrBindingGraph(
     // Iterate through all bindings to find similar ones
     for ((bindingKey, binding) in allBindings) {
       if (bindingKey.type.hasErrorTypes()) {
-        reportCompilerBug("Unexpected error type in all bindings")
+        // Error-typed keys can't be compared, so skip them and still report the missing binding.
+        continue
       } else if (bindingKey.multibindingKeyData != null) {
         // Multibinding entry, don't look at this at all
         continue
@@ -1887,10 +1888,18 @@ internal class IrBindingGraph(
             }
             ?.let { IrTypeKey(it.defaultType) }
         }
+    // Without a named site, the diagnostic says the type can't be injected "here".
+    val injectionSiteName = declaration?.fqNameWhenAvailable
+    val injectionSite =
+      if (injectionSiteName == null) {
+        null
+      } else {
+        textOf(injectionSiteName.asString(), Style.EMPHASIS)
+      }
     val diagnostic =
       invalidAssistedBindingDiagnostic(
         assistedType = binding.typeKey.toText(),
-        injectionSite = textOf("${declaration?.fqNameWhenAvailable}", Style.EMPHASIS),
+        injectionSite = injectionSite,
         assistedFactory = assistedFactory?.toText(),
       )
     // An accessor inherited from another module has no file to report on in this compilation.
