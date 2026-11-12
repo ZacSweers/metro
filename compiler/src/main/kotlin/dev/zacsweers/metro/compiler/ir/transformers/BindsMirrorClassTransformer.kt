@@ -356,10 +356,31 @@ private fun generateMirrorFunction(
       .apply {
         copyParametersFrom(targetFunction.ir)
         val sourceClass = targetFunction.ir.parentAsClass
-        if (sourceClass.typeParameters.isNotEmpty()) {
-          // The nested mirror can't reference type parameters owned by its outer container.
+        val sourceFunctionTypeParameters = targetFunction.ir.typeParameters
+        val hasContainerTypeParameters = sourceClass.typeParameters.isNotEmpty()
+        val hasFunctionTypeParameters = sourceFunctionTypeParameters.isNotEmpty()
+        if (hasContainerTypeParameters || hasFunctionTypeParameters) {
+          // The nested mirror can't reference type parameters owned by its outer container. It
+          // declares copies of them first and then copies of the binds function's own.
           val mirrorTypeParameters = copyTypeParametersFrom(sourceClass)
-          remapTypes(typeRemapperFor(mirrorTypeParameters.map { it.defaultType }, sourceClass))
+          val mirrorFunctionTypeParameters =
+            copyProviderFunctionTypeParameters(
+              functionTypeParameters = sourceFunctionTypeParameters,
+              sourceContainerTypeParameters = sourceClass.typeParameters,
+              copiedContainerTypeParameters = mirrorTypeParameters,
+              keepReified = false,
+            )
+          val sourceTypeParameters = sourceClass.typeParameters + sourceFunctionTypeParameters
+          val copiedTypeParameters = mirrorTypeParameters + mirrorFunctionTypeParameters
+          remapTypes(
+            typeRemapperFor(
+              sourceTypeParameters.zip(copiedTypeParameters).associate { (source, copied) ->
+                source.symbol to copied.defaultType
+              },
+            ),
+          )
+        }
+        if (hasContainerTypeParameters) {
           val mirrorReceiver = mirrorClass.thisReceiverOrFail
           setDispatchReceiver(mirrorReceiver.copyTo(this, type = mirrorReceiver.type))
         }

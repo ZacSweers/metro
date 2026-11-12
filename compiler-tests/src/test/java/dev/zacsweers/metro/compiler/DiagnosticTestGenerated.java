@@ -1205,6 +1205,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("DerivedBindingsNotEnabledAcrossModules.kt")
+    public void testDerivedBindingsNotEnabledAcrossModules() {
+      run("DerivedBindingsNotEnabledAcrossModules.kt");
+    }
+
+    @Test
     @TestMetadata("InlineGenericProviders.kt")
     public void testInlineGenericProviders() {
       run("InlineGenericProviders.kt");

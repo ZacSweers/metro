@@ -66,6 +66,7 @@ import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.isNullable
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.name.CallableId
+import org.jetbrains.kotlin.name.ClassId
 
 internal class BindingLookup(
   private val metroContext: IrMetroContext,
@@ -144,6 +145,42 @@ internal class BindingLookup(
 
   // Registered injector functions - binding creation deferred to computeMembersInjectorBindings
   private val registeredInjectorFunctions = mutableMapOf<IrTypeKey, InjectorFunctionInfo>()
+
+  /**
+   * Generic providers and binds callables by the raw class and qualifier of the key they provide.
+   * Their keys are patterns, so they never enter [bindingsCache]. Each list keeps registration
+   * order, which keeps lookups deterministic.
+   */
+  private val genericBindingIndex =
+    mutableMapOf<GenericBindingIndexKey, MutableList<GenericBindingCandidate>>()
+
+  /** True if this graph collected no generic providers or binds callables. */
+  val hasNoGenericBindingCandidates: Boolean
+    get() = genericBindingIndex.isEmpty()
+
+  /** All generic candidates in registration order. */
+  val allGenericBindingCandidates: Sequence<GenericBindingCandidate>
+    get() = genericBindingIndex.values.asSequence().flatten()
+
+  /**
+   * Returns the generic candidates whose provided key has the raw class [classId] and the
+   * [qualifier], in registration order.
+   */
+  fun genericBindingCandidatesFor(
+    classId: ClassId,
+    qualifier: IrAnnotation?,
+  ): List<GenericBindingCandidate> {
+    return genericBindingIndex[GenericBindingIndexKey(classId, qualifier)].orEmpty()
+  }
+
+  /** Adds a generic provider or binds callable to the generic binding index. */
+  fun registerGenericBindingCandidate(candidate: GenericBindingCandidate) {
+    candidate.checkPatternKey()
+    val key = GenericBindingIndexKey(candidate.rawClassId, candidate.patternKey.qualifier)
+    genericBindingIndex.getAndAdd(key, candidate)
+  }
+
+  private data class GenericBindingIndexKey(val classId: ClassId, val qualifier: IrAnnotation?)
 
   fun getAvailableKeys(): Set<IrTypeKey> {
     return bindingsCache.keys
@@ -244,6 +281,7 @@ internal class BindingLookup(
     directMapTypeKeys.clear()
     skippedDirectMapRequests.clear()
     registeredInjectorFunctions.clear()
+    genericBindingIndex.clear()
   }
 
   fun addLazyParentKey(typeKey: IrTypeKey, bindingFactory: () -> IrBinding) {

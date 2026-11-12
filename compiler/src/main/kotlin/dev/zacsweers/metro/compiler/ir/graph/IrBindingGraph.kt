@@ -25,6 +25,7 @@ import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.getValue
 import dev.zacsweers.metro.compiler.graph.AssistedBindingKind
 import dev.zacsweers.metro.compiler.graph.BindingGraphValidator
+import dev.zacsweers.metro.compiler.graph.DerivedBindingDiagnosticMessages
 import dev.zacsweers.metro.compiler.graph.DiagnosticRoutes
 import dev.zacsweers.metro.compiler.graph.ErrorReporter
 import dev.zacsweers.metro.compiler.graph.GraphAdjacency
@@ -1523,6 +1524,9 @@ internal class IrBindingGraph(
       { issue ->
         reportStructuralIssue(issue, stack, diagnosticRoutes, rootsByTypeKey)
       }
+    if (!metroContext.options.enableDerivedBindings) {
+      reportDerivedBindingsNotEnabled()
+    }
     val suspendProvidersEnabled = metroContext.options.enableSuspendProviders
     var hasDirectSuspendBinding = false
     var hasDisabledSuspendProviderUse = false
@@ -1620,6 +1624,29 @@ internal class IrBindingGraph(
       node.sourceGraph,
       "[${MetroDiagnosticId.SUSPEND_PROVIDERS_NOT_ENABLED.fullId}] ${SuspendDiagnosticMessages.SUSPEND_PROVIDERS_NOT_ENABLED}",
       MetroDiagnosticId.SUSPEND_PROVIDERS_NOT_ENABLED.factory,
+    )
+  }
+
+  /**
+   * Reports the generic providers and binds functions this graph collected while derived bindings
+   * are disabled. FIR reports declarations in this module, so these come from dependencies. The
+   * graph gets one report because that's where the option can be enabled.
+   */
+  private fun reportDerivedBindingsNotEnabled() {
+    val functionNames =
+      bindingLookup.allGenericBindingCandidates
+        .map { it.function.kotlinFqName.asString() }
+        .distinct()
+        .toList()
+    if (functionNames.isEmpty()) {
+      return
+    }
+    val message =
+      DerivedBindingDiagnosticMessages.derivedBindingsNotEnabledForDependencies(functionNames)
+    reportError(
+      node.sourceGraph,
+      "[${MetroDiagnosticId.DERIVED_BINDINGS_NOT_ENABLED.fullId}] $message",
+      MetroDiagnosticId.DERIVED_BINDINGS_NOT_ENABLED.factory,
     )
   }
 

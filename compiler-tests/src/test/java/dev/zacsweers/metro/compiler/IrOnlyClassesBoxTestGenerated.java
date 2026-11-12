@@ -3018,6 +3018,68 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
   }
 
   @Nested
+  @TestMetadata("compiler-tests/src/test/data/box/derivedbindings")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Derivedbindings {
+    private void run(String fileName) {
+      runTest("compiler-tests/src/test/data/box/derivedbindings/" + fileName);
+    }
+
+    @Test
+    public void testAllFilesPresentInDerivedbindings() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/derivedbindings"), Pattern.compile("^(.+)\\.kt$"), null, true);
+    }
+
+    @Test
+    @TestMetadata("UnusedGenericProvidersAcrossModules.kt")
+    public void testUnusedGenericProvidersAcrossModules() {
+      run("UnusedGenericProvidersAcrossModules.kt");
+    }
+
+    @Test
+    @TestMetadata("UnusedGenericProvidersInBindingContainer.kt")
+    public void testUnusedGenericProvidersInBindingContainer() {
+      run("UnusedGenericProvidersInBindingContainer.kt");
+    }
+
+    @Test
+    @TestMetadata("UnusedGenericProvidersInGenericContainer.kt")
+    public void testUnusedGenericProvidersInGenericContainer() {
+      run("UnusedGenericProvidersInGenericContainer.kt");
+    }
+
+    @Test
+    @TestMetadata("UnusedGenericProvidersInGraphCompanion.kt")
+    public void testUnusedGenericProvidersInGraphCompanion() {
+      run("UnusedGenericProvidersInGraphCompanion.kt");
+    }
+
+    @Test
+    @TestMetadata("UnusedGenericProvidersOnGraph.kt")
+    public void testUnusedGenericProvidersOnGraph() {
+      run("UnusedGenericProvidersOnGraph.kt");
+    }
+
+    @Test
+    @TestMetadata("UnusedPrivateGenericProvider.kt")
+    public void testUnusedPrivateGenericProvider() {
+      run("UnusedPrivateGenericProvider.kt");
+    }
+
+    @Test
+    @TestMetadata("UnusedReifiedGenericProvider.kt")
+    public void testUnusedReifiedGenericProvider() {
+      run("UnusedReifiedGenericProvider.kt");
+    }
+
+    @Test
+    @TestMetadata("UnusedScopedGenericProvider.kt")
+    public void testUnusedScopedGenericProvider() {
+      run("UnusedScopedGenericProvider.kt");
+    }
+  }
+
+  @Nested
   @TestMetadata("compiler-tests/src/test/data/box/ic")
   @TestDataPath("$PROJECT_ROOT")
   public class Ic {

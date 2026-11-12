@@ -18,6 +18,7 @@ import dev.zacsweers.metro.compiler.ir.annotationClass
 import dev.zacsweers.metro.compiler.ir.annotationsCompat
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.buildAnnotation
+import dev.zacsweers.metro.compiler.ir.buildDeepSubstitutionMap
 import dev.zacsweers.metro.compiler.ir.canBeInlined
 import dev.zacsweers.metro.compiler.ir.copyParameterDefaultValues
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
@@ -40,6 +41,7 @@ import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.setExtensionReceiver
 import dev.zacsweers.metro.compiler.ir.stubExpression
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
+import dev.zacsweers.metro.compiler.ir.typeRemapperFor
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.mirrorIrConstructorCalls
 import dev.zacsweers.metro.compiler.reportCompilerBug
@@ -62,6 +64,7 @@ import org.jetbrains.kotlin.ir.declarations.IrParameterKind
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrTypeParameter
+import org.jetbrains.kotlin.ir.declarations.IrTypeParametersContainer
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrGetValue
@@ -70,10 +73,12 @@ import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.IrTypeSubstitutor
 import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.typeWithParameters
+import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.copyParametersFrom
 import org.jetbrains.kotlin.ir.util.copyTo
+import org.jetbrains.kotlin.ir.util.copyTypeParameters
 import org.jetbrains.kotlin.ir.util.copyTypeParametersFrom
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.defaultType
@@ -112,6 +117,7 @@ internal fun generateStaticCreateFunction(
   isAssistedInject: Boolean = false,
   wrapInSuspendProvider: Boolean = false,
   stubDefaults: Boolean = true,
+  functionTypeParameters: List<IrTypeParameter> = emptyList(),
 ): IrSimpleFunction {
   val createFunction =
     objectClassToGenerateIn
@@ -124,17 +130,18 @@ internal fun generateStaticCreateFunction(
         origin = Origins.FactoryCreateFunction,
       )
       .apply {
-        val typeParams = copyTypeParametersFrom(sourceTypeParameters)
+        val (typeParams, typeRemapper) =
+          copyFactoryTypeParameters(
+            sourceClass = sourceTypeParameters,
+            functionTypeParameters = functionTypeParameters,
+            keepReified = false,
+          )
         this.returnType =
           if (isAssistedInject) {
             factoryClass.symbol.typeWithParameters(typeParams)
           } else {
             returnTypeProvider(typeParams)
           }
-        val typeRemapper =
-          sourceTypeParameters.deepRemapperFor(
-            sourceTypeParameters.symbol.typeWithParameters(typeParams),
-          )
         addParameters(
           parameters.allParameters.filterNot { it.isAssisted },
           wrapInProvider = true,
@@ -272,8 +279,11 @@ internal fun generateStaticNewInstanceFunction(
   functionName: String = Symbols.StringNames.NEW_INSTANCE,
   targetFunction: IrFunction? = null,
   isSuspend: Boolean = false,
+  functionTypeParameters: List<IrTypeParameter> = emptyList(),
   buildBody: IrBuilderWithScope.(IrSimpleFunction) -> IrExpression,
 ): IrSimpleFunction {
+  // inline can only work if the target is visible
+  val isInline = targetFunction?.canBeInlined() == true
   val newInstanceFunction =
     parentClass
       .addFunction(
@@ -284,16 +294,16 @@ internal fun generateStaticNewInstanceFunction(
         isStatic = !parentClass.isObject,
         origin = Origins.FactoryNewInstanceFunction,
         isSuspend = isSuspend,
-        // inline can only work if the target is visible
-        isInline = targetFunction?.canBeInlined() == true,
+        isInline = isInline,
       )
       .apply {
-        val typeParams = copyTypeParametersFrom(sourceTypeParameters)
-        this.returnType = returnTypeProvider(typeParams)
-        val typeRemapper =
-          sourceTypeParameters.deepRemapperFor(
-            sourceTypeParameters.symbol.typeWithParameters(typeParams),
+        val (typeParams, typeRemapper) =
+          copyFactoryTypeParameters(
+            sourceClass = sourceTypeParameters,
+            functionTypeParameters = functionTypeParameters,
+            keepReified = isInline,
           )
+        this.returnType = returnTypeProvider(typeParams)
         signatureAnnotations?.let {
           copySignatureAnnotations(factoryClass, targetFunction, it)
         }
@@ -374,6 +384,7 @@ internal fun generateMetadataVisibleDeclarationMirror(
   val isPrivateProperty = sourceProperty?.visibility == DescriptorVisibilities.PRIVATE
   val shouldGeneratePropertyMirror =
     context.options.enablePrivateProviderProperties && isPrivateProperty && !hasReceiverDependencies
+  val isInline = target?.canBeInlined() == true
   val property =
     if (shouldGeneratePropertyMirror) {
       factoryClass.addProperty {
@@ -393,14 +404,14 @@ internal fun generateMetadataVisibleDeclarationMirror(
         visibility = DescriptorVisibilities.PUBLIC
         modality = Modality.FINAL
         origin = Origins.Default
-        isInline = target?.canBeInlined() == true
+        this.isInline = isInline
         isSuspend = target is IrSimpleFunction && target.isSuspend
       }
     } else {
       factoryClass.addFunction {
         name = Symbols.Names.declarationMirror
         this.returnType = returnType
-        this.isInline = target?.canBeInlined() == true
+        this.isInline = isInline
         this.isSuspend = target is IrSimpleFunction && target.isSuspend
       }
     }
@@ -411,6 +422,33 @@ internal fun generateMetadataVisibleDeclarationMirror(
         val copiedTypeParameters = copyTypeParametersFrom(sourceClass)
         sourceClass.typeParameters.zip(copiedTypeParameters).associate { (source, copied) ->
           source.symbol to copied.defaultType
+        }
+      } else if (target != null && target.typeParameters.isNotEmpty()) {
+        // Generic providers declare the container's copies and then the function's own type
+        // parameters with their bounds, so other modules can read the full signature.
+        val sourceClass = factoryClass.parentAsClass
+        val containerCount = sourceClass.typeParameters.size
+        val copiedContainerTypeParameters =
+          copyTypeParameters(factoryClass.typeParameters.take(containerCount))
+        val copiedFunctionTypeParameters =
+          copyProviderFunctionTypeParameters(
+            functionTypeParameters = target.typeParameters,
+            sourceContainerTypeParameters = sourceClass.typeParameters,
+            copiedContainerTypeParameters = copiedContainerTypeParameters,
+            keepReified = isInline,
+          )
+        buildMap {
+          val copiedTypeParameters = copiedContainerTypeParameters + copiedFunctionTypeParameters
+          factoryClass.typeParameters.zip(copiedTypeParameters).forEach { (source, copied) ->
+            put(source.symbol, copied.defaultType)
+          }
+          sourceClass.typeParameters.zip(copiedContainerTypeParameters).forEach { (source, copied)
+            ->
+            put(source.symbol, copied.defaultType)
+          }
+          target.typeParameters.zip(copiedFunctionTypeParameters).forEach { (source, copied) ->
+            put(source.symbol, copied.defaultType)
+          }
         }
       } else {
         // Copy type parameters from the factory class (e.g., generic binding containers)
@@ -480,6 +518,80 @@ internal fun generateMetadataVisibleDeclarationMirror(
     }
   }
   return function
+}
+
+/**
+ * Copies a factory helper's type parameters onto this function. The [sourceClass]'s type parameters
+ * come first, then [functionTypeParameters] from a generic provider function. Returns the copies in
+ * that order and a remapper from the source symbols to the copies.
+ *
+ * Only inline helpers can keep `reified`, so [keepReified] drops it everywhere else.
+ */
+context(context: IrMetroContext)
+private fun IrSimpleFunction.copyFactoryTypeParameters(
+  sourceClass: IrClass,
+  functionTypeParameters: List<IrTypeParameter>,
+  keepReified: Boolean,
+): Pair<List<IrTypeParameter>, TypeRemapper> {
+  val classTypeParameters = copyTypeParametersFrom(sourceClass)
+  val sourceClassType = sourceClass.symbol.typeWithParameters(classTypeParameters)
+  if (functionTypeParameters.isEmpty()) {
+    return classTypeParameters to sourceClass.deepRemapperFor(sourceClassType)
+  }
+  val copiedFunctionTypeParameters =
+    copyProviderFunctionTypeParameters(
+      functionTypeParameters = functionTypeParameters,
+      sourceContainerTypeParameters = sourceClass.typeParameters,
+      copiedContainerTypeParameters = classTypeParameters,
+      keepReified = keepReified,
+    )
+  val substitutions = buildMap {
+    putAll(buildDeepSubstitutionMap(sourceClass, sourceClassType))
+    functionTypeParameters.zip(copiedFunctionTypeParameters).forEach { (source, copied) ->
+      put(source.symbol, copied.defaultType)
+    }
+  }
+  return (classTypeParameters + copiedFunctionTypeParameters) to typeRemapperFor(substitutions)
+}
+
+/**
+ * Appends copies of a generic provider function's type parameters after this declaration's existing
+ * ones. Bounds are copied too. References to the container's type parameters in those bounds point
+ * at [copiedContainerTypeParameters].
+ *
+ * A function type parameter can shadow a container type parameter in source. Its copy then gets a
+ * numeric suffix, the same way the FIR-generated factory class names it.
+ */
+@IgnorableReturnValue
+internal fun IrTypeParametersContainer.copyProviderFunctionTypeParameters(
+  functionTypeParameters: List<IrTypeParameter>,
+  sourceContainerTypeParameters: List<IrTypeParameter>,
+  copiedContainerTypeParameters: List<IrTypeParameter>,
+  keepReified: Boolean,
+): List<IrTypeParameter> {
+  val copies =
+    copyTypeParameters(
+      functionTypeParameters,
+      parameterMap = sourceContainerTypeParameters.zip(copiedContainerTypeParameters).toMap(),
+    )
+  val containerNames = sourceContainerTypeParameters.mapTo(mutableSetOf()) { it.name }
+  val usedNames = (containerNames + functionTypeParameters.map { it.name }).toMutableSet()
+  for (copy in copies) {
+    if (!keepReified) {
+      copy.isReified = false
+    }
+    if (copy.name in containerNames) {
+      var suffix = 2
+      var candidate = Name.identifier("${copy.name.asString()}$suffix")
+      while (candidate in usedNames) {
+        suffix++
+        candidate = Name.identifier("${copy.name.asString()}$suffix")
+      }
+      copy.name = candidate
+      usedNames += candidate
+    }
+  }
+  return copies
 }
 
 private fun IrValueParameter.isContextOrExtension(): Boolean =

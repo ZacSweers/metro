@@ -98,6 +98,7 @@ import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrParameterKind
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.declarations.IrTypeParameter
 import org.jetbrains.kotlin.ir.declarations.IrTypeParametersContainer
 import org.jetbrains.kotlin.ir.declarations.IrValueDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
@@ -2513,6 +2514,9 @@ internal fun patchQualifierAnnotation(
  * @param signatureParams the parameters from the signature carrier to compare against
  * @param reportingFunction the function to report diagnostics on (for error messages)
  * @param primaryConstructorParamOffset offset when indexing into primary constructor params
+ * @param signatureTypeParameters the type parameters that [signatureParams] mention, in the same
+ *   order as the `create()` function's. Each `create()` type parameter is compared as its
+ *   counterpart here. Generic providers need this because each function owns its own copies.
  * @param extractParams function to extract the list of [Parameter]s from a function
  * @return true if there was an unpatched mismatch, false otherwise
  */
@@ -2525,6 +2529,7 @@ internal fun checkSignatureCarrierParamMismatches(
   signatureParams: () -> List<Parameter>,
   reportingFunction: IrFunction?,
   primaryConstructorParamOffset: Int,
+  signatureTypeParameters: () -> List<IrTypeParameter> = { emptyList() },
   extractParams: (IrFunction) -> List<Parameter>,
 ): Boolean {
   if (!factoryClass.shouldCheckSignatureCarrierParamMismatches()) return false
@@ -2536,11 +2541,28 @@ internal fun checkSignatureCarrierParamMismatches(
 
   val createFunction = helperOwner.requireStaticIshFunction(Symbols.StringNames.CREATE)
   val createFunctionParams = extractParams(createFunction)
+  val typeParameterPairs = createFunction.typeParameters.zip(signatureTypeParameters())
+  val createTypeParameterRemapper =
+    if (typeParameterPairs.isEmpty()) {
+      NOOP_TYPE_REMAPPER
+    } else {
+      typeRemapperFor(
+        typeParameterPairs.associate { (create, signature) ->
+          create.symbol to signature.defaultType
+        },
+      )
+    }
 
   var hadUnpatchedMismatch = false
   for ((i, signatureParameter) in signatureParams().withIndex()) {
     val createP = createFunctionParams[i]
-    if (createP.typeKey != signatureParameter.typeKey) {
+    val createTypeKey =
+      if (createTypeParameterRemapper === NOOP_TYPE_REMAPPER) {
+        createP.typeKey
+      } else {
+        createP.typeKey.remapTypes(createTypeParameterRemapper)
+      }
+    if (createTypeKey != signatureParameter.typeKey) {
       reportSignatureCarrierParamMismatch(
         reportingFunction ?: signatureFunction,
         signatureParameter,

@@ -17,6 +17,7 @@ import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.declarations.IrTypeParameter
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.util.callableId
@@ -44,6 +45,15 @@ internal class IrCallableMetadata(
   val isCompanionBlockMember: Boolean,
   @Poko.Skip val function: IrSimpleFunction,
   @Poko.Skip val signatureFunction: IrSimpleFunction,
+  /**
+   * The source callable's own type parameters, as declared on [function]. Types in [function]'s
+   * signature mention exactly these symbols for function-level type parameters. They're empty for
+   * ordinary callables.
+   *
+   * A [function] reconstructed from another module's signature carrier can also declare copies of
+   * its container's type parameters. Those come first and aren't part of this list.
+   */
+  @Poko.Skip val functionTypeParameters: List<IrTypeParameter>,
 ) {
   companion object {
     /**
@@ -73,6 +83,7 @@ internal class IrCallableMetadata(
         isCompanionBlockMember = sourceFunction.isCompanionBlockMember,
         function = sourceFunction,
         signatureFunction = signatureFunction,
+        functionTypeParameters = sourceFunction.typeParameters,
       )
     }
   }
@@ -104,6 +115,7 @@ internal fun IrAnnotationContainer.irCallableMetadata(
       isCompanionBlockMember = false,
       function = signatureFunction,
       signatureFunction = signatureFunction,
+      functionTypeParameters = signatureFunction.typeParameters,
     )
   }
 
@@ -147,15 +159,26 @@ internal fun IrConstructorCall.toIrCallableMetadata(
       sourceCallableName,
     )
 
+  val isBindsMirror = clazz.name == Symbols.Names.BindsMirrorClass
+  val containerTypeParameterCount =
+    if (isBindsMirror) {
+      0
+    } else {
+      parentClass.typeParameters.size
+    }
+
   // Fake a reference to the real function by making a copy of its generated signature carrier.
   val function =
     signatureFunction.deepCopyWithSymbols().apply {
       // Property carriers are functions, so keep the getter name on the reconstructed function.
       name = callableName.asName()
-      if (clazz.name == Symbols.Names.BindsMirrorClass && typeParameters.isNotEmpty()) {
-        // The reconstructed member uses its container's type parameters.
+      if (isBindsMirror && typeParameters.isNotEmpty()) {
+        // The reconstructed member uses its container's type parameters. The mirror declares
+        // copies of them first and then the binds function's own type parameters, which it keeps.
+        val containerCount = parentClass.typeParameters.size
         remapTypes(typeRemapperFor(parentClass.typeParameters.map { it.defaultType }, this))
-        typeParameters = emptyList()
+        typeParameters = typeParameters.drop(containerCount)
+        typeParameters.forEachIndexed { index, typeParameter -> typeParameter.index = index }
       }
       val sourceNeedsInstance = !parentClass.isObject && !isCompanionBlockMember
       val creatorCarriesInstance =
@@ -208,5 +231,8 @@ internal fun IrConstructorCall.toIrCallableMetadata(
     isCompanionBlockMember = isCompanionBlockMember,
     function = function,
     signatureFunction = signatureFunction,
+    // Binds mirrors already dropped the container's copies above. Provider signature carriers
+    // declare them before the function's own type parameters.
+    functionTypeParameters = function.typeParameters.drop(containerTypeParameterCount),
   )
 }

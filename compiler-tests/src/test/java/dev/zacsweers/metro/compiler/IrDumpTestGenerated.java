@@ -750,6 +750,26 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
   }
 
   @Nested
+  @TestMetadata("compiler-tests/src/test/data/dump/ir/derivedbindings")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Derivedbindings {
+    private void run(String fileName) {
+      runTest("compiler-tests/src/test/data/dump/ir/derivedbindings/" + fileName);
+    }
+
+    @Test
+    public void testAllFilesPresentInDerivedbindings() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/derivedbindings"), Pattern.compile("^(.+)\\.kt$"), null, true);
+    }
+
+    @Test
+    @TestMetadata("GenericProviderFactories.kt")
+    public void testGenericProviderFactories() {
+      run("GenericProviderFactories.kt");
+    }
+  }
+
+  @Nested
   @TestMetadata("compiler-tests/src/test/data/dump/ir/ic")
   @TestDataPath("$PROJECT_ROOT")
   public class Ic {

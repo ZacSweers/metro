@@ -19,6 +19,7 @@ import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithVisibility
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.declarations.IrTypeParameter
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.util.TypeRemapper
@@ -148,16 +149,47 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
 
     override val isDaggerFactory: Boolean = false
 
+    /**
+     * The provider function's own type parameters. They're empty for ordinary providers.
+     *
+     * [typeKey], [rawTypeKey], [contextualTypeKey], and [parameters] mention exactly these symbols
+     * for function-level type parameters. This holds for providers declared in this compilation and
+     * for ones loaded from another module's signature carrier. Container substitution through
+     * [withRemappedTypes] leaves them in place.
+     */
+    val functionTypeParameters: List<IrTypeParameter>
+      get() = callableMetadata.functionTypeParameters
+
+    /** True if the provider function declares its own type parameters. */
+    val isGeneric: Boolean
+      get() = functionTypeParameters.isNotEmpty()
+
+    /**
+     * Substitutes the container's type parameters through [remapper]. Function-level type
+     * parameters stay unchanged, so a generic provider stays generic.
+     */
     fun withRemappedTypes(remapper: TypeRemapper): Metro {
       val sourceClass = factoryClass.parentAsClass
       val concreteTypes = sourceClass.typeParameters.map { remapper.remapType(it.defaultType) }
+      // Each declaration lists the container's type parameters (or copies of them) first. The
+      // source function itself declares only its own type parameters.
+      val functionTypeParameterCount = functionTypeParameters.size
+      val containerTypeParameterLists =
+        listOf(
+          sourceClass.typeParameters,
+          factoryClass.typeParameters,
+          signatureFunction.typeParameters,
+          function.typeParameters.dropLast(functionTypeParameterCount),
+        )
       val factoryRemapper =
         typeRemapperFor(
-          concreteTypes,
-          sourceClass,
-          factoryClass,
-          signatureFunction,
-          function,
+          buildMap {
+            for (typeParameters in containerTypeParameterLists) {
+              typeParameters.zip(concreteTypes).forEach { (typeParameter, concreteType) ->
+                put(typeParameter.symbol, concreteType)
+              }
+            }
+          },
         )
       return Metro(
         factoryClass = factoryClass,
@@ -228,7 +260,17 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
       inlinedValue: IrInlinedProvider? = null,
       computeInlinedValue: Boolean = true,
     ): Metro? {
-      val rawTypeKey = contextKey.typeKey.copy(qualifier = callableMetadata.annotations.qualifier)
+      // Keys read from the signature carrier mention its copies of the function's type parameters.
+      val functionKeyRemapper =
+        signatureFunctionTypeParameterRemapper(clazz, signatureFunction, callableMetadata)
+      val signatureContextKey =
+        if (functionKeyRemapper === NOOP_TYPE_REMAPPER) {
+          contextKey
+        } else {
+          contextKey.remapType(functionKeyRemapper)
+        }
+      val rawTypeKey =
+        signatureContextKey.typeKey.copy(qualifier = callableMetadata.annotations.qualifier)
       val typeKey = rawTypeKey.transformIfIntoMultibinding(callableMetadata.annotations)
       val hasInstanceDependency =
         callableMetadata.function.dispatchReceiverParameter != null &&
@@ -250,6 +292,13 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
             }
           },
           reportingFunction = callableMetadata.function,
+          signatureTypeParameters = {
+            if (signatureCarrier == SignatureCarrier.MIRROR_FUNCTION) {
+              signatureFunction.typeParameters
+            } else {
+              callableMetadata.function.typeParameters
+            }
+          },
           primaryConstructorParamOffset =
             if (hasInstanceDependency) {
               1
@@ -268,7 +317,7 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
         return null
       }
 
-      val transformedContextKey = contextKey.withIrTypeKey(typeKey)
+      val transformedContextKey = signatureContextKey.withIrTypeKey(typeKey)
       val realDecl =
         realDeclaration
           ?: lookupRealDeclaration(
@@ -298,6 +347,35 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
         signatureCarrier = signatureCarrier,
         companionMode = companionMode,
         inlinedValue = computedInlinedValue,
+      )
+    }
+
+    /**
+     * Maps the signature carrier's copies of the provider function's type parameters onto
+     * [IrCallableMetadata.functionTypeParameters]. Carriers declare the container's copies first,
+     * so the function's copies are the trailing ones.
+     */
+    private fun signatureFunctionTypeParameterRemapper(
+      factoryClass: IrClass,
+      signatureFunction: IrSimpleFunction,
+      callableMetadata: IrCallableMetadata,
+    ): TypeRemapper {
+      val functionTypeParameters = callableMetadata.functionTypeParameters
+      if (functionTypeParameters.isEmpty()) {
+        return NOOP_TYPE_REMAPPER
+      }
+      val containerTypeParameterCount = factoryClass.parentAsClass.typeParameters.size
+      val signatureTypeParameters =
+        signatureFunction.typeParameters.drop(containerTypeParameterCount)
+      check(signatureTypeParameters.size == functionTypeParameters.size) {
+        "Signature carrier ${signatureFunction.name} declares ${signatureTypeParameters.size} " +
+          "function type parameters but ${callableMetadata.callableId} has " +
+          "${functionTypeParameters.size}"
+      }
+      return typeRemapperFor(
+        signatureTypeParameters.zip(functionTypeParameters).associate { (signature, source) ->
+          signature.symbol to source.defaultType
+        },
       )
     }
 

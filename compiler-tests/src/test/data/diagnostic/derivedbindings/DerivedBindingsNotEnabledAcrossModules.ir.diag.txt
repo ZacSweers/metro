@@ -1,0 +1,1 @@
+/main.kt:31:11: error: [Metro/DerivedBindingsNotEnabled] This graph includes `EncoderBindings.list` and `CacheBindings.bindCache`, which declare type parameters. Generic providers need derived bindings, which are disabled. Enable the `enable-derived-bindings` compiler option or set `metro.enableDerivedBindings` to true.

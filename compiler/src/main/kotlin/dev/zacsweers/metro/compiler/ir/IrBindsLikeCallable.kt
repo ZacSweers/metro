@@ -15,6 +15,7 @@ import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.declarations.IrTypeParameter
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.hasAnnotation
@@ -46,6 +47,21 @@ internal class BindsCallable(
   val rawTarget: IrTypeKey,
   @Poko.Skip private val parametersLazy: Lazy<Parameters>,
 ) : BindsLikeCallable {
+
+  /**
+   * The binds function's own type parameters. They're empty for ordinary binds.
+   *
+   * [source], [typeKey], [rawTarget], and the alias parameters mention exactly these symbols for
+   * function-level type parameters. This holds for callables declared in this compilation and for
+   * ones read from another module's mirror. Container substitution through [remapTypes] leaves them
+   * in place.
+   */
+  val functionTypeParameters: List<IrTypeParameter>
+    get() = callableMetadata.functionTypeParameters
+
+  /** True if the binds function declares its own type parameters. */
+  val isGeneric: Boolean
+    get() = functionTypeParameters.isNotEmpty()
 
   /**
    * Caches the alias for this callable's concrete types. Remapped callables own separate aliases.

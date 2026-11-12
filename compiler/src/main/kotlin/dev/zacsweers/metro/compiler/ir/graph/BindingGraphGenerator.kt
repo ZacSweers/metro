@@ -267,6 +267,14 @@ internal class BindingGraphGenerator(
           continue
         }
 
+        // A generic provider's key is a pattern, so it goes to the generic index.
+        if (providerFactory is ProviderFactory.Metro && providerFactory.isGeneric) {
+          bindingLookup.registerGenericBindingCandidate(
+            GenericBindingCandidate.Provider(providerFactory, isLocallyDeclared),
+          )
+          continue
+        }
+
         // typeKey is already the transformed multibinding key
         val targetTypeKey = providerFactory.typeKey
         val isDynamic = providerFactory.isDynamic
@@ -332,6 +340,14 @@ internal class BindingGraphGenerator(
             typeKey,
             bindsCallable.resolveSourceDeclaration().first,
             BindingReason.DYNAMIC_REPLACEMENT,
+          )
+          continue
+        }
+
+        // A generic binds callable's key is a pattern, so it goes to the generic index.
+        if (bindsCallable.isGeneric) {
+          bindingLookup.registerGenericBindingCandidate(
+            GenericBindingCandidate.Binds(bindsCallable, isLocallyDeclared),
           )
           continue
         }

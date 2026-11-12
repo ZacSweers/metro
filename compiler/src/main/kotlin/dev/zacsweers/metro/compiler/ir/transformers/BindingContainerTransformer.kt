@@ -75,6 +75,7 @@ import dev.zacsweers.metro.compiler.ir.reportMissingRuntimeCoroutines
 import dev.zacsweers.metro.compiler.ir.requireDeclarationMirrorFunction
 import dev.zacsweers.metro.compiler.ir.requireStaticIshFunction
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
+import dev.zacsweers.metro.compiler.ir.stubExpression
 import dev.zacsweers.metro.compiler.ir.subcomponentsArgument
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.toClassReferences
@@ -125,6 +126,7 @@ import org.jetbrains.kotlin.ir.declarations.IrParameterKind
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrTypeAlias
+import org.jetbrains.kotlin.ir.declarations.IrTypeParameter
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
@@ -410,13 +412,8 @@ internal class BindingContainerTransformer(
           }
       }
 
-    val sourceTypeParameters = reference.parent.owner.typeParameters
     val factoryTypeRemapper =
-      if (sourceTypeParameters.isEmpty()) {
-        NOOP_TYPE_REMAPPER
-      } else {
-        typeRemapperFor(factoryCls.typeParameters.map { it.defaultType }, reference.parent.owner)
-      }
+      reference.providerTypeRemapper(factoryCls.typeParameters.map { it.defaultType })
     val factoryTargetType = factoryTypeRemapper.remapType(reference.typeKey.type)
 
     val factorySuperTypeSymbol =
@@ -545,8 +542,15 @@ internal class BindingContainerTransformer(
     // TODO DRY this up with the constructor injection override
     trace("Implement invoke") {
       invokeFunction.finalizeFakeOverride(factoryCls.thisReceiverOrFail)
+      // The factory's own type parameters can't be reified, so it can't call a reified helper.
+      val callsReifiedHelper = bytecodeFunction.typeParameters.any { it.isReified }
       invokeFunction.body =
         pluginContext.createIrBuilder(invokeFunction.symbol).run {
+          if (callsReifiedHelper) {
+            return@run irExprBodySafe(
+              stubExpression("Reified providers are called directly and never through a factory."),
+            )
+          }
           irExprBodySafe(
             irInvoke(
               dispatchReceiver = dispatchReceiverFor(bytecodeFunction),
@@ -634,6 +638,8 @@ internal class BindingContainerTransformer(
               isCompanionBlockMember = reference.isCompanionBlockMember,
               function = copiedSourceFunction,
               signatureFunction = signatureFunction,
+              // Fields can't declare type parameters.
+              functionTypeParameters = emptyList(),
             )
           }
         } else {
@@ -813,9 +819,11 @@ internal class BindingContainerTransformer(
       },
       sourceTypeParameters = reference.parent.owner,
       wrapInSuspendProvider = reference.isSuspend,
+      functionTypeParameters = reference.functionTypeParameters,
     )
 
     // Generate the named newInstance function
+    val containerTypeParameterCount = reference.parent.owner.typeParameters.size
     val newInstanceFunction =
       generateStaticNewInstanceFunction(
         parentClass = classToGenerateCreatorsIn,
@@ -826,14 +834,11 @@ internal class BindingContainerTransformer(
         // Context dependencies become ordinary parameters on newInstance().
         sourceParameters = reference.parameters.nonDispatchParameters.map { it.asValueParameter },
         sourceTypeParameters = reference.parent.owner,
+        functionTypeParameters = reference.functionTypeParameters,
         returnTypeProvider = { typeParameters ->
-          val sourceClass = reference.parent.owner
-          val typeRemapper =
-            typeRemapperFor(
-              typeParameters.map { it.defaultType },
-              sourceClass,
-            )
-          typeRemapper.remapType(reference.returnType)
+          reference
+            .providerTypeRemapper(typeParameters.map { it.defaultType })
+            .remapType(reference.returnType)
         },
         functionName = reference.name.asString(),
         isSuspend = reference.isSuspend,
@@ -862,11 +867,15 @@ internal class BindingContainerTransformer(
           val extensionReceiver =
             reference.parameters.extensionReceiverParameter?.let { irGet(callParameters[index++]) }
           val args = reference.parameters.regularParameters.map { irGet(callParameters[index++]) }
+          // The helper declares the provider function's type parameters after the container's.
+          val functionTypeArguments =
+            function.typeParameters.drop(containerTypeParameterCount).map { it.defaultType }
           irInvoke(
             dispatchReceiver = dispatchReceiver,
             extensionReceiver = extensionReceiver,
             callee = reference.callee!!,
             typeHint = function.returnType,
+            typeArgs = functionTypeArguments.takeIf { it.isNotEmpty() },
             contextArgs = contextArgs,
             args = args,
           )
@@ -938,6 +947,33 @@ internal class BindingContainerTransformer(
 
     val isCompanionBlockMember: Boolean
       get() = sourceDeclaration?.isCompanionBlockMember == true
+
+    /**
+     * The provider function's own type parameters. Generated helpers declare these after the
+     * [parent]'s type parameters. Properties and fields have none.
+     */
+    val functionTypeParameters: List<IrTypeParameter>
+      get() = callee?.owner?.typeParameters.orEmpty()
+
+    /**
+     * Maps the [parent]'s type parameters and then [functionTypeParameters] onto [typeArguments] by
+     * position.
+     */
+    fun providerTypeRemapper(typeArguments: List<IrType>): TypeRemapper {
+      val sourceTypeParameters = parent.owner.typeParameters + functionTypeParameters
+      if (sourceTypeParameters.isEmpty()) {
+        return NOOP_TYPE_REMAPPER
+      }
+      check(sourceTypeParameters.size == typeArguments.size) {
+        "Expected ${sourceTypeParameters.size} type arguments for $callableId but got " +
+          "${typeArguments.size}"
+      }
+      return typeRemapperFor(
+        sourceTypeParameters.zip(typeArguments).associate { (parameter, argument) ->
+          parameter.symbol to argument
+        },
+      )
+    }
 
     val containerClass =
       if (parent.owner.isCompanionObject) {
@@ -1299,6 +1335,7 @@ internal class BindingContainerTransformer(
           classId,
           isObject = entry.is_object,
           companionMode = producerCompanionMode,
+          functionTypeParameters = providesFunction?.typeParameters.orEmpty(),
         )
 
     val mirrorFunction =
@@ -1357,6 +1394,13 @@ internal class BindingContainerTransformer(
         isCompanionBlockMember = entry.is_companion_block_member,
         function = sourceFunction,
         signatureFunction = mirrorFunction,
+        functionTypeParameters =
+          if (providesFunction != null) {
+            providesFunction.typeParameters
+          } else {
+            // The mirror copy declares the container's copies first.
+            sourceFunction.typeParameters.drop(container.typeParameters.size)
+          },
       )
 
     // referenceClass bypasses the visibility filter that originClassOrNull() inherits, so
@@ -1413,6 +1457,7 @@ internal class BindingContainerTransformer(
     classId: ClassId,
     isObject: Boolean,
     companionMode: CompanionMode,
+    functionTypeParameters: List<IrTypeParameter> = emptyList(),
   ): IrClass {
     val classKind = if (isObject) ClassKind.OBJECT else ClassKind.CLASS
 
@@ -1427,7 +1472,14 @@ internal class BindingContainerTransformer(
         // Set parent but do NOT add as child — caller decides
         this.parent = parentClass
         if (!isObject) {
-          typeParameters = copyTypeParametersFrom(parentClass)
+          val containerTypeParameters = copyTypeParametersFrom(parentClass)
+          copyProviderFunctionTypeParameters(
+            functionTypeParameters = functionTypeParameters,
+            sourceContainerTypeParameters = parentClass.typeParameters,
+            copiedContainerTypeParameters = containerTypeParameters,
+            // Classes can't declare reified type parameters.
+            keepReified = false,
+          )
         }
         createThisReceiverParameter()
 
@@ -1463,13 +1515,16 @@ internal class BindingContainerTransformer(
     reference: CallableReference,
   ): IrClass {
     // Generic factory owners require a class even when the source provider has no dependencies.
-    val hasCopiedTypeParameters = parentClass.typeParameters.isNotEmpty()
+    val hasContainerTypeParameters = parentClass.typeParameters.isNotEmpty()
+    val hasFunctionTypeParameters = reference.functionTypeParameters.isNotEmpty()
+    val hasCopiedTypeParameters = hasContainerTypeParameters || hasFunctionTypeParameters
     val isObject = reference.parameters.allParameters.isEmpty() && !hasCopiedTypeParameters
     return createContributionProviderFactoryStub(
         parentClass,
         generatedClassId,
         isObject,
         options.companionMode,
+        functionTypeParameters = reference.functionTypeParameters,
       )
       .also {
         it.addCallableMetadataAnnotation(reference)
