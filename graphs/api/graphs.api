@@ -210,6 +210,20 @@ public final class dev/zacsweers/metro/gradle/analysis/DependencyMetadata$Compan
 	public final fun serializer ()Lkotlinx/serialization/KSerializer;
 }
 
+public final synthetic class dev/zacsweers/metro/gradle/analysis/DerivedFromMetadata$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Ldev/zacsweers/metro/gradle/analysis/DerivedFromMetadata$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ldev/zacsweers/metro/gradle/analysis/DerivedFromMetadata;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Ldev/zacsweers/metro/gradle/analysis/DerivedFromMetadata;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+}
+
+public final class dev/zacsweers/metro/gradle/analysis/DerivedFromMetadata$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
 public final synthetic class dev/zacsweers/metro/gradle/analysis/DominatorNode$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
 	public static final field INSTANCE Ldev/zacsweers/metro/gradle/analysis/DominatorNode$$serializer;
 	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;

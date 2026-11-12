@@ -591,6 +591,7 @@ internal fun bindingStackEntryForDependency(
         sourceParameter,
         declaration = sourceParameter ?: callingBinding.ir,
         displayTypeKey = targetKey,
+        diagnosticNotes = callingBinding.diagnosticNotes,
       )
     }
     is Provided -> {
@@ -603,6 +604,7 @@ internal fun bindingStackEntryForDependency(
         callingBinding.parameterFor(contextKey),
         displayTypeKey = targetKey,
         isSignatureFunction = false,
+        diagnosticNotes = callingBinding.diagnosticNotes,
       )
     }
     is AssistedFactory -> {

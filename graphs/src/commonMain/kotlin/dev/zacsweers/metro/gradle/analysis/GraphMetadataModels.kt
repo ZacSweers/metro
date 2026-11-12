@@ -237,6 +237,20 @@ public data class BindingMetadata(
   val graphDependency: GraphDependencyMetadata? = null,
   /** The compiler's rendering of [key], for display. Defaults to [key]. */
   val renderedKey: String = key,
+  /** The generic provider this binding was derived from. It's null for other bindings. */
+  val derivedFrom: DerivedFromMetadata? = null,
+)
+
+/**
+ * The generic `@Provides` or `@Binds` function a derived binding came from. [typeArguments] maps
+ * each of the function's type parameter names to its inferred type, in declaration order.
+ */
+@Serializable
+@ExperimentalMetroGraphApi
+public data class DerivedFromMetadata(
+  /** The function's fully qualified name. */
+  val provider: String,
+  val typeArguments: Map<String, String>,
 )
 
 /** Source of a binding exposed by an included graph or inherited from a parent graph. */

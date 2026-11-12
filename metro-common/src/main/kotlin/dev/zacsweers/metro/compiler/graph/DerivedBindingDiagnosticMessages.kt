@@ -75,6 +75,33 @@ public object DerivedBindingDiagnosticMessages {
       "the limit. Add an exact binding for a key on the chain to shorten it."
   }
 
+  /**
+   * A note on a binding in a diagnostic trace that a generic provider derived. [typeArguments]
+   * pairs each of the provider's type parameter names with its inferred type, in declaration order.
+   */
+  public fun derivedBindingNote(
+    key: String,
+    provider: String,
+    typeArguments: List<Pair<String, String>>,
+  ): String {
+    return "`$key` is derived from `$provider` with ${renderTypeArguments(typeArguments)}"
+  }
+
+  /**
+   * A detail on a derived binding in a binding explanation. [typeArguments] pairs each of the
+   * provider's type parameter names with its inferred type, in declaration order.
+   */
+  public fun derivedBindingDetail(
+    provider: String,
+    typeArguments: List<Pair<String, String>>,
+  ): String {
+    return "Derived from `$provider` with ${renderTypeArguments(typeArguments)}."
+  }
+
+  private fun renderTypeArguments(typeArguments: List<Pair<String, String>>): String {
+    return renderNames(typeArguments.map { (name, type) -> "$name = $type" })
+  }
+
   /** Quotes [names] and joins them into a readable list. */
   private fun renderNames(names: List<String>): String {
     val quoted = names.map { "`$it`" }

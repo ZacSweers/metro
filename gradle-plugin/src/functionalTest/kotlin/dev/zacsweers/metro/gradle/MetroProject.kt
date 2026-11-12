@@ -279,6 +279,7 @@ abstract class MetroProject(
       metroOptions.generateContributionProviders?.let {
         add("generateContributionProviders.set($it)")
       }
+      metroOptions.enableDerivedBindings?.let { add("enableDerivedBindings.set($it)") }
       val omitRedundantMirrors =
         metroOptions.omitRedundantMirrors ?: getTestOmitRedundantMirrorsOverride()
       omitRedundantMirrors?.let {

@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.graph.explanation.BindingSourceLocation
 import dev.zacsweers.metro.compiler.graph.explanation.bindingExplanationId
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.graph.IrBinding
+import dev.zacsweers.metro.compiler.ir.graph.derivationOrNull
 import dev.zacsweers.metro.compiler.ir.locationOrNull
 import dev.zacsweers.metro.compiler.ir.render
 import dev.zacsweers.metro.compiler.ir.typeIdentity
@@ -96,15 +97,27 @@ internal fun IrBinding.bindingExplanationCandidate(
     reason = selectedReason,
     declaration = declaration,
     ownerGraphId = owner?.let { ownerGraphIds[it] ?: it.identity.encoded },
+    details = listOfNotNull(derivationOrNull()?.explanationDetail()),
   )
 }
 
 private fun IrBinding.selectionReason(): BindingReason =
   when (this) {
-    is IrBinding.Provided -> BindingReason.SELECTED_EXPLICIT
-    is IrBinding.Alias ->
-      if (bindsCallable == null) BindingReason.SELECTED_GENERATED
-      else BindingReason.SELECTED_EXPLICIT
+    is IrBinding.Provided -> {
+      if (derivationOrNull() != null) {
+        BindingReason.SELECTED_DERIVED
+      } else {
+        BindingReason.SELECTED_EXPLICIT
+      }
+    }
+    is IrBinding.Alias -> {
+      val isDerived = derivationOrNull() != null
+      when {
+        bindsCallable == null -> BindingReason.SELECTED_GENERATED
+        isDerived -> BindingReason.SELECTED_DERIVED
+        else -> BindingReason.SELECTED_EXPLICIT
+      }
+    }
     is IrBinding.BoundInstance ->
       if (isGraphInput) BindingReason.SELECTED_EXPLICIT else BindingReason.SELECTED_GENERATED
     is IrBinding.GraphDependency -> BindingReason.SELECTED_EXPLICIT

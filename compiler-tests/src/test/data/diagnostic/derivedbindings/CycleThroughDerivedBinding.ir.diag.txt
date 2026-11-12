@@ -11,6 +11,7 @@
       Encoder<List<Category>> is injected at CategoryEncoder(…, children)
       ...
 
+  note: `Encoder<List<Category>>` is derived from `AppGraph.list` with `T = Category`
   help: you can break the cycle by injecting a deferred type at one edge, e.g. `() ->
         Encoder<List<Category>>` or `Lazy<Encoder<List<Category>>>`. Only do this if you know what
         you're doing though!

@@ -416,6 +416,9 @@ internal class GraphMetadataReporter(
       if (binding is IrBinding.Alias) {
         put("aliasTarget", JsonPrimitive(binding.aliasedType.identity.encoded))
       }
+      binding.derivationOrNull()?.let { derivation ->
+        put("derivedFrom", buildDerivedFromJson(derivation))
+      }
       if (binding is IrBinding.AssistedFactory) {
         put("assistedTarget", buildAssistedTargetJson(binding))
       }
@@ -441,6 +444,21 @@ internal class GraphMetadataReporter(
           },
         )
       }
+    }
+  }
+
+  /** Names a derived binding's generic provider and its type arguments by type parameter name. */
+  private fun buildDerivedFromJson(derivation: BindingDerivation): JsonObject {
+    return buildJsonObject {
+      put("provider", JsonPrimitive(derivation.providerName))
+      put(
+        "typeArguments",
+        buildJsonObject {
+          for ((name, type) in derivation.renderedTypeArguments(short = false)) {
+            put(name, JsonPrimitive(type))
+          }
+        },
+      )
     }
   }
 

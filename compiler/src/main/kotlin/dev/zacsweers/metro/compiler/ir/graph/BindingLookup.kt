@@ -986,6 +986,9 @@ internal class BindingLookup(
       )
     }
 
+    val conflicts =
+      captureDerivedCandidateDecisions(contextKey, stack, selection, selected, binding)
+
     // An inherited scoped binding lives in the ancestor that owns its scope.
     val scope = binding.scope
     val isInheritedScoped = scope != null && !selected.candidate.isLocallyDeclared
@@ -996,6 +999,7 @@ internal class BindingLookup(
           contextKey,
           stack,
           binding,
+          conflicts = conflicts,
           ownerGraph = parentBinding.token?.ownerGraphKey,
           resolvedBinding = parentBinding,
         )
@@ -1012,8 +1016,51 @@ internal class BindingLookup(
 
     putBinding(binding, isLocallyDeclared = selected.candidate.isLocallyDeclared)
     derivedBindings[key] = selected
-    decisionCapture?.selected(contextKey, stack, binding)
+    decisionCapture?.selected(contextKey, stack, binding, conflicts)
     return setOf(binding)
+  }
+
+  /**
+   * Records the other generic candidates that matched [contextKey] in the explanation report. When
+   * one candidate was most specific, each other match is rejected as less specific. When none was,
+   * every match is returned as a conflict, like duplicate exact bindings. Returns null when there
+   * are no conflicts or nothing captures decisions.
+   */
+  context(context: IrMetroContext)
+  private fun captureDerivedCandidateDecisions(
+    contextKey: IrContextualTypeKey,
+    stack: IrBindingStack,
+    selection: DerivedCandidateSelection<DerivedBinding>,
+    selected: DerivedBinding,
+    binding: IrBinding,
+  ): List<IrBinding>? {
+    val capture = decisionCapture ?: return null
+    return when (selection) {
+      DerivedCandidateSelection.None,
+      is DerivedCandidateSelection.Single -> null
+      is DerivedCandidateSelection.MostSpecific -> {
+        for (match in selection.others) {
+          capture.rejected(
+            request = contextKey,
+            stack = stack,
+            key = contextKey.typeKey,
+            declaration = match.candidate.function,
+            reason = BindingReason.LESS_SPECIFIC,
+            relatedDeclarations = listOf(selected.candidate.function),
+          )
+        }
+        null
+      }
+      is DerivedCandidateSelection.Ambiguous -> {
+        selection.candidates.map { match ->
+          if (match === selected) {
+            binding
+          } else {
+            match.candidate.bindingFor(match.typeArguments)
+          }
+        }
+      }
+    }
   }
 
   /**

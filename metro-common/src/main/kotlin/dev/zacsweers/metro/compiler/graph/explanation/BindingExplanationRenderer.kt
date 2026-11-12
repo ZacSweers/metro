@@ -79,6 +79,8 @@ public object BindingExplanationRenderer {
       BindingReason.SELECTED_GENERATED -> "Supplied by the graph or an extension factory."
       BindingReason.SELECTED_MULTIBINDING -> "Included in the collection binding."
       BindingReason.SELECTED_OPTIONAL -> "Selected optional binding declaration."
+      BindingReason.SELECTED_DERIVED ->
+        "Selected binding derived from a generic provider. No exact binding exists for this key."
       BindingReason.SELECTED_IMPLICIT ->
         "Selected class binding after explicit and generated bindings."
       BindingReason.SELECTED_PARENT -> "Supplied by the parent graph."
@@ -87,6 +89,8 @@ public object BindingExplanationRenderer {
       BindingReason.QUALIFIER_MISMATCH -> "The binding has a different qualifier."
       BindingReason.EARLIER_OPTIONAL -> "An earlier optional declaration supplies this binding."
       BindingReason.HIGHER_PRECEDENCE -> "A binding with higher precedence supplies this request."
+      BindingReason.LESS_SPECIFIC ->
+        "A generic provider with a more specific type supplies this binding."
       BindingReason.NOT_VISIBLE -> "This declaration is outside the graph's module dependencies."
       BindingReason.CONTRIBUTION_UNAVAILABLE ->
         "This graph does not include the contributed interface."
