@@ -48,6 +48,18 @@ internal class KaBindingStack(override val graph: KaGraphDeclaration) :
     return entries.joinToString(" -> ") { it.toString() }
   }
 
+  /**
+   * The key of the binding that requested [key]. It reads the top entry, which is the request being
+   * resolved. Returns null for roots and when the top entry is for another key.
+   */
+  fun requestingKeyFor(key: KaTypeKey): KaTypeKey? {
+    val top = entries.firstOrNull() ?: return null
+    if (top.typeKey != key) {
+      return null
+    }
+    return top.requestingKey
+  }
+
   class Entry(
     override val contextKey: KaContextualTypeKey,
     override val usage: String? = null,
@@ -58,6 +70,8 @@ internal class KaBindingStack(override val graph: KaGraphDeclaration) :
     override val isSynthetic: Boolean = false,
     override val trailingComment: String? = null,
     override val chainRoot: String? = null,
+    /** The key of the binding that requested this entry's key. Null for roots. */
+    val requestingKey: KaTypeKey? = null,
   ) : BaseBindingStack.BaseEntry<KaTypeSnapshot, KaTypeKey, KaContextualTypeKey> {
     override fun toString() = contextKey.toString()
 
@@ -118,6 +132,7 @@ internal class KaBindingStack(override val graph: KaGraphDeclaration) :
           usage = "is injected at",
           graphContext = location,
           pointer = binding.pointer,
+          requestingKey = binding.typeKey,
         )
       }
 
@@ -142,6 +157,7 @@ internal class KaBindingStack(override val graph: KaGraphDeclaration) :
         isSynthetic = isSynthetic,
         trailingComment = comment,
         chainRoot = chainRoot,
+        requestingKey = requestingKey,
       )
     }
 
@@ -156,6 +172,7 @@ internal class KaBindingStack(override val graph: KaGraphDeclaration) :
         isSynthetic = isSynthetic,
         trailingComment = trailingComment,
         chainRoot = chainRoot,
+        requestingKey = requestingKey,
       )
     }
   }

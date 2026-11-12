@@ -60,6 +60,15 @@ private constructor(
   val duplicatedAssistedFactoryKeys: Set<KaTypeKey>,
   val graphsByFile: ScatterMap<VirtualFile, List<KaGraphDeclaration>>,
   val assistedSitesByFile: ScatterMap<VirtualFile, List<AssistedSite>>,
+  /**
+   * Generic provider and binds declarations by the raw class and qualifier of their pattern key.
+   * They never appear in [bindingsByKey].
+   */
+  val genericBindingsByRawKey: Map<GenericBindingLookupKey, List<KaBinding>>,
+  /**
+   * Consumers by raw class and qualifier. Only built when [genericBindingsByRawKey] isn't empty.
+   */
+  val consumersByRawKey: Map<GenericBindingLookupKey, List<ConsumerEntry>>,
 ) {
   companion object {
     /** Builds lookups from the builder's immutable declarations and source ranges. */
@@ -178,6 +187,7 @@ private constructor(
       val specializedDeclarationIdentities = linkedSetOf<SpecializedDeclarationIdentity>()
       val unownedBindingDeclarations =
         linkedMapOf<BindingDeclarationIdentity, MutableList<KaBinding>>()
+      val genericBindingsByRawKey = linkedMapOf<GenericBindingLookupKey, MutableList<KaBinding>>()
       val assistedFactoryIdentities = HashSet<Triple<ClassId?, VirtualFile?, KaTypeKey>>()
       val duplicatedAssistedFactoryKeys = linkedSetOf<KaTypeKey>()
 
@@ -195,7 +205,11 @@ private constructor(
           bindingsByMemberOwner.getOrPut(owner, ::mutableListOf) += binding
         }
         val multibindingId = binding.multibindingId
-        if (multibindingId == null) {
+        // A generic declaration's key is a pattern, so only the derived stage looks it up.
+        val genericLookupKey = binding.genericSignature?.let { binding.typeKey.genericLookupKey() }
+        if (genericLookupKey != null) {
+          genericBindingsByRawKey.getOrPut(genericLookupKey, ::mutableListOf) += binding
+        } else if (multibindingId == null) {
           bindingsByKey.getOrPut(binding.typeKey, ::mutableListOf) += binding
         } else {
           contributionsByMultibindingId.getOrPut(
@@ -203,7 +217,9 @@ private constructor(
             ::mutableListOf,
           ) += binding
         }
-        bindingsByType.getOrPut(binding.typeKey.type, ::mutableListOf) += binding
+        if (genericLookupKey == null) {
+          bindingsByType.getOrPut(binding.typeKey.type, ::mutableListOf) += binding
+        }
         binding.pointer.virtualFile?.let { file ->
           bindingsByFile.getOrPut(file, ::mutableListOf) += binding
         }
@@ -280,6 +296,21 @@ private constructor(
         }
       }
 
+      val consumersByRawKey = linkedMapOf<GenericBindingLookupKey, MutableList<ConsumerEntry>>()
+      if (genericBindingsByRawKey.isNotEmpty()) {
+        for ((index, consumer) in consumers.withIndex()) {
+          checkCanceledEvery(index)
+          if (consumer.multibindingId != null) {
+            continue
+          }
+          val rawKey = consumer.key.genericLookupKey() ?: continue
+          if (rawKey !in genericBindingsByRawKey) {
+            continue
+          }
+          consumersByRawKey.getOrPut(rawKey, ::mutableListOf) += consumer
+        }
+      }
+
       val contributionsByScope = MutableScatterMap<ClassId, MutableList<ContributionEntry>>()
       val contributionsByOrigin = MutableScatterMap<ClassId, MutableList<ContributionEntry>>()
       var contributionWorkIndex = 0
@@ -352,6 +383,8 @@ private constructor(
         duplicatedAssistedFactoryKeys.toSet(),
         graphsByFile.freezeListLookup(),
         assistedSitesByFile.freezeListLookup(),
+        genericBindingsByRawKey.freezeListMap(),
+        consumersByRawKey.freezeListMap(),
       )
     }
   }

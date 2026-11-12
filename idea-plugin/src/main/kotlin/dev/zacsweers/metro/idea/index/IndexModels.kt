@@ -9,6 +9,7 @@ import dev.zacsweers.metro.idea.model.BindingContainerEntry
 import dev.zacsweers.metro.idea.model.ConsumerEntry
 import dev.zacsweers.metro.idea.model.ContributionEntry
 import dev.zacsweers.metro.idea.model.DynamicGraphCall
+import dev.zacsweers.metro.idea.model.GenericBindingSignature
 import dev.zacsweers.metro.idea.model.GraphExtensionFactoryAccessor
 import dev.zacsweers.metro.idea.model.GraphInterfaceContribution
 import dev.zacsweers.metro.idea.model.GraphMemberOverride
@@ -77,6 +78,8 @@ internal class BindingData(
   val metroMultibindsAnnotation: SmartPsiElementPointer<KtAnnotationEntry>? = null,
   /** See [KaBinding.isGraphPrivate]. */
   val isGraphPrivate: Boolean = false,
+  /** See [KaBinding.genericSignature]. */
+  val genericSignature: GenericBindingSignature? = null,
 ) {
   /** All dependencies used for graph traversal. */
   val dependencies: List<KaContextualTypeKey> =

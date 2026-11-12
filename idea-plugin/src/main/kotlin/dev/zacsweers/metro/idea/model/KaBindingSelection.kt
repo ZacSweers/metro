@@ -2,15 +2,25 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea.model
 
+import dev.zacsweers.metro.compiler.graph.DerivedCandidateSelection
 import dev.zacsweers.metro.compiler.graph.selectBinding
+import dev.zacsweers.metro.compiler.graph.selectMostSpecificCandidate
 import dev.zacsweers.metro.idea.checkCanceledEvery
 
-/** Selected declarations, with collection inputs retained for graph validation. */
+/**
+ * Selected declarations, with collection inputs retained for graph validation.
+ *
+ * A [BindingTier.DERIVED] selection holds one derived binding. [lessSpecificDerivedBindings] are
+ * the other matches the most specific one beat. [ambiguousDerivedBindings] holds every match when
+ * none was most specific. The selected binding is then the first of them.
+ */
 internal class KaBindingSelection(
   val tier: BindingTier,
   val bindings: List<KaBinding>,
   val multibindingContributions: List<KaBinding> = emptyList(),
   val multibindingDeclarations: List<KaBinding.Multibinding> = emptyList(),
+  val lessSpecificDerivedBindings: List<KaBinding> = emptyList(),
+  val ambiguousDerivedBindings: List<KaBinding> = emptyList(),
 )
 
 /**
@@ -82,13 +92,62 @@ internal fun BindingIndex.selectBindingsForKey(
         val declaration = candidates.first { it.selectionTier(unqualified) == BindingTier.OPTIONAL }
         KaBindingSelection(BindingTier.OPTIONAL, listOf(declaration))
       },
-    derived = { null },
+    derived = derived@{
+        if (!hasGenericBindings) {
+          return@derived null
+        }
+        selectDerivedBinding(typeKey, plan)
+      },
     implicit = implicit@{
         if (indexedTier != BindingTier.IMPLICIT) return@implicit null
         val implicit = candidates.filter { it.selectionTier(unqualified) == BindingTier.IMPLICIT }
         KaBindingSelection(BindingTier.IMPLICIT, implicit)
       },
   )
+}
+
+/**
+ * Mirrors the compiler's derived stage. Generic declarations in the graph whose pattern matches
+ * [key] become derived bindings, and the most specific one wins. When none is most specific, the
+ * first match is used so no missing binding is reported for the key as well.
+ */
+private fun BindingIndex.selectDerivedBinding(
+  key: KaTypeKey,
+  plan: BindingIndex.GraphQueryPlan,
+): KaBindingSelection? {
+  val candidates = derivedCandidates(key, plan)
+  if (candidates.isEmpty()) {
+    return null
+  }
+  val matches = candidates.mapIndexedNotNull { index, template ->
+    checkCanceledEvery(index)
+    derivedBindingFor(template, key)
+  }
+  val selection =
+    selectMostSpecificCandidate(
+      candidates = matches,
+      patternOf = { match -> checkNotNull(match.derivation).template.typeKey.type.identity },
+      isVariableOf = { match, typeParameter ->
+        checkNotNull(match.derivation).signature.isVariable(typeParameter)
+      },
+    )
+  return when (selection) {
+    DerivedCandidateSelection.None -> null
+    is DerivedCandidateSelection.Single ->
+      KaBindingSelection(BindingTier.DERIVED, listOf(selection.candidate))
+    is DerivedCandidateSelection.MostSpecific ->
+      KaBindingSelection(
+        BindingTier.DERIVED,
+        listOf(selection.winner),
+        lessSpecificDerivedBindings = selection.others,
+      )
+    is DerivedCandidateSelection.Ambiguous ->
+      KaBindingSelection(
+        BindingTier.DERIVED,
+        listOf(selection.candidates.first()),
+        ambiguousDerivedBindings = selection.candidates,
+      )
+  }
 }
 
 /**

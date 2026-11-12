@@ -355,6 +355,12 @@ internal class FileShardBuilder(
             }
           (target.symbol as? KaAnnotated)?.let { recordAnnotationDependencies(it, target) }
           val dataEntries = target.bindingData(this, options)
+          // A generic function's own type parameters only become concrete in each derived binding.
+          // Its parameters that mention them aren't requests on their own.
+          val genericSignature = dataEntries.firstNotNullOfOrNull { it.genericSignature }
+          fun isGenericRequest(type: KaType): Boolean {
+            return genericSignature?.isMentionedIn(typeIdentity(type)) == true
+          }
           val consumerOriginClassId = dataEntries.firstNotNullOfOrNull { it.originClassId }
           val consumerContributionScopes = dataEntries.flatMapToSet { it.contributionScopes }
           val ownerDependency = graphOwnerDependency(target)
@@ -367,7 +373,11 @@ internal class FileShardBuilder(
                 ownerDependency = ownerDependency,
               )
             // The @Binds source/impl side is itself a consumer of the impl binding.
-            if (data.consumedKey != null) {
+            val consumedKey = data.consumedKey
+            val isGenericConsumedKey =
+              consumedKey != null &&
+                genericSignature?.isMentionedIn(consumedKey.typeKey.type.identity) == true
+            if (consumedKey != null && !isGenericConsumedKey) {
               val consumerAnchor =
                 (target as? KtNamedFunction)?.valueParameters?.singleOrNull()
                   ?: (target as? KtCallableDeclaration)?.receiverTypeReference
@@ -375,7 +385,7 @@ internal class FileShardBuilder(
               consumers +=
                 ConsumerEntry(
                   ptr(consumerAnchor),
-                  data.consumedKey,
+                  consumedKey,
                   originClassId = consumerOriginClassId,
                   contributionScopes = consumerContributionScopes,
                   containerId = containerId,
@@ -394,6 +404,9 @@ internal class FileShardBuilder(
             for (parameter in providerSymbol.bindingContextParameters()) {
               checkCanceled()
               val source = parameter.psi as? KtElement ?: continue
+              if (isGenericRequest(parameter.returnType)) {
+                continue
+              }
               addConsumer(
                 source,
                 parameter,
@@ -406,19 +419,25 @@ internal class FileShardBuilder(
             val receiverRef = (target as? KtCallableDeclaration)?.receiverTypeReference
             val receiverSymbol = providerSymbol.receiverParameter
             if (receiverRef != null && receiverSymbol != null) {
-              addConsumer(
-                receiverRef,
-                receiverSymbol,
-                originClassId = consumerOriginClassId,
-                contributionScopes = consumerContributionScopes,
-                containerId = containerId,
-              )
+              if (!isGenericRequest(receiverSymbol.returnType)) {
+                addConsumer(
+                  receiverRef,
+                  receiverSymbol,
+                  originClassId = consumerOriginClassId,
+                  contributionScopes = consumerContributionScopes,
+                  containerId = containerId,
+                )
+              }
             }
           }
           // Provider function parameters are consumers themselves.
           if (target is KtNamedFunction && !target.isAnnotatedWithAny(options.bindsAnnotations)) {
             for (parameter in target.valueParameters) {
               checkCanceled()
+              val parameterType = (parameter.symbol as? KaValueParameterSymbol)?.returnType
+              if (parameterType != null && isGenericRequest(parameterType)) {
+                continue
+              }
               addParameterConsumer(
                 parameter,
                 originClassId = consumerOriginClassId,

@@ -1,0 +1,1 @@
+/AmbiguousDerivedBinding.kt:25:11: error: [Metro/AmbiguousDerivedBinding] `Encoder<Pair<String, Int>>` matches the generic providers `parity.failures.derived.Encoders.left` and `parity.failures.derived.Encoders.right`. None of them is more specific than all the others. Add an exact binding for `Encoder<Pair<String, Int>>`, or make one provider's return type more specific.

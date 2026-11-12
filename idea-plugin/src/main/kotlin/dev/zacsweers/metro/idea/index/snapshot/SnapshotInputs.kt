@@ -97,6 +97,7 @@ internal class IndexOptionsFingerprint(val options: MetroOptions) {
       options.enableSuspendProviders,
       options.enableFunctionProviders,
       options.shrinkUnusedBindings,
+      options.enableDerivedBindings,
     )
 
   private val optionalBindingBehavior = options.optionalBindingBehavior

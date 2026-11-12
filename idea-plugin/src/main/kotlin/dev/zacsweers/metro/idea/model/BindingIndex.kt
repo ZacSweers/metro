@@ -11,6 +11,7 @@ import dev.zacsweers.metro.compiler.graph.computeLowerPriorityContributions
 import dev.zacsweers.metro.compiler.graph.computeMergePlan
 import dev.zacsweers.metro.idea.checkCanceledEvery
 import java.util.IdentityHashMap
+import java.util.concurrent.ConcurrentHashMap
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModule
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.psi.KtElement
@@ -202,6 +203,98 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
     return lookups.bindingsByKey[key].orEmpty().withoutDuplicateAssistedFactories(key).filter {
       isBindingInContext(it, plan)
     }
+  }
+
+  /** Whether any generic provider or binds declaration exists. Most projects have none. */
+  internal val hasGenericBindings: Boolean
+    get() = lookups.genericBindingsByRawKey.isNotEmpty()
+
+  /**
+   * Derived bindings by generic declaration and requested key. Matching is pure, so every query for
+   * the same pair shares one binding object.
+   */
+  private val derivedBindings = ConcurrentHashMap<DerivedBindingCacheKey, DerivedBindingResult>()
+
+  /** Returns [template]'s derived binding for [key], or null when its pattern doesn't apply. */
+  internal fun derivedBindingFor(template: KaBinding, key: KaTypeKey): KaBinding? {
+    val cacheKey = DerivedBindingCacheKey(template, key)
+    val cached = derivedBindings[cacheKey]
+    if (cached != null) {
+      return cached.binding
+    }
+    val result = DerivedBindingResult(matchGenericBinding(template, key))
+    return (derivedBindings.putIfAbsent(cacheKey, result) ?: result).binding
+  }
+
+  /**
+   * Enabled generic declarations in [plan]'s graph whose raw class and qualifier match [key].
+   *
+   * A declaration owned by a nearer graph in the extension chain shadows an alpha-equivalent one
+   * owned by a farther graph. Equivalent declarations on the same level all remain, so the derived
+   * stage reports them as ambiguous.
+   */
+  internal fun derivedCandidates(key: KaTypeKey, plan: GraphQueryPlan): List<KaBinding> {
+    val lookupKey = key.genericLookupKey() ?: return emptyList()
+    val templates = lookups.genericBindingsByRawKey[lookupKey] ?: return emptyList()
+    val available = templates.filterIndexed { index, template ->
+      checkCanceledEvery(index)
+      val isEnabled = template.genericSignature?.isEnabled == true
+      isEnabled && isBindingInContext(template, plan)
+    }
+    return dropShadowedGenericBindings(available, plan)
+  }
+
+  /** Every generic declaration in [plan]'s graph, including disabled ones, in index order. */
+  internal fun genericBindingsInContext(plan: GraphQueryPlan): List<KaBinding> {
+    return buildList {
+      var index = 0
+      for (templates in lookups.genericBindingsByRawKey.values) {
+        for (template in templates) {
+          checkCanceledEvery(index++)
+          if (isBindingInContext(template, plan)) {
+            add(template)
+          }
+        }
+      }
+    }
+  }
+
+  private fun dropShadowedGenericBindings(
+    candidates: List<KaBinding>,
+    plan: GraphQueryPlan,
+  ): List<KaBinding> {
+    val chain = plan.structure.queryContext.graphContext.chain
+    if (candidates.size < 2 || chain.size < 2) {
+      return candidates
+    }
+    val ownerDepths = candidates.mapIndexed { index, candidate ->
+      checkCanceledEvery(index)
+      val depth = chain.indexOfFirst { graph -> isBindingOwnedByGraph(candidate, graph, plan) }
+      if (depth < 0) {
+        chain.size
+      } else {
+        depth
+      }
+    }
+    return candidates.filterIndexed { index, candidate ->
+      checkCanceledEvery(index)
+      candidates.indices.none { otherIndex ->
+        val isNearer = ownerDepths[otherIndex] < ownerDepths[index]
+        isNearer && candidates[otherIndex].isAlphaEquivalentTo(candidate)
+      }
+    }
+  }
+
+  /** Generic declarations that could derive [consumer]'s key, regardless of graph membership. */
+  internal fun genericBindingsFor(consumer: ConsumerEntry): List<KaBinding> {
+    val lookupKey = consumer.key.genericLookupKey() ?: return emptyList()
+    return lookups.genericBindingsByRawKey[lookupKey].orEmpty()
+  }
+
+  /** Consumers whose raw class and qualifier match a generic declaration's pattern. */
+  internal fun consumersForGenericBinding(template: KaBinding): List<ConsumerEntry> {
+    val lookupKey = template.typeKey.genericLookupKey() ?: return emptyList()
+    return lookups.consumersByRawKey[lookupKey].orEmpty()
   }
 
   /** All indexed bindings for the same unqualified type, regardless of graph membership. */
@@ -1797,6 +1890,21 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
     val endOffset: Int,
   )
 
+  /** Compares the generic declaration by identity and the key by value. */
+  private class DerivedBindingCacheKey(val template: KaBinding, val key: KaTypeKey) {
+    override fun equals(other: Any?): Boolean {
+      if (other !is DerivedBindingCacheKey) {
+        return false
+      }
+      return template === other.template && key == other.key
+    }
+
+    override fun hashCode(): Int = 31 * System.identityHashCode(template) + key.hashCode()
+  }
+
+  /** Holds a null match too, so a failed match isn't recomputed. */
+  private class DerivedBindingResult(val binding: KaBinding?)
+
   private data class BindingResolutionIdentity(
     val pointer: SourcePointerIdentity,
     val bindingClass: Class<*>,
@@ -2002,7 +2110,15 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
     val candidates = LinkedHashSet<ConsumerEntry>()
     for (entry in bindingSet) {
       val multibindingId = entry.multibindingId
-      if (multibindingId != null) {
+      if (entry.genericSignature != null) {
+        // A generic declaration serves every consumer whose key its pattern matches.
+        for (consumer in consumersForGenericBinding(entry)) {
+          ProgressManager.checkCanceled()
+          if (derivedBindingFor(entry, consumer.key) != null) {
+            candidates += consumer
+          }
+        }
+      } else if (multibindingId != null) {
         candidates += lookups.consumersByMultibindingId[multibindingId].orEmpty()
       } else {
         candidates += lookups.consumersByKey[entry.typeKey].orEmpty()
@@ -2015,10 +2131,10 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
       val pinnedBindings = graphPath?.let { resolution.perContext.matchingContextEntry(it)?.value }
       val resolvesToEntry =
         if (pinnedBindings != null) {
-          pinnedBindings.any { it in bindingSet }
+          pinnedBindings.any { it.declarationBinding() in bindingSet }
         } else {
           resolution.perContext.values.any { contextBindings ->
-            contextBindings.any { it in bindingSet }
+            contextBindings.any { it.declarationBinding() in bindingSet }
           }
         }
       if (resolvesToEntry) {

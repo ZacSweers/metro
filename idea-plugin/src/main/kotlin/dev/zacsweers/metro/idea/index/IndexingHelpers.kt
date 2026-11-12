@@ -121,6 +121,7 @@ internal fun BindingData.toKaBinding(
         isSuspend = isSuspend,
         hintAvailability = hintAvailability,
         isGraphPrivate = isGraphPrivate,
+        genericSignature = genericSignature,
       )
     BindingData.Kind.ALIAS ->
       KaBinding.Alias(
@@ -142,6 +143,7 @@ internal fun BindingData.toKaBinding(
         isClassContribution = isClassContribution,
         hintAvailability = hintAvailability,
         isGraphPrivate = isGraphPrivate,
+        genericSignature = genericSignature,
       )
     BindingData.Kind.MULTIBINDING ->
       KaBinding.Multibinding(

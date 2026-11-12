@@ -423,6 +423,63 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
     }
   }
 
+  fun testDerivedConsumerResolvesAndNavigatesToTheGenericProvider() {
+    project.setMetroOptions("enable-derived-bindings" to "true")
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface Encoder<T>
+
+        @BindingContainer
+        object Encoders {
+          @Provides fun string(): Encoder<String> = error("unused")
+          @Provides fun <T> list(element: Encoder<T>): Encoder<List<T>> = error("unused")
+        }
+
+        @DependencyGraph(bindingContainers = [Encoders::class])
+        interface AppGraph {
+          val <caret>strings: Encoder<List<String>>
+        }
+        """,
+      )
+    highlightMetroFile()
+    val tooltips =
+      myFixture
+        .findAllGutters()
+        .filter { it.icon === MetroIcons.CONSUMER || it.icon === MetroIcons.CONSUMER_UNRESOLVED }
+        .associate { it.tooltipText to it.icon }
+    val derivedConsumer =
+      tooltips.entries.single { it.key?.contains("Encoder<List<String>>") == true }
+    assertEquals(tooltips.toString(), MetroIcons.CONSUMER, derivedConsumer.value)
+    // The generic provider's own `Encoder<T>` parameter isn't a request on its own.
+    assertTrue(tooltips.toString()) { tooltips.keys.none { it?.contains("Encoder<T>") == true } }
+
+    val action = checkNotNull(ActionManager.getInstance().getAction("Metro.GoToBinding"))
+    val dataContext = DataContext { dataId ->
+      when {
+        CommonDataKeys.PROJECT.`is`(dataId) -> project
+        CommonDataKeys.EDITOR.`is`(dataId) -> myFixture.editor
+        CommonDataKeys.PSI_FILE.`is`(dataId) -> file
+        else -> null
+      }
+    }
+    val event = AnActionEvent.createFromAnAction(action, null, ActionPlaces.UNKNOWN, dataContext)
+    action.update(event)
+    assertTrue(event.presentation.isEnabledAndVisible)
+    action.actionPerformed(event)
+
+    val provider = file.declarationsIncludingNested().function("list")
+    val providerOffset = checkNotNull(provider.nameIdentifier).textOffset
+    object : WaitFor(30_000) {
+        override fun condition(): Boolean {
+          PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+          val editor = FileEditorManager.getInstance(project).selectedTextEditor
+          return editor?.caretModel?.offset == providerOffset
+        }
+      }
+      .assertCompleted("Go to Metro Binding should land on the generic provider")
+  }
+
   fun testGenericProviderParameterKeepsItsConcreteConsumerMarker() {
     myFixture.configureMetroFile(
       """

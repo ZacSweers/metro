@@ -1,0 +1,622 @@
+{
+  "graph": "parity.derived.AppGraph",
+  "key": "parity/derived/AppGraph",
+  "scopes": [],
+  "aggregationScopes": [],
+  "roots": {
+    "accessors": [
+      {
+        "key": "parity/derived/Encoder<kotlin/collections/List<parity/derived/User>>",
+        "renderedKey": "parity.derived.Encoder<kotlin.collections.List<parity.derived.User>>",
+        "name": "users",
+        "isProperty": true,
+        "isDeferrable": false
+      },
+      {
+        "key": "parity/derived/Encoder<parity/derived/User?>",
+        "renderedKey": "parity.derived.Encoder<parity.derived.User?>",
+        "name": "nullableUser",
+        "isProperty": true,
+        "isDeferrable": false
+      },
+      {
+        "key": "parity/derived/Cache<kotlin/String>",
+        "renderedKey": "parity.derived.Cache<kotlin.String>",
+        "name": "stringCache",
+        "isProperty": true,
+        "isDeferrable": false
+      }
+    ],
+    "injectors": []
+  },
+  "extensions": {
+    "accessors": [
+      {
+        "key": "parity/derived/ChildGraph",
+        "renderedKey": "parity.derived.ChildGraph",
+        "name": "child",
+        "isProperty": true
+      }
+    ],
+    "factoryAccessors": [],
+    "factoriesImplemented": []
+  },
+  "config": {
+    "debug": false,
+    "enabled": true,
+    "generateAssistedFactories": false,
+    "enableTopLevelFunctionInjection": false,
+    "generateContributionHints": true,
+    "generateContributionHintsInFir": false,
+    "generateClassesInIr": false,
+    "enablePrivateProviderProperties": false,
+    "shrinkUnusedBindings": true,
+    "statementsPerInitFun": 25,
+    "enableGraphSharding": true,
+    "keysPerGraphShard": 2000,
+    "mergedSupertypeChunkSize": 0,
+    "multibindingGetterThreshold": 25,
+    "forceProviderGetters": false,
+    "enableSwitchingProviders": false,
+    "publicScopedProviderSeverity": "NONE",
+    "nonPublicContributionSeverity": "NONE",
+    "optionalBindingBehavior": "DEFAULT",
+    "warnOnInjectAnnotationPlacement": true,
+    "interopAnnotationsNamedArgSeverity": "NONE",
+    "unusedGraphInputsSeverity": "WARN",
+    "derivedBindingOverlapSeverity": "NONE",
+    "enabledLoggers": [],
+    "enableDaggerRuntimeInterop": false,
+    "enableGuiceRuntimeInterop": false,
+    "maxIrErrorsCount": 20,
+    "customProviderTypes": [],
+    "customLazyTypes": [],
+    "customAssistedAnnotations": [],
+    "customAssistedFactoryAnnotations": [],
+    "customAssistedInjectAnnotations": [],
+    "customBindsAnnotations": [],
+    "customContributesToAnnotations": [],
+    "customContributesBindingAnnotations": [],
+    "customContributesIntoSetAnnotations": [],
+    "customGraphExtensionAnnotations": [],
+    "customGraphExtensionFactoryAnnotations": [],
+    "customElementsIntoSetAnnotations": [],
+    "customGraphAnnotations": [],
+    "customGraphFactoryAnnotations": [],
+    "customInjectAnnotations": [],
+    "customIntoMapAnnotations": [],
+    "customIntoSetAnnotations": [],
+    "customMapKeyAnnotations": [],
+    "customMultibindsAnnotations": [],
+    "customProvidesAnnotations": [],
+    "customQualifierAnnotations": [],
+    "customScopeAnnotations": [],
+    "customBindingContainerAnnotations": [],
+    "enableDaggerAnvilInterop": false,
+    "enableFullBindingGraphValidation": false,
+    "enableGraphImplClassAsReturnType": false,
+    "customOriginAnnotations": [],
+    "customOptionalBindingAnnotations": [],
+    "contributesAsInject": false,
+    "enableKlibParamsCheck": false,
+    "patchKlibParams": true,
+    "forceEnableFirInIde": false,
+    "compilerVersionAliases": {},
+    "parallelThreads": 0,
+    "bufferedIcTracking": true,
+    "omitRedundantMirrors": false,
+    "fixEmptySmapRanges": false,
+    "enableProviderInlining": true,
+    "enableFunctionProviders": true,
+    "enableSuspendProviders": false,
+    "enableDerivedBindings": true,
+    "desugaredProviderSeverity": "WARN",
+    "enableKClassToClassInterop": false,
+    "generateContributionProviders": false,
+    "enableCircuitCodegen": false,
+    "enableHiltInterop": false,
+    "diagnosticsRenderMode": "PLAIN",
+    "generateStaticAnnotations": true,
+    "enableRuntimeTracing": false,
+    "memberNamingStrategy": "DESCRIPTIVE",
+    "maxGeneratedClassNameLength": 233,
+    "diagnosticLevels": {},
+    "companionMode": "COMPANION_OBJECT"
+  },
+  "stats": {
+    "providerFactories": 4,
+    "bindsCallables": 1,
+    "multibindsCallables": 0,
+    "optionalBindings": 0,
+    "accessors": 3,
+    "injectors": 0,
+    "graphExtensionAccessors": 1,
+    "graphExtensionFactories": 0,
+    "includedGraphs": 0,
+    "bindingContainers": 0,
+    "dynamicBindings": 0,
+    "graphPrivateKeys": 0,
+    "publishedBindsKeys": 0,
+    "populatedKeys": 7,
+    "validatedKeys": 7,
+    "reachableKeys": 7,
+    "deferredKeys": 0,
+    "unusedInputs": 0,
+    "providerProperties": 0,
+    "scopedProviderProperties": 0,
+    "shards": 0,
+    "optimizations": {
+      "bindingsPrunedByShrinking": 0,
+      "classConstructorDirectInvocations": 1,
+      "classConstructorNewInstanceCalls": 0,
+      "providerDirectInvocations": 4,
+      "providerNewInstanceCalls": 0,
+      "shardsGenerated": 0,
+      "shardedSupertypes": 0,
+      "shardedInitFunctions": 0,
+      "providerInlines": 0,
+      "providerInlineFallbacks": {
+        "deferredAccess": 0,
+        "unavailableValue": 0
+      }
+    }
+  },
+  "bindings": [
+    {
+      "key": "parity/derived/AppGraph",
+      "renderedKey": "parity.derived.AppGraph",
+      "bindingKind": "BoundInstance",
+      "isScoped": false,
+      "nameHint": "AppGraphProvider",
+      "isGraphInput": false,
+      "dependencies": [],
+      "isSynthetic": false,
+      "declaration": "AppGraph"
+    },
+    {
+      "key": "parity/derived/Cache<kotlin/String>",
+      "renderedKey": "parity.derived.Cache<kotlin.String>",
+      "bindingKind": "Alias",
+      "isScoped": false,
+      "nameHint": "lru",
+      "dependencies": [
+        {
+          "key": "parity/derived/LruCache<kotlin/String>",
+          "renderedKey": "parity.derived.LruCache<kotlin.String>",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "declaration": "lru",
+      "aliasTarget": "parity/derived/LruCache<kotlin/String>",
+      "derivedFrom": {
+        "provider": "parity.derived.CacheBindings.lru",
+        "typeArguments": {
+          "T": "kotlin.String"
+        }
+      }
+    },
+    {
+      "key": "parity/derived/ChildGraph",
+      "renderedKey": "parity.derived.ChildGraph",
+      "bindingKind": "GraphExtension",
+      "isScoped": false,
+      "nameHint": "ChildGraph",
+      "dependencies": [
+        {
+          "key": "parity/derived/AppGraph",
+          "renderedKey": "parity.derived.AppGraph",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "declaration": "<get-child>"
+    },
+    {
+      "key": "parity/derived/Encoder<kotlin/collections/List<parity/derived/User>>",
+      "renderedKey": "parity.derived.Encoder<kotlin.collections.List<parity.derived.User>>",
+      "bindingKind": "Provided",
+      "isScoped": false,
+      "nameHint": "list",
+      "dependencies": [
+        {
+          "key": "parity/derived/Encoder<parity/derived/User>",
+          "renderedKey": "parity.derived.Encoder<parity.derived.User>",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "declaration": "list",
+      "derivedFrom": {
+        "provider": "parity.derived.Encoders.list",
+        "typeArguments": {
+          "T": "parity.derived.User"
+        }
+      }
+    },
+    {
+      "key": "parity/derived/Encoder<parity/derived/User>",
+      "renderedKey": "parity.derived.Encoder<parity.derived.User>",
+      "bindingKind": "Provided",
+      "isScoped": false,
+      "nameHint": "user",
+      "dependencies": [],
+      "isSynthetic": false,
+      "declaration": "user"
+    },
+    {
+      "key": "parity/derived/Encoder<parity/derived/User?>",
+      "renderedKey": "parity.derived.Encoder<parity.derived.User?>",
+      "bindingKind": "Provided",
+      "isScoped": false,
+      "nameHint": "nullable",
+      "dependencies": [
+        {
+          "key": "parity/derived/Encoder<parity/derived/User>",
+          "renderedKey": "parity.derived.Encoder<parity.derived.User>",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "declaration": "nullable",
+      "derivedFrom": {
+        "provider": "parity.derived.Encoders.nullable",
+        "typeArguments": {
+          "T": "parity.derived.User"
+        }
+      }
+    },
+    {
+      "key": "parity/derived/LruCache<kotlin/String>",
+      "renderedKey": "parity.derived.LruCache<kotlin.String>",
+      "bindingKind": "ConstructorInjected",
+      "isScoped": false,
+      "nameHint": "LruCache",
+      "dependencies": [],
+      "isSynthetic": false,
+      "declaration": "LruCache"
+    }
+  ],
+  "bindingExplanations": [
+    {
+      "context": {
+        "id": "23:parity/derived/AppGraph",
+        "label": "parity.derived.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "23:parity/derived/AppGraph|23:parity.derived.AppGraph",
+          "key": "parity/derived/AppGraph",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "parity.derived.AppGraph",
+            "label": "parity.derived.AppGraph"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "parity.derived.AppGraph"
+        }
+      ],
+      "request": {
+        "key": "parity/derived/AppGraph",
+        "hasDefault": false,
+        "isOptional": false,
+        "renderedKey": "parity.derived.AppGraph"
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "23:parity/derived/AppGraph",
+        "label": "parity.derived.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "23:parity/derived/AppGraph|23:parity.derived.AppGraph",
+          "key": "parity/derived/AppGraph",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "parity.derived.AppGraph",
+            "label": "parity.derived.AppGraph"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "parity.derived.AppGraph"
+        }
+      ],
+      "request": {
+        "key": "parity/derived/AppGraph",
+        "declaration": {
+          "id": "parity.derived.AppGraph.Impl.<get-child>(parity/derived/AppGraph.Impl): parity/derived/ChildGraph",
+          "label": "parity.derived.AppGraph.Impl.<get-child>"
+        },
+        "hasDefault": false,
+        "isOptional": false,
+        "renderedKey": "parity.derived.AppGraph"
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "23:parity/derived/AppGraph",
+        "label": "parity.derived.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "35:parity/derived/Cache<kotlin/String>|186:parity.derived.CacheBindings.lru(parity/derived/CacheBindings,parity/derived/LruCache<#parity.derived.CacheBindings.lru:0:T>): parity/derived/Cache<#parity.derived.CacheBindings.lru:0:T>",
+          "key": "parity/derived/Cache<kotlin/String>",
+          "status": "selected",
+          "reason": "selected_derived",
+          "declaration": {
+            "id": "parity.derived.CacheBindings.lru(parity/derived/CacheBindings,parity/derived/LruCache<#parity.derived.CacheBindings.lru:0:T>): parity/derived/Cache<#parity.derived.CacheBindings.lru:0:T>",
+            "label": "parity.derived.CacheBindings.lru"
+          },
+          "relatedDeclarations": [],
+          "details": [
+            "Derived from `parity.derived.CacheBindings.lru` with `T = kotlin.String`."
+          ],
+          "renderedKey": "parity.derived.Cache<kotlin.String>"
+        }
+      ],
+      "request": {
+        "key": "parity/derived/Cache<kotlin/String>",
+        "hasDefault": false,
+        "isOptional": false,
+        "renderedKey": "parity.derived.Cache<kotlin.String>"
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "23:parity/derived/AppGraph",
+        "label": "parity.derived.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "25:parity/derived/ChildGraph|97:parity.derived.AppGraph.Impl.<get-child>(parity/derived/AppGraph.Impl): parity/derived/ChildGraph",
+          "key": "parity/derived/ChildGraph",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "parity.derived.AppGraph.Impl.<get-child>(parity/derived/AppGraph.Impl): parity/derived/ChildGraph",
+            "label": "parity.derived.AppGraph.Impl.<get-child>"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "parity.derived.ChildGraph"
+        }
+      ],
+      "request": {
+        "key": "parity/derived/ChildGraph",
+        "declaration": {
+          "id": "parity.derived.AppGraph.Impl.<get-child>(parity/derived/AppGraph.Impl): parity/derived/ChildGraph",
+          "label": "parity.derived.AppGraph.Impl.<get-child>"
+        },
+        "hasDefault": false,
+        "isOptional": false,
+        "renderedKey": "parity.derived.ChildGraph"
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "23:parity/derived/AppGraph",
+        "label": "parity.derived.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "68:parity/derived/Encoder<kotlin/collections/List<parity/derived/User>>|195:parity.derived.Encoders.list(parity/derived/Encoders,parity/derived/Encoder<#parity.derived.Encoders.list:0:T>): parity/derived/Encoder<kotlin/collections/List<#parity.derived.Encoders.list:0:T>>",
+          "key": "parity/derived/Encoder<kotlin/collections/List<parity/derived/User>>",
+          "status": "selected",
+          "reason": "selected_derived",
+          "declaration": {
+            "id": "parity.derived.Encoders.list(parity/derived/Encoders,parity/derived/Encoder<#parity.derived.Encoders.list:0:T>): parity/derived/Encoder<kotlin/collections/List<#parity.derived.Encoders.list:0:T>>",
+            "label": "parity.derived.Encoders.list"
+          },
+          "relatedDeclarations": [],
+          "details": [
+            "Derived from `parity.derived.Encoders.list` with `T = parity.derived.User`."
+          ],
+          "renderedKey": "parity.derived.Encoder<kotlin.collections.List<parity.derived.User>>"
+        }
+      ],
+      "request": {
+        "key": "parity/derived/Encoder<kotlin/collections/List<parity/derived/User>>",
+        "hasDefault": false,
+        "isOptional": false,
+        "renderedKey": "parity.derived.Encoder<kotlin.collections.List<parity.derived.User>>"
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "23:parity/derived/AppGraph",
+        "label": "parity.derived.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "43:parity/derived/Encoder<parity/derived/User>|98:parity.derived.Encoders.user(parity/derived/Encoders): parity/derived/Encoder<parity/derived/User>",
+          "key": "parity/derived/Encoder<parity/derived/User>",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "parity.derived.Encoders.user(parity/derived/Encoders): parity/derived/Encoder<parity/derived/User>",
+            "label": "parity.derived.Encoders.user"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "parity.derived.Encoder<parity.derived.User>"
+        }
+      ],
+      "request": {
+        "key": "parity/derived/Encoder<parity/derived/User>",
+        "declaration": {
+          "id": "parity.derived.Encoders.list(parity/derived/Encoders,parity/derived/Encoder<#parity.derived.Encoders.list:0:T>): parity/derived/Encoder<kotlin/collections/List<#parity.derived.Encoders.list:0:T>>#element",
+          "label": "parity.derived.Encoders.list.element"
+        },
+        "hasDefault": false,
+        "isOptional": false,
+        "renderedKey": "parity.derived.Encoder<parity.derived.User>"
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "23:parity/derived/AppGraph",
+        "label": "parity.derived.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "43:parity/derived/Encoder<parity/derived/User>|98:parity.derived.Encoders.user(parity/derived/Encoders): parity/derived/Encoder<parity/derived/User>",
+          "key": "parity/derived/Encoder<parity/derived/User>",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "parity.derived.Encoders.user(parity/derived/Encoders): parity/derived/Encoder<parity/derived/User>",
+            "label": "parity.derived.Encoders.user"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "parity.derived.Encoder<parity.derived.User>"
+        }
+      ],
+      "request": {
+        "key": "parity/derived/Encoder<parity/derived/User>",
+        "declaration": {
+          "id": "parity.derived.Encoders.nullable(parity/derived/Encoders,parity/derived/Encoder<#parity.derived.Encoders.nullable:0:T>): parity/derived/Encoder<#parity.derived.Encoders.nullable:0:T?>#inner",
+          "label": "parity.derived.Encoders.nullable.inner"
+        },
+        "hasDefault": false,
+        "isOptional": false,
+        "renderedKey": "parity.derived.Encoder<parity.derived.User>"
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "23:parity/derived/AppGraph",
+        "label": "parity.derived.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "44:parity/derived/Encoder<parity/derived/User?>|183:parity.derived.Encoders.nullable(parity/derived/Encoders,parity/derived/Encoder<#parity.derived.Encoders.nullable:0:T>): parity/derived/Encoder<#parity.derived.Encoders.nullable:0:T?>",
+          "key": "parity/derived/Encoder<parity/derived/User?>",
+          "status": "selected",
+          "reason": "selected_derived",
+          "declaration": {
+            "id": "parity.derived.Encoders.nullable(parity/derived/Encoders,parity/derived/Encoder<#parity.derived.Encoders.nullable:0:T>): parity/derived/Encoder<#parity.derived.Encoders.nullable:0:T?>",
+            "label": "parity.derived.Encoders.nullable"
+          },
+          "relatedDeclarations": [],
+          "details": [
+            "Derived from `parity.derived.Encoders.nullable` with `T = parity.derived.User`."
+          ],
+          "renderedKey": "parity.derived.Encoder<parity.derived.User?>"
+        }
+      ],
+      "request": {
+        "key": "parity/derived/Encoder<parity/derived/User?>",
+        "hasDefault": false,
+        "isOptional": false,
+        "renderedKey": "parity.derived.Encoder<parity.derived.User?>"
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "23:parity/derived/AppGraph",
+        "label": "parity.derived.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "38:parity/derived/LruCache<kotlin/String>|23:parity.derived.LruCache",
+          "key": "parity/derived/LruCache<kotlin/String>",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "parity.derived.LruCache",
+            "label": "parity.derived.LruCache"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "parity.derived.LruCache<kotlin.String>"
+        }
+      ],
+      "request": {
+        "key": "parity/derived/LruCache<kotlin/String>",
+        "declaration": {
+          "id": "parity.derived.CacheBindings.lru(parity/derived/CacheBindings,parity/derived/LruCache<#parity.derived.CacheBindings.lru:0:T>): parity/derived/Cache<#parity.derived.CacheBindings.lru:0:T>#impl",
+          "label": "parity.derived.CacheBindings.lru.impl"
+        },
+        "hasDefault": false,
+        "isOptional": false,
+        "renderedKey": "parity.derived.LruCache<kotlin.String>"
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "23:parity/derived/AppGraph",
+        "label": "parity.derived.AppGraph"
+      },
+      "phase": "registration",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "25:parity/derived/ChildGraph|97:parity.derived.AppGraph.Impl.<get-child>(parity/derived/AppGraph.Impl): parity/derived/ChildGraph",
+          "key": "parity/derived/ChildGraph",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "parity.derived.AppGraph.Impl.<get-child>(parity/derived/AppGraph.Impl): parity/derived/ChildGraph",
+            "label": "parity.derived.AppGraph.Impl.<get-child>"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "parity.derived.ChildGraph"
+        }
+      ],
+      "details": [
+        "Records bindings added directly to this graph, including member-injection dependencies."
+      ]
+    }
+  ]
+}

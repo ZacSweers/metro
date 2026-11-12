@@ -1301,6 +1301,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("AmbiguousDerivedBinding.kt")
+    public void testAmbiguousDerivedBinding() {
+      run("AmbiguousDerivedBinding.kt");
+    }
+
+    @Test
     @TestMetadata("BinaryGraph.kt")
     public void testBinaryGraph() {
       run("BinaryGraph.kt");
@@ -1322,6 +1328,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     @TestMetadata("DependencyCycle.kt")
     public void testDependencyCycle() {
       run("DependencyCycle.kt");
+    }
+
+    @Test
+    @TestMetadata("DerivedBindingGraph.kt")
+    public void testDerivedBindingGraph() {
+      run("DerivedBindingGraph.kt");
     }
 
     @Test

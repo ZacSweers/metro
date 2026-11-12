@@ -11,12 +11,16 @@ import com.intellij.psi.PsiFile
 import com.intellij.psi.SmartPointerManager
 import com.intellij.psi.SmartPsiElementPointer
 import dev.zacsweers.metro.compiler.MetroOptions
+import dev.zacsweers.metro.compiler.graph.MAX_DERIVED_BINDING_DEPTH
 import dev.zacsweers.metro.idea.index.snapshot.SnapshotReadExecutor
 import dev.zacsweers.metro.idea.metroIdeState
 import dev.zacsweers.metro.idea.model.ClassBindingIdentity
 import dev.zacsweers.metro.idea.model.ConsumerEntry
+import dev.zacsweers.metro.idea.model.GenericBindingLookupKey
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaTypeKey
+import dev.zacsweers.metro.idea.model.genericLookupKey
+import dev.zacsweers.metro.idea.model.matchGenericBinding
 import dev.zacsweers.metro.idea.qualifierAnnotation
 import dev.zacsweers.metro.idea.tracing.IdeTraceOperation
 import dev.zacsweers.metro.idea.tracing.IdeTraceStageToken
@@ -45,6 +49,8 @@ internal class SourceClassRequest(
   val module: KaModule,
   val context: SmartPsiElementPointer<out KtElement>,
   val direct: Boolean = false,
+  /** How many derived bindings led to this request. */
+  val derivedDepth: Int = 0,
 ) {
   val id: SourceClassRequestId = SourceClassRequestId(key, module)
 }
@@ -119,6 +125,18 @@ internal class SourceClassBindingPostProcessor(
   }
   private val boundaries = linkedMapOf<SourceClassRequestId, SourceClassRequest>()
   private val queue = ArrayDeque<SourceClassRequest>()
+
+  /** Enabled generic provider and binds declarations by raw class and qualifier. Usually empty. */
+  private val genericTemplates: Map<GenericBindingLookupKey, List<KaBinding>> =
+    linkedMapOf<GenericBindingLookupKey, MutableList<KaBinding>>().apply {
+      for (binding in bindings) {
+        if (binding.genericSignature?.isEnabled != true) {
+          continue
+        }
+        val lookupKey = binding.typeKey.genericLookupKey() ?: continue
+        getOrPut(lookupKey, ::mutableListOf) += binding
+      }
+    }
   private val libraryRequests = mutableListOf<SourceClassRequest>()
   private val dependencies =
     SourceClassDependencies.Builder(
@@ -474,6 +492,7 @@ internal class SourceClassBindingPostProcessor(
       return
     }
     dependencies.include(read.dependencies)
+    enqueueDerivedDependencies(request)
     var binding = read.binding
     if (binding == null) {
       // The same class ID can name source in one module and a binary in another. Preserve the
@@ -502,6 +521,40 @@ internal class SourceClassBindingPostProcessor(
       ProgressManager.checkCanceled()
       if (budget.isConcrete(key.type)) {
         queue += SourceClassRequest(key, request.module, request.context)
+      }
+    }
+  }
+
+  /**
+   * Follows the dependencies a generic provider would have for [request]'s key. They can need class
+   * bindings too, like `LruCache<String>` behind a generic `@Binds`. Every matching declaration is
+   * followed because graph membership and specificity are decided at query time. Each chain stops
+   * after [MAX_DERIVED_BINDING_DEPTH] derivations, so a divergent provider can't grow forever.
+   */
+  private fun enqueueDerivedDependencies(request: SourceClassRequest) {
+    if (genericTemplates.isEmpty()) {
+      return
+    }
+    if (request.derivedDepth >= MAX_DERIVED_BINDING_DEPTH) {
+      return
+    }
+    val lookupKey = request.key.genericLookupKey() ?: return
+    val templates = genericTemplates[lookupKey] ?: return
+    for (template in templates) {
+      ProgressManager.checkCanceled()
+      val derived = matchGenericBinding(template, request.key) ?: continue
+      for (dependency in derived.dependencies) {
+        val key = dependency.typeKey
+        val isConcreteClass = key.type.classId != null && budget.isConcrete(key.type)
+        if (isConcreteClass) {
+          queue +=
+            SourceClassRequest(
+              key,
+              request.module,
+              request.context,
+              derivedDepth = request.derivedDepth + 1,
+            )
+        }
       }
     }
   }
