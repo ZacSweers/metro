@@ -292,6 +292,61 @@ class ContributionHintICTests :
     assertThat(project.invokeMain<String>(target = null)).isEqualTo("after")
   }
 
+  // https://github.com/ZacSweers/metro/issues/3098
+  @Test
+  fun originInUnmodifiedFileOnIncrementalBuild() {
+    assumeFirHintsSupported()
+    val fixture =
+      object : MetroProject(multiplatform = false) {
+        override fun sources() =
+          listOf(
+            source("interface Service\nclass OriginTrigger", "OriginTrigger"),
+            source(
+              """
+              @Origin(OriginTrigger::class)
+              @ContributesBinding(AppScope::class)
+              @Inject
+              class ContributedService : Service
+              """,
+              "ContributedService",
+            ),
+            source(
+              """
+              @DependencyGraph(AppScope::class)
+              interface AppGraph {
+                val service: Service
+              }
+
+              fun main(): String = createGraph<AppGraph>().service.javaClass.simpleName
+              """,
+              "Main",
+            ),
+          )
+      }
+
+    val project = fixture.gradleProject
+    val firstBuild = project.compileKotlin(":compileKotlin", false, "--no-build-cache")
+    assertThat(firstBuild.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(project.invokeMain<String>(target = null)).isEqualTo("ContributedService")
+
+    val main = project.rootDir.resolve("src/main/kotlin/test/Main.kt")
+    val updatedMembers =
+      """
+      val service: Service
+      val tag: String
+
+      companion object {
+        @Provides fun tag(): String = "updated"
+      }
+      """
+        .trimIndent()
+    main.writeText(main.readText().replace("val service: Service", updatedMembers))
+
+    val secondBuild = project.compileKotlin(":compileKotlin", false, "--no-build-cache")
+    assertThat(secondBuild.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(project.invokeMain<String>(target = null)).isEqualTo("ContributedService")
+  }
+
   private fun assumeFirHintsSupported() {
     val selectedTarget = System.getProperty("metro.functionalTestKmpTarget")
     assumeTrue(selectedTarget == null || selectedTarget == "jvm")

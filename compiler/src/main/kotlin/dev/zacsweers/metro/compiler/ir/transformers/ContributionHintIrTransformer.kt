@@ -32,7 +32,7 @@ import org.jetbrains.kotlin.ir.types.classOrFail
 import org.jetbrains.kotlin.ir.util.NaiveSourceBasedFileEntryImpl
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.file
-import org.jetbrains.kotlin.ir.util.fileEntry
+import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.load.kotlin.PackagePartClassUtils
@@ -75,15 +75,18 @@ internal class ContributionHintIrTransformer(
   private fun prepareHintFile(hint: IrSimpleFunction) {
     val file = hint.file
     val contributingClass = hint.regularParameters.single().type.classOrFail.owner
-    val originClassId = contributingClass.originClassId()
+    val contributingFileEntry = contributingClass.fileOrNull?.fileEntry ?: return
     val sourceClass =
-      if (originClassId != null) {
-        hint.lookupClass(originClassId)?.owner ?: contributingClass
-      } else {
+      if (Path(contributingFileEntry.name).isAbsolute) {
         contributingClass
+      } else {
+        // Synthetic declarations use their origin's source file for output tracking.
+        val originClassId = contributingClass.originClassId() ?: return
+        hint.lookupClass(originClassId)?.owner ?: return
       }
 
-    val sourcePath = Path(sourceClass.fileEntry.name)
+    val sourceFileEntry = sourceClass.fileOrNull?.fileEntry ?: return
+    val sourcePath = Path(sourceFileEntry.name)
     if (!sourcePath.isAbsolute) {
       return
     }
@@ -92,7 +95,7 @@ internal class ContributionHintIrTransformer(
     val isJvm = pluginContext.platform.isJvm()
     val hintPath =
       if (isJvm) {
-        sourceClass.fileEntry.name
+        sourceFileEntry.name
       } else {
         sourcePath.parent.resolve(hintFileName).absolutePathString()
       }
