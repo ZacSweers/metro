@@ -260,6 +260,12 @@ The compiler option is `derived-binding-overlap-severity`. The default is `NONE`
 
 [Graph metadata reports](graph-analysis.md) add a `derivedFrom` object to each derived binding. It has the generic `provider` and its `typeArguments`, keyed by type parameter name. [Binding explanations](graph-analysis.md#binding-explanations) use the reason `selected_derived` for a derived binding and `less_specific` for a generic provider that lost to a more specific one.
 
+## IDE support
+
+The Metro IDE plugin resolves derived bindings. Navigation, find usages, and **Why this Metro binding?** work for a derived key and lead to the generic provider. Graph validation reports ambiguous and divergent derived bindings. It doesn't report overlaps.
+
+The IDE checks type parameter bounds only in simple cases, like a bound of `Any`. It assumes that other bounds hold. So the IDE can show a derived binding for a key that the compiler rejects.
+
 ## Limitations
 
 - Generic multibinding contributions aren't supported.
