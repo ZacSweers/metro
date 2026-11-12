@@ -99,6 +99,33 @@ internal sealed class GenericBindingCandidate {
   }
 
   /**
+   * True if [other] provides the same keys as this candidate. Their qualifiers match and each
+   * pattern matches the other's with only that pattern's own type parameters as variables. So
+   * `Encoder<List<T>>` is alpha-equivalent to `Encoder<List<E>>`.
+   */
+  fun isAlphaEquivalentTo(other: GenericBindingCandidate): Boolean {
+    if (patternKey.qualifier != other.patternKey.qualifier) {
+      return false
+    }
+    val otherCoversThis =
+      matchTypePattern(
+        pattern = other.patternIdentity,
+        target = patternIdentity,
+        isVariable = other::isVariable,
+      ) != null
+    if (!otherCoversThis) {
+      return false
+    }
+    val thisCoversOther =
+      matchTypePattern(
+        pattern = patternIdentity,
+        target = other.patternIdentity,
+        isVariable = ::isVariable,
+      ) != null
+    return thisCoversOther
+  }
+
+  /**
    * Infers this candidate's type arguments for [target], in [functionTypeParameters] order. Returns
    * null when [patternKey]'s type doesn't match [target]'s type or an inferred argument breaks its
    * type parameter's bounds. Callers match qualifiers through the index.

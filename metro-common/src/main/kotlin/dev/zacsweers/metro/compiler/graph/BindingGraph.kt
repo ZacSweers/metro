@@ -115,6 +115,11 @@ public open class MutableBindingGraph<
    * unless a deferred dependency breaks a cycle.
    */
   private val onSortedKey: ((TypeKey) -> Unit)? = null,
+  /**
+   * Returns true when the caller reports a missing key with its own diagnostic. The graph then
+   * skips its missing-binding report for that key.
+   */
+  private val reportsMissingKeyElsewhere: (TypeKey) -> Boolean = { false },
 ) : BindingGraph<Type, TypeKey, ContextualTypeKey, Binding, BindingStackEntry, BindingStack> {
   // Populated by initial graph setup and prepareSeal().
   override val bindings: MutableScatterMap<TypeKey, Binding> = MutableScatterMap(256)
@@ -710,6 +715,9 @@ public open class MutableBindingGraph<
   }
 
   public fun reportMissingBinding(typeKey: TypeKey, bindingStack: BindingStack) {
+    if (reportsMissingKeyElsewhere(typeKey)) {
+      return
+    }
     if (reportedMissingKeys.add(typeKey)) {
       val hints = missingBindingDiagnosticDetails(typeKey)
       val isAnyType = typeKey.isUnqualifiedAny

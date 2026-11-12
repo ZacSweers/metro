@@ -1,0 +1,1 @@
+/DerivationDepthLimit.kt:142:11: error: [Metro/DivergentDerivedBinding] Deriving `Encoder<List<String>>` would put more than 64 derived bindings on one chain, which is the limit. Add an exact binding for a key on the chain to shorten it.

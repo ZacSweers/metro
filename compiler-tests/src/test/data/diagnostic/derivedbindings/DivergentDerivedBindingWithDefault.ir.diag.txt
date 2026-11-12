@@ -1,0 +1,1 @@
+/DivergentDerivedBindingWithDefault.kt:19:11: error: [Metro/DivergentDerivedBinding] The generic provider `Encoders.wrapped` keeps requesting a larger key, so derivation would never end. It derived `Encoder<String>` and `Encoder<List<String>>`, then needed `Encoder<List<List<String>>>`. Check the parameter types of `Encoders.wrapped`.

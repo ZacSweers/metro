@@ -54,6 +54,27 @@ public object DerivedBindingDiagnosticMessages {
       "`$selectedProvider` because its return type is the most specific."
   }
 
+  /**
+   * Reported when [provider] keeps requesting a larger key from itself. [chain] lists the keys it
+   * produced on one derivation chain, oldest first. The last one is the key Metro rejected.
+   */
+  public fun divergentDerivedBinding(provider: String, chain: List<String>): String {
+    val derived = chain.dropLast(1)
+    val rejected = chain.last()
+    return "The generic provider `$provider` keeps requesting a larger key, so derivation would " +
+      "never end. It derived ${renderNames(derived)}, then needed `$rejected`. Check the " +
+      "parameter types of `$provider`."
+  }
+
+  /**
+   * Reported when deriving [key] would put more than [limit] derived bindings on one derivation
+   * chain.
+   */
+  public fun derivedBindingDepthLimit(key: String, limit: Int): String {
+    return "Deriving `$key` would put more than $limit derived bindings on one chain, which is " +
+      "the limit. Add an exact binding for a key on the chain to shorten it."
+  }
+
   /** Quotes [names] and joins them into a readable list. */
   private fun renderNames(names: List<String>): String {
     val quoted = names.map { "`$it`" }

@@ -389,6 +389,10 @@ internal class BindingGraphGenerator(
       }
     }
 
+    if (!bindingLookup.hasNoGenericBindingCandidates) {
+      bindingLookup.dropShadowedInheritedGenericCandidates()
+    }
+
     // For graph extensions, use the original factory creator to reference source parameter
     // declarations
     val originalCreator = node.originalCreator ?: node.creator
@@ -953,10 +957,14 @@ internal class BindingGraphGenerator(
     val optionalKeys = mutableMapOf<IrTypeKey, MutableSet<BindsOptionalOfCallable>>()
     val supertypeAliases = mutableMapOf<IrTypeKey, IrTypeKey>()
     val multibindingAccessors = mutableListOf<GraphAccessor>()
+    // Generic candidates from closer parents. Parents iterate nearest first.
+    val closerGenericCandidates = mutableListOf<GenericBindingCandidate>()
 
     for ((typeKey, extendedNode) in node.allParentGraphs) {
       val isDynamicParent =
         extendedNode is GraphNode.Local && extendedNode.dynamicTypeKeys.isNotEmpty()
+      // Candidates on one level don't shadow each other, so they join the closer list afterward.
+      val levelGenericCandidates = mutableListOf<GenericBindingCandidate>()
 
       val alreadyCollectedKeys = providerFactoryKeys + bindsCallableKeys
 
@@ -994,7 +1002,17 @@ internal class BindingGraphGenerator(
           }
 
           val isDynamicInParent = isDynamicParent && key in extendedNode.dynamicTypeKeys
-          if (factory.annotations.isScoped) {
+          if (factory is ProviderFactory.Metro && factory.isGeneric) {
+            // Generic providers are inherited even when scoped. A child resolves each scoped
+            // derived key through the ancestor that owns the scope.
+            val candidate = GenericBindingCandidate.Provider(factory, isLocallyDeclared = false)
+            if (closerGenericCandidates.any { it.isAlphaEquivalentTo(candidate) }) {
+              continue
+            }
+            levelGenericCandidates += candidate
+            providerFactories.add(RawProviderFactoryEntry(key, factory, isDynamicInParent))
+            providerFactoryKeys.add(key)
+          } else if (factory.annotations.isScoped) {
             // Scoped parent bindings live on the graph that owns their scope, but they still
             // shadow farther ancestor bindings for the same key. Graph extensions resolve them
             // through the parent context instead of inheriting the factory directly.
@@ -1043,10 +1061,20 @@ internal class BindingGraphGenerator(
             continue
           }
           val isDynamicInParent = isDynamicParent && key in extendedNode.dynamicTypeKeys
+          if (callable.isGeneric) {
+            val candidate = GenericBindingCandidate.Binds(callable, isLocallyDeclared = false)
+            if (closerGenericCandidates.any { it.isAlphaEquivalentTo(candidate) }) {
+              continue
+            }
+            levelGenericCandidates += candidate
+          }
           bindsCallableKeys.add(key)
           bindsCallables.add(RawBindsCallableEntry(key, callable, isDynamicInParent))
         }
       }
+
+      // A closer parent's generic candidates shadow alpha-equivalent ones from farther ancestors.
+      closerGenericCandidates += levelGenericCandidates
 
       // Collect multibinds callables.
       for (callable in extendedNode.multibindsCallables) {

@@ -1077,6 +1077,18 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("CycleThroughDerivedBinding.kt")
+    public void testCycleThroughDerivedBinding() {
+      run("CycleThroughDerivedBinding.kt");
+    }
+
+    @Test
+    @TestMetadata("DerivationDepthLimit.kt")
+    public void testDerivationDepthLimit() {
+      run("DerivationDepthLimit.kt");
+    }
+
+    @Test
     @TestMetadata("DerivedBindingMissingParameter.kt")
     public void testDerivedBindingMissingParameter() {
       run("DerivedBindingMissingParameter.kt");
@@ -1104,6 +1116,18 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     @TestMetadata("DerivedBindingsNotEnabledAcrossModules.kt")
     public void testDerivedBindingsNotEnabledAcrossModules() {
       run("DerivedBindingsNotEnabledAcrossModules.kt");
+    }
+
+    @Test
+    @TestMetadata("DivergentDerivedBinding.kt")
+    public void testDivergentDerivedBinding() {
+      run("DivergentDerivedBinding.kt");
+    }
+
+    @Test
+    @TestMetadata("DivergentDerivedBindingWithDefault.kt")
+    public void testDivergentDerivedBindingWithDefault() {
+      run("DivergentDerivedBindingWithDefault.kt");
     }
 
     @Test
@@ -1140,6 +1164,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     @TestMetadata("ReifiedProviders.kt")
     public void testReifiedProviders() {
       run("ReifiedProviders.kt");
+    }
+
+    @Test
+    @TestMetadata("UnownedScopeForInheritedGenericProvider.kt")
+    public void testUnownedScopeForInheritedGenericProvider() {
+      run("UnownedScopeForInheritedGenericProvider.kt");
     }
 
     @Test

@@ -34,6 +34,7 @@ import dev.zacsweers.metro.compiler.graph.GraphLifecyclePhase
 import dev.zacsweers.metro.compiler.graph.GraphTopology
 import dev.zacsweers.metro.compiler.graph.GraphValidationIssue
 import dev.zacsweers.metro.compiler.graph.LocationDiagnostic
+import dev.zacsweers.metro.compiler.graph.MAX_DERIVED_BINDING_DEPTH
 import dev.zacsweers.metro.compiler.graph.MissingBindingHints
 import dev.zacsweers.metro.compiler.graph.MultibindingKind
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
@@ -358,7 +359,15 @@ internal class IrBindingGraph(
         if (callingBinding == null) {
           roots.getValue(contextKey)
         } else {
-          bindingStackEntryForDependency(callingBinding, contextKey, contextKey.typeKey)
+          val entry = bindingStackEntryForDependency(callingBinding, contextKey, contextKey.typeKey)
+          // Derived bindings walk requester links, so only graphs with generic candidates need
+          // them.
+          val hasGenericCandidates = _bindingLookup?.hasNoGenericBindingCandidates == false
+          if (hasGenericCandidates) {
+            entry.withRequestingKey(callingBinding.typeKey)
+          } else {
+            entry
+          }
         }
       },
       computeBindings = { contextKey, currentBindings, stack ->
@@ -372,6 +381,10 @@ internal class IrBindingGraph(
       onExistingBinding = decisionCapture?.let { capture -> capture::reused },
       onDependencyResolved = if (parentReader != null) ::recordParentReadCandidate else null,
       onSortedKey = if (parentReader != null) ::recordAncestorBuild else null,
+      // Rejected derivations get their own report in validateBindings.
+      reportsMissingKeyElsewhere = { key ->
+        _bindingLookup?.divergentDerivedBindings?.containsKey(key) == true
+      },
     )
 
   /** This graph's reads grouped by dependency and the bindings that consume it. */
@@ -1529,6 +1542,7 @@ internal class IrBindingGraph(
     }
     reportAmbiguousDerivedBindings()
     reportDerivedBindingOverlaps()
+    reportDivergentDerivedBindings()
     val suspendProvidersEnabled = metroContext.options.enableSuspendProviders
     var hasDirectSuspendBinding = false
     var hasDisabledSuspendProviderUse = false
@@ -1711,6 +1725,39 @@ internal class IrBindingGraph(
     } else {
       metroContext.reportCompat(node.sourceGraph, factory, message)
     }
+  }
+
+  /**
+   * Reports keys whose derivation kept growing or passed the depth limit. Each key gets one
+   * message. All of them go in one report on the graph, sorted by key. The graph skips its plain
+   * missing-binding report for these keys.
+   */
+  private fun reportDivergentDerivedBindings() {
+    val rejections = bindingLookup.divergentDerivedBindings
+    if (rejections.isEmpty()) {
+      return
+    }
+    val id = MetroDiagnosticId.DIVERGENT_DERIVED_BINDING
+    val message =
+      rejections.entries
+        .sortedBy { it.key }
+        .joinToString("\n\n") { (key, rejection) ->
+          val text =
+            when (rejection.reason) {
+              DivergentDerivedBinding.Reason.GROWING_KEY ->
+                DerivedBindingDiagnosticMessages.divergentDerivedBinding(
+                  provider = rejection.candidate.function.kotlinFqName.asString(),
+                  chain = rejection.chain.map { it.render(short = true) },
+                )
+              DivergentDerivedBinding.Reason.DEPTH_LIMIT ->
+                DerivedBindingDiagnosticMessages.derivedBindingDepthLimit(
+                  key = key.render(short = true),
+                  limit = MAX_DERIVED_BINDING_DEPTH,
+                )
+            }
+          "[${id.fullId}] $text"
+        }
+    reportError(node.sourceGraph, message, id.factory)
   }
 
   /** Fully qualified function names, sorted so messages are stable. */

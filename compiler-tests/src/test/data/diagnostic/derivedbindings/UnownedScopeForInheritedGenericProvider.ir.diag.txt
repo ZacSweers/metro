@@ -1,0 +1,10 @@
+/UnownedScopeForInheritedGenericProvider.kt:20:11: error: [Metro/IncompatiblyScopedBindings] AppGraph.Impl.ChildGraphImpl (unscoped) may not reference scoped
+    bindings
+
+  trace (in AppGraph.Impl.ChildGraphImpl):
+      Cache<String> (scoped to '@SingleIn(OtherScope::class)')
+      Cache<String> is requested at ChildGraph.cache
+
+  note: ChildGraphImpl is contributed by 'ChildGraph' to 'AppGraph'
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#incompatiblyscopedbindings
+

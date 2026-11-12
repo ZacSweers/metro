@@ -3043,9 +3043,21 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
     }
 
     @Test
+    @TestMetadata("ContributedExtensionUsesParentGenericProviders.kt")
+    public void testContributedExtensionUsesParentGenericProviders() {
+      run("ContributedExtensionUsesParentGenericProviders.kt");
+    }
+
+    @Test
     @TestMetadata("DeferredAccess.kt")
     public void testDeferredAccess() {
       run("DeferredAccess.kt");
+    }
+
+    @Test
+    @TestMetadata("DerivationChainAtDepthLimit.kt")
+    public void testDerivationChainAtDepthLimit() {
+      run("DerivationChainAtDepthLimit.kt");
     }
 
     @Test
@@ -3058,6 +3070,24 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
     @TestMetadata("ExactBindingWins.kt")
     public void testExactBindingWins() {
       run("ExactBindingWins.kt");
+    }
+
+    @Test
+    @TestMetadata("ExtensionBindingsBeatParentGenericProviders.kt")
+    public void testExtensionBindingsBeatParentGenericProviders() {
+      run("ExtensionBindingsBeatParentGenericProviders.kt");
+    }
+
+    @Test
+    @TestMetadata("ExtensionScopedGenericProvider.kt")
+    public void testExtensionScopedGenericProvider() {
+      run("ExtensionScopedGenericProvider.kt");
+    }
+
+    @Test
+    @TestMetadata("ExtensionUsesParentGenericProviders.kt")
+    public void testExtensionUsesParentGenericProviders() {
+      run("ExtensionUsesParentGenericProviders.kt");
     }
 
     @Test
@@ -3079,6 +3109,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
     }
 
     @Test
+    @TestMetadata("GrandchildUsesGrandparentGenericProviders.kt")
+    public void testGrandchildUsesGrandparentGenericProviders() {
+      run("GrandchildUsesGrandparentGenericProviders.kt");
+    }
+
+    @Test
     @TestMetadata("InjectClassFallback.kt")
     public void testInjectClassFallback() {
       run("InjectClassFallback.kt");
@@ -3097,6 +3133,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
     }
 
     @Test
+    @TestMetadata("NearestAncestorGenericProviderWins.kt")
+    public void testNearestAncestorGenericProviderWins() {
+      run("NearestAncestorGenericProviderWins.kt");
+    }
+
+    @Test
     @TestMetadata("NullabilityMatching.kt")
     public void testNullabilityMatching() {
       run("NullabilityMatching.kt");
@@ -3109,6 +3151,18 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
     }
 
     @Test
+    @TestMetadata("ParentScopedGenericProviderSharedWithParent.kt")
+    public void testParentScopedGenericProviderSharedWithParent() {
+      run("ParentScopedGenericProviderSharedWithParent.kt");
+    }
+
+    @Test
+    @TestMetadata("ParentScopedGenericProviderUsedByExtension.kt")
+    public void testParentScopedGenericProviderUsedByExtension() {
+      run("ParentScopedGenericProviderUsedByExtension.kt");
+    }
+
+    @Test
     @TestMetadata("ProviderLocations.kt")
     public void testProviderLocations() {
       run("ProviderLocations.kt");
@@ -3118,6 +3172,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
     @TestMetadata("Qualifiers.kt")
     public void testQualifiers() {
       run("Qualifiers.kt");
+    }
+
+    @Test
+    @TestMetadata("RecursiveTypeWithDeferredDependency.kt")
+    public void testRecursiveTypeWithDeferredDependency() {
+      run("RecursiveTypeWithDeferredDependency.kt");
     }
 
     @Test
