@@ -35,6 +35,7 @@ import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.descriptors.EffectiveVisibility
 import org.jetbrains.kotlin.descriptors.Visibilities
+import org.jetbrains.kotlin.descriptors.Visibility
 import org.jetbrains.kotlin.descriptors.annotations.AnnotationUseSiteTarget
 import org.jetbrains.kotlin.descriptors.isObject
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
@@ -57,6 +58,7 @@ import org.jetbrains.kotlin.fir.declarations.FirPropertyAccessor
 import org.jetbrains.kotlin.fir.declarations.FirReceiverParameter
 import org.jetbrains.kotlin.fir.declarations.FirValueParameter
 import org.jetbrains.kotlin.fir.declarations.getAnnotationByClassId
+import org.jetbrains.kotlin.fir.declarations.hasAnnotation
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClass
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
@@ -81,8 +83,10 @@ import org.jetbrains.kotlin.fir.expressions.toResolvedCallableSymbol
 import org.jetbrains.kotlin.fir.propertyIfAccessor
 import org.jetbrains.kotlin.fir.references.toResolvedCallableSymbol
 import org.jetbrains.kotlin.fir.resolve.getContainingClassSymbol
+import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
 import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertyAccessorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
@@ -95,6 +99,7 @@ import org.jetbrains.kotlin.fir.types.isSubtypeOf
 import org.jetbrains.kotlin.fir.types.renderReadableWithFqNames
 import org.jetbrains.kotlin.fir.types.resolvedType
 import org.jetbrains.kotlin.fir.types.type
+import org.jetbrains.kotlin.name.StandardClassIds
 
 internal object BindingContainerCallableChecker :
   FirCallableDeclarationChecker(MppCheckerKind.Common) {
@@ -322,11 +327,14 @@ internal object BindingContainerCallableChecker :
           val effectiveVisibility = declaration.effectiveVisibility
           when {
             effectiveVisibility == EffectiveVisibility.Internal -> {
-              reporter.reportOn(
-                source,
-                MetroDiagnostics.INLINE_PROVIDES_WARNING,
-                "Inline provider is effectively internal and must annotated `@PublishedApi` to be useful",
-              )
+              // FIR's effective visibility doesn't account for `@PublishedApi`.
+              if (!declaration.symbol.isPublishedApi(session)) {
+                reporter.reportOn(
+                  source,
+                  MetroDiagnostics.INLINE_PROVIDES_WARNING,
+                  "Inline provider is effectively internal and must annotated `@PublishedApi` to be useful",
+                )
+              }
             }
             effectiveVisibility.publicApi -> {
               // Ok
@@ -870,6 +878,34 @@ internal object BindingContainerCallableChecker :
       }
       else -> false
     }
+  }
+
+  /**
+   * Returns true if other modules' inline code can call this declaration. Each internal declaration
+   * in the chain from this callable through its containing classes needs `@PublishedApi`. A
+   * `@PublishedApi` member of an internal class without it still isn't published.
+   */
+  private fun FirCallableSymbol<*>.isPublishedApi(session: FirSession): Boolean {
+    if (isInternalWithoutPublishedApi(visibility, session)) {
+      return false
+    }
+    var current: FirClassLikeSymbol<*>? = getContainingClassSymbol()
+    while (current != null) {
+      if (current.isInternalWithoutPublishedApi(current.visibility, session)) {
+        return false
+      }
+      current = current.getContainingClassSymbol()
+    }
+    return true
+  }
+
+  private fun FirBasedSymbol<*>.isInternalWithoutPublishedApi(
+    visibility: Visibility,
+    session: FirSession,
+  ): Boolean {
+    val isInternal = visibility == Visibilities.Internal
+    val hasPublishedApi = hasAnnotation(StandardClassIds.Annotations.PublishedApi, session)
+    return isInternal && !hasPublishedApi
   }
 
   @OptIn(SymbolInternals::class)
