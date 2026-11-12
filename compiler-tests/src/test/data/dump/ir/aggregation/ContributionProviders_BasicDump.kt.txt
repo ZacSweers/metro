@@ -34,15 +34,6 @@ internal class Impl : Base {
 interface Base {
 }
 
-// FILE: ContributionProviders_BasicDump.kt
-@file:JvmName(name = "ImplContributionsToAppScopeDev_zacsweers_metro_AppScopeKt")
-package metro.hints
-
-@Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-fun dev_zacsweers_metro_AppScope(contributed: ImplContributions.ToAppScope) {
-  return error(message = "Never called")
-}
-
 // FILE: ImplContributions.kt
 
 @HiddenFromObjC
@@ -123,5 +114,14 @@ abstract class ImplContributions {
 
   }
 
+}
+
+// FILE: ImplContributions.kt
+@file:JvmName(name = "ImplContributionsToAppScopeDev_zacsweers_metro_AppScopeKt")
+package metro.hints
+
+@Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+fun dev_zacsweers_metro_AppScope(contributed: ImplContributions.ToAppScope) {
+  return error(message = "Never called")
 }
 
