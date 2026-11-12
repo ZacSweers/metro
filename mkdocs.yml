@@ -135,6 +135,7 @@ nav:
       - 'Metro Intrinsics': metro-intrinsics.md
       - 'Coroutines Support': coroutines.md
       - 'Bindings': bindings.md
+      - 'Derived Bindings': derived-bindings.md
       - 'Aggregation (aka "Anvil")': aggregation.md
       - 'Multiplatform': multiplatform.md
       - 'Validation & Error Reporting': validation-and-error-reporting.md

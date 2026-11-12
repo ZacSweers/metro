@@ -21,7 +21,7 @@ This enables the compiler to export graph metadata during compilation.
 
 Graph metadata includes `bindingExplanations`. These use the same decision model and reason codes as the IDE's **Why this Metro binding?** action. The aggregated metadata and `analysis.json` include these records. Reports also cover generated child and dynamic graphs.
 
-Each explanation identifies the graph, the requested key when one exists, and the candidates the compiler considered. Reasons such as `selected_explicit`, `selected_parent`, `excluded`, and `replaced` appear as structured fields. Related declarations identify the graph or contribution responsible for a removal when that information is available.
+Each explanation identifies the graph, the requested key when one exists, and the candidates the compiler considered. Reasons such as `selected_explicit`, `selected_parent`, `excluded`, and `replaced` appear as structured fields. [Derived bindings](derived-bindings.md) use `selected_derived`, and generic providers that lose to a more specific one use `less_specific`. Related declarations identify the graph or contribution responsible for a removal when that information is available.
 
 The `phase` identifies binding registration, dependency lookup, or candidate filtering. A filtering record can describe an excluded contribution before anything requests it. Lookup records include only candidates reached by the compiler's normal lookup. Fallbacks that weren't evaluated are absent. The IDE can show additional alternatives from its project index.
 
@@ -354,6 +354,7 @@ The raw metadata includes:
     - `factoriesImplemented` - Factory interfaces this graph implements
 - **bindings** - All bindings with their kinds, scopes, and dependencies
 - Multibinding information (sources, collection type)
+- `derivedFrom` on [derived bindings](derived-bindings.md) (generic `provider` and `typeArguments` by type parameter name)
 - Origin locations (file and line numbers)
 - Synthetic binding flags
 

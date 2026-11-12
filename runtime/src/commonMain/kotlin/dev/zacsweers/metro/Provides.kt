@@ -101,6 +101,9 @@ package dev.zacsweers.metro
  * }
  * ```
  *
+ * Provider functions can declare type parameters when derived bindings are enabled. See the
+ * [derived bindings docs](https://zacsweers.github.io/metro/latest/derived-bindings/).
+ *
  * ## DependencyGraph.Factory
  *
  * If a parameter on a [dependency graph factory][DependencyGraph.Factory] is annotated with this,

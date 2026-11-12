@@ -6,6 +6,29 @@ Changelog
 
 ### New
 
+#### [**[MEEP-3124]**](https://github.com/ZacSweers/metro/discussions/3124) Derived bindings
+
+`@Provides` and `@Binds` functions can now declare type parameters. When a graph requests a key that has no exact binding, Metro infers the type arguments from a matching generic provider's return type and creates a _derived binding_ for that key. Generic providers compose, because their parameters resolve the same way.
+
+```kotlin
+@BindingContainer
+object JsonEncoders {
+  @Provides fun string(): Encoder<String> = Encoder { "\"$it\"" }
+
+  // Supplies Encoder<List<String>>, Encoder<List<List<String>>>, and so on.
+  @Provides
+  fun <T> list(element: Encoder<T>): Encoder<List<T>> = Encoder { values ->
+    values.joinToString(",", "[", "]") { element.encode(it) }
+  }
+}
+```
+
+An exact binding still wins. Among matching generic providers, the most specific one wins. Generic providers can be scoped, `suspend`, or `inline` with `reified` type parameters, and graph extensions can use their ancestors' generic providers.
+
+This is experimental and disabled by default. Enable it with `metro { enableDerivedBindings.set(true) }`. See the [derived bindings docs](docs/derived-bindings.md) for details.
+
+#### Misc
+
 - **[FIR/IR]** Experimental support for companion block `@Provides` functions and properties on Kotlin `2.5.0-Beta1` and later. See [companion-block configuration](docs/installation.md#companion-blocks).
 - Add experimental graph lifecycle callbacks.
   - A graph that implements `CloseableGraph` can annotate functions with `@OnGraphInit` and `@OnGraphClose`. Metro injects their parameters and generates `close()`, which also closes the graph's extensions.
