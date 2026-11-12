@@ -3091,6 +3091,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("ExtensionUsesParentReifiedProviders.kt")
+    public void testExtensionUsesParentReifiedProviders() {
+      run("ExtensionUsesParentReifiedProviders.kt");
+    }
+
+    @Test
     @TestMetadata("GenericBinds.kt")
     public void testGenericBinds() {
       run("GenericBinds.kt");
@@ -3181,9 +3187,57 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("ReifiedEncoderExample.kt")
+    public void testReifiedEncoderExample() {
+      run("ReifiedEncoderExample.kt");
+    }
+
+    @Test
+    @TestMetadata("ReifiedProviderDeferredAccess.kt")
+    public void testReifiedProviderDeferredAccess() {
+      run("ReifiedProviderDeferredAccess.kt");
+    }
+
+    @Test
+    @TestMetadata("ReifiedProviderDependencies.kt")
+    public void testReifiedProviderDependencies() {
+      run("ReifiedProviderDependencies.kt");
+    }
+
+    @Test
+    @TestMetadata("ReifiedProviderInstanceAccess.kt")
+    public void testReifiedProviderInstanceAccess() {
+      run("ReifiedProviderInstanceAccess.kt");
+    }
+
+    @Test
+    @TestMetadata("ReifiedProviderLocations.kt")
+    public void testReifiedProviderLocations() {
+      run("ReifiedProviderLocations.kt");
+    }
+
+    @Test
+    @TestMetadata("ReifiedProviderTypeParameters.kt")
+    public void testReifiedProviderTypeParameters() {
+      run("ReifiedProviderTypeParameters.kt");
+    }
+
+    @Test
+    @TestMetadata("ReifiedProvidersAcrossModules.kt")
+    public void testReifiedProvidersAcrossModules() {
+      run("ReifiedProvidersAcrossModules.kt");
+    }
+
+    @Test
     @TestMetadata("ScopedGenericProvider.kt")
     public void testScopedGenericProvider() {
       run("ScopedGenericProvider.kt");
+    }
+
+    @Test
+    @TestMetadata("ScopedReifiedProvider.kt")
+    public void testScopedReifiedProvider() {
+      run("ScopedReifiedProvider.kt");
     }
 
     @Test
@@ -3196,6 +3250,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     @TestMetadata("SuspendGenericProvider.kt")
     public void testSuspendGenericProvider() {
       run("SuspendGenericProvider.kt");
+    }
+
+    @Test
+    @TestMetadata("SuspendReifiedProvider.kt")
+    public void testSuspendReifiedProvider() {
+      run("SuspendReifiedProvider.kt");
     }
 
     @Test

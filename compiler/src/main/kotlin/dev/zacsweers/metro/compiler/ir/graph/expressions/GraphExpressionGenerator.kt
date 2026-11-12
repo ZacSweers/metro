@@ -474,13 +474,28 @@ private constructor(
           // For suspend bindings, always bypass the factory since factories implement Provider<T>,
           // not SuspendProvider<T>. The suspend call must be inlined or wrapped in a
           // SuspendProvider lambda.
-          val canBypassFactory =
-            providerFactory.canBypassFactory &&
-              // TODO what if the return type is a Provider?
-              (accessType == AccessType.INSTANCE ||
-                (binding.isSuspend && accessType == AccessType.SUSPEND_PROVIDER))
+          // Reified providers have no usable factory, so the graph calls them directly for every
+          // access type. Provider access wraps that call in a lambda.
+          val isReifiedProvider =
+            providerFactory is ProviderFactory.Metro && providerFactory.isReified
+          val requestsSuspendProvider = accessType == AccessType.SUSPEND_PROVIDER
+          val callsSuspendProviderDirectly = binding.isSuspend && requestsSuspendProvider
+          val isTransitivelySuspend = bindingGraph.isTransitivelySuspend(binding.typeKey)
+          // Non-suspend @Provides that transitively depends on suspend bindings. Its factory is a
+          // plain Factory<T> whose ctor can't hold SuspendProvider deps.
+          val needsNestedSuspendFactory =
+            requestsSuspendProvider && !binding.isSuspend && isTransitivelySuspend
+          val requestsInstance = accessType == AccessType.INSTANCE
+          val alwaysCallsDirectly = callsSuspendProviderDirectly || isReifiedProvider
+          val callsProviderDirectly = requestsInstance || alwaysCallsDirectly
+          // TODO what if the return type is a Provider?
+          val canBypassFactory = providerFactory.canBypassFactory && callsProviderDirectly
 
-          if (canBypassFactory) {
+          if (needsNestedSuspendFactory) {
+            // Generate an IR-only nested SuspendFactory in the graph instead. It calls the
+            // provider directly, so this works for reified providers too.
+            return generateNestedSuspendFactoryCall(binding, contextualTypeKey, fieldInitKey)
+          } else if (canBypassFactory) {
             val providerFunction = providerFactory.function
 
             // Use binding.parameters instead of providerFactory.parameters because the binding
@@ -516,12 +531,14 @@ private constructor(
                     it,
                     contextualTypeKey,
                     bindingKind,
-                    isSuspend = bindingGraph.isTransitivelySuspend(binding.typeKey),
+                    isSuspend = isTransitivelySuspend,
                   )
                 }
                 .toTargetType(
                   actual = AccessType.INSTANCE,
                   contextualTypeKey = contextualTypeKey,
+                  // Each provider call must run the provider again.
+                  useInstanceFactory = false,
                   bindingKind = bindingKind,
                 )
             } else {
@@ -545,23 +562,17 @@ private constructor(
                     it,
                     contextualTypeKey,
                     bindingKind,
-                    isSuspend = bindingGraph.isTransitivelySuspend(binding.typeKey),
+                    isSuspend = isTransitivelySuspend,
                   )
                 }
                 .toTargetType(
                   actual = AccessType.INSTANCE,
                   contextualTypeKey = contextualTypeKey,
+                  // Each provider call must run the provider again.
+                  useInstanceFactory = false,
                   bindingKind = bindingKind,
                 )
             }
-          } else if (
-            accessType == AccessType.SUSPEND_PROVIDER &&
-              bindingGraph.isTransitivelySuspend(binding.typeKey)
-          ) {
-            // Non-suspend @Provides that transitively depends on suspend bindings. Its factory
-            // is a plain Factory<T> whose ctor can't hold SuspendProvider deps. Generate an
-            // IR-only nested SuspendFactory in the graph instead.
-            return generateNestedSuspendFactoryCall(binding, contextualTypeKey, fieldInitKey)
           } else {
             // Invoke its factory's create() function
             val factoryProvider =

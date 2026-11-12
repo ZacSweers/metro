@@ -65,6 +65,13 @@ internal sealed interface IrMetroFactory {
           IrExpression?,
         >,
   ): IrExpression {
+    // A reified provider's factory can't call it, so the graph must never instantiate it.
+    if (this is ProviderFactory.Metro && isReified) {
+      reportCompilerBug(
+        "Reified provider $callableId must be called directly for $typeKey. Its factory can't " +
+          "call it and must never be instantiated.",
+      )
+    }
     val expr =
       invokeCreatorExpression(
         typeKey = typeKey,

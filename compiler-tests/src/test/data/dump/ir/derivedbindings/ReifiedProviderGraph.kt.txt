@@ -1,0 +1,213 @@
+class Cache<T : Any?> {
+  val name: String
+    field = name
+    get
+
+  constructor(name: String) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+class NamedEncoder<T : Any?> : Encoder<T> {
+  override val name: String
+    field = name
+    override get
+
+  constructor(name: String) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@DependencyGraph(scope = AppScope::class, bindingContainers = [Encoders::class])
+interface AppGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : AppGraph {
+    private val cacheProvider: Provider<Cache<String>>
+      field = provider<Provider<Cache<String>>, Cache<String>>(delegate = local fun <anonymous>(): Cache<String> {
+        return Encoders.CacheMetroFactory/* companion */.cache<String>()
+      }
+ /*-> Provider<Cache<String>> */)
+
+    private val namedProvider: Provider<Encoder<Int>>
+      field = local fun <anonymous>(): Encoder<Int> {
+        return Encoders.NamedMetroFactory/* companion */.named<Int>()
+      }
+ /*-> Provider<Encoder<Int>> */
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override val intProvider: Provider<Encoder<Int>>
+      override get(): Provider<Encoder<Int>> {
+        return <this>.#namedProvider
+      }
+
+    override val string: Encoder<String>
+      override get(): Encoder<String> {
+        return Encoders.NamedMetroFactory/* companion */.named<String>()
+      }
+
+    override val stringCache: Cache<String>
+      override get(): Cache<String> {
+        return <this>.#cacheProvider.invoke()
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
+    operator fun invoke(): AppGraph {
+      return Impl()
+    }
+
+  }
+
+  abstract val intProvider: Provider<Encoder<Int>>
+    abstract get
+
+  abstract val string: Encoder<String>
+    abstract get
+
+  abstract val stringCache: Cache<String>
+    abstract get
+
+}
+
+interface Encoder<T : Any?> {
+  abstract val name: String
+    abstract get
+
+}
+
+@BindingContainer
+object Encoders {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "cache", propertyName = "", startOffset = 545, endOffset = 660, newInstanceName = "cache")
+  class CacheMetroFactory<T : Any?> : Factory<Cache<T>> {
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun <T : Any?> create(): CacheMetroFactory<T> {
+        return CacheMetroFactory<T>()
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      inline fun <reified T : Any?> cache(): Cache<T> {
+        return Encoders.cache<T>()
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
+    @HiddenFromObjC
+    inline fun <reified T : Any?> declarationMirror(): Cache<T> {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Cache<T> {
+      return error(message = "Reified providers are called directly and never through a factory.")
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "named", propertyName = "", startOffset = 446, endOffset = 541, newInstanceName = "named")
+  class NamedMetroFactory<T : Any?> : Factory<Encoder<T>> {
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun <T : Any?> create(): NamedMetroFactory<T> {
+        return NamedMetroFactory<T>()
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      inline fun <reified T : Any?> named(): Encoder<T> {
+        return Encoders.named<T>()
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    inline fun <reified T : Any?> declarationMirror(): Encoder<T> {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Encoder<T> {
+      return error(message = "Reified providers are called directly and never through a factory.")
+    }
+
+  }
+
+  private constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+  @Provides
+  @SingleIn(scope = AppScope::class)
+  inline fun <reified T : Any?> cache(): Cache<T> {
+    return Cache<T>(name = T::class.<get-simpleName>())
+  }
+
+  @Provides
+  inline fun <reified T : Any?> named(): Encoder<T> {
+    return NamedEncoder<T>(name = T::class.<get-simpleName>())
+  }
+
+}
+

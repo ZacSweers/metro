@@ -773,6 +773,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     public void testGenericProviderFactories() {
       run("GenericProviderFactories.kt");
     }
+
+    @Test
+    @TestMetadata("ReifiedProviderGraph.kt")
+    public void testReifiedProviderGraph() {
+      run("ReifiedProviderGraph.kt");
+    }
   }
 
   @Nested

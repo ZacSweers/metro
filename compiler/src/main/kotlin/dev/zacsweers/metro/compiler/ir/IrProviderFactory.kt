@@ -206,6 +206,18 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
       get() = functionTypeParameters.isNotEmpty() && functionTypeArguments == null
 
     /**
+     * True if any of the provider function's own type parameters is `reified`. It stays true on an
+     * applied view because [functionTypeParameters] still lists the declaration's type parameters.
+     *
+     * The factory class can't call a reified provider, so the graph always calls the function or
+     * its `newInstance` helper directly. In this compilation [functionTypeParameters] are the
+     * source function's own. From another module they're the signature carrier's copies. Those keep
+     * `reified` because a reified provider is always inline, and inline carriers keep it.
+     */
+    val isReified: Boolean
+      get() = functionTypeParameters.any { it.isReified }
+
+    /**
      * Substitutes the container's type parameters through [remapper]. Function-level type
      * parameters stay unchanged, so a generic provider stays generic.
      */
