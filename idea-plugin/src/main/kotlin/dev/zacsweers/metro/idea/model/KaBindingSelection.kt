@@ -82,6 +82,7 @@ internal fun BindingIndex.selectBindingsForKey(
         val declaration = candidates.first { it.selectionTier(unqualified) == BindingTier.OPTIONAL }
         KaBindingSelection(BindingTier.OPTIONAL, listOf(declaration))
       },
+    derived = { null },
     implicit = implicit@{
         if (indexedTier != BindingTier.IMPLICIT) return@implicit null
         val implicit = candidates.filter { it.selectionTier(unqualified) == BindingTier.IMPLICIT }

@@ -727,6 +727,7 @@ internal class BindingLookup(
             setOf(optionalBinding)
           }
         },
+        derived = { null },
         implicit = implicit@{
             if (contextKey.typeKey.type.isNullable()) {
               // If we reach here, do not try to proceed to class lookups. We don't implicitly make
