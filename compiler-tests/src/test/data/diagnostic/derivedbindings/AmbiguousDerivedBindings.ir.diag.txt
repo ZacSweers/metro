@@ -1,0 +1,3 @@
+/AmbiguousDerivedBindings.kt:24:11: error: [Metro/AmbiguousDerivedBinding] `Encoder<Pair<String, Int>>` matches the generic providers `Encoders.left` and `Encoders.right`. None of them is more specific than all the others. Add an exact binding for `Encoder<Pair<String, Int>>`, or make one provider's return type more specific.
+
+[Metro/AmbiguousDerivedBinding] `Encoder<List<String>>` matches the generic providers `Encoders.first` and `Encoders.second`. None of them is more specific than all the others. Add an exact binding for `Encoder<List<String>>`, or make one provider's return type more specific.

@@ -55,9 +55,7 @@ internal class BindsMirrorCollector(private val isInterop: Boolean) {
         }
       if (
         bindsCallables.none {
-          it.callableId == callable.callableId &&
-            it.source == callable.source &&
-            it.rawTarget == callable.rawTarget
+          it.callableId == callable.callableId && it.hasSameKeysAs(callable)
         }
       ) {
         bindsCallables += callable
@@ -93,6 +91,19 @@ internal class BindsMirrorCollector(private val isInterop: Boolean) {
     } else {
       reportCompilerBug("Unexpected binds declaration: $function")
     }
+  }
+
+  /**
+   * External callables can come from both a mirror function and the original declaration. For a
+   * generic callable, each declares its own type parameter symbols, so keys compare by identity.
+   */
+  private fun BindsCallable.hasSameKeysAs(other: BindsCallable): Boolean {
+    val eitherIsGeneric = isGeneric || other.isGeneric
+    if (eitherIsGeneric) {
+      val sameSource = source?.identity == other.source?.identity
+      return sameSource && rawTarget.identity == other.rawTarget.identity
+    }
+    return source == other.source && rawTarget == other.rawTarget
   }
 
   fun buildMirror(clazz: IrClass): BindsMirror {

@@ -16,6 +16,7 @@ import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrTypeParameter
+import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.hasAnnotation
@@ -46,6 +47,16 @@ internal class BindsCallable(
   /** The raw target type key without multibinding transformation. Used for diagnostics. */
   val rawTarget: IrTypeKey,
   @Poko.Skip private val parametersLazy: Lazy<Parameters>,
+  /**
+   * The types [withFunctionTypeArguments] substituted for [functionTypeParameters], in the same
+   * order. It's null for a callable that isn't an applied view.
+   */
+  val functionTypeArguments: List<IrType>? = null,
+  /**
+   * Substitutes the container's type parameters as [remapTypes] did. It also applies to the bounds
+   * of [functionTypeParameters]. It's null when no container substitution happened.
+   */
+  @Poko.Skip val containerTypeRemapper: TypeRemapper? = null,
 ) : BindsLikeCallable {
 
   /**
@@ -55,13 +66,19 @@ internal class BindsCallable(
    * function-level type parameters. This holds for callables declared in this compilation and for
    * ones read from another module's mirror. Container substitution through [remapTypes] leaves them
    * in place.
+   *
+   * An applied view from [withFunctionTypeArguments] still lists the declaration's type parameters
+   * here. Its types no longer mention them, and [functionTypeArguments] holds what replaced them.
    */
   val functionTypeParameters: List<IrTypeParameter>
     get() = callableMetadata.functionTypeParameters
 
-  /** True if the binds function declares its own type parameters. */
+  /**
+   * True if the binds function declares its own type parameters and they haven't been applied yet.
+   * It's false for an applied view.
+   */
   val isGeneric: Boolean
-    get() = functionTypeParameters.isNotEmpty()
+    get() = functionTypeParameters.isNotEmpty() && functionTypeArguments == null
 
   /**
    * Caches the alias for this callable's concrete types. Remapped callables own separate aliases.
@@ -98,13 +115,53 @@ internal class BindsCallable(
     }
   }
 
+  /** Substitutes the container's type parameters through [remapper]. */
   fun remapTypes(remapper: TypeRemapper): BindsCallable {
+    if (functionTypeArguments != null) {
+      reportCompilerBug(
+        "Container substitution must happen before function type arguments are applied to " +
+          "$callableId",
+      )
+    }
     return BindsCallable(
       callableMetadata = callableMetadata,
       source = source?.remapTypes(remapper),
       typeKey = typeKey.remapTypes(remapper),
       rawTarget = rawTarget.remapTypes(remapper),
       parametersLazy = memoize { parametersLazy.value.remapTypes(remapper) },
+      containerTypeRemapper = remapper,
+    )
+  }
+
+  /**
+   * Returns an applied view of this generic binds callable with [arguments] substituted for
+   * [functionTypeParameters], in the same order. The view's keys, parameters, and [aliasBinding]
+   * are concrete.
+   */
+  fun withFunctionTypeArguments(arguments: List<IrType>): BindsCallable {
+    if (!isGeneric) {
+      reportCompilerBug("Can't apply function type arguments to non-generic binds $callableId")
+    }
+    if (arguments.size != functionTypeParameters.size) {
+      reportCompilerBug(
+        "Binds $callableId declares ${functionTypeParameters.size} type parameters but got " +
+          "${arguments.size} arguments",
+      )
+    }
+    val functionRemapper =
+      typeRemapperFor(
+        functionTypeParameters.zip(arguments).associate { (typeParameter, argument) ->
+          typeParameter.symbol to argument
+        },
+      )
+    return BindsCallable(
+      callableMetadata = callableMetadata,
+      source = source?.remapTypes(functionRemapper),
+      typeKey = typeKey.remapTypes(functionRemapper),
+      rawTarget = rawTarget.remapTypes(functionRemapper),
+      parametersLazy = memoize { parametersLazy.value.remapTypes(functionRemapper) },
+      functionTypeArguments = arguments,
+      containerTypeRemapper = containerTypeRemapper,
     )
   }
 

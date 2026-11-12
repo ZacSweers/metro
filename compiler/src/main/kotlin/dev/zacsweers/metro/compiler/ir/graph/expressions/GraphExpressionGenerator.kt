@@ -504,7 +504,12 @@ private constructor(
                 )
 
               val directExpr: IrExpression =
-                irInvoke(callee = realFunction.symbol, args = args, typeHint = binding.typeKey.type)
+                irInvoke(
+                  callee = realFunction.symbol,
+                  args = args,
+                  typeHint = binding.typeKey.type,
+                  typeArgs = providerFactory.directCallTypeArguments(realFunction),
+                )
               directExpr
                 .letIf(accessType == AccessType.INSTANCE) {
                   maybeTraceDirectExpression(
@@ -1268,6 +1273,7 @@ private constructor(
                 callee = realFunction.symbol,
                 args = resolved,
                 typeHint = binding.typeKey.type,
+                typeArgs = providerFactory.directCallTypeArguments(realFunction),
               )
             }
           } else {

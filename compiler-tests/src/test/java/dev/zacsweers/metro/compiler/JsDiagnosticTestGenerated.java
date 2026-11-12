@@ -1065,9 +1065,33 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("AmbiguousDerivedBindings.kt")
+    public void testAmbiguousDerivedBindings() {
+      run("AmbiguousDerivedBindings.kt");
+    }
+
+    @Test
     @TestMetadata("BareTypeParameterReturnType.kt")
     public void testBareTypeParameterReturnType() {
       run("BareTypeParameterReturnType.kt");
+    }
+
+    @Test
+    @TestMetadata("DerivedBindingMissingParameter.kt")
+    public void testDerivedBindingMissingParameter() {
+      run("DerivedBindingMissingParameter.kt");
+    }
+
+    @Test
+    @TestMetadata("DerivedBindingOverlapError.kt")
+    public void testDerivedBindingOverlapError() {
+      run("DerivedBindingOverlapError.kt");
+    }
+
+    @Test
+    @TestMetadata("DerivedBindingOverlapWarning.kt")
+    public void testDerivedBindingOverlapWarning() {
+      run("DerivedBindingOverlapWarning.kt");
     }
 
     @Test
@@ -1080,6 +1104,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     @TestMetadata("DerivedBindingsNotEnabledAcrossModules.kt")
     public void testDerivedBindingsNotEnabledAcrossModules() {
       run("DerivedBindingsNotEnabledAcrossModules.kt");
+    }
+
+    @Test
+    @TestMetadata("GenericProviderInGenericGraphSupertype.kt")
+    public void testGenericProviderInGenericGraphSupertype() {
+      run("GenericProviderInGenericGraphSupertype.kt");
     }
 
     @Test
@@ -1110,6 +1140,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     @TestMetadata("ReifiedProviders.kt")
     public void testReifiedProviders() {
       run("ReifiedProviders.kt");
+    }
+
+    @Test
+    @TestMetadata("UnsatisfiedBound.kt")
+    public void testUnsatisfiedBound() {
+      run("UnsatisfiedBound.kt");
     }
 
     @Test

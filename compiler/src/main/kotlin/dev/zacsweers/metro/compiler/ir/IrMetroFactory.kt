@@ -131,10 +131,34 @@ internal sealed interface IrMetroFactory {
         createFunction.deepCopyWithSymbols(initialParent = createFunction.parent).apply {
           parent = createFunction.parent
         }
+      val factory = this@IrMetroFactory
+      val concreteTypes = creatorTypeArguments
       val remapper =
-        creatorTypeArguments?.let { concreteTypes ->
+        if (concreteTypes != null) {
+          val isAppliedView =
+            factory is ProviderFactory.Metro && factory.functionTypeArguments != null
+          val sizesDiffer = concreteTypes.size != finalFunction.typeParameters.size
+          if (isAppliedView && sizesDiffer) {
+            reportCompilerBug(
+              "Creator ${finalFunction.name} in ${factoryClass.classId} declares " +
+                "${finalFunction.typeParameters.size} type parameters but got " +
+                "${concreteTypes.size} type arguments",
+            )
+          }
           typeRemapperFor(concreteTypes, finalFunction)
-        } ?: finalFunction.typeRemapperFor(typeKey.type)
+        } else {
+          // Inferring from the key only works when the creator's type parameters are the key's
+          // type arguments. A generic provider's function type parameters can sit anywhere in it.
+          val hasFunctionTypeParameters =
+            factory is ProviderFactory.Metro && factory.functionTypeParameters.isNotEmpty()
+          if (hasFunctionTypeParameters) {
+            reportCompilerBug(
+              "Generic provider factory ${factoryClass.classId} needs explicit creator type " +
+                "arguments for $typeKey",
+            )
+          }
+          finalFunction.typeRemapperFor(typeKey.type)
+        }
       finalFunction.remapTypes(remapper)
       val typeArguments =
         finalFunction.typeParameters.map { typeParameter ->

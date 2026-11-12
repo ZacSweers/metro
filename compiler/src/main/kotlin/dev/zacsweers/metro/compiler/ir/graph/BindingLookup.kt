@@ -11,9 +11,11 @@ import dev.zacsweers.metro.compiler.diagnostics.buildText
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.getOrInit
+import dev.zacsweers.metro.compiler.graph.DerivedCandidateSelection
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.graph.explanation.BindingReason
 import dev.zacsweers.metro.compiler.graph.selectBinding
+import dev.zacsweers.metro.compiler.graph.selectMostSpecificCandidate
 import dev.zacsweers.metro.compiler.graph.toText
 import dev.zacsweers.metro.compiler.graph.toTraceSection
 import dev.zacsweers.metro.compiler.ir.BindsCallable
@@ -182,6 +184,21 @@ internal class BindingLookup(
 
   private data class GenericBindingIndexKey(val classId: ClassId, val qualifier: IrAnnotation?)
 
+  /** Each key the derived stage resolved, with the candidate and type arguments it used. */
+  val derivedBindings: Map<IrTypeKey, DerivedBinding>
+    field: MutableMap<IrTypeKey, DerivedBinding> = mutableMapOf()
+
+  /** Keys that several generic candidates matched with no most specific one. */
+  val ambiguousDerivedBindings: Map<IrTypeKey, DerivedBindingConflict>
+    field: MutableMap<IrTypeKey, DerivedBindingConflict> = mutableMapOf()
+
+  /** Keys that several generic candidates matched where the most specific one won. */
+  val overlappingDerivedBindings: Map<IrTypeKey, DerivedBindingConflict>
+    field: MutableMap<IrTypeKey, DerivedBindingConflict> = mutableMapOf()
+
+  /** Returns how the derived stage resolved [key], or null if it didn't. */
+  fun derivedBindingFor(key: IrTypeKey): DerivedBinding? = derivedBindings[key]
+
   fun getAvailableKeys(): Set<IrTypeKey> {
     return bindingsCache.keys
   }
@@ -282,6 +299,9 @@ internal class BindingLookup(
     skippedDirectMapRequests.clear()
     registeredInjectorFunctions.clear()
     genericBindingIndex.clear()
+    derivedBindings.clear()
+    ambiguousDerivedBindings.clear()
+    overlappingDerivedBindings.clear()
   }
 
   fun addLazyParentKey(typeKey: IrTypeKey, bindingFactory: () -> IrBinding) {
@@ -765,7 +785,13 @@ internal class BindingLookup(
             setOf(optionalBinding)
           }
         },
-        derived = { null },
+        derived = derived@{
+            if (hasNoGenericBindingCandidates) {
+              return@derived null
+            }
+            val binding = deriveBinding(contextKey, stack) ?: return@derived null
+            setOf(binding)
+          },
         implicit = implicit@{
             if (contextKey.typeKey.type.isNullable()) {
               // If we reach here, do not try to proceed to class lookups. We don't implicitly make
@@ -813,6 +839,66 @@ internal class BindingLookup(
           },
       ) ?: emptySet()
     }
+
+  /**
+   * Resolves [contextKey] through the generic candidates indexed under its raw class and qualifier.
+   * Returns null when none match, so class lookup runs next.
+   *
+   * The most specific match wins. When none is most specific, the key is recorded as ambiguous and
+   * the first match is used, so the graph doesn't also report a missing binding for it. The result
+   * is an ordinary binding registered under the requested key, so later lookups reuse it.
+   */
+  context(context: IrMetroContext)
+  private fun deriveBinding(contextKey: IrContextualTypeKey, stack: IrBindingStack): IrBinding? {
+    val key = contextKey.typeKey
+    // A skipped direct map binding falls through to here, but its key is already taken.
+    if (key in bindingsCache) {
+      return null
+    }
+    val classId = key.classId ?: return null
+    val candidates = genericBindingCandidatesFor(classId, key.qualifier)
+    if (candidates.isEmpty()) {
+      return null
+    }
+    val matches = candidates.mapNotNull { candidate ->
+      val typeArguments = candidate.inferTypeArguments(key) ?: return@mapNotNull null
+      DerivedBinding(key, candidate, typeArguments)
+    }
+    val selection =
+      selectMostSpecificCandidate(
+        candidates = matches,
+        patternOf = { it.candidate.patternIdentity },
+        isVariableOf = { match, typeParameter -> match.candidate.isVariable(typeParameter) },
+      )
+    val selected =
+      when (selection) {
+        DerivedCandidateSelection.None -> return null
+        is DerivedCandidateSelection.Single -> selection.candidate
+        is DerivedCandidateSelection.MostSpecific -> {
+          overlappingDerivedBindings[key] =
+            DerivedBindingConflict(selection.winner.candidate, matches.map { it.candidate })
+          selection.winner
+        }
+        is DerivedCandidateSelection.Ambiguous -> {
+          val first = selection.candidates.first()
+          ambiguousDerivedBindings[key] =
+            DerivedBindingConflict(first.candidate, matches.map { it.candidate })
+          first
+        }
+      }
+
+    val binding = selected.candidate.bindingFor(selected.typeArguments)
+    if (binding.typeKey != key) {
+      reportCompilerBug(
+        "Derived binding from ${selected.candidate.function.name} has key ${binding.typeKey} " +
+          "but was requested as $key",
+      )
+    }
+    putBinding(binding, isLocallyDeclared = selected.candidate.isLocallyDeclared)
+    derivedBindings[key] = selected
+    decisionCapture?.selected(contextKey, stack, binding)
+    return binding
+  }
 
   internal fun createExplicitConstructorInjectedBinding(
     bindsCallable: BindsCallable,
@@ -1139,3 +1225,22 @@ internal class BindingLookupCache {
     return rawInheritedGraphData.getOrPut(parentSourceGraph, compute) as T
   }
 }
+
+/**
+ * How the derived stage resolved [key]. [typeArguments] were inferred for [candidate]'s function
+ * type parameters, in declaration order.
+ */
+internal class DerivedBinding(
+  val key: IrTypeKey,
+  val candidate: GenericBindingCandidate,
+  val typeArguments: List<IrType>,
+)
+
+/**
+ * Several generic candidates matched one key. [selected] is the one the graph uses. [candidates]
+ * are all the matches, including [selected], in registration order.
+ */
+internal class DerivedBindingConflict(
+  val selected: GenericBindingCandidate,
+  val candidates: List<GenericBindingCandidate>,
+)

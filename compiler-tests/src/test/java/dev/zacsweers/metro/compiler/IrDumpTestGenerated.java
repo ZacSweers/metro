@@ -763,6 +763,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("EncoderGraph.kt")
+    public void testEncoderGraph() {
+      run("EncoderGraph.kt");
+    }
+
+    @Test
     @TestMetadata("GenericProviderFactories.kt")
     public void testGenericProviderFactories() {
       run("GenericProviderFactories.kt");

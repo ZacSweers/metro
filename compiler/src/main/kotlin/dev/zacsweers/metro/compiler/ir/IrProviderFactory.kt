@@ -101,6 +101,28 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
     }
   }
 
+  /**
+   * Returns the type arguments for a direct call to [realFunction], the source provider function.
+   * It's null for a provider without its own type parameters. A generic provider must be an applied
+   * view here because codegen can't infer its type arguments.
+   */
+  fun directCallTypeArguments(realFunction: IrFunction): List<IrType>? {
+    if (this !is Metro) {
+      return null
+    }
+    if (isGeneric) {
+      reportCompilerBug("Generic provider $callableId reached codegen without type arguments")
+    }
+    val arguments = functionTypeArguments ?: return null
+    if (realFunction.typeParameters.size != arguments.size) {
+      reportCompilerBug(
+        "Provider $callableId declares ${realFunction.typeParameters.size} type parameters " +
+          "but ${arguments.size} type arguments were inferred",
+      )
+    }
+    return arguments
+  }
+
   class Metro(
     override val factoryClass: IrClass,
     override val typeKey: IrTypeKey,
@@ -114,6 +136,17 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
     parametersLazy: Lazy<Parameters>,
     override val inlinedValue: IrInlinedProvider? = null,
     override val creatorTypeArguments: List<IrType>? = null,
+    /**
+     * The types [withFunctionTypeArguments] substituted for [functionTypeParameters], in the same
+     * order. It's null for a factory that isn't an applied view.
+     */
+    val functionTypeArguments: List<IrType>? = null,
+    /**
+     * Substitutes the container's type parameters as [withRemappedTypes] did. It covers every copy
+     * of them, so it also applies to the bounds of [functionTypeParameters]. It's null when no
+     * container substitution happened.
+     */
+    val containerTypeRemapper: TypeRemapper? = null,
   ) : ProviderFactory() {
     override val helperOwner: IrClass by memoize {
       factoryClass.factoryHelperDeclarationContainer(companionMode)
@@ -156,19 +189,33 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
      * for function-level type parameters. This holds for providers declared in this compilation and
      * for ones loaded from another module's signature carrier. Container substitution through
      * [withRemappedTypes] leaves them in place.
+     *
+     * An applied view from [withFunctionTypeArguments] still lists the declaration's type
+     * parameters here. Its types no longer mention them, and [functionTypeArguments] holds what
+     * replaced them.
      */
     val functionTypeParameters: List<IrTypeParameter>
       get() = callableMetadata.functionTypeParameters
 
-    /** True if the provider function declares its own type parameters. */
+    /**
+     * True if the provider function declares its own type parameters and they haven't been applied
+     * yet. A generic provider's key is a pattern. An applied view's key is concrete, so it's false
+     * there.
+     */
     val isGeneric: Boolean
-      get() = functionTypeParameters.isNotEmpty()
+      get() = functionTypeParameters.isNotEmpty() && functionTypeArguments == null
 
     /**
      * Substitutes the container's type parameters through [remapper]. Function-level type
      * parameters stay unchanged, so a generic provider stays generic.
      */
     fun withRemappedTypes(remapper: TypeRemapper): Metro {
+      if (functionTypeArguments != null) {
+        reportCompilerBug(
+          "Container substitution must happen before function type arguments are applied to " +
+            "$callableId",
+        )
+      }
       val sourceClass = factoryClass.parentAsClass
       val concreteTypes = sourceClass.typeParameters.map { remapper.remapType(it.defaultType) }
       // Each declaration lists the container's type parameters (or copies of them) first. The
@@ -203,6 +250,60 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
         parametersLazy = lazy { parameters.remapTypes(factoryRemapper) },
         inlinedValue = inlinedValue,
         creatorTypeArguments = concreteTypes,
+        containerTypeRemapper = factoryRemapper,
+      )
+    }
+
+    /**
+     * Returns an applied view of this generic provider with [arguments] substituted for
+     * [functionTypeParameters], in the same order. The view's keys and parameters are concrete.
+     *
+     * [creatorTypeArguments] become the container's arguments followed by [arguments]. That's the
+     * order the generated `create()` and `newInstance` helpers declare their type parameters in. A
+     * container with type parameters must already have them substituted by [withRemappedTypes].
+     *
+     * The view has no inlined value because the source body can mention the type parameters.
+     */
+    fun withFunctionTypeArguments(arguments: List<IrType>): Metro {
+      if (!isGeneric) {
+        reportCompilerBug("Can't apply function type arguments to non-generic provider $callableId")
+      }
+      if (arguments.size != functionTypeParameters.size) {
+        reportCompilerBug(
+          "Provider $callableId declares ${functionTypeParameters.size} type parameters but got " +
+            "${arguments.size} arguments",
+        )
+      }
+      val containerTypeParameterCount = factoryClass.parentAsClass.typeParameters.size
+      val containerArguments = creatorTypeArguments.orEmpty()
+      if (containerArguments.size != containerTypeParameterCount) {
+        reportCompilerBug(
+          "Provider $callableId is declared in a container with $containerTypeParameterCount " +
+            "type parameters, but ${containerArguments.size} container type arguments were " +
+            "applied. Container type parameters must be substituted before function type " +
+            "arguments.",
+        )
+      }
+      val functionRemapper =
+        typeRemapperFor(
+          functionTypeParameters.zip(arguments).associate { (typeParameter, argument) ->
+            typeParameter.symbol to argument
+          },
+        )
+      return Metro(
+        factoryClass = factoryClass,
+        typeKey = typeKey.remapTypes(functionRemapper),
+        rawTypeKey = rawTypeKey.remapTypes(functionRemapper),
+        contextualTypeKey = contextualTypeKey.remapType(functionRemapper),
+        realDeclaration = realDeclaration,
+        callableMetadata = callableMetadata,
+        signatureCarrier = signatureCarrier,
+        companionMode = companionMode,
+        parametersLazy = lazy { parameters.remapTypes(functionRemapper) },
+        inlinedValue = null,
+        creatorTypeArguments = containerArguments + arguments,
+        functionTypeArguments = arguments,
+        containerTypeRemapper = containerTypeRemapper,
       )
     }
   }

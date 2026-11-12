@@ -1,0 +1,323 @@
+@DependencyGraph(bindingContainers = [JsonEncoders::class])
+interface AppGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : AppGraph {
+    private val stringProvider: Provider<Encoder<String>>
+      field = create()
+
+    private val stringMapProvider2: Provider<Encoder<Map<String, String>>>
+      field = create<String>(value = <this>.#stringProvider)
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    private val list: Encoder<List<String>>
+      private get(): Encoder<List<String>> {
+        return JsonEncoders.list<String>(element = <this>.#stringProvider.invoke())
+      }
+
+    private val nullable: Encoder<String?>
+      private get(): Encoder<String?> {
+        return JsonEncoders.nullable<String>(inner = <this>.#stringProvider.invoke())
+      }
+
+    override val nullableString: Encoder<String?>
+      override get(): Encoder<String?> {
+        return <this>.<get-nullable>()
+      }
+
+    override val nullableStrings: Encoder<List<String?>>
+      override get(): Encoder<List<String?>> {
+        return JsonEncoders.list<String?>(element = <this>.<get-nullable>())
+      }
+
+    override val stringMap: Encoder<Map<String, List<String>>>
+      override get(): Encoder<Map<String, List<String>>> {
+        return stringMap<List<String>>(value = <this>.<get-list>())
+      }
+
+    override val stringMapProvider: Provider<Encoder<Map<String, String>>>
+      override get(): Provider<Encoder<Map<String, String>>> {
+        return <this>.#stringMapProvider2
+      }
+
+    override val strings: Encoder<List<String>>
+      override get(): Encoder<List<String>> {
+        return <this>.<get-list>()
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
+    operator fun invoke(): AppGraph {
+      return Impl()
+    }
+
+  }
+
+  abstract val nullableString: Encoder<String?>
+    abstract get
+
+  abstract val nullableStrings: Encoder<List<String?>>
+    abstract get
+
+  abstract val stringMap: Encoder<Map<String, List<String>>>
+    abstract get
+
+  abstract val stringMapProvider: Provider<Encoder<Map<String, String>>>
+    abstract get
+
+  abstract val strings: Encoder<List<String>>
+    abstract get
+
+}
+
+fun interface Encoder<T : Any?> {
+  abstract fun encode(value: T): String
+
+}
+
+@BindingContainer
+object JsonEncoders {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "list", propertyName = "", startOffset = 324, endOffset = 475, newInstanceName = "list")
+  class ListMetroFactory<T : Any?> : Factory<Encoder<List<T>>> {
+    private /* final field */ val element: Provider<Encoder<T>> = element
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun <T : Any?> create(element: Provider<Encoder<T>>): ListMetroFactory<T> {
+        return ListMetroFactory<T>(element = element)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun <T : Any?> list(element: Encoder<T>): Encoder<List<T>> {
+        return JsonEncoders.list<T>(element = element)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(element: Provider<Encoder<T>>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun <T : Any?> declarationMirror(element: Encoder<T>): Encoder<List<T>> {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Encoder<List<T>> {
+      return ListMetroFactory/* companion */.list<T>(element = <this>.#element.invoke())
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "nullable", propertyName = "", startOffset = 479, endOffset = 653, newInstanceName = "nullable")
+  class NullableMetroFactory<T : Any?> : Factory<Encoder<T?>> {
+    private /* final field */ val inner: Provider<Encoder<T>> = inner
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun <T : Any> create(inner: Provider<Encoder<T>>): NullableMetroFactory<T> {
+        return NullableMetroFactory<T>(inner = inner)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun <T : Any> nullable(inner: Encoder<T>): Encoder<T?> {
+        return JsonEncoders.nullable<T>(inner = inner)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(inner: Provider<Encoder<T>>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun <T : Any> declarationMirror(inner: Encoder<T>): Encoder<T?> {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Encoder<T?> {
+      return NullableMetroFactory/* companion */.nullable<T>(inner = <this>.#inner.invoke())
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "stringMap", propertyName = "", startOffset = 657, endOffset = 851, newInstanceName = "stringMap")
+  class StringMapMetroFactory<V : Any?> : Factory<Encoder<Map<String, V>>> {
+    private /* final field */ val value: Provider<Encoder<V>> = value
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun <V : Any?> create(value: Provider<Encoder<V>>): StringMapMetroFactory<V> {
+        return StringMapMetroFactory<V>(value = value)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun <V : Any?> stringMap(value: Encoder<V>): Encoder<Map<String, V>> {
+        return JsonEncoders.stringMap<V>(value = value)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(value: Provider<Encoder<V>>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun <V : Any?> declarationMirror(value: Encoder<V>): Encoder<Map<String, V>> {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Encoder<Map<String, V>> {
+      return StringMapMetroFactory/* companion */.stringMap<V>(value = <this>.#value.invoke())
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "string", propertyName = "", startOffset = 257, endOffset = 320, newInstanceName = "string")
+  object StringMetroFactory : Factory<Encoder<String>> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun create(): StringMetroFactory {
+      return StringMetroFactory
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun string(): Encoder<String> {
+      return JsonEncoders.string()
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): Encoder<String> {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Encoder<String> {
+      return StringMetroFactory.string()
+    }
+
+  }
+
+  private constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+  @Provides
+  fun <T : Any?> list(element: Encoder<T>): Encoder<List<T>> {
+    return local fun <anonymous>(values: List<T>): String {
+      return joinToString<T>(/* <this> = values, */ separator = ",", prefix = "[", postfix = "]", transform = local fun <anonymous>(it: T): CharSequence {
+        return element.encode(value = it)
+      }
+)
+    }
+ /*-> Encoder<List<T>> */
+  }
+
+  @Provides
+  fun <T : Any> nullable(inner: Encoder<T>): Encoder<T?> {
+    return local fun <anonymous>(value: T?): String {
+      return when {
+        EQEQ(arg0 = value, arg1 = null) -> { // BLOCK
+          "null"
+        }
+        else -> { // BLOCK
+          inner.encode(value = value)
+        }
+      }
+    }
+ /*-> Encoder<T?> */
+  }
+
+  @Provides
+  fun string(): Encoder<String> {
+    return local fun <anonymous>(it: String): String {
+      return "\"" + it + "\""
+    }
+ /*-> Encoder<String> */
+  }
+
+  @Provides
+  private fun <V : Any?> stringMap(value: Encoder<V>): Encoder<Map<String, V>> {
+    return local fun <anonymous>(map: Map<String, V>): String {
+      return joinToString<Map.Entry<String, V>>(/* <this> = map.<get-entries>(), */ separator = ",", prefix = "{", postfix = "}", transform = local fun <anonymous>(it: Map.Entry<String, V>): CharSequence {
+        return "\"" + it.<get-key>() + "\":" + value.encode(value = it.<get-value>())
+      }
+)
+    }
+ /*-> Encoder<Map<String, V>> */
+  }
+
+}

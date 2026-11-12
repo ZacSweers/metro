@@ -3031,6 +3031,114 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
     }
 
     @Test
+    @TestMetadata("BoundsSelection.kt")
+    public void testBoundsSelection() {
+      run("BoundsSelection.kt");
+    }
+
+    @Test
+    @TestMetadata("ContextParameterGenericProvider.kt")
+    public void testContextParameterGenericProvider() {
+      run("ContextParameterGenericProvider.kt");
+    }
+
+    @Test
+    @TestMetadata("DeferredAccess.kt")
+    public void testDeferredAccess() {
+      run("DeferredAccess.kt");
+    }
+
+    @Test
+    @TestMetadata("EncoderExample.kt")
+    public void testEncoderExample() {
+      run("EncoderExample.kt");
+    }
+
+    @Test
+    @TestMetadata("ExactBindingWins.kt")
+    public void testExactBindingWins() {
+      run("ExactBindingWins.kt");
+    }
+
+    @Test
+    @TestMetadata("GenericBinds.kt")
+    public void testGenericBinds() {
+      run("GenericBinds.kt");
+    }
+
+    @Test
+    @TestMetadata("GenericProviderInGenericContainer.kt")
+    public void testGenericProviderInGenericContainer() {
+      run("GenericProviderInGenericContainer.kt");
+    }
+
+    @Test
+    @TestMetadata("GenericProvidersAcrossModules.kt")
+    public void testGenericProvidersAcrossModules() {
+      run("GenericProvidersAcrossModules.kt");
+    }
+
+    @Test
+    @TestMetadata("InjectClassFallback.kt")
+    public void testInjectClassFallback() {
+      run("InjectClassFallback.kt");
+    }
+
+    @Test
+    @TestMetadata("MultibindingDependsOnDerivedBinding.kt")
+    public void testMultibindingDependsOnDerivedBinding() {
+      run("MultibindingDependsOnDerivedBinding.kt");
+    }
+
+    @Test
+    @TestMetadata("MultipleTypeParameters.kt")
+    public void testMultipleTypeParameters() {
+      run("MultipleTypeParameters.kt");
+    }
+
+    @Test
+    @TestMetadata("NullabilityMatching.kt")
+    public void testNullabilityMatching() {
+      run("NullabilityMatching.kt");
+    }
+
+    @Test
+    @TestMetadata("OverlapNotReportedByDefault.kt")
+    public void testOverlapNotReportedByDefault() {
+      run("OverlapNotReportedByDefault.kt");
+    }
+
+    @Test
+    @TestMetadata("ProviderLocations.kt")
+    public void testProviderLocations() {
+      run("ProviderLocations.kt");
+    }
+
+    @Test
+    @TestMetadata("Qualifiers.kt")
+    public void testQualifiers() {
+      run("Qualifiers.kt");
+    }
+
+    @Test
+    @TestMetadata("ScopedGenericProvider.kt")
+    public void testScopedGenericProvider() {
+      run("ScopedGenericProvider.kt");
+    }
+
+    @Test
+    @TestMetadata("Specificity.kt")
+    public void testSpecificity() {
+      run("Specificity.kt");
+    }
+
+    @Test
+    @TestMetadata("SuspendGenericProvider.kt")
+    public void testSuspendGenericProvider() {
+      run("SuspendGenericProvider.kt");
+    }
+
+    @Test
     @TestMetadata("UnusedGenericProvidersAcrossModules.kt")
     public void testUnusedGenericProvidersAcrossModules() {
       run("UnusedGenericProvidersAcrossModules.kt");

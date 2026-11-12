@@ -1527,6 +1527,8 @@ internal class IrBindingGraph(
     if (!metroContext.options.enableDerivedBindings) {
       reportDerivedBindingsNotEnabled()
     }
+    reportAmbiguousDerivedBindings()
+    reportDerivedBindingOverlaps()
     val suspendProvidersEnabled = metroContext.options.enableSuspendProviders
     var hasDirectSuspendBinding = false
     var hasDisabledSuspendProviderUse = false
@@ -1648,6 +1650,72 @@ internal class IrBindingGraph(
       "[${MetroDiagnosticId.DERIVED_BINDINGS_NOT_ENABLED.fullId}] $message",
       MetroDiagnosticId.DERIVED_BINDINGS_NOT_ENABLED.factory,
     )
+  }
+
+  /**
+   * Reports keys that several generic providers matched with no most specific one. Each key gets
+   * one message. All of them go in one report on the graph, sorted by key.
+   */
+  private fun reportAmbiguousDerivedBindings() {
+    val conflicts = bindingLookup.ambiguousDerivedBindings
+    if (conflicts.isEmpty()) {
+      return
+    }
+    val id = MetroDiagnosticId.AMBIGUOUS_DERIVED_BINDING
+    val message =
+      conflicts.entries
+        .sortedBy { it.key }
+        .joinToString("\n\n") { (key, conflict) ->
+          val text =
+            DerivedBindingDiagnosticMessages.ambiguousDerivedBinding(
+              key = key.render(short = true),
+              providerNames = conflict.candidates.renderedFunctionNames(),
+            )
+          "[${id.fullId}] $text"
+        }
+    reportError(node.sourceGraph, message, id.factory)
+  }
+
+  /**
+   * Reports keys where several generic providers matched and the most specific one won. The
+   * configured severity picks the warning or error factory. Errors stop code generation.
+   */
+  private fun reportDerivedBindingOverlaps() {
+    val conflicts = bindingLookup.overlappingDerivedBindings
+    if (conflicts.isEmpty()) {
+      return
+    }
+    // IR runs in CLI-only contexts, so IDE-only severities resolve to NONE here.
+    val severity = metroContext.options.derivedBindingOverlapSeverity.resolve(isIde = false)
+    val factory =
+      when (severity) {
+        MetroOptions.DiagnosticSeverity.WARN -> MetroDiagnostics.DERIVED_BINDING_OVERLAP_WARNING
+        MetroOptions.DiagnosticSeverity.ERROR -> MetroDiagnostics.DERIVED_BINDING_OVERLAP_ERROR
+        else -> return
+      }
+    val id = MetroDiagnosticId.DERIVED_BINDING_OVERLAP
+    val message =
+      conflicts.entries
+        .sortedBy { it.key }
+        .joinToString("\n\n") { (key, conflict) ->
+          val text =
+            DerivedBindingDiagnosticMessages.derivedBindingOverlap(
+              key = key.render(short = true),
+              selectedProvider = conflict.selected.function.kotlinFqName.asString(),
+              providerNames = conflict.candidates.renderedFunctionNames(),
+            )
+          "[${id.fullId}] $text"
+        }
+    if (severity == MetroOptions.DiagnosticSeverity.ERROR) {
+      reportError(node.sourceGraph, message, factory)
+    } else {
+      metroContext.reportCompat(node.sourceGraph, factory, message)
+    }
+  }
+
+  /** Fully qualified function names, sorted so messages are stable. */
+  private fun List<GenericBindingCandidate>.renderedFunctionNames(): List<String> {
+    return map { it.function.kotlinFqName.asString() }.distinct().sorted()
   }
 
   /**

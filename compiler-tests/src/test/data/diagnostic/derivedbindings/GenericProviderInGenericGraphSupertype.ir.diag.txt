@@ -1,0 +1,18 @@
+/GenericProviderInGenericGraphSupertype.kt:18:7: error: [Metro/MissingBinding] No binding found for List<Holder<Int>>
+
+  trace (in AppGraph):
+      List<Holder<Int>> is requested at AppGraph.list
+
+  help: ensure List<Holder<Int>> has an @Inject constructor or is provided by an @Provides or @Binds
+        declaration visible to AppGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
+
+
+/GenericProviderInGenericGraphSupertype.kt:19:7: error: [Metro/MissingBinding] No binding found for Set<Holder<String>>
+
+  trace (in AppGraph):
+      Set<Holder<String>> is requested at AppGraph.plain
+
+  help: ensure Set<Holder<String>> has an @Inject constructor or is provided by an @Provides or
+        @Binds declaration visible to AppGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
