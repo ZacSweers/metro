@@ -447,6 +447,19 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       valueMapper = { it },
     ),
   ),
+  DERIVED_BINDING_OVERLAP_SEVERITY(
+    RawMetroOption(
+      name = "derived-binding-overlap-severity",
+      defaultValue = MetroOptions.DiagnosticSeverity.NONE.name,
+      valueDescription = MetroOptions.DiagnosticSeverity.entries.joinToString("|"),
+      description =
+        "Severity for keys where more than one generic provider matched and Metro picked the " +
+          "most specific one.",
+      required = false,
+      allowMultipleOccurrences = false,
+      valueMapper = { it },
+    ),
+  ),
   LOGGING(
     RawMetroOption(
       name = "logging",
@@ -1043,6 +1056,18 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     ),
   ),
+  ENABLE_DERIVED_BINDINGS(
+    RawMetroOption.boolean(
+      name = "enable-derived-bindings",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description =
+        "Enable experimental derived bindings. These allow type parameters on `@Provides` and " +
+          "`@Binds` functions.",
+      required = false,
+      allowMultipleOccurrences = false,
+    ),
+  ),
   DESUGARED_PROVIDER_SEVERITY(
     RawMetroOption(
       name = "desugared-provider-severity",
@@ -1269,6 +1294,10 @@ public class MetroOptions(
     MetroOption.UNUSED_GRAPH_INPUTS_SEVERITY.raw.defaultValue.expectAs<String>().let {
       DiagnosticSeverity.valueOf(it)
     },
+  public val derivedBindingOverlapSeverity: DiagnosticSeverity =
+    MetroOption.DERIVED_BINDING_OVERLAP_SEVERITY.raw.defaultValue.expectAs<String>().let {
+      DiagnosticSeverity.valueOf(it)
+    },
   public val enabledLoggers: Set<MetroLogger.Type> =
     if (debug) {
       // Debug enables _all_
@@ -1367,6 +1396,8 @@ public class MetroOptions(
     MetroOption.ENABLE_FUNCTION_PROVIDERS.raw.defaultValue.expectAs(),
   public val enableSuspendProviders: Boolean =
     MetroOption.ENABLE_SUSPEND_PROVIDERS.raw.defaultValue.expectAs(),
+  public val enableDerivedBindings: Boolean =
+    MetroOption.ENABLE_DERIVED_BINDINGS.raw.defaultValue.expectAs(),
   public val desugaredProviderSeverity: DiagnosticSeverity =
     MetroOption.DESUGARED_PROVIDER_SEVERITY.raw.defaultValue.expectAs<String>().let {
       DiagnosticSeverity.valueOf(it)
@@ -1669,6 +1700,8 @@ public class MetroOptions(
     public var interopAnnotationsNamedArgSeverity: DiagnosticSeverity =
       base.interopAnnotationsNamedArgSeverity
     public var unusedGraphInputsSeverity: DiagnosticSeverity = base.unusedGraphInputsSeverity
+    public var derivedBindingOverlapSeverity: DiagnosticSeverity =
+      base.derivedBindingOverlapSeverity
     public var diagnosticLevels: MutableMap<String, DiagnosticSeverity> =
       base.diagnosticLevels.toMutableMap()
     public var enabledLoggers: MutableSet<MetroLogger.Type> = base.enabledLoggers.toMutableSet()
@@ -1740,6 +1773,7 @@ public class MetroOptions(
     public var enableProviderInlining: Boolean = base.enableProviderInlining
     public var enableFunctionProviders: Boolean = base.enableFunctionProviders
     public var enableSuspendProviders: Boolean = base.enableSuspendProviders
+    public var enableDerivedBindings: Boolean = base.enableDerivedBindings
     public var desugaredProviderSeverity: DiagnosticSeverity = base.desugaredProviderSeverity
     public var enableKClassToClassInterop: Boolean = base.enableKClassToClassInterop
     public var generateContributionProviders: Boolean = base.generateContributionProviders
@@ -1800,10 +1834,18 @@ public class MetroOptions(
       this.enableSuspendProviders = enableSuspendProviders
     }
 
+    public fun enableDerivedBindings(enableDerivedBindings: Boolean): Builder = apply {
+      this.enableDerivedBindings = enableDerivedBindings
+    }
+
     public fun unusedGraphInputsSeverity(unusedGraphInputsSeverity: DiagnosticSeverity): Builder =
       apply {
         this.unusedGraphInputsSeverity = unusedGraphInputsSeverity
       }
+
+    public fun derivedBindingOverlapSeverity(
+      derivedBindingOverlapSeverity: DiagnosticSeverity,
+    ): Builder = apply { this.derivedBindingOverlapSeverity = derivedBindingOverlapSeverity }
 
     public fun contributesAsInject(contributesAsInject: Boolean): Builder = apply {
       this.contributesAsInject = contributesAsInject
@@ -2023,6 +2065,8 @@ public class MetroOptions(
           interopAnnotationsNamedArgSeverity = value.diagnosticSeverity()
         MetroOption.UNUSED_GRAPH_INPUTS_SEVERITY ->
           unusedGraphInputsSeverity = value.diagnosticSeverity()
+        MetroOption.DERIVED_BINDING_OVERLAP_SEVERITY ->
+          derivedBindingOverlapSeverity = value.diagnosticSeverity()
         MetroOption.LOGGING -> enabledLoggers += value.expectAs<Set<MetroLogger.Type>>()
         MetroOption.ENABLE_DAGGER_RUNTIME_INTEROP -> enableDaggerRuntimeInterop = value.expectAs()
         MetroOption.ENABLE_GUICE_RUNTIME_INTEROP -> enableGuiceRuntimeInterop = value.expectAs()
@@ -2108,6 +2152,7 @@ public class MetroOptions(
         MetroOption.ENABLE_PROVIDER_INLINING -> enableProviderInlining = value.expectAs()
         MetroOption.ENABLE_FUNCTION_PROVIDERS -> enableFunctionProviders = value.expectAs()
         MetroOption.ENABLE_SUSPEND_PROVIDERS -> enableSuspendProviders = value.expectAs()
+        MetroOption.ENABLE_DERIVED_BINDINGS -> enableDerivedBindings = value.expectAs()
         MetroOption.DESUGARED_PROVIDER_SEVERITY ->
           desugaredProviderSeverity = value.diagnosticSeverity()
         MetroOption.ENABLE_KCLASS_TO_CLASS_INTEROP -> enableKClassToClassInterop = value.expectAs()
@@ -2161,6 +2206,7 @@ public class MetroOptions(
         warnOnInjectAnnotationPlacement = warnOnInjectAnnotationPlacement,
         interopAnnotationsNamedArgSeverity = interopAnnotationsNamedArgSeverity,
         unusedGraphInputsSeverity = unusedGraphInputsSeverity,
+        derivedBindingOverlapSeverity = derivedBindingOverlapSeverity,
         enabledLoggers = enabledLoggers,
         enableDaggerRuntimeInterop = enableDaggerRuntimeInterop,
         enableGuiceRuntimeInterop = enableGuiceRuntimeInterop,
@@ -2207,6 +2253,7 @@ public class MetroOptions(
         enableProviderInlining = enableProviderInlining,
         enableFunctionProviders = enableFunctionProviders,
         enableSuspendProviders = enableSuspendProviders,
+        enableDerivedBindings = enableDerivedBindings,
         desugaredProviderSeverity =
           if (enableFunctionProviders) {
             desugaredProviderSeverity

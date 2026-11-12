@@ -161,6 +161,8 @@ abstract class MetroCompilerTest {
               processor.option(entry.raw.cliOption, interopAnnotationsNamedArgSeverity)
             UNUSED_GRAPH_INPUTS_SEVERITY ->
               processor.option(entry.raw.cliOption, unusedGraphInputsSeverity)
+            DERIVED_BINDING_OVERLAP_SEVERITY ->
+              processor.option(entry.raw.cliOption, derivedBindingOverlapSeverity)
             ENABLE_SWITCHING_PROVIDERS ->
               processor.option(entry.raw.cliOption, this@toPluginOptions.enableSwitchingProviders)
             LOGGING -> {
@@ -388,6 +390,9 @@ abstract class MetroCompilerTest {
             }
             ENABLE_SUSPEND_PROVIDERS -> {
               processor.option(entry.raw.cliOption, enableSuspendProviders)
+            }
+            ENABLE_DERIVED_BINDINGS -> {
+              processor.option(entry.raw.cliOption, enableDerivedBindings)
             }
             DESUGARED_PROVIDER_SEVERITY -> {
               processor.option(entry.raw.cliOption, desugaredProviderSeverity)

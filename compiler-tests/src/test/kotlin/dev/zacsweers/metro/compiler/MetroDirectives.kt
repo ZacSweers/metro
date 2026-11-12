@@ -111,6 +111,10 @@ object MetroDirectives : SimpleDirectivesContainer() {
     enumDirective<MetroOptions.DiagnosticSeverity>(
       "Control diagnostic severity reporting of unused graph inputs (factory parameters that are not used by the graph).",
     )
+  val DERIVED_BINDING_OVERLAP_SEVERITY by
+    enumDirective<MetroOptions.DiagnosticSeverity>(
+      "Control diagnostic severity reporting of keys where more than one generic provider matched and Metro picked the most specific one.",
+    )
   val DIAGNOSTIC_LEVEL by
     valueDirective(
       "Overrides the severity of a Metro diagnostic, like `DIAGNOSTIC_NAME:warning`. Can be repeated.",
@@ -132,6 +136,10 @@ object MetroDirectives : SimpleDirectivesContainer() {
     directive("Add Metro's runtime-coroutines artifact when suspend providers are disabled.")
   val WITHOUT_RUNTIME_COROUTINES by
     directive("Do not add Metro's runtime-coroutines artifact when suspend providers are enabled.")
+  val ENABLE_DERIVED_BINDINGS by
+    directive(
+      "Enable experimental derived bindings from generic `@Provides` and `@Binds` functions.",
+    )
   val DESUGARED_PROVIDER_SEVERITY by
     enumDirective<MetroOptions.DiagnosticSeverity>(
       "Control diagnostic severity reporting of uses of the desugared `Provider<T>` form. Prefer the function syntax form `() -> T` instead.",

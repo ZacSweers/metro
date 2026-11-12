@@ -283,6 +283,23 @@ constructor(
     objects.enumProperty<DiagnosticSeverity>("unusedGraphInputsSeverity", DiagnosticSeverity.WARN)
 
   /**
+   * Severity for keys where more than one generic provider matched and Metro picked the most
+   * specific one. This only applies when [enableDerivedBindings] is enabled.
+   *
+   * NONE by default.
+   *
+   * Note: [DiagnosticSeverity.IDE_WARN] and [DiagnosticSeverity.IDE_ERROR] are **not** supported
+   * here because this check only runs during IR (a CLI-only phase). Attempting to set an IDE-only
+   * severity will fail the build with a validation error.
+   */
+  @ExperimentalMetroGradleApi
+  public val derivedBindingOverlapSeverity: Property<DiagnosticSeverity> =
+    objects.enumProperty<DiagnosticSeverity>(
+      "derivedBindingOverlapSeverity",
+      DiagnosticSeverity.NONE,
+    )
+
+  /**
    * Treats `@Contributes*` annotations, except `@ContributesTo`, as implicit `@Inject` annotations.
    *
    * Enabled by default.
@@ -461,6 +478,16 @@ constructor(
   @ExperimentalMetroGradleApi
   public val enableSuspendProviders: Property<Boolean> =
     objects.booleanProperty("metro.enableSuspendProviders", false)
+
+  /**
+   * Enables experimental derived bindings. These allow type parameters on `@Provides` and `@Binds`
+   * functions. Metro resolves them for each requested key.
+   *
+   * Disabled by default.
+   */
+  @ExperimentalMetroGradleApi
+  public val enableDerivedBindings: Property<Boolean> =
+    objects.booleanProperty("metro.enableDerivedBindings", false)
 
   /**
    * Configures Metro options for misc compiler options that don't necessarily warrant dedicated API
