@@ -387,6 +387,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("OriginFromUpstreamModule.kt")
+    public void testOriginFromUpstreamModule() {
+      run("OriginFromUpstreamModule.kt");
+    }
+
+    @Test
     @TestMetadata("RepeatedContributionPriorities.kt")
     public void testRepeatedContributionPriorities() {
       run("RepeatedContributionPriorities.kt");
