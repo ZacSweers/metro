@@ -1,0 +1,7 @@
+/MultibindingContributions.kt:10:3: error: `@Provides` functions with type parameters can't contribute to multibindings.
+
+/MultibindingContributions.kt:14:3: error: `@Provides` functions with type parameters can't contribute to multibindings.
+
+/MultibindingContributions.kt:18:3: error: `@Provides` functions with type parameters can't contribute to multibindings.
+
+/MultibindingContributions.kt:25:10: error: `@Binds` functions with type parameters can't contribute to multibindings.

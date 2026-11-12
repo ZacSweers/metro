@@ -148,4 +148,24 @@ public class FirDumpTestGenerated extends AbstractFirDumpTest {
       run("StaticDeclarations.kt");
     }
   }
+
+  @Nested
+  @TestMetadata("compiler-tests/src/test/data/dump/fir/derivedbindings")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Derivedbindings {
+    private void run(String fileName) {
+      runTest("compiler-tests/src/test/data/dump/fir/derivedbindings/" + fileName);
+    }
+
+    @Test
+    public void testAllFilesPresentInDerivedbindings() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/fir/derivedbindings"), Pattern.compile("^(.+)\\.kt$"), null, true);
+    }
+
+    @Test
+    @TestMetadata("GenericProviderFactories.kt")
+    public void testGenericProviderFactories() {
+      run("GenericProviderFactories.kt");
+    }
+  }
 }

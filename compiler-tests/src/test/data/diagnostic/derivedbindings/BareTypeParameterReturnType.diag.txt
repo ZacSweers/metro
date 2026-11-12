@@ -1,0 +1,5 @@
+/BareTypeParameterReturnType.kt:9:52: error: `@Provides` functions can't return a bare type parameter like `T`. It would match every key.
+
+/BareTypeParameterReturnType.kt:11:60: error: `@Provides` functions can't return a bare type parameter like `T?`. It would match every key.
+
+/BareTypeParameterReturnType.kt:16:53: error: `@Binds` functions can't return a bare type parameter like `T`. It would match every key.

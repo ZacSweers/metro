@@ -1,0 +1,3 @@
+/ReifiedProviders.kt:23:12: error: The graph must be able to call a reified provider, so it must be public or `@PublishedApi internal`. This provider is effectively internal without `@PublishedApi`.
+
+/ReifiedProviders.kt:27:11: error: The graph must be able to call a reified provider, so it must be public or `@PublishedApi internal`. Its effective visibility is private-in-class.

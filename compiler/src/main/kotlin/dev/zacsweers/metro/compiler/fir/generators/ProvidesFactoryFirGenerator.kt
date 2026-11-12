@@ -31,6 +31,7 @@ import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.MemberGenerationContext
 import org.jetbrains.kotlin.fir.extensions.NestedClassGenerationContext
+import org.jetbrains.kotlin.fir.plugin.DeclarationBuildingContext
 import org.jetbrains.kotlin.fir.plugin.createCompanionObject
 import org.jetbrains.kotlin.fir.plugin.createDefaultPrivateConstructor
 import org.jetbrains.kotlin.fir.plugin.createNestedClass
@@ -44,6 +45,7 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirFieldSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertyAccessorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirTypeParameterSymbol
 import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
@@ -165,6 +167,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
           classKind = classKind,
         ) {
           copyTypeParametersFrom(owner, session)
+          copyFunctionTypeParameters(sourceCallable)
         }
         .apply {
           markAsDeprecatedHidden(session)
@@ -177,6 +180,45 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
         .also { providerFactoryClassIdsToSymbols[it.classId] = it }
     } else {
       null
+    }
+  }
+
+  /**
+   * Declares the provider function's type parameters on its factory class after the owner's type
+   * parameters. Like the owner's copies, these don't carry bounds. Function bounds usually aren't
+   * resolved yet when this runs. The factory's IR-generated functions declare the bounds instead.
+   *
+   * A function type parameter can shadow an owner type parameter in source. The factory gives the
+   * function's copy a numeric suffix in that case so its names stay unique.
+   */
+  private fun DeclarationBuildingContext<*>.copyFunctionTypeParameters(callable: ProviderCallable) {
+    val functionTypeParameters = callable.functionTypeParameters
+    if (functionTypeParameters.isEmpty()) {
+      return
+    }
+    val ownerNames = callable.owner.typeParameterSymbols.mapTo(mutableSetOf()) { it.name }
+    val usedNames = (ownerNames + functionTypeParameters.map { it.name }).toMutableSet()
+    for (typeParameter in functionTypeParameters) {
+      val name =
+        if (typeParameter.name in ownerNames) {
+          uniqueTypeParameterName(typeParameter.name, usedNames)
+        } else {
+          typeParameter.name
+        }
+      usedNames += name
+      // Classes can't declare reified type parameters.
+      typeParameter(name, typeParameter.variance, isReified = false)
+    }
+  }
+
+  private fun uniqueTypeParameterName(name: Name, takenNames: Set<Name>): Name {
+    var suffix = 2
+    while (true) {
+      val candidate = Name.identifier("${name.asString()}$suffix")
+      if (candidate !in takenNames) {
+        return candidate
+      }
+      suffix++
     }
   }
 
@@ -298,13 +340,19 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
     val isCompanionBlockMember: Boolean,
   ) {
     val callableId = CallableId(owner.classId, symbol.name)
+
+    /** Type parameters of a provider function. Properties can't declare usable ones. */
+    val functionTypeParameters: List<FirTypeParameterSymbol>
+      get() = (symbol as? FirNamedFunctionSymbol)?.typeParameterSymbols.orEmpty()
+
     val name = symbol.name
     val shouldGenerateObject by memoize {
       // Instance and extension receivers are both dependencies of the factory.
       val hasReceiver = instanceReceiver != null || symbol.receiverParameterSymbol != null
       val hasDependencies = hasReceiver || valueParameters.isNotEmpty()
       // A factory with copied type parameters can't be an object.
-      val hasCopiedTypeParameters = owner.typeParameterSymbols.isNotEmpty()
+      val hasOwnerTypeParameters = owner.typeParameterSymbols.isNotEmpty()
+      val hasCopiedTypeParameters = hasOwnerTypeParameters || functionTypeParameters.isNotEmpty()
       !hasDependencies && !hasCopiedTypeParameters
     }
 

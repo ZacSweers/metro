@@ -99,6 +99,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDES_PROPERTIES_CAN
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDES_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.QUALIFIER_OVERRIDE_MISMATCH
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.REDUNDANT_PROVIDES
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.REIFIED_PROVIDES_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SCOPED_GRAPH_ACCESSOR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SCOPED_GRAPH_FACTORY_PARAMETER
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SCOPED_PROVIDES_SHOULD_BE_PRIVATE_ERROR
@@ -201,6 +202,7 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val PROVIDES_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val PROVIDES_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
   val INLINE_PROVIDES_WARNING by warning1<KtElement, String>(INLINE_FUN_MODIFIER)
+  val REIFIED_PROVIDES_ERROR by error1<KtElement, String>(INLINE_FUN_MODIFIER)
   val INLINABLE_PROVIDES_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
   val REDUNDANT_PROVIDES by warning1<KtElement, String>(NAME_IDENTIFIER)
   val CONFLICTING_PROVIDES_SCOPE by warning1<KtElement, String>(NAME_IDENTIFIER)
@@ -401,6 +403,7 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
         put(PROVIDES_ERROR, "{0}", STRING)
         put(PROVIDES_WARNING, "{0}", STRING)
         put(INLINE_PROVIDES_WARNING, "{0}", STRING)
+        put(REIFIED_PROVIDES_ERROR, "{0}", STRING)
         put(INLINABLE_PROVIDES_WARNING, "{0}", STRING)
         put(REDUNDANT_PROVIDES, "{0}", STRING)
         put(CONFLICTING_PROVIDES_SCOPE, "{0}", STRING)

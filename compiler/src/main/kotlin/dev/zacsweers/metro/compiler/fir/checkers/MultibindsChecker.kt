@@ -144,8 +144,9 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
       // No need to check for explicit return types as that's enforced implicitly by the abstract
       // check above
 
-      val returnType = declaration.returnTypeRef.coneTypeOrNull
-      val returnTypeClassId = returnType?.classLikeLookupTagIfAny?.classId!!
+      val returnType = declaration.returnTypeRef.coneTypeOrNull ?: return
+      // Type parameter return types have no class ID. They fall into the Map-or-Set error below.
+      val returnTypeClassId = returnType.classLikeLookupTagIfAny?.classId
 
       // @Multibinds must return only Map or Set
       if (returnTypeClassId != StandardClassIds.Map && returnTypeClassId != StandardClassIds.Set) {

@@ -1,0 +1,3 @@
+/MultibindsAndPropertiesWithTypeParameters.kt:10:19: error: `@Multibinds` declarations may not have type parameters.
+
+/MultibindsAndPropertiesWithTypeParameters.kt:15:14: error: `@Binds` declarations may not have type parameters.

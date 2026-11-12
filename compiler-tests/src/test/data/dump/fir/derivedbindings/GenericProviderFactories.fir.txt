@@ -1,0 +1,115 @@
+FILE: GenericProviderFactories.kt
+    public abstract interface Encoder<T> : R|kotlin/Any| {
+    }
+    @R|dev/zacsweers/metro/BindingContainer|() public final object Bindings : R|kotlin/Any| {
+        private constructor(): R|Bindings| {
+            super<R|kotlin/Any|>()
+        }
+
+        @R|dev/zacsweers/metro/Provides|() public final fun <T> list(element: R|Encoder<T>|): R|Encoder<kotlin/collections/List<T>>| {
+            ^list object : R|Encoder<kotlin/collections/List<T>>| {
+                private constructor(): R|<anonymous><T>| {
+                    super<R|kotlin/Any|>()
+                }
+
+            }
+
+        }
+
+        @R|dev/zacsweers/metro/Provides|() public final fun <T : R|kotlin/Comparable<T>|> sorted(element: R|Encoder<T>|): R|Encoder<kotlin/collections/Set<T>>| {
+            ^sorted object : R|Encoder<kotlin/collections/Set<T>>| {
+                private constructor(): R|<anonymous><T>| {
+                    super<R|kotlin/Any|>()
+                }
+
+            }
+
+        }
+
+        @R|dev/zacsweers/metro/Provides|() public final fun <T> noDependencies(): R|Encoder<kotlin/collections/Collection<T>>| {
+            ^noDependencies object : R|Encoder<kotlin/collections/Collection<T>>| {
+                private constructor(): R|<anonymous><T>| {
+                    super<R|kotlin/Any|>()
+                }
+
+            }
+
+        }
+
+        @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) @R|dev/zacsweers/metro/internal/CallableMetadata|(callableName = String(list), propertyName = String(), startOffset = Int(117), endOffset = Int(209), newInstanceName = String(list)) public final class ListMetroFactory<T> : R|kotlin/Any| {
+            public final companion object Companion : R|kotlin/Any| {
+                private constructor(): R|Bindings.ListMetroFactory.Companion| {
+                    super<R|kotlin/Any|>()
+                }
+
+            }
+
+        }
+
+        @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) @R|dev/zacsweers/metro/internal/CallableMetadata|(callableName = String(sorted), propertyName = String(), startOffset = Int(213), endOffset = Int(327), newInstanceName = String(sorted)) public final class SortedMetroFactory<T> : R|kotlin/Any| {
+            public final companion object Companion : R|kotlin/Any| {
+                private constructor(): R|Bindings.SortedMetroFactory.Companion| {
+                    super<R|kotlin/Any|>()
+                }
+
+            }
+
+        }
+
+        @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) @R|dev/zacsweers/metro/internal/CallableMetadata|(callableName = String(noDependencies), propertyName = String(), startOffset = Int(331), endOffset = Int(426), newInstanceName = String(noDependencies)) public final class NoDependenciesMetroFactory<T> : R|kotlin/Any| {
+            public final companion object Companion : R|kotlin/Any| {
+                private constructor(): R|Bindings.NoDependenciesMetroFactory.Companion| {
+                    super<R|kotlin/Any|>()
+                }
+
+            }
+
+        }
+
+    }
+    @R|dev/zacsweers/metro/BindingContainer|() public final class GenericContainer<A> : R|kotlin/Any| {
+        public constructor<A>(): R|GenericContainer<A>| {
+            super<R|kotlin/Any|>()
+        }
+
+        @R|dev/zacsweers/metro/Provides|() public final fun <B : R|A|> combined(a: R|Encoder<A>|, b: R|Encoder<B>|): R|Encoder<kotlin/collections/Map<A, B>>| {
+            ^combined object : R|Encoder<kotlin/collections/Map<A, B>>| {
+                private constructor(): R|<anonymous><B, A>| {
+                    super<R|kotlin/Any|>()
+                }
+
+            }
+
+        }
+
+        @R|dev/zacsweers/metro/Provides|() public final fun <A> shadowed(a: R|Encoder<A>|): R|Encoder<kotlin/collections/List<A>>| {
+            ^shadowed object : R|Encoder<kotlin/collections/List<A>>| {
+                private constructor(): R|<anonymous><A, A>| {
+                    super<R|kotlin/Any|>()
+                }
+
+            }
+
+        }
+
+        @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) @R|dev/zacsweers/metro/internal/CallableMetadata|(callableName = String(combined), propertyName = String(), startOffset = Int(478), endOffset = Int(597), newInstanceName = String(combined)) public final class CombinedMetroFactory<A, B> : R|kotlin/Any| {
+            public final companion object Companion : R|kotlin/Any| {
+                private constructor(): R|GenericContainer.CombinedMetroFactory.Companion| {
+                    super<R|kotlin/Any|>()
+                }
+
+            }
+
+        }
+
+        @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) @R|dev/zacsweers/metro/internal/CallableMetadata|(callableName = String(shadowed), propertyName = String(), startOffset = Int(601), endOffset = Int(693), newInstanceName = String(shadowed)) public final class ShadowedMetroFactory<A, A2> : R|kotlin/Any| {
+            public final companion object Companion : R|kotlin/Any| {
+                private constructor(): R|GenericContainer.ShadowedMetroFactory.Companion| {
+                    super<R|kotlin/Any|>()
+                }
+
+            }
+
+        }
+
+    }
