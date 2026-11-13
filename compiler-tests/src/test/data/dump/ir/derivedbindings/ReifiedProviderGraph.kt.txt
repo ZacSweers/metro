@@ -11,6 +11,32 @@ class Cache<T : Any?> {
 
 }
 
+class Config {
+  val prefix: String
+    field = prefix
+    get
+
+  constructor(prefix: String) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+class Labeled<T : Any?> {
+  val name: String
+    field = name
+    get
+
+  constructor(name: String) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
 class NamedEncoder<T : Any?> : Encoder<T> {
   override val name: String
     field = name
@@ -41,6 +67,18 @@ interface AppGraph {
       }
  /*-> Provider<Encoder<Int>> */
 
+    private val configProvider: Provider<Config>
+      field = provider<Provider<Config>, Config>(delegate = create())
+
+    private val labeledProvider2: Provider<Labeled<Int>>
+      field = { // BLOCK
+        val tmp0_dependency: Provider<Config> = <this>.#configProvider
+        local fun <anonymous>(): Labeled<Int> {
+          return Encoders.LabeledMetroFactory/* companion */.labeled<Int>(config = tmp0_dependency.invoke())
+        }
+ /*-> Provider<Labeled<Int>> */
+      }
+
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
@@ -50,6 +88,11 @@ interface AppGraph {
     override val intProvider: Provider<Encoder<Int>>
       override get(): Provider<Encoder<Int>> {
         return <this>.#namedProvider
+      }
+
+    override val labeledProvider: Provider<Labeled<Int>>
+      override get(): Provider<Labeled<Int>> {
+        return <this>.#labeledProvider2
       }
 
     override val string: Encoder<String>
@@ -83,6 +126,9 @@ interface AppGraph {
   abstract val intProvider: Provider<Encoder<Int>>
     abstract get
 
+  abstract val labeledProvider: Provider<Labeled<Int>>
+    abstract get
+
   abstract val string: Encoder<String>
     abstract get
 
@@ -100,7 +146,7 @@ interface Encoder<T : Any?> {
 @BindingContainer
 object Encoders {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "cache", propertyName = "", startOffset = 545, endOffset = 660, newInstanceName = "cache")
+  @CallableMetadata(callableName = "cache", propertyName = "", startOffset = 747, endOffset = 862, newInstanceName = "cache")
   class CacheMetroFactory<T : Any?> : Factory<Cache<T>> {
     companion object Companion {
       private constructor() /* primary */ {
@@ -147,7 +193,54 @@ object Encoders {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "named", propertyName = "", startOffset = 446, endOffset = 541, newInstanceName = "named")
+  @CallableMetadata(callableName = "labeled", propertyName = "", startOffset = 946, endOffset = 1072, newInstanceName = "labeled")
+  class LabeledMetroFactory<T : Any?> : Factory<Labeled<T>> {
+    private /* final field */ val config: Provider<Config> = config
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun <T : Any?> create(config: Provider<Config>): LabeledMetroFactory<T> {
+        return LabeledMetroFactory<T>(config = config)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      inline fun <reified T : Any?> labeled(config: Config): Labeled<T> {
+        return Encoders.labeled<T>(config = config)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(config: Provider<Config>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    inline fun <reified T : Any?> declarationMirror(config: Config): Labeled<T> {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Labeled<T> {
+      return error(message = "Reified providers are called directly and never through a factory.")
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "named", propertyName = "", startOffset = 648, endOffset = 743, newInstanceName = "named")
   class NamedMetroFactory<T : Any?> : Factory<Encoder<T>> {
     companion object Companion {
       private constructor() /* primary */ {
@@ -192,6 +285,43 @@ object Encoders {
 
   }
 
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "config", propertyName = "", startOffset = 866, endOffset = 942, newInstanceName = "config")
+  object ConfigMetroFactory : Factory<Config> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun create(): ConfigMetroFactory {
+      return ConfigMetroFactory
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun config(): Config {
+      return Encoders.config()
+    }
+
+    @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): Config {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Config {
+      return ConfigMetroFactory.config()
+    }
+
+  }
+
   private constructor() /* primary */ {
     super/*Any*/()
     /* <init>() */
@@ -202,6 +332,17 @@ object Encoders {
   @SingleIn(scope = AppScope::class)
   inline fun <reified T : Any?> cache(): Cache<T> {
     return Cache<T>(name = T::class.<get-simpleName>())
+  }
+
+  @Provides
+  @SingleIn(scope = AppScope::class)
+  fun config(): Config {
+    return Config(prefix = "config")
+  }
+
+  @Provides
+  inline fun <reified T : Any?> labeled(config: Config): Labeled<T> {
+    return Labeled<T>(name = config.<get-prefix>() + T::class.<get-simpleName>())
   }
 
   @Provides

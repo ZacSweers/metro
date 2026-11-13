@@ -471,25 +471,46 @@ private constructor(
           // Optimization: Skip factory instantiation when we don't need a provider instance.
           // This applies when accessType is INSTANCE and the providerFactory supports direct
           // invocation.
+          val requestsInstance = accessType == AccessType.INSTANCE
+
           // For suspend bindings, always bypass the factory since factories implement Provider<T>,
           // not SuspendProvider<T>. The suspend call must be inlined or wrapped in a
           // SuspendProvider lambda.
+          val requestsSuspendProvider = accessType == AccessType.SUSPEND_PROVIDER
+          val callsSuspendProviderDirectly = binding.isSuspend && requestsSuspendProvider
+
           // Reified providers have no usable factory, so the graph calls them directly for every
           // access type. Provider access wraps that call in a lambda.
           val isReifiedProvider =
             providerFactory is ProviderFactory.Metro && providerFactory.isReified
-          val requestsSuspendProvider = accessType == AccessType.SUSPEND_PROVIDER
-          val callsSuspendProviderDirectly = binding.isSuspend && requestsSuspendProvider
-          val isTransitivelySuspend = bindingGraph.isTransitivelySuspend(binding.typeKey)
+
           // Non-suspend @Provides that transitively depends on suspend bindings. Its factory is a
           // plain Factory<T> whose ctor can't hold SuspendProvider deps.
+          val isTransitivelySuspend = bindingGraph.isTransitivelySuspend(binding.typeKey)
           val needsNestedSuspendFactory =
             requestsSuspendProvider && !binding.isSuspend && isTransitivelySuspend
-          val requestsInstance = accessType == AccessType.INSTANCE
+
           val alwaysCallsDirectly = callsSuspendProviderDirectly || isReifiedProvider
           val callsProviderDirectly = requestsInstance || alwaysCallsDirectly
           // TODO what if the return type is a Provider?
           val canBypassFactory = providerFactory.canBypassFactory && callsProviderDirectly
+
+          // A reified provider requested as a provider holds its dependency providers in temporary
+          // variables, so the wrapping lambda doesn't capture the graph.
+          val wrapsReifiedCallInProvider = isReifiedProvider && accessType == AccessType.PROVIDER
+          if (wrapsReifiedCallInProvider) {
+            val heldCall =
+              generateReifiedProviderWithHeldDependencies(
+                binding = binding,
+                providerFactory = providerFactory,
+                contextualTypeKey = contextualTypeKey,
+                fieldInitKey = fieldInitKey,
+                bindingKind = bindingKind,
+              )
+            if (heldCall != null) {
+              return heldCall
+            }
+          }
 
           if (needsNestedSuspendFactory) {
             // Generate an IR-only nested SuspendFactory in the graph instead. It calls the
@@ -507,9 +528,11 @@ private constructor(
             // If we need a dispatch receiver but couldn't get one, fall back to factory
             if (providerFactory.supportsDirectInvocation(node.metroGraphOrFail)) {
               codegenStats?.run { providerDirectInvocations++ }
+
               // Call the provider function directly
               val realFunction =
                 providerFactory.realDeclaration?.expectAsOrNull<IrFunction>() ?: providerFunction
+
               val args =
                 generateBindingArguments(
                   targetParams = targetParams,
@@ -525,6 +548,7 @@ private constructor(
                   typeHint = binding.typeKey.type,
                   typeArgs = providerFactory.directCallTypeArguments(realFunction),
                 )
+
               directExpr
                 .letIf(accessType == AccessType.INSTANCE) {
                   maybeTraceDirectExpression(
@@ -543,6 +567,7 @@ private constructor(
                 )
             } else {
               codegenStats?.run { providerNewInstanceCalls++ }
+
               // Function isn't public - call factory's static newInstance() method instead
               val directExpr =
                 providerFactory.invokeNewInstanceExpression(
@@ -556,6 +581,7 @@ private constructor(
                     fieldInitKey = fieldInitKey,
                   )
                 }
+
               directExpr
                 .letIf(accessType == AccessType.INSTANCE) {
                   maybeTraceDirectExpression(
@@ -1320,6 +1346,91 @@ private constructor(
           }
         }
         .decorateNewSuspendProvider(contextualTypeKey, binding.diagnosticTypeName)
+    }
+
+  /**
+   * Wraps a reified provider call in a provider that doesn't hold the graph.
+   *
+   * A reified provider has no usable factory, so the graph wraps a direct call in a lambda. A
+   * dependency read inside that lambda would capture the graph. This reads each dependency's
+   * provider into a temporary variable first. They're the same providers a factory's `create()`
+   * receives, so the lambda holds what a factory instance would hold.
+   *
+   * Generated code looks like:
+   * ```kotlin
+   * val config = this.configProvider
+   * val provider = Provider { Encoders.named<Int>(config()) }
+   * ```
+   *
+   * Returns null when the provider has no dependencies to hold.
+   */
+  context(scope: IrBuilderWithScope)
+  private fun generateReifiedProviderWithHeldDependencies(
+    binding: IrBinding.Provided,
+    providerFactory: ProviderFactory,
+    contextualTypeKey: IrContextualTypeKey,
+    fieldInitKey: IrTypeKey?,
+    bindingKind: String?,
+  ): IrExpression? =
+    with(scope) {
+      // The factory's `create()` takes each dependency as a provider, in call order.
+      val dependencyProviders =
+        providerFactory.createArguments(binding.typeKey) { createFunction, params ->
+          generateBindingArguments(
+            targetParams = params,
+            function = createFunction,
+            binding = binding,
+            fieldInitKey = fieldInitKey,
+          )
+        }
+      if (dependencyProviders.all { it == null }) {
+        return null
+      }
+
+      irBlock {
+        val heldProviders = dependencyProviders.map { provider ->
+          provider?.let { createAndAddTemporaryVariable(it, nameHint = "dependency") }
+        }
+
+        val call =
+          providerFactory.invokeNewInstanceExpression(
+            binding.typeKey,
+            providerFactory.newInstanceName,
+          ) { _, params ->
+            val hasObjectReceiver =
+              params.dispatchReceiverParameter?.type?.rawTypeOrNull()?.isObject == true
+            val callParams =
+              if (hasObjectReceiver) {
+                params.nonDispatchParameters
+              } else {
+                params.allParameters
+              }
+            if (callParams.size != heldProviders.size) {
+              reportCompilerBug(
+                "Reified provider ${providerFactory.callableId} takes ${callParams.size} " +
+                  "arguments but its factory holds ${heldProviders.size} providers",
+              )
+            }
+            callParams.mapIndexed { index, param ->
+              val heldProvider = heldProviders[index] ?: return@mapIndexed null
+              // Each call turns the held provider into what the parameter asks for.
+              typeAsProviderArgument(
+                param.contextualTypeKey,
+                irGet(heldProvider),
+                isAssisted = param.isAssisted,
+                isGraphInstance = param.isGraphInstance,
+              )
+            }
+          }
+
+        +call.toTargetType(
+          actual = AccessType.INSTANCE,
+          contextualTypeKey = contextualTypeKey,
+          // Each provider call must run the provider again.
+          useInstanceFactory = false,
+          bindingKind = bindingKind,
+        )
+      }
     }
 
   context(scope: IrBuilderWithScope)
