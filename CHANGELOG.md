@@ -8,24 +8,23 @@ Changelog
 
 #### [**[MEEP-3124]**](https://github.com/ZacSweers/metro/discussions/3124) Derived bindings
 
-`@Provides` and `@Binds` functions can now declare type parameters. When a graph requests a key that has no exact binding, Metro infers the type arguments from a matching generic provider's return type and creates a _derived binding_ for that key. Generic providers compose, because their parameters resolve the same way.
+`@Provides` and `@Binds` functions can now have type parameters. One generic provider supplies a binding for every type it fits, so you don't need a separate provider for each type.
 
 ```kotlin
 @BindingContainer
-object JsonEncoders {
-  @Provides fun string(): Encoder<String> = Encoder { "\"$it\"" }
-
-  // Supplies Encoder<List<String>>, Encoder<List<List<String>>>, and so on.
+object Serializers {
+  // Provides KSerializer<List<User>>, KSerializer<List<List<String>>>, and so on.
   @Provides
-  fun <T> list(element: Encoder<T>): Encoder<List<T>> = Encoder { values ->
-    values.joinToString(",", "[", "]") { element.encode(it) }
-  }
+  fun <T> list(element: KSerializer<T>): KSerializer<List<T>> = ListSerializer(element)
+
+  // Reified type parameters work too. This provides a KSerializer for any serializable type.
+  @Provides inline fun <reified T> forType(): KSerializer<T> = serializer()
 }
 ```
 
-An exact binding still wins. Among matching generic providers, the most specific one wins. Generic providers can be scoped, `suspend`, or `inline` with `reified` type parameters, and graph extensions can use their ancestors' generic providers.
+When a graph needs a type that has no binding of its own, Metro finds a generic provider whose return type matches and infers its type arguments. Here, a request for `KSerializer<List<User>>` calls `list(forType<User>())`. A binding that you declare for the exact type always wins over a generic one.
 
-This is experimental and disabled by default. Enable it with `metro { enableDerivedBindings.set(true) }`. See the [derived bindings docs](docs/derived-bindings.md) for details.
+This is experimental and off by default. Turn it on with `metro { enableDerivedBindings.set(true) }`. See the [derived bindings docs](docs/derived-bindings.md) for the full rules.
 
 #### Misc
 

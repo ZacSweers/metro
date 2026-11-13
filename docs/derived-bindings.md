@@ -110,9 +110,9 @@ Metro infers type arguments from the return type. So these rules apply to `@Prov
 - The return type can't be a bare type parameter like `T` or `T?`. It would match every key.
 - The function can't have `@IntoSet`, `@IntoMap`, or `@ElementsIntoSet`. An ordinary multibinding contribution can still depend on a derived binding.
 
-Otherwise, generic providers work like other providers. They can have qualifiers, scopes, and context parameters. They can be `private`. They can be `suspend` when [suspend providers](coroutines.md) are enabled. You can declare them in graphs, companion objects, binding containers, and contributed binding containers. They work across modules. A generic binding container that a graph includes with concrete type arguments, like `TypedBindings<String>`, can also declare them.
+Otherwise, generic providers work like other providers. They can have qualifiers, scopes, and context parameters. They can be `private`, unless they're `inline`. They can be `suspend` when [suspend providers](coroutines.md) are enabled. You can declare them in graphs, companion objects, binding containers, and contributed binding containers. They work across modules. A generic binding container that a graph includes with concrete type arguments, like `TypedBindings<String>`, can also declare them.
 
-`@Provides` properties, `@Binds` properties, and `@Multibinds` declarations can't have type parameters.
+`@Binds` extension properties and `@Multibinds` declarations can't have type parameters.
 
 ## How Metro picks a binding
 
@@ -158,7 +158,7 @@ After Metro picks a generic provider, the provider's parameters must resolve. If
   note: `Encoder<List<Token>>` is derived from `Encoders.list` with `T = Token`
 ```
 
-Generic providers compose because their parameters resolve the same way as other keys.
+Metro resolves a generic provider's parameters like any other dependency, so a parameter can be a derived binding too. That is how `list` supplies `Encoder<List<List<Token>>>`.
 
 ## Generic `@Binds`
 
@@ -181,7 +181,7 @@ A request for `Cache<String>` resolves to `LruCache<String>`.
 
 ## Reified providers
 
-A generic `@Provides` function can be `inline` with `reified` type parameters. A reified provider can supply a fallback for any type argument.
+A generic `@Provides` function can be `inline` with `reified` type parameters. This is useful for a fallback that works for any type, because the function body can read the type.
 
 ```kotlin
 @BindingContainer
@@ -196,15 +196,17 @@ object JsonEncoders {
 }
 ```
 
-Selection doesn't change. If the graph has an exact `Encoder<User>` binding, that binding wins for `Encoder<User>`. `list` still wins for `Encoder<List<Order>>`, and its element encoder comes from `serializable`.
+In this example, `serializable` handles any `Encoder<T>` that nothing else provides. A request for `Encoder<List<Order>>` uses `list`, because its return type is more specific. `list` then gets its `Encoder<Order>` from `serializable`. If you add a provider for exactly `Encoder<User>`, Metro uses it for `Encoder<User>`.
 
-The graph calls a reified provider directly with concrete type arguments. So a reified provider must be public or `@PublishedApi internal`. Other visibilities are an error. Kotlin doesn't allow `inline` on open members. So you can't declare a reified provider directly on a graph interface or a binding container interface. Declare it in an object, a companion object, a final binding container class, or as a final member of an abstract class graph.
+The graph calls a reified provider directly, so the provider must be public or `@PublishedApi internal`. Any other visibility is an error.
 
-When a `Provider`, `() -> T`, `Lazy`, or scoped binding needs a reified provider, Metro wraps the call in a lambda. Reified providers can be scoped, and the "no benefit to scoped inline providers" warning doesn't apply to them. They can also be `suspend`.
+Kotlin doesn't allow `inline` on open members, so you can't declare a reified provider on a graph interface or a binding container interface. Declare it in an object, a companion object, a final binding container class, or as a final member of an abstract class graph.
+
+Reified providers can be scoped and can be `suspend`. The "no benefit to scoped inline providers" warning doesn't apply to them. When something needs one as a `Provider`, `() -> T`, or `Lazy`, Metro wraps the call in a lambda.
 
 ## Scoping
 
-Each derived binding has its own key. So a scoped generic provider scopes each derived key separately. In this example, `Cache<String>` and `Cache<Int>` are two singletons.
+Once derived, a binding is like any other binding in the graph. So a scoped generic provider gives each derived binding its own instance. In this example, `Cache<String>` and `Cache<Int>` are two separate singletons.
 
 ```kotlin
 @DependencyGraph(AppScope::class)
@@ -264,14 +266,7 @@ The compiler option is `derived-binding-overlap-severity`. The default is `NONE`
 
 [Graph metadata reports](graph-analysis.md) add a `derivedFrom` object to each derived binding. It has the generic `provider` and its `typeArguments`, keyed by type parameter name. [Binding explanations](graph-analysis.md#binding-explanations) use the reason `selected_derived` for a derived binding and `less_specific` for a generic provider that lost to a more specific one.
 
-## IDE support
-
-The Metro IDE plugin resolves derived bindings. Navigation, find usages, and **Why this Metro binding?** work for a derived key and lead to the generic provider. Graph validation reports ambiguous and divergent derived bindings. It doesn't report overlaps.
-
-The IDE checks type parameter bounds only in simple cases, like a bound of `Any`. It assumes that other bounds hold. So the IDE can show a derived binding for a key that the compiler rejects.
-
 ## Limitations
 
 - Generic multibinding contributions aren't supported.
-- `@Provides` properties and `@Binds` properties can't have type parameters.
-- Metro doesn't use a generic provider declared in a generic interface that a graph extends directly, like `interface AppGraph : BaseBindings<String>`. Ordinary providers there that use the interface's type parameters don't resolve either. Include the container with concrete type arguments.
+- A graph doesn't pick up generic providers from a generic interface that it extends, like `interface AppGraph : BaseBindings<String>`. Include `BaseBindings<String>` as a binding container instead.
