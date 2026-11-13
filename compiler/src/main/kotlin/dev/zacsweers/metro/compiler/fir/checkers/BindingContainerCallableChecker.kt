@@ -21,6 +21,7 @@ import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.render
 import dev.zacsweers.metro.compiler.fir.scopeAnnotations
 import dev.zacsweers.metro.compiler.fir.toClassSymbolCompat
+import dev.zacsweers.metro.compiler.fir.typeParameterSymbolCompat
 import dev.zacsweers.metro.compiler.fir.usesContributionProviderPath
 import dev.zacsweers.metro.compiler.fir.validateBindingSource
 import dev.zacsweers.metro.compiler.fir.validateInjectionSiteType
@@ -874,7 +875,7 @@ internal object BindingContainerCallableChecker :
 
     if (returnType != null) {
       val returnTypeParameters = mutableSetOf<FirTypeParameterSymbol>()
-      returnType.collectTypeParameterSymbols(returnTypeParameters)
+      returnType.collectTypeParameterSymbols(session, returnTypeParameters)
       for (typeParameter in declaration.symbol.typeParameterSymbols) {
         if (typeParameter in returnTypeParameters) {
           continue
@@ -950,22 +951,25 @@ internal object BindingContainerCallableChecker :
   }
 
   /** Adds every type parameter that appears anywhere in this type to [into]. */
-  private fun ConeKotlinType.collectTypeParameterSymbols(into: MutableSet<FirTypeParameterSymbol>) {
+  private fun ConeKotlinType.collectTypeParameterSymbols(
+    session: FirSession,
+    into: MutableSet<FirTypeParameterSymbol>,
+  ) {
     when (this) {
-      is ConeTypeParameterType -> into += lookupTag.typeParameterSymbol
-      is ConeDefinitelyNotNullType -> original.collectTypeParameterSymbols(into)
+      is ConeTypeParameterType -> into += typeParameterSymbolCompat(session)
+      is ConeDefinitelyNotNullType -> original.collectTypeParameterSymbols(session, into)
       is ConeFlexibleType -> {
-        lowerBound.collectTypeParameterSymbols(into)
-        upperBound.collectTypeParameterSymbols(into)
+        lowerBound.collectTypeParameterSymbols(session, into)
+        upperBound.collectTypeParameterSymbols(session, into)
       }
       is ConeIntersectionType -> {
         for (type in intersectedTypes) {
-          type.collectTypeParameterSymbols(into)
+          type.collectTypeParameterSymbols(session, into)
         }
       }
       is ConeClassLikeType -> {
         for (argument in typeArguments) {
-          argument.type?.collectTypeParameterSymbols(into)
+          argument.type?.collectTypeParameterSymbols(session, into)
         }
       }
       else -> {}

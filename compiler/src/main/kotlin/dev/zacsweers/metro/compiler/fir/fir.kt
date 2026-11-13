@@ -127,6 +127,7 @@ import org.jetbrains.kotlin.fir.types.ConeClassLikeLookupTag
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.ConeKotlinTypeProjection
+import org.jetbrains.kotlin.fir.types.ConeTypeParameterType
 import org.jetbrains.kotlin.fir.types.ConeTypeProjection
 import org.jetbrains.kotlin.fir.types.FirPlaceholderProjection
 import org.jetbrains.kotlin.fir.types.FirStarProjection
@@ -1742,6 +1743,19 @@ internal fun ConeKotlinType.toClassSymbolCompat(s: FirSession): FirClassSymbol<*
 
 internal fun ConeClassLikeLookupTag.toSymbolCompat(s: FirSession): FirClassLikeSymbol<*>? {
   return toSymbol(s)
+}
+
+/**
+ * Returns the symbol of this type parameter type.
+ *
+ * Kotlin 2.5 changed the return type of [ConeTypeParameterType.lookupTag]. Code compiled against an
+ * older Kotlin version can't call it on 2.5. This goes through `ConeKotlinType.toSymbol` instead.
+ * Its JVM signature is the same in every supported Kotlin version.
+ */
+internal fun ConeTypeParameterType.typeParameterSymbolCompat(
+  s: FirSession,
+): FirTypeParameterSymbol {
+  return toSymbol(s) as FirTypeParameterSymbol
 }
 
 /**
