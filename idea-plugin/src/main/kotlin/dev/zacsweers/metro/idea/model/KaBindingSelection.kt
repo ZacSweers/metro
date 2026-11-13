@@ -57,53 +57,99 @@ internal fun BindingIndex.selectBindingsForKey(
     return KaBindingSelection(BindingTier.ASSISTED_TARGET, listOf(target))
   }
 
+  val request =
+    SelectionRequest(
+      typeKey = typeKey,
+      plan = plan,
+      candidates = candidates,
+      indexedTier = indexedTier,
+      collectionId = collectionId,
+      visibleCandidates = visibleCandidates,
+    )
   return selectBinding(
-    registered = registered@{
-        if (indexedTier == BindingTier.EXPLICIT) {
-          val explicit = candidates.filter { it.selectionTier(unqualified) == BindingTier.EXPLICIT }
-          val nearest = nearestExplicitBindings(explicit, plan)
-          return@registered KaBindingSelection(BindingTier.EXPLICIT, nearest)
-        }
-        val generated = plan.generatedBindings.forKey(typeKey) ?: return@registered null
-        KaBindingSelection(BindingTier.GENERATED_GRAPH, listOf(generated))
-      },
-    multibinding = multibinding@{
-        if (collectionId == null) return@multibinding null
-        val contributions =
-          if (visibleCandidates == null) {
-            multibindingContributions(collectionId, plan)
-          } else {
-            visibleCandidates.filter { it.multibindingId != null }
-          }
-        if (contributions.isEmpty() && indexedTier != BindingTier.MULTIBINDING) {
-          return@multibinding null
-        }
-        val declarations = candidates.filterIsInstance<KaBinding.Multibinding>()
-        KaBindingSelection(
-          BindingTier.MULTIBINDING,
-          contributions.ifEmpty { declarations },
-          contributions,
-          declarations,
-        )
-      },
-    optional = optional@{
-        if (indexedTier != BindingTier.OPTIONAL) return@optional null
-        // The compiler uses the first optional declaration without reporting duplicates.
-        val declaration = candidates.first { it.selectionTier(unqualified) == BindingTier.OPTIONAL }
-        KaBindingSelection(BindingTier.OPTIONAL, listOf(declaration))
-      },
-    derived = derived@{
-        if (!hasGenericBindings) {
-          return@derived null
-        }
-        selectDerivedBinding(typeKey, plan)
-      },
-    implicit = implicit@{
-        if (indexedTier != BindingTier.IMPLICIT) return@implicit null
-        val implicit = candidates.filter { it.selectionTier(unqualified) == BindingTier.IMPLICIT }
-        KaBindingSelection(BindingTier.IMPLICIT, implicit)
-      },
+    registered = { selectRegisteredBinding(request) },
+    multibinding = { selectMultibinding(request) },
+    optional = { selectOptionalBinding(request) },
+    derived = { selectDerivedBinding(typeKey, plan) },
+    implicit = { selectImplicitBinding(request) },
   )
+}
+
+/**
+ * What each selection stage reads for one request. [indexedTier] is the best tier among
+ * [candidates], or null when none applies. [collectionId] is set for a multibinding request.
+ * [visibleCandidates] is the caller's module-filtered list, when it passed one.
+ */
+private class SelectionRequest(
+  val typeKey: KaTypeKey,
+  val plan: BindingIndex.GraphQueryPlan,
+  val candidates: List<KaBinding>,
+  val indexedTier: BindingTier?,
+  val collectionId: String?,
+  val visibleCandidates: List<KaBinding>?,
+) {
+  /** The candidates whose tier is [tier]. */
+  fun candidatesIn(tier: BindingTier): List<KaBinding> {
+    val unqualified = typeKey.qualifier == null
+    return candidates.filter { it.selectionTier(unqualified) == tier }
+  }
+}
+
+/**
+ * Selects the explicit declarations from the nearest graph that owns the key. Without any, it
+ * selects the binding the graph generates for the key.
+ */
+private fun BindingIndex.selectRegisteredBinding(request: SelectionRequest): KaBindingSelection? {
+  if (request.indexedTier == BindingTier.EXPLICIT) {
+    val explicit = request.candidatesIn(BindingTier.EXPLICIT)
+    val nearest = nearestExplicitBindings(explicit, request.plan)
+    return KaBindingSelection(BindingTier.EXPLICIT, nearest)
+  }
+  val generated = request.plan.generatedBindings.forKey(request.typeKey) ?: return null
+  return KaBindingSelection(BindingTier.GENERATED_GRAPH, listOf(generated))
+}
+
+/**
+ * Selects the collection binding for a multibinding request that has contributions or a
+ * declaration.
+ */
+private fun BindingIndex.selectMultibinding(request: SelectionRequest): KaBindingSelection? {
+  val collectionId = request.collectionId ?: return null
+  val visibleCandidates = request.visibleCandidates
+  val contributions =
+    if (visibleCandidates == null) {
+      multibindingContributions(collectionId, request.plan)
+    } else {
+      visibleCandidates.filter { it.multibindingId != null }
+    }
+  val hasDeclaration = request.indexedTier == BindingTier.MULTIBINDING
+  if (contributions.isEmpty() && !hasDeclaration) {
+    return null
+  }
+  val declarations = request.candidates.filterIsInstance<KaBinding.Multibinding>()
+  return KaBindingSelection(
+    BindingTier.MULTIBINDING,
+    contributions.ifEmpty { declarations },
+    contributions,
+    declarations,
+  )
+}
+
+/** Selects the first optional declaration. The compiler uses it without reporting duplicates. */
+private fun selectOptionalBinding(request: SelectionRequest): KaBindingSelection? {
+  if (request.indexedTier != BindingTier.OPTIONAL) {
+    return null
+  }
+  val declaration = request.candidatesIn(BindingTier.OPTIONAL).first()
+  return KaBindingSelection(BindingTier.OPTIONAL, listOf(declaration))
+}
+
+/** Selects the bindings the requested class provides itself, like an `@Inject` constructor. */
+private fun selectImplicitBinding(request: SelectionRequest): KaBindingSelection? {
+  if (request.indexedTier != BindingTier.IMPLICIT) {
+    return null
+  }
+  return KaBindingSelection(BindingTier.IMPLICIT, request.candidatesIn(BindingTier.IMPLICIT))
 }
 
 /**
@@ -115,6 +161,10 @@ private fun BindingIndex.selectDerivedBinding(
   key: KaTypeKey,
   plan: BindingIndex.GraphQueryPlan,
 ): KaBindingSelection? {
+  // Most projects have no generic declarations, so they skip everything below.
+  if (!hasGenericBindings) {
+    return null
+  }
   val candidates = derivedCandidates(key, plan)
   if (candidates.isEmpty()) {
     return null
