@@ -848,8 +848,8 @@ internal class BindingLookup(
    *
    * A request like `Map<K, Provider<V>>` wraps each value in `Provider`, `Lazy`, or
    * `SuspendProvider`. Only multibinding contributions can supply wrapped map values. A directly
-   * provided `Map<K, V>` can't. A directly provided `Map<K, Provider<V>>` still satisfies a `Map<K,
-   * Provider<V>>` request, because the wrapping is explicit in its return type.
+   * provided `Map<K, V>` can't. A direct binding whose own return type wraps the values still
+   * satisfies the request, because the wrapping is explicit there.
    */
   private fun cannotSupplyWrappedMapValues(
     contextKey: IrContextualTypeKey,
