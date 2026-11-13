@@ -56,6 +56,7 @@ internal sealed class GenericBindingCandidate {
       val rawClass =
         patternKey.type.rawTypeOrNull()
           ?: reportCompilerBug("Generic binding $patternKey has no raw class")
+
       return rawClass.classIdOrFail
     }
 
@@ -117,6 +118,7 @@ internal sealed class GenericBindingCandidate {
     if (patternKey.qualifier != other.patternKey.qualifier) {
       return false
     }
+
     // Each return type has to match the other with only its own type parameters as variables.
     val otherVariables =
       matchTypePattern(
@@ -127,6 +129,7 @@ internal sealed class GenericBindingCandidate {
     if (otherVariables == null) {
       return false
     }
+
     val thisCoversOther =
       matchTypePattern(
         pattern = patternIdentity,
@@ -136,6 +139,7 @@ internal sealed class GenericBindingCandidate {
     if (!thisCoversOther) {
       return false
     }
+
     return hasSameBoundsAs(other, otherVariables)
   }
 
@@ -155,6 +159,7 @@ internal sealed class GenericBindingCandidate {
         val counterpartType = patternKey.type.typeArgumentAt(binding.path, patternKey)
         counterpartType.typeParameterOrNull() ?: return false
       }
+
     // Rename the other's type parameters to this candidate's so the bounds compare directly.
     val renamer =
       typeRemapperFor(
@@ -162,19 +167,23 @@ internal sealed class GenericBindingCandidate {
           otherParameter.symbol to counterpart.defaultType
         },
       )
+
     for ((index, otherParameter) in other.functionTypeParameters.withIndex()) {
       val otherBounds =
         otherParameter.superTypes.mapTo(mutableSetOf()) { bound ->
           other.substituteContainer(renamer.remapType(bound)).typeIdentity()
         }
+
       val bounds =
         counterparts[index].superTypes.mapTo(mutableSetOf()) { bound ->
           substituteContainer(bound).typeIdentity()
         }
+
       if (otherBounds != bounds) {
         return false
       }
     }
+
     return true
   }
 
@@ -201,6 +210,7 @@ internal sealed class GenericBindingCandidate {
     if (firstUnsatisfiedBound(arguments) != null) {
       return null
     }
+
     return arguments
   }
 
@@ -223,6 +233,7 @@ internal sealed class GenericBindingCandidate {
     if (hasUnsubstitutedContainerTypeParameters) {
       return null
     }
+
     val variableBindings =
       matchTypePattern(
         pattern = patternIdentity,
@@ -232,12 +243,14 @@ internal sealed class GenericBindingCandidate {
     if (variableBindings == null) {
       return null
     }
+
     return variableIdentities.map { identity ->
       val binding =
         variableBindings[identity]
           ?: reportCompilerBug(
             "Generic binding ${function.name} matched $target without binding ${identity.name}",
           )
+
       // The matcher works on identities, so follow its path through the real type.
       val argument = target.type.typeArgumentAt(binding.path, target)
       if (binding.stripsNullability) {
@@ -272,6 +285,7 @@ internal sealed class GenericBindingCandidate {
           typeParameter.symbol to argument
         },
       )
+
     for ((index, typeParameter) in functionTypeParameters.withIndex()) {
       // A type parameter's supertypes are its upper bounds.
       for (bound in typeParameter.superTypes) {
@@ -283,21 +297,26 @@ internal sealed class GenericBindingCandidate {
         }
       }
     }
+
     return null
   }
 
   /** Follows [path] through type arguments. The matcher built [path] from this type's identity. */
   private fun IrType.typeArgumentAt(path: List<Int>, target: IrTypeKey): IrType {
     var current = this
+
     for (index in path) {
       val simpleType =
         current as? IrSimpleType
           ?: reportCompilerBug("Can't follow type argument path $path in $target at $current")
+
       val argument =
         simpleType.arguments.getOrNull(index) as? IrTypeProjection
           ?: reportCompilerBug("Can't follow type argument path $path in $target at $current")
+
       current = argument.type
     }
+
     return current
   }
 
@@ -315,6 +334,7 @@ internal sealed class GenericBindingCandidate {
   fun checkPatternKey() {
     val mentioned = mutableSetOf<IrTypeParameterSymbol>()
     patternKey.type.collectTypeParameters(mentioned)
+
     val missing = functionTypeParameters.filterNot { it.symbol in mentioned }
     if (missing.isNotEmpty()) {
       reportCompilerBug(
@@ -328,10 +348,12 @@ internal sealed class GenericBindingCandidate {
     if (this !is IrSimpleType) {
       return
     }
+
     val classifier = classifier
     if (classifier is IrTypeParameterSymbol) {
       into += classifier
     }
+
     for (argument in arguments) {
       if (argument is IrTypeProjection) {
         argument.type.collectTypeParameters(into)
@@ -382,6 +404,7 @@ internal sealed class GenericBindingCandidate {
       if (bindsCallable.source == null) {
         reportCompilerBug("Generic binds ${function.name} has no source parameter")
       }
+
       return bindsCallable.withFunctionTypeArguments(arguments).aliasBinding
     }
   }

@@ -240,6 +240,7 @@ internal class BindingGraphGenerator(
         if (providerFactory !is ProviderFactory.Metro) {
           continue
         }
+
         val isDynamicGeneric = providerFactory.isGeneric && providerFactory.isDynamic
         if (isDynamicGeneric && providerFactory !in lowerPriorityDeclarations) {
           bindingLookup.registerGenericBindingCandidate(
@@ -247,6 +248,7 @@ internal class BindingGraphGenerator(
           )
         }
       }
+
       for ((bindsCallable, isLocallyDeclared) in bindsCallableCandidates) {
         val isDynamicGeneric = bindsCallable.isGeneric && bindsCallable.isDynamic
         if (isDynamicGeneric && bindsCallable !in lowerPriorityDeclarations) {
@@ -304,6 +306,7 @@ internal class BindingGraphGenerator(
               ),
             )
           }
+
           continue
         }
 
@@ -395,6 +398,7 @@ internal class BindingGraphGenerator(
               GenericBindingCandidate.Binds(bindsCallable, isLocallyDeclared, isDynamic = false),
             )
           }
+
           continue
         }
 
@@ -1018,6 +1022,7 @@ internal class BindingGraphGenerator(
     for ((typeKey, extendedNode) in node.allParentGraphs) {
       val isDynamicParent =
         extendedNode is GraphNode.Local && extendedNode.dynamicTypeKeys.isNotEmpty()
+
       // Candidates on one level don't shadow each other, so they join the closer list afterward.
       val levelGenericCandidates = mutableListOf<GenericBindingCandidate>()
 
@@ -1066,6 +1071,7 @@ internal class BindingGraphGenerator(
                 isLocallyDeclared = false,
                 isDynamic = isDynamicInParent,
               )
+
             // A dynamic candidate replaces a closer parent's, so it's never hidden.
             val isHiddenByCloserParent =
               !isDynamicInParent &&
@@ -1073,6 +1079,7 @@ internal class BindingGraphGenerator(
             if (isHiddenByCloserParent) {
               continue
             }
+
             levelGenericCandidates += candidate
             providerFactories.add(RawProviderFactoryEntry(key, factory, isDynamicInParent))
             providerFactoryKeys.add(key)
@@ -1125,6 +1132,7 @@ internal class BindingGraphGenerator(
             continue
           }
           val isDynamicInParent = isDynamicParent && key in extendedNode.dynamicTypeKeys
+
           if (callable.isGeneric) {
             val candidate =
               GenericBindingCandidate.Binds(
@@ -1132,6 +1140,7 @@ internal class BindingGraphGenerator(
                 isLocallyDeclared = false,
                 isDynamic = isDynamicInParent,
               )
+
             // A dynamic candidate replaces a closer parent's, so it's never hidden.
             val isHiddenByCloserParent =
               !isDynamicInParent &&
@@ -1139,8 +1148,10 @@ internal class BindingGraphGenerator(
             if (isHiddenByCloserParent) {
               continue
             }
+
             levelGenericCandidates += candidate
           }
+
           bindsCallableKeys.add(key)
           bindsCallables.add(RawBindsCallableEntry(key, callable, isDynamicInParent))
         }

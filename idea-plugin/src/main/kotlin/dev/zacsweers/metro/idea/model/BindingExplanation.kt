@@ -85,11 +85,13 @@ internal fun explainBindingSelection(
           val conflicting = ambiguousDerived.ifEmpty { selected }
           conflicting.filter { it !== binding }
         }
+
         BindingReason.HIGHER_PRECEDENCE,
         BindingReason.LESS_SPECIFIC,
         BindingReason.EARLIER_OPTIONAL -> selected.toList()
         else -> emptyList()
       }
+
     val details = listOfNotNull(binding.derivation?.explanationDetail())
     BindingCandidateExplanation(binding, isSelected, reason, rejection, related, details)
   }

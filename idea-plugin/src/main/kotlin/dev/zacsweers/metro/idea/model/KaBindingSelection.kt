@@ -68,6 +68,7 @@ internal fun BindingIndex.selectBindingsForKey(
       collectionId = collectionId,
       visibleCandidates = visibleCandidates,
     )
+
   return selectBinding(
     registered = { selectRegisteredBinding(request) },
     multibinding = { selectMultibinding(request) },
@@ -107,6 +108,7 @@ private fun BindingIndex.selectRegisteredBinding(request: SelectionRequest): KaB
     val nearest = nearestExplicitBindings(explicit, request.plan)
     return KaBindingSelection(BindingTier.EXPLICIT, nearest)
   }
+
   val generated = request.plan.generatedBindings.forKey(request.typeKey) ?: return null
   return KaBindingSelection(BindingTier.GENERATED_GRAPH, listOf(generated))
 }
@@ -124,10 +126,12 @@ private fun BindingIndex.selectMultibinding(request: SelectionRequest): KaBindin
     } else {
       visibleCandidates.filter { it.multibindingId != null }
     }
+
   val hasDeclaration = request.indexedTier == BindingTier.MULTIBINDING
   if (contributions.isEmpty() && !hasDeclaration) {
     return null
   }
+
   val declarations = request.candidates.filterIsInstance<KaBinding.Multibinding>()
   return KaBindingSelection(
     BindingTier.MULTIBINDING,
@@ -142,6 +146,7 @@ private fun selectOptionalBinding(request: SelectionRequest): KaBindingSelection
   if (request.indexedTier != BindingTier.OPTIONAL) {
     return null
   }
+
   val declaration = request.candidatesIn(BindingTier.OPTIONAL).first()
   return KaBindingSelection(BindingTier.OPTIONAL, listOf(declaration))
 }
@@ -169,14 +174,17 @@ private fun BindingIndex.selectDerivedBinding(
   if (!hasGenericBindings) {
     return null
   }
+
   val candidates = derivedCandidates(key, plan)
   if (candidates.isEmpty()) {
     return null
   }
+
   val matches = candidates.mapIndexedNotNull { index, template ->
     checkCanceledEvery(index)
     derivedBindingFor(template, key, verifier)
   }
+
   val selection =
     selectMostSpecificCandidate(
       candidates = matches,
@@ -185,16 +193,20 @@ private fun BindingIndex.selectDerivedBinding(
         checkNotNull(match.derivation).signature.isVariable(typeParameter)
       },
     )
+
   return when (selection) {
     DerivedCandidateSelection.None -> null
+
     is DerivedCandidateSelection.Single ->
       KaBindingSelection(BindingTier.DERIVED, listOf(selection.candidate))
+
     is DerivedCandidateSelection.MostSpecific ->
       KaBindingSelection(
         BindingTier.DERIVED,
         listOf(selection.winner),
         lessSpecificDerivedBindings = selection.others,
       )
+
     is DerivedCandidateSelection.Ambiguous ->
       KaBindingSelection(
         BindingTier.DERIVED,

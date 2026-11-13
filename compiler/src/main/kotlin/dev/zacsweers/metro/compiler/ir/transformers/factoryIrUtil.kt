@@ -137,6 +137,7 @@ internal fun generateStaticCreateFunction(
             functionTypeParameters = functionTypeParameters,
             keepReified = false,
           )
+
         this.returnType =
           if (isAssistedInject) {
             factoryClass.symbol.typeWithParameters(typeParams)
@@ -304,6 +305,7 @@ internal fun generateStaticNewInstanceFunction(
             functionTypeParameters = functionTypeParameters,
             keepReified = isInline,
           )
+
         this.returnType = returnTypeProvider(typeParams)
         signatureAnnotations?.let {
           copySignatureAnnotations(factoryClass, targetFunction, it)
@@ -433,6 +435,7 @@ internal fun generateMetadataVisibleDeclarationMirror(
             factoryClass.typeParameters,
             sourceClass.typeParameters.size,
           )
+
         val copiedContainerTypeParameters = copyTypeParameters(factoryClassTypeParameters.container)
         val copiedFunctionTypeParameters =
           copyProviderFunctionTypeParameters(
@@ -441,12 +444,14 @@ internal fun generateMetadataVisibleDeclarationMirror(
             copiedContainerTypeParameters = copiedContainerTypeParameters,
             keepReified = isInline,
           )
+
         buildMap {
           val copiedTypeParameters =
             ProviderTypeParameterOrder.join(
               container = copiedContainerTypeParameters,
               function = copiedFunctionTypeParameters,
             )
+
           factoryClass.typeParameters.zip(copiedTypeParameters).forEach { (source, copied) ->
             put(source.symbol, copied.defaultType)
           }
@@ -546,6 +551,7 @@ private fun IrSimpleFunction.copyFactoryTypeParameters(
   if (functionTypeParameters.isEmpty()) {
     return classTypeParameters to sourceClass.deepRemapperFor(sourceClassType)
   }
+
   val copiedFunctionTypeParameters =
     copyProviderFunctionTypeParameters(
       functionTypeParameters = functionTypeParameters,
@@ -553,17 +559,20 @@ private fun IrSimpleFunction.copyFactoryTypeParameters(
       copiedContainerTypeParameters = classTypeParameters,
       keepReified = keepReified,
     )
+
   val substitutions = buildMap {
     putAll(buildDeepSubstitutionMap(sourceClass, sourceClassType))
     functionTypeParameters.zip(copiedFunctionTypeParameters).forEach { (source, copied) ->
       put(source.symbol, copied.defaultType)
     }
   }
+
   val allTypeParameters =
     ProviderTypeParameterOrder.join(
       container = classTypeParameters,
       function = copiedFunctionTypeParameters,
     )
+
   return allTypeParameters to typeRemapperFor(substitutions)
 }
 
@@ -587,23 +596,29 @@ internal fun IrTypeParametersContainer.copyProviderFunctionTypeParameters(
       functionTypeParameters,
       parameterMap = sourceContainerTypeParameters.zip(copiedContainerTypeParameters).toMap(),
     )
+
   val containerNames = sourceContainerTypeParameters.mapTo(mutableSetOf()) { it.name }
   val usedNames = (containerNames + functionTypeParameters.map { it.name }).toMutableSet()
+
   for (copy in copies) {
     if (!keepReified) {
       copy.isReified = false
     }
+
     if (copy.name in containerNames) {
       var suffix = 2
       var candidate = Name.identifier("${copy.name.asString()}$suffix")
+
       while (candidate in usedNames) {
         suffix++
         candidate = Name.identifier("${copy.name.asString()}$suffix")
       }
+
       copy.name = candidate
       usedNames += candidate
     }
   }
+
   return copies
 }
 

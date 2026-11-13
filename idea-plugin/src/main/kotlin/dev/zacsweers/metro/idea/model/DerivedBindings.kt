@@ -76,6 +76,7 @@ internal class BindingDerivation(
         } else {
           argument.renderedType
         }
+
       parameter.name to rendered
     }
   }
@@ -96,6 +97,7 @@ internal class BindingDerivation(
         provider = signature.providerName,
         typeArguments = renderedTypeArguments(short = true),
       )
+
     return listOf(Note.note(text))
   }
 }
@@ -149,6 +151,7 @@ internal fun matchGenericBinding(
   if (bounds.unsatisfied != null) {
     return null
   }
+
   val derivation = BindingDerivation(template, inferred.arguments, bounds.allVerified)
   return template.instantiate(key, inferred.substitutions, derivation)
 }
@@ -273,9 +276,11 @@ private fun inferTypeArguments(
     ) ?: return null
 
   val arguments = ArrayList<KaTypeSnapshot>(signature.typeParameters.size)
+
   for (parameter in signature.typeParameters) {
     val binding = variableBindings[parameter.identity] ?: return null
     val argument = key.type.typeArgumentAt(binding.path) ?: return null
+
     if (binding.stripsNullability) {
       // The return type wrote `T?` here, so `T` is the non-null form.
       arguments += argument.withNullability(nullable = false) ?: return null
@@ -285,9 +290,11 @@ private fun inferTypeArguments(
   }
 
   val substitutions = HashMap<TypeIdentity.TypeParameter, KaTypeSnapshot>()
+
   for ((index, parameter) in signature.typeParameters.withIndex()) {
     substitutions[parameter.identity] = arguments[index]
   }
+
   return InferredTypeArguments(arguments, substitutions)
 }
 
@@ -307,8 +314,10 @@ private fun checkBounds(
   subtypeCheck: BoundSubtypeCheck?,
 ): BoundsResult {
   var allVerified = true
+
   for ((index, parameter) in signature.typeParameters.withIndex()) {
     val argument = inferred.arguments[index]
+
     for (bound in parameter.upperBounds) {
       // A bound can mention the declaration's type parameters, like `B : A` or `T : Comparable<T>`.
       val substitutedBound = bound.substitute(inferred.substitutions)
@@ -316,16 +325,20 @@ private fun checkBounds(
         allVerified = false
         continue
       }
+
       when (settleBound(argument, substitutedBound, subtypeCheck)) {
         BoundCheck.HOLDS -> {}
+
         BoundCheck.FAILS -> {
           val unsatisfied = UnsatisfiedBound(parameter, argument, substitutedBound)
           return BoundsResult(unsatisfied, allVerified)
         }
+
         BoundCheck.UNKNOWN -> allVerified = false
       }
     }
   }
+
   return BoundsResult(unsatisfied = null, allVerified = allVerified)
 }
 
@@ -342,9 +355,11 @@ private fun settleBound(
   if (fromSnapshots != BoundCheck.UNKNOWN) {
     return fromSnapshots
   }
+
   if (subtypeCheck == null) {
     return BoundCheck.UNKNOWN
   }
+
   return when (subtypeCheck.isSubtype(argument, bound)) {
     true -> BoundCheck.HOLDS
     false -> BoundCheck.FAILS
@@ -361,9 +376,11 @@ private fun KaBinding.instantiate(
   return when (this) {
     is KaBinding.Provided -> {
       val dependencies = ArrayList<KaContextualTypeKey>(this.dependencies.size)
+
       for (dependency in this.dependencies) {
         dependencies += dependency.substitute(substitutions) ?: return null
       }
+
       KaBinding.Provided(
         pointer = pointer,
         typeKey = key,
@@ -387,6 +404,7 @@ private fun KaBinding.instantiate(
         derivation = derivation,
       )
     }
+
     is KaBinding.Alias -> {
       val consumed = consumedKey
       val substitutedConsumed =
@@ -395,6 +413,7 @@ private fun KaBinding.instantiate(
         } else {
           consumed.substitute(substitutions) ?: return null
         }
+
       KaBinding.Alias(
         pointer = pointer,
         typeKey = key,
@@ -416,6 +435,7 @@ private fun KaBinding.instantiate(
         derivation = derivation,
       )
     }
+
     else -> null
   }
 }
@@ -431,19 +451,23 @@ private fun KaBinding.instantiate(
 internal fun KaBinding.isAlphaEquivalentTo(other: KaBinding): Boolean {
   val signature = genericSignature ?: return false
   val otherSignature = other.genericSignature ?: return false
+
   if (typeKey.qualifier?.identity != other.typeKey.qualifier?.identity) {
     return false
   }
+
   val pattern = typeKey.type.identity
   val otherPattern = other.typeKey.type.identity
   val otherVariables = matchTypePattern(otherPattern, pattern, otherSignature::isVariable)
   if (otherVariables == null) {
     return false
   }
+
   val thisCoversOther = matchTypePattern(pattern, otherPattern, signature::isVariable) != null
   if (!thisCoversOther) {
     return false
   }
+
   return hasSameBoundsAs(signature, otherSignature, otherVariables)
 }
 
@@ -462,8 +486,10 @@ private fun KaBinding.hasSameBoundsAs(
 ): Boolean {
   // Find this binding's type parameter that sits where each of the other's does.
   val counterparts = ArrayList<GenericTypeParameter>(otherSignature.typeParameters.size)
+
   // Renaming the other's type parameters to this binding's lets the bounds compare directly.
   val renames = HashMap<TypeIdentity.TypeParameter, KaTypeSnapshot>()
+
   for (otherParameter in otherSignature.typeParameters) {
     val binding = otherVariables[otherParameter.identity] ?: return false
     val counterpartType = typeKey.type.typeArgumentAt(binding.path) ?: return false
@@ -471,11 +497,13 @@ private fun KaBinding.hasSameBoundsAs(
     if (counterpartIdentity == null) {
       return false
     }
+
     val nonNullIdentity = counterpartIdentity.copy(nullability = Nullability.NotNull)
     val counterpart = signature.typeParameters.firstOrNull { it.identity == nonNullIdentity }
     if (counterpart == null) {
       return false
     }
+
     counterparts += counterpart
     renames[otherParameter.identity] =
       counterpartType.withNullability(nullable = false) ?: return false
@@ -487,12 +515,14 @@ private fun KaBinding.hasSameBoundsAs(
     if (!canRebuildBounds) {
       continue
     }
+
     val otherBounds = renamedBounds.boundIdentities()
     val bounds = counterparts[index].upperBounds.boundIdentities()
     if (otherBounds != bounds) {
       return false
     }
   }
+
   return true
 }
 
@@ -502,6 +532,7 @@ private fun KaBinding.hasSameBoundsAs(
  */
 private fun List<KaTypeSnapshot?>.boundIdentities(): Set<TypeIdentity> {
   val identities = HashSet<TypeIdentity>()
+
   for (bound in this) {
     val identity = bound?.identity ?: continue
     val isAny = identity is TypeIdentity.Class && identity.classId == ANY_CLASS_ID
@@ -510,6 +541,7 @@ private fun List<KaTypeSnapshot?>.boundIdentities(): Set<TypeIdentity> {
       identities += identity
     }
   }
+
   return identities
 }
 
@@ -532,24 +564,29 @@ private fun checkBound(argument: KaTypeSnapshot, bound: KaTypeSnapshot): BoundCh
   if (argumentIsNullable && boundIsNonNullClass) {
     return BoundCheck.FAILS
   }
+
   val isAnyBound = boundIdentity is TypeIdentity.Class && boundIdentity.classId == ANY_CLASS_ID
   if (isAnyBound) {
     return BoundCheck.HOLDS
   }
+
   val isNothingArgument =
     argumentIdentity is TypeIdentity.Class && argumentIdentity.classId == NOTHING_CLASS_ID
   if (isNothingArgument) {
     return BoundCheck.HOLDS
   }
+
   val sameIgnoringNullability =
     argumentIdentity.withNullability(Nullability.NotNull) ==
       boundIdentity.withNullability(Nullability.NotNull)
   if (sameIgnoringNullability) {
     return BoundCheck.HOLDS
   }
+
   if (argumentIdentity !is TypeIdentity.Class || boundIdentity !is TypeIdentity.Class) {
     return BoundCheck.UNKNOWN
   }
+
   // Nullability is settled above. What's left is the class hierarchy and the type arguments.
   val asBoundClass = argument.asClass(boundIdentity.classId)
   return when (asBoundClass) {
@@ -577,8 +614,10 @@ private fun KaTypeSnapshot.asClass(classId: String): ClassView {
   if (ownClassId == classId) {
     return ClassView.Found(this)
   }
+
   val supertypes = hierarchy?.supertypes ?: return ClassView.Unknown
   var allAreKnownClasses = true
+
   for (supertype in supertypes) {
     val supertypeIdentity = supertype.identity
     val isKnownClass = supertypeIdentity is TypeIdentity.Class && !supertype.isError
@@ -587,10 +626,12 @@ private fun KaTypeSnapshot.asClass(classId: String): ClassView {
       allAreKnownClasses = false
       continue
     }
+
     if (supertypeIdentity.classId == classId) {
       return ClassView.Found(supertype)
     }
   }
+
   return if (allAreKnownClasses) {
     ClassView.Missing
   } else {
@@ -605,8 +646,10 @@ private fun checkTypeArguments(type: KaTypeSnapshot, bound: KaTypeSnapshot): Bou
   if (arguments.size != boundArguments.size) {
     return BoundCheck.UNKNOWN
   }
+
   val declaredVariances = bound.hierarchy?.parameterVariances
   var result = BoundCheck.HOLDS
+
   for (index in boundArguments.indices) {
     val declaredVariance = declaredVariances?.getOrNull(index)
     when (checkTypeArgument(arguments[index], boundArguments[index], declaredVariance)) {
@@ -615,6 +658,7 @@ private fun checkTypeArguments(type: KaTypeSnapshot, bound: KaTypeSnapshot): Bou
       BoundCheck.UNKNOWN -> result = BoundCheck.UNKNOWN
     }
   }
+
   return result
 }
 
@@ -631,17 +675,21 @@ private fun checkTypeArgument(
   if (boundArgument !is KaTypeArgumentSnapshot.Typed) {
     return BoundCheck.HOLDS
   }
+
   if (argument !is KaTypeArgumentSnapshot.Typed) {
     return BoundCheck.UNKNOWN
   }
+
   if (argument == boundArgument) {
     return BoundCheck.HOLDS
   }
+
   // A projection on the argument itself needs capture rules the snapshot model doesn't have.
   val isArgumentProjected = argument.variance != Variance.INVARIANT
   if (isArgumentProjected || declaredVariance == null) {
     return BoundCheck.UNKNOWN
   }
+
   // A use-site projection in the bound overrides the declared variance.
   val variance =
     if (boundArgument.variance == Variance.INVARIANT) {
@@ -649,13 +697,16 @@ private fun checkTypeArgument(
     } else {
       boundArgument.variance
     }
+
   return when (variance) {
     Variance.OUT_VARIANCE -> checkBound(argument.type, boundArgument.type)
     Variance.IN_VARIANCE -> checkBound(boundArgument.type, argument.type)
+
     Variance.INVARIANT -> {
       // Two different class types in an invariant position can't be subtypes of each other.
       val bothPlain =
         argument.type.identity.isPlainClassType() && boundArgument.type.identity.isPlainClassType()
+
       if (bothPlain) {
         BoundCheck.FAILS
       } else {
@@ -709,8 +760,10 @@ internal fun KaTypeSnapshot.typeArgumentAt(path: List<Int>): KaTypeSnapshot? {
     if (argument == null) {
       return null
     }
+
     current = argument.type
   }
+
   return current
 }
 
@@ -719,6 +772,7 @@ internal fun KaContextualTypeKey.substitute(
   substitutions: Map<TypeIdentity.TypeParameter, KaTypeSnapshot>,
 ): KaContextualTypeKey? {
   val keyType = typeKey.type.substitute(substitutions) ?: return null
+
   var failed = false
   val wrapped: WrappedType<KaTypeSnapshot> = wrappedType.mapTypes { type ->
     val substituted = type.substitute(substitutions)
@@ -732,6 +786,7 @@ internal fun KaContextualTypeKey.substitute(
   if (failed) {
     return null
   }
+
   val raw = rawType
   val substitutedRaw =
     if (raw == null) {
@@ -739,6 +794,7 @@ internal fun KaContextualTypeKey.substitute(
     } else {
       raw.substitute(substitutions) ?: return null
     }
+
   return KaContextualTypeKey(
     typeKey = KaTypeKey(keyType, typeKey.qualifier),
     wrappedType = wrapped,
@@ -764,7 +820,9 @@ internal fun KaTypeSnapshot.substitute(
         Nullability.DefinitelyNotNull -> replacement.withNullability(nullable = false)
       }
     }
+
     is TypeIdentity.Class -> substituteClass(type, substitutions)
+
     else -> {
       if (type.mentionsAny(substitutions.keys)) {
         null
@@ -787,31 +845,38 @@ private fun KaTypeSnapshot.substituteClass(
   }
   var changed = false
   val arguments = ArrayList<KaTypeArgumentSnapshot>(typeArguments.size)
+
   for (argument in typeArguments) {
     when (argument) {
       KaTypeArgumentSnapshot.Star -> arguments += argument
+
       is KaTypeArgumentSnapshot.Typed -> {
         val substituted = argument.type.substitute(substitutions) ?: return null
         if (substituted !== argument.type) {
           changed = true
         }
+
         arguments += KaTypeArgumentSnapshot.Typed(substituted, argument.variance)
       }
     }
   }
+
   if (!changed) {
     return this
   }
+
   val identityArguments =
     type.arguments.mapIndexed { index, original ->
       when (original) {
         TypeArgumentIdentity.Star -> original
+
         is TypeArgumentIdentity.Projection -> {
           val substituted = arguments[index].type ?: return null
           TypeArgumentIdentity.Projection(original.variance, substituted.identity)
         }
       }
     }
+
   val classId = classId ?: return null
   val isNullable = type.nullability == Nullability.Nullable
   return KaTypeSnapshot(
@@ -842,6 +907,7 @@ private fun KaTypeSnapshot.shortHead(classId: ClassId): String {
   if (argumentsStart > 0 && startsWithClassName) {
     return shortType.substring(0, argumentsStart)
   }
+
   return classId.shortClassName.asString()
 }
 
@@ -852,32 +918,40 @@ private fun renderClassType(
   short: Boolean,
 ): String = buildString {
   append(head)
+
   if (arguments.isNotEmpty()) {
     append('<')
+
     arguments.forEachIndexed { index, argument ->
       if (index > 0) {
         append(", ")
       }
+
       when (argument) {
         KaTypeArgumentSnapshot.Star -> append('*')
+
         is KaTypeArgumentSnapshot.Typed -> {
           when (argument.variance) {
             Variance.INVARIANT -> {}
             Variance.IN_VARIANCE -> append("in ")
             Variance.OUT_VARIANCE -> append("out ")
           }
+
           val rendered =
             if (short) {
               argument.type.shortType
             } else {
               argument.type.renderedType
             }
+
           append(rendered)
         }
       }
     }
+
     append('>')
   }
+
   if (isNullable) {
     append('?')
   }
@@ -894,6 +968,7 @@ internal fun KaTypeSnapshot.withNullability(nullable: Boolean): KaTypeSnapshot? 
     } else {
       Nullability.NotNull
     }
+
   val newIdentity =
     when (val type = identity) {
       is TypeIdentity.Class -> {
@@ -902,6 +977,7 @@ internal fun KaTypeSnapshot.withNullability(nullable: Boolean): KaTypeSnapshot? 
         }
         type.copy(nullability = target)
       }
+
       is TypeIdentity.TypeParameter -> {
         val alreadyNullable = type.nullability == Nullability.Nullable
         if (alreadyNullable == nullable) {
@@ -909,8 +985,10 @@ internal fun KaTypeSnapshot.withNullability(nullable: Boolean): KaTypeSnapshot? 
         }
         type.copy(nullability = target)
       }
+
       else -> return null
     }
+
   return KaTypeSnapshot(
     renderedType = renderedType.withNullabilitySuffix(nullable),
     shortType = shortType.withNullabilitySuffix(nullable),
@@ -930,20 +1008,25 @@ private fun String.withNullabilitySuffix(nullable: Boolean): String {
     if (endsWith("?")) {
       return this
     }
+
     // Function types need parentheses before the nullability marker.
     if (isFunctionTypeRender()) {
       return "($this)?"
     }
+
     return "$this?"
   }
+
   if (!endsWith("?")) {
     return this
   }
+
   val withoutMarker = dropLast(1)
   val isWrapped = withoutMarker.startsWith("((") && withoutMarker.endsWith(")")
   if (isWrapped && withoutMarker.contains("->")) {
     return withoutMarker.substring(1, withoutMarker.length - 1)
   }
+
   return withoutMarker
 }
 

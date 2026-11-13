@@ -27,14 +27,17 @@ internal class AnalysisBoundSubtypeCheck(
 ) : BoundSubtypeCheck {
   override fun isSubtype(argument: KaTypeSnapshot, bound: KaTypeSnapshot): Boolean? {
     val application = ApplicationManager.getApplication()
+
     // Analysis can be slow, so it never runs on the EDT.
     if (application.isDispatchThread) {
       return null
     }
+
     ProgressManager.checkCanceled()
     if (application.isReadAccessAllowed) {
       return checkInReadAction(argument, bound)
     }
+
     return application.runReadAction(Computable { checkInReadAction(argument, bound) })
   }
 
@@ -43,6 +46,7 @@ internal class AnalysisBoundSubtypeCheck(
     if (DumbService.isDumb(element.project)) {
       return null
     }
+
     return analyze(element) { isSubtypeOfBound(argument, bound) }
   }
 }

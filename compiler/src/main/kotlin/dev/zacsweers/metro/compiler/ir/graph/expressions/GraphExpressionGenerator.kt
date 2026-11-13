@@ -1440,18 +1440,21 @@ private constructor(
           ) { _, params ->
             val hasObjectReceiver =
               params.dispatchReceiverParameter?.type?.rawTypeOrNull()?.isObject == true
+
             val callParams =
               if (hasObjectReceiver) {
                 params.nonDispatchParameters
               } else {
                 params.allParameters
               }
+
             if (callParams.size != heldProviders.size) {
               reportCompilerBug(
                 "Reified provider ${providerFactory.callableId} takes ${callParams.size} " +
                   "arguments but its factory holds ${heldProviders.size} providers",
               )
             }
+
             callParams.mapIndexed { index, param ->
               val heldProvider = heldProviders[index] ?: return@mapIndexed null
               // Each call turns the held provider into what the parameter asks for.

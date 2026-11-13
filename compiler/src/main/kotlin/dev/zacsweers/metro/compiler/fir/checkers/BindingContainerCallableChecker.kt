@@ -300,6 +300,7 @@ internal object BindingContainerCallableChecker :
       val typeParameters = declaration.symbol.typeParameterSymbols
       val isGenericBindingFunction =
         typeParameters.isNotEmpty() && declaration.supportsDerivedBinding(session, annotations)
+
       if (isGenericBindingFunction) {
         if (derivedBindingsEnabled) {
           validateDerivedBindingDeclaration(declaration, annotations, source)
@@ -847,14 +848,17 @@ internal object BindingContainerCallableChecker :
     if (annotations.isMultibinds) {
       return false
     }
+
     if (this !is FirFunction) {
       return false
     }
+
     val function = this
     val isNamedFunction = with(session.compatContext) { function.isNamedFunction() }
     if (!isNamedFunction) {
       return false
     }
+
     return annotations.isProvides || annotations.isBinds
   }
 
@@ -877,16 +881,19 @@ internal object BindingContainerCallableChecker :
       } else {
         "Binds"
       }
+
     val returnTypeRef = declaration.returnTypeRef
     val returnType = returnTypeRef.coneTypeOrNull
 
     if (returnType != null) {
       val returnTypeParameters = mutableSetOf<FirTypeParameterSymbol>()
       returnType.collectTypeParameterSymbols(session, returnTypeParameters)
+
       for (typeParameter in declaration.symbol.typeParameterSymbols) {
         if (typeParameter in returnTypeParameters) {
           continue
         }
+
         reporter.reportOn(
           typeParameter.source ?: source,
           MetroDiagnostics.METRO_TYPE_PARAMETERS_ERROR,
@@ -933,6 +940,7 @@ internal object BindingContainerCallableChecker :
     if (effectiveVisibility.publicApi) {
       return
     }
+
     val isEffectivelyInternal = effectiveVisibility == EffectiveVisibility.Internal
     // FIR's effective visibility doesn't account for `@PublishedApi`. Kotlin also needs it on each
     // internal containing class before a public inline function can call the provider.
@@ -940,6 +948,7 @@ internal object BindingContainerCallableChecker :
     if (isEffectivelyInternal && isPublishedApi) {
       return
     }
+
     val reason =
       if (isEffectivelyInternal) {
         "This provider is effectively internal. Every internal declaration from the provider up " +
@@ -947,6 +956,7 @@ internal object BindingContainerCallableChecker :
       } else {
         "Its effective visibility is ${effectiveVisibility.name}."
       }
+
     reporter.reportOn(
       source,
       MetroDiagnostics.REIFIED_PROVIDES_ERROR,
@@ -962,21 +972,26 @@ internal object BindingContainerCallableChecker :
   ) {
     when (this) {
       is ConeTypeParameterType -> into += typeParameterSymbolCompat(session)
+
       is ConeDefinitelyNotNullType -> original.collectTypeParameterSymbols(session, into)
+
       is ConeFlexibleType -> {
         lowerBound.collectTypeParameterSymbols(session, into)
         upperBound.collectTypeParameterSymbols(session, into)
       }
+
       is ConeIntersectionType -> {
         for (type in intersectedTypes) {
           type.collectTypeParameterSymbols(session, into)
         }
       }
+
       is ConeClassLikeType -> {
         for (argument in typeArguments) {
           argument.type?.collectTypeParameterSymbols(session, into)
         }
       }
+
       else -> {}
     }
   }

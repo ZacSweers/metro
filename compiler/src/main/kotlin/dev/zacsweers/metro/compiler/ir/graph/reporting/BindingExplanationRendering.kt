@@ -110,6 +110,7 @@ private fun IrBinding.selectionReason(): BindingReason =
         BindingReason.SELECTED_EXPLICIT
       }
     }
+
     is IrBinding.Alias -> {
       val isDerived = derivationOrNull() != null
       when {
@@ -118,6 +119,7 @@ private fun IrBinding.selectionReason(): BindingReason =
         else -> BindingReason.SELECTED_EXPLICIT
       }
     }
+
     is IrBinding.BoundInstance ->
       if (isGraphInput) BindingReason.SELECTED_EXPLICIT else BindingReason.SELECTED_GENERATED
     is IrBinding.GraphDependency -> BindingReason.SELECTED_EXPLICIT

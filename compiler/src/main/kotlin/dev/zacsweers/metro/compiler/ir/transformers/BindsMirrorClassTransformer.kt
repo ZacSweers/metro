@@ -364,6 +364,7 @@ private fun generateMirrorFunction(
           // The nested mirror can't reference type parameters owned by its outer container. It
           // declares copies of them first and then copies of the binds function's own.
           val mirrorTypeParameters = copyTypeParametersFrom(sourceClass)
+
           val mirrorFunctionTypeParameters =
             copyProviderFunctionTypeParameters(
               functionTypeParameters = sourceFunctionTypeParameters,
@@ -371,16 +372,19 @@ private fun generateMirrorFunction(
               copiedContainerTypeParameters = mirrorTypeParameters,
               keepReified = false,
             )
+
           val sourceTypeParameters =
             ProviderTypeParameterOrder.join(
               container = sourceClass.typeParameters,
               function = sourceFunctionTypeParameters,
             )
+
           val copiedTypeParameters =
             ProviderTypeParameterOrder.join(
               container = mirrorTypeParameters,
               function = mirrorFunctionTypeParameters,
             )
+
           remapTypes(
             typeRemapperFor(
               sourceTypeParameters.zip(copiedTypeParameters).associate { (source, copied) ->
@@ -389,6 +393,7 @@ private fun generateMirrorFunction(
             ),
           )
         }
+
         if (hasContainerTypeParameters) {
           val mirrorReceiver = mirrorClass.thisReceiverOrFail
           setDispatchReceiver(mirrorReceiver.copyTo(this, type = mirrorReceiver.type))

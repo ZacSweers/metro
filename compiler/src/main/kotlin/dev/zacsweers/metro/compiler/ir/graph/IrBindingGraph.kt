@@ -360,6 +360,7 @@ internal class IrBindingGraph(
           roots.getValue(contextKey)
         } else {
           val entry = bindingStackEntryForDependency(callingBinding, contextKey, contextKey.typeKey)
+
           // Derived bindings walk requester links, so only graphs with generic candidates need
           // them.
           val hasGenericCandidates = _bindingLookup?.hasNoGenericBindingCandidates == false
@@ -1555,12 +1556,15 @@ internal class IrBindingGraph(
       { issue ->
         reportStructuralIssue(issue, stack, diagnosticRoutes, rootsByTypeKey)
       }
+
     if (!metroContext.options.enableDerivedBindings) {
       reportDerivedBindingsNotEnabled()
     }
+
     reportAmbiguousDerivedBindings()
     reportDerivedBindingOverlaps()
     reportDivergentDerivedBindings()
+
     val suspendProvidersEnabled = metroContext.options.enableSuspendProviders
     var hasDirectSuspendBinding = false
     var hasDisabledSuspendProviderUse = false
@@ -1672,8 +1676,10 @@ internal class IrBindingGraph(
     if (functionNames.isEmpty()) {
       return
     }
+
     val message =
       DerivedBindingDiagnosticMessages.derivedBindingsNotEnabledForDependencies(functionNames)
+
     reportError(
       node.sourceGraph,
       "[${MetroDiagnosticId.DERIVED_BINDINGS_NOT_ENABLED.fullId}] $message",
@@ -1690,6 +1696,7 @@ internal class IrBindingGraph(
     if (conflicts.isEmpty()) {
       return
     }
+
     val id = MetroDiagnosticId.AMBIGUOUS_DERIVED_BINDING
     val message =
       conflicts.entries
@@ -1702,6 +1709,7 @@ internal class IrBindingGraph(
             )
           "[${id.fullId}] $text"
         }
+
     reportError(node.sourceGraph, message, id.factory)
   }
 
@@ -1714,6 +1722,7 @@ internal class IrBindingGraph(
     if (conflicts.isEmpty()) {
       return
     }
+
     // IR runs in CLI-only contexts, so IDE-only severities resolve to NONE here.
     val severity = metroContext.options.derivedBindingOverlapSeverity.resolve(isIde = false)
     val factory =
@@ -1722,6 +1731,7 @@ internal class IrBindingGraph(
         MetroOptions.DiagnosticSeverity.ERROR -> MetroDiagnostics.DERIVED_BINDING_OVERLAP_ERROR
         else -> return
       }
+
     val id = MetroDiagnosticId.DERIVED_BINDING_OVERLAP
     val message =
       conflicts.entries
@@ -1735,6 +1745,7 @@ internal class IrBindingGraph(
             )
           "[${id.fullId}] $text"
         }
+
     if (severity == MetroOptions.DiagnosticSeverity.ERROR) {
       reportError(node.sourceGraph, message, factory)
     } else {
@@ -1752,6 +1763,7 @@ internal class IrBindingGraph(
     if (rejections.isEmpty()) {
       return
     }
+
     val id = MetroDiagnosticId.DIVERGENT_DERIVED_BINDING
     val message =
       rejections.entries
@@ -1764,6 +1776,7 @@ internal class IrBindingGraph(
                   provider = rejection.candidate.function.kotlinFqName.asString(),
                   chain = rejection.chain.map { it.render(short = true) },
                 )
+
               DivergentDerivedBinding.Reason.DEPTH_LIMIT ->
                 DerivedBindingDiagnosticMessages.derivedBindingDepthLimit(
                   key = key.render(short = true),
@@ -1772,6 +1785,7 @@ internal class IrBindingGraph(
             }
           "[${id.fullId}] $text"
         }
+
     reportError(node.sourceGraph, message, id.factory)
   }
 

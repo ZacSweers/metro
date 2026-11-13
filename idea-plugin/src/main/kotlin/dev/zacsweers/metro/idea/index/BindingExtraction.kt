@@ -559,27 +559,33 @@ private fun KaSession.genericBindingSignature(
   if (multibindingId != null) {
     return null
   }
+
   val function = symbol as? KaNamedFunctionSymbol ?: return null
   val typeParameters = function.typeParameters
   if (typeParameters.isEmpty()) {
     return null
   }
+
   val patternParameters = typeParametersIn(pattern.type.identity)
   val callableId = function.callableId
   val fallbackOwner = callableId?.toString().orEmpty()
+
   val parameters = typeParameters.mapIndexed { index, parameter ->
     checkCanceledEvery(index)
     val name = parameter.name.asString()
     val identity =
       patternParameters.firstOrNull { it.name == name }
         ?: TypeIdentity.TypeParameter(fallbackOwner, -1, name)
+
     // Bound checks read each bound's declared variances and its arguments' supertypes.
     val upperBounds = parameter.upperBounds.map { typeSnapshot(it, captureHierarchy = true) }
     GenericTypeParameter(name, identity, upperBounds)
   }
+
   val providerName = callableId?.asSingleFqName()?.asString() ?: function.name.asString()
   val isLibrary =
     function.origin == KaSymbolOrigin.LIBRARY || function.origin == KaSymbolOrigin.JAVA_LIBRARY
+
   return GenericBindingSignature(
     parameters,
     providerName,
@@ -590,23 +596,28 @@ private fun KaSession.genericBindingSignature(
 /** Every type parameter in [type], in their non-null form and first-occurrence order. */
 private fun typeParametersIn(type: TypeIdentity): Set<TypeIdentity.TypeParameter> {
   val result = linkedSetOf<TypeIdentity.TypeParameter>()
+
   fun collect(node: TypeIdentity) {
     when (node) {
       is TypeIdentity.TypeParameter -> result += node.copy(nullability = Nullability.NotNull)
+
       is TypeIdentity.Class ->
         for (argument in node.arguments) {
           if (argument is TypeArgumentIdentity.Projection) {
             collect(argument.type)
           }
         }
+
       is TypeIdentity.Flexible -> {
         collect(node.lower)
         collect(node.upper)
       }
+
       is TypeIdentity.Intersection -> node.types.forEach(::collect)
       is TypeIdentity.Unresolved -> {}
     }
   }
+
   collect(type)
   return result
 }

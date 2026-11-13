@@ -111,12 +111,14 @@ internal fun KaSession.typeSnapshot(
   val expanded = type.fullyExpandedType
   val classType = expanded as? KaClassType
   val classId = classType?.classId ?: (expanded.expandedSymbol as? KaNamedClassSymbol)?.classId
+
   val hierarchy =
     if (captureHierarchy && classType != null) {
       typeHierarchy(classType)
     } else {
       null
     }
+
   return KaTypeSnapshot(
     renderKeyType(expanded),
     renderShortKeyType(expanded),
@@ -254,6 +256,7 @@ internal fun KaSession.restoreClassType(snapshot: KaTypeSnapshot): KaClassType? 
 internal fun KaSession.isSubtypeOfBound(argument: KaTypeSnapshot, bound: KaTypeSnapshot): Boolean? {
   val argumentType = restoreExactClassType(argument) ?: return null
   val boundType = restoreExactClassType(bound) ?: return null
+
   // The strict policy fails on an error type and the lenient one passes. Only agreement is an
   // answer.
   val strict = argumentType.isSubtypeOf(boundType, KaSubtypingErrorTypePolicy.STRICT)
@@ -261,6 +264,7 @@ internal fun KaSession.isSubtypeOfBound(argument: KaTypeSnapshot, bound: KaTypeS
   if (strict != lenient) {
     return null
   }
+
   return strict
 }
 
@@ -278,23 +282,30 @@ private fun KaSession.restoreExactClassType(snapshot: KaTypeSnapshot): KaClassTy
   if (snapshot.typeArguments.size != identity.arguments.size) {
     return null
   }
+
   val classSymbol = findClass(classId) as? KaNamedClassSymbol ?: return null
+
   // Inner classes of generic classes also take their outer class's arguments, so they bail here.
   if (classSymbol.typeParameters.size != snapshot.typeArguments.size) {
     return null
   }
+
   val typeArguments = ArrayList<KaTypeProjection>(snapshot.typeArguments.size)
+
   for (typeArgument in snapshot.typeArguments) {
     val projection =
       when (typeArgument) {
         KaTypeArgumentSnapshot.Star -> typeCreator.starTypeProjection()
+
         is KaTypeArgumentSnapshot.Typed -> {
           val restored = restoreExactClassType(typeArgument.type) ?: return null
           typeCreator.typeProjection(typeArgument.variance, restored)
         }
       }
+
     typeArguments += projection
   }
+
   val restored =
     typeCreator.classType(classId) {
       isMarkedNullable = identity.nullability == Nullability.Nullable
@@ -305,6 +316,7 @@ private fun KaSession.restoreExactClassType(snapshot: KaTypeSnapshot): KaClassTy
   if (restored is KaErrorType) {
     return null
   }
+
   return restored as? KaClassType
 }
 

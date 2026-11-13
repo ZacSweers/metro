@@ -718,6 +718,7 @@ public open class MutableBindingGraph<
     if (reportsMissingKeyElsewhere(typeKey)) {
       return
     }
+
     if (reportedMissingKeys.add(typeKey)) {
       val hints = missingBindingDiagnosticDetails(typeKey)
       val isAnyType = typeKey.isUnqualifiedAny

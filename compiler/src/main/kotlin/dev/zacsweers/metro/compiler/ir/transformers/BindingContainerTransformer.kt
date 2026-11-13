@@ -543,6 +543,7 @@ internal class BindingContainerTransformer(
     // TODO DRY this up with the constructor injection override
     trace("Implement invoke") {
       invokeFunction.finalizeFakeOverride(factoryCls.thisReceiverOrFail)
+
       // The factory's own type parameters can't be reified, so it can't call a reified helper.
       val callsReifiedHelper = bytecodeFunction.typeParameters.any { it.isReified }
       invokeFunction.body =
@@ -552,6 +553,7 @@ internal class BindingContainerTransformer(
               stubExpression("Reified providers are called directly and never through a factory."),
             )
           }
+
           irExprBodySafe(
             irInvoke(
               dispatchReceiver = dispatchReceiverFor(bytecodeFunction),
@@ -868,6 +870,7 @@ internal class BindingContainerTransformer(
           val extensionReceiver =
             reference.parameters.extensionReceiverParameter?.let { irGet(callParameters[index++]) }
           val args = reference.parameters.regularParameters.map { irGet(callParameters[index++]) }
+
           // The helper declares the provider function's type parameters after the container's.
           val helperTypeParameters =
             ProviderTypeParameterOrder.splitByContainerCount(
@@ -875,6 +878,7 @@ internal class BindingContainerTransformer(
               containerTypeParameterCount,
             )
           val functionTypeArguments = helperTypeParameters.function.map { it.defaultType }
+
           irInvoke(
             dispatchReceiver = dispatchReceiver,
             extensionReceiver = extensionReceiver,
@@ -973,10 +977,12 @@ internal class BindingContainerTransformer(
       if (sourceTypeParameters.isEmpty()) {
         return NOOP_TYPE_REMAPPER
       }
+
       check(sourceTypeParameters.size == typeArguments.size) {
         "Expected ${sourceTypeParameters.size} type arguments for $callableId but got " +
           "${typeArguments.size}"
       }
+
       return typeRemapperFor(
         sourceTypeParameters.zip(typeArguments).associate { (parameter, argument) ->
           parameter.symbol to argument

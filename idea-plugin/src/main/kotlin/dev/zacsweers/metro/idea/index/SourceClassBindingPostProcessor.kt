@@ -133,10 +133,12 @@ internal class SourceClassBindingPostProcessor(
         if (binding.genericSignature?.isEnabled != true) {
           continue
         }
+
         val lookupKey = binding.typeKey.genericLookupKey() ?: continue
         getOrPut(lookupKey, ::mutableListOf) += binding
       }
     }
+
   private val libraryRequests = mutableListOf<SourceClassRequest>()
   private val dependencies =
     SourceClassDependencies.Builder(
@@ -535,14 +537,18 @@ internal class SourceClassBindingPostProcessor(
     if (genericTemplates.isEmpty()) {
       return
     }
+
     if (request.derivedDepth >= MAX_DERIVED_BINDING_DEPTH) {
       return
     }
+
     val lookupKey = request.key.genericLookupKey() ?: return
     val templates = genericTemplates[lookupKey] ?: return
+
     for (template in templates) {
       ProgressManager.checkCanceled()
       val derived = matchGenericBinding(template, request.key) ?: continue
+
       for (dependency in derived.dependencies) {
         val key = dependency.typeKey
         val isConcreteClass = key.type.classId != null && budget.isConcrete(key.type)

@@ -123,6 +123,7 @@ internal class BindsCallable(
           "$callableId",
       )
     }
+
     return BindsCallable(
       callableMetadata = callableMetadata,
       source = source?.remapTypes(remapper),
@@ -142,18 +143,21 @@ internal class BindsCallable(
     if (!isGeneric) {
       reportCompilerBug("Can't apply function type arguments to non-generic binds $callableId")
     }
+
     if (arguments.size != functionTypeParameters.size) {
       reportCompilerBug(
         "Binds $callableId declares ${functionTypeParameters.size} type parameters but got " +
           "${arguments.size} arguments",
       )
     }
+
     val functionRemapper =
       typeRemapperFor(
         functionTypeParameters.zip(arguments).associate { (typeParameter, argument) ->
           typeParameter.symbol to argument
         },
       )
+
     return BindsCallable(
       callableMetadata = callableMetadata,
       source = source?.remapTypes(functionRemapper),

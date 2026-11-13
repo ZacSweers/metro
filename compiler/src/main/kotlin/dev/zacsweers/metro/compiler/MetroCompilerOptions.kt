@@ -124,6 +124,7 @@ internal fun MetroOptions.validate(
     )
     valid = false
   }
+
   return valid
 }
 

@@ -565,6 +565,7 @@ internal class DependencyGraphTransformer(
         if (isGenericProvider) {
           return@forEach
         }
+
         if (providerFactory.annotations.isScoped) {
           // skip @GraphPrivate bindings
           if (providerFactory.typeKey !in node.graphPrivateKeys) {

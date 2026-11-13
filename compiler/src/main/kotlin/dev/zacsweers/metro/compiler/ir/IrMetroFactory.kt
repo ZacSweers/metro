@@ -72,6 +72,7 @@ internal sealed interface IrMetroFactory {
           "call it and must never be instantiated.",
       )
     }
+
     val expr =
       invokeCreatorExpression(
         typeKey = typeKey,
@@ -183,6 +184,7 @@ internal sealed interface IrMetroFactory {
       createFunction.deepCopyWithSymbols(initialParent = createFunction.parent).apply {
         parent = createFunction.parent
       }
+
     val factory = this@IrMetroFactory
     val concreteTypes = creatorTypeArguments
     val remapper =
@@ -197,6 +199,7 @@ internal sealed interface IrMetroFactory {
               "${concreteTypes.size} type arguments",
           )
         }
+
         typeRemapperFor(concreteTypes, finalFunction)
       } else {
         // Inferring from the key only works when the creator's type parameters are the key's
@@ -209,8 +212,10 @@ internal sealed interface IrMetroFactory {
               "arguments for $typeKey",
           )
         }
+
         finalFunction.typeRemapperFor(typeKey.type)
       }
+
     finalFunction.remapTypes(remapper)
     val typeArguments =
       finalFunction.typeParameters.map { typeParameter ->

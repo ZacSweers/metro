@@ -173,6 +173,7 @@ internal class KaBindingLookup(
     if (index.hasGenericBindings) {
       recordRequester(contextKey.typeKey, requestingKey, resolved)
     }
+
     return resolved
   }
 
@@ -184,9 +185,11 @@ internal class KaBindingLookup(
     if (resolved.isEmpty()) {
       return
     }
+
     if (key in requesterKeys) {
       return
     }
+
     requesterKeys[key] = requestingKey
   }
 
@@ -200,15 +203,18 @@ internal class KaBindingLookup(
     syntheticElements[typeKey]?.let {
       return setOf(delegateToParentIfScoped(it))
     }
+
     if (typeKey in divergentDerivedBindings) {
       return emptySet()
     }
+
     val selection =
       index.selectBindingsForKey(
         contextKey,
         queryPlan,
         derivedBindingVerifier = derivedBindingVerifier,
       ) ?: return emptySet()
+
     return when (selection.tier) {
       BindingTier.MULTIBINDING ->
         synthesizeMultibinding(
@@ -242,19 +248,23 @@ internal class KaBindingLookup(
   ): Set<KaBinding> {
     val binding = selection.bindings.first()
     usedDerived += binding
+
     if (selection.ambiguousDerivedBindings.isNotEmpty()) {
       ambiguousDerived.putIfAbsent(key, selection.ambiguousDerivedBindings)
       usedDerived += selection.ambiguousDerivedBindings
     }
+
     val resolved = delegateToParentIfScoped(binding)
     if (resolved !== binding) {
       return setOf(resolved)
     }
+
     val rejection = checkDerivationChain(key, binding, requestingKey)
     if (rejection != null) {
       divergentDerived[key] = rejection
       return emptySet()
     }
+
     derivedBindings[key] = binding
     return setOf(binding)
   }
@@ -270,26 +280,31 @@ internal class KaBindingLookup(
     requestingKey: KaTypeKey?,
   ): DivergentDerivedBinding? {
     val template = checkNotNull(binding.derivation).template
+
     // Derived bindings on the chain, nearest requester first.
     val derivedOnChain = mutableListOf<KaBinding>()
     val visited = hashSetOf(key)
     var requester = requestingKey
+
     while (requester != null) {
       ProgressManager.checkCanceled()
       if (!visited.add(requester)) {
         break
       }
+
       derivedBindings[requester]?.let(derivedOnChain::add)
       requester = requesterKeys[requester]
     }
 
     val earlierFromSameTemplate =
       derivedOnChain.filter { it.derivation?.template === template }.asReversed()
+
     val isDivergent =
       isDivergentDerivation(
         newKey = key.type.identity,
         earlierKeysFromSameProvider = earlierFromSameTemplate.map { it.typeKey.type.identity },
       )
+
     if (isDivergent) {
       return DivergentDerivedBinding(
         key = key,
@@ -309,6 +324,7 @@ internal class KaBindingLookup(
         reason = DivergentDerivedBinding.Reason.DEPTH_LIMIT,
       )
     }
+
     return null
   }
 

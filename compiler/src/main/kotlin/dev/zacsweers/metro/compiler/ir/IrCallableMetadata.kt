@@ -177,6 +177,7 @@ internal fun IrConstructorCall.toIrCallableMetadata(
         // copies of them first and then the binds function's own type parameters, which it keeps.
         val containerCount = parentClass.typeParameters.size
         remapTypes(typeRemapperFor(parentClass.typeParameters.map { it.defaultType }, this))
+
         typeParameters =
           ProviderTypeParameterOrder.splitByContainerCount(typeParameters, containerCount).function
         typeParameters.forEachIndexed { index, typeParameter -> typeParameter.index = index }

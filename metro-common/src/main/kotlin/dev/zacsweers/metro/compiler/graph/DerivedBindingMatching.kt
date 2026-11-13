@@ -61,6 +61,7 @@ public fun matchTypePattern(
   if (!matched) {
     return null
   }
+
   return matcher.bindings.mapValues { (_, bound) -> bound.binding }
 }
 
@@ -98,7 +99,9 @@ private class TypePatternMatcher(private val isVariable: (TypeIdentity.TypeParam
           pattern == target
         }
       }
+
       is TypeIdentity.Class -> matchClass(pattern, target)
+
       // The matcher doesn't look inside these, so they only match an equal target.
       is TypeIdentity.Flexible,
       is TypeIdentity.Intersection,
@@ -110,17 +113,21 @@ private class TypePatternMatcher(private val isVariable: (TypeIdentity.TypeParam
     if (target !is TypeIdentity.Class) {
       return false
     }
+
     // The cheap comparisons run before the class ID string comparison.
     if (pattern.nullability != target.nullability) {
       return false
     }
+
     if (pattern.arguments.size != target.arguments.size) {
       return false
     }
+
     // Nested classes need this even though lookups already index candidates by root class ID.
     if (pattern.classId != target.classId) {
       return false
     }
+
     for (index in pattern.arguments.indices) {
       // The path is shared and only copied when a variable binds.
       path.add(index)
@@ -130,6 +137,7 @@ private class TypePatternMatcher(private val isVariable: (TypeIdentity.TypeParam
         return false
       }
     }
+
     return true
   }
 
@@ -137,14 +145,17 @@ private class TypePatternMatcher(private val isVariable: (TypeIdentity.TypeParam
     return when (pattern) {
       // A star has no type for a variable to bind, so it only matches another star.
       TypeArgumentIdentity.Star -> target == TypeArgumentIdentity.Star
+
       is TypeArgumentIdentity.Projection -> {
         if (target !is TypeArgumentIdentity.Projection) {
           return false
         }
+
         // Keys that differ in variance are different keys.
         if (pattern.variance != target.variance) {
           return false
         }
+
         match(pattern.type, target.type)
       }
     }
@@ -171,8 +182,10 @@ private class TypePatternMatcher(private val isVariable: (TypeIdentity.TypeParam
     if (!acceptsTarget) {
       return false
     }
+
     val nonNullForm = nonNullFormOf(target)
     val isPlain = variable.nullability == Nullability.NotNull
+
     // `T`, `T?`, and `T & Any` are one variable, so they share one entry.
     val key = variable.copy(nullability = Nullability.NotNull)
     val earlier = bindings[key]
@@ -185,26 +198,32 @@ private class TypePatternMatcher(private val isVariable: (TypeIdentity.TypeParam
         } else {
           null
         }
+
       bindings[key] =
         BoundVariable(
           binding = TypeVariableBinding(path.toList(), stripsNullability),
           nonNullForm = nonNullForm,
           plainTarget = plainTarget,
         )
+
       return true
     }
+
     if (earlier.nonNullForm != nonNullForm) {
       return false
     }
+
     if (!isPlain) {
       // `T?` and `T & Any` fit either nullability of `T`, so there's nothing more to compare.
       return true
     }
+
     val earlierPlainTarget = earlier.plainTarget
     if (earlierPlainTarget != null) {
       // Two plain occurrences must bind the same type, nullability included.
       return earlierPlainTarget == target
     }
+
     // The first plain occurrence decides the nullability, so the binding now points at it.
     earlier.binding = TypeVariableBinding(path.toList(), stripsNullability = false)
     earlier.plainTarget = target
@@ -234,6 +253,7 @@ private fun nonNullFormOf(target: TypeIdentity): TypeIdentity {
         target.copy(nullability = Nullability.NotNull)
       }
     }
+
     is TypeIdentity.TypeParameter -> {
       if (target.nullability == Nullability.NotNull) {
         target
@@ -241,6 +261,7 @@ private fun nonNullFormOf(target: TypeIdentity): TypeIdentity {
         target.copy(nullability = Nullability.NotNull)
       }
     }
+
     else -> target
   }
 }
@@ -300,6 +321,7 @@ public fun <C : Any> selectMostSpecificCandidate(
         target = patternOf(candidate),
         isVariable = { isVariableOf(other, it) },
       )
+
     return match != null
   }
 
@@ -310,6 +332,7 @@ public fun <C : Any> selectMostSpecificCandidate(
         if (otherIndex == winnerIndex) {
           return@all true
         }
+
         val other = candidates[otherIndex]
         val coversOther = isAtLeastAsSpecific(winner, other)
         coversOther && !isAtLeastAsSpecific(other, winner)
@@ -319,6 +342,7 @@ public fun <C : Any> selectMostSpecificCandidate(
       return DerivedCandidateSelection.MostSpecific(winner, others)
     }
   }
+
   return DerivedCandidateSelection.Ambiguous(candidates)
 }
 
@@ -338,8 +362,10 @@ public fun isDivergentDerivation(
   if (earlierKeysFromSameProvider.isEmpty()) {
     return false
   }
+
   val newClassIds = derivationClassIds(newKey)
   val newNodeCount = derivationNodeCount(newKey)
+
   return earlierKeysFromSameProvider.any { earlier ->
     // Counting nodes allocates nothing, so it runs before the class ID sets are compared.
     val isSmaller = derivationNodeCount(earlier) < newNodeCount
@@ -352,6 +378,7 @@ public fun isDivergentDerivation(
  */
 public fun derivationClassIds(type: TypeIdentity): Set<String> {
   val classIds = mutableSetOf<String>()
+
   fun collect(node: TypeIdentity) {
     when (node) {
       is TypeIdentity.Class -> {
@@ -362,16 +389,20 @@ public fun derivationClassIds(type: TypeIdentity): Set<String> {
           }
         }
       }
+
       is TypeIdentity.Flexible -> {
         collect(node.lower)
         collect(node.upper)
       }
+
       is TypeIdentity.Intersection -> node.types.forEach(::collect)
+
       // A type parameter's identity leaves out its bounds, so both of these are leaves.
       is TypeIdentity.TypeParameter,
       is TypeIdentity.Unresolved -> {}
     }
   }
+
   collect(type)
   return classIds
 }
@@ -392,9 +423,12 @@ public fun derivationNodeCount(type: TypeIdentity): Int {
             is TypeArgumentIdentity.Projection -> derivationNodeCount(argument.type)
           }
         }
+
     is TypeIdentity.Flexible ->
       1 + derivationNodeCount(type.lower) + derivationNodeCount(type.upper)
+
     is TypeIdentity.Intersection -> 1 + type.types.sumOf(::derivationNodeCount)
+
     is TypeIdentity.TypeParameter,
     is TypeIdentity.Unresolved -> 1
   }

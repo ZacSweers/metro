@@ -2541,6 +2541,7 @@ internal fun checkSignatureCarrierParamMismatches(
 
   val createFunction = helperOwner.requireStaticIshFunction(Symbols.StringNames.CREATE)
   val createFunctionParams = extractParams(createFunction)
+
   val typeParameterPairs = createFunction.typeParameters.zip(signatureTypeParameters())
   val createTypeParameterRemapper =
     if (typeParameterPairs.isEmpty()) {

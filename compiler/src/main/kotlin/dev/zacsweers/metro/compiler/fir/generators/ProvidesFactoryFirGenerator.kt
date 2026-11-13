@@ -196,8 +196,10 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
     if (functionTypeParameters.isEmpty()) {
       return
     }
+
     val ownerNames = callable.owner.typeParameterSymbols.mapTo(mutableSetOf()) { it.name }
     val usedNames = (ownerNames + functionTypeParameters.map { it.name }).toMutableSet()
+
     for (typeParameter in functionTypeParameters) {
       val name =
         if (typeParameter.name in ownerNames) {
@@ -205,7 +207,9 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
         } else {
           typeParameter.name
         }
+
       usedNames += name
+
       // Classes can't declare reified type parameters.
       typeParameter(name, typeParameter.variance, isReified = false)
     }
@@ -218,6 +222,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
       if (candidate !in takenNames) {
         return candidate
       }
+
       suffix++
     }
   }

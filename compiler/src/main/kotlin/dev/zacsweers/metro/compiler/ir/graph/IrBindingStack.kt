@@ -420,6 +420,7 @@ internal fun IrBindingStack.requestingKeyFor(key: IrTypeKey): IrTypeKey? {
   if (top.typeKey != key) {
     return null
   }
+
   return top.requestingKey
 }
 

@@ -24,6 +24,7 @@ public object DerivedBindingDiagnosticMessages {
       } else {
         "declare"
       }
+
     return "This graph uses $renderedNames, which $verb type parameters. Generic providers " +
       "need derived bindings, which are disabled. Enable the `enable-derived-bindings` compiler " +
       "option or set `metro.enableDerivedBindings` to true."

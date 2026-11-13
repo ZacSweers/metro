@@ -61,11 +61,13 @@ internal fun IrBinding.derivationOrNull(): BindingDerivation? {
       val arguments = factory.functionTypeArguments ?: return null
       BindingDerivation(factory.function, factory.functionTypeParameters, arguments)
     }
+
     is IrBinding.Alias -> {
       val callable = bindsCallable ?: return null
       val arguments = callable.functionTypeArguments ?: return null
       BindingDerivation(callable.function, callable.functionTypeParameters, arguments)
     }
+
     else -> null
   }
 }
@@ -76,11 +78,13 @@ internal fun IrBinding.derivationOrNull(): BindingDerivation? {
  */
 internal fun IrBinding.derivedBindingNotes(): List<Note> {
   val derivation = derivationOrNull() ?: return emptyList()
+
   val text =
     DerivedBindingDiagnosticMessages.derivedBindingNote(
       key = typeKey.render(short = true),
       provider = derivation.providerName,
       typeArguments = derivation.renderedTypeArguments(short = true),
     )
+
   return listOf(Note.note(text))
 }

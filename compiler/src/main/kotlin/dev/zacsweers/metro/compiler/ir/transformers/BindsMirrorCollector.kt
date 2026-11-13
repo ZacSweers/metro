@@ -103,6 +103,7 @@ internal class BindsMirrorCollector(private val isInterop: Boolean) {
       val sameSource = source?.identity == other.source?.identity
       return sameSource && rawTarget.identity == other.rawTarget.identity
     }
+
     return source == other.source && rawTarget == other.rawTarget
   }
 

@@ -303,10 +303,12 @@ private constructor(
           if (consumer.multibindingId != null) {
             continue
           }
+
           val rawKey = consumer.key.genericLookupKey() ?: continue
           if (rawKey !in genericBindingsByRawKey) {
             continue
           }
+
           consumersByRawKey.getOrPut(rawKey, ::mutableListOf) += consumer
         }
       }

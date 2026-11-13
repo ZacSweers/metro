@@ -328,6 +328,7 @@ internal class KaBindingGraph(
     adjacency: GraphAdjacency<KaTypeKey>,
   ) {
     reportDerivedBindingIssues()
+
     val rootsByTypeKey = roots.mapKeys { it.key.typeKey }
     val diagnosticRoutes = DiagnosticRoutes(roots, adjacency.forward)
     val structuralValidator =
@@ -383,9 +384,11 @@ internal class KaBindingGraph(
     if (!index.hasGenericBindings) {
       return
     }
+
     if (!options.enableDerivedBindings) {
       reportDerivedBindingsNotEnabled()
     }
+
     for ((key, matches) in bindingLookup.ambiguousDerivedBindings.entries.sortedBy { it.key }) {
       ProgressManager.checkCanceled()
       // An unchecked bound might drop a match in the compiler, so don't claim an ambiguity.
@@ -394,14 +397,18 @@ internal class KaBindingGraph(
       if (!boundsVerified) {
         continue
       }
+
       val text =
         DerivedBindingDiagnosticMessages.ambiguousDerivedBinding(
           key = key.render(short = true),
           providerNames = matches.renderedProviderNames(),
         )
+
       reportGraphDiagnostic(MetroDiagnosticId.AMBIGUOUS_DERIVED_BINDING, text, matches)
     }
+
     val divergent = bindingLookup.divergentDerivedBindings.entries.sortedBy { it.key }
+
     for ((key, rejection) in divergent) {
       ProgressManager.checkCanceled()
       val provider = checkNotNull(rejection.template.genericSignature).providerName
@@ -412,12 +419,14 @@ internal class KaBindingGraph(
               provider = provider,
               chain = rejection.chain.map { it.render(short = true) },
             )
+
           DivergentDerivedBinding.Reason.DEPTH_LIMIT ->
             DerivedBindingDiagnosticMessages.derivedBindingDepthLimit(
               key = key.render(short = true),
               limit = MAX_DERIVED_BINDING_DEPTH,
             )
         }
+
       reportGraphDiagnostic(
         MetroDiagnosticId.DIVERGENT_DERIVED_BINDING,
         text,
@@ -437,10 +446,12 @@ internal class KaBindingGraph(
     if (used.isEmpty()) {
       return
     }
+
     val text =
       DerivedBindingDiagnosticMessages.derivedBindingsNotEnabledForDependencies(
         used.renderedProviderNames(),
       )
+
     reportGraphDiagnostic(MetroDiagnosticId.DERIVED_BINDINGS_NOT_ENABLED, text, used)
   }
 
@@ -451,6 +462,7 @@ internal class KaBindingGraph(
   ) {
     val diagnostic = MetroDiagnostic(id = id, severity = MetroSeverity.ERROR, title = textOf(text))
     pendingRelated = related.map { it.declarationBinding() }
+
     try {
       report(diagnostic, KaBindingStack(graph))
     } finally {
@@ -817,9 +829,11 @@ internal class KaBindingGraph(
     // A generic declaration that matched except for a bound is a likely cause, so name it.
     // The verifier settles the bounds the snapshots can't, like the derived stage did.
     val verifier = bindingLookup.derivedBindingVerifier
+
     for (template in index.derivedCandidates(typeKey, bindingLookup.queryPlan)) {
       val unsatisfied = unsatisfiedBoundFor(template, typeKey, verifier) ?: continue
       val provider = checkNotNull(template.genericSignature).providerName
+
       notes +=
         Note.note(
           DerivedBindingDiagnosticMessages.unsatisfiedBoundNote(

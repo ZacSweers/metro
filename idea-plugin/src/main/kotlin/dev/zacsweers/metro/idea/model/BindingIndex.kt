@@ -231,10 +231,12 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
     if (verifier == null || binding == null) {
       return binding
     }
+
     val boundsVerified = checkNotNull(binding.derivation).boundsVerified
     if (boundsVerified) {
       return binding
     }
+
     return verifier.verifiedBinding(template, key)
   }
 
@@ -244,6 +246,7 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
     if (cached != null) {
       return cached.binding
     }
+
     val result = DerivedBindingResult(matchGenericBinding(template, key))
     return (derivedBindings.putIfAbsent(cacheKey, result) ?: result).binding
   }
@@ -258,11 +261,13 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
   internal fun derivedCandidates(key: KaTypeKey, plan: GraphQueryPlan): List<KaBinding> {
     val lookupKey = key.genericLookupKey() ?: return emptyList()
     val templates = lookups.genericBindingsByRawKey[lookupKey] ?: return emptyList()
+
     val available = templates.filterIndexed { index, template ->
       checkCanceledEvery(index)
       val isEnabled = template.genericSignature?.isEnabled == true
       isEnabled && isBindingInContext(template, plan)
     }
+
     return dropShadowedGenericBindings(available, plan)
   }
 
@@ -274,6 +279,7 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
     if (candidates.size < 2 || chain.size < 2) {
       return candidates
     }
+
     val ownerDepths = candidates.mapIndexed { index, candidate ->
       checkCanceledEvery(index)
       val depth = chain.indexOfFirst { graph -> isBindingOwnedByGraph(candidate, graph, plan) }
@@ -283,6 +289,7 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
         depth
       }
     }
+
     return candidates.filterIndexed { index, candidate ->
       checkCanceledEvery(index)
       candidates.indices.none { otherIndex ->

@@ -355,12 +355,14 @@ internal class FileShardBuilder(
             }
           (target.symbol as? KaAnnotated)?.let { recordAnnotationDependencies(it, target) }
           val dataEntries = target.bindingData(this, options)
+
           // A generic function's own type parameters only become concrete in each derived binding.
           // Its parameters that mention them aren't requests on their own.
           val genericSignature = dataEntries.firstNotNullOfOrNull { it.genericSignature }
           fun isGenericRequest(type: KaType): Boolean {
             return genericSignature?.isMentionedIn(typeIdentity(type)) == true
           }
+
           val consumerOriginClassId = dataEntries.firstNotNullOfOrNull { it.originClassId }
           val consumerContributionScopes = dataEntries.flatMapToSet { it.contributionScopes }
           val ownerDependency = graphOwnerDependency(target)
@@ -407,6 +409,7 @@ internal class FileShardBuilder(
               if (isGenericRequest(parameter.returnType)) {
                 continue
               }
+
               addConsumer(
                 source,
                 parameter,
@@ -438,6 +441,7 @@ internal class FileShardBuilder(
               if (parameterType != null && isGenericRequest(parameterType)) {
                 continue
               }
+
               addParameterConsumer(
                 parameter,
                 originClassId = consumerOriginClassId,
