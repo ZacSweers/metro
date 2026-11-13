@@ -43,8 +43,12 @@ public data class TypeVariableBinding(val path: List<Int>, val stripsNullability
  * - Pattern `T & Any` needs a target that is a class or type parameter and can't hold null. A class
  *   target must be non-null. A type parameter target must be definitely non-null, since a plain `U`
  *   might still be nullable. The variable binds the target as is.
- * - A variable that occurs more than once must bind equal types each time. The result keeps the
- *   first occurrence.
+ * - A variable that occurs more than once must stand for one type. Every occurrence must agree on
+ *   that type's non-null form. A plain `T` occurrence also decides its nullability, so two plain
+ *   occurrences must bind equal types. So `Pair<T, T?>` matches `Pair<String?, String?>` with `T =
+ *   String?`, like Kotlin infers it.
+ * - The result points at the first plain occurrence of a variable. A variable with no plain
+ *   occurrence points at its first occurrence.
  * - Flexible, intersection, and unresolved patterns only match an equal target.
  */
 public fun matchTypePattern(
@@ -67,8 +71,16 @@ public fun matchTypePattern(
  * variable. One instance handles one match.
  */
 private class TypePatternMatcher(private val isVariable: (TypeIdentity.TypeParameter) -> Boolean) {
-  /** Each variable's binding plus the type it binds, for comparing repeated occurrences. */
-  class BoundVariable(val binding: TypeVariableBinding, val type: TypeIdentity)
+  /**
+   * What a variable stands for so far. [binding] says where to read its type. [nonNullForm] is that
+   * type without its own nullability, which every occurrence must share. [plainTarget] is the type
+   * a plain `T` occurrence bound. It's null while only `T?` and `T & Any` occurrences were seen.
+   */
+  class BoundVariable(
+    var binding: TypeVariableBinding,
+    val nonNullForm: TypeIdentity,
+    var plainTarget: TypeIdentity?,
+  )
 
   /** What each variable stands for so far. Keys are the variables' non-null forms. */
   val bindings = LinkedHashMap<TypeIdentity.TypeParameter, BoundVariable>()
@@ -142,60 +154,94 @@ private class TypePatternMatcher(private val isVariable: (TypeIdentity.TypeParam
    * Records that [variable] stands for [target] at the current position. Returns false when this
    * occurrence can't bind [target] or disagrees with an earlier occurrence.
    *
-   * How the pattern writes the variable decides what it binds. A plain `T` takes [target] as is.
-   * `T?` needs a nullable [target] and takes its non-null form. `T & Any` needs a [target] that
-   * can't hold null and takes it as is.
+   * How the pattern writes the variable decides which targets it accepts. A plain `T` accepts any
+   * [target]. `T?` needs a nullable [target]. `T & Any` needs a [target] that can't hold null.
+   *
+   * `T?` and `T & Any` say nothing about whether `T` itself is nullable. `String?` is `T?` for both
+   * `T = String` and `T = String?`. So those occurrences only compare non-null forms, and a plain
+   * occurrence decides the rest.
    */
   private fun bindVariable(variable: TypeIdentity.TypeParameter, target: TypeIdentity): Boolean {
-    // The type this occurrence says the variable stands for.
-    val boundType =
+    val acceptsTarget =
       when (variable.nullability) {
-        Nullability.NotNull -> target
-        Nullability.Nullable -> {
-          val nonNullTarget = nonNullFormOfNullable(target)
-          if (nonNullTarget == null) {
-            return false
-          }
-          nonNullTarget
-        }
-        Nullability.DefinitelyNotNull -> {
-          if (!canNeverBeNull(target)) {
-            return false
-          }
-          target
-        }
+        Nullability.NotNull -> true
+        Nullability.Nullable -> isMarkedNullable(target)
+        Nullability.DefinitelyNotNull -> canNeverBeNull(target)
       }
+    if (!acceptsTarget) {
+      return false
+    }
+    val nonNullForm = nonNullFormOf(target)
+    val isPlain = variable.nullability == Nullability.NotNull
     // `T`, `T?`, and `T & Any` are one variable, so they share one entry.
     val key = variable.copy(nullability = Nullability.NotNull)
     val earlier = bindings[key]
-    if (earlier != null) {
-      // A repeated variable keeps its first binding, and later occurrences must agree with it.
-      return earlier.type == boundType
+    if (earlier == null) {
+      // A `T?` occurrence reads its target without the nullability.
+      val stripsNullability = variable.nullability == Nullability.Nullable
+      val plainTarget =
+        if (isPlain) {
+          target
+        } else {
+          null
+        }
+      bindings[key] =
+        BoundVariable(
+          binding = TypeVariableBinding(path.toList(), stripsNullability),
+          nonNullForm = nonNullForm,
+          plainTarget = plainTarget,
+        )
+      return true
     }
-    val stripsNullability = variable.nullability == Nullability.Nullable
-    bindings[key] = BoundVariable(TypeVariableBinding(path.toList(), stripsNullability), boundType)
+    if (earlier.nonNullForm != nonNullForm) {
+      return false
+    }
+    if (!isPlain) {
+      // `T?` and `T & Any` fit either nullability of `T`, so there's nothing more to compare.
+      return true
+    }
+    val earlierPlainTarget = earlier.plainTarget
+    if (earlierPlainTarget != null) {
+      // Two plain occurrences must bind the same type, nullability included.
+      return earlierPlainTarget == target
+    }
+    // The first plain occurrence decides the nullability, so the binding now points at it.
+    earlier.binding = TypeVariableBinding(path.toList(), stripsNullability = false)
+    earlier.plainTarget = target
     return true
   }
 }
 
-/** The non-null form of a nullable class or type parameter, or null for any other target. */
-private fun nonNullFormOfNullable(target: TypeIdentity): TypeIdentity? {
+/** Whether [target] is a class or type parameter that is marked nullable. */
+private fun isMarkedNullable(target: TypeIdentity): Boolean {
+  return when (target) {
+    is TypeIdentity.Class -> target.nullability == Nullability.Nullable
+    is TypeIdentity.TypeParameter -> target.nullability == Nullability.Nullable
+    else -> false
+  }
+}
+
+/**
+ * [target] without its own nullability, so `String` and `String?` give the same result. Other kinds
+ * of types are returned as is.
+ */
+private fun nonNullFormOf(target: TypeIdentity): TypeIdentity {
   return when (target) {
     is TypeIdentity.Class -> {
-      if (target.nullability == Nullability.Nullable) {
-        target.copy(nullability = Nullability.NotNull)
+      if (target.nullability == Nullability.NotNull) {
+        target
       } else {
-        null
+        target.copy(nullability = Nullability.NotNull)
       }
     }
     is TypeIdentity.TypeParameter -> {
-      if (target.nullability == Nullability.Nullable) {
-        target.copy(nullability = Nullability.NotNull)
+      if (target.nullability == Nullability.NotNull) {
+        target
       } else {
-        null
+        target.copy(nullability = Nullability.NotNull)
       }
     }
-    else -> null
+    else -> target
   }
 }
 

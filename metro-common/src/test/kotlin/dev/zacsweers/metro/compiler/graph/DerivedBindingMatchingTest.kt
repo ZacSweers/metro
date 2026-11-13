@@ -124,18 +124,62 @@ class DerivedBindingMatchingTest {
   }
 
   @Test
-  fun `repeated variables compare after stripping nullability`() {
-    val pattern = pair(t, t.nullable())
-
-    assertThat(match(pattern, pair(string, string.nullable()))).containsExactly(t, binding(0))
-    assertThat(match(pattern, pair(string.nullable(), string.nullable()))).isNull()
+  fun `two plain occurrences must agree on nullability`() {
+    assertThat(match(pair(t, t), pair(string.nullable(), string))).isNull()
+    assertThat(match(pair(t, t), pair(string.nullable(), string.nullable())))
+      .containsExactly(t, binding(0))
   }
 
   @Test
-  fun `nullable and plain occurrences share one key`() {
-    val bindings = match(pair(t.nullable(), t), pair(string.nullable(), string))
+  fun `a plain occurrence decides nullability for a nullable occurrence`() {
+    val pattern = pair(t, t.nullable())
 
-    assertThat(bindings).containsExactly(t, binding(0, stripsNullability = true))
+    // `T = String` gives `Pair<String, String?>`.
+    assertThat(match(pattern, pair(string, string.nullable()))).containsExactly(t, binding(0))
+    // `T = String?` gives `Pair<String?, String?>`.
+    assertThat(match(pattern, pair(string.nullable(), string.nullable())))
+      .containsExactly(t, binding(0))
+    // `T?` is always nullable, so the second argument can't be `String`.
+    assertThat(match(pattern, pair(string, string))).isNull()
+    assertThat(match(pattern, pair(string, int.nullable()))).isNull()
+  }
+
+  @Test
+  fun `a later plain occurrence replaces a nullable occurrence's binding`() {
+    val pattern = pair(t.nullable(), t)
+
+    assertThat(match(pattern, pair(string.nullable(), string))).containsExactly(t, binding(1))
+    assertThat(match(pattern, pair(string.nullable(), string.nullable())))
+      .containsExactly(t, binding(1))
+    assertThat(match(pattern, pair(string.nullable(), int))).isNull()
+  }
+
+  @Test
+  fun `a plain occurrence decides nullability for a definitely non-null occurrence`() {
+    // `T = String?` gives `Pair<String?, String>`, since `String? & Any` is `String`.
+    assertThat(match(pair(t, t.definitelyNotNull()), pair(string.nullable(), string)))
+      .containsExactly(t, binding(0))
+    assertThat(match(pair(t.definitelyNotNull(), t), pair(string, string.nullable())))
+      .containsExactly(t, binding(1))
+    assertThat(match(pair(t, t.definitelyNotNull()), pair(string, int))).isNull()
+  }
+
+  @Test
+  fun `occurrences without a plain one keep the first binding`() {
+    assertThat(match(pair(t.nullable(), t.nullable()), pair(string.nullable(), string.nullable())))
+      .containsExactly(t, binding(0, stripsNullability = true))
+    assertThat(match(pair(t.nullable(), t.definitelyNotNull()), pair(string.nullable(), string)))
+      .containsExactly(t, binding(0, stripsNullability = true))
+    assertThat(match(pair(t.nullable(), t.nullable()), pair(string.nullable(), int.nullable())))
+      .isNull()
+  }
+
+  @Test
+  fun `nullable and definitely non-null occurrences agree on a type parameter target`() {
+    val pattern = pair(t.nullable(), t.definitelyNotNull())
+
+    assertThat(match(pattern, pair(u.nullable(), u.definitelyNotNull())))
+      .containsExactly(t, binding(0, stripsNullability = true))
   }
 
   @Test

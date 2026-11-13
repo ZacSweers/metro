@@ -2919,6 +2919,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     }
 
     @Test
+    @TestMetadata("RepeatedTypeParameterNullability.kt")
+    public void testRepeatedTypeParameterNullability() {
+      run("RepeatedTypeParameterNullability.kt");
+    }
+
+    @Test
     @TestMetadata("ReplacedContainerGenericProviders.kt")
     public void testReplacedContainerGenericProviders() {
       run("ReplacedContainerGenericProviders.kt");
