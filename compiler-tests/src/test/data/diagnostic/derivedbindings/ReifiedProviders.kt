@@ -31,3 +31,28 @@ object Bindings {
   inline fun <reified T> scopedReified(): Encoder<Sequence<T>> =
     TypedEncoder(T::class.toString())
 }
+
+// The container is internal without `@PublishedApi`, so the provider isn't published either.
+@Suppress("NOTHING_TO_INLINE")
+@BindingContainer
+internal object InternalBindings {
+  @PublishedApi
+  @Provides
+  internal <!REIFIED_PROVIDES_ERROR!>inline<!> fun <reified T> publishedInInternalContainer(): Encoder<Array<T>> =
+    TypedEncoder(T::class.toString())
+}
+
+// A `@PublishedApi internal` container publishes its public and `@PublishedApi` members.
+@Suppress("NOTHING_TO_INLINE")
+@PublishedApi
+@BindingContainer
+internal object PublishedBindings {
+  @Provides
+  inline fun <reified T> publicInPublishedContainer(): Encoder<Map<String, T>> =
+    TypedEncoder(T::class.toString())
+
+  @PublishedApi
+  @Provides
+  internal inline fun <reified T> publishedInPublishedContainer(): Encoder<Map<Int, T>> =
+    TypedEncoder(T::class.toString())
+}

@@ -934,18 +934,16 @@ internal object BindingContainerCallableChecker :
       return
     }
     val isEffectivelyInternal = effectiveVisibility == EffectiveVisibility.Internal
-    // FIR's effective visibility doesn't account for `@PublishedApi`.
-    val isPublishedApi =
-      declaration.getAnnotationByClassId(
-        StandardClassIds.Annotations.PublishedApi,
-        context.session,
-      ) != null
+    // FIR's effective visibility doesn't account for `@PublishedApi`. Kotlin also needs it on each
+    // internal containing class before a public inline function can call the provider.
+    val isPublishedApi = declaration.symbol.isPublishedApi(context.session)
     if (isEffectivelyInternal && isPublishedApi) {
       return
     }
     val reason =
       if (isEffectivelyInternal) {
-        "This provider is effectively internal without `@PublishedApi`."
+        "This provider is effectively internal. Every internal declaration from the provider up " +
+          "through its containing classes needs `@PublishedApi`."
       } else {
         "Its effective visibility is ${effectiveVisibility.name}."
       }
