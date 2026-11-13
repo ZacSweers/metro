@@ -916,6 +916,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../derived-bindings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Derived Bindings
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../aggregation/" class="md-nav__link">
         
   
@@ -2681,7 +2708,7 @@
 <p>This enables the compiler to export graph metadata during compilation.</p>
 <h2 id="binding-explanations">Binding explanations<a class="headerlink" href="#binding-explanations" title="Permanent link">&para;</a></h2>
 <p>Graph metadata includes <code>bindingExplanations</code>. These use the same decision model and reason codes as the IDE&rsquo;s <strong>Why this Metro binding?</strong> action. The aggregated metadata and <code>analysis.json</code> include these records. Reports also cover generated child and dynamic graphs.</p>
-<p>Each explanation identifies the graph, the requested key when one exists, and the candidates the compiler considered. Reasons such as <code>selected_explicit</code>, <code>selected_parent</code>, <code>excluded</code>, and <code>replaced</code> appear as structured fields. Related declarations identify the graph or contribution responsible for a removal when that information is available.</p>
+<p>Each explanation identifies the graph, the requested key when one exists, and the candidates the compiler considered. Reasons such as <code>selected_explicit</code>, <code>selected_parent</code>, <code>excluded</code>, and <code>replaced</code> appear as structured fields. <a href="../derived-bindings/">Derived bindings</a> use <code>selected_derived</code>, and generic providers that lose to a more specific one use <code>less_specific</code>. Related declarations identify the graph or contribution responsible for a removal when that information is available.</p>
 <p>The <code>phase</code> identifies binding registration, dependency lookup, or candidate filtering. A filtering record can describe an excluded contribution before anything requests it. Lookup records include only candidates reached by the compiler&rsquo;s normal lookup. Fallbacks that weren&rsquo;t evaluated are absent. The IDE can show additional alternatives from its project index.</p>
 <p>Setting <code>reportsDestination</code> enables explanation collection without changing binding selection. JSON reports are written during code generation. A compilation that stops earlier may have no report for the failing graph.</p>
 <h2 id="provider-inlining-counts">Provider inlining counts<a class="headerlink" href="#provider-inlining-counts" title="Permanent link">&para;</a></h2>
@@ -2976,6 +3003,7 @@ open<span class="w"> </span>app/build/reports/metro/internalDebug/html/index.htm
 </li>
 <li><strong>bindings</strong> - All bindings with their kinds, scopes, and dependencies</li>
 <li>Multibinding information (sources, collection type)</li>
+<li><code>derivedFrom</code> on <a href="../derived-bindings/">derived bindings</a> (generic <code>provider</code> and <code>typeArguments</code> by type parameter name)</li>
 <li>Origin locations (file and line numbers)</li>
 <li>Synthetic binding flags</li>
 </ul>

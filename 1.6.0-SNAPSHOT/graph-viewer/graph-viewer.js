@@ -2590,6 +2590,12 @@
     if (node.aliasTarget) {
       detailRow(facts, 'Alias target', bindingNode(node.aliasTarget, node.regionId)?.fullKey || node.aliasTarget);
     }
+    if (node.derivedFrom) {
+      // A generic provider supplied this binding with these type arguments.
+      const typeArguments = Object.entries(node.derivedFrom.typeArguments || {}).map(([name, type]) => name + ' = ' + type);
+      detailRow(facts, 'Derived from', node.derivedFrom.provider);
+      detailRow(facts, 'Type arguments', typeArguments.join(', '));
+    }
     if (node.isGraphInput) {
       facts.append(text('p', 'detail-note', 'Supplied when this graph is created. Consumers receive the same instance.'));
     }

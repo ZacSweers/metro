@@ -990,6 +990,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../derived-bindings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Derived Bindings
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../aggregation/" class="md-nav__link">
         
   
@@ -2025,6 +2052,7 @@
 <p>Provider <em>functions</em> can be <code>private</code> but, as of <code>0.10.0</code>, are no longer <em>automatically</em> transformed to be private by the Metro compiler. Prior to <code>0.10.0</code>, they were. However, this resulted in less efficient generated code so it was disabled. See the CHANGELOG for more details.</p>
 <p>Provider <em>properties</em> cannot be private yet due to <a href="https://youtrack.jetbrains.com/issue/KT-76257/">KT-76257</a>, but may be supported in the future.</p>
 <p>Providers may also be declared in <a href="../dependency-graphs/#binding-containers">binding Containers</a>.</p>
+<p>Provider functions can declare type parameters when <a href="../derived-bindings/">derived bindings</a> are enabled.</p>
 <div class="admonition tip">
 <p class="admonition-title">Tip</p>
 <p>It’s recommended to <em>not</em> call providers from each other.</p>

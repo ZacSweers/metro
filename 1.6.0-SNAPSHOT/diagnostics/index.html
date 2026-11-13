@@ -921,6 +921,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../derived-bindings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Derived Bindings
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../aggregation/" class="md-nav__link">
         
   
@@ -1061,6 +1088,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#ambiguousderivedbinding" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        AmbiguousDerivedBinding
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#assistedfactorysuspendrequired" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1087,6 +1125,39 @@
     <span class="md-ellipsis">
       <span class="md-typeset">
         DependencyCycle
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#derivedbindingoverlap" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        DerivedBindingOverlap
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#derivedbindingsnotenabled" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        DerivedBindingsNotEnabled
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#divergentderivedbinding" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        DivergentDerivedBinding
       </span>
     </span>
   </a>
@@ -2200,6 +2271,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#ambiguousderivedbinding" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        AmbiguousDerivedBinding
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#assistedfactorysuspendrequired" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2226,6 +2308,39 @@
     <span class="md-ellipsis">
       <span class="md-typeset">
         DependencyCycle
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#derivedbindingoverlap" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        DerivedBindingOverlap
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#derivedbindingsnotenabled" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        DerivedBindingsNotEnabled
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#divergentderivedbinding" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        DivergentDerivedBinding
       </span>
     </span>
   </a>
@@ -2512,6 +2627,10 @@
 </thead>
 <tbody>
 <tr>
+<td><a href="#ambiguousderivedbinding"><code>Metro/AmbiguousDerivedBinding</code></a></td>
+<td>Multiple generic providers match a key and none is more specific.</td>
+</tr>
+<tr>
 <td><a href="#assistedfactorysuspendrequired"><code>Metro/AssistedFactorySuspendRequired</code></a></td>
 <td>An assisted factory creates a target that depends on suspend bindings.</td>
 </tr>
@@ -2522,6 +2641,18 @@
 <tr>
 <td><a href="#dependencycycle"><code>Metro/DependencyCycle</code></a></td>
 <td>A binding cycle has no deferred edge.</td>
+</tr>
+<tr>
+<td><a href="#derivedbindingoverlap"><code>Metro/DerivedBindingOverlap</code></a></td>
+<td>Multiple generic providers match a key and Metro picked the most specific one.</td>
+</tr>
+<tr>
+<td><a href="#derivedbindingsnotenabled"><code>Metro/DerivedBindingsNotEnabled</code></a></td>
+<td>A generic binding is used while derived bindings are disabled.</td>
+</tr>
+<tr>
+<td><a href="#divergentderivedbinding"><code>Metro/DivergentDerivedBinding</code></a></td>
+<td>A chain of derived bindings does not terminate.</td>
 </tr>
 <tr>
 <td><a href="#duplicatebinding"><code>Metro/DuplicateBinding</code></a></td>
@@ -2609,6 +2740,10 @@
 </tr>
 </tbody>
 </table>
+<h2 id="ambiguousderivedbinding">AmbiguousDerivedBinding<a class="headerlink" href="#ambiguousderivedbinding" title="Permanent link">&para;</a></h2>
+<p><strong>Diagnostic:</strong> <code>Metro/AmbiguousDerivedBinding</code></p>
+<p><strong>Summary:</strong> Multiple generic providers match a key and none is more specific.</p>
+<p>More than one generic <code>@Provides</code> or <code>@Binds</code> function matches a requested key. None of them is more specific than the others, so Metro can&rsquo;t pick one. Add an exact binding for the key, or make one provider&rsquo;s return type more specific.</p>
 <h2 id="assistedfactorysuspendrequired">AssistedFactorySuspendRequired<a class="headerlink" href="#assistedfactorysuspendrequired" title="Permanent link">&para;</a></h2>
 <p><strong>Diagnostic:</strong> <code>Metro/AssistedFactorySuspendRequired</code></p>
 <p><strong>Summary:</strong> An assisted factory creates a target that depends on suspend bindings.</p>
@@ -2621,6 +2756,18 @@
 <p><strong>Diagnostic:</strong> <code>Metro/DependencyCycle</code></p>
 <p><strong>Summary:</strong> A binding cycle has no deferred edge.</p>
 <p>Bindings depend on each other in a loop where every dependency is needed immediately. Break the cycle by changing one edge to a deferred type such as <code>() -&gt; T</code> or <code>Lazy&lt;T&gt;</code>, which delays initialization until first use. If the cycle is between graphs that extend or depend on each other, restructure the graph relationship instead.</p>
+<h2 id="derivedbindingoverlap">DerivedBindingOverlap<a class="headerlink" href="#derivedbindingoverlap" title="Permanent link">&para;</a></h2>
+<p><strong>Diagnostic:</strong> <code>Metro/DerivedBindingOverlap</code></p>
+<p><strong>Summary:</strong> Multiple generic providers match a key and Metro picked the most specific one.</p>
+<p>More than one generic <code>@Provides</code> or <code>@Binds</code> function matches a requested key. One of them is more specific than the others, and Metro uses it. This diagnostic is off by default. Configure it with the <code>derivedBindingOverlapSeverity</code> Gradle option.</p>
+<h2 id="derivedbindingsnotenabled">DerivedBindingsNotEnabled<a class="headerlink" href="#derivedbindingsnotenabled" title="Permanent link">&para;</a></h2>
+<p><strong>Diagnostic:</strong> <code>Metro/DerivedBindingsNotEnabled</code></p>
+<p><strong>Summary:</strong> A generic binding is used while derived bindings are disabled.</p>
+<p>A graph uses a <code>@Provides</code> or <code>@Binds</code> function with type parameters, but derived bindings are turned off. Enable the <code>enable-derived-bindings</code> compiler option or set <code>metro.enableDerivedBindings</code> to true. Otherwise remove the type parameters from the function.</p>
+<h2 id="divergentderivedbinding">DivergentDerivedBinding<a class="headerlink" href="#divergentderivedbinding" title="Permanent link">&para;</a></h2>
+<p><strong>Diagnostic:</strong> <code>Metro/DivergentDerivedBinding</code></p>
+<p><strong>Summary:</strong> A chain of derived bindings does not terminate.</p>
+<p>A chain of derived bindings keeps applying the same generic provider to a key that keeps growing, or it exceeds the depth limit of 64. Metro stops resolving the chain at that point. Check the provider&rsquo;s parameter types.</p>
 <h2 id="duplicatebinding">DuplicateBinding<a class="headerlink" href="#duplicatebinding" title="Permanent link">&para;</a></h2>
 <p><strong>Diagnostic:</strong> <code>Metro/DuplicateBinding</code></p>
 <p><strong>Summary:</strong> Multiple bindings match the same type key.</p>

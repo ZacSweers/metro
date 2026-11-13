@@ -918,6 +918,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../derived-bindings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Derived Bindings
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../aggregation/" class="md-nav__link">
         
   
@@ -1826,6 +1853,45 @@
       </span>
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="New">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#meep-3124-derived-bindings" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <strong>[MEEP-3124]</strong> Derived bindings
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#meep-2929-graph-lifecycle-callbacks" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <strong>[MEEP-2929]</strong> Graph lifecycle callbacks
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#experimental-companion-blocks-support" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Experimental companion blocks support
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
         
@@ -5374,6 +5440,45 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="New">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#meep-3124-derived-bindings" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <strong>[MEEP-3124]</strong> Derived bindings
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#meep-2929-graph-lifecycle-callbacks" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <strong>[MEEP-2929]</strong> Graph lifecycle callbacks
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#experimental-companion-blocks-support" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Experimental companion blocks support
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
           <li class="md-nav__item">
@@ -8808,13 +8913,29 @@
 <h1 id="changelog">Changelog<a class="headerlink" href="#changelog" title="Permanent link">&para;</a></h1>
 <h2 id="unreleased"><strong>Unreleased</strong><a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
 <h3 id="new">New<a class="headerlink" href="#new" title="Permanent link">&para;</a></h3>
-<ul>
-<li><strong>[FIR/IR]</strong> Experimental support for companion block <code>@Provides</code> functions and properties on Kotlin <code>2.5.0-Beta1</code> and later. See <a href="../docs/installation/#companion-blocks">companion-block configuration</a>.</li>
-<li>Add experimental graph lifecycle callbacks.</li>
-<li>A graph that implements <code>CloseableGraph</code> can annotate functions with <code>@OnGraphInit</code> and <code>@OnGraphClose</code>. Metro injects their parameters and generates <code>close()</code>, which also closes the graph&rsquo;s extensions.</li>
-<li>With suspend provider support, callbacks can suspend and graphs can implement <code>SuspendCloseableGraph</code>.</li>
-<li>See <a href="../docs/dependency-graphs/#graph-lifecycle">graph lifecycle</a>.</li>
-</ul>
+<h4 id="meep-3124-derived-bindings"><a href="https://github.com/ZacSweers/metro/discussions/3124"><strong>[MEEP-3124]</strong></a> Derived bindings<a class="headerlink" href="#meep-3124-derived-bindings" title="Permanent link">&para;</a></h4>
+<p><code>@Provides</code> and <code>@Binds</code> functions can now have type parameters. One generic provider supplies a binding for every type it fits, so you don&rsquo;t need a separate provider for each type.</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@BindingContainer</span>
+<span class="kd">object</span><span class="w"> </span><span class="nc">Serializers</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="c1">// Provides KSerializer&lt;List&lt;User&gt;&gt;, KSerializer&lt;List&lt;List&lt;String&gt;&gt;&gt;, and so on.</span>
+<span class="w">  </span><span class="nd">@Provides</span>
+<span class="w">  </span><span class="kd">fun</span><span class="w"> </span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="w"> </span><span class="nf">list</span><span class="p">(</span><span class="n">element</span><span class="p">:</span><span class="w"> </span><span class="n">KSerializer</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="p">):</span><span class="w"> </span><span class="n">KSerializer</span><span class="o">&lt;</span><span class="n">List</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ListSerializer</span><span class="p">(</span><span class="n">element</span><span class="p">)</span>
+
+<span class="w">  </span><span class="c1">// Reified type parameters work too. This provides a KSerializer for any serializable type.</span>
+<span class="w">  </span><span class="nd">@Provides</span><span class="w"> </span><span class="kd">inline</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="o">&lt;</span><span class="k">reified</span><span class="w"> </span><span class="n">T</span><span class="o">&gt;</span><span class="w"> </span><span class="nf">forType</span><span class="p">():</span><span class="w"> </span><span class="n">KSerializer</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">serializer</span><span class="p">()</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>When a graph needs a type that has no binding of its own, Metro finds a generic provider whose return type matches and infers its type arguments. Here, a request for <code>KSerializer&lt;List&lt;User&gt;&gt;</code> calls <code>list(forType&lt;User&gt;())</code>. A binding that you declare for the exact type always wins over a generic one.</p>
+<p>This is experimental and off by default. Turn it on with <code>metro { enableDerivedBindings.set(true) }</code>.</p>
+<p>See the <a href="../docs/derived-bindings/">derived bindings docs</a> for more info. Please share feedback on the MEEP!</p>
+<h4 id="meep-2929-graph-lifecycle-callbacks"><a href="https://github.com/ZacSweers/metro/discussions/2929"><strong>[MEEP-2929]</strong></a> Graph lifecycle callbacks<a class="headerlink" href="#meep-2929-graph-lifecycle-callbacks" title="Permanent link">&para;</a></h4>
+<p>This release introduces experimental support for graph lifecycle callbacks. Graph lifecycle callbacks allow you to define functions that are called when a graph is initialized or closed. This can be useful for performing cleanup or other tasks when a graph is no longer needed.</p>
+<p>A graph that implements <code>CloseableGraph</code> can annotate functions with <code>@OnGraphInit</code> and <code>@OnGraphClose</code>. Metro invokes them at the corresponding lifecycle events, injects their parameters, and generates <code>close()</code> implementations.</p>
+<p>With suspend provider support, callbacks can suspend and implement <code>SuspendCloseableGraph</code> instead.</p>
+<p>See <a href="../docs/dependency-graphs/#graph-lifecycle">graph lifecycle</a> for more info. Please share feedback on the MEEP!</p>
+<h4 id="experimental-companion-blocks-support">Experimental companion blocks support<a class="headerlink" href="#experimental-companion-blocks-support" title="Permanent link">&para;</a></h4>
+<p>This release adds experimental support for companion block <code>@Provides</code> functions and properties on Kotlin <code>2.5.0-Beta1</code> and later. See <a href="../docs/installation/#companion-blocks">companion-block configuration</a>.</p>
+<p><strong>Note this feature is experimental in both Metro <em>and</em> Kotlin itself.</strong></p>
 <h3 id="enhancements">Enhancements<a class="headerlink" href="#enhancements" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>[IR]</strong> Generate fewer classes for <code>@Includes</code> dependencies.</li>

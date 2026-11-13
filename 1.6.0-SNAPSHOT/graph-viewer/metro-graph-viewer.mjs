@@ -135,6 +135,7 @@ import {
   LifecycleParameterMetadata2tcyrwfwut3hm as LifecycleParameterMetadata,
   MultibindingMetadata29e72hjz84wjv as MultibindingMetadata,
   OptionalWrapperMetadata325xthvr1c6hr as OptionalWrapperMetadata,
+  DerivedFromMetadata1r7wuyu00ri1q as DerivedFromMetadata,
   GraphDependencyMetadata10z3tse19c59g as GraphDependencyMetadata,
   FullAnalysisReport2xfl94zu4035r as FullAnalysisReport,
   GraphStatsMetadata2mb61swu85h8w as GraphStatsMetadata,
@@ -3270,44 +3271,54 @@ function bindingDetails($this, $receiver, binding) {
   $receiver.put_mrde5n_k$('aliasTarget', tmp$ret$4);
   var tmp0_1 = $this.json_1;
   // Inline function 'kotlinx.serialization.json.encodeToJsonElement' call
-  var value_1 = binding.multibinding_1;
+  var value_1 = binding.derivedFrom_1;
   // Inline function 'kotlinx.serialization.serializer' call
   var this_4 = tmp0_1.get_serializersModule_piitvg_k$();
   // Inline function 'kotlinx.serialization.internal.cast' call
-  var this_5 = serializer(this_4, createKType(getKClass(MultibindingMetadata), arrayOf([]), true));
+  var this_5 = serializer(this_4, createKType(getKClass(DerivedFromMetadata), arrayOf([]), true));
   var tmp$ret$8 = isInterface(this_5, KSerializer) ? this_5 : THROW_CCE();
   var tmp$ret$7 = tmp0_1.encodeToJsonElement_w5lo4o_k$(tmp$ret$8, value_1);
-  $receiver.put_mrde5n_k$('multibinding', tmp$ret$7);
+  $receiver.put_mrde5n_k$('derivedFrom', tmp$ret$7);
   var tmp0_2 = $this.json_1;
   // Inline function 'kotlinx.serialization.json.encodeToJsonElement' call
-  var value_2 = binding.optionalWrapper_1;
+  var value_2 = binding.multibinding_1;
   // Inline function 'kotlinx.serialization.serializer' call
   var this_6 = tmp0_2.get_serializersModule_piitvg_k$();
   // Inline function 'kotlinx.serialization.internal.cast' call
-  var this_7 = serializer(this_6, createKType(getKClass(OptionalWrapperMetadata), arrayOf([]), true));
+  var this_7 = serializer(this_6, createKType(getKClass(MultibindingMetadata), arrayOf([]), true));
   var tmp$ret$11 = isInterface(this_7, KSerializer) ? this_7 : THROW_CCE();
   var tmp$ret$10 = tmp0_2.encodeToJsonElement_w5lo4o_k$(tmp$ret$11, value_2);
-  $receiver.put_mrde5n_k$('optionalWrapper', tmp$ret$10);
+  $receiver.put_mrde5n_k$('multibinding', tmp$ret$10);
   var tmp0_3 = $this.json_1;
   // Inline function 'kotlinx.serialization.json.encodeToJsonElement' call
-  var value_3 = binding.graphDependency_1;
+  var value_3 = binding.optionalWrapper_1;
   // Inline function 'kotlinx.serialization.serializer' call
   var this_8 = tmp0_3.get_serializersModule_piitvg_k$();
   // Inline function 'kotlinx.serialization.internal.cast' call
-  var this_9 = serializer(this_8, createKType(getKClass(GraphDependencyMetadata), arrayOf([]), true));
+  var this_9 = serializer(this_8, createKType(getKClass(OptionalWrapperMetadata), arrayOf([]), true));
   var tmp$ret$14 = isInterface(this_9, KSerializer) ? this_9 : THROW_CCE();
   var tmp$ret$13 = tmp0_3.encodeToJsonElement_w5lo4o_k$(tmp$ret$14, value_3);
-  $receiver.put_mrde5n_k$('graphDependency', tmp$ret$13);
+  $receiver.put_mrde5n_k$('optionalWrapper', tmp$ret$13);
   var tmp0_4 = $this.json_1;
   // Inline function 'kotlinx.serialization.json.encodeToJsonElement' call
-  var value_4 = binding.extensionType_1;
+  var value_4 = binding.graphDependency_1;
   // Inline function 'kotlinx.serialization.serializer' call
   var this_10 = tmp0_4.get_serializersModule_piitvg_k$();
   // Inline function 'kotlinx.serialization.internal.cast' call
-  var this_11 = serializer(this_10, createKType(PrimitiveClasses_getInstance().get_stringClass_bik2gy_k$(), arrayOf([]), true));
+  var this_11 = serializer(this_10, createKType(getKClass(GraphDependencyMetadata), arrayOf([]), true));
   var tmp$ret$17 = isInterface(this_11, KSerializer) ? this_11 : THROW_CCE();
   var tmp$ret$16 = tmp0_4.encodeToJsonElement_w5lo4o_k$(tmp$ret$17, value_4);
-  $receiver.put_mrde5n_k$('extensionType', tmp$ret$16);
+  $receiver.put_mrde5n_k$('graphDependency', tmp$ret$16);
+  var tmp0_5 = $this.json_1;
+  // Inline function 'kotlinx.serialization.json.encodeToJsonElement' call
+  var value_5 = binding.extensionType_1;
+  // Inline function 'kotlinx.serialization.serializer' call
+  var this_12 = tmp0_5.get_serializersModule_piitvg_k$();
+  // Inline function 'kotlinx.serialization.internal.cast' call
+  var this_13 = serializer(this_12, createKType(PrimitiveClasses_getInstance().get_stringClass_bik2gy_k$(), arrayOf([]), true));
+  var tmp$ret$20 = isInterface(this_13, KSerializer) ? this_13 : THROW_CCE();
+  var tmp$ret$19 = tmp0_5.encodeToJsonElement_w5lo4o_k$(tmp$ret$20, value_5);
+  $receiver.put_mrde5n_k$('extensionType', tmp$ret$19);
 }
 function buildGraphData($this, metadata, analysis) {
   return (new GraphDataBuilder($this, metadata, analysis)).build_1k0s4u_k$();
