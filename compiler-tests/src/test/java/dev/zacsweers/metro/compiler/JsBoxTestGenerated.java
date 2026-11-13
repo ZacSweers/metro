@@ -2883,6 +2883,12 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
     }
 
     @Test
+    @TestMetadata("ReplacedContainerGenericProviders.kt")
+    public void testReplacedContainerGenericProviders() {
+      run("ReplacedContainerGenericProviders.kt");
+    }
+
+    @Test
     @TestMetadata("ScopedGenericProvider.kt")
     public void testScopedGenericProvider() {
       run("ScopedGenericProvider.kt");

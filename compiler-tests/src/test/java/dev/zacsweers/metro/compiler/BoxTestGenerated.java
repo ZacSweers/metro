@@ -3229,6 +3229,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("ReplacedContainerGenericProviders.kt")
+    public void testReplacedContainerGenericProviders() {
+      run("ReplacedContainerGenericProviders.kt");
+    }
+
+    @Test
     @TestMetadata("ScopedGenericProvider.kt")
     public void testScopedGenericProvider() {
       run("ScopedGenericProvider.kt");
