@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794537366632,
+  "lastUpdate": 1794537676799,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -27888,6 +27888,62 @@ window.BENCHMARK_DATA = {
             "value": 0.2709868975680846,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: -1.35%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "e652c89b~1",
+          "message": "[before] Fix the FIR duplicate check for multibinds annotat",
+          "timestamp": "2026-11-12T20:43:35-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/e652c89bdf060ce172ea803cdeef529b82be00f6"
+        },
+        "date": 1794537676799,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.15624108912252221,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "e652c89bdf060ce172ea803cdeef529b82be00f6",
+          "message": "[after] Fix the FIR duplicate check for multibinds annotat",
+          "timestamp": "2026-11-12T20:43:35-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/e652c89bdf060ce172ea803cdeef529b82be00f6"
+        },
+        "date": 1794537676800,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.1468281393936864,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: -6.02%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }

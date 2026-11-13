@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794537366756,
+  "lastUpdate": 1794537677061,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -27888,6 +27888,62 @@ window.BENCHMARK_DATA = {
             "value": 12930.469000000001,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +1.79%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "e652c89b~1",
+          "message": "[before] Fix the FIR duplicate check for multibinds annotat",
+          "timestamp": "2026-11-12T20:43:35-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/e652c89bdf060ce172ea803cdeef529b82be00f6"
+        },
+        "date": 1794537677061,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19350.143,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "e652c89bdf060ce172ea803cdeef529b82be00f6",
+          "message": "[after] Fix the FIR duplicate check for multibinds annotat",
+          "timestamp": "2026-11-12T20:43:35-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/e652c89bdf060ce172ea803cdeef529b82be00f6"
+        },
+        "date": 1794537677062,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19049.891,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -1.55%"
           }
         ]
       }
