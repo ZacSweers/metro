@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.graph.isDivergentDerivation
 import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.BindingResolutionSession
 import dev.zacsweers.metro.idea.model.BindingTier
+import dev.zacsweers.metro.idea.model.DerivedBindingVerifier
 import dev.zacsweers.metro.idea.model.GraphContext
 import dev.zacsweers.metro.idea.model.GraphPath
 import dev.zacsweers.metro.idea.model.GraphQueryContext
@@ -82,6 +83,17 @@ internal class KaBindingLookup(
       }
     }
 
+  /**
+   * Settles generic provider bounds the snapshots can't decide, in sessions anchored at this
+   * graph's declaration. It's null when the index has no generic declarations.
+   */
+  internal val derivedBindingVerifier: DerivedBindingVerifier? =
+    if (index.hasGenericBindings) {
+      DerivedBindingVerifier(AnalysisBoundSubtypeCheck(graph.pointer))
+    } else {
+      null
+    }
+
   /** Each key the derived stage resolved, with its derived binding. */
   private val derivedBindings = HashMap<KaTypeKey, KaBinding>()
 
@@ -138,6 +150,7 @@ internal class KaBindingLookup(
     ambiguousDerived.clear()
     divergentDerived.clear()
     requesterKeys.clear()
+    derivedBindingVerifier?.clear()
     parentDependencies.clear()
     reservedForParent.clear()
     parentSuspendLookup?.clear()
@@ -190,7 +203,12 @@ internal class KaBindingLookup(
     if (typeKey in divergentDerivedBindings) {
       return emptySet()
     }
-    val selection = index.selectBindingsForKey(contextKey, queryPlan) ?: return emptySet()
+    val selection =
+      index.selectBindingsForKey(
+        contextKey,
+        queryPlan,
+        derivedBindingVerifier = derivedBindingVerifier,
+      ) ?: return emptySet()
     return when (selection.tier) {
       BindingTier.MULTIBINDING ->
         synthesizeMultibinding(

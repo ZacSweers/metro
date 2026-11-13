@@ -56,8 +56,8 @@ internal class GenericBindingSignature(
  * Where a derived binding came from. [template] is the generic declaration. [typeArguments] holds
  * the inferred argument for each of its type parameters, in declaration order.
  *
- * [boundsVerified] is false when a bound couldn't be checked without an analysis session. See
- * [matchGenericBinding].
+ * [boundsVerified] is false when a bound couldn't be checked. Editor queries check bounds from
+ * snapshots only. Graph validation also asks an analysis session. See [matchGenericBinding].
  */
 internal class BindingDerivation(
   val template: KaBinding,
@@ -121,22 +121,31 @@ internal fun KaTypeKey.genericLookupKey(): GenericBindingLookupKey? {
  * Matching, nullability handling, and argument paths come from the shared [matchTypePattern], so
  * they follow the compiler exactly.
  *
- * Bounds are checked without an analysis session, since the index outlives its sessions. The check
- * reads the [KaTypeHierarchy] that requested keys and bounds record while a session is open. That
- * is enough for class bounds like `Number`, bounds that mention a type parameter like
+ * Bounds are first checked without an analysis session, since the index outlives its sessions. The
+ * check reads the [KaTypeHierarchy] that requested keys and bounds record while a session is open.
+ * That is enough for class bounds like `Number`, bounds that mention a type parameter like
  * `Comparable<T>`, and variant type arguments like `List<Int>` for a bound of `List<Number>`.
  *
- * Sometimes the check can't tell whether an argument fits a bound. The declaration still matches
- * then, and the derivation gets [BindingDerivation.boundsVerified] set to false. Rejecting it would
- * report a missing binding for code that may be valid. This happens when a key came from a module
- * that doesn't enable derived bindings, so nothing was recorded for it. It also happens for
- * flexible types, for projected type arguments, and for type arguments that only appear in a
- * supertype.
+ * Sometimes that check can't tell whether an argument fits a bound. This happens when a key came
+ * from a module that doesn't enable derived bindings, so nothing was recorded for it. It happens
+ * for a type that substitution rebuilt, since its supertypes are dropped. It also happens for
+ * flexible types and unresolved supertypes, for projected type arguments, and for type arguments
+ * that only appear in a supertype, like `Int` in `Ints : List<Int>` checked against
+ * `Iterable<Number>`.
+ *
+ * Graph validation passes [subtypeCheck] to settle those bounds in an analysis session. Without it,
+ * or when it can't decide either, the declaration still matches and the derivation gets
+ * [BindingDerivation.boundsVerified] set to false. Rejecting it would report a missing binding for
+ * code that may be valid.
  */
-internal fun matchGenericBinding(template: KaBinding, key: KaTypeKey): KaBinding? {
+internal fun matchGenericBinding(
+  template: KaBinding,
+  key: KaTypeKey,
+  subtypeCheck: BoundSubtypeCheck? = null,
+): KaBinding? {
   val signature = template.genericSignature ?: return null
   val inferred = inferTypeArguments(template, signature, key) ?: return null
-  val bounds = checkBounds(signature, inferred)
+  val bounds = checkBounds(signature, inferred, subtypeCheck)
   if (bounds.unsatisfied != null) {
     return null
   }
@@ -147,13 +156,86 @@ internal fun matchGenericBinding(template: KaBinding, key: KaTypeKey): KaBinding
 /**
  * Returns the bound that keeps [template] from providing [key], or null. It's null when the pattern
  * doesn't match [key], and when every bound holds or can't be checked. A missing-binding report
- * uses it to explain the near miss, like the compiler does.
+ * uses it to explain the near miss, like the compiler does. [subtypeCheck] settles bounds the
+ * snapshots can't decide, like it does for [matchGenericBinding].
  */
-internal fun unsatisfiedBoundFor(template: KaBinding, key: KaTypeKey): UnsatisfiedBound? {
+internal fun unsatisfiedBoundFor(
+  template: KaBinding,
+  key: KaTypeKey,
+  subtypeCheck: BoundSubtypeCheck? = null,
+): UnsatisfiedBound? {
   val signature = template.genericSignature ?: return null
   val inferred = inferTypeArguments(template, signature, key) ?: return null
-  return checkBounds(signature, inferred).unsatisfied
+  return checkBounds(signature, inferred, subtypeCheck).unsatisfied
 }
+
+/**
+ * Decides a bound the snapshot check couldn't. Returns whether [argument] is a subtype of [bound].
+ * Returns null when it can't tell either. Both types have the declaration's type arguments
+ * substituted already.
+ */
+internal fun interface BoundSubtypeCheck {
+  fun isSubtype(argument: KaTypeSnapshot, bound: KaTypeSnapshot): Boolean?
+}
+
+/**
+ * Derived bindings for one graph validation. Bounds the snapshot check can't decide go to
+ * [subtypeCheck].
+ *
+ * The index caches each match without this, so editor queries never open a session. A match that
+ * left a bound unchecked is matched again here, and the result is kept only for this verifier's
+ * lifetime. The answer depends on the module the session analyzes from, and on code that may be
+ * newer than the index. So it isn't written back into the shared index cache.
+ *
+ * It holds snapshots and booleans only. One validation lookup owns it and uses it from one thread.
+ */
+internal class DerivedBindingVerifier(private val subtypeCheck: BoundSubtypeCheck) :
+  BoundSubtypeCheck {
+  /** Answers by argument and bound. A missing entry means the pair wasn't asked yet. */
+  private val answers = HashMap<Pair<KaTypeSnapshot, KaTypeSnapshot>, BoundAnswer>()
+  private val bindings = HashMap<DerivedBindingCacheKey, DerivedBindingResult>()
+
+  override fun isSubtype(argument: KaTypeSnapshot, bound: KaTypeSnapshot): Boolean? {
+    val answer =
+      answers.getOrPut(argument to bound) { BoundAnswer(subtypeCheck.isSubtype(argument, bound)) }
+    return answer.isSubtype
+  }
+
+  /**
+   * [template]'s derived binding for [key] with every bound this verifier can settle checked. The
+   * same pair returns the same binding object for the verifier's lifetime.
+   */
+  fun verifiedBinding(template: KaBinding, key: KaTypeKey): KaBinding? {
+    val cacheKey = DerivedBindingCacheKey(template, key)
+    val result =
+      bindings.getOrPut(cacheKey) { DerivedBindingResult(matchGenericBinding(template, key, this)) }
+    return result.binding
+  }
+
+  /** Drops what this verifier learned. */
+  fun clear() {
+    answers.clear()
+    bindings.clear()
+  }
+
+  /** Holds a null answer too, so an undecided pair isn't asked again. */
+  private class BoundAnswer(val isSubtype: Boolean?)
+}
+
+/** Compares the generic declaration by identity and the key by value. */
+internal class DerivedBindingCacheKey(val template: KaBinding, val key: KaTypeKey) {
+  override fun equals(other: Any?): Boolean {
+    if (other !is DerivedBindingCacheKey) {
+      return false
+    }
+    return template === other.template && key == other.key
+  }
+
+  override fun hashCode(): Int = 31 * System.identityHashCode(template) + key.hashCode()
+}
+
+/** Holds a null match too, so a failed match isn't recomputed. */
+internal class DerivedBindingResult(val binding: KaBinding?)
 
 /**
  * An inferred type argument that breaks a bound. [bound] has the declaration's type arguments
@@ -215,10 +297,14 @@ private fun inferTypeArguments(
  */
 private class BoundsResult(val unsatisfied: UnsatisfiedBound?, val allVerified: Boolean)
 
-/** Checks each inferred argument against its type parameter's bounds, and stops at a failure. */
+/**
+ * Checks each inferred argument against its type parameter's bounds, and stops at a failure.
+ * [subtypeCheck] gets the bounds the snapshots can't decide.
+ */
 private fun checkBounds(
   signature: GenericBindingSignature,
   inferred: InferredTypeArguments,
+  subtypeCheck: BoundSubtypeCheck?,
 ): BoundsResult {
   var allVerified = true
   for ((index, parameter) in signature.typeParameters.withIndex()) {
@@ -230,7 +316,7 @@ private fun checkBounds(
         allVerified = false
         continue
       }
-      when (checkBound(argument, substitutedBound)) {
+      when (settleBound(argument, substitutedBound, subtypeCheck)) {
         BoundCheck.HOLDS -> {}
         BoundCheck.FAILS -> {
           val unsatisfied = UnsatisfiedBound(parameter, argument, substitutedBound)
@@ -241,6 +327,29 @@ private fun checkBounds(
     }
   }
   return BoundsResult(unsatisfied = null, allVerified = allVerified)
+}
+
+/**
+ * Checks one bound from the snapshots. It asks [subtypeCheck] only when the snapshots can't decide,
+ * so most bounds never open a session.
+ */
+private fun settleBound(
+  argument: KaTypeSnapshot,
+  bound: KaTypeSnapshot,
+  subtypeCheck: BoundSubtypeCheck?,
+): BoundCheck {
+  val fromSnapshots = checkBound(argument, bound)
+  if (fromSnapshots != BoundCheck.UNKNOWN) {
+    return fromSnapshots
+  }
+  if (subtypeCheck == null) {
+    return BoundCheck.UNKNOWN
+  }
+  return when (subtypeCheck.isSubtype(argument, bound)) {
+    true -> BoundCheck.HOLDS
+    false -> BoundCheck.FAILS
+    null -> BoundCheck.UNKNOWN
+  }
 }
 
 /** Builds the ordinary binding a generic declaration provides for one concrete [key]. */

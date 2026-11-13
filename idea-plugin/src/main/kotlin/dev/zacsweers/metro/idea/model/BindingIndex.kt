@@ -210,13 +210,35 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
     get() = lookups.genericBindingsByRawKey.isNotEmpty()
 
   /**
-   * Derived bindings by generic declaration and requested key. Matching is pure, so every query for
-   * the same pair shares one binding object.
+   * Derived bindings by generic declaration and requested key, with bounds checked from snapshots
+   * only. Matching is pure, so every query for the same pair shares one binding object.
    */
   private val derivedBindings = ConcurrentHashMap<DerivedBindingCacheKey, DerivedBindingResult>()
 
-  /** Returns [template]'s derived binding for [key], or null when its pattern doesn't apply. */
-  internal fun derivedBindingFor(template: KaBinding, key: KaTypeKey): KaBinding? {
+  /**
+   * Returns [template]'s derived binding for [key], or null when its pattern doesn't apply.
+   *
+   * Without [verifier], bounds the snapshots can't decide are treated as holding. With it, a match
+   * that left a bound unchecked is matched again through [verifier]. Matches the snapshots fully
+   * decided are reused from this index's cache.
+   */
+  internal fun derivedBindingFor(
+    template: KaBinding,
+    key: KaTypeKey,
+    verifier: DerivedBindingVerifier? = null,
+  ): KaBinding? {
+    val binding = snapshotDerivedBindingFor(template, key)
+    if (verifier == null || binding == null) {
+      return binding
+    }
+    val boundsVerified = checkNotNull(binding.derivation).boundsVerified
+    if (boundsVerified) {
+      return binding
+    }
+    return verifier.verifiedBinding(template, key)
+  }
+
+  private fun snapshotDerivedBindingFor(template: KaBinding, key: KaTypeKey): KaBinding? {
     val cacheKey = DerivedBindingCacheKey(template, key)
     val cached = derivedBindings[cacheKey]
     if (cached != null) {
@@ -1874,21 +1896,6 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
     val startOffset: Int,
     val endOffset: Int,
   )
-
-  /** Compares the generic declaration by identity and the key by value. */
-  private class DerivedBindingCacheKey(val template: KaBinding, val key: KaTypeKey) {
-    override fun equals(other: Any?): Boolean {
-      if (other !is DerivedBindingCacheKey) {
-        return false
-      }
-      return template === other.template && key == other.key
-    }
-
-    override fun hashCode(): Int = 31 * System.identityHashCode(template) + key.hashCode()
-  }
-
-  /** Holds a null match too, so a failed match isn't recomputed. */
-  private class DerivedBindingResult(val binding: KaBinding?)
 
   private data class BindingResolutionIdentity(
     val pointer: SourcePointerIdentity,

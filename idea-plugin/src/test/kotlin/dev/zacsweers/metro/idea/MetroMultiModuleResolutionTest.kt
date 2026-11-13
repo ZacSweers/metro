@@ -3537,6 +3537,93 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     assertEquals(emptyList<MetroDiagnosticId>(), exactResult.diagnostics.map { it.id })
   }
 
+  fun testSessionSettlesBoundsForKeysFromAModuleWithoutDerivedBindings() {
+    val libraryFile =
+      fixture.addFileToProject(
+        "library/lib/Encoders.kt",
+        """
+        package lib
+
+        import dev.zacsweers.metro.*
+
+        interface Encoder<T>
+
+        @BindingContainer
+        object NumberEncoders {
+          @Provides fun <T : Number> numbers(): Encoder<List<T>> = error("unused")
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val appFile =
+      fixture.addFileToProject(
+        "app/app/AppGraphs.kt",
+        """
+        package app
+
+        import dev.zacsweers.metro.*
+        import lib.Encoder
+        import lib.NumberEncoders
+
+        class Plain
+
+        @DependencyGraph(bindingContainers = [NumberEncoders::class])
+        interface HoldsGraph {
+          val ints: Encoder<List<Int>>
+        }
+
+        @DependencyGraph(bindingContainers = [NumberEncoders::class])
+        interface FailsGraph {
+          val plain: Encoder<List<Plain>>
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val appModule = checkNotNull(ModuleUtilCore.findModuleForPsiElement(appFile))
+    val libraryModule = checkNotNull(ModuleUtilCore.findModuleForPsiElement(libraryFile))
+    // The app module records no supertypes for the keys it requests, so the snapshots can't check
+    // `T : Number`.
+    appModule.setModuleMetroOptions("enable-derived-bindings" to "false")
+    libraryModule.setModuleMetroOptions("enable-derived-bindings" to "true")
+    PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
+    IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
+
+    fixture.project.service<MetroResolutionService>().awaitIndex(libraryFile)
+    val appIndex = fixture.project.service<MetroResolutionService>().awaitIndex(appFile)
+    val validation = fixture.project.service<MetroGraphValidationService>()
+
+    val holdsContext = appIndex.contextsFor(appIndex.graphs.single { it.name == "HoldsGraph" })
+    val holdsUnchecked = validation.validateOnEdt(appFile, holdsContext.single()).requireCompleted()
+    val holds = validation.validateOffEdt(appFile, holdsContext.single()).requireCompleted()
+    for (result in listOf(holdsUnchecked, holds)) {
+      assertEquals(
+        listOf(MetroDiagnosticId.DERIVED_BINDINGS_NOT_ENABLED),
+        result.diagnostics.map { it.id },
+      )
+    }
+    val uncheckedDerivation =
+      holdsUnchecked.bindings.asMap().values.firstNotNullOf { it.derivation }
+    assertFalse(uncheckedDerivation.boundsVerified)
+    assertTrue(holds.bindings.asMap().values.firstNotNullOf { it.derivation }.boundsVerified)
+
+    // The snapshots keep `numbers` for `Plain`. The session rejects it, like the compiler.
+    val failsContext = appIndex.contextsFor(appIndex.graphs.single { it.name == "FailsGraph" })
+    val failsUnchecked = validation.validateOnEdt(appFile, failsContext.single()).requireCompleted()
+    assertEquals(
+      listOf(MetroDiagnosticId.DERIVED_BINDINGS_NOT_ENABLED),
+      failsUnchecked.diagnostics.map { it.id },
+    )
+    val fails = validation.validateOffEdt(appFile, failsContext.single()).requireCompleted()
+    val diagnostic = fails.diagnostics.single()
+    assertEquals(MetroDiagnosticId.MISSING_BINDING, diagnostic.id)
+    val notes = diagnostic.diagnostic.notes.map { it.text.toString() }
+    assertTrue(
+      diagnostic.render(),
+      "`lib.NumberEncoders.numbers` can't provide `Encoder<List<Plain>>` because `T = Plain` " +
+        "doesn't satisfy `T : Number`" in notes,
+    )
+  }
+
   fun testSameFqnBindingContainersKeepTheirOwnTransitiveIncludes() {
     val appFile =
       fixture.addFileToProject(

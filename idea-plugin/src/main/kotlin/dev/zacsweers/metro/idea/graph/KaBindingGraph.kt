@@ -389,6 +389,7 @@ internal class KaBindingGraph(
     for ((key, matches) in bindingLookup.ambiguousDerivedBindings.entries.sortedBy { it.key }) {
       ProgressManager.checkCanceled()
       // An unchecked bound might drop a match in the compiler, so don't claim an ambiguity.
+      // Validation settles bounds in a session first, so this only skips bounds it couldn't check.
       val boundsVerified = matches.all { it.derivation?.boundsVerified == true }
       if (!boundsVerified) {
         continue
@@ -814,8 +815,10 @@ internal class KaBindingGraph(
     }
 
     // A generic declaration that matched except for a bound is a likely cause, so name it.
+    // The verifier settles the bounds the snapshots can't, like the derived stage did.
+    val verifier = bindingLookup.derivedBindingVerifier
     for (template in index.derivedCandidates(typeKey, bindingLookup.queryPlan)) {
-      val unsatisfied = unsatisfiedBoundFor(template, typeKey) ?: continue
+      val unsatisfied = unsatisfiedBoundFor(template, typeKey, verifier) ?: continue
       val provider = checkNotNull(template.genericSignature).providerName
       notes +=
         Note.note(

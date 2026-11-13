@@ -26,12 +26,14 @@ internal class KaBindingSelection(
 /**
  * Selects the same binding tier for validation and editor queries. [visibleCandidates] lets editor
  * queries reuse their module-filtered candidates. Collection nodes and parent edges are built by
- * the validator after selection.
+ * the validator after selection. Validation passes [derivedBindingVerifier] so the derived stage
+ * settles bounds the snapshots can't decide.
  */
 internal fun BindingIndex.selectBindingsForKey(
   contextKey: KaContextualTypeKey,
   plan: BindingIndex.GraphQueryPlan,
   visibleCandidates: List<KaBinding>? = null,
+  derivedBindingVerifier: DerivedBindingVerifier? = null,
 ): KaBindingSelection? {
   val typeKey = contextKey.typeKey
   val instance = plan.generatedBindings.instance(typeKey)
@@ -70,7 +72,7 @@ internal fun BindingIndex.selectBindingsForKey(
     registered = { selectRegisteredBinding(request) },
     multibinding = { selectMultibinding(request) },
     optional = { selectOptionalBinding(request) },
-    derived = { selectDerivedBinding(typeKey, plan) },
+    derived = { selectDerivedBinding(typeKey, plan, derivedBindingVerifier) },
     implicit = { selectImplicitBinding(request) },
   )
 }
@@ -155,11 +157,13 @@ private fun selectImplicitBinding(request: SelectionRequest): KaBindingSelection
 /**
  * Mirrors the compiler's derived stage. Generic declarations in the graph whose pattern matches
  * [key] become derived bindings, and the most specific one wins. When none is most specific, the
- * first match is used so no missing binding is reported for the key as well.
+ * first match is used so no missing binding is reported for the key as well. [verifier] is passed
+ * on to [BindingIndex.derivedBindingFor].
  */
 private fun BindingIndex.selectDerivedBinding(
   key: KaTypeKey,
   plan: BindingIndex.GraphQueryPlan,
+  verifier: DerivedBindingVerifier?,
 ): KaBindingSelection? {
   // Most projects have no generic declarations, so they skip everything below.
   if (!hasGenericBindings) {
@@ -171,7 +175,7 @@ private fun BindingIndex.selectDerivedBinding(
   }
   val matches = candidates.mapIndexedNotNull { index, template ->
     checkCanceledEvery(index)
-    derivedBindingFor(template, key)
+    derivedBindingFor(template, key, verifier)
   }
   val selection =
     selectMostSpecificCandidate(

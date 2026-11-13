@@ -9,6 +9,7 @@ import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.model.KaBinding
+import org.jetbrains.kotlin.psi.KtFile
 
 /** Seals graphs that use derived bindings and checks the derived binding diagnostics. */
 class MetroDerivedBindingValidationTest : BasePlatformTestCase() {
@@ -302,5 +303,197 @@ class MetroDerivedBindingValidationTest : BasePlatformTestCase() {
     result.assertNoDiagnostics()
     val binding = result.binding("test.Encoder<test.Plain>")
     assertEquals("test.ParentEncoders.parent", binding.derivation?.signature?.providerName)
+  }
+
+  /**
+   * Validates [graphName] in [file] twice. The EDT run checks bounds from snapshots only. The
+   * background run lets an analysis session settle what the snapshots couldn't.
+   */
+  private fun validateBothWays(file: KtFile, graphName: String): BoundCheckRuns {
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val graph = index.graphs.single { it.name == graphName }
+    val context = index.contextsFor(graph).single()
+    val service = project.service<MetroGraphValidationService>()
+    val snapshotsOnly = service.validateOnEdt(file, context).requireCompleted()
+    val withSession = service.validateOffEdt(file, context).requireCompleted()
+    return BoundCheckRuns(snapshotsOnly, withSession)
+  }
+
+  private class BoundCheckRuns(
+    val snapshotsOnly: KaGraphValidationResult.Completed,
+    val withSession: KaGraphValidationResult.Completed,
+  )
+
+  /**
+   * Checks that the snapshots alone couldn't decide [renderedKey]'s bound and the session settled
+   * it as holding.
+   */
+  private fun BoundCheckRuns.assertSessionVerifiedBound(renderedKey: String) {
+    snapshotsOnly.assertNoDiagnostics()
+    val unchecked = checkNotNull(snapshotsOnly.binding(renderedKey).derivation)
+    assertFalse("The snapshots decided the bound", unchecked.boundsVerified)
+    withSession.assertNoDiagnostics()
+    val verified = checkNotNull(withSession.binding(renderedKey).derivation)
+    assertTrue("The session didn't decide the bound", verified.boundsVerified)
+  }
+
+  /**
+   * Checks that the snapshots alone kept the generic provider and the session rejected it with
+   * [expectedNote].
+   */
+  private fun BoundCheckRuns.assertSessionRejectedBound(expectedNote: String) {
+    snapshotsOnly.assertNoDiagnostics()
+    val diagnostic = withSession.diagnostics.single()
+    assertEquals(MetroDiagnosticId.MISSING_BINDING, diagnostic.id)
+    val notes = diagnostic.diagnostic.notes.map { it.text.toString() }
+    assertTrue(diagnostic.render(), expectedNote in notes)
+  }
+
+  fun testSessionSettlesATypeArgumentThatOnlyAppearsInASupertype() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface Encoder<T>
+        interface Ints : List<Int>
+
+        @BindingContainer
+        object NumberEncoders {
+          @Provides fun <T : Iterable<Number>> numbers(): Encoder<T> = error("unused")
+        }
+
+        @BindingContainer
+        object StringEncoders {
+          @Provides fun <T : Iterable<String>> strings(): Encoder<T> = error("unused")
+        }
+
+        @DependencyGraph(bindingContainers = [NumberEncoders::class])
+        interface HoldsGraph {
+          val ints: Encoder<Ints>
+        }
+
+        @DependencyGraph(bindingContainers = [StringEncoders::class])
+        interface FailsGraph {
+          val ints: Encoder<Ints>
+        }
+        """,
+      )
+
+    validateBothWays(file, "HoldsGraph").assertSessionVerifiedBound("test.Encoder<test.Ints>")
+    validateBothWays(file, "FailsGraph")
+      .assertSessionRejectedBound(
+        "`test.StringEncoders.strings` can't provide `Encoder<Ints>` because `T = Ints` " +
+          "doesn't satisfy `T : Iterable<String>`",
+      )
+  }
+
+  fun testSessionSettlesAProjectedTypeArgument() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface Encoder<T>
+        class Box<T>
+
+        @BindingContainer
+        object NumberEncoders {
+          @Provides fun <T : Box<out Number>> numbers(): Encoder<T> = error("unused")
+        }
+
+        @BindingContainer
+        object StringEncoders {
+          @Provides fun <T : Box<out String>> strings(): Encoder<T> = error("unused")
+        }
+
+        @DependencyGraph(bindingContainers = [NumberEncoders::class])
+        interface HoldsGraph {
+          val ints: Encoder<Box<out Int>>
+        }
+
+        @DependencyGraph(bindingContainers = [StringEncoders::class])
+        interface FailsGraph {
+          val ints: Encoder<Box<out Int>>
+        }
+        """,
+      )
+
+    validateBothWays(file, "HoldsGraph")
+      .assertSessionVerifiedBound("test.Encoder<test.Box<out kotlin.Int>>")
+    validateBothWays(file, "FailsGraph")
+      .assertSessionRejectedBound(
+        "`test.StringEncoders.strings` can't provide `Encoder<Box<out Int>>` because " +
+          "`T = Box<out Int>` doesn't satisfy `T : Box<out String>`",
+      )
+  }
+
+  fun testSessionSettlesATypeThatSubstitutionBuilt() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface Encoder<T>
+        interface Numbers<E> : List<E>
+        class Holder<T>
+
+        @BindingContainer
+        object Holders {
+          @Provides fun <T> holder(inner: Encoder<Numbers<T>>): Encoder<Holder<T>> = error("unused")
+        }
+
+        @BindingContainer
+        object NumberEncoders {
+          @Provides fun <N : Iterable<Number>> numbers(): Encoder<N> = error("unused")
+        }
+
+        @BindingContainer
+        object StringEncoders {
+          @Provides fun <N : Iterable<String>> strings(): Encoder<N> = error("unused")
+        }
+
+        @DependencyGraph(bindingContainers = [Holders::class, NumberEncoders::class])
+        interface HoldsGraph {
+          val holder: Encoder<Holder<Int>>
+        }
+
+        @DependencyGraph(bindingContainers = [Holders::class, StringEncoders::class])
+        interface FailsGraph {
+          val holder: Encoder<Holder<Int>>
+        }
+        """,
+      )
+
+    // `Numbers<Int>` comes from substituting `T` in `holder`'s dependency, so its supertypes are
+    // gone.
+    validateBothWays(file, "HoldsGraph")
+      .assertSessionVerifiedBound("test.Encoder<test.Numbers<kotlin.Int>>")
+    validateBothWays(file, "FailsGraph")
+      .assertSessionRejectedBound(
+        "`test.StringEncoders.strings` can't provide `Encoder<Numbers<Int>>` because " +
+          "`N = Numbers<Int>` doesn't satisfy `N : Iterable<String>`",
+      )
+  }
+
+  fun testAmbiguityIsReportedOnceTheSessionVerifiesEveryBound() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface Encoder<T>
+        interface Ints : List<Int>
+
+        @BindingContainer
+        object Encoders {
+          @Provides fun <T : Iterable<Number>> iterables(): Encoder<T> = error("unused")
+          @Provides fun <T : Collection<Number>> collections(): Encoder<T> = error("unused")
+        }
+
+        @DependencyGraph(bindingContainers = [Encoders::class])
+        interface AppGraph {
+          val ints: Encoder<Ints>
+        }
+        """,
+      )
+
+    val runs = validateBothWays(file, "AppGraph")
+    // The snapshots can't check either bound, so the ambiguity isn't claimed.
+    runs.snapshotsOnly.assertNoDiagnostics()
+    val diagnostic = runs.withSession.diagnostics.single()
+    assertEquals(MetroDiagnosticId.AMBIGUOUS_DERIVED_BINDING, diagnostic.id)
   }
 }

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea
 
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.application.smartReadAction
 import com.intellij.openapi.components.service
@@ -13,9 +14,11 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture
+import com.intellij.testFramework.runInEdtAndGet
 import com.intellij.testFramework.runInEdtAndWait
 import com.intellij.util.WaitFor
 import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
+import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.index.AutomaticRefreshWindow
 import dev.zacsweers.metro.idea.index.FilePresentationBundle
 import dev.zacsweers.metro.idea.index.MetroResolutionService
@@ -61,6 +64,40 @@ import org.jetbrains.kotlin.psi.KtTreeVisitorVoid
 internal fun KaGraphValidationResult.requireCompleted(): KaGraphValidationResult.Completed {
   return this as? KaGraphValidationResult.Completed
     ?: error("Expected completed validation, got ${javaClass.simpleName}")
+}
+
+/**
+ * Validates [context] on a pooled thread under a read action, like a background seal. Generic
+ * provider bounds that need an analysis session are only checked off the EDT. This clears retained
+ * results first, so an earlier run's result isn't reused.
+ */
+internal fun MetroGraphValidationService.validateOffEdt(
+  element: PsiElement,
+  context: GraphContext,
+): KaGraphValidationResult {
+  clearResults()
+  val application = ApplicationManager.getApplication()
+  val future =
+    application.executeOnPooledThread<KaGraphValidationResult> {
+      application.runReadAction<KaGraphValidationResult> { validate(element, context) }
+    }
+  return PlatformTestUtil.waitForFuture(future, 60_000)
+}
+
+/**
+ * Validates [context] on the EDT, where generic provider bounds are checked from snapshots only.
+ * This clears retained results first, so an earlier run's result isn't reused.
+ */
+internal fun MetroGraphValidationService.validateOnEdt(
+  element: PsiElement,
+  context: GraphContext,
+): KaGraphValidationResult {
+  clearResults()
+  return runInEdtAndGet {
+    ApplicationManager.getApplication().runReadAction<KaGraphValidationResult> {
+      validate(element, context)
+    }
+  }
 }
 
 internal fun Module.addMetroRuntimeLibrary() {

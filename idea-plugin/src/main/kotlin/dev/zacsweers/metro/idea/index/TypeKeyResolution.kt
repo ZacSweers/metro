@@ -23,6 +23,7 @@ import dev.zacsweers.metro.idea.model.KaTypeSnapshot
 import dev.zacsweers.metro.idea.model.multibindingId
 import dev.zacsweers.metro.idea.qualifierAnnotation
 import org.jetbrains.kotlin.analysis.api.KaSession
+import org.jetbrains.kotlin.analysis.api.components.KaSubtypingErrorTypePolicy
 import org.jetbrains.kotlin.analysis.api.renderer.types.KaExpandedTypeRenderingMode
 import org.jetbrains.kotlin.analysis.api.renderer.types.impl.KaTypeRendererForSource
 import org.jetbrains.kotlin.analysis.api.symbols.KaCallableSymbol
@@ -244,6 +245,67 @@ internal fun KaSession.restoreClassType(snapshot: KaTypeSnapshot): KaClassType? 
     isMarkedNullable = snapshot.isMarkedNullable
     for (projection in typeArguments) typeArgument(projection)
   } as? KaClassType
+}
+
+/**
+ * Whether [argument] is a subtype of [bound], decided in this session. Returns null when either
+ * type can't be rebuilt exactly, or when an unresolved type in a hierarchy changes the answer.
+ */
+internal fun KaSession.isSubtypeOfBound(argument: KaTypeSnapshot, bound: KaTypeSnapshot): Boolean? {
+  val argumentType = restoreExactClassType(argument) ?: return null
+  val boundType = restoreExactClassType(bound) ?: return null
+  // The strict policy fails on an error type and the lenient one passes. Only agreement is an
+  // answer.
+  val strict = argumentType.isSubtypeOf(boundType, KaSubtypingErrorTypePolicy.STRICT)
+  val lenient = argumentType.isSubtypeOf(boundType, KaSubtypingErrorTypePolicy.LENIENT)
+  if (strict != lenient) {
+    return null
+  }
+  return strict
+}
+
+/**
+ * Rebuilds [snapshot] as a class type, with class types at every depth. Returns null when that
+ * can't be exact. That's the case for type parameters, flexible and intersection types, unresolved
+ * classes, and type argument counts that don't match the class's type parameters.
+ */
+private fun KaSession.restoreExactClassType(snapshot: KaTypeSnapshot): KaClassType? {
+  if (snapshot.isError) {
+    return null
+  }
+  val identity = snapshot.identity as? TypeIdentity.Class ?: return null
+  val classId = snapshot.classId ?: return null
+  if (snapshot.typeArguments.size != identity.arguments.size) {
+    return null
+  }
+  val classSymbol = findClass(classId) as? KaNamedClassSymbol ?: return null
+  // Inner classes of generic classes also take their outer class's arguments, so they bail here.
+  if (classSymbol.typeParameters.size != snapshot.typeArguments.size) {
+    return null
+  }
+  val typeArguments = ArrayList<KaTypeProjection>(snapshot.typeArguments.size)
+  for (typeArgument in snapshot.typeArguments) {
+    val projection =
+      when (typeArgument) {
+        KaTypeArgumentSnapshot.Star -> typeCreator.starTypeProjection()
+        is KaTypeArgumentSnapshot.Typed -> {
+          val restored = restoreExactClassType(typeArgument.type) ?: return null
+          typeCreator.typeProjection(typeArgument.variance, restored)
+        }
+      }
+    typeArguments += projection
+  }
+  val restored =
+    typeCreator.classType(classId) {
+      isMarkedNullable = identity.nullability == Nullability.Nullable
+      for (projection in typeArguments) {
+        typeArgument(projection)
+      }
+    }
+  if (restored is KaErrorType) {
+    return null
+  }
+  return restored as? KaClassType
 }
 
 /** Builds a contextual key that preserves provider/lazy/map wrapper structure. */
