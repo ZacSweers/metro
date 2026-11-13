@@ -53,108 +53,127 @@ public fun matchTypePattern(
   isVariable: (TypeIdentity.TypeParameter) -> Boolean,
 ): Map<TypeIdentity.TypeParameter, TypeVariableBinding>? {
   val matcher = TypePatternMatcher(isVariable)
-  val matched = matcher.match(pattern, target, emptyList())
+  val matched = matcher.match(pattern, target)
   if (!matched) {
     return null
   }
   return matcher.bindings.mapValues { (_, bound) -> bound.binding }
 }
 
-/** Collects variable bindings while walking a pattern and target in step. */
+/**
+ * Walks a pattern and a target in step and collects what each variable stands for.
+ *
+ * It visits each pattern node once and never backtracks. It doesn't walk the target below a
+ * variable. One instance handles one match.
+ */
 private class TypePatternMatcher(private val isVariable: (TypeIdentity.TypeParameter) -> Boolean) {
   /** Each variable's binding plus the type it binds, for comparing repeated occurrences. */
   class BoundVariable(val binding: TypeVariableBinding, val type: TypeIdentity)
 
+  /** What each variable stands for so far. Keys are the variables' non-null forms. */
   val bindings = LinkedHashMap<TypeIdentity.TypeParameter, BoundVariable>()
 
-  fun match(pattern: TypeIdentity, target: TypeIdentity, path: List<Int>): Boolean {
+  /** Argument indices from the target's root down to the position being matched. */
+  private val path = ArrayList<Int>()
+
+  fun match(pattern: TypeIdentity, target: TypeIdentity): Boolean {
     return when (pattern) {
       is TypeIdentity.TypeParameter -> {
         if (isVariable(pattern)) {
-          bindVariable(pattern, target, path)
+          bindVariable(pattern, target)
         } else {
+          // Another declaration's type parameter is a fixed type here.
           pattern == target
         }
       }
-      is TypeIdentity.Class -> matchClass(pattern, target, path)
+      is TypeIdentity.Class -> matchClass(pattern, target)
+      // The matcher doesn't look inside these, so they only match an equal target.
       is TypeIdentity.Flexible,
       is TypeIdentity.Intersection,
       is TypeIdentity.Unresolved -> pattern == target
     }
   }
 
-  private fun matchClass(
-    pattern: TypeIdentity.Class,
-    target: TypeIdentity,
-    path: List<Int>,
-  ): Boolean {
+  private fun matchClass(pattern: TypeIdentity.Class, target: TypeIdentity): Boolean {
     if (target !is TypeIdentity.Class) {
       return false
     }
-    val sameClass = pattern.classId == target.classId
-    val sameNullability = pattern.nullability == target.nullability
-    if (!sameClass || !sameNullability) {
+    // The cheap comparisons run before the class ID string comparison.
+    if (pattern.nullability != target.nullability) {
       return false
     }
     if (pattern.arguments.size != target.arguments.size) {
       return false
     }
+    // Nested classes need this even though lookups already index candidates by root class ID.
+    if (pattern.classId != target.classId) {
+      return false
+    }
     for (index in pattern.arguments.indices) {
-      val argumentPath = path + index
-      if (!matchArgument(pattern.arguments[index], target.arguments[index], argumentPath)) {
+      // The path is shared and only copied when a variable binds.
+      path.add(index)
+      val matched = matchArgument(pattern.arguments[index], target.arguments[index])
+      path.removeAt(path.lastIndex)
+      if (!matched) {
         return false
       }
     }
     return true
   }
 
-  private fun matchArgument(
-    pattern: TypeArgumentIdentity,
-    target: TypeArgumentIdentity,
-    path: List<Int>,
-  ): Boolean {
+  private fun matchArgument(pattern: TypeArgumentIdentity, target: TypeArgumentIdentity): Boolean {
     return when (pattern) {
+      // A star has no type for a variable to bind, so it only matches another star.
       TypeArgumentIdentity.Star -> target == TypeArgumentIdentity.Star
       is TypeArgumentIdentity.Projection -> {
         if (target !is TypeArgumentIdentity.Projection) {
           return false
         }
+        // Keys that differ in variance are different keys.
         if (pattern.variance != target.variance) {
           return false
         }
-        match(pattern.type, target.type, path)
+        match(pattern.type, target.type)
       }
     }
   }
 
-  private fun bindVariable(
-    variable: TypeIdentity.TypeParameter,
-    target: TypeIdentity,
-    path: List<Int>,
-  ): Boolean {
-    val bound =
+  /**
+   * Records that [variable] stands for [target] at the current position. Returns false when this
+   * occurrence can't bind [target] or disagrees with an earlier occurrence.
+   *
+   * How the pattern writes the variable decides what it binds. A plain `T` takes [target] as is.
+   * `T?` needs a nullable [target] and takes its non-null form. `T & Any` needs a [target] that
+   * can't hold null and takes it as is.
+   */
+  private fun bindVariable(variable: TypeIdentity.TypeParameter, target: TypeIdentity): Boolean {
+    // The type this occurrence says the variable stands for.
+    val boundType =
       when (variable.nullability) {
-        Nullability.NotNull -> BoundVariable(TypeVariableBinding(path, false), target)
+        Nullability.NotNull -> target
         Nullability.Nullable -> {
           val nonNullTarget = nonNullFormOfNullable(target)
           if (nonNullTarget == null) {
             return false
           }
-          BoundVariable(TypeVariableBinding(path, true), nonNullTarget)
+          nonNullTarget
         }
         Nullability.DefinitelyNotNull -> {
           if (!canNeverBeNull(target)) {
             return false
           }
-          BoundVariable(TypeVariableBinding(path, false), target)
+          target
         }
       }
+    // `T`, `T?`, and `T & Any` are one variable, so they share one entry.
     val key = variable.copy(nullability = Nullability.NotNull)
     val earlier = bindings[key]
     if (earlier != null) {
-      return earlier.type == bound.type
+      // A repeated variable keeps its first binding, and later occurrences must agree with it.
+      return earlier.type == boundType
     }
-    bindings[key] = bound
+    val stripsNullability = variable.nullability == Nullability.Nullable
+    bindings[key] = BoundVariable(TypeVariableBinding(path.toList(), stripsNullability), boundType)
     return true
   }
 }
@@ -276,8 +295,9 @@ public fun isDivergentDerivation(
   val newClassIds = derivationClassIds(newKey)
   val newNodeCount = derivationNodeCount(newKey)
   return earlierKeysFromSameProvider.any { earlier ->
-    val sameClassIds = derivationClassIds(earlier) == newClassIds
-    sameClassIds && derivationNodeCount(earlier) < newNodeCount
+    // Counting nodes allocates nothing, so it runs before the class ID sets are compared.
+    val isSmaller = derivationNodeCount(earlier) < newNodeCount
+    isSmaller && derivationClassIds(earlier) == newClassIds
   }
 }
 
@@ -301,6 +321,7 @@ public fun derivationClassIds(type: TypeIdentity): Set<String> {
         collect(node.upper)
       }
       is TypeIdentity.Intersection -> node.types.forEach(::collect)
+      // A type parameter's identity leaves out its bounds, so both of these are leaves.
       is TypeIdentity.TypeParameter,
       is TypeIdentity.Unresolved -> {}
     }
