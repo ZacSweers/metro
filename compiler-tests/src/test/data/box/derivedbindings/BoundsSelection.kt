@@ -1,7 +1,7 @@
 // ENABLE_DERIVED_BINDINGS
 
-// Bounds pick between providers that share a raw return type. F-bounds and bounds that mention
-// another type parameter work too.
+// Bounds pick between providers that share a raw return type. A bound can mention its own type
+// parameter, like `T : Comparable<T>`, or another type parameter, like `B : A`.
 interface Formatter<T> {
   val name: String
 }
