@@ -146,6 +146,8 @@ Bounds also select providers. Here, `Formatter<List<Int>>` uses `number` and `Fo
 @Provides fun <T : CharSequence> text(): Formatter<List<T>> = NamedFormatter("text")
 ```
 
+A bound does not make a provider more specific. If two providers have the same return type and both bounds hold, the key is ambiguous.
+
 Matching is exact, like other Metro keys. A return type of `Encoder<T?>` matches only nullable type arguments, and `T` binds the non-null type. For example, `Encoder<String?>` matches with `T = String`. An unbounded `T` can bind a nullable type.
 
 After Metro picks a generic provider, the provider's parameters must resolve. If one is missing, Metro reports a missing binding. Metro doesn't try another provider, even when the requesting parameter has a default value. The error trace has a note that names the generic provider and its type arguments.
@@ -218,7 +220,7 @@ interface AppGraph {
 
 A graph extension can use the generic providers of its ancestors. A scoped derived binding lives in the graph that owns its scope, like a scoped `@Inject` class. For example, if only a child graph requests `Cache<String>` from an `AppScope` generic provider, the instance still lives in the `AppScope` graph. All child graph instances share it.
 
-A nearer graph can declare a generic provider with the same return type as a provider in a farther ancestor. Then the nearer one wins, like ordinary providers. Two equivalent generic providers on the same graph are ambiguous.
+A nearer graph can declare a generic provider with the same return type and bounds as a provider in a farther ancestor. Then the nearer one wins, like ordinary providers. If only the bounds differ, the nearer graph keeps both providers. Two equivalent generic providers on the same graph are ambiguous.
 
 ## Cycles and divergence
 

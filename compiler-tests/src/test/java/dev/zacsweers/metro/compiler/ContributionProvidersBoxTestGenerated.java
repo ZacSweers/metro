@@ -3079,6 +3079,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
     }
 
     @Test
+    @TestMetadata("ExtensionGenericProviderWithDifferentBounds.kt")
+    public void testExtensionGenericProviderWithDifferentBounds() {
+      run("ExtensionGenericProviderWithDifferentBounds.kt");
+    }
+
+    @Test
     @TestMetadata("ExtensionScopedGenericProvider.kt")
     public void testExtensionScopedGenericProvider() {
       run("ExtensionScopedGenericProvider.kt");

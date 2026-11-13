@@ -4,6 +4,7 @@ package dev.zacsweers.metro.idea.model
 
 import dev.zacsweers.metro.compiler.diagnostics.Note
 import dev.zacsweers.metro.compiler.graph.DerivedBindingDiagnosticMessages
+import dev.zacsweers.metro.compiler.graph.TypeVariableBinding
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.graph.identity.AnnotationIdentity
 import dev.zacsweers.metro.compiler.graph.identity.Nullability
@@ -241,8 +242,11 @@ private fun KaBinding.instantiate(
 
 /**
  * Whether [other] provides the same keys as [this]. Their qualifiers match and each pattern matches
- * the other with only its own type parameters as variables. So `Encoder<List<T>>` is
- * alpha-equivalent to `Encoder<List<E>>`.
+ * the other with only its own type parameters as variables. Type parameters in the same place also
+ * have the same bounds.
+ *
+ * So `<T> Encoder<List<T>>` is alpha-equivalent to `<E> Encoder<List<E>>`. It isn't
+ * alpha-equivalent to `<E : Number> Encoder<List<E>>`, which provides fewer keys.
  */
 internal fun KaBinding.isAlphaEquivalentTo(other: KaBinding): Boolean {
   val signature = genericSignature ?: return false
@@ -252,11 +256,81 @@ internal fun KaBinding.isAlphaEquivalentTo(other: KaBinding): Boolean {
   }
   val pattern = typeKey.type.identity
   val otherPattern = other.typeKey.type.identity
-  val otherCoversThis = matchTypePattern(otherPattern, pattern, otherSignature::isVariable) != null
-  if (!otherCoversThis) {
+  val otherVariables = matchTypePattern(otherPattern, pattern, otherSignature::isVariable)
+  if (otherVariables == null) {
     return false
   }
-  return matchTypePattern(pattern, otherPattern, signature::isVariable) != null
+  val thisCoversOther = matchTypePattern(pattern, otherPattern, signature::isVariable) != null
+  if (!thisCoversOther) {
+    return false
+  }
+  return hasSameBoundsAs(signature, otherSignature, otherVariables)
+}
+
+/**
+ * Whether each of [otherSignature]'s type parameters has the same bounds as the type parameter of
+ * [signature] in the same place. [otherVariables] says where each of the other's type parameters
+ * sits in this binding's pattern.
+ *
+ * A bound the snapshot model can't rebuild counts as equal. [matchGenericBinding] assumes an
+ * unknown bound holds for the same reason.
+ */
+private fun KaBinding.hasSameBoundsAs(
+  signature: GenericBindingSignature,
+  otherSignature: GenericBindingSignature,
+  otherVariables: Map<TypeIdentity.TypeParameter, TypeVariableBinding>,
+): Boolean {
+  // Find this binding's type parameter that sits where each of the other's does.
+  val counterparts = ArrayList<GenericTypeParameter>(otherSignature.typeParameters.size)
+  // Renaming the other's type parameters to this binding's lets the bounds compare directly.
+  val renames = HashMap<TypeIdentity.TypeParameter, KaTypeSnapshot>()
+  for (otherParameter in otherSignature.typeParameters) {
+    val binding = otherVariables[otherParameter.identity] ?: return false
+    val counterpartType = typeKey.type.typeArgumentAt(binding.path) ?: return false
+    val counterpartIdentity = counterpartType.identity as? TypeIdentity.TypeParameter
+    if (counterpartIdentity == null) {
+      return false
+    }
+    val nonNullIdentity = counterpartIdentity.copy(nullability = Nullability.NotNull)
+    val counterpart = signature.typeParameters.firstOrNull { it.identity == nonNullIdentity }
+    if (counterpart == null) {
+      return false
+    }
+    counterparts += counterpart
+    renames[otherParameter.identity] =
+      counterpartType.withNullability(nullable = false) ?: return false
+  }
+
+  for ((index, otherParameter) in otherSignature.typeParameters.withIndex()) {
+    val renamedBounds = otherParameter.upperBounds.map { bound -> bound.substitute(renames) }
+    val canRebuildBounds = renamedBounds.none { it == null }
+    if (!canRebuildBounds) {
+      continue
+    }
+    val otherBounds = renamedBounds.boundIdentities()
+    val bounds = counterparts[index].upperBounds.boundIdentities()
+    if (otherBounds != bounds) {
+      return false
+    }
+  }
+  return true
+}
+
+/**
+ * The identities of these bounds, without `Any?`. An unbounded type parameter and one that declares
+ * `Any?` accept the same types.
+ */
+private fun List<KaTypeSnapshot?>.boundIdentities(): Set<TypeIdentity> {
+  val identities = HashSet<TypeIdentity>()
+  for (bound in this) {
+    val identity = bound?.identity ?: continue
+    val isAny = identity is TypeIdentity.Class && identity.classId == ANY_CLASS_ID
+    val isNullableAny = isAny && identity.nullability() == Nullability.Nullable
+    if (!isNullableAny) {
+      identities += identity
+    }
+  }
+  return identities
 }
 
 private enum class BoundCheck {

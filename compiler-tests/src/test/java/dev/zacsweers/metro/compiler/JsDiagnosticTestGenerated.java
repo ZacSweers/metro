@@ -1065,6 +1065,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("AmbiguousBoundedProviders.kt")
+    public void testAmbiguousBoundedProviders() {
+      run("AmbiguousBoundedProviders.kt");
+    }
+
+    @Test
     @TestMetadata("AmbiguousDerivedBindings.kt")
     public void testAmbiguousDerivedBindings() {
       run("AmbiguousDerivedBindings.kt");

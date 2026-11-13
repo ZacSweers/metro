@@ -3079,6 +3079,12 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
     }
 
     @Test
+    @TestMetadata("ExtensionGenericProviderWithDifferentBounds.kt")
+    public void testExtensionGenericProviderWithDifferentBounds() {
+      run("ExtensionGenericProviderWithDifferentBounds.kt");
+    }
+
+    @Test
     @TestMetadata("ExtensionScopedGenericProvider.kt")
     public void testExtensionScopedGenericProvider() {
       run("ExtensionScopedGenericProvider.kt");

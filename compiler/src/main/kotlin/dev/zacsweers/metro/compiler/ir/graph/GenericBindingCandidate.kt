@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph
 
+import dev.zacsweers.metro.compiler.graph.TypeVariableBinding
 import dev.zacsweers.metro.compiler.graph.identity.Nullability
 import dev.zacsweers.metro.compiler.graph.identity.TypeIdentity
 import dev.zacsweers.metro.compiler.graph.matchTypePattern
@@ -99,21 +100,25 @@ internal sealed class GenericBindingCandidate {
   }
 
   /**
-   * True if [other] provides the same keys as this candidate. Their qualifiers match and each
-   * pattern matches the other's with only that pattern's own type parameters as variables. So
-   * `Encoder<List<T>>` is alpha-equivalent to `Encoder<List<E>>`.
+   * True if [other] provides the same keys as this candidate. Their qualifiers match and their
+   * return types differ only in type parameter names. Type parameters in the same place also have
+   * the same bounds.
+   *
+   * So `<T> Encoder<List<T>>` is alpha-equivalent to `<E> Encoder<List<E>>`. It isn't
+   * alpha-equivalent to `<E : Number> Encoder<List<E>>`, which provides fewer keys.
    */
   fun isAlphaEquivalentTo(other: GenericBindingCandidate): Boolean {
     if (patternKey.qualifier != other.patternKey.qualifier) {
       return false
     }
-    val otherCoversThis =
+    // Each return type has to match the other with only its own type parameters as variables.
+    val otherVariables =
       matchTypePattern(
         pattern = other.patternIdentity,
         target = patternIdentity,
         isVariable = other::isVariable,
-      ) != null
-    if (!otherCoversThis) {
+      )
+    if (otherVariables == null) {
       return false
     }
     val thisCoversOther =
@@ -122,7 +127,61 @@ internal sealed class GenericBindingCandidate {
         target = other.patternIdentity,
         isVariable = ::isVariable,
       ) != null
-    return thisCoversOther
+    if (!thisCoversOther) {
+      return false
+    }
+    return hasSameBoundsAs(other, otherVariables)
+  }
+
+  /**
+   * True if each of [other]'s type parameters has the same bounds as this candidate's type
+   * parameter in the same place. [otherVariables] says where each of [other]'s type parameters sits
+   * in this candidate's return type.
+   */
+  private fun hasSameBoundsAs(
+    other: GenericBindingCandidate,
+    otherVariables: Map<TypeIdentity.TypeParameter, TypeVariableBinding>,
+  ): Boolean {
+    // Find this candidate's type parameter that sits where each of the other's does.
+    val counterparts =
+      other.variableIdentities.map { identity ->
+        val binding = otherVariables[identity] ?: return false
+        val counterpartType = patternKey.type.typeArgumentAt(binding.path, patternKey)
+        counterpartType.typeParameterOrNull() ?: return false
+      }
+    // Rename the other's type parameters to this candidate's so the bounds compare directly.
+    val renamer =
+      typeRemapperFor(
+        other.functionTypeParameters.zip(counterparts).associate { (otherParameter, counterpart) ->
+          otherParameter.symbol to counterpart.defaultType
+        },
+      )
+    for ((index, otherParameter) in other.functionTypeParameters.withIndex()) {
+      val otherBounds =
+        otherParameter.superTypes.mapTo(mutableSetOf()) { bound ->
+          other.substituteContainer(renamer.remapType(bound)).typeIdentity()
+        }
+      val bounds =
+        counterparts[index].superTypes.mapTo(mutableSetOf()) { bound ->
+          substituteContainer(bound).typeIdentity()
+        }
+      if (otherBounds != bounds) {
+        return false
+      }
+    }
+    return true
+  }
+
+  /** Substitutes the container's type parameters in [type] when the container has a remapper. */
+  private fun substituteContainer(type: IrType): IrType {
+    val containerRemapper = containerTypeRemapper ?: return type
+    return containerRemapper.remapType(type)
+  }
+
+  private fun IrType.typeParameterOrNull(): IrTypeParameter? {
+    val simpleType = this as? IrSimpleType ?: return null
+    val classifier = simpleType.classifier as? IrTypeParameterSymbol ?: return null
+    return classifier.owner
   }
 
   /**
@@ -132,6 +191,29 @@ internal sealed class GenericBindingCandidate {
    */
   context(context: IrMetroContext)
   fun inferTypeArguments(target: IrTypeKey): List<IrType>? {
+    val arguments = matchTypeArguments(target) ?: return null
+    if (firstUnsatisfiedBound(arguments) != null) {
+      return null
+    }
+    return arguments
+  }
+
+  /**
+   * Returns the bound that keeps this candidate from providing [target]. Returns null when
+   * [patternKey]'s type doesn't match [target]'s type. It also returns null when the type matches
+   * and every bound holds.
+   */
+  context(context: IrMetroContext)
+  fun unsatisfiedBoundFor(target: IrTypeKey): UnsatisfiedBound? {
+    val arguments = matchTypeArguments(target) ?: return null
+    return firstUnsatisfiedBound(arguments)
+  }
+
+  /**
+   * Reads this candidate's type arguments out of [target], in [functionTypeParameters] order. It
+   * doesn't check bounds. Returns null when [patternKey]'s type doesn't match [target]'s type.
+   */
+  private fun matchTypeArguments(target: IrTypeKey): List<IrType>? {
     if (hasUnsubstitutedContainerTypeParameters) {
       return null
     }
@@ -144,50 +226,58 @@ internal sealed class GenericBindingCandidate {
     if (variableBindings == null) {
       return null
     }
-    val arguments = variableIdentities.map { identity ->
+    return variableIdentities.map { identity ->
       val binding =
         variableBindings[identity]
           ?: reportCompilerBug(
             "Generic binding ${function.name} matched $target without binding ${identity.name}",
           )
+      // The matcher works on identities, so follow its path through the real type.
       val argument = target.type.typeArgumentAt(binding.path, target)
       if (binding.stripsNullability) {
+        // The return type wrote `T?` here, so `T` is the non-null form.
         argument.makeNotNull()
       } else {
         argument
       }
     }
-    if (!boundsHold(arguments)) {
-      return null
-    }
-    return arguments
   }
 
   /**
-   * Checks each argument against its type parameter's upper bounds. Bounds can mention any of
-   * [functionTypeParameters] and the container's type parameters, so both get substituted first.
+   * An inferred type argument that breaks a bound. [bound] has the candidate's type arguments
+   * substituted, so `B : A` with `A = Number` reads as `Number`.
+   */
+  class UnsatisfiedBound(
+    val typeParameter: IrTypeParameter,
+    val argument: IrType,
+    val bound: IrType,
+  )
+
+  /**
+   * Checks each argument against its type parameter's upper bounds and returns the first one that
+   * fails. Returns null when every bound holds.
    */
   context(context: IrMetroContext)
-  private fun boundsHold(arguments: List<IrType>): Boolean {
+  private fun firstUnsatisfiedBound(arguments: List<IrType>): UnsatisfiedBound? {
+    // A bound can mention the function's type parameters, like `B : A` or `T : Comparable<T>`.
     val functionRemapper =
       typeRemapperFor(
         functionTypeParameters.zip(arguments).associate { (typeParameter, argument) ->
           typeParameter.symbol to argument
         },
       )
-    return functionTypeParameters.withIndex().all { (index, typeParameter) ->
-      typeParameter.superTypes.all { bound ->
-        val functionSubstitutedBound = functionRemapper.remapType(bound)
-        val containerRemapper = containerTypeRemapper
-        val substitutedBound =
-          if (containerRemapper == null) {
-            functionSubstitutedBound
-          } else {
-            containerRemapper.remapType(functionSubstitutedBound)
-          }
-        arguments[index].isSubtypeOf(substitutedBound, context.irTypeSystemContext)
+    for ((index, typeParameter) in functionTypeParameters.withIndex()) {
+      // A type parameter's supertypes are its upper bounds.
+      for (bound in typeParameter.superTypes) {
+        // A bound can also mention the container's type parameters, which have their own remapper.
+        val substitutedBound = substituteContainer(functionRemapper.remapType(bound))
+        val argument = arguments[index]
+        if (!argument.isSubtypeOf(substitutedBound, context.irTypeSystemContext)) {
+          return UnsatisfiedBound(typeParameter, argument, substitutedBound)
+        }
       }
     }
+    return null
   }
 
   /** Follows [path] through type arguments. The matcher built [path] from this type's identity. */
