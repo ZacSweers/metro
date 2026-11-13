@@ -1295,6 +1295,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("TypeAliasReturnTypes.kt")
+    public void testTypeAliasReturnTypes() {
+      run("TypeAliasReturnTypes.kt");
+    }
+
+    @Test
     @TestMetadata("UnownedScopeForInheritedGenericProvider.kt")
     public void testUnownedScopeForInheritedGenericProvider() {
       run("UnownedScopeForInheritedGenericProvider.kt");
