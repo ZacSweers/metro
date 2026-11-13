@@ -1,0 +1,117 @@
+class Config {
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+class Database {
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@DependencyGraph
+interface AppGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : AppGraph {
+    private val depsInstance: Deps
+      field = deps
+
+    private val depsConfigProvider: Provider<Config>
+      field = { // BLOCK
+        val tmp0_includedInstance: Deps = <this>.#depsInstance
+        local fun <anonymous>(): Config {
+          return tmp0_includedInstance.<get-config>().<get-value>()
+        }
+ /*-> Provider<Config> */
+      }
+
+    private val depsDatabaseSuspendProvider: SuspendProvider<Database>
+      field = { // BLOCK
+        val tmp0_includedInstance: Deps = <this>.#depsInstance
+        suspendProvider<Database>(provider = local suspend fun <anonymous>(): Database {
+          return tmp0_includedInstance.<get-database>().await()
+        }
+)
+      }
+
+    private constructor(@Includes deps: Deps) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override val configProvider: Provider<Config>
+      override get(): Provider<Config> {
+        return <this>.#depsConfigProvider
+      }
+
+    override val databaseProvider: SuspendProvider<Database>
+      override get(): SuspendProvider<Database> {
+        return <this>.#depsDatabaseSuspendProvider
+      }
+
+  }
+
+  companion object Companion : Factory {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
+    override fun create(@Includes deps: Deps): AppGraph {
+      return Impl(deps = deps)
+    }
+
+  }
+
+  @DependencyGraph.Factory
+  interface Factory {
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    @MetroImplMarker
+    object Impl : Factory {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @GraphFactoryInvokeFunctionMarker
+      override fun create(@Includes deps: Deps): AppGraph {
+        return Impl(deps = deps)
+      }
+
+    }
+
+    abstract fun create(@Includes deps: Deps): AppGraph
+
+  }
+
+  abstract val configProvider: Provider<Config>
+    abstract get
+
+  abstract val databaseProvider: SuspendProvider<Database>
+    abstract get
+
+}
+
+interface Deps {
+  abstract val config: Lazy<Config>
+    abstract get
+
+  abstract val database: SuspendLazy<Database>
+    abstract get
+
+}
+
