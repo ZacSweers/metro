@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794537677061,
+  "lastUpdate": 1794553659889,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -27944,6 +27944,62 @@ window.BENCHMARK_DATA = {
             "value": 19049.891,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -1.55%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "c93605cf~1",
+          "message": "[before] Fix suspend providers retaining the graph through ",
+          "timestamp": "2026-11-13T06:21:52Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/c93605cfac24747364069f521491683d34cf86d5"
+        },
+        "date": 1794553659889,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 12541.046,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "c93605cfac24747364069f521491683d34cf86d5",
+          "message": "[after] Fix suspend providers retaining the graph through ",
+          "timestamp": "2026-11-13T06:21:52Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/c93605cfac24747364069f521491683d34cf86d5"
+        },
+        "date": 1794553659890,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 12568.630000000001,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +0.22%"
           }
         ]
       }

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794537676799,
+  "lastUpdate": 1794553659732,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -27944,6 +27944,62 @@ window.BENCHMARK_DATA = {
             "value": 0.1468281393936864,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: -6.02%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "c93605cf~1",
+          "message": "[before] Fix suspend providers retaining the graph through ",
+          "timestamp": "2026-11-13T06:21:52Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/c93605cfac24747364069f521491683d34cf86d5"
+        },
+        "date": 1794553659732,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.21665387955817214,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "c93605cfac24747364069f521491683d34cf86d5",
+          "message": "[after] Fix suspend providers retaining the graph through ",
+          "timestamp": "2026-11-13T06:21:52Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/c93605cfac24747364069f521491683d34cf86d5"
+        },
+        "date": 1794553659733,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.22643171246749688,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: +4.51%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }
