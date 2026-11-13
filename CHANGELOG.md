@@ -44,6 +44,8 @@ This is experimental and off by default. Turn it on with `metro { enableDerivedB
 
 - **[FIR]** Fix Metro's FIR extensions using unsynchronized lazy values in IDE mode, where the IDE analyzes code on several threads at once. 
 - **[FIR]** Stop a single-threaded compilation from turning off thread-safe lazy values for other compilations running in the same Kotlin daemon.
+- **[FIR]** Fix `inline` `@Provides` declarations that are already `@PublishedApi internal` getting a warning to add `@PublishedApi`. The warning still applies when a containing class is `internal` without `@PublishedApi`.
+- **[FIR]** Fix the duplicate check for multibinds annotations, which read the assisted annotation's slot. A declaration with two multibinds annotations, such as Metro's and Dagger's `@Multibinds`, now fails with "Multiple multibinds annotations found" during FIR analysis. It previously failed later in IR.
 - **[FIR/IR]** Fix contributed `@Inject` classes skipping declared and inherited member injection when `generateContributionProviders` is enabled.
 - **[FIR/IR]** Fix dependency graphs with a user-declared `companion object` failing to compile or to call their generated creator, such as `AppGraph.create()`. User-declared `factory(...)` overloads in these companions now work. A user-declared no-arg `factory()` that clashes with the generated one now reports an error.
 - **[IR]** Fix dynamic graphs missing `internal` contributions from friend compilations (such as `main` contributions used by tests).
@@ -63,6 +65,7 @@ This is experimental and off by default. Turn it on with `metro { enableDerivedB
 - **[IR]** Fix an internal compiler error replacing a missing-binding error when another binding in the graph has an error type.
 - **[IR]** Fix the invalid assisted injection error naming the injection site as `null` when the request has no declaration to name.
 - **[IR]** Fix a compiler crash for map multibindings with two or more entries whose values are maps, such as `Map<String, Map<String, Int>>`, when the map is requested through a `Provider`.
+- **[IR]** Fix suspend `@Provides` functions requested as a `SuspendProvider` retaining the whole graph. Their generated provider lambdas now capture only what the provider's factory would hold. Provider lambdas that wrap an `@Includes` accessor also stop retaining the graph and capture only the included instance.
 - **[IR/interop]** Fix an issue with Dagger-processed providers/constructors with default parameters with their generated factory. Previously, Metro would treat the source function's parameter as optional if it had a default value and not reconcile that correctly with Dagger's generated factory (which would not propagate that default since Dagger uses a different mechanism for optional bindings).
 - **[Runtime]** Fix `Provider<Set<T>>` throwing `IllegalStateException: Codegen error? Duplicates in the provider list` when two contributions have equal providers, such as two `@Binds @IntoSet` aliases of bound instances with equal values.
 - **[Runtime]** Fix scoped providers that recursively invoke themselves accepting two equal but distinct instances. `DoubleCheck` compares the instances by identity, like Dagger, and throws if they differ.

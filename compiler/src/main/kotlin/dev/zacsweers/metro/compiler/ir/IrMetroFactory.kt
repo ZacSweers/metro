@@ -119,8 +119,9 @@ internal sealed interface IrMetroFactory {
    * Returns the arguments `create()` would receive for [typeKey], without calling it. They're the
    * dependency providers a factory instance holds.
    *
-   * A reified provider's factory can't be instantiated. The graph reads these providers itself so
-   * the provider it builds holds the same things a factory would.
+   * Some providers can't use their factory. A reified provider's factory can't be instantiated, for
+   * example. The graph reads these providers itself so the provider it builds holds the same things a
+   * factory would.
    */
   context(context: IrMetroContext, scope: IrBuilderWithScope)
   fun createArguments(

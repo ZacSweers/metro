@@ -293,6 +293,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("IncludedAccessorProvidersHoldIncludedInstance.kt")
+    public void testIncludedAccessorProvidersHoldIncludedInstance() {
+      run("IncludedAccessorProvidersHoldIncludedInstance.kt");
+    }
+
+    @Test
     @TestMetadata("IncludedGraphWithExtensionsIsStoredOnce.kt")
     public void testIncludedGraphWithExtensionsIsStoredOnce() {
       run("IncludedGraphWithExtensionsIsStoredOnce.kt");
@@ -398,6 +404,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     @TestMetadata("RuntimeTracing.kt")
     public void testRuntimeTracing() {
       run("RuntimeTracing.kt");
+    }
+
+    @Test
+    @TestMetadata("SuspendProviderHoldsDependencyProviders.kt")
+    public void testSuspendProviderHoldsDependencyProviders() {
+      run("SuspendProviderHoldsDependencyProviders.kt");
     }
 
     @Test
