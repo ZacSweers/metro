@@ -244,21 +244,6 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
     return dropShadowedGenericBindings(available, plan)
   }
 
-  /** Every generic declaration in [plan]'s graph, including disabled ones, in index order. */
-  internal fun genericBindingsInContext(plan: GraphQueryPlan): List<KaBinding> {
-    return buildList {
-      var index = 0
-      for (templates in lookups.genericBindingsByRawKey.values) {
-        for (template in templates) {
-          checkCanceledEvery(index++)
-          if (isBindingInContext(template, plan)) {
-            add(template)
-          }
-        }
-      }
-    }
-  }
-
   private fun dropShadowedGenericBindings(
     candidates: List<KaBinding>,
     plan: GraphQueryPlan,

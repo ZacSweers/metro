@@ -26,7 +26,14 @@ interface CacheBindings {
 // MODULE: main(lib)
 
 // FILE: main.kt
+// This graph uses `list`. It never uses `bindCache`, so the error doesn't name it.
 @DependencyGraph(bindingContainers = [EncoderBindings::class, CacheBindings::class])
 interface <!DERIVED_BINDINGS_NOT_ENABLED!>AppGraph<!> {
+  val stringEncoders: Encoder<List<String>>
+}
+
+// This graph includes the same containers but uses no generic provider, so it has no error.
+@DependencyGraph(bindingContainers = [EncoderBindings::class, CacheBindings::class])
+interface ExactOnlyGraph {
   val stringEncoder: Encoder<String>
 }

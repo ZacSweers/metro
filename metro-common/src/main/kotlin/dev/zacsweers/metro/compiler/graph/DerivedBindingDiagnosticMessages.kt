@@ -13,9 +13,8 @@ public object DerivedBindingDiagnosticMessages {
       "`metro.enableDerivedBindings` to true."
 
   /**
-   * Reported once on a graph that collects generic providers or binds functions from dependencies
-   * while derived bindings are disabled. [providerNames] are their rendered names in a stable
-   * order.
+   * Reported once on a graph that uses generic providers or binds functions from dependencies while
+   * derived bindings are disabled. [providerNames] are their rendered names in a stable order.
    */
   public fun derivedBindingsNotEnabledForDependencies(providerNames: List<String>): String {
     val renderedNames = renderNames(providerNames)
@@ -25,7 +24,7 @@ public object DerivedBindingDiagnosticMessages {
       } else {
         "declare"
       }
-    return "This graph includes $renderedNames, which $verb type parameters. Generic providers " +
+    return "This graph uses $renderedNames, which $verb type parameters. Generic providers " +
       "need derived bindings, which are disabled. Enable the `enable-derived-bindings` compiler " +
       "option or set `metro.enableDerivedBindings` to true."
   }

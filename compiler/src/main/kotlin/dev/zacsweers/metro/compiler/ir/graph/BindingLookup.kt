@@ -163,10 +163,6 @@ internal class BindingLookup(
   val hasNoGenericBindingCandidates: Boolean
     get() = genericBindingIndex.isEmpty()
 
-  /** All generic candidates in registration order. */
-  val allGenericBindingCandidates: Sequence<GenericBindingCandidate>
-    get() = genericBindingIndex.values.asSequence().flatten()
-
   /**
    * Returns the generic candidates whose provided key has the raw class [classId] and the
    * [qualifier], in registration order.
@@ -252,6 +248,14 @@ internal class BindingLookup(
   /** Each key the derived stage resolved, with the candidate and type arguments it used. */
   val derivedBindings: Map<IrTypeKey, DerivedBinding>
     field: MutableMap<IrTypeKey, DerivedBinding> = mutableMapOf()
+
+  /**
+   * The generic candidates the derived stage selected for a key this graph requested. An ambiguous
+   * key adds every candidate that matched it. A candidate the graph collected but never matched
+   * isn't here.
+   */
+  val usedGenericBindingCandidates: Set<GenericBindingCandidate>
+    field: MutableSet<GenericBindingCandidate> = linkedSetOf()
 
   /** Keys that several generic candidates matched with no most specific one. */
   val ambiguousDerivedBindings: Map<IrTypeKey, DerivedBindingConflict>
@@ -382,6 +386,7 @@ internal class BindingLookup(
     genericBindingIndex.clear()
     hasDynamicGenericBindingCandidates = false
     derivedBindings.clear()
+    usedGenericBindingCandidates.clear()
     ambiguousDerivedBindings.clear()
     overlappingDerivedBindings.clear()
     divergentDerivedBindings.clear()
@@ -1129,11 +1134,14 @@ internal class BindingLookup(
         is DerivedCandidateSelection.Ambiguous -> {
           // Use the first match so the graph reports the ambiguity without a missing binding too.
           val first = selection.candidates.first()
-          ambiguousDerivedBindings[key] =
-            DerivedBindingConflict(first.candidate, matches.map { it.candidate })
+          val matchedCandidates = matches.map { it.candidate }
+          ambiguousDerivedBindings[key] = DerivedBindingConflict(first.candidate, matchedCandidates)
+          usedGenericBindingCandidates += matchedCandidates
           first
         }
       }
+    // Remember the candidate so a graph with derived bindings disabled can name what it used.
+    usedGenericBindingCandidates += selected.candidate
 
     // Apply the inferred type arguments to get an ordinary binding with a concrete key.
     val binding = selected.candidate.bindingFor(selected.typeArguments)

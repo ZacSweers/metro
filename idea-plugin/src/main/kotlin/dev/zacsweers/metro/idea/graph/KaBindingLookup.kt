@@ -94,6 +94,16 @@ internal class KaBindingLookup(
    */
   private val divergentDerived = LinkedHashMap<KaTypeKey, DivergentDerivedBinding>()
 
+  /**
+   * The derived bindings whose generic declaration this graph selected for a key it requested. An
+   * ambiguous key adds every match. A generic declaration the graph includes but never matched
+   * isn't here.
+   */
+  private val usedDerived = LinkedHashSet<KaBinding>()
+
+  val usedDerivedBindings: Set<KaBinding>
+    get() = usedDerived
+
   val ambiguousDerivedBindings: Map<KaTypeKey, List<KaBinding>>
     get() = ambiguousDerived
 
@@ -124,6 +134,7 @@ internal class KaBindingLookup(
   fun clear() {
     syntheticElements.clear()
     derivedBindings.clear()
+    usedDerived.clear()
     ambiguousDerived.clear()
     divergentDerived.clear()
     requesterKeys.clear()
@@ -212,8 +223,10 @@ internal class KaBindingLookup(
     requestingKey: KaTypeKey?,
   ): Set<KaBinding> {
     val binding = selection.bindings.first()
+    usedDerived += binding
     if (selection.ambiguousDerivedBindings.isNotEmpty()) {
       ambiguousDerived.putIfAbsent(key, selection.ambiguousDerivedBindings)
+      usedDerived += selection.ambiguousDerivedBindings
     }
     val resolved = delegateToParentIfScoped(binding)
     if (resolved !== binding) {

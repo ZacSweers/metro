@@ -23,7 +23,7 @@ The design is described in [MEEP-3124](https://github.com/ZacSweers/metro/discus
     }
     ```
 
-    The compiler option is `enable-derived-bindings`. When the option is disabled, type parameters on `@Provides` and `@Binds` functions are an error. A graph that includes generic providers from another module also reports [`Metro/DerivedBindingsNotEnabled`](diagnostics.md#derivedbindingsnotenabled).
+    The compiler option is `enable-derived-bindings`. When the option is disabled, type parameters on `@Provides` and `@Binds` functions are an error. A graph that uses generic providers from another module also reports [`Metro/DerivedBindingsNotEnabled`](diagnostics.md#derivedbindingsnotenabled).
 
 ## Example
 

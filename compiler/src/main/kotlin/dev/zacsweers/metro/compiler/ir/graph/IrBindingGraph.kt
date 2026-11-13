@@ -1662,16 +1662,13 @@ internal class IrBindingGraph(
   }
 
   /**
-   * Reports the generic providers and binds functions this graph collected while derived bindings
-   * are disabled. FIR reports declarations in this module, so these come from dependencies. The
-   * graph gets one report because that's where the option can be enabled.
+   * Reports the generic providers and binds functions this graph uses while derived bindings are
+   * disabled. FIR reports declarations in this module, so these come from dependencies. A generic
+   * provider the graph includes but never uses isn't reported. The graph gets one report because
+   * that's where the option can be enabled.
    */
   private fun reportDerivedBindingsNotEnabled() {
-    val functionNames =
-      bindingLookup.allGenericBindingCandidates
-        .map { it.function.kotlinFqName.asString() }
-        .distinct()
-        .toList()
+    val functionNames = bindingLookup.usedGenericBindingCandidates.toList().renderedFunctionNames()
     if (functionNames.isEmpty()) {
       return
     }

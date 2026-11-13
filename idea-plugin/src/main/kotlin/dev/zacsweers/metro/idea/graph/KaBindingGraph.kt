@@ -425,22 +425,21 @@ internal class KaBindingGraph(
   }
 
   /**
-   * Reports the generic declarations this graph includes while its module disables derived
-   * bindings. The compiler plugin's FIR check flags declarations in the graph's own module, so this
-   * names the ones that come from dependencies. Those are the enabled ones, since their module or
-   * library compiled with the option.
+   * Reports the generic declarations this graph uses while its module disables derived bindings.
+   * The compiler plugin's FIR check flags declarations in the graph's own module, and the derived
+   * stage skips those. So the ones it used come from dependencies that compiled with the option. A
+   * generic declaration the graph includes but never uses isn't reported.
    */
   private fun reportDerivedBindingsNotEnabled() {
-    val fromDependencies =
-      index.genericBindingsInContext(bindingLookup.queryPlan).filter {
-        it.genericSignature?.isEnabled == true
-      }
-    if (fromDependencies.isEmpty()) {
+    val used = bindingLookup.usedDerivedBindings.toList()
+    if (used.isEmpty()) {
       return
     }
-    val names = fromDependencies.mapNotNull { it.genericSignature?.providerName }.distinct()
-    val text = DerivedBindingDiagnosticMessages.derivedBindingsNotEnabledForDependencies(names)
-    reportGraphDiagnostic(MetroDiagnosticId.DERIVED_BINDINGS_NOT_ENABLED, text, fromDependencies)
+    val text =
+      DerivedBindingDiagnosticMessages.derivedBindingsNotEnabledForDependencies(
+        used.renderedProviderNames(),
+      )
+    reportGraphDiagnostic(MetroDiagnosticId.DERIVED_BINDINGS_NOT_ENABLED, text, used)
   }
 
   private fun reportGraphDiagnostic(
