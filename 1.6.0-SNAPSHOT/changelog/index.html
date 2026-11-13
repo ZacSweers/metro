@@ -8825,6 +8825,8 @@
 <ul>
 <li><strong>[FIR]</strong> Fix Metro&rsquo;s FIR extensions using unsynchronized lazy values in IDE mode, where the IDE analyzes code on several threads at once. </li>
 <li><strong>[FIR]</strong> Stop a single-threaded compilation from turning off thread-safe lazy values for other compilations running in the same Kotlin daemon.</li>
+<li><strong>[FIR]</strong> Fix <code>inline</code> <code>@Provides</code> declarations that are already <code>@PublishedApi internal</code> getting a warning to add <code>@PublishedApi</code>. The warning still applies when a containing class is <code>internal</code> without <code>@PublishedApi</code>.</li>
+<li><strong>[FIR]</strong> Fix the duplicate check for multibinds annotations, which read the assisted annotation&rsquo;s slot. A declaration with two multibinds annotations, such as Metro&rsquo;s and Dagger&rsquo;s <code>@Multibinds</code>, now fails with &ldquo;Multiple multibinds annotations found&rdquo; during FIR analysis. It previously failed later in IR.</li>
 <li><strong>[FIR/IR]</strong> Fix contributed <code>@Inject</code> classes skipping declared and inherited member injection when <code>generateContributionProviders</code> is enabled.</li>
 <li><strong>[FIR/IR]</strong> Fix dependency graphs with a user-declared <code>companion object</code> failing to compile or to call their generated creator, such as <code>AppGraph.create()</code>. User-declared <code>factory(...)</code> overloads in these companions now work. A user-declared no-arg <code>factory()</code> that clashes with the generated one now reports an error.</li>
 <li><strong>[IR]</strong> Fix dynamic graphs missing <code>internal</code> contributions from friend compilations (such as <code>main</code> contributions used by tests).</li>
