@@ -471,9 +471,9 @@ private constructor(
           // Optimization: Skip factory instantiation when we don't need a provider instance.
           // This applies when accessType is INSTANCE and the providerFactory supports direct
           // invocation.
-          // For suspend bindings, always bypass the factory since factories implement Provider<T>,
-          // not SuspendProvider<T>. The suspend call must be inlined or wrapped in a
-          // SuspendProvider lambda.
+          // Suspend bindings requested as a SuspendProvider also bypass the factory. Their factory
+          // implements SuspendFactory<T>. The graph calls the provider directly and wraps that
+          // call in a SuspendProvider lambda.
           val canBypassFactory =
             providerFactory.canBypassFactory &&
               // TODO what if the return type is a Provider?
