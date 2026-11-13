@@ -135,6 +135,54 @@ internal fun KaTypeKey.genericLookupKey(): GenericBindingLookupKey? {
  */
 internal fun matchGenericBinding(template: KaBinding, key: KaTypeKey): KaBinding? {
   val signature = template.genericSignature ?: return null
+  val inferred = inferTypeArguments(template, signature, key) ?: return null
+  val bounds = checkBounds(signature, inferred)
+  if (bounds.unsatisfied != null) {
+    return null
+  }
+  val derivation = BindingDerivation(template, inferred.arguments, bounds.allVerified)
+  return template.instantiate(key, inferred.substitutions, derivation)
+}
+
+/**
+ * Returns the bound that keeps [template] from providing [key], or null. It's null when the pattern
+ * doesn't match [key], and when every bound holds or can't be checked. A missing-binding report
+ * uses it to explain the near miss, like the compiler does.
+ */
+internal fun unsatisfiedBoundFor(template: KaBinding, key: KaTypeKey): UnsatisfiedBound? {
+  val signature = template.genericSignature ?: return null
+  val inferred = inferTypeArguments(template, signature, key) ?: return null
+  return checkBounds(signature, inferred).unsatisfied
+}
+
+/**
+ * An inferred type argument that breaks a bound. [bound] has the declaration's type arguments
+ * substituted, so `B : A` with `A = Number` reads as `Number`.
+ */
+internal class UnsatisfiedBound(
+  val typeParameter: GenericTypeParameter,
+  val argument: KaTypeSnapshot,
+  val bound: KaTypeSnapshot,
+)
+
+/**
+ * The type arguments a generic declaration's pattern gives for one key. [arguments] are in type
+ * parameter order. [substitutions] maps each type parameter to its argument.
+ */
+private class InferredTypeArguments(
+  val arguments: List<KaTypeSnapshot>,
+  val substitutions: Map<TypeIdentity.TypeParameter, KaTypeSnapshot>,
+)
+
+/**
+ * Reads [template]'s type arguments out of [key]. It doesn't check bounds. Returns null when the
+ * pattern doesn't match [key].
+ */
+private fun inferTypeArguments(
+  template: KaBinding,
+  signature: GenericBindingSignature,
+  key: KaTypeKey,
+): InferredTypeArguments? {
   val variableBindings =
     matchTypePattern(
       pattern = template.typeKey.type.identity,
@@ -147,6 +195,7 @@ internal fun matchGenericBinding(template: KaBinding, key: KaTypeKey): KaBinding
     val binding = variableBindings[parameter.identity] ?: return null
     val argument = key.type.typeArgumentAt(binding.path) ?: return null
     if (binding.stripsNullability) {
+      // The return type wrote `T?` here, so `T` is the non-null form.
       arguments += argument.withNullability(nullable = false) ?: return null
     } else {
       arguments += argument
@@ -157,25 +206,41 @@ internal fun matchGenericBinding(template: KaBinding, key: KaTypeKey): KaBinding
   for ((index, parameter) in signature.typeParameters.withIndex()) {
     substitutions[parameter.identity] = arguments[index]
   }
+  return InferredTypeArguments(arguments, substitutions)
+}
 
-  var boundsVerified = true
+/**
+ * What checking every bound found. [unsatisfied] is the first bound that failed. [allVerified] is
+ * false when a bound couldn't be checked.
+ */
+private class BoundsResult(val unsatisfied: UnsatisfiedBound?, val allVerified: Boolean)
+
+/** Checks each inferred argument against its type parameter's bounds, and stops at a failure. */
+private fun checkBounds(
+  signature: GenericBindingSignature,
+  inferred: InferredTypeArguments,
+): BoundsResult {
+  var allVerified = true
   for ((index, parameter) in signature.typeParameters.withIndex()) {
+    val argument = inferred.arguments[index]
     for (bound in parameter.upperBounds) {
-      val substitutedBound = bound.substitute(substitutions)
+      // A bound can mention the declaration's type parameters, like `B : A` or `T : Comparable<T>`.
+      val substitutedBound = bound.substitute(inferred.substitutions)
       if (substitutedBound == null) {
-        boundsVerified = false
+        allVerified = false
         continue
       }
-      when (checkBound(arguments[index], substitutedBound)) {
+      when (checkBound(argument, substitutedBound)) {
         BoundCheck.HOLDS -> {}
-        BoundCheck.FAILS -> return null
-        BoundCheck.UNKNOWN -> boundsVerified = false
+        BoundCheck.FAILS -> {
+          val unsatisfied = UnsatisfiedBound(parameter, argument, substitutedBound)
+          return BoundsResult(unsatisfied, allVerified)
+        }
+        BoundCheck.UNKNOWN -> allVerified = false
       }
     }
   }
-
-  val derivation = BindingDerivation(template, arguments, boundsVerified)
-  return template.instantiate(key, substitutions, derivation)
+  return BoundsResult(unsatisfied = null, allVerified = allVerified)
 }
 
 /** Builds the ordinary binding a generic declaration provides for one concrete [key]. */

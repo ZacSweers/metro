@@ -47,6 +47,7 @@ import dev.zacsweers.metro.idea.model.KaTypeSnapshot
 import dev.zacsweers.metro.idea.model.canonicalContextKey
 import dev.zacsweers.metro.idea.model.declarationBinding
 import dev.zacsweers.metro.idea.model.graphTypeKey
+import dev.zacsweers.metro.idea.model.unsatisfiedBoundFor
 import org.jetbrains.kotlin.name.StandardClassIds
 
 private typealias KaMutableBindingGraph =
@@ -810,6 +811,22 @@ internal class KaBindingGraph(
             )
         }
       }
+    }
+
+    // A generic declaration that matched except for a bound is a likely cause, so name it.
+    for (template in index.derivedCandidates(typeKey, bindingLookup.queryPlan)) {
+      val unsatisfied = unsatisfiedBoundFor(template, typeKey) ?: continue
+      val provider = checkNotNull(template.genericSignature).providerName
+      notes +=
+        Note.note(
+          DerivedBindingDiagnosticMessages.unsatisfiedBoundNote(
+            key = typeKey.render(short = true),
+            provider = provider,
+            typeParameter = unsatisfied.typeParameter.name,
+            typeArgument = unsatisfied.argument.shortType,
+            bound = unsatisfied.bound.shortType,
+          ),
+        )
     }
 
     return MissingBindingHints(notes = notes, similarBindings = similar)

@@ -104,6 +104,37 @@ class MetroDerivedBindingValidationTest : BasePlatformTestCase() {
     )
   }
 
+  fun testMissingBindingNamesTheBoundThatRejectedAGenericProvider() {
+    val result =
+      validate(
+        """
+        interface Encoder<T>
+
+        class Plain
+
+        @BindingContainer
+        object Encoders {
+          @Provides fun <T : Number> numbers(): Encoder<List<T>> = error("unused")
+        }
+
+        @DependencyGraph(bindingContainers = [Encoders::class])
+        interface AppGraph {
+          val ints: Encoder<List<Int>>
+          val plain: Encoder<List<Plain>>
+        }
+        """,
+      )
+
+    val diagnostic = result.diagnostics.single()
+    assertEquals(MetroDiagnosticId.MISSING_BINDING, diagnostic.id)
+    val notes = diagnostic.diagnostic.notes.map { it.text.toString() }
+    assertTrue(
+      diagnostic.render(),
+      "`test.Encoders.numbers` can't provide `Encoder<List<Plain>>` because `T = Plain` " +
+        "doesn't satisfy `T : Number`" in notes,
+    )
+  }
+
   fun testAmbiguousDerivedBindingIsReported() {
     val result =
       validate(
