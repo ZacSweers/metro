@@ -120,8 +120,8 @@ internal sealed interface IrMetroFactory {
    * dependency providers a factory instance holds.
    *
    * Some providers can't use their factory. A reified provider's factory can't be instantiated, for
-   * example. The graph reads these providers itself so the provider it builds holds the same things a
-   * factory would.
+   * example. The graph reads these providers itself so the provider it builds holds the same things
+   * a factory would.
    */
   context(context: IrMetroContext, scope: IrBuilderWithScope)
   fun createArguments(
