@@ -1,5 +1,3 @@
-// ENABLE_DERIVED_BINDINGS
-
 // `Encoder<T?>` only serves nullable arguments. An unbounded `<T>` can bind a nullable argument.
 interface Encoder<T> {
   val name: String

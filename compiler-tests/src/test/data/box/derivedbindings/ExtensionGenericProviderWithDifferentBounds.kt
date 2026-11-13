@@ -1,5 +1,3 @@
-// ENABLE_DERIVED_BINDINGS
-
 // An extension's generic provider only hides a parent's when their bounds match too. With different
 // bounds, the parent's provider still serves the keys the extension's provider can't.
 interface Encoder<T> {

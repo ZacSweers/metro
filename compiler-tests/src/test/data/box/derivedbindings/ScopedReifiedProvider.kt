@@ -1,5 +1,3 @@
-// ENABLE_DERIVED_BINDINGS
-
 // A scoped reified provider gives one instance per key and separate instances for separate keys.
 class Cache<T>(val name: String, val id: Int)
 

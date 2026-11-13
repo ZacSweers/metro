@@ -1,4 +1,3 @@
-// ENABLE_DERIVED_BINDINGS
 // LANGUAGE: +ContextParameters
 
 // A generic provider can take context parameters like any other provider.

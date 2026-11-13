@@ -1,5 +1,3 @@
-// ENABLE_DERIVED_BINDINGS
-
 // Generic @Binds functions alias each requested key to the matching generic @Inject class.
 interface Cache<T> {
   val label: String

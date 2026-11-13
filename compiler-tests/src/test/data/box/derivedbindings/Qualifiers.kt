@@ -1,5 +1,3 @@
-// ENABLE_DERIVED_BINDINGS
-
 // A qualified generic provider only serves qualified keys, and an unqualified one only unqualified keys.
 interface Encoder<T> {
   val name: String

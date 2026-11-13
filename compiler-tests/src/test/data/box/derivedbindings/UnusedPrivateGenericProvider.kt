@@ -1,5 +1,3 @@
-// ENABLE_DERIVED_BINDINGS
-
 // A private generic provider gets a factory whose helper calls it with its type arguments.
 interface Encoder<T> {
   val name: String

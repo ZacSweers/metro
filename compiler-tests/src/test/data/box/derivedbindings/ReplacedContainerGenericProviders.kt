@@ -1,5 +1,3 @@
-// ENABLE_DERIVED_BINDINGS
-
 // A replaced or excluded contributed container takes its generic providers with it.
 interface Encoder<T> {
   val name: String

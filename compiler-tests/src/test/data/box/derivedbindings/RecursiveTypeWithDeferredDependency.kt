@@ -1,5 +1,3 @@
-// ENABLE_DERIVED_BINDINGS
-
 // A recursive type makes a cycle through a derived binding. Deferred dependencies break the cycle.
 data class Category(val name: String, val children: List<Category>)
 

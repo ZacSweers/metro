@@ -1,5 +1,3 @@
-// ENABLE_DERIVED_BINDINGS
-
 // MODULE: lib
 // Another module reads the generic providers' full signatures from their factories and mirrors.
 interface Encoder<T> {

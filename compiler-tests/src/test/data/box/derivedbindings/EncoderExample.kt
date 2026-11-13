@@ -1,5 +1,3 @@
-// ENABLE_DERIVED_BINDINGS
-
 // Generic providers compose encoders for every key the graph requests.
 sealed interface Json {
   data class Str(val value: String) : Json

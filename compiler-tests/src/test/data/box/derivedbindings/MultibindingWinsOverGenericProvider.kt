@@ -1,5 +1,3 @@
-// ENABLE_DERIVED_BINDINGS
-
 // A multibinding for a key wins over a generic provider that matches the same key. The generic
 // provider still supplies the keys that have no multibinding.
 class FallbackSet<T> : AbstractSet<T>() {

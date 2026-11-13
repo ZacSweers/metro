@@ -1,5 +1,3 @@
-// ENABLE_DERIVED_BINDINGS
-
 // A scoped generic provider creates one instance per key and separate instances for separate keys.
 class Cache<T>(val id: Int)
 

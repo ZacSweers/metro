@@ -1,5 +1,3 @@
-// ENABLE_DERIVED_BINDINGS
-
 // A graph extension uses its parent's unscoped generic providers and binds functions. They come
 // from an object container, the parent graph itself, an instance container the parent holds, and
 // a binds container.

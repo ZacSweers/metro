@@ -1,5 +1,3 @@
-// ENABLE_DERIVED_BINDINGS
-
 // Generic providers resolve from a private container function, a companion object, and the graph
 // itself.
 interface Encoder<T> {

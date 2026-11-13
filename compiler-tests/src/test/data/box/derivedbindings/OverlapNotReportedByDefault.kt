@@ -1,5 +1,3 @@
-// ENABLE_DERIVED_BINDINGS
-
 // Overlapping generic providers aren't reported at the default severity.
 interface Encoder<T> {
   val name: String

@@ -1,5 +1,3 @@
-// ENABLE_DERIVED_BINDINGS
-
 // Substituting a generic container's type arguments must leave its generic providers' own type
 // parameters alone. The container's ordinary providers still resolve with the concrete arguments.
 interface Encoder<T> {

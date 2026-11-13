@@ -1,5 +1,3 @@
-// ENABLE_DERIVED_BINDINGS
-
 // A scoped generic provider in a graph with extensions doesn't publish its pattern key to them.
 interface Encoder<T> {
   val name: String

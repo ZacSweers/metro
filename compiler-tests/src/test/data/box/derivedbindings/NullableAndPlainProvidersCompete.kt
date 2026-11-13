@@ -1,5 +1,3 @@
-// ENABLE_DERIVED_BINDINGS
-
 // `Encoder<T>` and `Encoder<T?>` both match `Encoder<String?>`. `Encoder<T?>` is more specific, so
 // it wins. Only `Encoder<T>` matches `Encoder<String>`.
 interface Encoder<T> {

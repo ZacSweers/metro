@@ -1,5 +1,3 @@
-// ENABLE_DERIVED_BINDINGS
-
 // MODULE: lib
 interface Encoder<T> {
   val name: String

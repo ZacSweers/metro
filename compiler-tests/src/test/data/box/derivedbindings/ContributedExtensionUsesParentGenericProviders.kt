@@ -1,5 +1,3 @@
-// ENABLE_DERIVED_BINDINGS
-
 // A contributed graph extension resolves derived keys from a binding container contributed to its
 // parent's scope. The scoped instance lives in the parent.
 abstract class LoggedInScope private constructor()

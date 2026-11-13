@@ -1,5 +1,3 @@
-// ENABLE_DERIVED_BINDINGS
-
 // Bounds pick between providers that share a raw return type. A bound can mention its own type
 // parameter, like `T : Comparable<T>`, or another type parameter, like `B : A`.
 interface Formatter<T> {

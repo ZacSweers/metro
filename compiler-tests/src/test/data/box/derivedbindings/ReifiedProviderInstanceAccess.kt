@@ -1,5 +1,3 @@
-// ENABLE_DERIVED_BINDINGS
-
 // A reified provider requested as an instance sees each key's own type argument.
 interface Encoder<T> {
   val name: String

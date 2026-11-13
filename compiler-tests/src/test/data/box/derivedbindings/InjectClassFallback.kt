@@ -1,5 +1,3 @@
-// ENABLE_DERIVED_BINDINGS
-
 // Class lookup still runs when no generic provider matches the key.
 @Inject class Repository<T>(val label: String)
 

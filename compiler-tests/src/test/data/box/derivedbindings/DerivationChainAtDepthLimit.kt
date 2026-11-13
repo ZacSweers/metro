@@ -1,5 +1,3 @@
-// ENABLE_DERIVED_BINDINGS
-
 // A chain of exactly 64 derived bindings is within the depth limit.
 interface Encoder<T> {
   val depth: Int

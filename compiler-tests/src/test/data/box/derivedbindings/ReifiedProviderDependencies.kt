@@ -1,5 +1,3 @@
-// ENABLE_DERIVED_BINDINGS
-
 // A reified provider's parameters come from the graph, including another derived binding.
 interface Encoder<T> {
   val name: String

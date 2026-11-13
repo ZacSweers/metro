@@ -1,5 +1,3 @@
-// ENABLE_DERIVED_BINDINGS
-
 // Generic providers that no graph requests don't change how ordinary bindings resolve.
 interface Encoder<T> {
   val name: String

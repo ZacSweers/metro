@@ -1,5 +1,3 @@
-// ENABLE_DERIVED_BINDINGS
-
 // A graph extension resolves keys from a parent's unscoped and parent-scoped reified providers. The
 // scoped instance lives in the parent and is shared.
 interface Encoder<T> {

@@ -1,5 +1,3 @@
-// ENABLE_DERIVED_BINDINGS
-
 // A dynamic generic provider also replaces the bindings a graph extension declares.
 interface Encoder<T> {
   val name: String

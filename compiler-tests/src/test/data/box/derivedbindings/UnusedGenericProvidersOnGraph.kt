@@ -1,5 +1,3 @@
-// ENABLE_DERIVED_BINDINGS
-
 // Generic @Provides and @Binds declared on the graph itself don't change ordinary bindings. The
 // graph implementation still has to implement the abstract generic @Binds.
 interface Encoder<T> {

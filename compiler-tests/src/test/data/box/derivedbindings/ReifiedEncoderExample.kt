@@ -1,5 +1,3 @@
-// ENABLE_DERIVED_BINDINGS
-
 // A reified encoder is the fallback. The exact UserEncoder wins for Encoder<User>, and the list
 // provider wins for Encoder<List<Order>> while its element encoder comes from the reified one.
 fun interface Encoder<T> {

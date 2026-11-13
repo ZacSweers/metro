@@ -77,6 +77,11 @@ fun TestConfigurationBuilder.configurePlugin(
     assumeTrue(compatContext.supportsCompanionBlocks, "Compiler does not support companion blocks")
     defaultDirectives { LANGUAGE + "+CompanionBlocks" }
   }
+  forTestsMatching("*/box/derivedbindings/*") {
+    // Every box fixture in this directory uses derived bindings, so none of them repeats the
+    // directive. Diagnostic fixtures keep it because some of them test the disabled option.
+    defaultDirectives { +MetroDirectives.ENABLE_DERIVED_BINDINGS }
+  }
 
   useCustomRuntimeClasspathProviders(::MetroRuntimeClassPathProvider)
 

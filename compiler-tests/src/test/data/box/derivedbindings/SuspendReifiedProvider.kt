@@ -1,4 +1,3 @@
-// ENABLE_DERIVED_BINDINGS
 // ENABLE_SUSPEND_PROVIDERS
 
 // A suspend reified provider resolves through suspend accessors and suspend providers.

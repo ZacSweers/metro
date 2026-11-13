@@ -1,5 +1,3 @@
-// ENABLE_DERIVED_BINDINGS
-
 // An ordinary binding for the exact key wins over a matching generic provider.
 interface Encoder<T> {
   val name: String

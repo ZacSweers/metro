@@ -1,5 +1,3 @@
-// ENABLE_DERIVED_BINDINGS
-
 // Reified providers can mix reified and plain type parameters and can declare bounds.
 interface Encoder<T> {
   val name: String

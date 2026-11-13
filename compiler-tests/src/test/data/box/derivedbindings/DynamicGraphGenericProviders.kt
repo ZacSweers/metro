@@ -1,5 +1,3 @@
-// ENABLE_DERIVED_BINDINGS
-
 // A dynamic generic provider replaces every binding it matches, exact or generic.
 interface Encoder<T> {
   val name: String

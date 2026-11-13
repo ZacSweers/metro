@@ -1,5 +1,3 @@
-// ENABLE_DERIVED_BINDINGS
-
 // A return type can use a type parameter as both `T` and `T?`. The `T` position decides whether
 // `T` is nullable, so `Both<T, T?>` provides `Both<String, String?>` and `Both<String?, String?>`.
 interface Encoder<T> {

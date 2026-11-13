@@ -1,5 +1,3 @@
-// ENABLE_DERIVED_BINDINGS
-
 // When a parent and its graph extension both request a key from a parent-scoped generic provider,
 // they share the parent's instance.
 class Cache<T>(val id: Int)

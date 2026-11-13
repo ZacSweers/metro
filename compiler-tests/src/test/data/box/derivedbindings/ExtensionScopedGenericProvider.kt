@@ -1,5 +1,3 @@
-// ENABLE_DERIVED_BINDINGS
-
 // A generic provider scoped to a graph extension's own scope lives in the extension. Each extension
 // instance gets its own instance per key. Its dependencies come from the parent's unscoped generic
 // providers.

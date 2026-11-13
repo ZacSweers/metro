@@ -1,5 +1,3 @@
-// ENABLE_DERIVED_BINDINGS
-
 // Derived bindings work behind Provider, Lazy, and function providers.
 interface Encoder<T> {
   val name: String

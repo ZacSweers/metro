@@ -1,5 +1,3 @@
-// ENABLE_DERIVED_BINDINGS
-
 // A generic container included with concrete type arguments can declare generic providers. The
 // container's arguments come first, then the provider's own.
 interface Encoder<T> {

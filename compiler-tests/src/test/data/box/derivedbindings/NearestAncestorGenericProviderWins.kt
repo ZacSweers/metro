@@ -1,5 +1,3 @@
-// ENABLE_DERIVED_BINDINGS
-
 // When a parent and a grandparent declare alpha-equivalent generic providers, a grandchild uses the
 // nearer one. Ordinary providers for the same key follow the same rule.
 interface Encoder<T> {

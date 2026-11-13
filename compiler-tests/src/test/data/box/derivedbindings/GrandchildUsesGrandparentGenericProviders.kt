@@ -1,5 +1,3 @@
-// ENABLE_DERIVED_BINDINGS
-
 // A grandchild graph extension uses its grandparent's scoped and unscoped generic providers. The
 // scoped instances still live in the grandparent.
 abstract class ChildScope private constructor()

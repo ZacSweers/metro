@@ -1,5 +1,3 @@
-// ENABLE_DERIVED_BINDINGS
-
 // Ordinary multibinding contributions can depend on derived bindings.
 interface Encoder<T> {
   val name: String

@@ -1,5 +1,3 @@
-// ENABLE_DERIVED_BINDINGS
-
 // Providers can declare several type parameters, and one can appear more than once.
 interface Encoder<T> {
   val name: String

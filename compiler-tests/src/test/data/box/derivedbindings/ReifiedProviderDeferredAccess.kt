@@ -1,5 +1,3 @@
-// ENABLE_DERIVED_BINDINGS
-
 // Provider access to a reified provider stays lazy, and each Provider call runs it again.
 interface Encoder<T> {
   val name: String

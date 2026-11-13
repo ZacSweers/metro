@@ -1,5 +1,3 @@
-// ENABLE_DERIVED_BINDINGS
-
 // A graph extension's own bindings win over its parent's generic providers. An exact binding wins.
 // A more specific generic provider wins. An alpha-equivalent generic provider shadows the parent's,
 // like an extension's own provider shadows a parent provider for the same key.

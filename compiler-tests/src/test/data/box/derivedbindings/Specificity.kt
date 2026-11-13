@@ -1,5 +1,3 @@
-// ENABLE_DERIVED_BINDINGS
-
 // The most specific matching provider wins. Less specific ones still serve other keys.
 interface Encoder<T> {
   val name: String

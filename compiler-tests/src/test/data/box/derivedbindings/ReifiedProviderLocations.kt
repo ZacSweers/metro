@@ -1,5 +1,3 @@
-// ENABLE_DERIVED_BINDINGS
-
 // Reified providers resolve from an object container, a companion object, a final container class
 // that the graph holds as an instance, and a final member of an abstract class graph.
 interface Encoder<T> {
