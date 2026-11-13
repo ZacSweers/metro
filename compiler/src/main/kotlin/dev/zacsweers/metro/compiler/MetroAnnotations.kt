@@ -633,7 +633,7 @@ private fun FirBasedSymbol<*>.metroAnnotations(
           }
           in ids.multibindsAnnotations if (Kind.Multibinds in kinds) -> {
             multibinds =
-              expectNullAndSet("multibinds", assisted, MetroFirAnnotation(annotation, session))
+              expectNullAndSet("multibinds", multibinds, MetroFirAnnotation(annotation, session))
             continue
           }
           Symbols.ClassIds.Composable if (Kind.Composable in kinds) -> {
