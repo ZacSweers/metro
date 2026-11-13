@@ -235,4 +235,41 @@ class MetroDerivedBindingValidationTest : BasePlatformTestCase() {
     val binding = result.binding("test.Encoder<kotlin.String>")
     assertEquals("test.ChildEncoders.child", binding.derivation?.signature?.providerName)
   }
+
+  fun testNearerGenericProviderWithDifferentBoundsKeepsTheParentProvider() {
+    val result =
+      validate(
+        """
+        interface Encoder<T>
+
+        class Plain
+
+        @BindingContainer
+        object ParentEncoders {
+          @Provides fun <T> parent(): Encoder<T> = error("unused")
+        }
+
+        @BindingContainer
+        object ChildEncoders {
+          @Provides fun <E : Number> child(): Encoder<E> = error("unused")
+        }
+
+        @GraphExtension(bindingContainers = [ChildEncoders::class])
+        interface ChildGraph {
+          val plain: Encoder<Plain>
+        }
+
+        @DependencyGraph(bindingContainers = [ParentEncoders::class])
+        interface AppGraph {
+          val child: ChildGraph
+        }
+        """,
+        graphName = "ChildGraph",
+      )
+
+    // `Plain` isn't a `Number`, so only the parent's provider can supply it.
+    result.assertNoDiagnostics()
+    val binding = result.binding("test.Encoder<test.Plain>")
+    assertEquals("test.ParentEncoders.parent", binding.derivation?.signature?.providerName)
+  }
 }
