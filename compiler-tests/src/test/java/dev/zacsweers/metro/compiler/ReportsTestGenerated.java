@@ -376,6 +376,34 @@ public class ReportsTestGenerated extends AbstractReportsTest {
   }
 
   @Nested
+  @TestMetadata("compiler-tests/src/test/data/dump/reports/DerivedBindingExplanationsInExtension")
+  @TestDataPath("$PROJECT_ROOT")
+  public class DerivedBindingExplanationsInExtension {
+    private void run(String fileName) {
+      runTest("compiler-tests/src/test/data/dump/reports/DerivedBindingExplanationsInExtension/" + fileName);
+    }
+
+    @Test
+    public void testAllFilesPresentInDerivedBindingExplanationsInExtension() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/DerivedBindingExplanationsInExtension"), Pattern.compile("^(.+)\\.kt$"), null, true);
+    }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/dump/reports/DerivedBindingExplanationsInExtension/graph-metadata")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Graph_metadata {
+      private void run(String fileName) {
+        runTest("compiler-tests/src/test/data/dump/reports/DerivedBindingExplanationsInExtension/graph-metadata/" + fileName);
+      }
+
+      @Test
+      public void testAllFilesPresentInGraph_metadata() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/DerivedBindingExplanationsInExtension/graph-metadata"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      }
+    }
+  }
+
+  @Nested
   @TestMetadata("compiler-tests/src/test/data/dump/reports/GraphLifecycleReport")
   @TestDataPath("$PROJECT_ROOT")
   public class GraphLifecycleReport {
