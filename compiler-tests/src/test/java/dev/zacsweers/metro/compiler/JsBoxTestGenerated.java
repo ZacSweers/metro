@@ -2805,6 +2805,12 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
     }
 
     @Test
+    @TestMetadata("MultibindingWinsOverGenericProvider.kt")
+    public void testMultibindingWinsOverGenericProvider() {
+      run("MultibindingWinsOverGenericProvider.kt");
+    }
+
+    @Test
     @TestMetadata("MultipleTypeParameters.kt")
     public void testMultipleTypeParameters() {
       run("MultipleTypeParameters.kt");
@@ -2820,6 +2826,18 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
     @TestMetadata("NullabilityMatching.kt")
     public void testNullabilityMatching() {
       run("NullabilityMatching.kt");
+    }
+
+    @Test
+    @TestMetadata("NullableAndPlainProvidersCompete.kt")
+    public void testNullableAndPlainProvidersCompete() {
+      run("NullableAndPlainProvidersCompete.kt");
+    }
+
+    @Test
+    @TestMetadata("OptionalBindingWinsOverGenericProvider.kt")
+    public void testOptionalBindingWinsOverGenericProvider() {
+      run("OptionalBindingWinsOverGenericProvider.kt");
     }
 
     @Test
