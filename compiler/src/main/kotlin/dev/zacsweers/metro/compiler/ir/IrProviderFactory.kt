@@ -232,13 +232,28 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
       val concreteTypes = sourceClass.typeParameters.map { remapper.remapType(it.defaultType) }
       // Each declaration lists the container's type parameters (or copies of them) first. The
       // source function itself declares only its own type parameters.
-      val functionTypeParameterCount = functionTypeParameters.size
+      val containerCount = sourceClass.typeParameters.size
+      val factoryClassTypeParameters =
+        ProviderTypeParameterOrder.splitByContainerCount(
+          factoryClass.typeParameters,
+          containerCount,
+        )
+      val signatureTypeParameters =
+        ProviderTypeParameterOrder.splitByContainerCount(
+          signatureFunction.typeParameters,
+          containerCount,
+        )
+      val functionOwnTypeParameters =
+        ProviderTypeParameterOrder.splitByFunctionCount(
+          function.typeParameters,
+          functionTypeParameters.size,
+        )
       val containerTypeParameterLists =
         listOf(
           sourceClass.typeParameters,
-          factoryClass.typeParameters,
-          signatureFunction.typeParameters,
-          function.typeParameters.dropLast(functionTypeParameterCount),
+          factoryClassTypeParameters.container,
+          signatureTypeParameters.container,
+          functionOwnTypeParameters.container,
         )
       val factoryRemapper =
         typeRemapperFor(
@@ -313,7 +328,8 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
         companionMode = companionMode,
         parametersLazy = lazy { parameters.remapTypes(functionRemapper) },
         inlinedValue = null,
-        creatorTypeArguments = containerArguments + arguments,
+        creatorTypeArguments =
+          ProviderTypeParameterOrder.join(container = containerArguments, function = arguments),
         functionTypeArguments = arguments,
         containerTypeRemapper = containerTypeRemapper,
       )
@@ -479,7 +495,11 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
       }
       val containerTypeParameterCount = factoryClass.parentAsClass.typeParameters.size
       val signatureTypeParameters =
-        signatureFunction.typeParameters.drop(containerTypeParameterCount)
+        ProviderTypeParameterOrder.splitByContainerCount(
+            signatureFunction.typeParameters,
+            containerTypeParameterCount,
+          )
+          .function
       check(signatureTypeParameters.size == functionTypeParameters.size) {
         "Signature carrier ${signatureFunction.name} declares ${signatureTypeParameters.size} " +
           "function type parameters but ${callableMetadata.callableId} has " +

@@ -31,6 +31,7 @@ import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
 import dev.zacsweers.metro.compiler.ir.NOOP_TYPE_REMAPPER
 import dev.zacsweers.metro.compiler.ir.ProviderFactory
 import dev.zacsweers.metro.compiler.ir.ProviderFactory.Companion.lookupRealDeclaration
+import dev.zacsweers.metro.compiler.ir.ProviderTypeParameterOrder
 import dev.zacsweers.metro.compiler.ir.addBackingFieldTo
 import dev.zacsweers.metro.compiler.ir.addDefaultConstructor
 import dev.zacsweers.metro.compiler.ir.addHiddenFromObjCAnnotation
@@ -868,8 +869,12 @@ internal class BindingContainerTransformer(
             reference.parameters.extensionReceiverParameter?.let { irGet(callParameters[index++]) }
           val args = reference.parameters.regularParameters.map { irGet(callParameters[index++]) }
           // The helper declares the provider function's type parameters after the container's.
-          val functionTypeArguments =
-            function.typeParameters.drop(containerTypeParameterCount).map { it.defaultType }
+          val helperTypeParameters =
+            ProviderTypeParameterOrder.splitByContainerCount(
+              function.typeParameters,
+              containerTypeParameterCount,
+            )
+          val functionTypeArguments = helperTypeParameters.function.map { it.defaultType }
           irInvoke(
             dispatchReceiver = dispatchReceiver,
             extensionReceiver = extensionReceiver,
@@ -960,7 +965,11 @@ internal class BindingContainerTransformer(
      * position.
      */
     fun providerTypeRemapper(typeArguments: List<IrType>): TypeRemapper {
-      val sourceTypeParameters = parent.owner.typeParameters + functionTypeParameters
+      val sourceTypeParameters =
+        ProviderTypeParameterOrder.join(
+          container = parent.owner.typeParameters,
+          function = functionTypeParameters,
+        )
       if (sourceTypeParameters.isEmpty()) {
         return NOOP_TYPE_REMAPPER
       }
@@ -1399,7 +1408,11 @@ internal class BindingContainerTransformer(
             providesFunction.typeParameters
           } else {
             // The mirror copy declares the container's copies first.
-            sourceFunction.typeParameters.drop(container.typeParameters.size)
+            ProviderTypeParameterOrder.splitByContainerCount(
+                sourceFunction.typeParameters,
+                container.typeParameters.size,
+              )
+              .function
           },
       )
 

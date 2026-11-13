@@ -177,7 +177,8 @@ internal fun IrConstructorCall.toIrCallableMetadata(
         // copies of them first and then the binds function's own type parameters, which it keeps.
         val containerCount = parentClass.typeParameters.size
         remapTypes(typeRemapperFor(parentClass.typeParameters.map { it.defaultType }, this))
-        typeParameters = typeParameters.drop(containerCount)
+        typeParameters =
+          ProviderTypeParameterOrder.splitByContainerCount(typeParameters, containerCount).function
         typeParameters.forEachIndexed { index, typeParameter -> typeParameter.index = index }
       }
       val sourceNeedsInstance = !parentClass.isObject && !isCompanionBlockMember
@@ -233,6 +234,11 @@ internal fun IrConstructorCall.toIrCallableMetadata(
     signatureFunction = signatureFunction,
     // Binds mirrors already dropped the container's copies above. Provider signature carriers
     // declare them before the function's own type parameters.
-    functionTypeParameters = function.typeParameters.drop(containerTypeParameterCount),
+    functionTypeParameters =
+      ProviderTypeParameterOrder.splitByContainerCount(
+          function.typeParameters,
+          containerTypeParameterCount,
+        )
+        .function,
   )
 }

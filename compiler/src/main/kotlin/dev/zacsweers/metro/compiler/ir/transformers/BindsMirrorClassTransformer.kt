@@ -17,6 +17,7 @@ import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
 import dev.zacsweers.metro.compiler.ir.MultibindsCallable
+import dev.zacsweers.metro.compiler.ir.ProviderTypeParameterOrder
 import dev.zacsweers.metro.compiler.ir.addAnnotationCompat
 import dev.zacsweers.metro.compiler.ir.buildAnnotation
 import dev.zacsweers.metro.compiler.ir.getOrCreateMetadataVisibleHiddenNestedClass
@@ -370,8 +371,16 @@ private fun generateMirrorFunction(
               copiedContainerTypeParameters = mirrorTypeParameters,
               keepReified = false,
             )
-          val sourceTypeParameters = sourceClass.typeParameters + sourceFunctionTypeParameters
-          val copiedTypeParameters = mirrorTypeParameters + mirrorFunctionTypeParameters
+          val sourceTypeParameters =
+            ProviderTypeParameterOrder.join(
+              container = sourceClass.typeParameters,
+              function = sourceFunctionTypeParameters,
+            )
+          val copiedTypeParameters =
+            ProviderTypeParameterOrder.join(
+              container = mirrorTypeParameters,
+              function = mirrorFunctionTypeParameters,
+            )
           remapTypes(
             typeRemapperFor(
               sourceTypeParameters.zip(copiedTypeParameters).associate { (source, copied) ->

@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.compat.propertyIfAccessorCompat
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
+import dev.zacsweers.metro.compiler.ir.ProviderTypeParameterOrder
 import dev.zacsweers.metro.compiler.ir.addAnnotationCompat
 import dev.zacsweers.metro.compiler.ir.addAnnotationsCompat
 import dev.zacsweers.metro.compiler.ir.addHiddenFromObjCAnnotation
@@ -427,9 +428,12 @@ internal fun generateMetadataVisibleDeclarationMirror(
         // Generic providers declare the container's copies and then the function's own type
         // parameters with their bounds, so other modules can read the full signature.
         val sourceClass = factoryClass.parentAsClass
-        val containerCount = sourceClass.typeParameters.size
-        val copiedContainerTypeParameters =
-          copyTypeParameters(factoryClass.typeParameters.take(containerCount))
+        val factoryClassTypeParameters =
+          ProviderTypeParameterOrder.splitByContainerCount(
+            factoryClass.typeParameters,
+            sourceClass.typeParameters.size,
+          )
+        val copiedContainerTypeParameters = copyTypeParameters(factoryClassTypeParameters.container)
         val copiedFunctionTypeParameters =
           copyProviderFunctionTypeParameters(
             functionTypeParameters = target.typeParameters,
@@ -438,7 +442,11 @@ internal fun generateMetadataVisibleDeclarationMirror(
             keepReified = isInline,
           )
         buildMap {
-          val copiedTypeParameters = copiedContainerTypeParameters + copiedFunctionTypeParameters
+          val copiedTypeParameters =
+            ProviderTypeParameterOrder.join(
+              container = copiedContainerTypeParameters,
+              function = copiedFunctionTypeParameters,
+            )
           factoryClass.typeParameters.zip(copiedTypeParameters).forEach { (source, copied) ->
             put(source.symbol, copied.defaultType)
           }
@@ -551,7 +559,12 @@ private fun IrSimpleFunction.copyFactoryTypeParameters(
       put(source.symbol, copied.defaultType)
     }
   }
-  return (classTypeParameters + copiedFunctionTypeParameters) to typeRemapperFor(substitutions)
+  val allTypeParameters =
+    ProviderTypeParameterOrder.join(
+      container = classTypeParameters,
+      function = copiedFunctionTypeParameters,
+    )
+  return allTypeParameters to typeRemapperFor(substitutions)
 }
 
 /**
