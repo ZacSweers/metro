@@ -24,15 +24,25 @@ object Serializers {
 
 When a graph needs a type that has no binding of its own, Metro finds a generic provider whose return type matches and infers its type arguments. Here, a request for `KSerializer<List<User>>` calls `list(forType<User>())`. A binding that you declare for the exact type always wins over a generic one.
 
-This is experimental and off by default. Turn it on with `metro { enableDerivedBindings.set(true) }`. See the [derived bindings docs](docs/derived-bindings.md) for the full rules.
+This is experimental and off by default. Turn it on with `metro { enableDerivedBindings.set(true) }`.
 
-#### Misc
+See the [derived bindings docs](docs/derived-bindings.md) for more info. Please share feedback on the MEEP!
 
-- **[FIR/IR]** Experimental support for companion block `@Provides` functions and properties on Kotlin `2.5.0-Beta1` and later. See [companion-block configuration](docs/installation.md#companion-blocks).
-- Add experimental graph lifecycle callbacks.
-  - A graph that implements `CloseableGraph` can annotate functions with `@OnGraphInit` and `@OnGraphClose`. Metro injects their parameters and generates `close()`, which also closes the graph's extensions.
-  - With suspend provider support, callbacks can suspend and graphs can implement `SuspendCloseableGraph`.
-  - See [graph lifecycle](docs/dependency-graphs.md#graph-lifecycle).
+#### [**[MEEP-2929]**](https://github.com/ZacSweers/metro/discussions/2929) Graph lifecycle callbacks
+
+This release introduces experimental support for graph lifecycle callbacks. Graph lifecycle callbacks allow you to define functions that are called when a graph is initialized or closed. This can be useful for performing cleanup or other tasks when a graph is no longer needed.
+
+A graph that implements `CloseableGraph` can annotate functions with `@OnGraphInit` and `@OnGraphClose`. Metro invokes them at the corresponding lifecycle events, injects their parameters, and generates `close()` implementations.
+
+With suspend provider support, callbacks can suspend and implement `SuspendCloseableGraph` instead.
+
+See [graph lifecycle](docs/dependency-graphs.md#graph-lifecycle) for more info. Please share feedback on the MEEP!
+
+#### Experimental companion blocks support
+
+This release adds experimental support for companion block `@Provides` functions and properties on Kotlin `2.5.0-Beta1` and later. See [companion-block configuration](docs/installation.md#companion-blocks).
+
+**Note this feature is experimental in both Metro *and* Kotlin itself.**
 
 ### Enhancements
 
