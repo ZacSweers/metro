@@ -1,0 +1,1 @@
+parity.failures.derived.Encoder<kotlin.Pair<kotlin.String, kotlin.Int>>

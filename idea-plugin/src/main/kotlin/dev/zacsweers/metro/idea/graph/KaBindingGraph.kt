@@ -19,10 +19,12 @@ import dev.zacsweers.metro.compiler.diagnostics.invalidAssistedBindingDiagnostic
 import dev.zacsweers.metro.compiler.diagnostics.textOf
 import dev.zacsweers.metro.compiler.graph.AssistedBindingKind
 import dev.zacsweers.metro.compiler.graph.BindingGraphValidator
+import dev.zacsweers.metro.compiler.graph.DerivedBindingDiagnosticMessages
 import dev.zacsweers.metro.compiler.graph.DiagnosticRoutes
 import dev.zacsweers.metro.compiler.graph.ErrorReporter
 import dev.zacsweers.metro.compiler.graph.GraphAdjacency
 import dev.zacsweers.metro.compiler.graph.GraphValidationIssue
+import dev.zacsweers.metro.compiler.graph.MAX_DERIVED_BINDING_DEPTH
 import dev.zacsweers.metro.compiler.graph.MissingBindingHints
 import dev.zacsweers.metro.compiler.graph.MultibindingKind
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
@@ -43,7 +45,9 @@ import dev.zacsweers.metro.idea.model.KaContextualTypeKey
 import dev.zacsweers.metro.idea.model.KaTypeKey
 import dev.zacsweers.metro.idea.model.KaTypeSnapshot
 import dev.zacsweers.metro.idea.model.canonicalContextKey
+import dev.zacsweers.metro.idea.model.declarationBinding
 import dev.zacsweers.metro.idea.model.graphTypeKey
+import dev.zacsweers.metro.idea.model.unsatisfiedBoundFor
 import org.jetbrains.kotlin.name.StandardClassIds
 
 private typealias KaMutableBindingGraph =
@@ -123,8 +127,9 @@ internal class KaBindingGraph(
         }
       },
       computeBindings = { contextKey, _, stack ->
+        val requestingKey = stack.requestingKeyFor(contextKey.typeKey)
         val resolved =
-          bindingLookup.lookup(contextKey) { key, bindings ->
+          bindingLookup.lookup(contextKey, requestingKey) { key, bindings ->
             reportDuplicateBindings(key, bindings, stack)
           }
         for (binding in resolved) {
@@ -142,6 +147,10 @@ internal class KaBindingGraph(
       missingBindingDiagnosticDetails = ::missingBindingDiagnosticDetails,
       findSuspendCycleKey = ::findSuspendCycleKey,
       bindingLocationDiagnostic = sources::locationDiagnostic,
+      // Rejected derivations get their own report in validateBindings.
+      reportsMissingKeyElsewhere = { key ->
+        _bindingLookup?.divergentDerivedBindings?.containsKey(key) == true
+      },
     )
 
   private fun findSuspendCycleKey(
@@ -318,6 +327,8 @@ internal class KaBindingGraph(
     roots: Map<KaContextualTypeKey, KaBindingStack.Entry>,
     adjacency: GraphAdjacency<KaTypeKey>,
   ) {
+    reportDerivedBindingIssues()
+
     val rootsByTypeKey = roots.mapKeys { it.key.typeKey }
     val diagnosticRoutes = DiagnosticRoutes(roots, adjacency.forward)
     val structuralValidator =
@@ -363,6 +374,105 @@ internal class KaBindingGraph(
           report = ::reportSuspendDiagnostic,
         )
         .validate()
+  }
+
+  /**
+   * Reports derived binding problems on the graph like the compiler does. Each key gets its own
+   * diagnostic, sorted by key, with the shared message text.
+   */
+  private fun reportDerivedBindingIssues() {
+    if (!index.hasGenericBindings) {
+      return
+    }
+
+    if (!options.enableDerivedBindings) {
+      reportDerivedBindingsNotEnabled()
+    }
+
+    for ((key, matches) in bindingLookup.ambiguousDerivedBindings.entries.sortedBy { it.key }) {
+      ProgressManager.checkCanceled()
+      // An unchecked bound might drop a match in the compiler, so don't claim an ambiguity.
+      // Validation settles bounds in a session first, so this only skips bounds it couldn't check.
+      val boundsVerified = matches.all { it.derivation?.boundsVerified == true }
+      if (!boundsVerified) {
+        continue
+      }
+
+      val text =
+        DerivedBindingDiagnosticMessages.ambiguousDerivedBinding(
+          key = key.render(short = true),
+          providerNames = matches.renderedProviderNames(),
+        )
+
+      reportGraphDiagnostic(MetroDiagnosticId.AMBIGUOUS_DERIVED_BINDING, text, matches)
+    }
+
+    val divergent = bindingLookup.divergentDerivedBindings.entries.sortedBy { it.key }
+
+    for ((key, rejection) in divergent) {
+      ProgressManager.checkCanceled()
+      val provider = checkNotNull(rejection.template.genericSignature).providerName
+      val text =
+        when (rejection.reason) {
+          DivergentDerivedBinding.Reason.GROWING_KEY ->
+            DerivedBindingDiagnosticMessages.divergentDerivedBinding(
+              provider = provider,
+              chain = rejection.chain.map { it.render(short = true) },
+            )
+
+          DivergentDerivedBinding.Reason.DEPTH_LIMIT ->
+            DerivedBindingDiagnosticMessages.derivedBindingDepthLimit(
+              key = key.render(short = true),
+              limit = MAX_DERIVED_BINDING_DEPTH,
+            )
+        }
+
+      reportGraphDiagnostic(
+        MetroDiagnosticId.DIVERGENT_DERIVED_BINDING,
+        text,
+        listOf(rejection.template),
+      )
+    }
+  }
+
+  /**
+   * Reports the generic declarations this graph uses while its module disables derived bindings.
+   * The compiler plugin's FIR check flags declarations in the graph's own module, and the derived
+   * stage skips those. So the ones it used come from dependencies that compiled with the option. A
+   * generic declaration the graph includes but never uses isn't reported.
+   */
+  private fun reportDerivedBindingsNotEnabled() {
+    val used = bindingLookup.usedDerivedBindings.toList()
+    if (used.isEmpty()) {
+      return
+    }
+
+    val text =
+      DerivedBindingDiagnosticMessages.derivedBindingsNotEnabledForDependencies(
+        used.renderedProviderNames(),
+      )
+
+    reportGraphDiagnostic(MetroDiagnosticId.DERIVED_BINDINGS_NOT_ENABLED, text, used)
+  }
+
+  private fun reportGraphDiagnostic(
+    id: MetroDiagnosticId,
+    text: String,
+    related: List<KaBinding>,
+  ) {
+    val diagnostic = MetroDiagnostic(id = id, severity = MetroSeverity.ERROR, title = textOf(text))
+    pendingRelated = related.map { it.declarationBinding() }
+
+    try {
+      report(diagnostic, KaBindingStack(graph))
+    } finally {
+      pendingRelated = emptyList()
+    }
+  }
+
+  /** Fully qualified provider names, sorted so messages are stable. */
+  private fun List<KaBinding>.renderedProviderNames(): List<String> {
+    return mapNotNull { it.derivation?.signature?.providerName }.distinct().sorted()
   }
 
   private fun reportStructuralIssue(
@@ -714,6 +824,26 @@ internal class KaBindingGraph(
             )
         }
       }
+    }
+
+    // A generic declaration that matched except for a bound is a likely cause, so name it.
+    // The verifier settles the bounds the snapshots can't, like the derived stage did.
+    val verifier = bindingLookup.derivedBindingVerifier
+
+    for (template in index.derivedCandidates(typeKey, bindingLookup.queryPlan)) {
+      val unsatisfied = unsatisfiedBoundFor(template, typeKey, verifier) ?: continue
+      val provider = checkNotNull(template.genericSignature).providerName
+
+      notes +=
+        Note.note(
+          DerivedBindingDiagnosticMessages.unsatisfiedBoundNote(
+            key = typeKey.render(short = true),
+            provider = provider,
+            typeParameter = unsatisfied.typeParameter.name,
+            typeArgument = unsatisfied.argument.shortType,
+            bound = unsatisfied.bound.shortType,
+          ),
+        )
     }
 
     return MissingBindingHints(notes = notes, similarBindings = similar)

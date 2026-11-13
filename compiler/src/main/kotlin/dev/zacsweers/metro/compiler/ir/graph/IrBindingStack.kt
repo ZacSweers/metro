@@ -70,6 +70,11 @@ internal interface IrBindingStack :
     graphContextProvider: (() -> String?)? = null,
     override val trailingComment: String? = null,
     override val chainRoot: String? = null,
+    /**
+     * The key of the binding whose dependency this entry requests. It's null for roots and for
+     * entries that don't come from a dependency.
+     */
+    val requestingKey: IrTypeKey? = null,
   ) : BaseBindingStack.BaseEntry<IrType, IrTypeKey, IrContextualTypeKey> {
 
     private val graphContextLazy: Lazy<String?> =
@@ -95,6 +100,24 @@ internal interface IrBindingStack :
         graphContextProvider = { graphContextLazy.value },
         trailingComment = annotation,
         chainRoot = chainRoot,
+        requestingKey = requestingKey,
+      )
+    }
+
+    /** Returns a copy of this entry that records [key] as the requesting binding's key. */
+    fun withRequestingKey(key: IrTypeKey): Entry {
+      return Entry(
+        contextKey = contextKey,
+        usage = usage,
+        graphContext = null,
+        declaration = declaration,
+        displayTypeKey = displayTypeKey,
+        diagnosticNotes = diagnosticNotes,
+        isSynthetic = isSynthetic,
+        graphContextProvider = { graphContextLazy.value },
+        trailingComment = trailingComment,
+        chainRoot = chainRoot,
+        requestingKey = key,
       )
     }
 
@@ -389,6 +412,19 @@ internal fun Appendable.appendBindingStackEntries(
 }
 
 /**
+ * Returns the key of the binding that requested [key]. It reads the top entry, which is the request
+ * being resolved. Returns null for roots and when the top entry is for another key.
+ */
+internal fun IrBindingStack.requestingKeyFor(key: IrTypeKey): IrTypeKey? {
+  val top = entries.firstOrNull() ?: return null
+  if (top.typeKey != key) {
+    return null
+  }
+
+  return top.requestingKey
+}
+
+/**
  * The original declaration of the most recent entry, or null if it can't be reported in this
  * compilation. Declarations from other modules have no file here. Callers report on the graph in
  * that case.
@@ -556,6 +592,7 @@ internal fun bindingStackEntryForDependency(
         sourceParameter,
         declaration = sourceParameter ?: callingBinding.ir,
         displayTypeKey = targetKey,
+        diagnosticNotes = callingBinding.diagnosticNotes,
       )
     }
     is Provided -> {
@@ -568,6 +605,7 @@ internal fun bindingStackEntryForDependency(
         callingBinding.parameterFor(contextKey),
         displayTypeKey = targetKey,
         isSignatureFunction = false,
+        diagnosticNotes = callingBinding.diagnosticNotes,
       )
     }
     is AssistedFactory -> {

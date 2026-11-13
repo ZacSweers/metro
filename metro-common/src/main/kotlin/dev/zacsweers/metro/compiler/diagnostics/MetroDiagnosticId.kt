@@ -225,6 +225,42 @@ public enum class MetroDiagnosticId(
     classpath. Add `dev.zacsweers.metro:runtime-coroutines` to the compile and runtime classpath.
     """,
   ),
+  DERIVED_BINDINGS_NOT_ENABLED(
+    "Metro/DerivedBindingsNotEnabled",
+    "A generic binding is used while derived bindings are disabled.",
+    """
+    A graph uses a `@Provides` or `@Binds` function with type parameters, but derived bindings are
+    turned off. Enable the `enable-derived-bindings` compiler option or set
+    `metro.enableDerivedBindings` to true. Otherwise remove the type parameters from the function.
+    """,
+  ),
+  AMBIGUOUS_DERIVED_BINDING(
+    "Metro/AmbiguousDerivedBinding",
+    "Multiple generic providers match a key and none is more specific.",
+    """
+    More than one generic `@Provides` or `@Binds` function matches a requested key. None of them is
+    more specific than the others, so Metro can't pick one. Add an exact binding for the key, or make
+    one provider's return type more specific.
+    """,
+  ),
+  DERIVED_BINDING_OVERLAP(
+    "Metro/DerivedBindingOverlap",
+    "Multiple generic providers match a key and Metro picked the most specific one.",
+    """
+    More than one generic `@Provides` or `@Binds` function matches a requested key. One of them is
+    more specific than the others, and Metro uses it. This diagnostic is off by default. Configure it
+    with the `derivedBindingOverlapSeverity` Gradle option.
+    """,
+  ),
+  DIVERGENT_DERIVED_BINDING(
+    "Metro/DivergentDerivedBinding",
+    "A chain of derived bindings does not terminate.",
+    """
+    A chain of derived bindings keeps applying the same generic provider to a key that keeps
+    growing, or it exceeds the depth limit of 64. Metro stops resolving the chain at that point.
+    Check the provider's parameter types.
+    """,
+  ),
   GENERIC(
     "Metro/Error",
     "A general Metro graph validation error.",

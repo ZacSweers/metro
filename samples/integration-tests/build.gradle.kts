@@ -20,6 +20,7 @@ metro {
   enableTopLevelFunctionInjection.set(false)
   generateContributionHintsInFir.set(false)
   generateContributionHints.set(false)
+  enableDerivedBindings.set(true)
 }
 
 @OptIn(ExperimentalWasmDsl::class, ExperimentalKotlinGradlePluginApi::class)

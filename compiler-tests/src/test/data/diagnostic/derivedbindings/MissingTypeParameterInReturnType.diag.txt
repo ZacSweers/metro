@@ -1,0 +1,5 @@
+/MissingTypeParameterInReturnType.kt:13:18: error: Type parameter `T` doesn't appear in the return type of `unused`. Metro infers type arguments from the return type, so every type parameter must appear in it.
+
+/MissingTypeParameterInReturnType.kt:16:11: error: Type parameter `V` doesn't appear in the return type of `mapKeyOnly`. Metro infers type arguments from the return type, so every type parameter must appear in it.
+
+/MissingTypeParameterInReturnType.kt:26:15: error: Type parameter `T` doesn't appear in the return type of `lru`. Metro infers type arguments from the return type, so every type parameter must appear in it.

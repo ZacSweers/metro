@@ -5,15 +5,19 @@ package dev.zacsweers.metro.idea.graph
 import com.intellij.openapi.progress.ProgressManager
 import dev.zacsweers.metro.compiler.MetroClassIds
 import dev.zacsweers.metro.compiler.MetroOptions
+import dev.zacsweers.metro.compiler.graph.MAX_DERIVED_BINDING_DEPTH
+import dev.zacsweers.metro.compiler.graph.isDivergentDerivation
 import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.BindingResolutionSession
 import dev.zacsweers.metro.idea.model.BindingTier
+import dev.zacsweers.metro.idea.model.DerivedBindingVerifier
 import dev.zacsweers.metro.idea.model.GraphContext
 import dev.zacsweers.metro.idea.model.GraphPath
 import dev.zacsweers.metro.idea.model.GraphQueryContext
 import dev.zacsweers.metro.idea.model.KaAnnotationSnapshot
 import dev.zacsweers.metro.idea.model.KaAnnotationValueSnapshot
 import dev.zacsweers.metro.idea.model.KaBinding
+import dev.zacsweers.metro.idea.model.KaBindingSelection
 import dev.zacsweers.metro.idea.model.KaContextualTypeKey
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
 import dev.zacsweers.metro.idea.model.KaTypeKey
@@ -79,6 +83,52 @@ internal class KaBindingLookup(
       }
     }
 
+  /**
+   * Settles generic provider bounds the snapshots can't decide, in sessions anchored at this
+   * graph's declaration. It's null when the index has no generic declarations.
+   */
+  internal val derivedBindingVerifier: DerivedBindingVerifier? =
+    if (index.hasGenericBindings) {
+      DerivedBindingVerifier(AnalysisBoundSubtypeCheck(graph.pointer))
+    } else {
+      null
+    }
+
+  /** Each key the derived stage resolved, with its derived binding. */
+  private val derivedBindings = HashMap<KaTypeKey, KaBinding>()
+
+  /** Keys several generic declarations matched with no most specific one, with every match. */
+  private val ambiguousDerived = LinkedHashMap<KaTypeKey, List<KaBinding>>()
+
+  /**
+   * Keys the derived stage rejected because their derivation kept growing or passed the depth
+   * limit. The graph reports these instead of a missing binding.
+   */
+  private val divergentDerived = LinkedHashMap<KaTypeKey, DivergentDerivedBinding>()
+
+  /**
+   * The derived bindings whose generic declaration this graph selected for a key it requested. An
+   * ambiguous key adds every match. A generic declaration the graph includes but never matched
+   * isn't here.
+   */
+  private val usedDerived = LinkedHashSet<KaBinding>()
+
+  val usedDerivedBindings: Set<KaBinding>
+    get() = usedDerived
+
+  val ambiguousDerivedBindings: Map<KaTypeKey, List<KaBinding>>
+    get() = ambiguousDerived
+
+  val divergentDerivedBindings: Map<KaTypeKey, DivergentDerivedBinding>
+    get() = divergentDerived
+
+  /**
+   * The key of the binding that first requested each key this lookup resolved. Roots map to null.
+   * The derived stage walks these links to see its whole chain. They're only recorded when the
+   * index has generic declarations.
+   */
+  private val requesterKeys = HashMap<KaTypeKey, KaTypeKey?>()
+
   /** A lazily built view of the parent context for transitive suspend resolution. */
   private var parentSuspendLookup: KaBindingLookup? = null
   private var parentSuspendAnalysis: SuspendBindingAnalysis? = null
@@ -95,6 +145,12 @@ internal class KaBindingLookup(
   /** Releases lookup state once the graph is populated and validated. */
   fun clear() {
     syntheticElements.clear()
+    derivedBindings.clear()
+    usedDerived.clear()
+    ambiguousDerived.clear()
+    divergentDerived.clear()
+    requesterKeys.clear()
+    derivedBindingVerifier?.clear()
     parentDependencies.clear()
     reservedForParent.clear()
     parentSuspendLookup?.clear()
@@ -105,10 +161,41 @@ internal class KaBindingLookup(
 
   /**
    * Resolves the bindings satisfying [contextKey]. An empty result means missing. Duplicates are
-   * reported through [onDuplicate] and resolution continues with the first.
+   * reported through [onDuplicate] and resolution continues with the first. [requestingKey] is the
+   * key of the binding that requested [contextKey], or null for a root.
    */
   fun lookup(
     contextKey: KaContextualTypeKey,
+    requestingKey: KaTypeKey? = null,
+    onDuplicate: (KaTypeKey, List<KaBinding>) -> Unit,
+  ): Set<KaBinding> {
+    val resolved = resolve(contextKey, requestingKey, onDuplicate)
+    if (index.hasGenericBindings) {
+      recordRequester(contextKey.typeKey, requestingKey, resolved)
+    }
+
+    return resolved
+  }
+
+  /**
+   * Records which binding first requested [key] once it resolved. Population is breadth-first, so
+   * the first requester is the discovery path.
+   */
+  private fun recordRequester(key: KaTypeKey, requestingKey: KaTypeKey?, resolved: Set<KaBinding>) {
+    if (resolved.isEmpty()) {
+      return
+    }
+
+    if (key in requesterKeys) {
+      return
+    }
+
+    requesterKeys[key] = requestingKey
+  }
+
+  private fun resolve(
+    contextKey: KaContextualTypeKey,
+    requestingKey: KaTypeKey?,
     onDuplicate: (KaTypeKey, List<KaBinding>) -> Unit,
   ): Set<KaBinding> {
     ProgressManager.checkCanceled()
@@ -116,7 +203,18 @@ internal class KaBindingLookup(
     syntheticElements[typeKey]?.let {
       return setOf(delegateToParentIfScoped(it))
     }
-    val selection = index.selectBindingsForKey(contextKey, queryPlan) ?: return emptySet()
+
+    if (typeKey in divergentDerivedBindings) {
+      return emptySet()
+    }
+
+    val selection =
+      index.selectBindingsForKey(
+        contextKey,
+        queryPlan,
+        derivedBindingVerifier = derivedBindingVerifier,
+      ) ?: return emptySet()
+
     return when (selection.tier) {
       BindingTier.MULTIBINDING ->
         synthesizeMultibinding(
@@ -131,10 +229,103 @@ internal class KaBindingLookup(
         if (selection.bindings.size > 1) onDuplicate(typeKey, selection.bindings)
         setOf(delegateToParentIfScoped(selection.bindings.first()))
       }
+      BindingTier.DERIVED -> resolveDerived(typeKey, selection, requestingKey)
       BindingTier.ASSISTED_TARGET,
       BindingTier.GENERATED_GRAPH,
       BindingTier.OPTIONAL -> setOf(selection.bindings.first())
     }
+  }
+
+  /**
+   * Mirrors the compiler's derived stage after selection. Ambiguity is recorded and the first match
+   * is used. A binding an ancestor owns by scope becomes a parent dependency, and the ancestor
+   * derives it itself. Otherwise the derivation chain is checked for divergence.
+   */
+  private fun resolveDerived(
+    key: KaTypeKey,
+    selection: KaBindingSelection,
+    requestingKey: KaTypeKey?,
+  ): Set<KaBinding> {
+    val binding = selection.bindings.first()
+    usedDerived += binding
+
+    if (selection.ambiguousDerivedBindings.isNotEmpty()) {
+      ambiguousDerived.putIfAbsent(key, selection.ambiguousDerivedBindings)
+      usedDerived += selection.ambiguousDerivedBindings
+    }
+
+    val resolved = delegateToParentIfScoped(binding)
+    if (resolved !== binding) {
+      return setOf(resolved)
+    }
+
+    val rejection = checkDerivationChain(key, binding, requestingKey)
+    if (rejection != null) {
+      divergentDerived[key] = rejection
+      return emptySet()
+    }
+
+    derivedBindings[key] = binding
+    return setOf(binding)
+  }
+
+  /**
+   * Walks the requester links up from [key] and returns why deriving [key] through [binding] must
+   * stop, or null if it can go ahead. Uses the shared [isDivergentDerivation] rule and
+   * [MAX_DERIVED_BINDING_DEPTH] like the compiler.
+   */
+  private fun checkDerivationChain(
+    key: KaTypeKey,
+    binding: KaBinding,
+    requestingKey: KaTypeKey?,
+  ): DivergentDerivedBinding? {
+    val template = checkNotNull(binding.derivation).template
+
+    // Derived bindings on the chain, nearest requester first.
+    val derivedOnChain = mutableListOf<KaBinding>()
+    val visited = hashSetOf(key)
+    var requester = requestingKey
+
+    while (requester != null) {
+      ProgressManager.checkCanceled()
+      if (!visited.add(requester)) {
+        break
+      }
+
+      derivedBindings[requester]?.let(derivedOnChain::add)
+      requester = requesterKeys[requester]
+    }
+
+    val earlierFromSameTemplate =
+      derivedOnChain.filter { it.derivation?.template === template }.asReversed()
+
+    val isDivergent =
+      isDivergentDerivation(
+        newKey = key.type.identity,
+        earlierKeysFromSameProvider = earlierFromSameTemplate.map { it.typeKey.type.identity },
+      )
+
+    if (isDivergent) {
+      return DivergentDerivedBinding(
+        key = key,
+        template = template,
+        chain = earlierFromSameTemplate.map { it.typeKey } + key,
+        reason = DivergentDerivedBinding.Reason.GROWING_KEY,
+      )
+    }
+
+    // The new binding counts toward the chain's depth too.
+    val depth = derivedOnChain.size + 1
+    if (depth > MAX_DERIVED_BINDING_DEPTH) {
+      return DivergentDerivedBinding(
+        key = key,
+        template = template,
+        chain = derivedOnChain.asReversed().map { it.typeKey } + key,
+        reason = DivergentDerivedBinding.Reason.DEPTH_LIMIT,
+      )
+    }
+
+    return null
   }
 
   /**
@@ -343,6 +534,22 @@ internal class KaBindingLookup(
   }
 }
 
+/**
+ * A derived key the derived stage rejected. [chain] lists the keys that matter for the message,
+ * oldest first, ending with [key].
+ */
+internal class DivergentDerivedBinding(
+  val key: KaTypeKey,
+  val template: KaBinding,
+  val chain: List<KaTypeKey>,
+  val reason: Reason,
+) {
+  enum class Reason {
+    GROWING_KEY,
+    DEPTH_LIMIT,
+  }
+}
+
 /** Copies a multibinding contribution under its synthetic element key. */
 private fun KaBinding.withElementKey(elementKey: KaTypeKey): KaBinding {
   return when (this) {
@@ -398,5 +605,6 @@ private fun KaBinding.Alias.copy(
     isClassContribution = isClassContribution,
     hintAvailability = hintAvailability,
     isGraphPrivate = isGraphPrivate,
+    derivation = derivation,
   )
 }

@@ -8,7 +8,7 @@ import org.junit.Test
 class BindingSelectionTest {
   @Test
   fun `first result wins without evaluating later lookups`() {
-    for (winner in 0..3) {
+    for (winner in 0..4) {
       val binding = Any()
       val visited = mutableListOf<Int>()
       fun lookup(stage: Int): Any? {
@@ -21,7 +21,8 @@ class BindingSelectionTest {
           registered = { lookup(0) },
           multibinding = { lookup(1) },
           optional = { lookup(2) },
-          implicit = { lookup(3) },
+          derived = { lookup(3) },
+          implicit = { lookup(4) },
         )
 
       assertThat(selected).isSameInstanceAs(binding)
@@ -42,11 +43,12 @@ class BindingSelectionTest {
         registered = { missing(0) },
         multibinding = { missing(1) },
         optional = { missing(2) },
-        implicit = { missing(3) },
+        derived = { missing(3) },
+        implicit = { missing(4) },
       )
 
     assertThat(selected).isNull()
-    assertThat(visited).containsExactly(0, 1, 2, 3).inOrder()
+    assertThat(visited).containsExactly(0, 1, 2, 3, 4).inOrder()
   }
 
   @Test
@@ -57,9 +59,41 @@ class BindingSelectionTest {
         registered = { bindings },
         multibinding = { error("Registered lookup already completed") },
         optional = { error("Registered lookup already completed") },
+        derived = { error("Registered lookup already completed") },
         implicit = { error("Registered lookup already completed") },
       )
 
     assertThat(selected).isSameInstanceAs(bindings)
+  }
+
+  @Test
+  fun `derived runs after optional and before implicit`() {
+    val derivedBinding = Any()
+    val visited = mutableListOf<String>()
+    val selected =
+      selectBinding(
+        registered = {
+          visited += "registered"
+          null
+        },
+        multibinding = {
+          visited += "multibinding"
+          null
+        },
+        optional = {
+          visited += "optional"
+          null
+        },
+        derived = {
+          visited += "derived"
+          derivedBinding
+        },
+        implicit = { error("Derived lookup already completed") },
+      )
+
+    assertThat(selected).isSameInstanceAs(derivedBinding)
+    assertThat(visited)
+      .containsExactly("registered", "multibinding", "optional", "derived")
+      .inOrder()
   }
 }

@@ -20,6 +20,9 @@ package dev.zacsweers.metro
  * // Or bind into a multibinding
  * @Binds @IntoSet val Impl.bind: Base
  * ```
+ *
+ * [Binds] functions can declare type parameters when derived bindings are enabled. See the
+ * [derived bindings docs](https://zacsweers.github.io/metro/latest/derived-bindings/).
  */
 @Target(AnnotationTarget.FUNCTION, AnnotationTarget.PROPERTY_GETTER, AnnotationTarget.PROPERTY)
 public annotation class Binds

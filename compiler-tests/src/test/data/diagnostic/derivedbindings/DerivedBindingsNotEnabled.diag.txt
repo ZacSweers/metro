@@ -1,0 +1,5 @@
+/DerivedBindingsNotEnabled.kt:12:18: error: Type parameters on `@Provides` and `@Binds` functions need derived bindings, which are disabled. Enable the `enable-derived-bindings` compiler option or set `metro.enableDerivedBindings` to true.
+
+/DerivedBindingsNotEnabled.kt:15:8: error: Type parameters on `@Provides` and `@Binds` functions need derived bindings, which are disabled. Enable the `enable-derived-bindings` compiler option or set `metro.enableDerivedBindings` to true.
+
+/DerivedBindingsNotEnabled.kt:21:15: error: Type parameters on `@Provides` and `@Binds` functions need derived bindings, which are disabled. Enable the `enable-derived-bindings` compiler option or set `metro.enableDerivedBindings` to true.

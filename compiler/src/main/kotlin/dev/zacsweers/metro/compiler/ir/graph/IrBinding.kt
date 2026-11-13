@@ -338,6 +338,9 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
           ?: (providerFactory.realDeclaration as? IrDeclarationWithName)
           ?: providerFactory.function
 
+    /** Says which generic provider derived this binding, if one did. */
+    override val diagnosticNotes: List<Note> by memoize { derivedBindingNotes() }
+
     override val diagnosticTypeName: String
       get() {
         val name = originClass?.name?.asString() ?: originClassId?.shortClassName?.asString()
@@ -481,6 +484,9 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val reportableDeclaration: IrDeclarationWithName? by memoize {
       bindsCallable?.resolveSourceDeclaration()?.first
     }
+
+    /** Says which generic binds function derived this binding, if one did. */
+    override val diagnosticNotes: List<Note> by memoize { derivedBindingNotes() }
 
     override fun renderLocationDiagnostic(
       short: Boolean,

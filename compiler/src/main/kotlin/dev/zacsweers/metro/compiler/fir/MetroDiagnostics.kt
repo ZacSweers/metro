@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.fir
 
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ADHOC_GRAPH_EXTENSION_FACTORY
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.AGGREGATION_ERROR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.AMBIGUOUS_DERIVED_BINDING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.AMBIGUOUS_INJECT_CONSTRUCTOR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ASSISTED_FACTORIES_CANNOT_BE_LAZY
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ASSISTED_FACTORY_SUSPEND_REQUIRED
@@ -29,8 +30,12 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DAGGER_REUSABLE_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DEFAULT_BINDING_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DEPENDENCY_GRAPH_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DEPENDENCY_GRAPH_MUTABLE_PROPERTY
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DERIVED_BINDINGS_NOT_ENABLED
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DERIVED_BINDING_OVERLAP_ERROR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DERIVED_BINDING_OVERLAP_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DESUGARED_PROVIDER_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DESUGARED_PROVIDER_WARNING
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DIVERGENT_DERIVED_BINDING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DUPLICATE_BINDING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DUPLICATE_MAP_KEY
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.EMPTY_MULTIBINDING
@@ -94,6 +99,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDES_PROPERTIES_CAN
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDES_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.QUALIFIER_OVERRIDE_MISMATCH
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.REDUNDANT_PROVIDES
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.REIFIED_PROVIDES_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SCOPED_GRAPH_ACCESSOR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SCOPED_GRAPH_FACTORY_PARAMETER
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SCOPED_PROVIDES_SHOULD_BE_PRIVATE_ERROR
@@ -179,6 +185,7 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val INJECTED_CLASSES_MUST_BE_VISIBLE by error1<KtElement, String>(VISIBILITY_MODIFIER)
   val PROVIDERS_OF_LAZY_MUST_BE_METRO_ONLY by error2<KtElement, String, String>(NAME_IDENTIFIER)
   val SUSPEND_PROVIDERS_NOT_ENABLED by error1<KtElement, String>(NAME_IDENTIFIER)
+  val DERIVED_BINDINGS_NOT_ENABLED by error1<KtElement, String>(NAME_IDENTIFIER)
   val UNSUPPORTED_SUSPEND_MAP_VALUE by error1<KtElement, String>(NAME_IDENTIFIER)
 
   // Assisted factory/inject errors
@@ -195,6 +202,7 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val PROVIDES_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val PROVIDES_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
   val INLINE_PROVIDES_WARNING by warning1<KtElement, String>(INLINE_FUN_MODIFIER)
+  val REIFIED_PROVIDES_ERROR by error1<KtElement, String>(INLINE_FUN_MODIFIER)
   val INLINABLE_PROVIDES_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
   val REDUNDANT_PROVIDES by warning1<KtElement, String>(NAME_IDENTIFIER)
   val CONFLICTING_PROVIDES_SCOPE by warning1<KtElement, String>(NAME_IDENTIFIER)
@@ -268,6 +276,10 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val SUSPEND_BINDING_FROM_NON_SUSPEND_ACCESSOR by error1<KtElement, String>(NAME_IDENTIFIER)
   val SUSPEND_BINDING_WRAPPED_IN_PROVIDER by error1<KtElement, String>(NAME_IDENTIFIER)
   val SUSPEND_BINDING_WRAPPED_IN_LAZY by error1<KtElement, String>(NAME_IDENTIFIER)
+  val AMBIGUOUS_DERIVED_BINDING by error1<KtElement, String>(NAME_IDENTIFIER)
+  val DERIVED_BINDING_OVERLAP_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
+  val DERIVED_BINDING_OVERLAP_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
+  val DIVERGENT_DERIVED_BINDING by error1<KtElement, String>(NAME_IDENTIFIER)
   val MEMBER_INJECTION_OVER_SUSPEND_BINDING by error1<KtElement, String>(NAME_IDENTIFIER)
   val ASSISTED_FACTORY_SUSPEND_REQUIRED by error1<KtElement, String>(NAME_IDENTIFIER)
   val MULTIBINDING_OVER_SUSPEND_BINDINGS by error1<KtElement, String>(NAME_IDENTIFIER)
@@ -380,6 +392,7 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
           "{0}",
           STRING,
         )
+        put(DERIVED_BINDINGS_NOT_ENABLED, "{0}", STRING)
         put(
           UNSUPPORTED_SUSPEND_MAP_VALUE,
           "Map value `{0}` is not a supported suspend map value. Map values support suspension as `Map<K, suspend () -> V>` or `Map<K, SuspendProvider<V>>`. `SuspendLazy` and additional suspend-wrapper layers in map value position are unsupported.",
@@ -390,6 +403,7 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
         put(PROVIDES_ERROR, "{0}", STRING)
         put(PROVIDES_WARNING, "{0}", STRING)
         put(INLINE_PROVIDES_WARNING, "{0}", STRING)
+        put(REIFIED_PROVIDES_ERROR, "{0}", STRING)
         put(INLINABLE_PROVIDES_WARNING, "{0}", STRING)
         put(REDUNDANT_PROVIDES, "{0}", STRING)
         put(CONFLICTING_PROVIDES_SCOPE, "{0}", STRING)
@@ -484,6 +498,10 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
         put(SUSPEND_BINDING_FROM_NON_SUSPEND_ACCESSOR, "{0}", TO_STRING)
         put(SUSPEND_BINDING_WRAPPED_IN_PROVIDER, "{0}", TO_STRING)
         put(SUSPEND_BINDING_WRAPPED_IN_LAZY, "{0}", TO_STRING)
+        put(AMBIGUOUS_DERIVED_BINDING, "{0}", TO_STRING)
+        put(DERIVED_BINDING_OVERLAP_ERROR, "{0}", STRING)
+        put(DERIVED_BINDING_OVERLAP_WARNING, "{0}", STRING)
+        put(DIVERGENT_DERIVED_BINDING, "{0}", TO_STRING)
         put(MEMBER_INJECTION_OVER_SUSPEND_BINDING, "{0}", TO_STRING)
         put(ASSISTED_FACTORY_SUSPEND_REQUIRED, "{0}", TO_STRING)
         put(MULTIBINDING_OVER_SUSPEND_BINDINGS, "{0}", TO_STRING)

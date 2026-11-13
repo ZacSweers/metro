@@ -1,0 +1,3 @@
+/DerivedBindingOverlapWarning.kt:23:11: warning: [Metro/DerivedBindingOverlap] `Encoder<List<String>>` matches the generic providers `Encoders.anything` and `Encoders.list`. Metro uses `Encoders.list` because its return type is the most specific.
+
+[Metro/DerivedBindingOverlap] `Encoder<Map<String, Int>>` matches the generic providers `Encoders.anything`, `Encoders.map`, and `Encoders.stringMap`. Metro uses `Encoders.stringMap` because its return type is the most specific.

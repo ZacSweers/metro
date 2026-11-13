@@ -5,6 +5,7 @@ package dev.zacsweers.metro.idea.model
 import com.intellij.psi.PsiElement
 import com.intellij.psi.SmartPsiElementPointer
 import dev.zacsweers.metro.compiler.MetroClassIds
+import dev.zacsweers.metro.compiler.diagnostics.Note
 import dev.zacsweers.metro.compiler.graph.BaseBinding
 import dev.zacsweers.metro.compiler.graph.LocationDiagnostic
 import dev.zacsweers.metro.compiler.graph.MergeContribution
@@ -93,6 +94,21 @@ internal sealed interface KaBinding :
   val mapKeyValue: String?
     get() = null
 
+  /**
+   * Type parameters of a generic `@Provides` or `@Binds` declaration. Its [typeKey] mentions them,
+   * so it's a pattern and never binds that exact key. The derived stage matches it against
+   * requested keys.
+   */
+  val genericSignature: GenericBindingSignature?
+    get() = null
+
+  /** The generic declaration and type arguments this binding was derived from, if any. */
+  val derivation: BindingDerivation?
+    get() = null
+
+  override val diagnosticNotes: List<Note>
+    get() = derivation?.notes(typeKey).orEmpty()
+
   /** Human-readable kind label for markers, popups, and diagnostics. */
   val label: String
 
@@ -177,6 +193,8 @@ internal sealed interface KaBinding :
     override val isSuspend: Boolean = false,
     override val hintAvailability: HintAvailability? = null,
     override val isGraphPrivate: Boolean = false,
+    override val genericSignature: GenericBindingSignature? = null,
+    override val derivation: BindingDerivation? = null,
   ) : KaBinding {
     override val contextualTypeKey = typeKey.canonicalContextKey()
 
@@ -206,6 +224,8 @@ internal sealed interface KaBinding :
     val isClassContribution: Boolean = false,
     override val hintAvailability: HintAvailability? = null,
     override val isGraphPrivate: Boolean = false,
+    override val genericSignature: GenericBindingSignature? = null,
+    override val derivation: BindingDerivation? = null,
   ) : KaBinding {
     override val contextualTypeKey = typeKey.canonicalContextKey()
 

@@ -11,9 +11,13 @@ Diagnostics rendering is controlled by the `diagnosticsRenderMode` Gradle option
 
 | Diagnostic | Summary |
 |------------|---------|
+| [`Metro/AmbiguousDerivedBinding`](#ambiguousderivedbinding) | Multiple generic providers match a key and none is more specific. |
 | [`Metro/AssistedFactorySuspendRequired`](#assistedfactorysuspendrequired) | An assisted factory creates a target that depends on suspend bindings. |
 | [`Metro/CloseOnlyBinding`](#closeonlybinding) | Only close callbacks request a binding. |
 | [`Metro/DependencyCycle`](#dependencycycle) | A binding cycle has no deferred edge. |
+| [`Metro/DerivedBindingOverlap`](#derivedbindingoverlap) | Multiple generic providers match a key and Metro picked the most specific one. |
+| [`Metro/DerivedBindingsNotEnabled`](#derivedbindingsnotenabled) | A generic binding is used while derived bindings are disabled. |
+| [`Metro/DivergentDerivedBinding`](#divergentderivedbinding) | A chain of derived bindings does not terminate. |
 | [`Metro/DuplicateBinding`](#duplicatebinding) | Multiple bindings match the same type key. |
 | [`Metro/DuplicateMapKeys`](#duplicatemapkeys) | Multiple map contributions use the same key. |
 | [`Metro/EmptyMultibinding`](#emptymultibinding) | A declared multibinding has no contributions. |
@@ -35,6 +39,14 @@ Diagnostics rendering is controlled by the `diagnosticsRenderMode` Gradle option
 | [`Metro/UnprocessedUpstreamDeclaration`](#unprocessedupstreamdeclaration) | An upstream declaration does not appear to have been processed by Metro. |
 | [`Metro/UnscopedLifecycleParameter`](#unscopedlifecycleparameter) | A lifecycle callback requests an unscoped binding directly. |
 | [`Metro/UnusedGraphInputs`](#unusedgraphinputs) | A graph input is unused and can be removed. |
+
+## AmbiguousDerivedBinding
+
+**Diagnostic:** `Metro/AmbiguousDerivedBinding`
+
+**Summary:** Multiple generic providers match a key and none is more specific.
+
+More than one generic `@Provides` or `@Binds` function matches a requested key. None of them is more specific than the others, so Metro can't pick one. Add an exact binding for the key, or make one provider's return type more specific.
 
 ## AssistedFactorySuspendRequired
 
@@ -59,6 +71,30 @@ Closing the graph creates the instance just so a close callback can receive it. 
 **Summary:** A binding cycle has no deferred edge.
 
 Bindings depend on each other in a loop where every dependency is needed immediately. Break the cycle by changing one edge to a deferred type such as `() -> T` or `Lazy<T>`, which delays initialization until first use. If the cycle is between graphs that extend or depend on each other, restructure the graph relationship instead.
+
+## DerivedBindingOverlap
+
+**Diagnostic:** `Metro/DerivedBindingOverlap`
+
+**Summary:** Multiple generic providers match a key and Metro picked the most specific one.
+
+More than one generic `@Provides` or `@Binds` function matches a requested key. One of them is more specific than the others, and Metro uses it. This diagnostic is off by default. Configure it with the `derivedBindingOverlapSeverity` Gradle option.
+
+## DerivedBindingsNotEnabled
+
+**Diagnostic:** `Metro/DerivedBindingsNotEnabled`
+
+**Summary:** A generic binding is used while derived bindings are disabled.
+
+A graph uses a `@Provides` or `@Binds` function with type parameters, but derived bindings are turned off. Enable the `enable-derived-bindings` compiler option or set `metro.enableDerivedBindings` to true. Otherwise remove the type parameters from the function.
+
+## DivergentDerivedBinding
+
+**Diagnostic:** `Metro/DivergentDerivedBinding`
+
+**Summary:** A chain of derived bindings does not terminate.
+
+A chain of derived bindings keeps applying the same generic provider to a key that keeps growing, or it exceeds the depth limit of 64. Metro stops resolving the chain at that point. Check the provider's parameter types.
 
 ## DuplicateBinding
 

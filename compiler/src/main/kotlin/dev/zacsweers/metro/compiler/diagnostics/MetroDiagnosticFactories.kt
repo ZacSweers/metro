@@ -47,5 +47,10 @@ internal val MetroDiagnosticId.factory: KtDiagnosticFactory1<String>
       MetroDiagnosticId.MULTIBINDING_OVER_SUSPEND_BINDINGS ->
         MetroDiagnostics.MULTIBINDING_OVER_SUSPEND_BINDINGS
       MetroDiagnosticId.MISSING_RUNTIME_COROUTINES -> MetroDiagnostics.MISSING_RUNTIME_COROUTINES
+      MetroDiagnosticId.DERIVED_BINDINGS_NOT_ENABLED ->
+        MetroDiagnostics.DERIVED_BINDINGS_NOT_ENABLED
+      MetroDiagnosticId.AMBIGUOUS_DERIVED_BINDING -> MetroDiagnostics.AMBIGUOUS_DERIVED_BINDING
+      MetroDiagnosticId.DERIVED_BINDING_OVERLAP -> MetroDiagnostics.DERIVED_BINDING_OVERLAP_WARNING
+      MetroDiagnosticId.DIVERGENT_DERIVED_BINDING -> MetroDiagnostics.DIVERGENT_DERIVED_BINDING
       MetroDiagnosticId.GENERIC -> MetroDiagnostics.METRO_ERROR
     }

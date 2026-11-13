@@ -21,9 +21,11 @@ import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.render
 import dev.zacsweers.metro.compiler.fir.scopeAnnotations
 import dev.zacsweers.metro.compiler.fir.toClassSymbolCompat
+import dev.zacsweers.metro.compiler.fir.typeParameterSymbolCompat
 import dev.zacsweers.metro.compiler.fir.usesContributionProviderPath
 import dev.zacsweers.metro.compiler.fir.validateBindingSource
 import dev.zacsweers.metro.compiler.fir.validateInjectionSiteType
+import dev.zacsweers.metro.compiler.graph.DerivedBindingDiagnosticMessages
 import dev.zacsweers.metro.compiler.graph.SuspendDiagnosticMessages
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.metroAnnotations
@@ -90,6 +92,13 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertyAccessorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirTypeParameterSymbol
+import org.jetbrains.kotlin.fir.types.ConeClassLikeType
+import org.jetbrains.kotlin.fir.types.ConeDefinitelyNotNullType
+import org.jetbrains.kotlin.fir.types.ConeFlexibleType
+import org.jetbrains.kotlin.fir.types.ConeIntersectionType
+import org.jetbrains.kotlin.fir.types.ConeKotlinType
+import org.jetbrains.kotlin.fir.types.ConeTypeParameterType
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
@@ -287,7 +296,22 @@ internal object BindingContainerCallableChecker :
         )
       }
 
-      if (declaration.typeParameters.isNotEmpty()) {
+      val derivedBindingsEnabled = session.metroFirBuiltIns.options.enableDerivedBindings
+      val typeParameters = declaration.symbol.typeParameterSymbols
+      val isGenericBindingFunction =
+        typeParameters.isNotEmpty() && declaration.supportsDerivedBinding(session, annotations)
+
+      if (isGenericBindingFunction) {
+        if (derivedBindingsEnabled) {
+          validateDerivedBindingDeclaration(declaration, annotations, source)
+        } else {
+          reporter.reportOn(
+            typeParameters.first().source ?: source,
+            MetroDiagnostics.DERIVED_BINDINGS_NOT_ENABLED,
+            DerivedBindingDiagnosticMessages.DERIVED_BINDINGS_NOT_ENABLED,
+          )
+        }
+      } else if (typeParameters.isNotEmpty()) {
         val type =
           if (annotations.isProvides) {
             "Provides"
@@ -303,6 +327,12 @@ internal object BindingContainerCallableChecker :
         )
       }
 
+      // The graph calls reified providers directly, so they follow stricter visibility rules.
+      val isDerivedProvider =
+        isGenericBindingFunction && derivedBindingsEnabled && annotations.isProvides
+      val hasReifiedTypeParameter = typeParameters.any { it.isReified }
+      val isReifiedProvider = isDerivedProvider && hasReifiedTypeParameter
+
       // Ensure declarations are within a class/companion object/interface
       if (declaration.symbol.containingClassLookupTag() == null) {
         reporter.reportOn(
@@ -315,7 +345,9 @@ internal object BindingContainerCallableChecker :
       }
 
       if (annotations.isProvides) {
-        if (declaration.isInline) {
+        if (isReifiedProvider) {
+          validateReifiedProviderVisibility(declaration, source)
+        } else if (declaration.isInline) {
           // Inline provides cannot be scoped nor is it useful for them to be private
           if (annotations.scope != null) {
             reporter.reportOn(
@@ -446,7 +478,8 @@ internal object BindingContainerCallableChecker :
           declaration !is FirProperty &&
           publicScopedProviderSeverity.isEnabled
 
-      if (shouldReportForPublic) {
+      // A scoped reified provider must stay callable from the graph.
+      if (shouldReportForPublic && !isReifiedProvider) {
         val message = "Scoped @Provides declarations should be private."
         val diagnosticFactory =
           when (publicScopedProviderSeverity) {
@@ -802,6 +835,165 @@ internal object BindingContainerCallableChecker :
       isOptionalBinding = isOptionalBinding,
       hasDefault = false,
     )
+  }
+
+  /**
+   * Returns true if type parameters on this declaration can describe a derived binding. Only
+   * `@Provides` and `@Binds` functions qualify. `@Multibinds` declarations and properties don't.
+   */
+  private fun FirCallableDeclaration.supportsDerivedBinding(
+    session: FirSession,
+    annotations: MetroAnnotations<MetroFirAnnotation>,
+  ): Boolean {
+    if (annotations.isMultibinds) {
+      return false
+    }
+
+    if (this !is FirFunction) {
+      return false
+    }
+
+    val function = this
+    val isNamedFunction = with(session.compatContext) { function.isNamedFunction() }
+    if (!isNamedFunction) {
+      return false
+    }
+
+    return annotations.isProvides || annotations.isBinds
+  }
+
+  /**
+   * Validates a `@Provides` or `@Binds` function with type parameters while derived bindings are
+   * enabled. The graph infers type arguments by matching a requested key against the return type,
+   * so the return type has to mention every type parameter and can't be a bare type parameter.
+   * Generic multibinding contributions aren't supported.
+   */
+  context(context: CheckerContext, reporter: DiagnosticReporter)
+  private fun validateDerivedBindingDeclaration(
+    declaration: FirCallableDeclaration,
+    annotations: MetroAnnotations<MetroFirAnnotation>,
+    source: KtSourceElement,
+  ) {
+    val session = context.session
+    val kind =
+      if (annotations.isProvides) {
+        "Provides"
+      } else {
+        "Binds"
+      }
+
+    val returnTypeRef = declaration.returnTypeRef
+    val returnType = returnTypeRef.coneTypeOrNull
+
+    if (returnType != null) {
+      val returnTypeParameters = mutableSetOf<FirTypeParameterSymbol>()
+      returnType.collectTypeParameterSymbols(session, returnTypeParameters)
+
+      for (typeParameter in declaration.symbol.typeParameterSymbols) {
+        if (typeParameter in returnTypeParameters) {
+          continue
+        }
+
+        reporter.reportOn(
+          typeParameter.source ?: source,
+          MetroDiagnostics.METRO_TYPE_PARAMETERS_ERROR,
+          "Type parameter `${typeParameter.name}` doesn't appear in the return type of " +
+            "`${declaration.nameOrSpecialName}`. Metro infers type arguments from the return " +
+            "type, so every type parameter must appear in it.",
+        )
+      }
+
+      val isBareTypeParameter =
+        returnType is ConeTypeParameterType || returnType is ConeDefinitelyNotNullType
+      if (isBareTypeParameter) {
+        reporter.reportOn(
+          returnTypeRef.source ?: source,
+          MetroDiagnostics.METRO_TYPE_PARAMETERS_ERROR,
+          "`@$kind` functions can't return a bare type parameter like " +
+            "`${returnType.render(short = true)}`. It would match every key.",
+        )
+      }
+    }
+
+    val isSetContribution = annotations.isIntoSet || annotations.isElementsIntoSet
+    val isMultibindingContribution = isSetContribution || annotations.isIntoMap
+    if (isMultibindingContribution) {
+      val multibindingSource = declaration.multibindingAnnotationSource(session, annotations)
+      reporter.reportOn(
+        multibindingSource ?: source,
+        MetroDiagnostics.METRO_TYPE_PARAMETERS_ERROR,
+        "`@$kind` functions with type parameters can't contribute to multibindings.",
+      )
+    }
+  }
+
+  /**
+   * Validates the visibility of a `@Provides` function with a `reified` type parameter. The graph
+   * can't use the factory class for these and has to call the function itself.
+   */
+  context(context: CheckerContext, reporter: DiagnosticReporter)
+  private fun validateReifiedProviderVisibility(
+    declaration: FirCallableDeclaration,
+    source: KtSourceElement,
+  ) {
+    val effectiveVisibility = declaration.effectiveVisibility
+    if (effectiveVisibility.publicApi) {
+      return
+    }
+
+    val isEffectivelyInternal = effectiveVisibility == EffectiveVisibility.Internal
+    // FIR's effective visibility doesn't account for `@PublishedApi`. Kotlin also needs it on each
+    // internal containing class before a public inline function can call the provider.
+    val isPublishedApi = declaration.symbol.isPublishedApi(context.session)
+    if (isEffectivelyInternal && isPublishedApi) {
+      return
+    }
+
+    val reason =
+      if (isEffectivelyInternal) {
+        "This provider is effectively internal. Every internal declaration from the provider up " +
+          "through its containing classes needs `@PublishedApi`."
+      } else {
+        "Its effective visibility is ${effectiveVisibility.name}."
+      }
+
+    reporter.reportOn(
+      source,
+      MetroDiagnostics.REIFIED_PROVIDES_ERROR,
+      "The graph must be able to call a reified provider, so it must be public or " +
+        "`@PublishedApi internal`. $reason",
+    )
+  }
+
+  /** Adds every type parameter that appears anywhere in this type to [into]. */
+  private fun ConeKotlinType.collectTypeParameterSymbols(
+    session: FirSession,
+    into: MutableSet<FirTypeParameterSymbol>,
+  ) {
+    when (this) {
+      is ConeTypeParameterType -> into += typeParameterSymbolCompat(session)
+
+      is ConeDefinitelyNotNullType -> original.collectTypeParameterSymbols(session, into)
+
+      is ConeFlexibleType -> {
+        lowerBound.collectTypeParameterSymbols(session, into)
+        upperBound.collectTypeParameterSymbols(session, into)
+      }
+
+      is ConeIntersectionType -> {
+        for (type in intersectedTypes) {
+          type.collectTypeParameterSymbols(session, into)
+        }
+      }
+
+      is ConeClassLikeType -> {
+        for (argument in typeArguments) {
+          argument.type?.collectTypeParameterSymbols(session, into)
+        }
+      }
+
+      else -> {}
+    }
   }
 
   private fun FirCallableDeclaration.multibindingAnnotationSource(

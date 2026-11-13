@@ -18,6 +18,8 @@ Provider _properties_ cannot be private yet due to [KT-76257](https://youtrack.j
 
 Providers may also be declared in [binding Containers](dependency-graphs.md#binding-containers).
 
+Provider functions can declare type parameters when [derived bindings](derived-bindings.md) are enabled.
+
 !!! tip
     It’s recommended to *not* call providers from each other.
 

@@ -1,0 +1,11 @@
+/UnsatisfiedBound.kt:19:7: error: [Metro/MissingBinding] No binding found for Encoder<List<String>>
+
+  trace (in AppGraph):
+      Encoder<List<String>> is requested at AppGraph.strings
+
+  note: `Encoders.numbers` can't provide `Encoder<List<String>>` because `T = String` doesn't
+        satisfy `T : Number`
+  help: ensure Encoder<List<String>> has an @Inject constructor or is provided by an @Provides or
+        @Binds declaration visible to AppGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
+

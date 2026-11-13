@@ -1,0 +1,1 @@
+/TypeAliasReturnTypes.kt:18:18: error: Type parameter `T` doesn't appear in the return type of `ignored`. Metro infers type arguments from the return type, so every type parameter must appear in it.

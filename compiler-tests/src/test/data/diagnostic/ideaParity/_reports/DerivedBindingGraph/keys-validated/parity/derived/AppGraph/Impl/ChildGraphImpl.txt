@@ -1,0 +1,5 @@
+parity.derived.LruCache<parity.derived.User>
+parity.derived.Cache<parity.derived.User>
+parity.derived.Encoder<parity.derived.User>
+parity.derived.Encoder<kotlin.collections.List<parity.derived.User>>
+parity.derived.Encoder<kotlin.collections.List<kotlin.collections.List<parity.derived.User>>>

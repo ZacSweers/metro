@@ -126,6 +126,18 @@ internal fun Project.metroCompilerPluginOptions(
     )
     add(
       metroOption(
+        MetroOption.DERIVED_BINDING_OVERLAP_SEVERITY,
+        extension.derivedBindingOverlapSeverity.map { severity ->
+          check(!severity.isIdeOnly) {
+            "metro.derivedBindingOverlapSeverity (set to ${severity.name}) does not support ${severity.name} " +
+              "because derived binding overlap detection only runs during IR (CLI-only). Use WARN, ERROR, or NONE instead."
+          }
+          severity
+        },
+      ),
+    )
+    add(
+      metroOption(
         MetroOption.ENABLE_TOP_LEVEL_FUNCTION_INJECTION,
         extension.enableTopLevelFunctionInjection,
       ),
@@ -145,6 +157,7 @@ internal fun Project.metroCompilerPluginOptions(
     )
     add(metroOption(MetroOption.ENABLE_FUNCTION_PROVIDERS, extension.enableFunctionProviders))
     add(metroOption(MetroOption.ENABLE_SUSPEND_PROVIDERS, extension.enableSuspendProviders))
+    add(metroOption(MetroOption.ENABLE_DERIVED_BINDINGS, extension.enableDerivedBindings))
     add(metroOption(MetroOption.DESUGARED_PROVIDER_SEVERITY, extension.desugaredProviderSeverity))
     add(
       metroOption(

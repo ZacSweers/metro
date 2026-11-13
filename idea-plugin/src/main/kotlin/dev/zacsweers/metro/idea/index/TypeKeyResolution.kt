@@ -17,11 +17,13 @@ import dev.zacsweers.metro.compiler.graph.mapTypes
 import dev.zacsweers.metro.idea.model.KaAnnotationSnapshot
 import dev.zacsweers.metro.idea.model.KaContextualTypeKey
 import dev.zacsweers.metro.idea.model.KaTypeArgumentSnapshot
+import dev.zacsweers.metro.idea.model.KaTypeHierarchy
 import dev.zacsweers.metro.idea.model.KaTypeKey
 import dev.zacsweers.metro.idea.model.KaTypeSnapshot
 import dev.zacsweers.metro.idea.model.multibindingId
 import dev.zacsweers.metro.idea.qualifierAnnotation
 import org.jetbrains.kotlin.analysis.api.KaSession
+import org.jetbrains.kotlin.analysis.api.components.KaSubtypingErrorTypePolicy
 import org.jetbrains.kotlin.analysis.api.renderer.types.KaExpandedTypeRenderingMode
 import org.jetbrains.kotlin.analysis.api.renderer.types.impl.KaTypeRendererForSource
 import org.jetbrains.kotlin.analysis.api.symbols.KaCallableSymbol
@@ -95,11 +97,28 @@ internal fun KaSession.optionalTypeKey(
   return KaTypeKey(snapshot, qualifier)
 }
 
-/** Builds a session-free type snapshot for the current analysis session. */
-internal fun KaSession.typeSnapshot(type: KaType): KaTypeSnapshot {
+/**
+ * Builds a session-free type snapshot for the current analysis session.
+ *
+ * [captureHierarchy] also records a [KaTypeHierarchy] for each class type in [type], at every
+ * depth. Derived bindings read it to check type parameter bounds after the session ends. It walks
+ * each class type's supertypes, so callers only ask for it when derived bindings are enabled.
+ */
+internal fun KaSession.typeSnapshot(
+  type: KaType,
+  captureHierarchy: Boolean = false,
+): KaTypeSnapshot {
   val expanded = type.fullyExpandedType
   val classType = expanded as? KaClassType
   val classId = classType?.classId ?: (expanded.expandedSymbol as? KaNamedClassSymbol)?.classId
+
+  val hierarchy =
+    if (captureHierarchy && classType != null) {
+      typeHierarchy(classType)
+    } else {
+      null
+    }
+
   return KaTypeSnapshot(
     renderKeyType(expanded),
     renderShortKeyType(expanded),
@@ -108,7 +127,10 @@ internal fun KaSession.typeSnapshot(type: KaType): KaTypeSnapshot {
     classType?.typeArguments.orEmpty().map { argument ->
       when (argument) {
         is KaTypeArgumentWithVariance ->
-          KaTypeArgumentSnapshot.Typed(typeSnapshot(argument.type), argument.variance)
+          KaTypeArgumentSnapshot.Typed(
+            typeSnapshot(argument.type, captureHierarchy),
+            argument.variance,
+          )
         else -> KaTypeArgumentSnapshot.Star
       }
     },
@@ -120,7 +142,17 @@ internal fun KaSession.typeSnapshot(type: KaType): KaTypeSnapshot {
         ?.lastOrNull { it is KaUnresolvedClassTypeQualifier }
         ?.name
         ?.takeUnless { it.isSpecial },
+    hierarchy = hierarchy,
   )
+}
+
+/** Records what a later subtype check on [type] needs. See [KaTypeHierarchy]. */
+private fun KaSession.typeHierarchy(type: KaClassType): KaTypeHierarchy {
+  // Supertype snapshots don't capture a hierarchy, which keeps this from recursing forever.
+  val supertypes = type.allSupertypes.map { supertype -> typeSnapshot(supertype) }.toList()
+  val classSymbol = type.symbol as? KaNamedClassSymbol
+  val parameterVariances = classSymbol?.typeParameters.orEmpty().map { it.variance }
+  return KaTypeHierarchy(supertypes, parameterVariances)
 }
 
 /** Identity of [type]. Type aliases are expanded at every depth. */
@@ -217,6 +249,77 @@ internal fun KaSession.restoreClassType(snapshot: KaTypeSnapshot): KaClassType? 
   } as? KaClassType
 }
 
+/**
+ * Whether [argument] is a subtype of [bound], decided in this session. Returns null when either
+ * type can't be rebuilt exactly, or when an unresolved type in a hierarchy changes the answer.
+ */
+internal fun KaSession.isSubtypeOfBound(argument: KaTypeSnapshot, bound: KaTypeSnapshot): Boolean? {
+  val argumentType = restoreExactClassType(argument) ?: return null
+  val boundType = restoreExactClassType(bound) ?: return null
+
+  // The strict policy fails on an error type and the lenient one passes. Only agreement is an
+  // answer.
+  val strict = argumentType.isSubtypeOf(boundType, KaSubtypingErrorTypePolicy.STRICT)
+  val lenient = argumentType.isSubtypeOf(boundType, KaSubtypingErrorTypePolicy.LENIENT)
+  if (strict != lenient) {
+    return null
+  }
+
+  return strict
+}
+
+/**
+ * Rebuilds [snapshot] as a class type, with class types at every depth. Returns null when that
+ * can't be exact. That's the case for type parameters, flexible and intersection types, unresolved
+ * classes, and type argument counts that don't match the class's type parameters.
+ */
+private fun KaSession.restoreExactClassType(snapshot: KaTypeSnapshot): KaClassType? {
+  if (snapshot.isError) {
+    return null
+  }
+  val identity = snapshot.identity as? TypeIdentity.Class ?: return null
+  val classId = snapshot.classId ?: return null
+  if (snapshot.typeArguments.size != identity.arguments.size) {
+    return null
+  }
+
+  val classSymbol = findClass(classId) as? KaNamedClassSymbol ?: return null
+
+  // Inner classes of generic classes also take their outer class's arguments, so they bail here.
+  if (classSymbol.typeParameters.size != snapshot.typeArguments.size) {
+    return null
+  }
+
+  val typeArguments = ArrayList<KaTypeProjection>(snapshot.typeArguments.size)
+
+  for (typeArgument in snapshot.typeArguments) {
+    val projection =
+      when (typeArgument) {
+        KaTypeArgumentSnapshot.Star -> typeCreator.starTypeProjection()
+
+        is KaTypeArgumentSnapshot.Typed -> {
+          val restored = restoreExactClassType(typeArgument.type) ?: return null
+          typeCreator.typeProjection(typeArgument.variance, restored)
+        }
+      }
+
+    typeArguments += projection
+  }
+
+  val restored =
+    typeCreator.classType(classId) {
+      isMarkedNullable = identity.nullability == Nullability.Nullable
+      for (projection in typeArguments) {
+        typeArgument(projection)
+      }
+    }
+  if (restored is KaErrorType) {
+    return null
+  }
+
+  return restored as? KaClassType
+}
+
 /** Builds a contextual key that preserves provider/lazy/map wrapper structure. */
 internal fun KaSession.contextualTypeKey(
   type: KaType,
@@ -224,7 +327,8 @@ internal fun KaSession.contextualTypeKey(
   options: MetroOptions,
 ): KaContextualTypeKey {
   val declaredType = type.fullyExpandedType
-  val rawSnapshot = typeSnapshot(declaredType)
+  // A requested key's type arguments can become a generic provider's type arguments.
+  val rawSnapshot = typeSnapshot(declaredType, captureHierarchy = options.enableDerivedBindings)
   val wrappedType = declaredType.asWrappedType(options)
   val keySnapshot =
     when (wrappedType) {
@@ -262,7 +366,9 @@ private fun KaType.asWrappedType(options: MetroOptions): WrappedType<KaTypeSnaps
           .orEmpty()
       },
     )
-  return wrapped.mapTypes { session.typeSnapshot(it) }
+  return wrapped.mapTypes {
+    session.typeSnapshot(it, captureHierarchy = options.enableDerivedBindings)
+  }
 }
 
 internal fun KaSession.consumedSite(

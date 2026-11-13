@@ -25,6 +25,8 @@ internal data class RejectedBindingDecision(
   val declaration: IrDeclarationWithName?,
   val reason: BindingReason,
   val ownerGraph: IrTypeKey? = null,
+  /** Declarations responsible for the rejection, such as the candidate that won. */
+  val relatedDeclarations: List<IrDeclarationWithName> = emptyList(),
 )
 
 /**
@@ -145,6 +147,19 @@ internal class BindingDecisionCapture(private val node: GraphNode.Local) {
   ) {
     lookup(request, stack).rejected +=
       RejectedBindingDecision(binding.typeKey, binding.reportableDeclaration, reason)
+  }
+
+  /** Records a rejected candidate that has no binding of its own, such as a generic provider. */
+  fun rejected(
+    request: IrContextualTypeKey,
+    stack: IrBindingStack,
+    key: IrTypeKey,
+    declaration: IrDeclarationWithName,
+    reason: BindingReason,
+    relatedDeclarations: List<IrDeclarationWithName>,
+  ) {
+    lookup(request, stack).rejected +=
+      RejectedBindingDecision(key, declaration, reason, relatedDeclarations = relatedDeclarations)
   }
 
   fun rejected(
@@ -288,5 +303,6 @@ private fun RejectedBindingDecision.toExplanationCandidate(
     reason = reason,
     declaration = declaration,
     ownerGraphId = ownerGraph?.let { ownerGraphIds[it] ?: it.identity.encoded },
+    relatedDeclarations = relatedDeclarations.map { it.bindingExplanationDeclaration() },
   )
 }

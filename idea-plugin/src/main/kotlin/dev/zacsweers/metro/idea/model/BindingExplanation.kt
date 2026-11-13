@@ -24,6 +24,8 @@ internal class BindingCandidateExplanation(
   val reasonCode: BindingReason,
   val rejection: BindingRejection?,
   val relatedBindings: List<KaBinding> = emptyList(),
+  /** Extra sentences, like which generic provider derived a selected binding. */
+  val details: List<String> = emptyList(),
 ) {
   val reason: String
     get() = BindingExplanationRenderer.reason(reasonCode)
@@ -39,6 +41,7 @@ internal fun BindingTier.selectionReason(): BindingReason =
     BindingTier.GENERATED_GRAPH -> BindingReason.SELECTED_GENERATED
     BindingTier.MULTIBINDING -> BindingReason.SELECTED_MULTIBINDING
     BindingTier.OPTIONAL -> BindingReason.SELECTED_OPTIONAL
+    BindingTier.DERIVED -> BindingReason.SELECTED_DERIVED
     BindingTier.IMPLICIT -> BindingReason.SELECTED_IMPLICIT
   }
 
@@ -51,7 +54,9 @@ internal fun explainBindingSelection(
   rejectionFor: (KaBinding) -> BindingRejection?,
 ): BindingExplanation {
   val selected = selection?.bindings.orEmpty().toSet()
-  val allCandidates = (selected + candidates).toList()
+  val lessSpecific = selection?.lessSpecificDerivedBindings.orEmpty().toSet()
+  val ambiguousDerived = selection?.ambiguousDerivedBindings.orEmpty().toSet()
+  val allCandidates = (selected + lessSpecific + ambiguousDerived + candidates).toList()
   val tierCanConflict =
     selection?.tier == BindingTier.EXPLICIT || selection?.tier == BindingTier.IMPLICIT
   val conflicts = tierCanConflict && selected.size > 1
@@ -65,7 +70,10 @@ internal fun explainBindingSelection(
         binding.typeKey.qualifier != consumer.key.qualifier -> BindingReason.QUALIFIER_MISMATCH
         assistedTarget && binding in selected -> BindingReason.ASSISTED_TARGET
         isSelected && conflicts -> BindingReason.CONFLICT
+        // Matches the compiler, which reports every ambiguous derived match as a conflict.
+        binding in ambiguousDerived -> BindingReason.CONFLICT
         isSelected -> checkNotNull(selection).tier.selectionReason()
+        binding in lessSpecific -> BindingReason.LESS_SPECIFIC
         rejection != null -> rejection
         selection?.tier == BindingTier.OPTIONAL && binding is KaBinding.CustomWrapper ->
           BindingReason.EARLIER_OPTIONAL
@@ -73,12 +81,19 @@ internal fun explainBindingSelection(
       }
     val related =
       when (reason) {
-        BindingReason.CONFLICT -> selected.filter { it !== binding }
+        BindingReason.CONFLICT -> {
+          val conflicting = ambiguousDerived.ifEmpty { selected }
+          conflicting.filter { it !== binding }
+        }
+
         BindingReason.HIGHER_PRECEDENCE,
+        BindingReason.LESS_SPECIFIC,
         BindingReason.EARLIER_OPTIONAL -> selected.toList()
         else -> emptyList()
       }
-    BindingCandidateExplanation(binding, isSelected, reason, rejection, related)
+
+    val details = listOfNotNull(binding.derivation?.explanationDetail())
+    BindingCandidateExplanation(binding, isSelected, reason, rejection, related, details)
   }
   return BindingExplanation(context, consumer, selection?.tier, explanations)
 }

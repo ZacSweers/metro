@@ -1,0 +1,1 @@
+/DerivedBindingOverlapError.kt:19:11: error: [Metro/DerivedBindingOverlap] `Encoder<List<String>>` matches the generic providers `Encoders.anything` and `Encoders.list`. Metro uses `Encoders.list` because its return type is the most specific.

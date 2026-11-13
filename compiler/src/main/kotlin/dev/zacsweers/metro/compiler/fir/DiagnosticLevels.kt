@@ -27,8 +27,13 @@ internal val metroDiagnosticNames: Set<String> by lazy {
  */
 internal val irReportedDiagnosticNames: Set<String> by lazy {
   setOf(
+      MetroDiagnostics.AMBIGUOUS_DERIVED_BINDING,
       MetroDiagnostics.ASSISTED_FACTORY_SUSPEND_REQUIRED,
       MetroDiagnostics.CLOSE_ONLY_BINDING,
+      MetroDiagnostics.DERIVED_BINDINGS_NOT_ENABLED,
+      MetroDiagnostics.DERIVED_BINDING_OVERLAP_ERROR,
+      MetroDiagnostics.DERIVED_BINDING_OVERLAP_WARNING,
+      MetroDiagnostics.DIVERGENT_DERIVED_BINDING,
       MetroDiagnostics.DUPLICATE_BINDING,
       MetroDiagnostics.DUPLICATE_MAP_KEY,
       MetroDiagnostics.EMPTY_MULTIBINDING,

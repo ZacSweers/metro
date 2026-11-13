@@ -198,6 +198,12 @@ internal class IrInlinedProvider private constructor(private val value: Value) {
     ): IrInlinedProvider? {
       if (!parameters.allParameters.isEmpty()) return null
       if (annotations.isScoped) return null
+
+      // A generic provider's body can mention its type parameters, which only a call can supply.
+      if (realDeclaration is IrFunction && realDeclaration.typeParameters.isNotEmpty()) {
+        return null
+      }
+
       val value = realDeclaration?.inlinedProviderValue() ?: return null
       return IrInlinedProvider(value)
     }

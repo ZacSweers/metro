@@ -6,6 +6,7 @@ package dev.zacsweers.metro.idea.model
  * Binding categories used by editor selection and explanations, ordered by indexed precedence.
  * Unqualified assisted targets come first so validation can report their invalid direct use.
  * Authored bindings precede generated graph aliases, collection synthesis, and class injection.
+ * Bindings derived from generic providers come right before class injection.
  */
 internal enum class BindingTier {
   ASSISTED_TARGET,
@@ -13,5 +14,6 @@ internal enum class BindingTier {
   GENERATED_GRAPH,
   MULTIBINDING,
   OPTIONAL,
+  DERIVED,
   IMPLICIT,
 }

@@ -19,6 +19,7 @@ import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithVisibility
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.declarations.IrTypeParameter
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.util.TypeRemapper
@@ -100,6 +101,31 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
     }
   }
 
+  /**
+   * Returns the type arguments for a direct call to [realFunction], the source provider function.
+   * It's null for a provider without its own type parameters. A generic provider must be an applied
+   * view here because codegen can't infer its type arguments.
+   */
+  fun directCallTypeArguments(realFunction: IrFunction): List<IrType>? {
+    if (this !is Metro) {
+      return null
+    }
+
+    if (isGeneric) {
+      reportCompilerBug("Generic provider $callableId reached codegen without type arguments")
+    }
+
+    val arguments = functionTypeArguments ?: return null
+    if (realFunction.typeParameters.size != arguments.size) {
+      reportCompilerBug(
+        "Provider $callableId declares ${realFunction.typeParameters.size} type parameters " +
+          "but ${arguments.size} type arguments were inferred",
+      )
+    }
+
+    return arguments
+  }
+
   class Metro(
     override val factoryClass: IrClass,
     override val typeKey: IrTypeKey,
@@ -113,6 +139,17 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
     parametersLazy: Lazy<Parameters>,
     override val inlinedValue: IrInlinedProvider? = null,
     override val creatorTypeArguments: List<IrType>? = null,
+    /**
+     * The types [withFunctionTypeArguments] substituted for [functionTypeParameters], in the same
+     * order. It's null for a factory that isn't an applied view.
+     */
+    val functionTypeArguments: List<IrType>? = null,
+    /**
+     * Substitutes the container's type parameters as [withRemappedTypes] did. It covers every copy
+     * of them, so it also applies to the bounds of [functionTypeParameters]. It's null when no
+     * container substitution happened.
+     */
+    val containerTypeRemapper: TypeRemapper? = null,
   ) : ProviderFactory() {
     override val helperOwner: IrClass by memoize {
       factoryClass.factoryHelperDeclarationContainer(companionMode)
@@ -148,17 +185,96 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
 
     override val isDaggerFactory: Boolean = false
 
+    /**
+     * The provider function's own type parameters. They're empty for ordinary providers.
+     *
+     * [typeKey], [rawTypeKey], [contextualTypeKey], and [parameters] mention exactly these symbols
+     * for function-level type parameters. This holds for providers declared in this compilation and
+     * for ones loaded from another module's signature carrier. Container substitution through
+     * [withRemappedTypes] leaves them in place.
+     *
+     * An applied view from [withFunctionTypeArguments] still lists the declaration's type
+     * parameters here. Its types no longer mention them, and [functionTypeArguments] holds what
+     * replaced them.
+     */
+    val functionTypeParameters: List<IrTypeParameter>
+      get() = callableMetadata.functionTypeParameters
+
+    /**
+     * True if the provider function declares its own type parameters and they haven't been applied
+     * yet. A generic provider's key is a pattern. An applied view's key is concrete, so it's false
+     * there.
+     */
+    val isGeneric: Boolean
+      get() = functionTypeParameters.isNotEmpty() && functionTypeArguments == null
+
+    /**
+     * True if any of the provider function's own type parameters is `reified`. It stays true on an
+     * applied view because [functionTypeParameters] still lists the declaration's type parameters.
+     *
+     * The factory class can't call a reified provider, so the graph always calls the function or
+     * its `newInstance` helper directly. In this compilation [functionTypeParameters] are the
+     * source function's own. From another module they're the signature carrier's copies. Those keep
+     * `reified` because a reified provider is always inline, and inline carriers keep it.
+     */
+    val isReified: Boolean
+      get() = functionTypeParameters.any { it.isReified }
+
+    /**
+     * Substitutes the container's type parameters through [remapper]. Function-level type
+     * parameters stay unchanged, so a generic provider stays generic.
+     */
     fun withRemappedTypes(remapper: TypeRemapper): Metro {
+      if (functionTypeArguments != null) {
+        reportCompilerBug(
+          "Container substitution must happen before function type arguments are applied to " +
+            "$callableId",
+        )
+      }
+
       val sourceClass = factoryClass.parentAsClass
       val concreteTypes = sourceClass.typeParameters.map { remapper.remapType(it.defaultType) }
+
+      // Each declaration lists the container's type parameters (or copies of them) first. The
+      // source function itself declares only its own type parameters.
+      val containerCount = sourceClass.typeParameters.size
+      val factoryClassTypeParameters =
+        ProviderTypeParameterOrder.splitByContainerCount(
+          factoryClass.typeParameters,
+          containerCount,
+        )
+
+      val signatureTypeParameters =
+        ProviderTypeParameterOrder.splitByContainerCount(
+          signatureFunction.typeParameters,
+          containerCount,
+        )
+
+      val functionOwnTypeParameters =
+        ProviderTypeParameterOrder.splitByFunctionCount(
+          function.typeParameters,
+          functionTypeParameters.size,
+        )
+
+      val containerTypeParameterLists =
+        listOf(
+          sourceClass.typeParameters,
+          factoryClassTypeParameters.container,
+          signatureTypeParameters.container,
+          functionOwnTypeParameters.container,
+        )
+
       val factoryRemapper =
         typeRemapperFor(
-          concreteTypes,
-          sourceClass,
-          factoryClass,
-          signatureFunction,
-          function,
+          buildMap {
+            for (typeParameters in containerTypeParameterLists) {
+              typeParameters.zip(concreteTypes).forEach { (typeParameter, concreteType) ->
+                put(typeParameter.symbol, concreteType)
+              }
+            }
+          },
         )
+
       return Metro(
         factoryClass = factoryClass,
         typeKey = typeKey.remapTypes(factoryRemapper),
@@ -171,6 +287,65 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
         parametersLazy = lazy { parameters.remapTypes(factoryRemapper) },
         inlinedValue = inlinedValue,
         creatorTypeArguments = concreteTypes,
+        containerTypeRemapper = factoryRemapper,
+      )
+    }
+
+    /**
+     * Returns an applied view of this generic provider with [arguments] substituted for
+     * [functionTypeParameters], in the same order. The view's keys and parameters are concrete.
+     *
+     * [creatorTypeArguments] become the container's arguments followed by [arguments]. That's the
+     * order the generated `create()` and `newInstance` helpers declare their type parameters in. A
+     * container with type parameters must already have them substituted by [withRemappedTypes].
+     *
+     * The view has no inlined value because the source body can mention the type parameters.
+     */
+    fun withFunctionTypeArguments(arguments: List<IrType>): Metro {
+      if (!isGeneric) {
+        reportCompilerBug("Can't apply function type arguments to non-generic provider $callableId")
+      }
+
+      if (arguments.size != functionTypeParameters.size) {
+        reportCompilerBug(
+          "Provider $callableId declares ${functionTypeParameters.size} type parameters but got " +
+            "${arguments.size} arguments",
+        )
+      }
+
+      val containerTypeParameterCount = factoryClass.parentAsClass.typeParameters.size
+      val containerArguments = creatorTypeArguments.orEmpty()
+      if (containerArguments.size != containerTypeParameterCount) {
+        reportCompilerBug(
+          "Provider $callableId is declared in a container with $containerTypeParameterCount " +
+            "type parameters, but ${containerArguments.size} container type arguments were " +
+            "applied. Container type parameters must be substituted before function type " +
+            "arguments.",
+        )
+      }
+
+      val functionRemapper =
+        typeRemapperFor(
+          functionTypeParameters.zip(arguments).associate { (typeParameter, argument) ->
+            typeParameter.symbol to argument
+          },
+        )
+
+      return Metro(
+        factoryClass = factoryClass,
+        typeKey = typeKey.remapTypes(functionRemapper),
+        rawTypeKey = rawTypeKey.remapTypes(functionRemapper),
+        contextualTypeKey = contextualTypeKey.remapType(functionRemapper),
+        realDeclaration = realDeclaration,
+        callableMetadata = callableMetadata,
+        signatureCarrier = signatureCarrier,
+        companionMode = companionMode,
+        parametersLazy = lazy { parameters.remapTypes(functionRemapper) },
+        inlinedValue = null,
+        creatorTypeArguments =
+          ProviderTypeParameterOrder.join(container = containerArguments, function = arguments),
+        functionTypeArguments = arguments,
+        containerTypeRemapper = containerTypeRemapper,
       )
     }
   }
@@ -228,7 +403,18 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
       inlinedValue: IrInlinedProvider? = null,
       computeInlinedValue: Boolean = true,
     ): Metro? {
-      val rawTypeKey = contextKey.typeKey.copy(qualifier = callableMetadata.annotations.qualifier)
+      // Keys read from the signature carrier mention its copies of the function's type parameters.
+      val functionKeyRemapper =
+        signatureFunctionTypeParameterRemapper(clazz, signatureFunction, callableMetadata)
+      val signatureContextKey =
+        if (functionKeyRemapper === NOOP_TYPE_REMAPPER) {
+          contextKey
+        } else {
+          contextKey.remapType(functionKeyRemapper)
+        }
+
+      val rawTypeKey =
+        signatureContextKey.typeKey.copy(qualifier = callableMetadata.annotations.qualifier)
       val typeKey = rawTypeKey.transformIfIntoMultibinding(callableMetadata.annotations)
       val hasInstanceDependency =
         callableMetadata.function.dispatchReceiverParameter != null &&
@@ -250,6 +436,13 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
             }
           },
           reportingFunction = callableMetadata.function,
+          signatureTypeParameters = {
+            if (signatureCarrier == SignatureCarrier.MIRROR_FUNCTION) {
+              signatureFunction.typeParameters
+            } else {
+              callableMetadata.function.typeParameters
+            }
+          },
           primaryConstructorParamOffset =
             if (hasInstanceDependency) {
               1
@@ -268,7 +461,7 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
         return null
       }
 
-      val transformedContextKey = contextKey.withIrTypeKey(typeKey)
+      val transformedContextKey = signatureContextKey.withIrTypeKey(typeKey)
       val realDecl =
         realDeclaration
           ?: lookupRealDeclaration(
@@ -298,6 +491,42 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
         signatureCarrier = signatureCarrier,
         companionMode = companionMode,
         inlinedValue = computedInlinedValue,
+      )
+    }
+
+    /**
+     * Maps the signature carrier's copies of the provider function's type parameters onto
+     * [IrCallableMetadata.functionTypeParameters]. Carriers declare the container's copies first,
+     * so the function's copies are the trailing ones.
+     */
+    private fun signatureFunctionTypeParameterRemapper(
+      factoryClass: IrClass,
+      signatureFunction: IrSimpleFunction,
+      callableMetadata: IrCallableMetadata,
+    ): TypeRemapper {
+      val functionTypeParameters = callableMetadata.functionTypeParameters
+      if (functionTypeParameters.isEmpty()) {
+        return NOOP_TYPE_REMAPPER
+      }
+
+      val containerTypeParameterCount = factoryClass.parentAsClass.typeParameters.size
+      val signatureTypeParameters =
+        ProviderTypeParameterOrder.splitByContainerCount(
+            signatureFunction.typeParameters,
+            containerTypeParameterCount,
+          )
+          .function
+
+      check(signatureTypeParameters.size == functionTypeParameters.size) {
+        "Signature carrier ${signatureFunction.name} declares ${signatureTypeParameters.size} " +
+          "function type parameters but ${callableMetadata.callableId} has " +
+          "${functionTypeParameters.size}"
+      }
+
+      return typeRemapperFor(
+        signatureTypeParameters.zip(functionTypeParameters).associate { (signature, source) ->
+          signature.symbol to source.defaultType
+        },
       )
     }
 

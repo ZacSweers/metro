@@ -36,6 +36,7 @@ import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
 import dev.zacsweers.metro.compiler.ir.NOOP_TYPE_REMAPPER
 import dev.zacsweers.metro.compiler.ir.ParentContext
 import dev.zacsweers.metro.compiler.ir.ParentContextReader
+import dev.zacsweers.metro.compiler.ir.ProviderFactory
 import dev.zacsweers.metro.compiler.ir.RuntimeTracingAvailability
 import dev.zacsweers.metro.compiler.ir.UsedKeyCollector
 import dev.zacsweers.metro.compiler.ir.annotationsIn
@@ -558,6 +559,13 @@ internal class DependencyGraphTransformer(
 
       // @Provides
       node.providerFactories.values.flatten().forEach { providerFactory ->
+        // A generic provider's key is a pattern, which children can never request.
+        val isGenericProvider =
+          providerFactory is ProviderFactory.Metro && providerFactory.isGeneric
+        if (isGenericProvider) {
+          return@forEach
+        }
+
         if (providerFactory.annotations.isScoped) {
           // skip @GraphPrivate bindings
           if (providerFactory.typeKey !in node.graphPrivateKeys) {

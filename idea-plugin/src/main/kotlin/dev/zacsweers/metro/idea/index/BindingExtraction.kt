@@ -11,6 +11,8 @@ import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.graph.BoundTypeResolution
 import dev.zacsweers.metro.compiler.graph.computeMultibindingId
 import dev.zacsweers.metro.compiler.graph.createMapBindingId
+import dev.zacsweers.metro.compiler.graph.identity.Nullability
+import dev.zacsweers.metro.compiler.graph.identity.TypeArgumentIdentity
 import dev.zacsweers.metro.compiler.graph.identity.TypeIdentity
 import dev.zacsweers.metro.compiler.graph.resolveImplicitBoundType
 import dev.zacsweers.metro.idea.annotationScopeKeys
@@ -18,6 +20,8 @@ import dev.zacsweers.metro.idea.checkCanceledEvery
 import dev.zacsweers.metro.idea.classLiteralClassId
 import dev.zacsweers.metro.idea.hasAnyAnnotation
 import dev.zacsweers.metro.idea.model.ContributionEntry
+import dev.zacsweers.metro.idea.model.GenericBindingSignature
+import dev.zacsweers.metro.idea.model.GenericTypeParameter
 import dev.zacsweers.metro.idea.model.KaAnnotationSnapshot
 import dev.zacsweers.metro.idea.model.KaAnnotationValueSnapshot
 import dev.zacsweers.metro.idea.model.KaBinding
@@ -450,6 +454,7 @@ internal fun CallableBindingView.bindingData(
             multibindingId,
             mapKeyValue = mapKeyInfo?.annotationRender,
             isGraphPrivate = isGraphPrivate,
+            genericSignature = genericBindingSignature(symbol, elementKey, multibindingId, options),
           ),
         )
       }
@@ -527,12 +532,95 @@ internal fun CallableBindingView.bindingData(
             isSuspend = (symbol as? KaNamedFunctionSymbol)?.isSuspend == true,
             mapKeyValue = mapKeyInfo?.annotationRender,
             isGraphPrivate = isGraphPrivate,
+            genericSignature = genericBindingSignature(symbol, elementKey, multibindingId, options),
           ),
         )
       }
       else -> emptyList()
     }
   }
+
+/**
+ * The type parameters of a generic `@Provides` or `@Binds` function, or null for any other
+ * callable. A generic function's [pattern] mentions its type parameters, so the index keeps it out
+ * of exact-key lookup. Generic multibinding contributions stay ordinary bindings because FIR
+ * rejects them.
+ *
+ * Each type parameter's identity comes from its occurrence in [pattern]. That keeps it equal to the
+ * occurrences in dependency keys, which were read through the same callable view. Library
+ * declarations compiled with derived bindings, so they're always enabled.
+ */
+private fun KaSession.genericBindingSignature(
+  symbol: KaCallableSymbol,
+  pattern: KaTypeKey,
+  multibindingId: String?,
+  options: MetroOptions,
+): GenericBindingSignature? {
+  if (multibindingId != null) {
+    return null
+  }
+
+  val function = symbol as? KaNamedFunctionSymbol ?: return null
+  val typeParameters = function.typeParameters
+  if (typeParameters.isEmpty()) {
+    return null
+  }
+
+  val patternParameters = typeParametersIn(pattern.type.identity)
+  val callableId = function.callableId
+  val fallbackOwner = callableId?.toString().orEmpty()
+
+  val parameters = typeParameters.mapIndexed { index, parameter ->
+    checkCanceledEvery(index)
+    val name = parameter.name.asString()
+    val identity =
+      patternParameters.firstOrNull { it.name == name }
+        ?: TypeIdentity.TypeParameter(fallbackOwner, -1, name)
+
+    // Bound checks read each bound's declared variances and its arguments' supertypes.
+    val upperBounds = parameter.upperBounds.map { typeSnapshot(it, captureHierarchy = true) }
+    GenericTypeParameter(name, identity, upperBounds)
+  }
+
+  val providerName = callableId?.asSingleFqName()?.asString() ?: function.name.asString()
+  val isLibrary =
+    function.origin == KaSymbolOrigin.LIBRARY || function.origin == KaSymbolOrigin.JAVA_LIBRARY
+
+  return GenericBindingSignature(
+    parameters,
+    providerName,
+    options.enableDerivedBindings || isLibrary,
+  )
+}
+
+/** Every type parameter in [type], in their non-null form and first-occurrence order. */
+private fun typeParametersIn(type: TypeIdentity): Set<TypeIdentity.TypeParameter> {
+  val result = linkedSetOf<TypeIdentity.TypeParameter>()
+
+  fun collect(node: TypeIdentity) {
+    when (node) {
+      is TypeIdentity.TypeParameter -> result += node.copy(nullability = Nullability.NotNull)
+
+      is TypeIdentity.Class ->
+        for (argument in node.arguments) {
+          if (argument is TypeArgumentIdentity.Projection) {
+            collect(argument.type)
+          }
+        }
+
+      is TypeIdentity.Flexible -> {
+        collect(node.lower)
+        collect(node.upper)
+      }
+
+      is TypeIdentity.Intersection -> node.types.forEach(::collect)
+      is TypeIdentity.Unresolved -> {}
+    }
+  }
+
+  collect(type)
+  return result
+}
 
 private fun KtParameter.instanceBindingData(
   session: KaSession,

@@ -1052,6 +1052,152 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
   }
 
   @Nested
+  @TestMetadata("compiler-tests/src/test/data/diagnostic/derivedbindings")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Derivedbindings {
+    private void run(String fileName) {
+      runTest("compiler-tests/src/test/data/diagnostic/derivedbindings/" + fileName);
+    }
+
+    @Test
+    public void testAllFilesPresentInDerivedbindings() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/derivedbindings"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit", "_reports");
+    }
+
+    @Test
+    @TestMetadata("AmbiguousBoundedProviders.kt")
+    public void testAmbiguousBoundedProviders() {
+      run("AmbiguousBoundedProviders.kt");
+    }
+
+    @Test
+    @TestMetadata("AmbiguousDerivedBindings.kt")
+    public void testAmbiguousDerivedBindings() {
+      run("AmbiguousDerivedBindings.kt");
+    }
+
+    @Test
+    @TestMetadata("BareTypeParameterReturnType.kt")
+    public void testBareTypeParameterReturnType() {
+      run("BareTypeParameterReturnType.kt");
+    }
+
+    @Test
+    @TestMetadata("CycleThroughDerivedBinding.kt")
+    public void testCycleThroughDerivedBinding() {
+      run("CycleThroughDerivedBinding.kt");
+    }
+
+    @Test
+    @TestMetadata("DerivationDepthLimit.kt")
+    public void testDerivationDepthLimit() {
+      run("DerivationDepthLimit.kt");
+    }
+
+    @Test
+    @TestMetadata("DerivedBindingMissingParameter.kt")
+    public void testDerivedBindingMissingParameter() {
+      run("DerivedBindingMissingParameter.kt");
+    }
+
+    @Test
+    @TestMetadata("DerivedBindingOverlapError.kt")
+    public void testDerivedBindingOverlapError() {
+      run("DerivedBindingOverlapError.kt");
+    }
+
+    @Test
+    @TestMetadata("DerivedBindingOverlapWarning.kt")
+    public void testDerivedBindingOverlapWarning() {
+      run("DerivedBindingOverlapWarning.kt");
+    }
+
+    @Test
+    @TestMetadata("DerivedBindingsNotEnabled.kt")
+    public void testDerivedBindingsNotEnabled() {
+      run("DerivedBindingsNotEnabled.kt");
+    }
+
+    @Test
+    @TestMetadata("DerivedBindingsNotEnabledAcrossModules.kt")
+    public void testDerivedBindingsNotEnabledAcrossModules() {
+      run("DerivedBindingsNotEnabledAcrossModules.kt");
+    }
+
+    @Test
+    @TestMetadata("DivergentDerivedBinding.kt")
+    public void testDivergentDerivedBinding() {
+      run("DivergentDerivedBinding.kt");
+    }
+
+    @Test
+    @TestMetadata("DivergentDerivedBindingWithDefault.kt")
+    public void testDivergentDerivedBindingWithDefault() {
+      run("DivergentDerivedBindingWithDefault.kt");
+    }
+
+    @Test
+    @TestMetadata("GenericProviderInGenericGraphSupertype.kt")
+    public void testGenericProviderInGenericGraphSupertype() {
+      run("GenericProviderInGenericGraphSupertype.kt");
+    }
+
+    @Test
+    @TestMetadata("InlineGenericProviders.kt")
+    public void testInlineGenericProviders() {
+      run("InlineGenericProviders.kt");
+    }
+
+    @Test
+    @TestMetadata("MissingTypeParameterInReturnType.kt")
+    public void testMissingTypeParameterInReturnType() {
+      run("MissingTypeParameterInReturnType.kt");
+    }
+
+    @Test
+    @TestMetadata("MultibindingContributions.kt")
+    public void testMultibindingContributions() {
+      run("MultibindingContributions.kt");
+    }
+
+    @Test
+    @TestMetadata("MultibindsAndPropertiesWithTypeParameters.kt")
+    public void testMultibindsAndPropertiesWithTypeParameters() {
+      run("MultibindsAndPropertiesWithTypeParameters.kt");
+    }
+
+    @Test
+    @TestMetadata("ReifiedProviders.kt")
+    public void testReifiedProviders() {
+      run("ReifiedProviders.kt");
+    }
+
+    @Test
+    @TestMetadata("TypeAliasReturnTypes.kt")
+    public void testTypeAliasReturnTypes() {
+      run("TypeAliasReturnTypes.kt");
+    }
+
+    @Test
+    @TestMetadata("UnownedScopeForInheritedGenericProvider.kt")
+    public void testUnownedScopeForInheritedGenericProvider() {
+      run("UnownedScopeForInheritedGenericProvider.kt");
+    }
+
+    @Test
+    @TestMetadata("UnsatisfiedBound.kt")
+    public void testUnsatisfiedBound() {
+      run("UnsatisfiedBound.kt");
+    }
+
+    @Test
+    @TestMetadata("ValidDeclarations.kt")
+    public void testValidDeclarations() {
+      run("ValidDeclarations.kt");
+    }
+  }
+
+  @Nested
   @TestMetadata("compiler-tests/src/test/data/diagnostic/diagnosticLevel")
   @TestDataPath("$PROJECT_ROOT")
   public class DiagnosticLevel {
@@ -1167,6 +1313,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("AmbiguousDerivedBinding.kt")
+    public void testAmbiguousDerivedBinding() {
+      run("AmbiguousDerivedBinding.kt");
+    }
+
+    @Test
     @TestMetadata("BinaryGraph.kt")
     public void testBinaryGraph() {
       run("BinaryGraph.kt");
@@ -1188,6 +1340,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     @TestMetadata("DependencyCycle.kt")
     public void testDependencyCycle() {
       run("DependencyCycle.kt");
+    }
+
+    @Test
+    @TestMetadata("DerivedBindingGraph.kt")
+    public void testDerivedBindingGraph() {
+      run("DerivedBindingGraph.kt");
     }
 
     @Test

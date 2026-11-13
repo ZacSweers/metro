@@ -25,6 +25,7 @@ import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.getValue
 import dev.zacsweers.metro.compiler.graph.AssistedBindingKind
 import dev.zacsweers.metro.compiler.graph.BindingGraphValidator
+import dev.zacsweers.metro.compiler.graph.DerivedBindingDiagnosticMessages
 import dev.zacsweers.metro.compiler.graph.DiagnosticRoutes
 import dev.zacsweers.metro.compiler.graph.ErrorReporter
 import dev.zacsweers.metro.compiler.graph.GraphAdjacency
@@ -33,6 +34,7 @@ import dev.zacsweers.metro.compiler.graph.GraphLifecyclePhase
 import dev.zacsweers.metro.compiler.graph.GraphTopology
 import dev.zacsweers.metro.compiler.graph.GraphValidationIssue
 import dev.zacsweers.metro.compiler.graph.LocationDiagnostic
+import dev.zacsweers.metro.compiler.graph.MAX_DERIVED_BINDING_DEPTH
 import dev.zacsweers.metro.compiler.graph.MissingBindingHints
 import dev.zacsweers.metro.compiler.graph.MultibindingKind
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
@@ -357,7 +359,16 @@ internal class IrBindingGraph(
         if (callingBinding == null) {
           roots.getValue(contextKey)
         } else {
-          bindingStackEntryForDependency(callingBinding, contextKey, contextKey.typeKey)
+          val entry = bindingStackEntryForDependency(callingBinding, contextKey, contextKey.typeKey)
+
+          // Derived bindings walk requester links, so only graphs with generic candidates need
+          // them.
+          val hasGenericCandidates = _bindingLookup?.hasNoGenericBindingCandidates == false
+          if (hasGenericCandidates) {
+            entry.withRequestingKey(callingBinding.typeKey)
+          } else {
+            entry
+          }
         }
       },
       computeBindings = { contextKey, currentBindings, stack ->
@@ -371,6 +382,10 @@ internal class IrBindingGraph(
       onExistingBinding = decisionCapture?.let { capture -> capture::reused },
       onDependencyResolved = if (parentReader != null) ::recordParentReadCandidate else null,
       onSortedKey = if (parentReader != null) ::recordAncestorBuild else null,
+      // Rejected derivations get their own report in validateBindings.
+      reportsMissingKeyElsewhere = { key ->
+        _bindingLookup?.divergentDerivedBindings?.containsKey(key) == true
+      },
     )
 
   /** This graph's reads grouped by dependency and the bindings that consume it. */
@@ -1223,6 +1238,13 @@ internal class IrBindingGraph(
           ),
         )
       }
+
+      // A generic provider that matched except for a bound is a likely cause, so name it.
+      val boundRejections =
+        context(metroContext) { bindingLookup.genericCandidatesRejectedByBounds(key) }
+      for (rejection in boundRejections) {
+        add(Note.note(rejection.unsatisfiedBoundNoteFor(key)))
+      }
     }
 
     var locationNotes = emptyList<Note>()
@@ -1258,6 +1280,17 @@ internal class IrBindingGraph(
       notes = notes + locationNotes,
       sections = sections,
       similarBindings = findSimilarBindings(key).values.map { it.toItem() },
+    )
+  }
+
+  /** Says which bound kept this generic provider from providing [key]. */
+  private fun BoundRejectedCandidate.unsatisfiedBoundNoteFor(key: IrTypeKey): String {
+    return DerivedBindingDiagnosticMessages.unsatisfiedBoundNote(
+      key = key.render(short = true),
+      provider = candidate.function.kotlinFqName.asString(),
+      typeParameter = bound.typeParameter.name.asString(),
+      typeArgument = bound.argument.render(short = true),
+      bound = bound.bound.render(short = true),
     )
   }
 
@@ -1523,6 +1556,15 @@ internal class IrBindingGraph(
       { issue ->
         reportStructuralIssue(issue, stack, diagnosticRoutes, rootsByTypeKey)
       }
+
+    if (!metroContext.options.enableDerivedBindings) {
+      reportDerivedBindingsNotEnabled()
+    }
+
+    reportAmbiguousDerivedBindings()
+    reportDerivedBindingOverlaps()
+    reportDivergentDerivedBindings()
+
     val suspendProvidersEnabled = metroContext.options.enableSuspendProviders
     var hasDirectSuspendBinding = false
     var hasDisabledSuspendProviderUse = false
@@ -1621,6 +1663,135 @@ internal class IrBindingGraph(
       "[${MetroDiagnosticId.SUSPEND_PROVIDERS_NOT_ENABLED.fullId}] ${SuspendDiagnosticMessages.SUSPEND_PROVIDERS_NOT_ENABLED}",
       MetroDiagnosticId.SUSPEND_PROVIDERS_NOT_ENABLED.factory,
     )
+  }
+
+  /**
+   * Reports the generic providers and binds functions this graph uses while derived bindings are
+   * disabled. FIR reports declarations in this module, so these come from dependencies. A generic
+   * provider the graph includes but never uses isn't reported. The graph gets one report because
+   * that's where the option can be enabled.
+   */
+  private fun reportDerivedBindingsNotEnabled() {
+    val functionNames = bindingLookup.usedGenericBindingCandidates.toList().renderedFunctionNames()
+    if (functionNames.isEmpty()) {
+      return
+    }
+
+    val message =
+      DerivedBindingDiagnosticMessages.derivedBindingsNotEnabledForDependencies(functionNames)
+
+    reportError(
+      node.sourceGraph,
+      "[${MetroDiagnosticId.DERIVED_BINDINGS_NOT_ENABLED.fullId}] $message",
+      MetroDiagnosticId.DERIVED_BINDINGS_NOT_ENABLED.factory,
+    )
+  }
+
+  /**
+   * Reports keys that several generic providers matched with no most specific one. Each key gets
+   * one message. All of them go in one report on the graph, sorted by key.
+   */
+  private fun reportAmbiguousDerivedBindings() {
+    val conflicts = bindingLookup.ambiguousDerivedBindings
+    if (conflicts.isEmpty()) {
+      return
+    }
+
+    val id = MetroDiagnosticId.AMBIGUOUS_DERIVED_BINDING
+    val message =
+      conflicts.entries
+        .sortedBy { it.key }
+        .joinToString("\n\n") { (key, conflict) ->
+          val text =
+            DerivedBindingDiagnosticMessages.ambiguousDerivedBinding(
+              key = key.render(short = true),
+              providerNames = conflict.candidates.renderedFunctionNames(),
+            )
+          "[${id.fullId}] $text"
+        }
+
+    reportError(node.sourceGraph, message, id.factory)
+  }
+
+  /**
+   * Reports keys where several generic providers matched and the most specific one won. The
+   * configured severity picks the warning or error factory. Errors stop code generation.
+   */
+  private fun reportDerivedBindingOverlaps() {
+    val conflicts = bindingLookup.overlappingDerivedBindings
+    if (conflicts.isEmpty()) {
+      return
+    }
+
+    // IR runs in CLI-only contexts, so IDE-only severities resolve to NONE here.
+    val severity = metroContext.options.derivedBindingOverlapSeverity.resolve(isIde = false)
+    val factory =
+      when (severity) {
+        MetroOptions.DiagnosticSeverity.WARN -> MetroDiagnostics.DERIVED_BINDING_OVERLAP_WARNING
+        MetroOptions.DiagnosticSeverity.ERROR -> MetroDiagnostics.DERIVED_BINDING_OVERLAP_ERROR
+        else -> return
+      }
+
+    val id = MetroDiagnosticId.DERIVED_BINDING_OVERLAP
+    val message =
+      conflicts.entries
+        .sortedBy { it.key }
+        .joinToString("\n\n") { (key, conflict) ->
+          val text =
+            DerivedBindingDiagnosticMessages.derivedBindingOverlap(
+              key = key.render(short = true),
+              selectedProvider = conflict.selected.function.kotlinFqName.asString(),
+              providerNames = conflict.candidates.renderedFunctionNames(),
+            )
+          "[${id.fullId}] $text"
+        }
+
+    if (severity == MetroOptions.DiagnosticSeverity.ERROR) {
+      reportError(node.sourceGraph, message, factory)
+    } else {
+      metroContext.reportCompat(node.sourceGraph, factory, message)
+    }
+  }
+
+  /**
+   * Reports keys whose derivation kept growing or passed the depth limit. Each key gets one
+   * message. All of them go in one report on the graph, sorted by key. The graph skips its plain
+   * missing-binding report for these keys.
+   */
+  private fun reportDivergentDerivedBindings() {
+    val rejections = bindingLookup.divergentDerivedBindings
+    if (rejections.isEmpty()) {
+      return
+    }
+
+    val id = MetroDiagnosticId.DIVERGENT_DERIVED_BINDING
+    val message =
+      rejections.entries
+        .sortedBy { it.key }
+        .joinToString("\n\n") { (key, rejection) ->
+          val text =
+            when (rejection.reason) {
+              DivergentDerivedBinding.Reason.GROWING_KEY ->
+                DerivedBindingDiagnosticMessages.divergentDerivedBinding(
+                  provider = rejection.candidate.function.kotlinFqName.asString(),
+                  chain = rejection.chain.map { it.render(short = true) },
+                )
+
+              DivergentDerivedBinding.Reason.DEPTH_LIMIT ->
+                DerivedBindingDiagnosticMessages.derivedBindingDepthLimit(
+                  key = key.render(short = true),
+                  limit = MAX_DERIVED_BINDING_DEPTH,
+                )
+            }
+          "[${id.fullId}] $text"
+        }
+
+    reportError(node.sourceGraph, message, id.factory)
+  }
+
+  /** Fully qualified function names, sorted so messages are stable. */
+  private fun List<GenericBindingCandidate>.renderedFunctionNames(): List<String> {
+    return map { it.function.kotlinFqName.asString() }.distinct().sorted()
   }
 
   /**

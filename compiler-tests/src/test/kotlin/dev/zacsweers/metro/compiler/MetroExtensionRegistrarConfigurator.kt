@@ -77,6 +77,11 @@ fun TestConfigurationBuilder.configurePlugin(
     assumeTrue(compatContext.supportsCompanionBlocks, "Compiler does not support companion blocks")
     defaultDirectives { LANGUAGE + "+CompanionBlocks" }
   }
+  forTestsMatching("*/box/derivedbindings/*") {
+    // Every box fixture in this directory uses derived bindings, so none of them repeats the
+    // directive. Diagnostic fixtures keep it because some of them test the disabled option.
+    defaultDirectives { +MetroDirectives.ENABLE_DERIVED_BINDINGS }
+  }
 
   useCustomRuntimeClasspathProviders(::MetroRuntimeClassPathProvider)
 
@@ -187,6 +192,9 @@ class MetroExtensionRegistrarConfigurator(
       module.directives.singleOrZeroValue(MetroDirectives.UNUSED_GRAPH_INPUTS_SEVERITY)?.let {
         unusedGraphInputsSeverity = it
       }
+      module.directives.singleOrZeroValue(MetroDirectives.DERIVED_BINDING_OVERLAP_SEVERITY)?.let {
+        derivedBindingOverlapSeverity = it
+      }
       for (level in module.directives[MetroDirectives.DIAGNOSTIC_LEVEL]) {
         diagnosticLevels.putAll(level)
       }
@@ -288,6 +296,10 @@ class MetroExtensionRegistrarConfigurator(
 
       if (MetroDirectives.ENABLE_SUSPEND_PROVIDERS in module.directives) {
         enableSuspendProviders = true
+      }
+
+      if (MetroDirectives.ENABLE_DERIVED_BINDINGS in module.directives) {
+        enableDerivedBindings = true
       }
       module.directives[MetroDirectives.MAX_GENERATED_CLASS_NAME_LENGTH].lastOrNull()?.let {
         maxGeneratedClassNameLength = it

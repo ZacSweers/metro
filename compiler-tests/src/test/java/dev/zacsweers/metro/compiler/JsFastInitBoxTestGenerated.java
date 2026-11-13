@@ -2672,6 +2672,344 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
   }
 
   @Nested
+  @TestMetadata("compiler-tests/src/test/data/box/derivedbindings")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Derivedbindings {
+    private void run(String fileName) {
+      runTest("compiler-tests/src/test/data/box/derivedbindings/" + fileName);
+    }
+
+    @Test
+    public void testAllFilesPresentInDerivedbindings() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/derivedbindings"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
+    }
+
+    @Test
+    @TestMetadata("BoundsSelection.kt")
+    public void testBoundsSelection() {
+      run("BoundsSelection.kt");
+    }
+
+    @Test
+    @TestMetadata("ContextParameterGenericProvider.kt")
+    public void testContextParameterGenericProvider() {
+      run("ContextParameterGenericProvider.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributedExtensionUsesParentGenericProviders.kt")
+    public void testContributedExtensionUsesParentGenericProviders() {
+      run("ContributedExtensionUsesParentGenericProviders.kt");
+    }
+
+    @Test
+    @TestMetadata("DeferredAccess.kt")
+    public void testDeferredAccess() {
+      run("DeferredAccess.kt");
+    }
+
+    @Test
+    @TestMetadata("DerivationChainAtDepthLimit.kt")
+    public void testDerivationChainAtDepthLimit() {
+      run("DerivationChainAtDepthLimit.kt");
+    }
+
+    @Test
+    @TestMetadata("DynamicGraphGenericProviderInExtension.kt")
+    public void testDynamicGraphGenericProviderInExtension() {
+      run("DynamicGraphGenericProviderInExtension.kt");
+    }
+
+    @Test
+    @TestMetadata("DynamicGraphGenericProviders.kt")
+    public void testDynamicGraphGenericProviders() {
+      run("DynamicGraphGenericProviders.kt");
+    }
+
+    @Test
+    @TestMetadata("EncoderExample.kt")
+    public void testEncoderExample() {
+      run("EncoderExample.kt");
+    }
+
+    @Test
+    @TestMetadata("ExactBindingWins.kt")
+    public void testExactBindingWins() {
+      run("ExactBindingWins.kt");
+    }
+
+    @Test
+    @TestMetadata("ExtensionBindingsBeatParentGenericProviders.kt")
+    public void testExtensionBindingsBeatParentGenericProviders() {
+      run("ExtensionBindingsBeatParentGenericProviders.kt");
+    }
+
+    @Test
+    @TestMetadata("ExtensionGenericProviderWithDifferentBounds.kt")
+    public void testExtensionGenericProviderWithDifferentBounds() {
+      run("ExtensionGenericProviderWithDifferentBounds.kt");
+    }
+
+    @Test
+    @TestMetadata("ExtensionScopedGenericProvider.kt")
+    public void testExtensionScopedGenericProvider() {
+      run("ExtensionScopedGenericProvider.kt");
+    }
+
+    @Test
+    @TestMetadata("ExtensionUsesParentGenericProviders.kt")
+    public void testExtensionUsesParentGenericProviders() {
+      run("ExtensionUsesParentGenericProviders.kt");
+    }
+
+    @Test
+    @TestMetadata("ExtensionUsesParentReifiedProviders.kt")
+    public void testExtensionUsesParentReifiedProviders() {
+      run("ExtensionUsesParentReifiedProviders.kt");
+    }
+
+    @Test
+    @TestMetadata("GenericBinds.kt")
+    public void testGenericBinds() {
+      run("GenericBinds.kt");
+    }
+
+    @Test
+    @TestMetadata("GenericProviderInGenericContainer.kt")
+    public void testGenericProviderInGenericContainer() {
+      run("GenericProviderInGenericContainer.kt");
+    }
+
+    @Test
+    @TestMetadata("GenericProvidersAcrossModules.kt")
+    public void testGenericProvidersAcrossModules() {
+      run("GenericProvidersAcrossModules.kt");
+    }
+
+    @Test
+    @TestMetadata("GrandchildUsesGrandparentGenericProviders.kt")
+    public void testGrandchildUsesGrandparentGenericProviders() {
+      run("GrandchildUsesGrandparentGenericProviders.kt");
+    }
+
+    @Test
+    @TestMetadata("InjectClassFallback.kt")
+    public void testInjectClassFallback() {
+      run("InjectClassFallback.kt");
+    }
+
+    @Test
+    @TestMetadata("MultibindingDependsOnDerivedBinding.kt")
+    public void testMultibindingDependsOnDerivedBinding() {
+      run("MultibindingDependsOnDerivedBinding.kt");
+    }
+
+    @Test
+    @TestMetadata("MultibindingWinsOverGenericProvider.kt")
+    public void testMultibindingWinsOverGenericProvider() {
+      run("MultibindingWinsOverGenericProvider.kt");
+    }
+
+    @Test
+    @TestMetadata("MultipleTypeParameters.kt")
+    public void testMultipleTypeParameters() {
+      run("MultipleTypeParameters.kt");
+    }
+
+    @Test
+    @TestMetadata("NearestAncestorGenericProviderWins.kt")
+    public void testNearestAncestorGenericProviderWins() {
+      run("NearestAncestorGenericProviderWins.kt");
+    }
+
+    @Test
+    @TestMetadata("NullabilityMatching.kt")
+    public void testNullabilityMatching() {
+      run("NullabilityMatching.kt");
+    }
+
+    @Test
+    @TestMetadata("NullableAndPlainProvidersCompete.kt")
+    public void testNullableAndPlainProvidersCompete() {
+      run("NullableAndPlainProvidersCompete.kt");
+    }
+
+    @Test
+    @TestMetadata("OptionalBindingWinsOverGenericProvider.kt")
+    public void testOptionalBindingWinsOverGenericProvider() {
+      run("OptionalBindingWinsOverGenericProvider.kt");
+    }
+
+    @Test
+    @TestMetadata("OverlapNotReportedByDefault.kt")
+    public void testOverlapNotReportedByDefault() {
+      run("OverlapNotReportedByDefault.kt");
+    }
+
+    @Test
+    @TestMetadata("ParentScopedGenericProviderSharedWithParent.kt")
+    public void testParentScopedGenericProviderSharedWithParent() {
+      run("ParentScopedGenericProviderSharedWithParent.kt");
+    }
+
+    @Test
+    @TestMetadata("ParentScopedGenericProviderUsedByExtension.kt")
+    public void testParentScopedGenericProviderUsedByExtension() {
+      run("ParentScopedGenericProviderUsedByExtension.kt");
+    }
+
+    @Test
+    @TestMetadata("ProviderLocations.kt")
+    public void testProviderLocations() {
+      run("ProviderLocations.kt");
+    }
+
+    @Test
+    @TestMetadata("Qualifiers.kt")
+    public void testQualifiers() {
+      run("Qualifiers.kt");
+    }
+
+    @Test
+    @TestMetadata("RecursiveTypeWithDeferredDependency.kt")
+    public void testRecursiveTypeWithDeferredDependency() {
+      run("RecursiveTypeWithDeferredDependency.kt");
+    }
+
+    @Test
+    @TestMetadata("ReifiedEncoderExample.kt")
+    public void testReifiedEncoderExample() {
+      run("ReifiedEncoderExample.kt");
+    }
+
+    @Test
+    @TestMetadata("ReifiedProviderDeferredAccess.kt")
+    public void testReifiedProviderDeferredAccess() {
+      run("ReifiedProviderDeferredAccess.kt");
+    }
+
+    @Test
+    @TestMetadata("ReifiedProviderDependencies.kt")
+    public void testReifiedProviderDependencies() {
+      run("ReifiedProviderDependencies.kt");
+    }
+
+    @Test
+    @TestMetadata("ReifiedProviderInstanceAccess.kt")
+    public void testReifiedProviderInstanceAccess() {
+      run("ReifiedProviderInstanceAccess.kt");
+    }
+
+    @Test
+    @TestMetadata("ReifiedProviderLocations.kt")
+    public void testReifiedProviderLocations() {
+      run("ReifiedProviderLocations.kt");
+    }
+
+    @Test
+    @TestMetadata("ReifiedProviderTypeParameters.kt")
+    public void testReifiedProviderTypeParameters() {
+      run("ReifiedProviderTypeParameters.kt");
+    }
+
+    @Test
+    @TestMetadata("ReifiedProvidersAcrossModules.kt")
+    public void testReifiedProvidersAcrossModules() {
+      run("ReifiedProvidersAcrossModules.kt");
+    }
+
+    @Test
+    @TestMetadata("RepeatedTypeParameterNullability.kt")
+    public void testRepeatedTypeParameterNullability() {
+      run("RepeatedTypeParameterNullability.kt");
+    }
+
+    @Test
+    @TestMetadata("ReplacedContainerGenericProviders.kt")
+    public void testReplacedContainerGenericProviders() {
+      run("ReplacedContainerGenericProviders.kt");
+    }
+
+    @Test
+    @TestMetadata("ScopedGenericProvider.kt")
+    public void testScopedGenericProvider() {
+      run("ScopedGenericProvider.kt");
+    }
+
+    @Test
+    @TestMetadata("ScopedReifiedProvider.kt")
+    public void testScopedReifiedProvider() {
+      run("ScopedReifiedProvider.kt");
+    }
+
+    @Test
+    @TestMetadata("Specificity.kt")
+    public void testSpecificity() {
+      run("Specificity.kt");
+    }
+
+    @Test
+    @TestMetadata("SuspendGenericProvider.kt")
+    public void testSuspendGenericProvider() {
+      run("SuspendGenericProvider.kt");
+    }
+
+    @Test
+    @TestMetadata("SuspendReifiedProvider.kt")
+    public void testSuspendReifiedProvider() {
+      run("SuspendReifiedProvider.kt");
+    }
+
+    @Test
+    @TestMetadata("UnusedGenericProvidersAcrossModules.kt")
+    public void testUnusedGenericProvidersAcrossModules() {
+      run("UnusedGenericProvidersAcrossModules.kt");
+    }
+
+    @Test
+    @TestMetadata("UnusedGenericProvidersInBindingContainer.kt")
+    public void testUnusedGenericProvidersInBindingContainer() {
+      run("UnusedGenericProvidersInBindingContainer.kt");
+    }
+
+    @Test
+    @TestMetadata("UnusedGenericProvidersInGenericContainer.kt")
+    public void testUnusedGenericProvidersInGenericContainer() {
+      run("UnusedGenericProvidersInGenericContainer.kt");
+    }
+
+    @Test
+    @TestMetadata("UnusedGenericProvidersInGraphCompanion.kt")
+    public void testUnusedGenericProvidersInGraphCompanion() {
+      run("UnusedGenericProvidersInGraphCompanion.kt");
+    }
+
+    @Test
+    @TestMetadata("UnusedGenericProvidersOnGraph.kt")
+    public void testUnusedGenericProvidersOnGraph() {
+      run("UnusedGenericProvidersOnGraph.kt");
+    }
+
+    @Test
+    @TestMetadata("UnusedPrivateGenericProvider.kt")
+    public void testUnusedPrivateGenericProvider() {
+      run("UnusedPrivateGenericProvider.kt");
+    }
+
+    @Test
+    @TestMetadata("UnusedReifiedGenericProvider.kt")
+    public void testUnusedReifiedGenericProvider() {
+      run("UnusedReifiedGenericProvider.kt");
+    }
+
+    @Test
+    @TestMetadata("UnusedScopedGenericProvider.kt")
+    public void testUnusedScopedGenericProvider() {
+      run("UnusedScopedGenericProvider.kt");
+    }
+  }
+
+  @Nested
   @TestMetadata("compiler-tests/src/test/data/box/ic")
   @TestDataPath("$PROJECT_ROOT")
   public class Ic {

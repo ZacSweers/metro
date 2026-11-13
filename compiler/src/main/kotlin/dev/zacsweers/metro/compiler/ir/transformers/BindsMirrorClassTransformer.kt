@@ -17,6 +17,7 @@ import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
 import dev.zacsweers.metro.compiler.ir.MultibindsCallable
+import dev.zacsweers.metro.compiler.ir.ProviderTypeParameterOrder
 import dev.zacsweers.metro.compiler.ir.addAnnotationCompat
 import dev.zacsweers.metro.compiler.ir.buildAnnotation
 import dev.zacsweers.metro.compiler.ir.getOrCreateMetadataVisibleHiddenNestedClass
@@ -356,10 +357,44 @@ private fun generateMirrorFunction(
       .apply {
         copyParametersFrom(targetFunction.ir)
         val sourceClass = targetFunction.ir.parentAsClass
-        if (sourceClass.typeParameters.isNotEmpty()) {
-          // The nested mirror can't reference type parameters owned by its outer container.
+        val sourceFunctionTypeParameters = targetFunction.ir.typeParameters
+        val hasContainerTypeParameters = sourceClass.typeParameters.isNotEmpty()
+        val hasFunctionTypeParameters = sourceFunctionTypeParameters.isNotEmpty()
+        if (hasContainerTypeParameters || hasFunctionTypeParameters) {
+          // The nested mirror can't reference type parameters owned by its outer container. It
+          // declares copies of them first and then copies of the binds function's own.
           val mirrorTypeParameters = copyTypeParametersFrom(sourceClass)
-          remapTypes(typeRemapperFor(mirrorTypeParameters.map { it.defaultType }, sourceClass))
+
+          val mirrorFunctionTypeParameters =
+            copyProviderFunctionTypeParameters(
+              functionTypeParameters = sourceFunctionTypeParameters,
+              sourceContainerTypeParameters = sourceClass.typeParameters,
+              copiedContainerTypeParameters = mirrorTypeParameters,
+              keepReified = false,
+            )
+
+          val sourceTypeParameters =
+            ProviderTypeParameterOrder.join(
+              container = sourceClass.typeParameters,
+              function = sourceFunctionTypeParameters,
+            )
+
+          val copiedTypeParameters =
+            ProviderTypeParameterOrder.join(
+              container = mirrorTypeParameters,
+              function = mirrorFunctionTypeParameters,
+            )
+
+          remapTypes(
+            typeRemapperFor(
+              sourceTypeParameters.zip(copiedTypeParameters).associate { (source, copied) ->
+                source.symbol to copied.defaultType
+              },
+            ),
+          )
+        }
+
+        if (hasContainerTypeParameters) {
           val mirrorReceiver = mirrorClass.thisReceiverOrFail
           setDispatchReceiver(mirrorReceiver.copyTo(this, type = mirrorReceiver.type))
         }

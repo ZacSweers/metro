@@ -6,6 +6,28 @@ Changelog
 
 ### New
 
+#### [**[MEEP-3124]**](https://github.com/ZacSweers/metro/discussions/3124) Derived bindings
+
+`@Provides` and `@Binds` functions can now have type parameters. One generic provider supplies a binding for every type it fits, so you don't need a separate provider for each type.
+
+```kotlin
+@BindingContainer
+object Serializers {
+  // Provides KSerializer<List<User>>, KSerializer<List<List<String>>>, and so on.
+  @Provides
+  fun <T> list(element: KSerializer<T>): KSerializer<List<T>> = ListSerializer(element)
+
+  // Reified type parameters work too. This provides a KSerializer for any serializable type.
+  @Provides inline fun <reified T> forType(): KSerializer<T> = serializer()
+}
+```
+
+When a graph needs a type that has no binding of its own, Metro finds a generic provider whose return type matches and infers its type arguments. Here, a request for `KSerializer<List<User>>` calls `list(forType<User>())`. A binding that you declare for the exact type always wins over a generic one.
+
+This is experimental and off by default. Turn it on with `metro { enableDerivedBindings.set(true) }`. See the [derived bindings docs](docs/derived-bindings.md) for the full rules.
+
+#### Misc
+
 - **[FIR/IR]** Experimental support for companion block `@Provides` functions and properties on Kotlin `2.5.0-Beta1` and later. See [companion-block configuration](docs/installation.md#companion-blocks).
 - Add experimental graph lifecycle callbacks.
   - A graph that implements `CloseableGraph` can annotate functions with `@OnGraphInit` and `@OnGraphClose`. Metro injects their parameters and generates `close()`, which also closes the graph's extensions.

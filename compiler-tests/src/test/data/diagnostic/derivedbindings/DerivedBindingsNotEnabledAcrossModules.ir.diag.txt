@@ -1,0 +1,1 @@
+/main.kt:32:11: error: [Metro/DerivedBindingsNotEnabled] This graph uses `EncoderBindings.list`, which declares type parameters. Generic providers need derived bindings, which are disabled. Enable the `enable-derived-bindings` compiler option or set `metro.enableDerivedBindings` to true.

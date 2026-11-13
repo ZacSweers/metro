@@ -116,6 +116,15 @@ internal fun MetroOptions.validate(
     )
     valid = false
   }
+
+  if (derivedBindingOverlapSeverity.isIdeOnly) {
+    onError(
+      "derivedBindingOverlapSeverity (set to ${derivedBindingOverlapSeverity.name}) does not support IDE_WARN/IDE_ERROR " +
+        "because the underlying check only runs during IR (CLI-only). Use WARN, ERROR, or NONE instead.",
+    )
+    valid = false
+  }
+
   return valid
 }
 

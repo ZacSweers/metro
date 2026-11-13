@@ -65,6 +65,14 @@ internal sealed interface IrMetroFactory {
           IrExpression?,
         >,
   ): IrExpression {
+    // A reified provider's factory can't call it, so the graph must never instantiate it.
+    if (this is ProviderFactory.Metro && isReified) {
+      reportCompilerBug(
+        "Reified provider $callableId must be called directly for $typeKey. Its factory can't " +
+          "call it and must never be instantiated.",
+      )
+    }
+
     val expr =
       invokeCreatorExpression(
         typeKey = typeKey,
@@ -112,8 +120,9 @@ internal sealed interface IrMetroFactory {
    * Returns the arguments `create()` would receive for [typeKey], without calling it. They're the
    * dependency providers a factory instance holds.
    *
-   * Some providers can't use their factory. The graph reads these providers itself so the provider
-   * it builds holds the same things a factory would.
+   * Some providers can't use their factory. A reified provider's factory can't be instantiated, for
+   * example. The graph reads these providers itself so the provider it builds holds the same things
+   * a factory would.
    */
   context(context: IrMetroContext, scope: IrBuilderWithScope)
   fun createArguments(
@@ -175,10 +184,38 @@ internal sealed interface IrMetroFactory {
       createFunction.deepCopyWithSymbols(initialParent = createFunction.parent).apply {
         parent = createFunction.parent
       }
+
+    val factory = this@IrMetroFactory
+    val concreteTypes = creatorTypeArguments
     val remapper =
-      creatorTypeArguments?.let { concreteTypes ->
+      if (concreteTypes != null) {
+        val isAppliedView =
+          factory is ProviderFactory.Metro && factory.functionTypeArguments != null
+        val sizesDiffer = concreteTypes.size != finalFunction.typeParameters.size
+        if (isAppliedView && sizesDiffer) {
+          reportCompilerBug(
+            "Creator ${finalFunction.name} in ${factoryClass.classId} declares " +
+              "${finalFunction.typeParameters.size} type parameters but got " +
+              "${concreteTypes.size} type arguments",
+          )
+        }
+
         typeRemapperFor(concreteTypes, finalFunction)
-      } ?: finalFunction.typeRemapperFor(typeKey.type)
+      } else {
+        // Inferring from the key only works when the creator's type parameters are the key's
+        // type arguments. A generic provider's function type parameters can sit anywhere in it.
+        val hasFunctionTypeParameters =
+          factory is ProviderFactory.Metro && factory.functionTypeParameters.isNotEmpty()
+        if (hasFunctionTypeParameters) {
+          reportCompilerBug(
+            "Generic provider factory ${factoryClass.classId} needs explicit creator type " +
+              "arguments for $typeKey",
+          )
+        }
+
+        finalFunction.typeRemapperFor(typeKey.type)
+      }
+
     finalFunction.remapTypes(remapper)
     val typeArguments =
       finalFunction.typeParameters.map { typeParameter ->

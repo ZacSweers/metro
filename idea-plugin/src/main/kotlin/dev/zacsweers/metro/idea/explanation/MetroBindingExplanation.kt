@@ -110,6 +110,7 @@ private fun captureExplanation(explanation: BindingExplanation): MetroBindingExp
               candidate.relatedBindings.map { related ->
                 sources.declaration(related.pointer, bindingTarget(related).text)
               },
+            details = candidate.details,
           )
         MetroBindingCandidate(
           target,

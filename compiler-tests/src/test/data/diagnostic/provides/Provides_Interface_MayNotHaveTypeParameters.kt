@@ -2,10 +2,10 @@
 
 interface ExampleGraph {
   @Provides
-  fun <!METRO_TYPE_PARAMETERS_ERROR!><T><!> provideString(): String = "Hello"
+  fun <<!DERIVED_BINDINGS_NOT_ENABLED!>T<!>> provideString(): String = "Hello"
 
   companion object {
     @Provides
-    fun <!METRO_TYPE_PARAMETERS_ERROR!><T><!> provideInt(): Int = 0
+    fun <<!DERIVED_BINDINGS_NOT_ENABLED!>T<!>> provideInt(): Int = 0
   }
 }

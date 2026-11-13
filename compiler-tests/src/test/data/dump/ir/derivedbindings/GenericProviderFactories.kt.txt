@@ -1,0 +1,314 @@
+@BindingContainer
+class GenericContainer<A : Any?> {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "combined", propertyName = "", startOffset = 528, endOffset = 647, newInstanceName = "combined")
+  class CombinedMetroFactory<A : Any?, B : Any?> : Factory<Encoder<Map<A, B>>> {
+    private /* final field */ val instance: GenericContainer<A> = instance
+    private /* final field */ val a: Provider<Encoder<A>> = a
+    private /* final field */ val b: Provider<Encoder<B>> = b
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun <A : Any?, B : A> create(instance: GenericContainer<A>, a: Provider<Encoder<A>>, b: Provider<Encoder<B>>): CombinedMetroFactory<A, B> {
+        return CombinedMetroFactory<A, B>(instance = instance, a = a, b = b)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun <A : Any?, B : A> combined(instance: GenericContainer<A>, a: Encoder<A>, b: Encoder<B>): Encoder<Map<A, B>> {
+        return instance.combined<B>(a = a, b = b)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(instance: GenericContainer<A>, a: Provider<Encoder<A>>, b: Provider<Encoder<B>>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun <A : Any?, B : A> declarationMirror(a: Encoder<A>, b: Encoder<B>): Encoder<Map<A, B>> {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Encoder<Map<A, B>> {
+      return CombinedMetroFactory/* companion */.combined<A, B>(instance = <this>.#instance, a = <this>.#a.invoke(), b = <this>.#b.invoke())
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+  @Provides
+  fun <B : A> combined(a: Encoder<A>, b: Encoder<B>): Encoder<Map<A, B>> {
+    return { // BLOCK
+      local class <no name provided> : Encoder<Map<A, B>> {
+        constructor() /* primary */ {
+          super/*Any*/()
+          /* <init>() */
+
+        }
+
+      }
+
+      <no name provided>()
+    }
+  }
+
+}
+
+class LruCache<T : Any?> : Cache<T> {
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@BindingContainer
+interface BindsContainer {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @ComptimeOnly
+  abstract class BindsMirror {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @Binds
+    @CallableMetadata(callableName = "lru", propertyName = "", startOffset = 705, endOffset = 745)
+    fun <T : Any?> lru(impl: LruCache<T>): Cache<T> {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Binds
+  @ComptimeOnly
+  fun <T : Any?> lru(impl: LruCache<T>): Cache<T> {
+    return error(message = "Never called")
+  }
+
+}
+
+interface Cache<T : Any?> {
+}
+
+interface Encoder<T : Any?> {
+}
+
+@BindingContainer
+object Bindings {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "list", propertyName = "", startOffset = 167, endOffset = 259, newInstanceName = "list")
+  class ListMetroFactory<T : Any?> : Factory<Encoder<List<T>>> {
+    private /* final field */ val element: Provider<Encoder<T>> = element
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun <T : Any?> create(element: Provider<Encoder<T>>): ListMetroFactory<T> {
+        return ListMetroFactory<T>(element = element)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun <T : Any?> list(element: Encoder<T>): Encoder<List<T>> {
+        return Bindings.list<T>(element = element)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(element: Provider<Encoder<T>>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun <T : Any?> declarationMirror(element: Encoder<T>): Encoder<List<T>> {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Encoder<List<T>> {
+      return ListMetroFactory/* companion */.list<T>(element = <this>.#element.invoke())
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "noDependencies", propertyName = "", startOffset = 263, endOffset = 358, newInstanceName = "noDependencies")
+  class NoDependenciesMetroFactory<T : Any?> : Factory<Encoder<Collection<T>>> {
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun <T : Any?> create(): NoDependenciesMetroFactory<T> {
+        return NoDependenciesMetroFactory<T>()
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun <T : Any?> noDependencies(): Encoder<Collection<T>> {
+        return Bindings.noDependencies<T>()
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun <T : Any?> declarationMirror(): Encoder<Collection<T>> {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Encoder<Collection<T>> {
+      return NoDependenciesMetroFactory/* companion */.noDependencies<T>()
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "sorted", propertyName = "", startOffset = 362, endOffset = 476, newInstanceName = "sorted")
+  class SortedMetroFactory<T : Any?> : Factory<Encoder<Set<T>>> {
+    private /* final field */ val element: Provider<Encoder<T>> = element
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun <T : Comparable<T>> create(element: Provider<Encoder<T>>): SortedMetroFactory<T> {
+        return SortedMetroFactory<T>(element = element)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun <T : Comparable<T>> sorted(element: Encoder<T>): Encoder<Set<T>> {
+        return Bindings.sorted<T>(element = element)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(element: Provider<Encoder<T>>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun <T : Comparable<T>> declarationMirror(element: Encoder<T>): Encoder<Set<T>> {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Encoder<Set<T>> {
+      return SortedMetroFactory/* companion */.sorted<T>(element = <this>.#element.invoke())
+    }
+
+  }
+
+  private constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+  @Provides
+  fun <T : Any?> list(element: Encoder<T>): Encoder<List<T>> {
+    return { // BLOCK
+      local class <no name provided> : Encoder<List<T>> {
+        constructor() /* primary */ {
+          super/*Any*/()
+          /* <init>() */
+
+        }
+
+      }
+
+      <no name provided>()
+    }
+  }
+
+  @Provides
+  fun <T : Any?> noDependencies(): Encoder<Collection<T>> {
+    return { // BLOCK
+      local class <no name provided> : Encoder<Collection<T>> {
+        constructor() /* primary */ {
+          super/*Any*/()
+          /* <init>() */
+
+        }
+
+      }
+
+      <no name provided>()
+    }
+  }
+
+  @Provides
+  fun <T : Comparable<T>> sorted(element: Encoder<T>): Encoder<Set<T>> {
+    return { // BLOCK
+      local class <no name provided> : Encoder<Set<T>> {
+        constructor() /* primary */ {
+          super/*Any*/()
+          /* <init>() */
+
+        }
+
+      }
+
+      <no name provided>()
+    }
+  }
+
+}

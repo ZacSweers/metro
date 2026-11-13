@@ -235,6 +235,43 @@ class MetroGraphValidationParityTest : BasePlatformTestCase() {
     )
   }
 
+  fun testDerivedBindingsMatchCompiler() {
+    val options = mapOf("enable-derived-bindings" to "true")
+    val fixture = "DerivedBindingGraph"
+    val reportPath = "parity/derived/AppGraph/Impl"
+    assertParity(
+      ParityCase(
+        fixtureName = fixture,
+        graphPath = listOf("parity.derived.AppGraph"),
+        metadataReport = "$fixture/graph-metadata/graph-parity-derived-AppGraph.json.txt",
+        populatedReport = "$fixture/keys-populated/$reportPath.txt",
+        validatedReport = "$fixture/keys-validated/$reportPath.txt",
+        deferredReport = "$fixture/keys-deferred/$reportPath.txt",
+        metroOptions = options,
+      ),
+    )
+    assertParity(
+      ParityCase(
+        fixtureName = fixture,
+        graphPath = listOf("parity.derived.ChildGraph", "parity.derived.AppGraph"),
+        populatedReport = "$fixture/keys-populated/$reportPath/ChildGraphImpl.txt",
+        validatedReport = "$fixture/keys-validated/$reportPath/ChildGraphImpl.txt",
+        deferredReport = "$fixture/keys-deferred/$reportPath/ChildGraphImpl.txt",
+        metroOptions = options,
+      ),
+    )
+    assertParity(
+      ParityCase(
+        fixtureName = "AmbiguousDerivedBinding",
+        graphPath = listOf("parity.failures.derived.AppGraph"),
+        populatedReport =
+          "AmbiguousDerivedBinding/keys-populated/parity/failures/derived/AppGraph/Impl.txt",
+        diagnosticReport = "AmbiguousDerivedBinding.ir.diag.txt",
+        metroOptions = options,
+      ),
+    )
+  }
+
   private fun failureCase(
     fixtureName: String,
     packageName: String,
