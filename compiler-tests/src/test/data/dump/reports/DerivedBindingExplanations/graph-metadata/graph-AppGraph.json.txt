@@ -175,7 +175,6 @@
       "isGraphInput": false,
       "dependencies": [],
       "isSynthetic": false,
-      "origin": "DerivedBindingExplanations.kt:40:1",
       "declaration": "AppGraph"
     },
     {
@@ -192,7 +191,6 @@
         }
       ],
       "isSynthetic": false,
-      "origin": "DerivedBindingExplanations.kt:37:10",
       "declaration": "lru",
       "aliasTarget": "LruCache<User>",
       "derivedFrom": {
@@ -216,7 +214,6 @@
         }
       ],
       "isSynthetic": false,
-      "origin": "DerivedBindingExplanations.kt:1:1",
       "declaration": "<get-child>"
     },
     {
@@ -227,7 +224,6 @@
       "nameHint": "anything",
       "dependencies": [],
       "isSynthetic": false,
-      "origin": "DerivedBindingExplanations.kt:24:13",
       "declaration": "anything",
       "derivedFrom": {
         "provider": "Encoders.anything",
@@ -244,7 +240,6 @@
       "nameHint": "anything",
       "dependencies": [],
       "isSynthetic": false,
-      "origin": "DerivedBindingExplanations.kt:24:13",
       "declaration": "anything",
       "derivedFrom": {
         "provider": "Encoders.anything",
@@ -261,7 +256,6 @@
       "nameHint": "string",
       "dependencies": [],
       "isSynthetic": false,
-      "origin": "DerivedBindingExplanations.kt:22:13",
       "declaration": "string"
     },
     {
@@ -278,7 +272,6 @@
         }
       ],
       "isSynthetic": false,
-      "origin": "DerivedBindingExplanations.kt:27:13",
       "declaration": "list",
       "derivedFrom": {
         "provider": "Encoders.list",
@@ -307,7 +300,6 @@
         }
       ],
       "isSynthetic": false,
-      "origin": "DerivedBindingExplanations.kt:32:3",
       "declaration": "map",
       "derivedFrom": {
         "provider": "Encoders.map",
@@ -325,7 +317,6 @@
       "nameHint": "LruCache",
       "dependencies": [],
       "isSynthetic": false,
-      "origin": "DerivedBindingExplanations.kt:13:1",
       "declaration": "LruCache"
     }
   ],
@@ -345,12 +336,7 @@
           "reason": "selected_generated",
           "declaration": {
             "id": "AppGraph",
-            "label": "AppGraph",
-            "source": {
-              "path": "DerivedBindingExplanations.kt",
-              "line": 40,
-              "column": 1
-            }
+            "label": "AppGraph"
           },
           "relatedDeclarations": [],
           "details": [],
@@ -382,12 +368,7 @@
           "reason": "selected_generated",
           "declaration": {
             "id": "AppGraph",
-            "label": "AppGraph",
-            "source": {
-              "path": "DerivedBindingExplanations.kt",
-              "line": 40,
-              "column": 1
-            }
+            "label": "AppGraph"
           },
           "relatedDeclarations": [],
           "details": [],
@@ -398,12 +379,7 @@
         "key": "AppGraph",
         "declaration": {
           "id": "AppGraph.Impl.<get-child>(AppGraph.Impl): ChildGraph",
-          "label": "AppGraph.Impl.<get-child>",
-          "source": {
-            "path": "DerivedBindingExplanations.kt",
-            "line": 1,
-            "column": 1
-          }
+          "label": "AppGraph.Impl.<get-child>"
         },
         "hasDefault": false,
         "isOptional": false,
@@ -428,12 +404,7 @@
           "reason": "selected_derived",
           "declaration": {
             "id": "CacheBindings.lru(CacheBindings,LruCache<#CacheBindings.lru:0:T>): Cache<#CacheBindings.lru:0:T>",
-            "label": "CacheBindings.lru",
-            "source": {
-              "path": "DerivedBindingExplanations.kt",
-              "line": 37,
-              "column": 10
-            }
+            "label": "CacheBindings.lru"
           },
           "relatedDeclarations": [],
           "details": [
@@ -467,12 +438,7 @@
           "reason": "selected_generated",
           "declaration": {
             "id": "AppGraph.Impl.<get-child>(AppGraph.Impl): ChildGraph",
-            "label": "AppGraph.Impl.<get-child>",
-            "source": {
-              "path": "DerivedBindingExplanations.kt",
-              "line": 1,
-              "column": 1
-            }
+            "label": "AppGraph.Impl.<get-child>"
           },
           "relatedDeclarations": [],
           "details": [],
@@ -483,12 +449,7 @@
         "key": "ChildGraph",
         "declaration": {
           "id": "AppGraph.Impl.<get-child>(AppGraph.Impl): ChildGraph",
-          "label": "AppGraph.Impl.<get-child>",
-          "source": {
-            "path": "DerivedBindingExplanations.kt",
-            "line": 1,
-            "column": 1
-          }
+          "label": "AppGraph.Impl.<get-child>"
         },
         "hasDefault": false,
         "isOptional": false,
@@ -513,12 +474,7 @@
           "reason": "selected_derived",
           "declaration": {
             "id": "Encoders.anything(Encoders): Encoder<#Encoders.anything:0:T>",
-            "label": "Encoders.anything",
-            "source": {
-              "path": "DerivedBindingExplanations.kt",
-              "line": 24,
-              "column": 13
-            }
+            "label": "Encoders.anything"
           },
           "relatedDeclarations": [],
           "details": [
@@ -531,12 +487,7 @@
         "key": "Encoder<Token>",
         "declaration": {
           "id": "Encoders.map(Encoders,Encoder<#Encoders.map:0:K>,Encoder<#Encoders.map:1:V>): Encoder<kotlin/collections/Map<#Encoders.map:0:K,#Encoders.map:1:V>>#values",
-          "label": "Encoders.map.values",
-          "source": {
-            "path": "DerivedBindingExplanations.kt",
-            "line": 32,
-            "column": 36
-          }
+          "label": "Encoders.map.values"
         },
         "hasDefault": false,
         "isOptional": false,
@@ -561,12 +512,7 @@
           "reason": "selected_derived",
           "declaration": {
             "id": "Encoders.anything(Encoders): Encoder<#Encoders.anything:0:T>",
-            "label": "Encoders.anything",
-            "source": {
-              "path": "DerivedBindingExplanations.kt",
-              "line": 24,
-              "column": 13
-            }
+            "label": "Encoders.anything"
           },
           "relatedDeclarations": [],
           "details": [
@@ -579,12 +525,7 @@
         "key": "Encoder<User>",
         "declaration": {
           "id": "Encoders.list(Encoders,Encoder<#Encoders.list:0:T>): Encoder<kotlin/collections/List<#Encoders.list:0:T>>#element",
-          "label": "Encoders.list.element",
-          "source": {
-            "path": "DerivedBindingExplanations.kt",
-            "line": 27,
-            "column": 26
-          }
+          "label": "Encoders.list.element"
         },
         "hasDefault": false,
         "isOptional": false,
@@ -609,12 +550,7 @@
           "reason": "selected_explicit",
           "declaration": {
             "id": "Encoders.string(Encoders): Encoder<kotlin/String>",
-            "label": "Encoders.string",
-            "source": {
-              "path": "DerivedBindingExplanations.kt",
-              "line": 22,
-              "column": 13
-            }
+            "label": "Encoders.string"
           },
           "relatedDeclarations": [],
           "details": [],
@@ -646,12 +582,7 @@
           "reason": "selected_explicit",
           "declaration": {
             "id": "Encoders.string(Encoders): Encoder<kotlin/String>",
-            "label": "Encoders.string",
-            "source": {
-              "path": "DerivedBindingExplanations.kt",
-              "line": 22,
-              "column": 13
-            }
+            "label": "Encoders.string"
           },
           "relatedDeclarations": [],
           "details": [],
@@ -662,12 +593,7 @@
         "key": "Encoder<kotlin/String>",
         "declaration": {
           "id": "Encoders.map(Encoders,Encoder<#Encoders.map:0:K>,Encoder<#Encoders.map:1:V>): Encoder<kotlin/collections/Map<#Encoders.map:0:K,#Encoders.map:1:V>>#keys",
-          "label": "Encoders.map.keys",
-          "source": {
-            "path": "DerivedBindingExplanations.kt",
-            "line": 32,
-            "column": 18
-          }
+          "label": "Encoders.map.keys"
         },
         "hasDefault": false,
         "isOptional": false,
@@ -692,12 +618,7 @@
           "reason": "selected_derived",
           "declaration": {
             "id": "Encoders.list(Encoders,Encoder<#Encoders.list:0:T>): Encoder<kotlin/collections/List<#Encoders.list:0:T>>",
-            "label": "Encoders.list",
-            "source": {
-              "path": "DerivedBindingExplanations.kt",
-              "line": 27,
-              "column": 13
-            }
+            "label": "Encoders.list"
           },
           "relatedDeclarations": [],
           "details": [
@@ -712,22 +633,12 @@
           "reason": "less_specific",
           "declaration": {
             "id": "Encoders.anything(Encoders): Encoder<#Encoders.anything:0:T>",
-            "label": "Encoders.anything",
-            "source": {
-              "path": "DerivedBindingExplanations.kt",
-              "line": 24,
-              "column": 13
-            }
+            "label": "Encoders.anything"
           },
           "relatedDeclarations": [
             {
               "id": "Encoders.list(Encoders,Encoder<#Encoders.list:0:T>): Encoder<kotlin/collections/List<#Encoders.list:0:T>>",
-              "label": "Encoders.list",
-              "source": {
-                "path": "DerivedBindingExplanations.kt",
-                "line": 27,
-                "column": 13
-              }
+              "label": "Encoders.list"
             }
           ],
           "details": [],
@@ -759,12 +670,7 @@
           "reason": "selected_derived",
           "declaration": {
             "id": "Encoders.map(Encoders,Encoder<#Encoders.map:0:K>,Encoder<#Encoders.map:1:V>): Encoder<kotlin/collections/Map<#Encoders.map:0:K,#Encoders.map:1:V>>",
-            "label": "Encoders.map",
-            "source": {
-              "path": "DerivedBindingExplanations.kt",
-              "line": 32,
-              "column": 3
-            }
+            "label": "Encoders.map"
           },
           "relatedDeclarations": [],
           "details": [
@@ -779,22 +685,12 @@
           "reason": "less_specific",
           "declaration": {
             "id": "Encoders.anything(Encoders): Encoder<#Encoders.anything:0:T>",
-            "label": "Encoders.anything",
-            "source": {
-              "path": "DerivedBindingExplanations.kt",
-              "line": 24,
-              "column": 13
-            }
+            "label": "Encoders.anything"
           },
           "relatedDeclarations": [
             {
               "id": "Encoders.map(Encoders,Encoder<#Encoders.map:0:K>,Encoder<#Encoders.map:1:V>): Encoder<kotlin/collections/Map<#Encoders.map:0:K,#Encoders.map:1:V>>",
-              "label": "Encoders.map",
-              "source": {
-                "path": "DerivedBindingExplanations.kt",
-                "line": 32,
-                "column": 3
-              }
+              "label": "Encoders.map"
             }
           ],
           "details": [],
@@ -826,12 +722,7 @@
           "reason": "selected_implicit",
           "declaration": {
             "id": "LruCache",
-            "label": "LruCache",
-            "source": {
-              "path": "DerivedBindingExplanations.kt",
-              "line": 13,
-              "column": 1
-            }
+            "label": "LruCache"
           },
           "relatedDeclarations": [],
           "details": [],
@@ -842,12 +733,7 @@
         "key": "LruCache<User>",
         "declaration": {
           "id": "CacheBindings.lru(CacheBindings,LruCache<#CacheBindings.lru:0:T>): Cache<#CacheBindings.lru:0:T>#impl",
-          "label": "CacheBindings.lru.impl",
-          "source": {
-            "path": "DerivedBindingExplanations.kt",
-            "line": 37,
-            "column": 22
-          }
+          "label": "CacheBindings.lru.impl"
         },
         "hasDefault": false,
         "isOptional": false,
@@ -872,12 +758,7 @@
           "reason": "selected_generated",
           "declaration": {
             "id": "AppGraph.Impl.<get-child>(AppGraph.Impl): ChildGraph",
-            "label": "AppGraph.Impl.<get-child>",
-            "source": {
-              "path": "DerivedBindingExplanations.kt",
-              "line": 1,
-              "column": 1
-            }
+            "label": "AppGraph.Impl.<get-child>"
           },
           "relatedDeclarations": [],
           "details": [],

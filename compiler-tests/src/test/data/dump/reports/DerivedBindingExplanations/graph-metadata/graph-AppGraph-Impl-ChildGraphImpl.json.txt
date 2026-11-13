@@ -152,7 +152,6 @@
       "isGraphInput": false,
       "dependencies": [],
       "isSynthetic": false,
-      "origin": "DerivedBindingExplanations.kt:40:1",
       "declaration": "AppGraph"
     },
     {
@@ -208,12 +207,7 @@
           "reason": "selected_parent",
           "declaration": {
             "id": "AppGraph",
-            "label": "AppGraph",
-            "source": {
-              "path": "DerivedBindingExplanations.kt",
-              "line": 40,
-              "column": 1
-            }
+            "label": "AppGraph"
           },
           "ownerGraphId": "8:AppGraph",
           "relatedDeclarations": [],
@@ -274,12 +268,7 @@
           "reason": "selected_parent",
           "declaration": {
             "id": "Encoders.map(Encoders,Encoder<#Encoders.map:0:K>,Encoder<#Encoders.map:1:V>): Encoder<kotlin/collections/Map<#Encoders.map:0:K,#Encoders.map:1:V>>",
-            "label": "Encoders.map",
-            "source": {
-              "path": "DerivedBindingExplanations.kt",
-              "line": 32,
-              "column": 3
-            }
+            "label": "Encoders.map"
           },
           "ownerGraphId": "8:AppGraph",
           "relatedDeclarations": [],
@@ -295,22 +284,12 @@
           "reason": "less_specific",
           "declaration": {
             "id": "Encoders.anything(Encoders): Encoder<#Encoders.anything:0:T>",
-            "label": "Encoders.anything",
-            "source": {
-              "path": "DerivedBindingExplanations.kt",
-              "line": 24,
-              "column": 13
-            }
+            "label": "Encoders.anything"
           },
           "relatedDeclarations": [
             {
               "id": "Encoders.map(Encoders,Encoder<#Encoders.map:0:K>,Encoder<#Encoders.map:1:V>): Encoder<kotlin/collections/Map<#Encoders.map:0:K,#Encoders.map:1:V>>",
-              "label": "Encoders.map",
-              "source": {
-                "path": "DerivedBindingExplanations.kt",
-                "line": 32,
-                "column": 3
-              }
+              "label": "Encoders.map"
             }
           ],
           "details": [],
