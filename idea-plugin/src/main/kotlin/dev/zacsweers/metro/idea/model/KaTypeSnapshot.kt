@@ -27,6 +27,8 @@ internal class KaTypeSnapshot(
   val isError: Boolean = false,
   /** A missing class name lets source arrivals retry only requests that can resolve differently. */
   val unresolvedClassName: Name? = null,
+  /** Recorded only for types a bound check can read. It's null everywhere else. */
+  val hierarchy: KaTypeHierarchy? = null,
 ) {
   // Renders repeat heavily across entries, so intern them to keep the index's retained size flat.
   val renderedType: String = RENDER_INTERNER.intern(renderedType)
@@ -46,6 +48,22 @@ internal class KaTypeSnapshot(
     private val RENDER_INTERNER = Interner.createWeakInterner<String>()
   }
 }
+
+/**
+ * What a subtype check on a class type needs after its session ends. Derived bindings use it to
+ * check type parameter bounds.
+ *
+ * [supertypes] holds every supertype of the type, with the type's arguments substituted. It's null
+ * when the type was rebuilt outside a session, so its supertypes aren't known. [parameterVariances]
+ * holds the declared variance of each of the class's type parameters, in order.
+ *
+ * Supertype snapshots have no hierarchy of their own. `Int` has the supertype `Comparable<Int>`,
+ * which mentions `Int` again, so recording them at every depth would never end.
+ */
+internal class KaTypeHierarchy(
+  val supertypes: List<KaTypeSnapshot>?,
+  val parameterVariances: List<Variance>,
+)
 
 /** A positional type argument. Stars retain their slot when a type is rebuilt. */
 internal sealed interface KaTypeArgumentSnapshot {

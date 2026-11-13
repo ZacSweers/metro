@@ -573,7 +573,9 @@ private fun KaSession.genericBindingSignature(
     val identity =
       patternParameters.firstOrNull { it.name == name }
         ?: TypeIdentity.TypeParameter(fallbackOwner, -1, name)
-    GenericTypeParameter(name, identity, parameter.upperBounds.map { typeSnapshot(it) })
+    // Bound checks read each bound's declared variances and its arguments' supertypes.
+    val upperBounds = parameter.upperBounds.map { typeSnapshot(it, captureHierarchy = true) }
+    GenericTypeParameter(name, identity, upperBounds)
   }
   val providerName = callableId?.asSingleFqName()?.asString() ?: function.name.asString()
   val isLibrary =

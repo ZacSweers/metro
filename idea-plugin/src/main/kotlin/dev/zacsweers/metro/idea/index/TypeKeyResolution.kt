@@ -17,6 +17,7 @@ import dev.zacsweers.metro.compiler.graph.mapTypes
 import dev.zacsweers.metro.idea.model.KaAnnotationSnapshot
 import dev.zacsweers.metro.idea.model.KaContextualTypeKey
 import dev.zacsweers.metro.idea.model.KaTypeArgumentSnapshot
+import dev.zacsweers.metro.idea.model.KaTypeHierarchy
 import dev.zacsweers.metro.idea.model.KaTypeKey
 import dev.zacsweers.metro.idea.model.KaTypeSnapshot
 import dev.zacsweers.metro.idea.model.multibindingId
@@ -95,11 +96,26 @@ internal fun KaSession.optionalTypeKey(
   return KaTypeKey(snapshot, qualifier)
 }
 
-/** Builds a session-free type snapshot for the current analysis session. */
-internal fun KaSession.typeSnapshot(type: KaType): KaTypeSnapshot {
+/**
+ * Builds a session-free type snapshot for the current analysis session.
+ *
+ * [captureHierarchy] also records a [KaTypeHierarchy] for each class type in [type], at every
+ * depth. Derived bindings read it to check type parameter bounds after the session ends. It walks
+ * each class type's supertypes, so callers only ask for it when derived bindings are enabled.
+ */
+internal fun KaSession.typeSnapshot(
+  type: KaType,
+  captureHierarchy: Boolean = false,
+): KaTypeSnapshot {
   val expanded = type.fullyExpandedType
   val classType = expanded as? KaClassType
   val classId = classType?.classId ?: (expanded.expandedSymbol as? KaNamedClassSymbol)?.classId
+  val hierarchy =
+    if (captureHierarchy && classType != null) {
+      typeHierarchy(classType)
+    } else {
+      null
+    }
   return KaTypeSnapshot(
     renderKeyType(expanded),
     renderShortKeyType(expanded),
@@ -108,7 +124,10 @@ internal fun KaSession.typeSnapshot(type: KaType): KaTypeSnapshot {
     classType?.typeArguments.orEmpty().map { argument ->
       when (argument) {
         is KaTypeArgumentWithVariance ->
-          KaTypeArgumentSnapshot.Typed(typeSnapshot(argument.type), argument.variance)
+          KaTypeArgumentSnapshot.Typed(
+            typeSnapshot(argument.type, captureHierarchy),
+            argument.variance,
+          )
         else -> KaTypeArgumentSnapshot.Star
       }
     },
@@ -120,7 +139,17 @@ internal fun KaSession.typeSnapshot(type: KaType): KaTypeSnapshot {
         ?.lastOrNull { it is KaUnresolvedClassTypeQualifier }
         ?.name
         ?.takeUnless { it.isSpecial },
+    hierarchy = hierarchy,
   )
+}
+
+/** Records what a later subtype check on [type] needs. See [KaTypeHierarchy]. */
+private fun KaSession.typeHierarchy(type: KaClassType): KaTypeHierarchy {
+  // Supertype snapshots don't capture a hierarchy, which keeps this from recursing forever.
+  val supertypes = type.allSupertypes.map { supertype -> typeSnapshot(supertype) }.toList()
+  val classSymbol = type.symbol as? KaNamedClassSymbol
+  val parameterVariances = classSymbol?.typeParameters.orEmpty().map { it.variance }
+  return KaTypeHierarchy(supertypes, parameterVariances)
 }
 
 /** Identity of [type]. Type aliases are expanded at every depth. */
@@ -224,7 +253,8 @@ internal fun KaSession.contextualTypeKey(
   options: MetroOptions,
 ): KaContextualTypeKey {
   val declaredType = type.fullyExpandedType
-  val rawSnapshot = typeSnapshot(declaredType)
+  // A requested key's type arguments can become a generic provider's type arguments.
+  val rawSnapshot = typeSnapshot(declaredType, captureHierarchy = options.enableDerivedBindings)
   val wrappedType = declaredType.asWrappedType(options)
   val keySnapshot =
     when (wrappedType) {
@@ -262,7 +292,9 @@ private fun KaType.asWrappedType(options: MetroOptions): WrappedType<KaTypeSnaps
           .orEmpty()
       },
     )
-  return wrapped.mapTypes { session.typeSnapshot(it) }
+  return wrapped.mapTypes {
+    session.typeSnapshot(it, captureHierarchy = options.enableDerivedBindings)
+  }
 }
 
 internal fun KaSession.consumedSite(

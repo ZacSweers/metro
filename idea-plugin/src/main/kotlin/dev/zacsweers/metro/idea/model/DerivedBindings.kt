@@ -121,11 +121,17 @@ internal fun KaTypeKey.genericLookupKey(): GenericBindingLookupKey? {
  * Matching, nullability handling, and argument paths come from the shared [matchTypePattern], so
  * they follow the compiler exactly.
  *
- * Bounds are checked without an analysis session, since the index outlives its sessions. A bound of
- * `Any` or `Any?`, a bound equal to the argument, and a nullable argument for a non-null class
- * bound are decided exactly. Other class bounds need a subtype check the snapshot model can't do.
- * Those are assumed to hold and the derivation is marked with [BindingDerivation.boundsVerified]
- * set to false. Assuming they hold avoids reporting missing bindings for valid code.
+ * Bounds are checked without an analysis session, since the index outlives its sessions. The check
+ * reads the [KaTypeHierarchy] that requested keys and bounds record while a session is open. That
+ * is enough for class bounds like `Number`, bounds that mention a type parameter like
+ * `Comparable<T>`, and variant type arguments like `List<Int>` for a bound of `List<Number>`.
+ *
+ * Sometimes the check can't tell whether an argument fits a bound. The declaration still matches
+ * then, and the derivation gets [BindingDerivation.boundsVerified] set to false. Rejecting it would
+ * report a missing binding for code that may be valid. This happens when a key came from a module
+ * that doesn't enable derived bindings, so nothing was recorded for it. It also happens for
+ * flexible types, for projected type arguments, and for type arguments that only appear in a
+ * supertype.
  */
 internal fun matchGenericBinding(template: KaBinding, key: KaTypeKey): KaBinding? {
   val signature = template.genericSignature ?: return null
@@ -272,8 +278,8 @@ internal fun KaBinding.isAlphaEquivalentTo(other: KaBinding): Boolean {
  * [signature] in the same place. [otherVariables] says where each of the other's type parameters
  * sits in this binding's pattern.
  *
- * A bound the snapshot model can't rebuild counts as equal. [matchGenericBinding] assumes an
- * unknown bound holds for the same reason.
+ * A bound that can't be rebuilt with the renamed type parameters is skipped. The two type
+ * parameters are then treated as having the same bounds.
  */
 private fun KaBinding.hasSameBoundsAs(
   signature: GenericBindingSignature,
@@ -339,7 +345,10 @@ private enum class BoundCheck {
   UNKNOWN,
 }
 
-/** Decides `argument <: bound` where the snapshot model can, and returns UNKNOWN elsewhere. */
+/**
+ * Decides `argument <: bound` from what the snapshots recorded. Returns UNKNOWN when a step needs a
+ * [KaTypeHierarchy] that wasn't recorded, or meets a type that isn't a plain class type.
+ */
 private fun checkBound(argument: KaTypeSnapshot, bound: KaTypeSnapshot): BoundCheck {
   val argumentIdentity = argument.identity
   val boundIdentity = bound.identity
@@ -364,7 +373,135 @@ private fun checkBound(argument: KaTypeSnapshot, bound: KaTypeSnapshot): BoundCh
   if (sameIgnoringNullability) {
     return BoundCheck.HOLDS
   }
-  return BoundCheck.UNKNOWN
+  if (argumentIdentity !is TypeIdentity.Class || boundIdentity !is TypeIdentity.Class) {
+    return BoundCheck.UNKNOWN
+  }
+  // Nullability is settled above. What's left is the class hierarchy and the type arguments.
+  val asBoundClass = argument.asClass(boundIdentity.classId)
+  return when (asBoundClass) {
+    ClassView.Unknown -> BoundCheck.UNKNOWN
+    ClassView.Missing -> BoundCheck.FAILS
+    is ClassView.Found -> checkTypeArguments(asBoundClass.type, bound)
+  }
+}
+
+/** How a type looks as one of the classes in its hierarchy. */
+private sealed interface ClassView {
+  /** The type itself or the supertype with that class. */
+  class Found(val type: KaTypeSnapshot) : ClassView
+
+  /** The class isn't in the type's hierarchy. */
+  data object Missing : ClassView
+
+  /** The type's supertypes weren't recorded or didn't all resolve. */
+  data object Unknown : ClassView
+}
+
+/** Finds this type or the supertype of it whose class is [classId]. */
+private fun KaTypeSnapshot.asClass(classId: String): ClassView {
+  val ownClassId = (identity as? TypeIdentity.Class)?.classId
+  if (ownClassId == classId) {
+    return ClassView.Found(this)
+  }
+  val supertypes = hierarchy?.supertypes ?: return ClassView.Unknown
+  var allAreKnownClasses = true
+  for (supertype in supertypes) {
+    val supertypeIdentity = supertype.identity
+    val isKnownClass = supertypeIdentity is TypeIdentity.Class && !supertype.isError
+    if (!isKnownClass) {
+      // An unresolved or flexible supertype could be the class, so its absence proves nothing.
+      allAreKnownClasses = false
+      continue
+    }
+    if (supertypeIdentity.classId == classId) {
+      return ClassView.Found(supertype)
+    }
+  }
+  return if (allAreKnownClasses) {
+    ClassView.Missing
+  } else {
+    ClassView.Unknown
+  }
+}
+
+/** Checks the type arguments of [type] against [bound]'s. Both have the same class. */
+private fun checkTypeArguments(type: KaTypeSnapshot, bound: KaTypeSnapshot): BoundCheck {
+  val arguments = type.typeArguments
+  val boundArguments = bound.typeArguments
+  if (arguments.size != boundArguments.size) {
+    return BoundCheck.UNKNOWN
+  }
+  val declaredVariances = bound.hierarchy?.parameterVariances
+  var result = BoundCheck.HOLDS
+  for (index in boundArguments.indices) {
+    val declaredVariance = declaredVariances?.getOrNull(index)
+    when (checkTypeArgument(arguments[index], boundArguments[index], declaredVariance)) {
+      BoundCheck.HOLDS -> {}
+      BoundCheck.FAILS -> return BoundCheck.FAILS
+      BoundCheck.UNKNOWN -> result = BoundCheck.UNKNOWN
+    }
+  }
+  return result
+}
+
+/**
+ * Checks one type argument against the bound's argument in the same position. [declaredVariance] is
+ * the variance the class declares for that type parameter, or null when it wasn't recorded.
+ */
+private fun checkTypeArgument(
+  argument: KaTypeArgumentSnapshot,
+  boundArgument: KaTypeArgumentSnapshot,
+  declaredVariance: Variance?,
+): BoundCheck {
+  // A star in the bound accepts any argument.
+  if (boundArgument !is KaTypeArgumentSnapshot.Typed) {
+    return BoundCheck.HOLDS
+  }
+  if (argument !is KaTypeArgumentSnapshot.Typed) {
+    return BoundCheck.UNKNOWN
+  }
+  if (argument == boundArgument) {
+    return BoundCheck.HOLDS
+  }
+  // A projection on the argument itself needs capture rules the snapshot model doesn't have.
+  val isArgumentProjected = argument.variance != Variance.INVARIANT
+  if (isArgumentProjected || declaredVariance == null) {
+    return BoundCheck.UNKNOWN
+  }
+  // A use-site projection in the bound overrides the declared variance.
+  val variance =
+    if (boundArgument.variance == Variance.INVARIANT) {
+      declaredVariance
+    } else {
+      boundArgument.variance
+    }
+  return when (variance) {
+    Variance.OUT_VARIANCE -> checkBound(argument.type, boundArgument.type)
+    Variance.IN_VARIANCE -> checkBound(boundArgument.type, argument.type)
+    Variance.INVARIANT -> {
+      // Two different class types in an invariant position can't be subtypes of each other.
+      val bothPlain =
+        argument.type.identity.isPlainClassType() && boundArgument.type.identity.isPlainClassType()
+      if (bothPlain) {
+        BoundCheck.FAILS
+      } else {
+        BoundCheck.UNKNOWN
+      }
+    }
+  }
+}
+
+/** Whether this type is built only from class types, so identity equality is type equality. */
+private fun TypeIdentity.isPlainClassType(): Boolean {
+  if (this !is TypeIdentity.Class) {
+    return false
+  }
+  return arguments.all { argument ->
+    when (argument) {
+      TypeArgumentIdentity.Star -> true
+      is TypeArgumentIdentity.Projection -> argument.type.isPlainClassType()
+    }
+  }
 }
 
 private const val ANY_CLASS_ID = "kotlin/Any"
@@ -512,7 +649,16 @@ private fun KaTypeSnapshot.substituteClass(
     isMarkedNullable = isMarkedNullable,
     isError = isError,
     unresolvedClassName = unresolvedClassName,
+    hierarchy = hierarchy?.withoutSupertypes(),
   )
+}
+
+/**
+ * The hierarchy of the same class with other type arguments. The class's declared variances carry
+ * over. Its supertypes had the old arguments substituted, so they're dropped.
+ */
+private fun KaTypeHierarchy.withoutSupertypes(): KaTypeHierarchy {
+  return KaTypeHierarchy(supertypes = null, parameterVariances = parameterVariances)
 }
 
 /** The short render's class name, like `Encoder` in `Encoder<List<T>>`. */
@@ -600,6 +746,8 @@ internal fun KaTypeSnapshot.withNullability(nullable: Boolean): KaTypeSnapshot? 
     isMarkedNullable = nullable,
     isError = isError,
     unresolvedClassName = unresolvedClassName,
+    // Nullability doesn't change a type's supertypes or its class's variances.
+    hierarchy = hierarchy,
   )
 }
 

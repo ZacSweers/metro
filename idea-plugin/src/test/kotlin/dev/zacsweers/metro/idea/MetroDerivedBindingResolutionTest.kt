@@ -154,11 +154,14 @@ class MetroDerivedBindingResolutionTest : BasePlatformTestCase() {
         interface Box<T>
         interface Numbers<T>
 
+        class Plain
+
         @DependencyGraph
         interface AppGraph {
           val box: Box<String>
           val nullableBox: Box<String?>
           val numbers: Numbers<Int>
+          val notNumbers: Numbers<Plain>
 
           @Provides fun <T : Any> box(): Box<T> = error("unused")
           @Provides fun <T : Number> numbers(): Numbers<T> = error("unused")
@@ -169,9 +172,52 @@ class MetroDerivedBindingResolutionTest : BasePlatformTestCase() {
     assertEquals("box", fixture.derivedBindingFor("box").declarationName())
     // A nullable argument breaks the non-null bound, so no binding applies.
     assertEquals(emptyList<KaBinding>(), fixture.bindingsFor("nullableBox"))
-    // Class bounds can't be checked without a session, so they're assumed to hold.
+    // The supertypes recorded for `Int` include `Number`.
     val numbers = fixture.derivedBindingFor("numbers")
-    assertFalse(checkNotNull(numbers.derivation).boundsVerified)
+    assertTrue(checkNotNull(numbers.derivation).boundsVerified)
+    // `Plain` isn't a `Number`, so the provider doesn't apply.
+    assertEquals(emptyList<KaBinding>(), fixture.bindingsFor("notNumbers"))
+  }
+
+  fun testBoundsWithTypeParametersAndVarianceAreChecked() {
+    val fixture =
+      configure(
+        """
+        interface Sorted<T>
+        interface Converter<A, B>
+        interface Totals<T>
+
+        class Version(val value: Int) : Comparable<Version> {
+          override fun compareTo(other: Version): Int = value.compareTo(other.value)
+        }
+
+        class Plain
+
+        @DependencyGraph
+        interface AppGraph {
+          val versions: Sorted<Version>
+          val plain: Sorted<Plain>
+          val upcast: Converter<Int, Number>
+          val notUpcast: Converter<Plain, Number>
+          val intTotals: Totals<List<Int>>
+          val plainTotals: Totals<List<Plain>>
+
+          @Provides fun <T : Comparable<T>> sorted(): Sorted<T> = error("unused")
+          @Provides fun <A, B : A> upcast(): Converter<B, A> = error("unused")
+          @Provides fun <T : List<Number>> totals(): Totals<T> = error("unused")
+        }
+        """,
+      )
+
+    // The argument is substituted into the bound before the check.
+    assertTrue(checkNotNull(fixture.derivedBindingFor("versions").derivation).boundsVerified)
+    assertEquals(emptyList<KaBinding>(), fixture.bindingsFor("plain"))
+    // A bound can be another type parameter, which is checked as its argument.
+    assertTrue(checkNotNull(fixture.derivedBindingFor("upcast").derivation).boundsVerified)
+    assertEquals(emptyList<KaBinding>(), fixture.bindingsFor("notUpcast"))
+    // `List` is covariant, so its element types are compared as subtypes.
+    assertTrue(checkNotNull(fixture.derivedBindingFor("intTotals").derivation).boundsVerified)
+    assertEquals(emptyList<KaBinding>(), fixture.bindingsFor("plainTotals"))
   }
 
   fun testMostSpecificProviderWinsAndTheOtherIsLessSpecific() {
