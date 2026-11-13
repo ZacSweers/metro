@@ -226,6 +226,10 @@ A graph extension can use the generic providers of its ancestors. A scoped deriv
 
 A nearer graph can declare a generic provider with the same return type and bounds as a provider in a farther ancestor. Then the nearer one wins, like ordinary providers. If only the bounds differ, the nearer graph keeps both providers. Two equivalent generic providers on the same graph are ambiguous.
 
+## Dynamic graphs
+
+In a [dynamic graph](dependency-graphs.md#dynamic-graphs), a generic provider from a dynamic binding container replaces every `@Provides` and `@Binds` binding it matches. This includes other generic providers. An exact binding from a dynamic binding container wins over it. Graph inputs, like `@Provides` parameters of a graph factory, are not replaced.
+
 ## Cycles and divergence
 
 Recursive types create ordinary dependency cycles. A deferrable parameter like `Provider<T>`, `Lazy<T>`, or `() -> T` breaks them as usual.

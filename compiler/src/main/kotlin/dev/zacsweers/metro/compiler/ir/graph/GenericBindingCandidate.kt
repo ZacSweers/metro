@@ -41,6 +41,12 @@ internal sealed class GenericBindingCandidate {
   /** True if the graph declares this candidate itself. Inherited candidates are false. */
   abstract val isLocallyDeclared: Boolean
 
+  /**
+   * True if a dynamic graph got this candidate from a dynamic binding container. A dynamic
+   * candidate replaces the other bindings for every key it matches.
+   */
+  abstract val isDynamic: Boolean
+
   /** The generic source function, used for diagnostics. */
   abstract val function: IrSimpleFunction
 
@@ -336,6 +342,7 @@ internal sealed class GenericBindingCandidate {
   class Provider(
     val providerFactory: ProviderFactory.Metro,
     override val isLocallyDeclared: Boolean,
+    override val isDynamic: Boolean,
   ) : GenericBindingCandidate() {
     override val patternKey: IrTypeKey
       get() = providerFactory.rawTypeKey
@@ -354,8 +361,11 @@ internal sealed class GenericBindingCandidate {
     }
   }
 
-  class Binds(val bindsCallable: BindsCallable, override val isLocallyDeclared: Boolean) :
-    GenericBindingCandidate() {
+  class Binds(
+    val bindsCallable: BindsCallable,
+    override val isLocallyDeclared: Boolean,
+    override val isDynamic: Boolean,
+  ) : GenericBindingCandidate() {
     override val patternKey: IrTypeKey
       get() = bindsCallable.rawTarget
 

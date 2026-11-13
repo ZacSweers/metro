@@ -2715,6 +2715,18 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
     }
 
     @Test
+    @TestMetadata("DynamicGraphGenericProviderInExtension.kt")
+    public void testDynamicGraphGenericProviderInExtension() {
+      run("DynamicGraphGenericProviderInExtension.kt");
+    }
+
+    @Test
+    @TestMetadata("DynamicGraphGenericProviders.kt")
+    public void testDynamicGraphGenericProviders() {
+      run("DynamicGraphGenericProviders.kt");
+    }
+
+    @Test
     @TestMetadata("EncoderExample.kt")
     public void testEncoderExample() {
       run("EncoderExample.kt");

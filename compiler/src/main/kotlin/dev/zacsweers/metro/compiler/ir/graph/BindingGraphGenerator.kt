@@ -234,6 +234,29 @@ internal class BindingGraphGenerator(
         lowerPriorityContributionDeclarations(providerFactoryCandidates, bindsCallableCandidates)
       }
 
+    // Dynamic generic candidates go in first. The loops below skip the bindings they replace.
+    if (node.dynamicTypeKeys.isNotEmpty()) {
+      for ((providerFactory, isLocallyDeclared) in providerFactoryCandidates) {
+        if (providerFactory !is ProviderFactory.Metro) {
+          continue
+        }
+        val isDynamicGeneric = providerFactory.isGeneric && providerFactory.isDynamic
+        if (isDynamicGeneric && providerFactory !in lowerPriorityDeclarations) {
+          bindingLookup.registerGenericBindingCandidate(
+            GenericBindingCandidate.Provider(providerFactory, isLocallyDeclared, isDynamic = true),
+          )
+        }
+      }
+      for ((bindsCallable, isLocallyDeclared) in bindsCallableCandidates) {
+        val isDynamicGeneric = bindsCallable.isGeneric && bindsCallable.isDynamic
+        if (isDynamicGeneric && bindsCallable !in lowerPriorityDeclarations) {
+          bindingLookup.registerGenericBindingCandidate(
+            GenericBindingCandidate.Binds(bindsCallable, isLocallyDeclared, isDynamic = true),
+          )
+        }
+      }
+    }
+
     val ownProviderFactoryCount = node.providerFactories.values.sumOf { it.size }
     val inheritedProviderFactoryCount = inheritedProviderFactories.size
     trace(
@@ -257,8 +280,10 @@ internal class BindingGraphGenerator(
           trackFunctionCall(node.sourceGraph, providerFactory.signatureFunction)
         }
 
+        val isDynamic = providerFactory.isDynamic
+
         // Skip non-dynamic bindings that have dynamic replacements
-        if (!providerFactory.isDynamic && typeKey in node.dynamicTypeKeys) {
+        if (!isDynamic && typeKey in node.dynamicTypeKeys) {
           decisionCapture?.rejected(
             typeKey,
             providerFactory.realDeclaration as? IrDeclarationWithName ?: providerFactory.function,
@@ -269,15 +294,31 @@ internal class BindingGraphGenerator(
 
         // A generic provider's key is a pattern, so it goes to the generic index.
         if (providerFactory is ProviderFactory.Metro && providerFactory.isGeneric) {
-          bindingLookup.registerGenericBindingCandidate(
-            GenericBindingCandidate.Provider(providerFactory, isLocallyDeclared),
+          // The dynamic ones were registered before this loop.
+          if (!isDynamic) {
+            bindingLookup.registerGenericBindingCandidate(
+              GenericBindingCandidate.Provider(
+                providerFactory,
+                isLocallyDeclared,
+                isDynamic = false,
+              ),
+            )
+          }
+          continue
+        }
+
+        // A dynamic generic provider that matches this key replaces the binding too.
+        if (!isDynamic && bindingLookup.hasDynamicGenericBindingCandidateFor(typeKey)) {
+          decisionCapture?.rejected(
+            typeKey,
+            providerFactory.realDeclaration as? IrDeclarationWithName ?: providerFactory.function,
+            BindingReason.DYNAMIC_REPLACEMENT,
           )
           continue
         }
 
         // typeKey is already the transformed multibinding key
         val targetTypeKey = providerFactory.typeKey
-        val isDynamic = providerFactory.isDynamic
         val existingBinding = bindingLookup[targetTypeKey]
 
         if (isDynamic && existingBinding != null) {
@@ -334,8 +375,10 @@ internal class BindingGraphGenerator(
 
         val typeKey = bindsCallable.typeKey
 
+        val isDynamic = bindsCallable.isDynamic
+
         // Skip non-dynamic bindings that have dynamic replacements
-        if (!bindsCallable.isDynamic && typeKey in node.dynamicTypeKeys) {
+        if (!isDynamic && typeKey in node.dynamicTypeKeys) {
           decisionCapture?.rejected(
             typeKey,
             bindsCallable.resolveSourceDeclaration().first,
@@ -346,15 +389,27 @@ internal class BindingGraphGenerator(
 
         // A generic binds callable's key is a pattern, so it goes to the generic index.
         if (bindsCallable.isGeneric) {
-          bindingLookup.registerGenericBindingCandidate(
-            GenericBindingCandidate.Binds(bindsCallable, isLocallyDeclared),
+          // The dynamic ones were registered before the provider loop.
+          if (!isDynamic) {
+            bindingLookup.registerGenericBindingCandidate(
+              GenericBindingCandidate.Binds(bindsCallable, isLocallyDeclared, isDynamic = false),
+            )
+          }
+          continue
+        }
+
+        // A dynamic generic provider that matches this key replaces the binding too.
+        if (!isDynamic && bindingLookup.hasDynamicGenericBindingCandidateFor(typeKey)) {
+          decisionCapture?.rejected(
+            typeKey,
+            bindsCallable.resolveSourceDeclaration().first,
+            BindingReason.DYNAMIC_REPLACEMENT,
           )
           continue
         }
 
         // typeKey is already the transformed multibinding key
         val targetTypeKey = bindsCallable.typeKey
-        val isDynamic = bindsCallable.isDynamic
         val existingBinding = bindingLookup[targetTypeKey]
 
         if (isDynamic && existingBinding != null) {
@@ -1005,8 +1060,17 @@ internal class BindingGraphGenerator(
           if (factory is ProviderFactory.Metro && factory.isGeneric) {
             // Generic providers are inherited even when scoped. A child resolves each scoped
             // derived key through the ancestor that owns the scope.
-            val candidate = GenericBindingCandidate.Provider(factory, isLocallyDeclared = false)
-            if (closerGenericCandidates.any { it.isAlphaEquivalentTo(candidate) }) {
+            val candidate =
+              GenericBindingCandidate.Provider(
+                factory,
+                isLocallyDeclared = false,
+                isDynamic = isDynamicInParent,
+              )
+            // A dynamic candidate replaces a closer parent's, so it's never hidden.
+            val isHiddenByCloserParent =
+              !isDynamicInParent &&
+                closerGenericCandidates.any { it.isAlphaEquivalentTo(candidate) }
+            if (isHiddenByCloserParent) {
               continue
             }
             levelGenericCandidates += candidate
@@ -1062,8 +1126,17 @@ internal class BindingGraphGenerator(
           }
           val isDynamicInParent = isDynamicParent && key in extendedNode.dynamicTypeKeys
           if (callable.isGeneric) {
-            val candidate = GenericBindingCandidate.Binds(callable, isLocallyDeclared = false)
-            if (closerGenericCandidates.any { it.isAlphaEquivalentTo(candidate) }) {
+            val candidate =
+              GenericBindingCandidate.Binds(
+                callable,
+                isLocallyDeclared = false,
+                isDynamic = isDynamicInParent,
+              )
+            // A dynamic candidate replaces a closer parent's, so it's never hidden.
+            val isHiddenByCloserParent =
+              !isDynamicInParent &&
+                closerGenericCandidates.any { it.isAlphaEquivalentTo(candidate) }
+            if (isHiddenByCloserParent) {
               continue
             }
             levelGenericCandidates += candidate

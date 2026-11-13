@@ -2715,6 +2715,18 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     }
 
     @Test
+    @TestMetadata("DynamicGraphGenericProviderInExtension.kt")
+    public void testDynamicGraphGenericProviderInExtension() {
+      run("DynamicGraphGenericProviderInExtension.kt");
+    }
+
+    @Test
+    @TestMetadata("DynamicGraphGenericProviders.kt")
+    public void testDynamicGraphGenericProviders() {
+      run("DynamicGraphGenericProviders.kt");
+    }
+
+    @Test
     @TestMetadata("EncoderExample.kt")
     public void testEncoderExample() {
       run("EncoderExample.kt");

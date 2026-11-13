@@ -196,6 +196,28 @@ internal class BindingLookup(
     candidate.checkPatternKey()
     val key = GenericBindingIndexKey(candidate.rawClassId, candidate.patternKey.qualifier)
     genericBindingIndex.getAndAdd(key, candidate)
+    if (candidate.isDynamic) {
+      hasDynamicGenericBindingCandidates = true
+    }
+  }
+
+  /** True once a dynamic generic candidate is registered. Only dynamic graphs have them. */
+  private var hasDynamicGenericBindingCandidates = false
+
+  /**
+   * Returns true if a dynamic generic candidate can provide [key]. A dynamic binding replaces the
+   * other bindings for its key, so the graph doesn't register those.
+   */
+  context(context: IrMetroContext)
+  fun hasDynamicGenericBindingCandidateFor(key: IrTypeKey): Boolean {
+    // Graphs that aren't dynamic stop here.
+    if (!hasDynamicGenericBindingCandidates) {
+      return false
+    }
+    val classId = key.classId ?: return false
+    return genericBindingCandidatesFor(classId, key.qualifier).any { candidate ->
+      candidate.isDynamic && candidate.inferTypeArguments(key) != null
+    }
   }
 
   private data class GenericBindingIndexKey(val classId: ClassId, val qualifier: IrAnnotation?)
@@ -220,8 +242,9 @@ internal class BindingLookup(
         continue
       }
       candidates.removeAll { candidate ->
-        val isInherited = !candidate.isLocallyDeclared
-        isInherited && local.any { it.isAlphaEquivalentTo(candidate) }
+        // A dynamic candidate replaces this graph's own, so it stays.
+        val isReplaceable = !candidate.isLocallyDeclared && !candidate.isDynamic
+        isReplaceable && local.any { it.isAlphaEquivalentTo(candidate) }
       }
     }
   }
@@ -357,6 +380,7 @@ internal class BindingLookup(
     skippedDirectMapRequests.clear()
     registeredInjectorFunctions.clear()
     genericBindingIndex.clear()
+    hasDynamicGenericBindingCandidates = false
     derivedBindings.clear()
     ambiguousDerivedBindings.clear()
     overlappingDerivedBindings.clear()
@@ -761,10 +785,10 @@ internal class BindingLookup(
 
       val selected =
         selectBinding<Set<IrBinding>>(
-          registered = { lookupRegisteredBinding(contextKey, stack, onDuplicateBindings) },
+          registered = { lookupRegisteredOrDynamic(contextKey, stack, onDuplicateBindings) },
           multibinding = { lookupMultibinding(contextKey, stack) },
           optional = { lookupOptionalBinding(contextKey, stack) },
-          derived = { deriveBinding(contextKey, stack) },
+          derived = { deriveBinding(contextKey, stack, onlyDynamic = false) },
           implicit = { lookupImplicitBinding(contextKey, currentBindings, stack) },
         )
       val resolved = selected ?: emptySet()
@@ -775,6 +799,29 @@ internal class BindingLookup(
       }
       resolved
     }
+
+  /**
+   * Returns the binding registered for [contextKey]'s key. Without one, a dynamic generic candidate
+   * that matches the key derives it here. A dynamic binding replaces every other kind of binding
+   * for its key, so it can't wait for the derived stage, which runs after multibindings and
+   * optional bindings.
+   */
+  context(context: IrMetroContext)
+  private fun lookupRegisteredOrDynamic(
+    contextKey: IrContextualTypeKey,
+    stack: IrBindingStack,
+    onDuplicateBindings: (IrTypeKey, List<IrBinding>) -> Unit,
+  ): Set<IrBinding>? {
+    val registered = lookupRegisteredBinding(contextKey, stack, onDuplicateBindings)
+    if (registered != null) {
+      return registered
+    }
+    // Graphs that aren't dynamic stop here.
+    if (!hasDynamicGenericBindingCandidates) {
+      return null
+    }
+    return deriveBinding(contextKey, stack, onlyDynamic = true)
+  }
 
   /**
    * Returns the binding already registered for [contextKey]'s key. Returns null if there isn't one
@@ -1016,11 +1063,15 @@ internal class BindingLookup(
    *
    * A derivation that keeps growing the key or passes [MAX_DERIVED_BINDING_DEPTH] is recorded in
    * [divergentDerivedBindings]. The result is then empty, so class lookup doesn't run for the key.
+   *
+   * Dynamic candidates that match replace the other matches. With [onlyDynamic], this returns null
+   * unless a dynamic candidate matches.
    */
   context(context: IrMetroContext)
   private fun deriveBinding(
     contextKey: IrContextualTypeKey,
     stack: IrBindingStack,
+    onlyDynamic: Boolean,
   ): Set<IrBinding>? {
     // Most graphs have no generic candidates, so they skip everything below.
     if (hasNoGenericBindingCandidates) {
@@ -1042,10 +1093,22 @@ internal class BindingLookup(
       return null
     }
     // Keep the candidates whose return type matches the key and whose bounds hold.
-    val matches = candidates.mapNotNull { candidate ->
+    val allMatches = candidates.mapNotNull { candidate ->
       val typeArguments = candidate.inferTypeArguments(key) ?: return@mapNotNull null
       DerivedBinding(key, candidate, typeArguments)
     }
+    val dynamicMatches =
+      if (hasDynamicGenericBindingCandidates) {
+        allMatches.filter { it.candidate.isDynamic }
+      } else {
+        emptyList()
+      }
+    if (onlyDynamic && dynamicMatches.isEmpty()) {
+      return null
+    }
+    // Dynamic matches replace the others, so only they compete.
+    val matches = dynamicMatches.ifEmpty { allMatches }
+    captureDynamicallyReplacedCandidates(contextKey, stack, allMatches, dynamicMatches)
     val selection =
       selectMostSpecificCandidate(
         candidates = matches,
@@ -1115,6 +1178,36 @@ internal class BindingLookup(
     derivedBindings[key] = selected
     decisionCapture?.selected(contextKey, stack, binding, conflicts)
     return setOf(binding)
+  }
+
+  /**
+   * Records each match that a dynamic match replaced in the explanation report. Does nothing when
+   * no match is dynamic or nothing captures decisions.
+   */
+  private fun captureDynamicallyReplacedCandidates(
+    contextKey: IrContextualTypeKey,
+    stack: IrBindingStack,
+    allMatches: List<DerivedBinding>,
+    dynamicMatches: List<DerivedBinding>,
+  ) {
+    val capture = decisionCapture ?: return
+    if (dynamicMatches.isEmpty()) {
+      return
+    }
+    val dynamicFunctions = dynamicMatches.map { it.candidate.function }
+    for (match in allMatches) {
+      if (match.candidate.isDynamic) {
+        continue
+      }
+      capture.rejected(
+        request = contextKey,
+        stack = stack,
+        key = contextKey.typeKey,
+        declaration = match.candidate.function,
+        reason = BindingReason.DYNAMIC_REPLACEMENT,
+        relatedDeclarations = dynamicFunctions,
+      )
+    }
   }
 
   /**
