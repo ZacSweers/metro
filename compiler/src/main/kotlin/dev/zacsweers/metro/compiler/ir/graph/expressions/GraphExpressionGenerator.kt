@@ -972,14 +972,38 @@ private constructor(
 
               val sourceRequiresSuspend =
                 binding.getter.isSuspend || getterContextKey.wrappedType.requiresSuspendToUnwrap()
+              // The lambda holds the included instance in a temporary variable so it doesn't
+              // capture the graph.
+              val heldGetterProvider = scope.irBlock {
+                val includedInstance =
+                  createAndAddTemporaryVariable(
+                    generatePropertyAccess(
+                      graphInstanceBindingProperty.property,
+                      graphInstanceBindingProperty.shardProperty,
+                      graphInstanceBindingProperty.shardIndex,
+                    ),
+                    nameHint = "includedInstance",
+                  )
+                val heldGetter =
+                  irInvoke(
+                    dispatchReceiver = irGet(includedInstance),
+                    callee = binding.getter.symbol,
+                    typeHint = getterContextKey.toIrType(),
+                  )
+                if (sourceRequiresSuspend) {
+                  +wrapInSuspendProviderFunction(binding.typeKey.type) {
+                    unwrapGraphDependencySource(heldGetter, getterContextKey)
+                  }
+                } else {
+                  +wrapInProviderFunction(binding.typeKey.type) {
+                    unwrapGraphDependencySource(heldGetter, getterContextKey)
+                  }
+                }
+              }
               if (sourceRequiresSuspend) {
-                scope.wrapInSuspendProviderFunction(binding.typeKey.type) {
-                  unwrapGraphDependencySource(invokeGetter, getterContextKey)
-                } to AccessType.SUSPEND_PROVIDER
+                heldGetterProvider to AccessType.SUSPEND_PROVIDER
               } else {
-                scope.wrapInProviderFunction(binding.typeKey.type) {
-                  unwrapGraphDependencySource(invokeGetter, getterContextKey)
-                } to AccessType.PROVIDER
+                heldGetterProvider to AccessType.PROVIDER
               }
             } else {
               reportCompilerBug("Unknown graph dependency type")
