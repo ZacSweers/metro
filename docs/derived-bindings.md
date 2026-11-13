@@ -148,6 +148,8 @@ Bounds also select providers. Here, `Formatter<List<Int>>` uses `number` and `Fo
 
 A bound does not make a provider more specific. If two providers have the same return type and both bounds hold, the key is ambiguous.
 
+If only a bound rejects a provider, the missing binding error names the provider and the bound.
+
 Matching is exact, like other Metro keys. A return type of `Encoder<T?>` matches only nullable type arguments, and `T` binds the non-null type. For example, `Encoder<String?>` matches with `T = String`. An unbounded `T` can bind a nullable type.
 
 After Metro picks a generic provider, the provider's parameters must resolve. If one is missing, Metro reports a missing binding. Metro doesn't try another provider, even when the requesting parameter has a default value. The error trace has a note that names the generic provider and its type arguments.

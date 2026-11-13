@@ -178,6 +178,19 @@ internal class BindingLookup(
     return genericBindingIndex[GenericBindingIndexKey(classId, qualifier)].orEmpty()
   }
 
+  /**
+   * Returns the generic candidates whose return type matches [key] but whose bounds reject the
+   * inferred type arguments. A missing-binding report uses them to explain the near miss.
+   */
+  context(context: IrMetroContext)
+  fun genericCandidatesRejectedByBounds(key: IrTypeKey): List<BoundRejectedCandidate> {
+    val classId = key.classId ?: return emptyList()
+    return genericBindingCandidatesFor(classId, key.qualifier).mapNotNull { candidate ->
+      val bound = candidate.unsatisfiedBoundFor(key) ?: return@mapNotNull null
+      BoundRejectedCandidate(candidate, bound)
+    }
+  }
+
   /** Adds a generic provider or binds callable to the generic binding index. */
   fun registerGenericBindingCandidate(candidate: GenericBindingCandidate) {
     candidate.checkPatternKey()
@@ -1565,6 +1578,12 @@ internal class DivergentDerivedBinding(
     DEPTH_LIMIT,
   }
 }
+
+/** A generic [candidate] whose return type matches a key but whose [bound] rejects the match. */
+internal class BoundRejectedCandidate(
+  val candidate: GenericBindingCandidate,
+  val bound: GenericBindingCandidate.UnsatisfiedBound,
+)
 
 /**
  * Several generic candidates matched one key. [selected] is the one the graph uses. [candidates]

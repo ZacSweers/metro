@@ -88,6 +88,21 @@ public object DerivedBindingDiagnosticMessages {
   }
 
   /**
+   * A note on a missing binding for [key]. The generic [provider]'s return type matches [key], but
+   * [typeArgument], which was inferred for [typeParameter], breaks [bound].
+   */
+  public fun unsatisfiedBoundNote(
+    key: String,
+    provider: String,
+    typeParameter: String,
+    typeArgument: String,
+    bound: String,
+  ): String {
+    return "`$provider` can't provide `$key` because `$typeParameter = $typeArgument` doesn't " +
+      "satisfy `$typeParameter : $bound`"
+  }
+
+  /**
    * A detail on a derived binding in a binding explanation. [typeArguments] pairs each of the
    * provider's type parameter names with its inferred type, in declaration order.
    */

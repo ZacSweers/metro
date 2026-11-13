@@ -11,7 +11,7 @@ object Encoders {
   @Provides fun <T : Number> numbers(): Encoder<List<T>> = SimpleEncoder()
 }
 
-// A provider whose bounds don't hold doesn't match, so this is an ordinary missing binding.
+// A provider whose bounds don't hold doesn't match. The missing binding gets a note that names it.
 @DependencyGraph(bindingContainers = [Encoders::class])
 interface AppGraph {
   val ints: Encoder<List<Int>>

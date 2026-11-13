@@ -1237,6 +1237,13 @@ internal class IrBindingGraph(
           ),
         )
       }
+
+      // A generic provider that matched except for a bound is a likely cause, so name it.
+      val boundRejections =
+        context(metroContext) { bindingLookup.genericCandidatesRejectedByBounds(key) }
+      for (rejection in boundRejections) {
+        add(Note.note(rejection.unsatisfiedBoundNoteFor(key)))
+      }
     }
 
     var locationNotes = emptyList<Note>()
@@ -1272,6 +1279,17 @@ internal class IrBindingGraph(
       notes = notes + locationNotes,
       sections = sections,
       similarBindings = findSimilarBindings(key).values.map { it.toItem() },
+    )
+  }
+
+  /** Says which bound kept this generic provider from providing [key]. */
+  private fun BoundRejectedCandidate.unsatisfiedBoundNoteFor(key: IrTypeKey): String {
+    return DerivedBindingDiagnosticMessages.unsatisfiedBoundNote(
+      key = key.render(short = true),
+      provider = candidate.function.kotlinFqName.asString(),
+      typeParameter = bound.typeParameter.name.asString(),
+      typeArgument = bound.argument.render(short = true),
+      bound = bound.bound.render(short = true),
     )
   }
 
