@@ -655,6 +655,7 @@ public class GraphReportRenderer(
     put("nameHint", JsonPrimitive(binding.nameHint))
     put("rawDependencies", json.encodeToJsonElement(binding.dependencies))
     put("aliasTarget", json.encodeToJsonElement(binding.aliasTarget))
+    put("derivedFrom", json.encodeToJsonElement(binding.derivedFrom))
     put("multibinding", json.encodeToJsonElement(binding.multibinding))
     put("optionalWrapper", json.encodeToJsonElement(binding.optionalWrapper))
     put("graphDependency", json.encodeToJsonElement(binding.graphDependency))

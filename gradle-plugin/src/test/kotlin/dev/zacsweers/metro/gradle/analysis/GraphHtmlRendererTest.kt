@@ -888,6 +888,21 @@ class GraphHtmlRendererTest {
   }
 
   @Test
+  fun `derived bindings keep their generic provider and type arguments`() {
+    val key = "test.Encoder<kotlin.collections.List<test.User>>"
+    val derivedFrom = DerivedFromMetadata("test.Encoders.list", mapOf("T" to "test.User"))
+    val graph = graph {
+      binding(
+        bindingMetadata(key, kind = "Provided", declaration = "test.Encoders.list")
+          .copy(derivedFrom = derivedFrom),
+      )
+    }
+    val details = renderer.buildData(graph).node(key).objectField("derivedFrom")
+    details.assertFields("provider" to "test.Encoders.list")
+    details.objectField("typeArguments").assertFields("T" to "test.User")
+  }
+
+  @Test
   fun `generated report is offline and escapes embedded data`() {
     val hostileKey = "</script><script>alert('x')</script>&__METRO_TITLE__"
     val html = renderer.generateHtml(graph { binding(hostileKey) })
