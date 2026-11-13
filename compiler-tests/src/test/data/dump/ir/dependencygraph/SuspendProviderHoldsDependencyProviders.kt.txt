@@ -1,0 +1,181 @@
+@SingleIn(scope = AppScope::class)
+@Inject
+class Config {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  object MetroFactory : Factory<Config> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun create(): MetroFactory {
+      return MetroFactory
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun newInstance(): Config {
+      return Config()
+    }
+
+    @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): Config {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Config {
+      return MetroFactory.newInstance()
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+class Database {
+  val config: Config
+    field = config
+    get
+
+  constructor(config: Config) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@DependencyGraph(scope = AppScope::class, bindingContainers = [DatabaseProviders::class])
+interface AppGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : AppGraph {
+    private val configProvider: Provider<Config>
+      field = provider<Provider<Config>, Config>(delegate = create())
+
+    private val provideDatabaseSuspendProvider: SuspendProvider<Database>
+      field = { // BLOCK
+        val tmp0_dependency: SyncSuspendProvider<Config> = SyncSuspendProvider<Config>(delegate = <this>.#configProvider)
+        suspendProvider<Database>(provider = local suspend fun <anonymous>(): Database {
+          return DatabaseProviders.provideDatabase(config = tmp0_dependency.invoke())
+        }
+)
+      }
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override val config: Config
+      override get(): Config {
+        return <this>.#configProvider.invoke()
+      }
+
+    override val databaseProvider: SuspendProvider<Database>
+      override get(): SuspendProvider<Database> {
+        return <this>.#provideDatabaseSuspendProvider
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
+    operator fun invoke(): AppGraph {
+      return Impl()
+    }
+
+  }
+
+  abstract val config: Config
+    abstract get
+
+  abstract val databaseProvider: SuspendProvider<Database>
+    abstract get
+
+}
+
+@BindingContainer
+object DatabaseProviders {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideDatabase", propertyName = "", startOffset = 190, endOffset = 272, newInstanceName = "provideDatabase")
+  class ProvideDatabaseMetroFactory : SuspendFactory<Database> {
+    private /* final field */ val config: SuspendProvider<Config> = config
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(config: SuspendProvider<Config>): ProvideDatabaseMetroFactory {
+        return ProvideDatabaseMetroFactory(config = config)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      suspend fun provideDatabase(config: Config): Database {
+        return DatabaseProviders.provideDatabase(config = config)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(config: SuspendProvider<Config>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    suspend fun declarationMirror(config: Config): Database {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override suspend operator fun invoke(): Database {
+      return ProvideDatabaseMetroFactory/* companion */.provideDatabase(config = <this>.#config.invoke())
+    }
+
+  }
+
+  private constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+  @Provides
+  suspend fun provideDatabase(config: Config): Database {
+    return Database(config = config)
+  }
+
+}
+

@@ -480,6 +480,24 @@ private constructor(
               (accessType == AccessType.INSTANCE ||
                 (binding.isSuspend && accessType == AccessType.SUSPEND_PROVIDER))
 
+          // A suspend provider requested as a SuspendProvider holds its dependency providers in
+          // temporary variables, so the wrapping lambda doesn't capture the graph.
+          val wrapsSuspendCallInProvider =
+            canBypassFactory && accessType == AccessType.SUSPEND_PROVIDER
+          if (wrapsSuspendCallInProvider) {
+            val heldCall =
+              generateSuspendProviderWithHeldDependencies(
+                binding = binding,
+                providerFactory = providerFactory,
+                contextualTypeKey = contextualTypeKey,
+                fieldInitKey = fieldInitKey,
+                bindingKind = bindingKind,
+              )
+            if (heldCall != null) {
+              return heldCall
+            }
+          }
+
           if (canBypassFactory) {
             val providerFunction = providerFactory.function
 
@@ -1303,6 +1321,107 @@ private constructor(
           }
         }
         .decorateNewSuspendProvider(contextualTypeKey, binding.diagnosticTypeName)
+    }
+
+  /**
+   * Wraps a suspend provider call in a `SuspendProvider` that holds only its dependencies.
+   *
+   * The graph calls a suspend provider directly and wraps that call in a suspend lambda. A
+   * dependency read inside that lambda would capture the graph. This reads each dependency's
+   * provider into a temporary variable first. They're the same providers a factory's `create()`
+   * receives, so the lambda holds what a factory instance would hold. An instance receiver is held
+   * as that instance.
+   *
+   * Generated code looks like:
+   * ```kotlin
+   * val config = SyncSuspendProvider(this.configProvider)
+   * val provider = suspendProvider { provideDatabase(config()) }
+   * ```
+   *
+   * Returns null when the provider has no dependencies to hold.
+   */
+  context(scope: IrBuilderWithScope)
+  private fun generateSuspendProviderWithHeldDependencies(
+    binding: IrBinding.Provided,
+    providerFactory: ProviderFactory,
+    contextualTypeKey: IrContextualTypeKey,
+    fieldInitKey: IrTypeKey?,
+    bindingKind: String?,
+  ): IrExpression? =
+    with(scope) {
+      // The factory's `create()` takes each dependency as a provider, in call order.
+      val dependencyProviders =
+        providerFactory.createArguments(binding.typeKey) { createFunction, params ->
+          generateBindingArguments(
+            targetParams = params,
+            function = createFunction,
+            binding = binding,
+            fieldInitKey = fieldInitKey,
+          )
+        }
+      if (dependencyProviders.all { it == null }) {
+        return null
+      }
+
+      irBlock {
+        val heldProviders = dependencyProviders.map { provider ->
+          provider?.let { createAndAddTemporaryVariable(it, nameHint = "dependency") }
+        }
+
+        // Turns each held provider into what the callee's matching parameter asks for.
+        fun heldArguments(params: Parameters): List<IrExpression?> {
+          val hasObjectReceiver =
+            params.dispatchReceiverParameter?.type?.rawTypeOrNull()?.isObject == true
+          val callParams =
+            if (hasObjectReceiver) {
+              params.nonDispatchParameters
+            } else {
+              params.allParameters
+            }
+          if (callParams.size != heldProviders.size) {
+            reportCompilerBug(
+              "Suspend provider ${providerFactory.callableId} takes ${callParams.size} " +
+                "arguments but its factory holds ${heldProviders.size} providers",
+            )
+          }
+          return callParams.mapIndexed { index, param ->
+            val heldProvider = heldProviders[index] ?: return@mapIndexed null
+            typeAsProviderArgument(
+              param.contextualTypeKey,
+              irGet(heldProvider),
+              isAssisted = param.isAssisted,
+              isGraphInstance = param.isGraphInstance,
+            )
+          }
+        }
+
+        val call =
+          if (providerFactory.supportsDirectInvocation(node.metroGraphOrFail)) {
+            codegenStats?.run { providerDirectInvocations++ }
+            val realFunction =
+              providerFactory.realDeclaration?.expectAsOrNull<IrFunction>()
+                ?: providerFactory.function
+            irInvoke(
+              callee = realFunction.symbol,
+              args = heldArguments(realFunction.parameters()),
+              typeHint = binding.typeKey.type,
+            )
+          } else {
+            codegenStats?.run { providerNewInstanceCalls++ }
+            providerFactory.invokeNewInstanceExpression(
+              binding.typeKey,
+              providerFactory.newInstanceName,
+            ) { _, params ->
+              heldArguments(params)
+            }
+          }
+
+        +call.toTargetType(
+          actual = AccessType.INSTANCE,
+          contextualTypeKey = contextualTypeKey,
+          bindingKind = bindingKind,
+        )
+      }
     }
 
   context(scope: IrBuilderWithScope)

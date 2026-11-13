@@ -108,6 +108,30 @@ internal sealed interface IrMetroFactory {
     )
   }
 
+  /**
+   * Returns the arguments `create()` would receive for [typeKey], without calling it. They're the
+   * dependency providers a factory instance holds.
+   *
+   * Some providers can't use their factory. The graph reads these providers itself so the provider
+   * it builds holds the same things a factory would.
+   */
+  context(context: IrMetroContext, scope: IrBuilderWithScope)
+  fun createArguments(
+    typeKey: IrTypeKey,
+    computeArgs:
+      IrBuilderWithScope.(createFunction: IrSimpleFunction, parameters: Parameters) -> List<
+          IrExpression?,
+        >,
+  ): List<IrExpression?> {
+    val creator =
+      resolveCreator(
+        typeKey = typeKey,
+        expectedCreatorDescription = Symbols.Names.create.asString(),
+        functionPredicate = { it.name in createFunctionNames },
+      )
+    return scope.computeArgs(creator.remappedFunction, creator.parameters)
+  }
+
   context(context: IrMetroContext, scope: IrBuilderWithScope)
   private fun invokeCreatorExpression(
     typeKey: IrTypeKey,
@@ -119,46 +143,77 @@ internal sealed interface IrMetroFactory {
         >,
   ): IrExpression =
     with(scope) {
-      val creatorClass = helperOwner
-      // Companion-block helpers can share a name with instance members of the factory class.
-      val createFunction =
-        creatorClass.simpleFunctions().firstOrNull { it.isStaticIsh && functionPredicate(it) }
-          ?: reportCompilerBug(
-            "No matching creator function for '$expectedCreatorDescription' found in ${factoryClass.classId} with typeKey $typeKey. Available are ${creatorClass.simpleFunctions().joinToString { it.name.asString() }}",
-          )
-
-      val finalFunction =
-        createFunction.deepCopyWithSymbols(initialParent = createFunction.parent).apply {
-          parent = createFunction.parent
-        }
-      val remapper =
-        creatorTypeArguments?.let { concreteTypes ->
-          typeRemapperFor(concreteTypes, finalFunction)
-        } ?: finalFunction.typeRemapperFor(typeKey.type)
-      finalFunction.remapTypes(remapper)
-      val typeArguments =
-        finalFunction.typeParameters.map { typeParameter ->
-          remapper.remapType(typeParameter.defaultType)
-        }
-
-      val parameters =
-        if (isDaggerFactory) {
-          // Dagger factories don't copy over qualifiers, so we wanna copy them over here
-          val qualifiers = function.parameters.map { it.qualifierAnnotation() }
-          finalFunction.parameters().overlayQualifiers(qualifiers)
-        } else {
-          finalFunction.parameters()
-        }
-
-      val args = computeArgs(finalFunction, parameters)
+      val creator = resolveCreator(typeKey, expectedCreatorDescription, functionPredicate)
+      val args = computeArgs(creator.remappedFunction, creator.parameters)
       return irInvoke(
-        callee = createFunction.symbol,
+        callee = creator.function.symbol,
         args = args,
-        typeHint = finalFunction.returnType,
-        typeArgs = typeArguments,
+        typeHint = creator.remappedFunction.returnType,
+        typeArgs = creator.typeArguments,
       )
     }
+
+  /**
+   * Finds the creator function that [functionPredicate] accepts. It also remaps a copy of it to
+   * this factory's type arguments, which is what callers read parameter types from.
+   */
+  context(context: IrMetroContext)
+  private fun resolveCreator(
+    typeKey: IrTypeKey,
+    expectedCreatorDescription: String,
+    functionPredicate: (IrFunction) -> Boolean,
+  ): ResolvedCreator {
+    val creatorClass = helperOwner
+    // Companion-block helpers can share a name with instance members of the factory class.
+    val createFunction =
+      creatorClass.simpleFunctions().firstOrNull { it.isStaticIsh && functionPredicate(it) }
+        ?: reportCompilerBug(
+          "No matching creator function for '$expectedCreatorDescription' found in ${factoryClass.classId} with typeKey $typeKey. Available are ${creatorClass.simpleFunctions().joinToString { it.name.asString() }}",
+        )
+
+    val finalFunction =
+      createFunction.deepCopyWithSymbols(initialParent = createFunction.parent).apply {
+        parent = createFunction.parent
+      }
+    val remapper =
+      creatorTypeArguments?.let { concreteTypes ->
+        typeRemapperFor(concreteTypes, finalFunction)
+      } ?: finalFunction.typeRemapperFor(typeKey.type)
+    finalFunction.remapTypes(remapper)
+    val typeArguments =
+      finalFunction.typeParameters.map { typeParameter ->
+        remapper.remapType(typeParameter.defaultType)
+      }
+
+    val parameters =
+      if (isDaggerFactory) {
+        // Dagger factories don't copy over qualifiers, so we wanna copy them over here
+        val qualifiers = function.parameters.map { it.qualifierAnnotation() }
+        finalFunction.parameters().overlayQualifiers(qualifiers)
+      } else {
+        finalFunction.parameters()
+      }
+
+    return ResolvedCreator(
+      function = createFunction,
+      remappedFunction = finalFunction,
+      typeArguments = typeArguments,
+      parameters = parameters,
+    )
+  }
 }
+
+/**
+ * A factory's creator function, like `create()` or `newInstance()`. [function] is the declaration
+ * to call. [remappedFunction] is a copy with the factory's type arguments applied, and [parameters]
+ * are that copy's parameters. [typeArguments] are the type arguments for the call.
+ */
+private class ResolvedCreator(
+  val function: IrSimpleFunction,
+  val remappedFunction: IrSimpleFunction,
+  val typeArguments: List<IrType>,
+  val parameters: Parameters,
+)
 
 /** Uses the generated factory's dependency signature when the source has default parameters. */
 context(context: IrMetroContext)

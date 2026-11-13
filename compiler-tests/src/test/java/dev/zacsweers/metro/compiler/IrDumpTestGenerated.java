@@ -401,6 +401,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("SuspendProviderHoldsDependencyProviders.kt")
+    public void testSuspendProviderHoldsDependencyProviders() {
+      run("SuspendProviderHoldsDependencyProviders.kt");
+    }
+
+    @Test
     @TestMetadata("UnusedInstanceBindingsInUnextendedGraphGetNoProviderFields.kt")
     public void testUnusedInstanceBindingsInUnextendedGraphGetNoProviderFields() {
       run("UnusedInstanceBindingsInUnextendedGraphGetNoProviderFields.kt");
