@@ -82,8 +82,9 @@ internal class BindingLookup(
   private val decisionCapture: BindingDecisionCapture? = null,
 ) {
 
-  // Single cache for all bindings, storing lists to track duplicates naturally
+  // The latest binding registered for each key.
   private val bindingsCache = mutableMapOf<IrTypeKey, IrBinding>()
+  // Every binding for a key that was registered more than once, kept for duplicate reporting.
   private val duplicateBindings = mutableMapOf<IrTypeKey, MutableSet<IrBinding>>()
   private val classBindingsCache = mutableMapOf<ClassBindingKey, Set<IrBinding>>()
 
@@ -187,12 +188,20 @@ internal class BindingLookup(
   private data class GenericBindingIndexKey(val classId: ClassId, val qualifier: IrAnnotation?)
 
   /**
-   * Drops inherited generic candidates that a locally declared candidate shadows. A local candidate
-   * shadows an inherited one that provides the same keys, like a local provider shadows an
-   * inherited provider for the same key.
+   * Removes generic candidates inherited from parent graphs when this graph declares its own
+   * candidate for the same keys.
+   *
+   * A graph extension sees its parents' generic providers. Say a parent's provider returns
+   * `Encoder<List<T>>` and the extension's own provider returns `Encoder<List<E>>`. Both match
+   * `Encoder<List<String>>`, so that key would be ambiguous in the extension. Removing the parent's
+   * candidate makes the extension's own provider win. An ordinary provider in an extension wins
+   * over a parent's provider for the same key in the same way.
+   *
+   * Two candidates provide the same keys when [GenericBindingCandidate.isAlphaEquivalentTo] holds.
    */
-  fun dropShadowedInheritedGenericCandidates() {
+  fun removeInheritedGenericCandidatesRedeclaredLocally() {
     for (candidates in genericBindingIndex.values) {
+      // Only a candidate this graph declares can replace an inherited one.
       val local = candidates.filter { it.isLocallyDeclared }
       if (local.isEmpty()) {
         continue
@@ -282,6 +291,7 @@ internal class BindingLookup(
     // If this is a multibinding contributor, register it
     when (binding) {
       is IrBinding.BindingWithAnnotations if binding.annotations.isIntoMultibinding -> {
+        // The contribution's qualifier and value type decide which multibinding it joins.
         val (qualifier, valueType) =
           when (binding) {
             is Provided ->
@@ -507,16 +517,17 @@ internal class BindingLookup(
   }
 
   /**
-   * Returns all registered multibindings for similarity checking. This includes both cached
-   * multibindings (eagerly created when contributions are registered) and those from explicit
-   *
-   * @Multibinds declarations.
+   * The number of [multibindsDeclarations] entries that [getAvailableMultibindings] has already
+   * materialized into [multibindingsCache]. Registering new declarations grows the map past this,
+   * so the next call knows it has more to materialize.
    */
-  // Number of [multibindsDeclarations] entries that have already been materialized into
-  // [multibindingsCache] by [getAvailableMultibindings]. When new declarations are registered the
-  // size grows past this, so the next call re-iterates only what's needed.
   private var materializedMultibindsDeclarationsSize = 0
 
+  /**
+   * Returns all registered multibindings for similarity checking. This includes both cached
+   * multibindings (eagerly created when contributions are registered) and those from explicit
+   * `@Multibinds` declarations.
+   */
   context(context: IrMetroContext)
   fun getAvailableMultibindings(): Map<IrTypeKey, IrBinding.Multibinding> {
     // Ensure all @Multibinds declarations have their multibindings created. Skip the iteration
@@ -643,8 +654,7 @@ internal class BindingLookup(
     // base-to-derived order, so we accumulate previous entries as supertypes for later ones.
     val supertypeInjectorKeys = mutableListOf<IrContextualTypeKey>()
 
-    // Accumulate parameters and dependencies from all ancestors as we iterate (base-to-derived
-    // order)
+    // Accumulate parameters and dependencies from all ancestors as we iterate, base to derived.
     var accumulatedParameters = Parameters.empty()
     var accumulatedDeps = emptySet<IrContextualTypeKey>()
 
@@ -658,8 +668,7 @@ internal class BindingLookup(
           .filterNot { it.isAssisted }
           .mapToSet { it.contextualTypeKey }
 
-      // Save current accumulated deps as supertype deps for this binding, then add this level's
-      // deps
+      // Save the deps accumulated so far as this binding's supertype deps, then add this level's.
       val supertypeDeps = accumulatedDeps
       accumulatedDeps = accumulatedDeps + thisDeps
 
@@ -737,150 +746,212 @@ internal class BindingLookup(
     context(metroContext) {
       val key = contextKey.typeKey
 
-      val resolved =
+      val selected =
         selectBinding<Set<IrBinding>>(
-          registered = registered@{
-              // First check cached bindings
-              bindingsCache[key]?.let { binding ->
-                // Don't satisfy wrapped map-value requests (Provider, Lazy, or SuspendProvider)
-                // from
-                // a
-                // direct (non-multibinding) Map<K, V> binding. Only multibinding contributions can
-                // provide
-                // wrapped map values.
-                // However, a directly provided Map<K, Provider<V>> can satisfy Map<K, Provider<V>>
-                // requests since the Provider wrapping is explicit in the return type.
-                if (
-                  (contextKey.isMapProvider ||
-                    contextKey.isMapLazy ||
-                    contextKey.isMapSuspendProvider) && key in directMapTypeKeys
-                ) {
-                  val originallyWrapped =
-                    when (binding) {
-                      is Provided -> binding.providerFactory.contextualTypeKey.isDeferrable
-                      is IrBinding.GraphDependency -> binding.contextualTypeKey.isDeferrable
-                      else -> false
-                    }
-                  if (!originallyWrapped) {
-                    skippedDirectMapRequests[key] = contextKey
-                    decisionCapture?.rejected(
-                      contextKey,
-                      stack,
-                      binding,
-                      BindingReason.INCOMPATIBLE_MAP_VALUE,
-                    )
-                    return@let // Fall through to missing binding
-                  }
-                }
+          registered = { lookupRegisteredBinding(contextKey, stack, onDuplicateBindings) },
+          multibinding = { lookupMultibinding(contextKey, stack) },
+          optional = { lookupOptionalBinding(contextKey, stack) },
+          derived = { deriveBinding(contextKey, stack) },
+          implicit = { lookupImplicitBinding(contextKey, currentBindings, stack) },
+        )
+      val resolved = selected ?: emptySet()
 
-                // Report duplicates if there are multiple bindings
-                duplicateBindings[key]?.let { onDuplicateBindings(key, it.toList()) }
-
-                // Check if this is available from parent and is scoped.
-                // Skip locally declared bindings, they're explicitly provided in this graph
-                // (e.g. via @Provides) and should not be delegated to a parent even if the
-                // parent has the same key under a different scope.
-                // "If graph A provides `Logger` and graph B also provides `Logger` (overriding
-                // A's),
-                // ensure graph C uses B's"
-                val scope = binding.scope
-                if (
-                  scope != null &&
-                    key !in locallyDeclaredKeys &&
-                    parentContext?.contains(key) == true
-                ) {
-                  val token = parentContext.mark(key, scope)
-                  val parentBinding = createParentGraphDependency(key, token!!)
-                  decisionCapture?.selected(
-                    contextKey,
-                    stack,
-                    binding,
-                    conflicts = duplicateBindings[key],
-                    ownerGraph = token.ownerGraphKey,
-                    resolvedBinding = parentBinding,
-                  )
-                  return@registered setOf(parentBinding)
-                }
-                decisionCapture?.selected(contextKey, stack, binding, duplicateBindings[key])
-                return@registered setOf(binding)
-              }
-
-              // Check for lazy parent keys
-              lazyParentKeys[key]?.let { lazyBinding ->
-                val binding = lazyBinding.value
-                decisionCapture?.selected(contextKey, stack, binding)
-                return@registered setOf(binding)
-              }
-              null
-            },
-          multibinding = {
-            // Check for multibindings (Set<T> or Map<K, V> with contributions)
-            getOrCreateMultibindingIfNeeded(key)?.let { multibinding ->
-              decisionCapture?.selected(contextKey, stack, multibinding)
-              setOf(multibinding)
-            }
-          },
-          optional = {
-            // Check for optional bindings (Optional<T>)
-            getOrCreateOptionalBindingIfNeeded(key)?.let { optionalBinding ->
-              decisionCapture?.selected(contextKey, stack, optionalBinding)
-              setOf(optionalBinding)
-            }
-          },
-          derived = derived@{
-              if (hasNoGenericBindingCandidates) {
-                return@derived null
-              }
-              deriveBinding(contextKey, stack)
-            },
-          implicit = implicit@{
-              if (contextKey.typeKey.type.isNullable()) {
-                // If we reach here, do not try to proceed to class lookups. We don't implicitly
-                // make
-                // an
-                // injected class satisfy a nullable binding of it
-                decisionCapture?.missing(contextKey, stack)
-                return@implicit emptySet()
-              }
-
-              // Finally, fall back to class-based lookup and cache the result
-              val classBindings: Set<IrBinding> =
-                lookupClassBinding(contextKey, currentBindings, stack)
-                  // Filter out previously-seen ancestor member injectors as we don't need to re-add
-                  // them
-                  // but may come with the lookup if there are multiple injected subclasses
-                  .filterNotTo(mutableSetOf()) {
-                    it is IrBinding.MembersInjected && it.typeKey in currentBindings
-                  }
-
-              // Check if this class binding is available from parent and is scoped
-              if (parentContext != null) {
-                val remappedBindings = mutableSetOf<IrBinding>()
-                for (binding in classBindings) {
-                  val scope = binding.scope
-                  if (scope != null) {
-                    val parentBinding = parentGraphDependencyForScope(key, scope)
-                    if (parentBinding != null) {
-                      remappedBindings += parentBinding
-                      continue
-                    }
-                  }
-                  remappedBindings += binding
-                }
-                decisionCapture?.selected(contextKey, stack, remappedBindings, classBindings)
-                return@implicit remappedBindings
-              }
-
-              decisionCapture?.selected(contextKey, stack, classBindings)
-              classBindings
-            },
-        ) ?: emptySet()
-
+      // Only the derived stage reads requester links, so skip them when it can't run.
       if (!hasNoGenericBindingCandidates) {
         recordRequester(key, stack, resolved)
       }
       resolved
     }
+
+  /**
+   * Returns the binding already registered for [contextKey]'s key. Returns null if there isn't one
+   * that can satisfy this request.
+   */
+  private fun lookupRegisteredBinding(
+    contextKey: IrContextualTypeKey,
+    stack: IrBindingStack,
+    onDuplicateBindings: (IrTypeKey, List<IrBinding>) -> Unit,
+  ): Set<IrBinding>? {
+    val key = contextKey.typeKey
+    val cached = bindingsCache[key]
+    if (cached != null) {
+      val binding = resolveCachedBinding(contextKey, stack, cached, onDuplicateBindings)
+      if (binding != null) {
+        return setOf(binding)
+      }
+    }
+
+    // Parent keys create their bindings on first use.
+    val lazyParentBinding = lazyParentKeys[key]?.value
+    if (lazyParentBinding != null) {
+      decisionCapture?.selected(contextKey, stack, lazyParentBinding)
+      return setOf(lazyParentBinding)
+    }
+    return null
+  }
+
+  /**
+   * Returns what a request for [contextKey] gets when [binding] is cached for its key. Returns null
+   * when [binding] can't satisfy the request.
+   */
+  private fun resolveCachedBinding(
+    contextKey: IrContextualTypeKey,
+    stack: IrBindingStack,
+    binding: IrBinding,
+    onDuplicateBindings: (IrTypeKey, List<IrBinding>) -> Unit,
+  ): IrBinding? {
+    val key = contextKey.typeKey
+
+    if (cannotSupplyWrappedMapValues(contextKey, binding)) {
+      // Remember the request, then fall through to a missing binding.
+      skippedDirectMapRequests[key] = contextKey
+      decisionCapture?.rejected(contextKey, stack, binding, BindingReason.INCOMPATIBLE_MAP_VALUE)
+      return null
+    }
+
+    // Report duplicates if there are multiple bindings
+    duplicateBindings[key]?.let { onDuplicateBindings(key, it.toList()) }
+
+    val parentToken = parentTokenForScopedBinding(key, binding)
+    if (parentToken != null) {
+      // A parent owns this scoped binding, so this graph depends on the parent for it.
+      val parentBinding = createParentGraphDependency(key, parentToken)
+      decisionCapture?.selected(
+        contextKey,
+        stack,
+        binding,
+        conflicts = duplicateBindings[key],
+        ownerGraph = parentToken.ownerGraphKey,
+        resolvedBinding = parentBinding,
+      )
+      return parentBinding
+    }
+    decisionCapture?.selected(contextKey, stack, binding, duplicateBindings[key])
+    return binding
+  }
+
+  /**
+   * Returns true if [contextKey] asks for wrapped map values that [binding] can't supply.
+   *
+   * A request like `Map<K, Provider<V>>` wraps each value in `Provider`, `Lazy`, or
+   * `SuspendProvider`. Only multibinding contributions can supply wrapped map values. A directly
+   * provided `Map<K, V>` can't. A directly provided `Map<K, Provider<V>>` still satisfies a `Map<K,
+   * Provider<V>>` request, because the wrapping is explicit in its return type.
+   */
+  private fun cannotSupplyWrappedMapValues(
+    contextKey: IrContextualTypeKey,
+    binding: IrBinding,
+  ): Boolean {
+    val requestsWrappedMapValues =
+      contextKey.isMapProvider || contextKey.isMapLazy || contextKey.isMapSuspendProvider
+    val isDirectMapBinding = contextKey.typeKey in directMapTypeKeys
+    val isWrappedRequestForDirectMap = requestsWrappedMapValues && isDirectMapBinding
+    if (!isWrappedRequestForDirectMap) {
+      return false
+    }
+    // A declaration whose own type already wraps the values can still satisfy the request.
+    val declaresWrappedValues =
+      when (binding) {
+        is Provided -> binding.providerFactory.contextualTypeKey.isDeferrable
+        is IrBinding.GraphDependency -> binding.contextualTypeKey.isDeferrable
+        else -> false
+      }
+    return !declaresWrappedValues
+  }
+
+  /**
+   * Returns the parent's token for [key] when a parent graph owns the scoped [binding]. Returns
+   * null when this graph uses [binding] itself.
+   *
+   * A binding this graph declares stays here, even if a parent has the same key under a different
+   * scope. If graph A provides `Logger` and graph B overrides it with its own `Logger`, graph C
+   * must get B's.
+   */
+  private fun parentTokenForScopedBinding(
+    key: IrTypeKey,
+    binding: IrBinding,
+  ): ParentContext.Token? {
+    val scope = binding.scope ?: return null
+    if (key in locallyDeclaredKeys) {
+      return null
+    }
+    val parentContext = parentContext ?: return null
+    if (key !in parentContext) {
+      return null
+    }
+    return parentContext.mark(key, scope)
+      ?: reportCompilerBug("Parent context has no owner for scoped key $key")
+  }
+
+  /** Returns the multibinding for [contextKey] if it has contributions or a declaration. */
+  context(context: IrMetroContext)
+  private fun lookupMultibinding(
+    contextKey: IrContextualTypeKey,
+    stack: IrBindingStack,
+  ): Set<IrBinding>? {
+    val multibinding = getOrCreateMultibindingIfNeeded(contextKey.typeKey) ?: return null
+    decisionCapture?.selected(contextKey, stack, multibinding)
+    return setOf(multibinding)
+  }
+
+  /** Returns the optional binding for [contextKey] if it has a `@BindsOptionalOf` declaration. */
+  context(context: IrMetroContext)
+  private fun lookupOptionalBinding(
+    contextKey: IrContextualTypeKey,
+    stack: IrBindingStack,
+  ): Set<IrBinding>? {
+    val optionalBinding = getOrCreateOptionalBindingIfNeeded(contextKey.typeKey) ?: return null
+    decisionCapture?.selected(contextKey, stack, optionalBinding)
+    return setOf(optionalBinding)
+  }
+
+  /**
+   * Falls back to a binding the requested class provides itself, like an `@Inject` constructor.
+   * Returns an empty set when the class can't satisfy [contextKey].
+   */
+  context(context: IrMetroContext)
+  private fun lookupImplicitBinding(
+    contextKey: IrContextualTypeKey,
+    currentBindings: ScatterMap<IrTypeKey, IrBinding>,
+    stack: IrBindingStack,
+  ): Set<IrBinding> {
+    val key = contextKey.typeKey
+    if (key.type.isNullable()) {
+      // An injected class never implicitly satisfies a nullable request for it.
+      decisionCapture?.missing(contextKey, stack)
+      return emptySet()
+    }
+
+    // Finally, fall back to the class-based lookup, which caches its result.
+    val classBindings: Set<IrBinding> =
+      lookupClassBinding(contextKey, currentBindings, stack)
+        // Drop ancestor member injectors the graph already has, since several injected subclasses
+        // can return the same ones.
+        .filterNotTo(mutableSetOf()) {
+          it is IrBinding.MembersInjected && it.typeKey in currentBindings
+        }
+
+    if (parentContext == null) {
+      decisionCapture?.selected(contextKey, stack, classBindings)
+      return classBindings
+    }
+
+    // A scoped class binding lives in the parent graph that owns its scope.
+    val remappedBindings = mutableSetOf<IrBinding>()
+    for (binding in classBindings) {
+      val scope = binding.scope
+      if (scope != null) {
+        val parentBinding = parentGraphDependencyForScope(key, scope)
+        if (parentBinding != null) {
+          remappedBindings += parentBinding
+          continue
+        }
+      }
+      remappedBindings += binding
+    }
+    decisionCapture?.selected(contextKey, stack, remappedBindings, classBindings)
+    return remappedBindings
+  }
 
   /**
    * Records which binding first requested [key] once [resolved] has a binding for it. Population is
@@ -938,7 +1009,12 @@ internal class BindingLookup(
     contextKey: IrContextualTypeKey,
     stack: IrBindingStack,
   ): Set<IrBinding>? {
+    // Most graphs have no generic candidates, so they skip everything below.
+    if (hasNoGenericBindingCandidates) {
+      return null
+    }
     val key = contextKey.typeKey
+    // A key whose derivation was already rejected stays rejected.
     if (key in divergentDerivedBindings) {
       return emptySet()
     }
@@ -946,11 +1022,13 @@ internal class BindingLookup(
     if (key in bindingsCache) {
       return null
     }
+    // Candidates are indexed by raw class, so a key without a class can't match one.
     val classId = key.classId ?: return null
     val candidates = genericBindingCandidatesFor(classId, key.qualifier)
     if (candidates.isEmpty()) {
       return null
     }
+    // Keep the candidates whose return type matches the key and whose bounds hold.
     val matches = candidates.mapNotNull { candidate ->
       val typeArguments = candidate.inferTypeArguments(key) ?: return@mapNotNull null
       DerivedBinding(key, candidate, typeArguments)
@@ -963,14 +1041,17 @@ internal class BindingLookup(
       )
     val selected =
       when (selection) {
+        // Nothing matched, so the class lookup runs next.
         DerivedCandidateSelection.None -> return null
         is DerivedCandidateSelection.Single -> selection.candidate
         is DerivedCandidateSelection.MostSpecific -> {
+          // Record the overlap for the report that `derivedBindingOverlapSeverity` turns on.
           overlappingDerivedBindings[key] =
             DerivedBindingConflict(selection.winner.candidate, matches.map { it.candidate })
           selection.winner
         }
         is DerivedCandidateSelection.Ambiguous -> {
+          // Use the first match so the graph reports the ambiguity without a missing binding too.
           val first = selection.candidates.first()
           ambiguousDerivedBindings[key] =
             DerivedBindingConflict(first.candidate, matches.map { it.candidate })
@@ -978,6 +1059,7 @@ internal class BindingLookup(
         }
       }
 
+    // Apply the inferred type arguments to get an ordinary binding with a concrete key.
     val binding = selected.candidate.bindingFor(selected.typeArguments)
     if (binding.typeKey != key) {
       reportCompilerBug(
@@ -1007,6 +1089,7 @@ internal class BindingLookup(
       }
     }
 
+    // Stop here if this derivation keeps growing its key or its chain is too deep.
     val rejection = checkDerivationChain(key, selected, stack)
     if (rejection != null) {
       divergentDerivedBindings[key] = rejection
@@ -1014,6 +1097,7 @@ internal class BindingLookup(
       return emptySet()
     }
 
+    // Register the binding under its key so later lookups find it as a registered binding.
     putBinding(binding, isLocallyDeclared = selected.candidate.isLocallyDeclared)
     derivedBindings[key] = selected
     decisionCapture?.selected(contextKey, stack, binding, conflicts)
@@ -1036,9 +1120,11 @@ internal class BindingLookup(
   ): List<IrBinding>? {
     val capture = decisionCapture ?: return null
     return when (selection) {
+      // With one match or none, there's no other candidate to record.
       DerivedCandidateSelection.None,
       is DerivedCandidateSelection.Single -> null
       is DerivedCandidateSelection.MostSpecific -> {
+        // Each other match lost to the winner.
         for (match in selection.others) {
           capture.rejected(
             request = contextKey,
@@ -1052,6 +1138,7 @@ internal class BindingLookup(
         null
       }
       is DerivedCandidateSelection.Ambiguous -> {
+        // Build each other match's binding so the report can list them all as conflicts.
         selection.candidates.map { match ->
           if (match === selected) {
             binding
@@ -1079,6 +1166,7 @@ internal class BindingLookup(
     // Derived bindings on the chain, nearest requester first.
     val derivedOnChain = mutableListOf<DerivedBinding>()
     val visited = mutableSetOf(key)
+    // Start at this key's requester and follow the recorded links up to a root.
     var requester = stack.requestingKeyFor(key)
     while (requester != null) {
       if (!visited.add(requester)) {
@@ -1088,6 +1176,7 @@ internal class BindingLookup(
       requester = requesterKeys[requester]
     }
 
+    // Only keys the same function derived can show that it keeps growing its key.
     val function = selected.candidate.function
     val earlierFromSameFunction =
       derivedOnChain.filter { it.candidate.function == function }.asReversed()
@@ -1231,6 +1320,7 @@ internal class BindingLookup(
       val key = contextKey.typeKey
       val irClass = key.type.rawType()
 
+      // A `MembersInjector<T>` request resolves through the member injectors of `T`.
       if (irClass.classId == context.metroSymbols.metroMembersInjector.owner.classId) {
         return hydrateMemberInjectionAncestors(key)
       }
@@ -1301,6 +1391,7 @@ internal class BindingLookup(
           return@getOrPut emptySet()
         }
 
+        // The cache is keyed by class, so it only holds bindings with no type substitution.
         val binding =
           bindingLookupCache.getOrPutConstructorInjected(
             irClass.takeIf { remapper == NOOP_TYPE_REMAPPER },
@@ -1385,10 +1476,11 @@ internal class BindingLookup(
             )
           }
       } else if (contextKey.hasDefault) {
+        // The requesting parameter has a default value, so it can go without a binding.
         bindings += IrBinding.Absent(key)
       } else {
-        // It's a regular class, not injected, not assisted. Initialize member injections still just
-        // in case
+        // A regular class that's neither injected nor assisted still gets its member injections
+        // initialized, just in case.
         @Suppress("RETURN_VALUE_NOT_USED") membersInjectBindings.value
       }
       bindings

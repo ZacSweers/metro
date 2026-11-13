@@ -390,7 +390,7 @@ internal class BindingGraphGenerator(
     }
 
     if (!bindingLookup.hasNoGenericBindingCandidates) {
-      bindingLookup.dropShadowedInheritedGenericCandidates()
+      bindingLookup.removeInheritedGenericCandidatesRedeclaredLocally()
     }
 
     // For graph extensions, use the original factory creator to reference source parameter
