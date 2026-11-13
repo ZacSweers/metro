@@ -56,6 +56,12 @@ public class ReportsTestGenerated extends AbstractReportsTest {
   }
 
   @Test
+  @TestMetadata("DerivedBindingExplanationsInExtension.kt")
+  public void testDerivedBindingExplanationsInExtension() {
+    run("DerivedBindingExplanationsInExtension.kt");
+  }
+
+  @Test
   @TestMetadata("GraphLifecycleReport.kt")
   public void testGraphLifecycleReport() {
     run("GraphLifecycleReport.kt");

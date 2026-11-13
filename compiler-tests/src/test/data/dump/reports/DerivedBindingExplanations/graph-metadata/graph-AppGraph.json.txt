@@ -34,14 +34,7 @@
     "injectors": []
   },
   "extensions": {
-    "accessors": [
-      {
-        "key": "ChildGraph",
-        "renderedKey": "ChildGraph",
-        "name": "child",
-        "isProperty": true
-      }
-    ],
+    "accessors": [],
     "factoryAccessors": [],
     "factoriesImplemented": []
   },
@@ -128,32 +121,32 @@
     "companionMode": "COMPANION_OBJECT"
   },
   "stats": {
-    "providerFactories": 4,
+    "providerFactories": 3,
     "bindsCallables": 1,
     "multibindsCallables": 0,
     "optionalBindings": 0,
     "accessors": 3,
     "injectors": 0,
-    "graphExtensionAccessors": 1,
+    "graphExtensionAccessors": 0,
     "graphExtensionFactories": 0,
     "includedGraphs": 0,
     "bindingContainers": 0,
     "dynamicBindings": 0,
     "graphPrivateKeys": 0,
     "publishedBindsKeys": 0,
-    "populatedKeys": 9,
-    "validatedKeys": 9,
-    "reachableKeys": 9,
+    "populatedKeys": 5,
+    "validatedKeys": 5,
+    "reachableKeys": 5,
     "deferredKeys": 0,
     "unusedInputs": 0,
-    "providerProperties": 2,
-    "scopedProviderProperties": 1,
+    "providerProperties": 0,
+    "scopedProviderProperties": 0,
     "shards": 0,
     "optimizations": {
       "bindingsPrunedByShrinking": 0,
       "classConstructorDirectInvocations": 1,
       "classConstructorNewInstanceCalls": 0,
-      "providerDirectInvocations": 2,
+      "providerDirectInvocations": 3,
       "providerNewInstanceCalls": 0,
       "shardsGenerated": 0,
       "shardedSupertypes": 0,
@@ -166,17 +159,6 @@
     }
   },
   "bindings": [
-    {
-      "key": "AppGraph",
-      "renderedKey": "AppGraph",
-      "bindingKind": "BoundInstance",
-      "isScoped": false,
-      "nameHint": "AppGraphProvider",
-      "isGraphInput": false,
-      "dependencies": [],
-      "isSynthetic": false,
-      "declaration": "AppGraph"
-    },
     {
       "key": "Cache<User>",
       "renderedKey": "Cache<User>",
@@ -191,44 +173,13 @@
         }
       ],
       "isSynthetic": false,
+      "origin": "DerivedBindingExplanations.kt:29:10",
       "declaration": "lru",
       "aliasTarget": "LruCache<User>",
       "derivedFrom": {
         "provider": "CacheBindings.lru",
         "typeArguments": {
           "T": "User"
-        }
-      }
-    },
-    {
-      "key": "ChildGraph",
-      "renderedKey": "ChildGraph",
-      "bindingKind": "GraphExtension",
-      "isScoped": false,
-      "nameHint": "ChildGraph",
-      "dependencies": [
-        {
-          "key": "AppGraph",
-          "renderedKey": "AppGraph",
-          "hasDefault": false
-        }
-      ],
-      "isSynthetic": false,
-      "declaration": "<get-child>"
-    },
-    {
-      "key": "Encoder<Token>",
-      "renderedKey": "Encoder<Token>",
-      "bindingKind": "Provided",
-      "isScoped": false,
-      "nameHint": "anything",
-      "dependencies": [],
-      "isSynthetic": false,
-      "declaration": "anything",
-      "derivedFrom": {
-        "provider": "Encoders.anything",
-        "typeArguments": {
-          "T": "Token"
         }
       }
     },
@@ -240,6 +191,7 @@
       "nameHint": "anything",
       "dependencies": [],
       "isSynthetic": false,
+      "origin": "DerivedBindingExplanations.kt:21:13",
       "declaration": "anything",
       "derivedFrom": {
         "provider": "Encoders.anything",
@@ -256,6 +208,7 @@
       "nameHint": "string",
       "dependencies": [],
       "isSynthetic": false,
+      "origin": "DerivedBindingExplanations.kt:19:13",
       "declaration": "string"
     },
     {
@@ -272,40 +225,12 @@
         }
       ],
       "isSynthetic": false,
+      "origin": "DerivedBindingExplanations.kt:24:13",
       "declaration": "list",
       "derivedFrom": {
         "provider": "Encoders.list",
         "typeArguments": {
           "T": "User"
-        }
-      }
-    },
-    {
-      "key": "Encoder<kotlin/collections/Map<kotlin/String,Token>>",
-      "renderedKey": "Encoder<kotlin.collections.Map<kotlin.String, Token>>",
-      "bindingKind": "Provided",
-      "scope": "@dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class)",
-      "isScoped": true,
-      "nameHint": "map",
-      "dependencies": [
-        {
-          "key": "Encoder<kotlin/String>",
-          "renderedKey": "Encoder<kotlin.String>",
-          "hasDefault": false
-        },
-        {
-          "key": "Encoder<Token>",
-          "renderedKey": "Encoder<Token>",
-          "hasDefault": false
-        }
-      ],
-      "isSynthetic": false,
-      "declaration": "map",
-      "derivedFrom": {
-        "provider": "Encoders.map",
-        "typeArguments": {
-          "K": "kotlin.String",
-          "V": "Token"
         }
       }
     },
@@ -317,78 +242,11 @@
       "nameHint": "LruCache",
       "dependencies": [],
       "isSynthetic": false,
+      "origin": "DerivedBindingExplanations.kt:12:1",
       "declaration": "LruCache"
     }
   ],
   "bindingExplanations": [
-    {
-      "context": {
-        "id": "8:AppGraph",
-        "label": "AppGraph"
-      },
-      "phase": "lookup",
-      "outcome": "selected",
-      "candidates": [
-        {
-          "id": "8:AppGraph|8:AppGraph",
-          "key": "AppGraph",
-          "status": "selected",
-          "reason": "selected_generated",
-          "declaration": {
-            "id": "AppGraph",
-            "label": "AppGraph"
-          },
-          "relatedDeclarations": [],
-          "details": [],
-          "renderedKey": "AppGraph"
-        }
-      ],
-      "request": {
-        "key": "AppGraph",
-        "hasDefault": false,
-        "isOptional": false,
-        "renderedKey": "AppGraph"
-      },
-      "details": [
-        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
-      ]
-    },
-    {
-      "context": {
-        "id": "8:AppGraph",
-        "label": "AppGraph"
-      },
-      "phase": "lookup",
-      "outcome": "selected",
-      "candidates": [
-        {
-          "id": "8:AppGraph|8:AppGraph",
-          "key": "AppGraph",
-          "status": "selected",
-          "reason": "selected_generated",
-          "declaration": {
-            "id": "AppGraph",
-            "label": "AppGraph"
-          },
-          "relatedDeclarations": [],
-          "details": [],
-          "renderedKey": "AppGraph"
-        }
-      ],
-      "request": {
-        "key": "AppGraph",
-        "declaration": {
-          "id": "AppGraph.Impl.<get-child>(AppGraph.Impl): ChildGraph",
-          "label": "AppGraph.Impl.<get-child>"
-        },
-        "hasDefault": false,
-        "isOptional": false,
-        "renderedKey": "AppGraph"
-      },
-      "details": [
-        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
-      ]
-    },
     {
       "context": {
         "id": "8:AppGraph",
@@ -404,7 +262,12 @@
           "reason": "selected_derived",
           "declaration": {
             "id": "CacheBindings.lru(CacheBindings,LruCache<#CacheBindings.lru:0:T>): Cache<#CacheBindings.lru:0:T>",
-            "label": "CacheBindings.lru"
+            "label": "CacheBindings.lru",
+            "source": {
+              "path": "DerivedBindingExplanations.kt",
+              "line": 29,
+              "column": 10
+            }
           },
           "relatedDeclarations": [],
           "details": [
@@ -432,87 +295,18 @@
       "outcome": "selected",
       "candidates": [
         {
-          "id": "10:ChildGraph|52:AppGraph.Impl.<get-child>(AppGraph.Impl): ChildGraph",
-          "key": "ChildGraph",
-          "status": "selected",
-          "reason": "selected_generated",
-          "declaration": {
-            "id": "AppGraph.Impl.<get-child>(AppGraph.Impl): ChildGraph",
-            "label": "AppGraph.Impl.<get-child>"
-          },
-          "relatedDeclarations": [],
-          "details": [],
-          "renderedKey": "ChildGraph"
-        }
-      ],
-      "request": {
-        "key": "ChildGraph",
-        "declaration": {
-          "id": "AppGraph.Impl.<get-child>(AppGraph.Impl): ChildGraph",
-          "label": "AppGraph.Impl.<get-child>"
-        },
-        "hasDefault": false,
-        "isOptional": false,
-        "renderedKey": "ChildGraph"
-      },
-      "details": [
-        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
-      ]
-    },
-    {
-      "context": {
-        "id": "8:AppGraph",
-        "label": "AppGraph"
-      },
-      "phase": "lookup",
-      "outcome": "selected",
-      "candidates": [
-        {
-          "id": "14:Encoder<Token>|60:Encoders.anything(Encoders): Encoder<#Encoders.anything:0:T>",
-          "key": "Encoder<Token>",
-          "status": "selected",
-          "reason": "selected_derived",
-          "declaration": {
-            "id": "Encoders.anything(Encoders): Encoder<#Encoders.anything:0:T>",
-            "label": "Encoders.anything"
-          },
-          "relatedDeclarations": [],
-          "details": [
-            "Derived from `Encoders.anything` with `T = Token`."
-          ],
-          "renderedKey": "Encoder<Token>"
-        }
-      ],
-      "request": {
-        "key": "Encoder<Token>",
-        "declaration": {
-          "id": "Encoders.map(Encoders,Encoder<#Encoders.map:0:K>,Encoder<#Encoders.map:1:V>): Encoder<kotlin/collections/Map<#Encoders.map:0:K,#Encoders.map:1:V>>#values",
-          "label": "Encoders.map.values"
-        },
-        "hasDefault": false,
-        "isOptional": false,
-        "renderedKey": "Encoder<Token>"
-      },
-      "details": [
-        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
-      ]
-    },
-    {
-      "context": {
-        "id": "8:AppGraph",
-        "label": "AppGraph"
-      },
-      "phase": "lookup",
-      "outcome": "selected",
-      "candidates": [
-        {
           "id": "13:Encoder<User>|60:Encoders.anything(Encoders): Encoder<#Encoders.anything:0:T>",
           "key": "Encoder<User>",
           "status": "selected",
           "reason": "selected_derived",
           "declaration": {
             "id": "Encoders.anything(Encoders): Encoder<#Encoders.anything:0:T>",
-            "label": "Encoders.anything"
+            "label": "Encoders.anything",
+            "source": {
+              "path": "DerivedBindingExplanations.kt",
+              "line": 21,
+              "column": 13
+            }
           },
           "relatedDeclarations": [],
           "details": [
@@ -525,7 +319,12 @@
         "key": "Encoder<User>",
         "declaration": {
           "id": "Encoders.list(Encoders,Encoder<#Encoders.list:0:T>): Encoder<kotlin/collections/List<#Encoders.list:0:T>>#element",
-          "label": "Encoders.list.element"
+          "label": "Encoders.list.element",
+          "source": {
+            "path": "DerivedBindingExplanations.kt",
+            "line": 24,
+            "column": 26
+          }
         },
         "hasDefault": false,
         "isOptional": false,
@@ -550,7 +349,12 @@
           "reason": "selected_explicit",
           "declaration": {
             "id": "Encoders.string(Encoders): Encoder<kotlin/String>",
-            "label": "Encoders.string"
+            "label": "Encoders.string",
+            "source": {
+              "path": "DerivedBindingExplanations.kt",
+              "line": 19,
+              "column": 13
+            }
           },
           "relatedDeclarations": [],
           "details": [],
@@ -559,42 +363,6 @@
       ],
       "request": {
         "key": "Encoder<kotlin/String>",
-        "hasDefault": false,
-        "isOptional": false,
-        "renderedKey": "Encoder<kotlin.String>"
-      },
-      "details": [
-        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
-      ]
-    },
-    {
-      "context": {
-        "id": "8:AppGraph",
-        "label": "AppGraph"
-      },
-      "phase": "lookup",
-      "outcome": "selected",
-      "candidates": [
-        {
-          "id": "22:Encoder<kotlin/String>|49:Encoders.string(Encoders): Encoder<kotlin/String>",
-          "key": "Encoder<kotlin/String>",
-          "status": "selected",
-          "reason": "selected_explicit",
-          "declaration": {
-            "id": "Encoders.string(Encoders): Encoder<kotlin/String>",
-            "label": "Encoders.string"
-          },
-          "relatedDeclarations": [],
-          "details": [],
-          "renderedKey": "Encoder<kotlin.String>"
-        }
-      ],
-      "request": {
-        "key": "Encoder<kotlin/String>",
-        "declaration": {
-          "id": "Encoders.map(Encoders,Encoder<#Encoders.map:0:K>,Encoder<#Encoders.map:1:V>): Encoder<kotlin/collections/Map<#Encoders.map:0:K,#Encoders.map:1:V>>#keys",
-          "label": "Encoders.map.keys"
-        },
         "hasDefault": false,
         "isOptional": false,
         "renderedKey": "Encoder<kotlin.String>"
@@ -618,7 +386,12 @@
           "reason": "selected_derived",
           "declaration": {
             "id": "Encoders.list(Encoders,Encoder<#Encoders.list:0:T>): Encoder<kotlin/collections/List<#Encoders.list:0:T>>",
-            "label": "Encoders.list"
+            "label": "Encoders.list",
+            "source": {
+              "path": "DerivedBindingExplanations.kt",
+              "line": 24,
+              "column": 13
+            }
           },
           "relatedDeclarations": [],
           "details": [
@@ -633,12 +406,22 @@
           "reason": "less_specific",
           "declaration": {
             "id": "Encoders.anything(Encoders): Encoder<#Encoders.anything:0:T>",
-            "label": "Encoders.anything"
+            "label": "Encoders.anything",
+            "source": {
+              "path": "DerivedBindingExplanations.kt",
+              "line": 21,
+              "column": 13
+            }
           },
           "relatedDeclarations": [
             {
               "id": "Encoders.list(Encoders,Encoder<#Encoders.list:0:T>): Encoder<kotlin/collections/List<#Encoders.list:0:T>>",
-              "label": "Encoders.list"
+              "label": "Encoders.list",
+              "source": {
+                "path": "DerivedBindingExplanations.kt",
+                "line": 24,
+                "column": 13
+              }
             }
           ],
           "details": [],
@@ -664,65 +447,18 @@
       "outcome": "selected",
       "candidates": [
         {
-          "id": "52:Encoder<kotlin/collections/Map<kotlin/String,Token>>|146:Encoders.map(Encoders,Encoder<#Encoders.map:0:K>,Encoder<#Encoders.map:1:V>): Encoder<kotlin/collections/Map<#Encoders.map:0:K,#Encoders.map:1:V>>",
-          "key": "Encoder<kotlin/collections/Map<kotlin/String,Token>>",
-          "status": "selected",
-          "reason": "selected_derived",
-          "declaration": {
-            "id": "Encoders.map(Encoders,Encoder<#Encoders.map:0:K>,Encoder<#Encoders.map:1:V>): Encoder<kotlin/collections/Map<#Encoders.map:0:K,#Encoders.map:1:V>>",
-            "label": "Encoders.map"
-          },
-          "relatedDeclarations": [],
-          "details": [
-            "Derived from `Encoders.map` with `K = kotlin.String` and `V = Token`."
-          ],
-          "renderedKey": "Encoder<kotlin.collections.Map<kotlin.String, Token>>"
-        },
-        {
-          "id": "52:Encoder<kotlin/collections/Map<kotlin/String,Token>>|60:Encoders.anything(Encoders): Encoder<#Encoders.anything:0:T>",
-          "key": "Encoder<kotlin/collections/Map<kotlin/String,Token>>",
-          "status": "rejected",
-          "reason": "less_specific",
-          "declaration": {
-            "id": "Encoders.anything(Encoders): Encoder<#Encoders.anything:0:T>",
-            "label": "Encoders.anything"
-          },
-          "relatedDeclarations": [
-            {
-              "id": "Encoders.map(Encoders,Encoder<#Encoders.map:0:K>,Encoder<#Encoders.map:1:V>): Encoder<kotlin/collections/Map<#Encoders.map:0:K,#Encoders.map:1:V>>",
-              "label": "Encoders.map"
-            }
-          ],
-          "details": [],
-          "renderedKey": "Encoder<kotlin.collections.Map<kotlin.String, Token>>"
-        }
-      ],
-      "request": {
-        "key": "Encoder<kotlin/collections/Map<kotlin/String,Token>>",
-        "hasDefault": false,
-        "isOptional": false,
-        "renderedKey": "Provider<Encoder<kotlin.collections.Map<kotlin.String, Token>>>"
-      },
-      "details": [
-        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
-      ]
-    },
-    {
-      "context": {
-        "id": "8:AppGraph",
-        "label": "AppGraph"
-      },
-      "phase": "lookup",
-      "outcome": "selected",
-      "candidates": [
-        {
           "id": "14:LruCache<User>|8:LruCache",
           "key": "LruCache<User>",
           "status": "selected",
           "reason": "selected_implicit",
           "declaration": {
             "id": "LruCache",
-            "label": "LruCache"
+            "label": "LruCache",
+            "source": {
+              "path": "DerivedBindingExplanations.kt",
+              "line": 12,
+              "column": 1
+            }
           },
           "relatedDeclarations": [],
           "details": [],
@@ -733,7 +469,12 @@
         "key": "LruCache<User>",
         "declaration": {
           "id": "CacheBindings.lru(CacheBindings,LruCache<#CacheBindings.lru:0:T>): Cache<#CacheBindings.lru:0:T>#impl",
-          "label": "CacheBindings.lru.impl"
+          "label": "CacheBindings.lru.impl",
+          "source": {
+            "path": "DerivedBindingExplanations.kt",
+            "line": 29,
+            "column": 22
+          }
         },
         "hasDefault": false,
         "isOptional": false,
@@ -741,32 +482,6 @@
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
-      ]
-    },
-    {
-      "context": {
-        "id": "8:AppGraph",
-        "label": "AppGraph"
-      },
-      "phase": "registration",
-      "outcome": "selected",
-      "candidates": [
-        {
-          "id": "10:ChildGraph|52:AppGraph.Impl.<get-child>(AppGraph.Impl): ChildGraph",
-          "key": "ChildGraph",
-          "status": "selected",
-          "reason": "selected_generated",
-          "declaration": {
-            "id": "AppGraph.Impl.<get-child>(AppGraph.Impl): ChildGraph",
-            "label": "AppGraph.Impl.<get-child>"
-          },
-          "relatedDeclarations": [],
-          "details": [],
-          "renderedKey": "ChildGraph"
-        }
-      ],
-      "details": [
-        "Records bindings added directly to this graph, including member-injection dependencies."
       ]
     }
   ]
