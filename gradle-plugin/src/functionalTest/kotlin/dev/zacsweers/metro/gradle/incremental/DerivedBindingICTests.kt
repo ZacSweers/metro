@@ -122,6 +122,106 @@ class DerivedBindingICTests(target: KmpTarget) : BaseIncrementalCompilationTest(
   }
 
   @Test
+  fun removingGenericProviderIsPickedUp() {
+    val fixture =
+      object : MetroProject(metroOptions = MetroOptionOverrides(enableDerivedBindings = true)) {
+        override fun sources() = listOf(encoderTypes, encoders, appGraph, main)
+
+        val encoders =
+          source(
+            """
+            @BindingContainer
+            object Encoders {
+              @Provides fun string(): Encoder<String> = NamedEncoder("string")
+
+              @Provides fun <T> anything(): Encoder<T> = NamedEncoder("anything")
+
+              @Provides
+              fun <T> list(element: Encoder<T>): Encoder<List<T>> =
+                NamedEncoder("list(${'$'}{element.name})")
+            }
+            """
+              .trimIndent(),
+          )
+      }
+
+    val project = fixture.gradleProject
+
+    val firstBuildResult = project.compileKotlin()
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    ifJvmTarget { assertThat(project.invokeMain<String>()).isEqualTo("list(string)") }
+
+    // Without `list`, `anything` is the only provider left that matches `Encoder<List<String>>`.
+    project.modify(
+      fixture.encoders,
+      """
+      @BindingContainer
+      object Encoders {
+        @Provides fun string(): Encoder<String> = NamedEncoder("string")
+
+        @Provides fun <T> anything(): Encoder<T> = NamedEncoder("anything")
+      }
+      """
+        .trimIndent(),
+    )
+
+    val secondBuildResult = project.compileKotlin()
+    assertThat(secondBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    ifJvmTarget { assertThat(project.invokeMain<String>()).isEqualTo("anything") }
+  }
+
+  @Test
+  fun changingGenericProviderBoundIsPickedUp() {
+    val fixture =
+      object : MetroProject(metroOptions = MetroOptionOverrides(enableDerivedBindings = true)) {
+        override fun sources() = listOf(encoderTypes, encoders, appGraph, main)
+
+        val encoders =
+          source(
+            """
+            @BindingContainer
+            object Encoders {
+              @Provides fun string(): Encoder<String> = NamedEncoder("string")
+
+              @Provides
+              fun <T : Any> list(element: Encoder<T>): Encoder<List<T>> =
+                NamedEncoder("list(${'$'}{element.name})")
+            }
+            """
+              .trimIndent(),
+          )
+      }
+
+    val project = fixture.gradleProject
+
+    val firstBuildResult = project.compileKotlin()
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    ifJvmTarget { assertThat(project.invokeMain<String>()).isEqualTo("list(string)") }
+
+    // `String` isn't a `Number`, so `list` no longer matches `Encoder<List<String>>`.
+    project.modify(
+      fixture.encoders,
+      """
+      @BindingContainer
+      object Encoders {
+        @Provides fun string(): Encoder<String> = NamedEncoder("string")
+
+        @Provides
+        fun <T : Number> list(element: Encoder<T>): Encoder<List<T>> =
+          NamedEncoder("list(${'$'}{element.name})")
+      }
+      """
+        .trimIndent(),
+    )
+
+    val secondBuildResult = project.compileKotlinAndFail()
+    val output = secondBuildResult.output.cleanOutputLine()
+    assertThat(output).contains("[Metro/MissingBinding] No binding found for")
+    // The error names the bound that rejected the provider.
+    assertThat(output).contains("`T : Number`")
+  }
+
+  @Test
   fun changingGenericProviderParametersInLibraryIsPickedUp() {
     val fixture =
       object : MetroProject(metroOptions = MetroOptionOverrides(enableDerivedBindings = true)) {
