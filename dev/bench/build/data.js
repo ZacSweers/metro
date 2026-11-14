@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794621479532,
+  "lastUpdate": 1794624506617,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -28112,6 +28112,62 @@ window.BENCHMARK_DATA = {
             "value": 19073.852,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +1.63%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "d1dd1701~1",
+          "message": "[before] Fix anonymous suspend parameter defaults (#3132)",
+          "timestamp": "2026-11-14T01:49:22Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/d1dd17016b252cc51f1ab92a2d597fb7be0438c7"
+        },
+        "date": 1794624506617,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19217.515,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "d1dd17016b252cc51f1ab92a2d597fb7be0438c7",
+          "message": "[after] Fix anonymous suspend parameter defaults (#3132)",
+          "timestamp": "2026-11-14T01:49:22Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/d1dd17016b252cc51f1ab92a2d597fb7be0438c7"
+        },
+        "date": 1794624506618,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19579.985999999997,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +1.89%"
           }
         ]
       }
