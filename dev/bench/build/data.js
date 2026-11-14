@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794590869124,
+  "lastUpdate": 1794621479532,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -28056,6 +28056,62 @@ window.BENCHMARK_DATA = {
             "value": 20010.666999999998,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +3.08%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "dc18271e~1",
+          "message": "[before] Fix an IC lookup on older kotlin versions (#3131)",
+          "timestamp": "2026-11-14T01:00:19Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/dc18271e236660b316a5850ab926a4e1d61d96cb"
+        },
+        "date": 1794621479532,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18768.43,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "dc18271e236660b316a5850ab926a4e1d61d96cb",
+          "message": "[after] Fix an IC lookup on older kotlin versions (#3131)",
+          "timestamp": "2026-11-14T01:00:19Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/dc18271e236660b316a5850ab926a4e1d61d96cb"
+        },
+        "date": 1794621479533,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19073.852,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +1.63%"
           }
         ]
       }
