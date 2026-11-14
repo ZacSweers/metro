@@ -1592,6 +1592,9 @@ internal class BindingLookup(
 
         bindings += binding
 
+        // Older Kotlin versions can miss annotation changes on the factory mirror.
+        trackClassLookup(sourceGraph, irClass)
+
         // Record a lookup of the class in case its kind changes
         trackClassLookup(sourceGraph, classFactory.factoryClass)
         // Record a lookup of the signature in case its signature changes

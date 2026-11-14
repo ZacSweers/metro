@@ -23,6 +23,87 @@ class ContributionHintICTests :
     requiresMultiplatformIc = false,
   ) {
 
+  @Test
+  fun boundClassScopeChangesRecompileConsumer() {
+    val fixture =
+      object :
+        MetroProject(
+          multiplatform = false,
+          additionalGradleProperties =
+            listOf("kotlin.build.report.output=file", "org.gradle.caching=false"),
+        ) {
+        override fun buildGradleProject() = multiModuleProject {
+          root {
+            dependencies(Dependency.implementation(":lib"))
+            sources(
+              source(
+                """
+                @DependencyGraph(AppScope::class, bindingContainers = [TargetBindings::class])
+                interface AppGraph {
+                  val target: ITarget
+                }
+
+                fun main(): Boolean {
+                  val graph = createGraph<AppGraph>()
+                  return graph.target === graph.target
+                }
+                """,
+                "AppGraph",
+              ),
+            )
+          }
+          subproject("lib") {
+            sources(
+              source("interface ITarget"),
+              source(
+                """
+                @BindingContainer
+                interface TargetBindings {
+                  @Binds fun bindTarget(target: Target): ITarget
+                }
+                """,
+              ),
+              source(
+                """
+                @Inject class Target : ITarget
+                """,
+              ),
+            )
+          }
+        }
+      }
+    val project = fixture.gradleProject
+    project.compileKotlin(task = ":compileKotlin")
+    assertThat(project.invokeMain<Boolean>(className = "test.AppGraphKt", target = null)).isFalse()
+
+    val targetFile = project.rootDir.resolve("lib/src/main/kotlin/test/Target.kt")
+    val originalSource = targetFile.readText()
+    val scopedSource =
+      originalSource.replace("class Target", "@SingleIn(AppScope::class)\nclass Target")
+    val reportsDir = project.rootDir.resolve("build/reports/kotlin-build")
+
+    for (scoped in listOf(true, false)) {
+      targetFile.writeText(
+        if (scoped) {
+          scopedSource
+        } else {
+          originalSource
+        },
+      )
+      val previousReports = reportsDir.listFiles().orEmpty().toSet()
+      val result = project.compileKotlin(task = ":compileKotlin")
+      assertThat(result.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+      val report = reportsDir.listFiles().orEmpty().single { it !in previousReports }
+      assertThat(report.readText()).doesNotContain("Non-incremental compilation will be performed")
+      assertThat(report.readText()).doesNotContain("IC_FAILED_TO_COMPILE_INCREMENTALLY")
+      assertThat(compiledSourceNames(report, ":lib:compileKotlin")).contains("Target.kt")
+      assertThat(compiledSourceNames(report, ":compileKotlin")).contains("AppGraph.kt")
+      assertThat(project.invokeMain<Boolean>(className = "test.AppGraphKt", target = null))
+        .isEqualTo(scoped)
+    }
+  }
+
   // https://github.com/ZacSweers/metro/issues/3017
   @Test
   fun upstreamBindingConstructorChangeRecompilesGraphAndDirectCaller() {
