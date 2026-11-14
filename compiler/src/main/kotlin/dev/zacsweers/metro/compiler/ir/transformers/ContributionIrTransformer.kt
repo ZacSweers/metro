@@ -56,6 +56,7 @@ import dev.zacsweers.metro.compiler.ir.scopeAnnotations
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.singleAbstractFunction
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
+import dev.zacsweers.metro.compiler.ir.typeRemapperFor
 import dev.zacsweers.metro.compiler.ir.usesContributionProviderPath
 import dev.zacsweers.metro.compiler.joinSimpleNames
 import dev.zacsweers.metro.compiler.memoize
@@ -87,6 +88,7 @@ import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.overrides.isEffectivelyPrivate
+import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.isMarkedNullable
 import org.jetbrains.kotlin.ir.util.addChild
@@ -94,6 +96,7 @@ import org.jetbrains.kotlin.ir.util.addFakeOverrides
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.copyTo
+import org.jetbrains.kotlin.ir.util.copyTypeParametersFrom
 import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.defaultType
@@ -106,10 +109,12 @@ import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.primaryConstructor
+import org.jetbrains.kotlin.ir.util.remapTypes
 import org.jetbrains.kotlin.ir.visitors.IrTransformer
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.types.Variance
 
 private const val SCOPED_PROVIDER_PREFIX = "metro_scoped_"
 
@@ -494,11 +499,13 @@ internal class ContributionIrTransformer(
       }
     }
 
+    val scopedInstanceType by memoize { syntheticScopedType(originClass, contributions) }
+
     if (useSyntheticScopedProvider && container.functions.none { it.name == scopedFunctionName }) {
       container
         .addFunction {
           name = scopedFunctionName
-          returnType = irBuiltIns.anyNType
+          returnType = scopedInstanceType
           modality = Modality.FINAL
           origin = Origins.MetroContributionCallableDeclaration
         }
@@ -509,6 +516,7 @@ internal class ContributionIrTransformer(
             addAnnotationCompat(it.ir.deepCopyWithSymbols())
           }
           addAnnotationCompat(buildNamedAnnotation(syntheticQualifierName!!))
+          copyContributionTypeParameters(originClass)
         }
     }
 
@@ -568,7 +576,7 @@ internal class ContributionIrTransformer(
         }
         .apply {
           if (useSyntheticScopedProvider) {
-            addValueParameter(Symbols.Names.instance, irBuiltIns.anyNType).apply {
+            addValueParameter(Symbols.Names.instance, scopedInstanceType).apply {
               addAnnotationCompat(buildNamedAnnotation(syntheticQualifierName!!))
             }
             body =
@@ -612,8 +620,35 @@ internal class ContributionIrTransformer(
             }
           }
           qualifier?.let { addAnnotationCompat(it.ir.deepCopyWithSymbols()) }
+          copyContributionTypeParameters(originClass)
         }
     }
+  }
+
+  /**
+   * Returns the key type of the synthetic scoped provider. Non-generic classes use `Any?`. Generic
+   * classes use the first bound type in this container. FIR checks that it carries every class type
+   * parameter.
+   */
+  private fun syntheticScopedType(
+    originClass: IrClass,
+    contributions: List<Contribution.BindingContribution>,
+  ): IrType {
+    if (originClass.typeParameters.isEmpty()) {
+      return irBuiltIns.anyNType
+    }
+
+    val contribution = contributions.firstOrNull()
+    if (contribution == null) {
+      reportCompilerBug("No binding contribution for ${originClass.classIdOrFail}")
+    }
+
+    val boundType = boundTypeResolver.resolveBoundType(originClass, contribution.annotation)
+    if (boundType == null) {
+      reportCompilerBug("No bound type for ${originClass.classIdOrFail}")
+    }
+
+    return boundType.typeKey.type
   }
 
   private fun IrFunction.addContributionProviderParameters(
@@ -776,6 +811,7 @@ internal class ContributionIrTransformer(
 
       // Check if this is a wrapper function via FIR attribute
       val isWrapper = function.isContributionProviderWrapper
+      val typeArguments = function.typeParameters.map { it.defaultType }
 
       function.body =
         context.createIrBuilder(function.symbol).run {
@@ -812,7 +848,7 @@ internal class ContributionIrTransformer(
 
             // Constructor call (synthetic scoped or direct)
             val constructorCall =
-              irCallConstructor(calleeCtor.symbol, emptyList()).apply {
+              irCallConstructor(calleeCtor.symbol, typeArguments).apply {
                 val functionParams = function.regularParameters
                 for ((index, param) in functionParams.withIndex()) {
                   if (index < calleeCtor.regularParameters.size) {
@@ -846,6 +882,11 @@ internal class ContributionIrTransformer(
             }
           }
         }
+
+      // Copied defaults and member injection bodies can still reference the class's parameters.
+      if (originClass.typeParameters.isNotEmpty()) {
+        function.remapTypes(typeRemapperFor(typeArguments, originClass))
+      }
     }
 
     declaration.dumpToMetroLog()
@@ -1016,6 +1057,9 @@ internal class ContributionIrTransformer(
                 // TODO any qualifiers? What if we want to qualify the instance type but not the
                 //  bound type?
               }
+
+              copyContributionTypeParameters(annotatedType)
+
               qualifier?.let { addAnnotationCompat(it.ir.deepCopyWithSymbols()) }
               // TODO can we remove this and just rely on the copy in BindsMirrorTransformer?
               if (this@BindingContribution is ContributesIntoMapBinding) {
@@ -1152,4 +1196,22 @@ internal class ContributionIrTransformer(
   private fun IrFunction.buildProvidesAnnotation(): IrConstructorCall {
     return buildAnnotation(symbol, metroSymbols.providesConstructor)
   }
+}
+
+/**
+ * Copies a generic contributing class's type parameters onto a generated contribution function and
+ * remaps the function's types to them. The copies are invariant because function type parameters
+ * can't declare variance. This matches the FIR-generated declarations.
+ */
+private fun IrFunction.copyContributionTypeParameters(originClass: IrClass) {
+  if (originClass.typeParameters.isEmpty()) {
+    return
+  }
+
+  val copied = copyTypeParametersFrom(originClass)
+  for (typeParameter in copied) {
+    typeParameter.variance = Variance.INVARIANT
+  }
+
+  remapTypes(typeRemapperFor(copied.map { it.defaultType }, originClass))
 }

@@ -32,12 +32,12 @@ import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.declarations.IrParameterKind
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.impl.IrFileImpl
+import org.jetbrains.kotlin.ir.types.starProjectedType
 import org.jetbrains.kotlin.ir.util.NaiveSourceBasedFileEntryImpl
 import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.addFile
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
-import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.fileEntry
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
@@ -89,7 +89,7 @@ internal class HintGenerator(context: IrMetroContext, val moduleFragment: IrModu
           parameters +=
             buildValueParameter(this) {
               name = Symbols.Names.contributed
-              type = sourceClass.defaultType
+              type = sourceClass.symbol.starProjectedType
               kind = IrParameterKind.Regular
             }
           body = stubExpressionBody()

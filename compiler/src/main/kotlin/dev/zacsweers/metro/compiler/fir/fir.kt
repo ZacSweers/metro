@@ -125,8 +125,12 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.ConeClassLikeLookupTag
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
+import org.jetbrains.kotlin.fir.types.ConeDefinitelyNotNullType
+import org.jetbrains.kotlin.fir.types.ConeFlexibleType
+import org.jetbrains.kotlin.fir.types.ConeIntersectionType
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.ConeKotlinTypeProjection
+import org.jetbrains.kotlin.fir.types.ConeStarProjection
 import org.jetbrains.kotlin.fir.types.ConeTypeParameterType
 import org.jetbrains.kotlin.fir.types.ConeTypeProjection
 import org.jetbrains.kotlin.fir.types.FirPlaceholderProjection
@@ -1758,6 +1762,37 @@ internal fun ConeTypeParameterType.typeParameterSymbolCompat(
   return toSymbol(s) as FirTypeParameterSymbol
 }
 
+/** Adds every type parameter that appears anywhere in this type to [into]. */
+internal fun ConeKotlinType.collectTypeParameterSymbols(
+  session: FirSession,
+  into: MutableSet<FirTypeParameterSymbol>,
+) {
+  when (this) {
+    is ConeTypeParameterType -> into += typeParameterSymbolCompat(session)
+
+    is ConeDefinitelyNotNullType -> original.collectTypeParameterSymbols(session, into)
+
+    is ConeFlexibleType -> {
+      lowerBound.collectTypeParameterSymbols(session, into)
+      upperBound.collectTypeParameterSymbols(session, into)
+    }
+
+    is ConeIntersectionType -> {
+      for (type in intersectedTypes) {
+        type.collectTypeParameterSymbols(session, into)
+      }
+    }
+
+    is ConeClassLikeType -> {
+      for (argument in typeArguments) {
+        argument.type?.collectTypeParameterSymbols(session, into)
+      }
+    }
+
+    else -> {}
+  }
+}
+
 /**
  * Result of resolving a `@DefaultBinding<T>` annotation. Contains the resolved type ref and an
  * optional qualifier annotation (which may come from the type argument or the annotated class).
@@ -1839,7 +1874,8 @@ internal fun FirClassSymbol<*>.resolveExternalDefaultBindingTypeKey(
 internal fun buildClassReference(session: FirSession, classId: ClassId): FirGetClassCall {
   val classSymbol =
     session.symbolProvider.getClassLikeSymbolByClassId(classId) as FirRegularClassSymbol
-  val classType = classSymbol.defaultType()
+  val classType =
+    classSymbol.constructType(Array(classSymbol.typeParameterSymbols.size) { ConeStarProjection })
   return buildGetClassCall {
     argumentList = buildArgumentList {
       arguments +=
