@@ -3049,6 +3049,12 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
     }
 
     @Test
+    @TestMetadata("ContributedGenericClassBinding.kt")
+    public void testContributedGenericClassBinding() {
+      run("ContributedGenericClassBinding.kt");
+    }
+
+    @Test
     @TestMetadata("DeferredAccess.kt")
     public void testDeferredAccess() {
       run("DeferredAccess.kt");

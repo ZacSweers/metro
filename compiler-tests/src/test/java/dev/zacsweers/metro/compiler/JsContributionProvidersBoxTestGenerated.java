@@ -2703,6 +2703,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     }
 
     @Test
+    @TestMetadata("ContributedGenericClassBinding.kt")
+    public void testContributedGenericClassBinding() {
+      run("ContributedGenericClassBinding.kt");
+    }
+
+    @Test
     @TestMetadata("DeferredAccess.kt")
     public void testDeferredAccess() {
       run("DeferredAccess.kt");
