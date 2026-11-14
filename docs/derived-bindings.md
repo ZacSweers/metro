@@ -226,6 +226,48 @@ A graph extension can use the generic providers of its ancestors. A scoped deriv
 
 A nearer graph can declare a generic provider with the same return type and bounds as a provider in a farther ancestor. Then the nearer one wins, like ordinary providers. If only the bounds differ, the nearer graph keeps both providers. Two equivalent generic providers on the same graph are ambiguous.
 
+## Generic binding contributions
+
+Generic classes can use `@ContributesBinding` when derived bindings are enabled.
+
+```kotlin
+interface Cache<T>
+
+@ContributesBinding(AppScope::class)
+@Inject
+class LruCache<T> : Cache<T>
+
+@DependencyGraph(AppScope::class)
+interface AppGraph {
+  val strings: Cache<String>
+  val ints: Cache<Int>
+}
+```
+
+Metro generates the equivalent of this contributed binding container:
+
+```kotlin
+@ContributesTo(AppScope::class)
+@BindingContainer
+interface LruCacheBindings {
+  @Binds fun <T> bindsAsCache(instance: LruCache<T>): Cache<T>
+}
+```
+
+For `Cache<String>`, Metro infers `T = String` and uses the injection factory for `LruCache<String>`.
+
+If `generateContributionProviders` is enabled, Metro generates something like the following:
+
+```kotlin
+@ContributesTo(AppScope::class)
+@BindingContainer
+interface LruCacheBindings {
+  @Provides fun <T> provideAsCache(): Cache<T> = LruCache<T>()
+}
+```
+
+Like [generic providers](#declaring-generic-providers), every class type parameter must appear in the bound type. Generic classes can't use `@ContributesIntoSet` or `@ContributesIntoMap`.
+
 ## Dynamic graphs
 
 In a [dynamic graph](dependency-graphs.md#dynamic-graphs), a generic provider from a dynamic binding container replaces every `@Provides` and `@Binds` binding it matches. This includes other generic providers. An exact binding from a dynamic binding container wins over it. Graph inputs, like `@Provides` parameters of a graph factory, are not replaced.
