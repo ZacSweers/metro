@@ -6,7 +6,9 @@ import dev.zacsweers.metro.compiler.OptionalBindingBehavior
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.symbols.Symbols
+import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.builders.irReturn
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationBase
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrExpression
@@ -52,6 +54,14 @@ internal fun copyParameterDefaultValues(
 
   val transformer =
     object : IrElementTransformerVoid() {
+      override fun visitDeclaration(declaration: IrDeclarationBase): IrStatement {
+        // Copied declarations are emitted independently and need their own JVM lowering state.
+        // https://github.com/ZacSweers/metro/issues/3119
+        // https://youtrack.jetbrains.com/issue/KT-91562
+        declaration.attributeOwnerId = declaration
+        return super.visitDeclaration(declaration)
+      }
+
       override fun visitExpression(expression: IrExpression): IrExpression {
         if (isTopLevelFunction) {
           // https://youtrack.jetbrains.com/issue/KT-81656

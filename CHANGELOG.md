@@ -58,6 +58,7 @@ This release adds experimental support for companion block `@Provides` functions
 - **[FIR]** Fix the duplicate check for multibinds annotations, which read the assisted annotation's slot. A declaration with two multibinds annotations, such as Metro's and Dagger's `@Multibinds`, now fails with "Multiple multibinds annotations found" during FIR analysis. It previously failed later in IR.
 - **[FIR/IR]** Fix contributed `@Inject` classes skipping declared and inherited member injection when `generateContributionProviders` is enabled.
 - **[FIR/IR]** Fix dependency graphs with a user-declared `companion object` failing to compile or to call their generated creator, such as `AppGraph.create()`. User-declared `factory(...)` overloads in these companions now work. A user-declared no-arg `factory()` that clashes with the generated one now reports an error.
+- **[IR]** Fix anonymous objects with suspend members in injected constructor defaults causing compiler crashes or incorrect JVM bytecode.
 - **[IR]** Fix dynamic graphs missing `internal` contributions from friend compilations (such as `main` contributions used by tests).
 - **[IR]** Fix an `Unknown file` compiler crash when a contribution's `@Origin` references a compiled class.
 - **[IR]** Better reuse provider instances across repeated graph accessor and unscoped consumer requests. 
