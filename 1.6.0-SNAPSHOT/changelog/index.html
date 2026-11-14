@@ -8938,6 +8938,7 @@
 <p><strong>Note this feature is experimental in both Metro <em>and</em> Kotlin itself.</strong></p>
 <h3 id="enhancements">Enhancements<a class="headerlink" href="#enhancements" title="Permanent link">&para;</a></h3>
 <ul>
+<li><strong>[FIR]</strong> Report an error on generic classes annotated with <code>@ContributesBinding</code> annotations unless derived bindings are enabled. Note that <code>@ContributesIntoSet</code> and <code>@ContributesIntoMap</code> are always prohibited on generic classes.</li>
 <li><strong>[IR]</strong> Generate fewer classes for <code>@Includes</code> dependencies.</li>
 <li><strong>[IR]</strong> Generate fewer provider fields in graphs with dependency cycles. Previously, bindings used by a cycle-breaking binding were accidentally counted twice and always resulted in a shared provider field.</li>
 <li><strong>[Runtime]</strong> Map multibinding providers such as <code>Provider&lt;Map&lt;K, V&gt;&gt;</code> and <code>Provider&lt;Map&lt;K, Lazy&lt;V&gt;&gt;&gt;</code> now only copy their result map once per call.</li>
@@ -8988,6 +8989,7 @@
 <li><a href="https://github.com/aglose">@aglose</a></li>
 <li><a href="https://github.com/falqadi">@falqadi</a></li>
 <li><a href="https://github.com/hossain-khan">@hossain-khan</a></li>
+<li><a href="https://github.com/kevinguitar">@kevinguitar</a></li>
 </ul>
 <h3 id="consider-sponsoring-metros-development"><a href="https://www.zacsweers.dev/sponsoring-metro/">Consider sponsoring Metro&rsquo;s development</a><a class="headerlink" href="#consider-sponsoring-metros-development" title="Permanent link">&para;</a></h3>
 <h2 id="152">1.5.2<a class="headerlink" href="#152" title="Permanent link">&para;</a></h2>

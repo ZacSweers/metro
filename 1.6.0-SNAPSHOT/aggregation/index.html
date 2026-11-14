@@ -2610,6 +2610,7 @@
 </code></pre></div>
 <p>The tradeoff is that <code>Impl</code> is no longer available directly on the graph.</p>
 <p>Contribution priorities are also honored for generated providers, including contributions from <code>internal</code> implementations in upstream modules.</p>
+<p>Generic contributions are supported when <a href="../derived-bindings/#generic-binding-contributions">derived bindings</a> are enabled.</p>
 <h2 id="implementation-notes">Implementation notes<a class="headerlink" href="#implementation-notes" title="Permanent link">&para;</a></h2>
 <p>This leans on Kotlin’s ability to put generic type parameters on annotations. That in turn allows for both generic bound types and to contribute map bindings to multiple map keys.</p>
 <p>Because it’s a first-party feature, there’s no need for intermediary “merged” components like kotlin-inject-anvil and anvil-ksp do.</p>

@@ -2764,6 +2764,7 @@
 <p><strong>Diagnostic:</strong> <code>Metro/DerivedBindingsNotEnabled</code></p>
 <p><strong>Summary:</strong> A generic binding is used while derived bindings are disabled.</p>
 <p>A graph uses a <code>@Provides</code> or <code>@Binds</code> function with type parameters, but derived bindings are turned off. Enable the <code>enable-derived-bindings</code> compiler option or set <code>metro.enableDerivedBindings</code> to true. Otherwise remove the type parameters from the function.</p>
+<p>FIR also reports this error on generic binding contribution classes when derived bindings are disabled in the declaring module. Enable the option there and in each module whose graphs request the generic contribution.</p>
 <h2 id="divergentderivedbinding">DivergentDerivedBinding<a class="headerlink" href="#divergentderivedbinding" title="Permanent link">&para;</a></h2>
 <p><strong>Diagnostic:</strong> <code>Metro/DivergentDerivedBinding</code></p>
 <p><strong>Summary:</strong> A chain of derived bindings does not terminate.</p>
