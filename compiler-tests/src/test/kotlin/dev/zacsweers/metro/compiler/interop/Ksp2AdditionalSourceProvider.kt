@@ -169,7 +169,7 @@ class Ksp2AdditionalSourceProvider(testServices: TestServices) :
     val logger = TestKSPLogger(messageCollector, allWarningsAsErrors = config.allWarningsAsErrors)
     val ksp = KotlinSymbolProcessing(config, providers, logger)
     try {
-      val exitCode = synchronized(kspLock) { ksp.execute() }
+      val exitCode = ksp.execute()
       when (exitCode) {
         KotlinSymbolProcessing.ExitCode.PROCESSING_ERROR -> {
           val errors = logger.recordedEvents.filter { it.severity.isError }
@@ -200,11 +200,6 @@ class Ksp2AdditionalSourceProvider(testServices: TestServices) :
   }
 
   private companion object {
-    // TODO: Remove after https://github.com/google/ksp/issues/3286 is fixed.
-    // KSP 2.3.13 clears shared JAR handlers when an execution finishes.
-    // Keep executions from invalidating another test's library roots.
-    private val kspLock = Any()
-
     /** Classpath passed from Gradle via system property, cached for reuse across tests. */
     private val hostClasspaths: List<File> by lazy {
       val classpathProperty =
