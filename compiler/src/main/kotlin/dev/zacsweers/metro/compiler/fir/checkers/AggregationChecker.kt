@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
+import dev.zacsweers.metro.compiler.fir.collectTypeParameterSymbols
 import dev.zacsweers.metro.compiler.fir.diagnosticString
 import dev.zacsweers.metro.compiler.fir.findAssistedInjectConstructors
 import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
@@ -48,6 +49,7 @@ import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirTypeParameterSymbol
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.types.UnexpandedTypeCheck
@@ -301,6 +303,34 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
     isMapBinding: Boolean,
     createBinding: (FirTypeKey, mapKey: MetroFirAnnotation?) -> T,
   ): Boolean {
+    // Generic contributions become generic providers, so they follow the same rules.
+    val typeParameters = declaration.symbol.typeParameterSymbols
+    if (typeParameters.isNotEmpty()) {
+      val isMultibinding =
+        kind == ContributionKind.CONTRIBUTES_INTO_SET ||
+          kind == ContributionKind.CONTRIBUTES_INTO_MAP
+      if (isMultibinding) {
+        reporter.reportOn(
+          annotation.source,
+          MetroDiagnostics.METRO_TYPE_PARAMETERS_ERROR,
+          "`@$kind` classes with type parameters can't contribute to multibindings.",
+        )
+        return false
+      }
+
+      val derivedBindingsEnabled = session.metroFirBuiltIns.options.enableDerivedBindings
+      if (!derivedBindingsEnabled) {
+        reporter.reportOn(
+          typeParameters.first().source ?: declaration.source,
+          MetroDiagnostics.DERIVED_BINDINGS_NOT_ENABLED,
+          "Type parameters on `@$kind` classes need derived bindings, which are disabled. " +
+            "Enable the `enable-derived-bindings` compiler option or set " +
+            "`metro.enableDerivedBindings` to true.",
+        )
+        return false
+      }
+    }
+
     val isAssistedFactory =
       declaration.symbol.isAnnotatedWithAny(session, session.classIds.assistedFactoryAnnotations)
     // Ensure the class is injected or an object. Objects are ok IFF they are not @ContributesTo
@@ -429,6 +459,27 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
           }
         }
       }
+
+    // Metro infers the class's type arguments from the requested bound type.
+    if (typeParameters.isNotEmpty()) {
+      val boundTypeParameters = mutableSetOf<FirTypeParameterSymbol>()
+      typeKey.type.collectTypeParameterSymbols(session, boundTypeParameters)
+
+      val missingTypeParameters = typeParameters.filterNot { it in boundTypeParameters }
+      for (typeParameter in missingTypeParameters) {
+        reporter.reportOn(
+          typeParameter.source ?: annotation.source,
+          MetroDiagnostics.METRO_TYPE_PARAMETERS_ERROR,
+          "Type parameter `${typeParameter.name}` doesn't appear in the bound type of " +
+            "`@$kind`. Metro infers type arguments from the bound type, so every type parameter " +
+            "must appear in it.",
+        )
+      }
+
+      if (missingTypeParameters.isNotEmpty()) {
+        return false
+      }
+    }
 
     val mapKey =
       if (isMapBinding) {
