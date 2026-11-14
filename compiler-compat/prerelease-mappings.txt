@@ -14,3 +14,5 @@
 2.5.0-Beta2=2.5.0-dev-10106
 # build-2.5.0-RC-release-352 branched at 2.5.0-dev-10257
 2.5.0-RC=2.5.0-dev-10106
+# build-2.5.0-RC2-359 branched at 2.5.0-dev-10257
+2.5.0-RC2=2.5.0-dev-10106
