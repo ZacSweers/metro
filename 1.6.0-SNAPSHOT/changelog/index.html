@@ -8950,6 +8950,7 @@
 <li><strong>[FIR]</strong> Fix the duplicate check for multibinds annotations, which read the assisted annotation&rsquo;s slot. A declaration with two multibinds annotations, such as Metro&rsquo;s and Dagger&rsquo;s <code>@Multibinds</code>, now fails with &ldquo;Multiple multibinds annotations found&rdquo; during FIR analysis. It previously failed later in IR.</li>
 <li><strong>[FIR/IR]</strong> Fix contributed <code>@Inject</code> classes skipping declared and inherited member injection when <code>generateContributionProviders</code> is enabled.</li>
 <li><strong>[FIR/IR]</strong> Fix dependency graphs with a user-declared <code>companion object</code> failing to compile or to call their generated creator, such as <code>AppGraph.create()</code>. User-declared <code>factory(...)</code> overloads in these companions now work. A user-declared no-arg <code>factory()</code> that clashes with the generated one now reports an error.</li>
+<li><strong>[IR]</strong> Fix anonymous objects with suspend members in injected constructor defaults causing compiler crashes or incorrect JVM bytecode.</li>
 <li><strong>[IR]</strong> Fix dynamic graphs missing <code>internal</code> contributions from friend compilations (such as <code>main</code> contributions used by tests).</li>
 <li><strong>[IR]</strong> Fix an <code>Unknown file</code> compiler crash when a contribution&rsquo;s <code>@Origin</code> references a compiled class.</li>
 <li><strong>[IR]</strong> Better reuse provider instances across repeated graph accessor and unscoped consumer requests. </li>
