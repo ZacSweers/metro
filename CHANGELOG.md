@@ -46,6 +46,7 @@ This release adds experimental support for companion block `@Provides` functions
 
 ### Enhancements
 
+- **[FIR]** Report an error on generic classes annotated with `@ContributesBinding` annotations unless derived bindings are enabled. Note that `@ContributesIntoSet` and `@ContributesIntoMap` are always prohibited on generic classes.
 - **[IR]** Generate fewer classes for `@Includes` dependencies.
 - **[IR]** Generate fewer provider fields in graphs with dependency cycles. Previously, bindings used by a cycle-breaking binding were accidentally counted twice and always resulted in a shared provider field.
 - **[Runtime]** Map multibinding providers such as `Provider<Map<K, V>>` and `Provider<Map<K, Lazy<V>>>` now only copy their result map once per call.
@@ -97,6 +98,7 @@ Special thanks to the following contributors for contributing to this release!
 - [@aglose](https://github.com/aglose)
 - [@falqadi](https://github.com/falqadi)
 - [@hossain-khan](https://github.com/hossain-khan)
+- [@kevinguitar](https://github.com/kevinguitar)
 
 ### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
 

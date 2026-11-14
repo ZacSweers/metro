@@ -1211,6 +1211,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("ContributedGenericBindingNotEnabled.kt")
+    public void testContributedGenericBindingNotEnabled() {
+      run("ContributedGenericBindingNotEnabled.kt");
+    }
+
+    @Test
     @TestMetadata("CycleThroughDerivedBinding.kt")
     public void testCycleThroughDerivedBinding() {
       run("CycleThroughDerivedBinding.kt");
@@ -1265,6 +1271,18 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("GenericContributionProviderHidesImplementation.kt")
+    public void testGenericContributionProviderHidesImplementation() {
+      run("GenericContributionProviderHidesImplementation.kt");
+    }
+
+    @Test
+    @TestMetadata("GenericContributionsNotEnabled.kt")
+    public void testGenericContributionsNotEnabled() {
+      run("GenericContributionsNotEnabled.kt");
+    }
+
+    @Test
     @TestMetadata("GenericProviderInGenericGraphSupertype.kt")
     public void testGenericProviderInGenericGraphSupertype() {
       run("GenericProviderInGenericGraphSupertype.kt");
@@ -1274,6 +1292,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     @TestMetadata("InlineGenericProviders.kt")
     public void testInlineGenericProviders() {
       run("InlineGenericProviders.kt");
+    }
+
+    @Test
+    @TestMetadata("InvalidGenericContributions.kt")
+    public void testInvalidGenericContributions() {
+      run("InvalidGenericContributions.kt");
     }
 
     @Test

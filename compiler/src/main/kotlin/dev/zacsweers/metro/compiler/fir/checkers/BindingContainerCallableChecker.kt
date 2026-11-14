@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.BINDING_CONTAINER_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
+import dev.zacsweers.metro.compiler.fir.collectTypeParameterSymbols
 import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.diagnosticString
 import dev.zacsweers.metro.compiler.fir.findInjectConstructors
@@ -21,7 +22,6 @@ import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.render
 import dev.zacsweers.metro.compiler.fir.scopeAnnotations
 import dev.zacsweers.metro.compiler.fir.toClassSymbolCompat
-import dev.zacsweers.metro.compiler.fir.typeParameterSymbolCompat
 import dev.zacsweers.metro.compiler.fir.usesContributionProviderPath
 import dev.zacsweers.metro.compiler.fir.validateBindingSource
 import dev.zacsweers.metro.compiler.fir.validateInjectionSiteType
@@ -93,11 +93,7 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertyAccessorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirTypeParameterSymbol
-import org.jetbrains.kotlin.fir.types.ConeClassLikeType
 import org.jetbrains.kotlin.fir.types.ConeDefinitelyNotNullType
-import org.jetbrains.kotlin.fir.types.ConeFlexibleType
-import org.jetbrains.kotlin.fir.types.ConeIntersectionType
-import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.ConeTypeParameterType
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneType
@@ -963,37 +959,6 @@ internal object BindingContainerCallableChecker :
       "The graph must be able to call a reified provider, so it must be public or " +
         "`@PublishedApi internal`. $reason",
     )
-  }
-
-  /** Adds every type parameter that appears anywhere in this type to [into]. */
-  private fun ConeKotlinType.collectTypeParameterSymbols(
-    session: FirSession,
-    into: MutableSet<FirTypeParameterSymbol>,
-  ) {
-    when (this) {
-      is ConeTypeParameterType -> into += typeParameterSymbolCompat(session)
-
-      is ConeDefinitelyNotNullType -> original.collectTypeParameterSymbols(session, into)
-
-      is ConeFlexibleType -> {
-        lowerBound.collectTypeParameterSymbols(session, into)
-        upperBound.collectTypeParameterSymbols(session, into)
-      }
-
-      is ConeIntersectionType -> {
-        for (type in intersectedTypes) {
-          type.collectTypeParameterSymbols(session, into)
-        }
-      }
-
-      is ConeClassLikeType -> {
-        for (argument in typeArguments) {
-          argument.type?.collectTypeParameterSymbols(session, into)
-        }
-      }
-
-      else -> {}
-    }
   }
 
   private fun FirCallableDeclaration.multibindingAnnotationSource(

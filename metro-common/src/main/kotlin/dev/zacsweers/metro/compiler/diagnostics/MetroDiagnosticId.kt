@@ -232,6 +232,10 @@ public enum class MetroDiagnosticId(
     A graph uses a `@Provides` or `@Binds` function with type parameters, but derived bindings are
     turned off. Enable the `enable-derived-bindings` compiler option or set
     `metro.enableDerivedBindings` to true. Otherwise remove the type parameters from the function.
+
+    FIR also reports this error on generic binding contribution classes when derived bindings are
+    disabled in the declaring module. Enable the option there and in each module whose graphs
+    request the generic contribution.
     """,
   ),
   AMBIGUOUS_DERIVED_BINDING(

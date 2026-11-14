@@ -48,6 +48,7 @@ import dev.zacsweers.metro.compiler.fir.resolvedBindingArgument
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.fir.scopeAnnotations
 import dev.zacsweers.metro.compiler.fir.scopeArgument
+import dev.zacsweers.metro.compiler.fir.substitutor
 import dev.zacsweers.metro.compiler.fir.usesContributionProviderPath
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.reportCompilerBug
@@ -59,6 +60,8 @@ import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.backend.native.interop.parentsWithSelf
 import org.jetbrains.kotlin.fir.caches.FirCache
 import org.jetbrains.kotlin.fir.caches.firCachesFactory
+import org.jetbrains.kotlin.fir.declarations.FirFunction
+import org.jetbrains.kotlin.fir.declarations.builder.buildTypeParameterCopy
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClass
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
@@ -85,11 +88,14 @@ import org.jetbrains.kotlin.fir.resolve.defaultType
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.resolve.substitution.substitutorByMap
 import org.jetbrains.kotlin.fir.resolve.toRegularClassSymbol
+import org.jetbrains.kotlin.fir.scopes.impl.toConeType
+import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirTypeParameterSymbol
 import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.FirTypeRef
@@ -102,6 +108,7 @@ import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.SpecialNames
 import org.jetbrains.kotlin.name.StandardClassIds
 import org.jetbrains.kotlin.types.ConstantValueKind
+import org.jetbrains.kotlin.types.Variance
 
 // TODO a bunch of this could probably be cleaned up now that the functions are generated in IR
 /**
@@ -525,18 +532,18 @@ internal class ContributionsFirGenerator(
 
     val function =
       if (useSyntheticScoped) {
-        // Wrapper function: takes @Named("metro_scoped_...") Any? parameter, returns bound type
+        // Each wrapper requests the same qualified scoped instance.
         val qualifierName = syntheticScopedQualifierName(contributingClassSymbol.classId)
-        generateMemberFunction(
+        generateContributionFunction(
+            contributingClassSymbol = contributingClassSymbol,
             owner = context.owner,
-            returnTypeProvider = { boundType },
+            returnType = boundType,
             callableId = callableId,
-            modality = Modality.FINAL,
           ) {
             val param =
               buildSimpleValueParameter(
                   name = Symbols.Names.instance,
-                  type = session.builtinTypes.nullableAnyType,
+                  type = syntheticScopedType(holderInfo).toFirResolvedTypeRef(),
                   containingFunctionSymbol = this.symbol,
                 )
                 .apply {
@@ -553,16 +560,17 @@ internal class ContributionsFirGenerator(
           injectConstructor?.constructor?.valueParameterSymbols.orEmpty().map {
             MetroFirValueParameter(session, it)
           }
-        generateMemberFunction(
+        generateContributionFunction(
+          contributingClassSymbol = contributingClassSymbol,
           owner = context.owner,
-          returnTypeProvider = { boundType },
+          returnType = boundType,
           callableId = callableId,
-          modality = Modality.FINAL,
         ) {
           copyParameters(
             functionBuilder = this,
             sourceParameters = constructorParams,
-            copyParameterDefaults = true,
+            // IR copies and remaps generic default expressions.
+            copyParameterDefaults = contributingClassSymbol.typeParameterSymbols.isEmpty(),
           ) { original ->
             // Force a resolved type ref. The source constructor's value parameters can still be at
             // ANNOTATION_ARGUMENTS under LL FIR, so copying their returnTypeRef directly would
@@ -676,7 +684,78 @@ internal class ContributionsFirGenerator(
     return listOf(function.symbol as FirNamedFunctionSymbol)
   }
 
-  /** Generates the synthetic scoped provider function that returns `Any?`. */
+  @OptIn(SymbolInternals::class)
+  private fun generateContributionFunction(
+    contributingClassSymbol: FirClassSymbol<*>,
+    owner: FirClassSymbol<*>,
+    returnType: ConeKotlinType,
+    callableId: CallableId,
+    body: CompatContext.FunctionBuilderScope.() -> Unit,
+  ): FirFunction {
+    return generateMemberFunction(
+      owner = owner,
+      returnTypeProvider = { parameters ->
+        substitutor(contributingClassSymbol, parameters.map { it.toConeType() }, session)
+          .substituteOrSelf(returnType)
+      },
+      callableId = callableId,
+    ) {
+      val functionSymbol = symbol
+      for (parameter in contributingClassSymbol.typeParameterSymbols) {
+        typeParameters +=
+          buildTypeParameterCopy(parameter.fir) {
+            symbol = FirTypeParameterSymbol()
+            containingDeclarationSymbol = functionSymbol
+            variance = Variance.INVARIANT
+          }
+      }
+
+      val typeSubstitutor =
+        substitutor(contributingClassSymbol, typeParameters.map { it.toConeType() }, session)
+      for ((original, copied) in contributingClassSymbol.typeParameterSymbols.zip(typeParameters)) {
+        val bounds =
+          original.resolvedBounds.map {
+            typeSubstitutor.substituteOrSelf(it.coneType).toFirResolvedTypeRef()
+          }
+        copied.replaceBounds(bounds)
+      }
+
+      body()
+
+      // Constructor and inherited member dependencies must use the provider's type parameters.
+      for (parameter in valueParameters) {
+        val type = typeSubstitutor.substituteOrSelf(parameter.returnTypeRef.coneType)
+        parameter.replaceReturnTypeRef(type.toFirResolvedTypeRef())
+      }
+    }
+  }
+
+  /**
+   * Returns the key type of the synthetic scoped provider. Non-generic classes use `Any?`. Generic
+   * classes use the first bound type. It carries every class type parameter, which FIR checks, so
+   * Metro can infer the scoped instance's type arguments from it. It also keeps an internal
+   * implementation class out of the public signature.
+   */
+  private fun syntheticScopedType(holderInfo: ContributionsHolder): ConeKotlinType {
+    val contributingClassSymbol = holderInfo.contributingClassSymbol
+    if (contributingClassSymbol.typeParameterSymbols.isEmpty()) {
+      return session.builtinTypes.nullableAnyType.coneType
+    }
+
+    val contribution = holderInfo.bindingContributions().firstOrNull()
+    if (contribution == null) {
+      reportCompilerBug("No binding contribution for ${contributingClassSymbol.classId}")
+    }
+
+    val boundType = resolveBoundTypeRef(contributingClassSymbol, contribution.annotation).first
+    if (boundType == null) {
+      reportCompilerBug("No bound type for ${contributingClassSymbol.classId}")
+    }
+
+    return boundType.coneType
+  }
+
+  /** Generates the qualified provider that shares scoped instances between contributions. */
   private fun generateSyntheticScopedFunction(
     context: MemberGenerationContext,
     holderInfo: ContributionsHolder,
@@ -695,16 +774,17 @@ internal class ContributionsFirGenerator(
       }
 
     val function =
-      generateMemberFunction(
+      generateContributionFunction(
+        contributingClassSymbol = contributingClassSymbol,
         owner = context.owner,
-        returnTypeProvider = { session.builtinTypes.nullableAnyType.coneType },
+        returnType = syntheticScopedType(holderInfo),
         callableId = callableId,
-        modality = Modality.FINAL,
       ) {
         copyParameters(
           functionBuilder = this,
           sourceParameters = constructorParams,
-          copyParameterDefaults = true,
+          // IR copies and remaps generic default expressions.
+          copyParameterDefaults = contributingClassSymbol.typeParameterSymbols.isEmpty(),
         )
         addContributionMemberParameters(this, contributingClassSymbol, constructorParams)
       }

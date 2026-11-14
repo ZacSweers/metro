@@ -818,6 +818,7 @@ internal fun generateStubCreatorFunctions(
   val creatorClass = factoryClass.factoryHelperDeclarationContainer(companionMode)
   val isStaticHelper = !creatorClass.isObject
 
+  val sourceClass = sourceFunction.parentAsClass
   val sourceParameters = sourceFunction.parameters()
   val createParameters =
     sourceParameters.copy(
@@ -836,6 +837,9 @@ internal fun generateStubCreatorFunctions(
         isStatic = isStaticHelper,
       )
       .apply {
+        val (copiedTypeParameters, typeRemapper) =
+          copyFactoryTypeParameters(sourceClass, sourceFunction.typeParameters, keepReified = false)
+        this.returnType = factoryClass.symbol.typeWithParameters(copiedTypeParameters)
         if (!isStaticHelper) {
           setDispatchReceiver(creatorClass.thisReceiverOrFail.copyTo(this))
         }
@@ -844,6 +848,7 @@ internal fun generateStubCreatorFunctions(
           wrapInProvider = true,
           copyQualifiers = true,
           wrapInSuspendProvider = sourceFunction.isSuspend,
+          typeRemapper = typeRemapper::remapType,
         )
         addStaticAnnotations(this)
         body = context.createIrBuilder(symbol).run { irExprBodySafe(stubExpression()) }
@@ -854,6 +859,9 @@ internal fun generateStubCreatorFunctions(
   // Companion-block helpers can share a name with instance members of the factory class.
   if (creatorClass.functions.none { it.isStaticIsh && it.name.asString() == callableName }) {
     creatorClass.addFunction(callableName, returnType, isStatic = isStaticHelper).apply {
+      val (_, typeRemapper) =
+        copyFactoryTypeParameters(sourceClass, sourceFunction.typeParameters, keepReified = false)
+      this.returnType = typeRemapper.remapType(returnType)
       isSuspend = sourceFunction.isSuspend
       if (!isStaticHelper) {
         setDispatchReceiver(creatorClass.thisReceiverOrFail.copyTo(this))
@@ -862,6 +870,7 @@ internal fun generateStubCreatorFunctions(
         sourceParameters.nonDispatchParameters,
         wrapInProvider = false,
         copyQualifiers = true,
+        typeRemapper = typeRemapper::remapType,
       )
       addStaticAnnotations(this)
       body = context.createIrBuilder(symbol).run { irExprBodySafe(stubExpression()) }

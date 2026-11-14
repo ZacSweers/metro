@@ -159,6 +159,7 @@ import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.packageFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
+import org.jetbrains.kotlin.ir.util.remapTypes
 import org.jetbrains.kotlin.ir.util.simpleFunctions
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
@@ -810,20 +811,21 @@ internal class BindingContainerTransformer(
     val classToGenerateCreatorsIn = factoryCls.factoryHelperDeclarationContainer()
 
     // Generate create()
-    @Suppress("RETURN_VALUE_NOT_USED")
-    generateStaticCreateFunction(
-      objectClassToGenerateIn = classToGenerateCreatorsIn,
-      factoryClass = factoryCls,
-      targetConstructor = factoryConstructor,
-      parameters = factoryParameters,
-      sourceFunction = reference.callee?.owner,
-      returnTypeProvider = { typeParams ->
-        factoryCls.symbol.typeWithParameters(typeParams)
-      },
-      sourceTypeParameters = reference.parent.owner,
-      wrapInSuspendProvider = reference.isSuspend,
-      functionTypeParameters = reference.functionTypeParameters,
-    )
+    val createFunction =
+      generateStaticCreateFunction(
+        objectClassToGenerateIn = classToGenerateCreatorsIn,
+        factoryClass = factoryCls,
+        targetConstructor = factoryConstructor,
+        parameters = factoryParameters,
+        sourceFunction = reference.callee?.owner,
+        returnTypeProvider = { typeParams ->
+          factoryCls.symbol.typeWithParameters(typeParams)
+        },
+        sourceTypeParameters = reference.parent.owner,
+        wrapInSuspendProvider = reference.isSuspend,
+        functionTypeParameters = reference.functionTypeParameters,
+      )
+    createFunction.remapProviderDefaults(reference)
 
     // Generate the named newInstance function
     val containerTypeParameterCount = reference.parent.owner.typeParameters.size
@@ -891,8 +893,20 @@ internal class BindingContainerTransformer(
         }
       }
 
+    newInstanceFunction.remapProviderDefaults(reference)
     generateCompatibilityBridges(factoryCls)
     return newInstanceFunction
+  }
+
+  private fun IrSimpleFunction.remapProviderDefaults(reference: CallableReference) {
+    if (typeParameters.isEmpty()) {
+      return
+    }
+
+    val remapper = reference.providerTypeRemapper(typeParameters.map { it.defaultType })
+    for (parameter in regularParameters) {
+      parameter.defaultValue?.remapTypes(remapper)
+    }
   }
 
   private fun CallableReference.inlinedValueIfEnabled(): IrInlinedProvider? {

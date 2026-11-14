@@ -153,6 +153,7 @@ import org.jetbrains.kotlin.ir.types.isMarkedNullable
 import org.jetbrains.kotlin.ir.types.makeNotNull
 import org.jetbrains.kotlin.ir.types.mergeNullability
 import org.jetbrains.kotlin.ir.types.removeAnnotations
+import org.jetbrains.kotlin.ir.types.starProjectedType
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeOrNull
 import org.jetbrains.kotlin.ir.types.typeWith
@@ -1660,14 +1661,15 @@ internal fun IrConstructorCall.originContextOrNull(): String? {
 }
 
 internal fun IrBuilderWithScope.kClassReference(symbol: IrClassSymbol): IrClassReference {
+  val classType = symbol.starProjectedType
   return IrClassReferenceImpl(
     startOffset,
     endOffset,
     // KClass<T>
-    context.irBuiltIns.kClassClass.typeWith(symbol.defaultType),
+    context.irBuiltIns.kClassClass.typeWith(classType),
     symbol,
     // T
-    symbol.defaultType,
+    classType,
   )
 }
 

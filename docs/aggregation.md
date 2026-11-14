@@ -412,6 +412,8 @@ The tradeoff is that `Impl` is no longer available directly on the graph.
 
 Contribution priorities are also honored for generated providers, including contributions from `internal` implementations in upstream modules.
 
+Generic contributions are supported when [derived bindings](derived-bindings.md#generic-binding-contributions) are enabled.
+
 ## Implementation notes
 
 This leans on Kotlin’s ability to put generic type parameters on annotations. That in turn allows for both generic bound types and to contribute map bindings to multiple map keys.

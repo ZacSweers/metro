@@ -1,0 +1,1 @@
+/GenericContributionsNotEnabled.kt:9:16: error: Type parameters on `@ContributesBinding` classes need derived bindings, which are disabled. Enable the `enable-derived-bindings` compiler option or set `metro.enableDerivedBindings` to true.
