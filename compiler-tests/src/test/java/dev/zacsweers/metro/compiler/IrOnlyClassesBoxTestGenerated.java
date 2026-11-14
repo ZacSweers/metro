@@ -3055,6 +3055,12 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
     }
 
     @Test
+    @TestMetadata("ContributedGenericClassBindingSameModule.kt")
+    public void testContributedGenericClassBindingSameModule() {
+      run("ContributedGenericClassBindingSameModule.kt");
+    }
+
+    @Test
     @TestMetadata("DeferredAccess.kt")
     public void testDeferredAccess() {
       run("DeferredAccess.kt");
@@ -3124,6 +3130,12 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
     @TestMetadata("GenericBinds.kt")
     public void testGenericBinds() {
       run("GenericBinds.kt");
+    }
+
+    @Test
+    @TestMetadata("GenericContributionProvidersAcrossModules.kt")
+    public void testGenericContributionProvidersAcrossModules() {
+      run("GenericContributionProvidersAcrossModules.kt");
     }
 
     @Test

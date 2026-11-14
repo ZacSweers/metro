@@ -1,0 +1,3 @@
+/GenericContributionProviderHidesImplementation.kt:20:23: warning: Directly injecting 'LruCache' (which has one or more `@Contributes*` annotations) and will not be visible since `generateContributionProviders` is enabled. This is probably a bug! Inject the bound supertype instead, or annotate 'LruCache' with `@ExposeImplBinding` to expose the underlying binding.
+
+/GenericContributionProviderHidesImplementation.kt:25:18: warning: Directly injecting 'LruCache' (which has one or more `@Contributes*` annotations) and will not be visible since `generateContributionProviders` is enabled. This is probably a bug! Inject the bound supertype instead, or annotate 'LruCache' with `@ExposeImplBinding` to expose the underlying binding.

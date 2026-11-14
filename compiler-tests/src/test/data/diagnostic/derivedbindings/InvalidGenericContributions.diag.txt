@@ -1,0 +1,7 @@
+/InvalidGenericContributions.kt:9:1: error: `@ContributesIntoSet` classes with type parameters can't contribute to multibindings.
+
+/InvalidGenericContributions.kt:13:1: error: `@ContributesIntoMap` classes with type parameters can't contribute to multibindings.
+
+/InvalidGenericContributions.kt:20:18: error: Type parameter `T` doesn't appear in the bound type of `@ContributesBinding`. Metro infers type arguments from the bound type, so every type parameter must appear in it.
+
+/InvalidGenericContributions.kt:24:23: error: Type parameter `V` doesn't appear in the bound type of `@ContributesBinding`. Metro infers type arguments from the bound type, so every type parameter must appear in it.
