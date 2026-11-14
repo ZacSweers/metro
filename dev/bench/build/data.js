@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794624506617,
+  "lastUpdate": 1794647428074,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -28168,6 +28168,62 @@ window.BENCHMARK_DATA = {
             "value": 19579.985999999997,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +1.89%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "e5887ab2~1",
+          "message": "[before] Fix generic class binding contribution with derive",
+          "timestamp": "2026-11-14T08:11:22Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/e5887ab2b766bea87ca4ae0db331e5dcbb34774b"
+        },
+        "date": 1794647428074,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19346.086000000003,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "e5887ab2b766bea87ca4ae0db331e5dcbb34774b",
+          "message": "[after] Fix generic class binding contribution with derive",
+          "timestamp": "2026-11-14T08:11:22Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/e5887ab2b766bea87ca4ae0db331e5dcbb34774b"
+        },
+        "date": 1794647428075,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18930.604,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -2.15%"
           }
         ]
       }
