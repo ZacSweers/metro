@@ -3061,6 +3061,18 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     }
 
     @Test
+    @TestMetadata("AnonymousObjectCapturingSuspendDefault.kt")
+    public void testAnonymousObjectCapturingSuspendDefault() {
+      run("AnonymousObjectCapturingSuspendDefault.kt");
+    }
+
+    @Test
+    @TestMetadata("AnonymousObjectSuspendDefault.kt")
+    public void testAnonymousObjectSuspendDefault() {
+      run("AnonymousObjectSuspendDefault.kt");
+    }
+
+    @Test
     @TestMetadata("CopiedCallableDefaults.kt")
     public void testCopiedCallableDefaults() {
       run("CopiedCallableDefaults.kt");
