@@ -1,0 +1,313 @@
+{
+  "projectPath": ":sample",
+  "graphCount": 2,
+  "graphs": [
+    {
+      "graph": "sample.AppGraph",
+      "scopes": [
+        "sample.AppScope"
+      ],
+      "aggregationScopes": [],
+      "roots": {
+        "accessors": [
+          {
+            "key": "sample/ui/Renderer",
+            "name": "renderer",
+            "isProperty": true,
+            "renderedKey": "sample.ui.Renderer"
+          },
+          {
+            "key": "kotlin/collections/Set<sample/Initializer>",
+            "name": "initializers",
+            "isProperty": true,
+            "renderedKey": "kotlin.collections.Set<sample.Initializer>"
+          },
+          {
+            "key": "sample/session/SessionGraph.Factory",
+            "name": "sessionFactory",
+            "isProperty": true,
+            "renderedKey": "sample.session.SessionGraph.Factory"
+          }
+        ]
+      },
+      "extensions": {
+        "factoryAccessors": [
+          {
+            "key": "sample/session/SessionGraph.Factory",
+            "name": "sessionFactory",
+            "isProperty": true,
+            "isSAM": false,
+            "renderedKey": "sample.session.SessionGraph.Factory"
+          }
+        ]
+      },
+      "bindings": [
+        {
+          "key": "sample/AppGraph",
+          "bindingKind": "BoundInstance",
+          "isScoped": false,
+          "nameHint": "AppGraph",
+          "dependencies": [],
+          "isGraphInput": false,
+          "renderedKey": "sample.AppGraph"
+        },
+        {
+          "key": "sample/Environment",
+          "bindingKind": "BoundInstance",
+          "isScoped": false,
+          "nameHint": "Environment",
+          "dependencies": [],
+          "isGraphInput": true,
+          "declaration": "environment",
+          "renderedKey": "sample.Environment"
+        },
+        {
+          "key": "sample/network/HttpClient",
+          "bindingKind": "Provided",
+          "isScoped": false,
+          "nameHint": "HttpClient",
+          "dependencies": [
+            {
+              "key": "sample/Environment",
+              "hasDefault": false,
+              "renderedKey": "sample.Environment"
+            }
+          ],
+          "declaration": "provideHttpClient",
+          "renderedKey": "sample.network.HttpClient"
+        },
+        {
+          "key": "sample/network/ApiService",
+          "bindingKind": "ConstructorInjected",
+          "isScoped": false,
+          "nameHint": "ApiService",
+          "dependencies": [
+            {
+              "key": "sample/network/HttpClient",
+              "hasDefault": false,
+              "renderedKey": "sample.network.HttpClient"
+            }
+          ],
+          "renderedKey": "sample.network.ApiService"
+        },
+        {
+          "key": "sample/data/Database",
+          "bindingKind": "ConstructorInjected",
+          "isScoped": true,
+          "nameHint": "Database",
+          "dependencies": [
+            {
+              "key": "sample/Environment",
+              "hasDefault": false,
+              "renderedKey": "sample.Environment"
+            }
+          ],
+          "scope": "sample.AppScope",
+          "renderedKey": "sample.data.Database"
+        },
+        {
+          "key": "sample/data/Repository",
+          "bindingKind": "ConstructorInjected",
+          "isScoped": true,
+          "nameHint": "Repository",
+          "dependencies": [
+            {
+              "key": "sample/network/ApiService",
+              "hasDefault": false,
+              "renderedKey": "sample.network.ApiService"
+            },
+            {
+              "key": "sample/data/Database",
+              "hasDefault": false,
+              "renderedKey": "sample.data.Database"
+            }
+          ],
+          "scope": "sample.AppScope",
+          "renderedKey": "sample.data.Repository"
+        },
+        {
+          "key": "sample/ui/Presenter",
+          "bindingKind": "ConstructorInjected",
+          "isScoped": false,
+          "nameHint": "Presenter",
+          "dependencies": [
+            {
+              "key": "sample/data/Repository",
+              "hasDefault": false,
+              "renderedKey": "sample.data.Repository"
+            }
+          ],
+          "renderedKey": "sample.ui.Presenter"
+        },
+        {
+          "key": "sample/ui/Renderer",
+          "bindingKind": "ConstructorInjected",
+          "isScoped": false,
+          "nameHint": "Renderer",
+          "dependencies": [
+            {
+              "key": "sample/ui/Presenter",
+              "hasDefault": false,
+              "renderedKey": "sample.ui.Presenter"
+            }
+          ],
+          "renderedKey": "sample.ui.Renderer"
+        },
+        {
+          "key": "sample/logging/Logger",
+          "bindingKind": "ObjectClass",
+          "isScoped": false,
+          "nameHint": "Logger",
+          "dependencies": [],
+          "renderedKey": "sample.logging.Logger"
+        },
+        {
+          "key": "sample/Initializer",
+          "bindingKind": "Provided",
+          "isScoped": false,
+          "nameHint": "Initializer",
+          "dependencies": [
+            {
+              "key": "sample/logging/Logger",
+              "hasDefault": false,
+              "renderedKey": "sample.logging.Logger"
+            },
+            {
+              "key": "sample/data/Repository",
+              "hasDefault": false,
+              "renderedKey": "sample.data.Repository"
+            }
+          ],
+          "declaration": "initializeStorage",
+          "renderedKey": "sample.Initializer"
+        },
+        {
+          "key": "kotlin/collections/Set<sample/Initializer>",
+          "bindingKind": "Multibinding",
+          "isScoped": false,
+          "nameHint": "Initializer>",
+          "dependencies": [
+            {
+              "key": "sample/Initializer",
+              "hasDefault": false,
+              "renderedKey": "sample.Initializer"
+            }
+          ],
+          "multibinding": {
+            "type": "SET",
+            "allowEmpty": false,
+            "sources": [
+              "sample/Initializer"
+            ]
+          },
+          "renderedKey": "kotlin.collections.Set<sample.Initializer>"
+        },
+        {
+          "key": "sample/session/SessionGraph.Factory",
+          "bindingKind": "GraphExtensionFactory",
+          "isScoped": false,
+          "nameHint": "Factory",
+          "dependencies": [],
+          "extensionType": "sample/session/SessionGraph",
+          "renderedKey": "sample.session.SessionGraph.Factory"
+        }
+      ],
+      "key": "sample/AppGraph"
+    },
+    {
+      "graph": "sample.AppGraph.Impl.SessionGraphImpl",
+      "graphType": "sample/session/SessionGraph",
+      "parentGraph": "sample.AppGraph",
+      "scopes": [
+        "sample.session.SessionScope"
+      ],
+      "aggregationScopes": [],
+      "roots": {
+        "accessors": [
+          {
+            "key": "sample/session/SessionView",
+            "name": "view",
+            "isProperty": true,
+            "renderedKey": "sample.session.SessionView"
+          }
+        ]
+      },
+      "bindings": [
+        {
+          "key": "sample/AppGraph",
+          "bindingKind": "BoundInstance",
+          "isScoped": false,
+          "nameHint": "AppGraph",
+          "dependencies": [],
+          "isGraphInput": false,
+          "renderedKey": "sample.AppGraph"
+        },
+        {
+          "key": "sample/data/Repository",
+          "bindingKind": "GraphDependency",
+          "isScoped": true,
+          "nameHint": "Repository",
+          "dependencies": [
+            {
+              "key": "sample/AppGraph",
+              "hasDefault": false,
+              "renderedKey": "sample.AppGraph"
+            }
+          ],
+          "scope": "sample.AppScope",
+          "graphDependency": {
+            "ownerKey": "sample/AppGraph",
+            "ownerGraph": "sample.AppGraph",
+            "fromParent": true
+          },
+          "renderedKey": "sample.data.Repository"
+        },
+        {
+          "key": "sample/session/UserSession",
+          "bindingKind": "BoundInstance",
+          "isScoped": false,
+          "nameHint": "UserSession",
+          "dependencies": [],
+          "isGraphInput": true,
+          "declaration": "session",
+          "renderedKey": "sample.session.UserSession"
+        },
+        {
+          "key": "sample/session/SessionController",
+          "bindingKind": "ConstructorInjected",
+          "isScoped": true,
+          "nameHint": "SessionController",
+          "dependencies": [
+            {
+              "key": "sample/data/Repository",
+              "hasDefault": false,
+              "renderedKey": "sample.data.Repository"
+            },
+            {
+              "key": "sample/session/UserSession",
+              "hasDefault": false,
+              "renderedKey": "sample.session.UserSession"
+            }
+          ],
+          "scope": "sample.session.SessionScope",
+          "renderedKey": "sample.session.SessionController"
+        },
+        {
+          "key": "sample/session/SessionView",
+          "bindingKind": "ConstructorInjected",
+          "isScoped": false,
+          "nameHint": "SessionView",
+          "dependencies": [
+            {
+              "key": "sample/session/SessionController",
+              "hasDefault": false,
+              "renderedKey": "sample.session.SessionController"
+            }
+          ],
+          "renderedKey": "sample.session.SessionView"
+        }
+      ],
+      "key": "sample/AppGraph.Impl.SessionGraphImpl"
+    }
+  ]
+}
