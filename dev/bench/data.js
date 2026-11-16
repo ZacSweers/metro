@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794647427928,
+  "lastUpdate": 1794852230689,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -28224,6 +28224,62 @@ window.BENCHMARK_DATA = {
             "value": 0.17647061420686155,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: +0.36%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "renovate[bot]",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "renovate[bot]",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "de7c28fc~1",
+          "message": "[before] Update dependency com.github.ajalt.clikt:clikt-jvm",
+          "timestamp": "2026-11-16T12:20:00-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/de7c28fc2f46d0ede4c623e8e90bf1cac9491ee5"
+        },
+        "date": 1794852230689,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.24787961442328096,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "renovate[bot]",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "renovate[bot]",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "de7c28fc2f46d0ede4c623e8e90bf1cac9491ee5",
+          "message": "[after] Update dependency com.github.ajalt.clikt:clikt-jvm",
+          "timestamp": "2026-11-16T12:20:00-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/de7c28fc2f46d0ede4c623e8e90bf1cac9491ee5"
+        },
+        "date": 1794852230690,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.2499449603877768,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: +0.83%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }
