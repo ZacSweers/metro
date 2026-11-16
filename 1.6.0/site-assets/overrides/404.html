@@ -1,0 +1,18 @@
+{% extends "main.html" %}
+
+{% block content %}
+
+<!--
+Custom 404 - Not found page
+===========================
+Provides a friendly message when a user tries to access a page that doesn't exist or has moved.
+-->
+
+<h1 id="404-page-not-found">404 - Not found</h1>
+<p><strong>ℹ️ The document you're looking for doesn't exist or has been moved.</strong></p>
+
+<p style="line-height: 2;">Try using the 🔍 <a href="?q=" data-toggle="modal">search</a> feature to find the document.
+If the content can't be found, feel free to <a href="https://github.com/ZacSweers/metro/issues">report</a> the issue.</p>
+<p>Alternatively, you can return to the <a href="{{ base_url }}">🚇 Metro home</a>.</p>
+
+{% endblock %}
