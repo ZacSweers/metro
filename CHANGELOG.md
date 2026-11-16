@@ -4,6 +4,11 @@ Changelog
 **Unreleased**
 --------------
 
+1.6.0
+-----
+
+_2026-11-16_
+
 ### New
 
 #### [**[MEEP-3124]**](https://github.com/ZacSweers/metro/discussions/3124) Derived bindings
