@@ -140,3 +140,5 @@
 2.5.0-ij263-40=2.5.0-dev-9507
 # IntelliJ IDEA 2026.3 (stable)
 2.5.0-ij263-56=2.5.0-dev-9507
+# Android Studio Stingray 1 | 2026.3.1 Canary 1 (canary)
+2.5.255-dev-255=2.5.0-dev-9507
