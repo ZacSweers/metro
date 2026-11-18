@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794852230893,
+  "lastUpdate": 1795022632305,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -28280,6 +28280,62 @@ window.BENCHMARK_DATA = {
             "value": 12367.356,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -2.91%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "renovate[bot]",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "renovate[bot]",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "8007dc64~1",
+          "message": "[before] Update dependency com.github.ajalt.clikt:clikt-jvm",
+          "timestamp": "2026-11-18T11:26:24-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/8007dc649a6be83e7cde59f4bc918765e5282c6a"
+        },
+        "date": 1795022632305,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 12568.919,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "renovate[bot]",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "renovate[bot]",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "8007dc649a6be83e7cde59f4bc918765e5282c6a",
+          "message": "[after] Update dependency com.github.ajalt.clikt:clikt-jvm",
+          "timestamp": "2026-11-18T11:26:24-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/8007dc649a6be83e7cde59f4bc918765e5282c6a"
+        },
+        "date": 1795022632306,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 12627.05,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +0.46%"
           }
         ]
       }
