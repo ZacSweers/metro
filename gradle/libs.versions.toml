@@ -26,7 +26,7 @@ jetbrains-navigation3 = "1.2.0"
 dagger = "2.60.1"
 gjf = "1.35.0"
 jdk = "25"
-robolectric = "4.18"
+robolectric = "4.18.1"
 junit-jupiter = "6.1.3"
 jvmTarget = "11"
 compilerJvmTarget = "21"
@@ -51,7 +51,7 @@ okio = "3.18.2"
 pluginId = "dev.zacsweers.metro.compiler"
 poko = "0.23.2"
 tracing = "2.0.5"
-wire = "7.2.1"
+wire = "7.2.2"
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
@@ -117,7 +117,7 @@ anvil-kspCompiler = { module = "dev.zacsweers.anvil:compiler", version.ref = "an
 
 assertk = { module = "com.willowtreeapps.assertk:assertk", version = "0.28.1" }
 
-clikt = "com.github.ajalt.clikt:clikt:5.2.0"
+clikt = "com.github.ajalt.clikt:clikt:5.2.1"
 
 circuit-codegen = { module = "com.slack.circuit:circuit-codegen", version.ref = "circuit" }
 circuit-foundation = { module = "com.slack.circuit:circuit-foundation", version.ref = "circuit" }
@@ -209,7 +209,7 @@ picnic = "com.jakewharton.picnic:picnic:0.7.0"
 
 poko-annotations = { module = "dev.drewhamilton.poko:poko-annotations", version.ref = "poko" }
 
-r8 = "com.android.tools:r8:9.5.32"
+r8 = "com.android.tools:r8:9.5.33"
 
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 
