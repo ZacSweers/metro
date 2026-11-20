@@ -6,6 +6,9 @@ import dev.zacsweers.metro.compiler.compat.KotlinToolingVersion
 import dev.zacsweers.metro.compiler.test.COMPILER_VERSION
 import dev.zacsweers.metro.compiler.test.TEST_COMPILER_VERSION
 
+/** First compiler that supports generating metadata-visible hidden classes in IR. */
+internal val MIN_IR_CLASS_GENERATION_VERSION = KotlinToolingVersion("2.4.20-dev-6138")
+
 /** Version requested for the test run, including its prerelease classifier. */
 internal val TEST_COMPILER_TOOLING_VERSION = KotlinToolingVersion(TEST_COMPILER_VERSION)
 

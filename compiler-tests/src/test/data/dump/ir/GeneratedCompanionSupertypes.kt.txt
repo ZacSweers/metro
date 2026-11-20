@@ -262,7 +262,7 @@ abstract class ProviderContributionContributions {
     }
 
     @Provides
-    /* static */ fun providesProviderContribution(): ProviderBinding {
+    companion fun providesProviderContribution(): ProviderBinding {
       return ProviderContribution()
     }
 
@@ -313,7 +313,7 @@ interface ProviderBinding {
 
 @BindingContainer
 object Bindings {
-  @CallableMetadata(callableName = "provideString", propertyName = "", startOffset = 231, endOffset = 287, newInstanceName = "provideString")
+  @CallableMetadata(callableName = "provideString", propertyName = "", startOffset = 225, endOffset = 281, newInstanceName = "provideString")
   class ProvideStringMetroFactory : Factory<String> {
     private /* final field */ val value: Provider<Int> = value
     companion object Companion {

@@ -72,29 +72,17 @@ class MetroTestConfigurator(testServices: TestServices) : MetaTestConfigurator(t
       return true
     }
 
-    // A fixture can compile its producer and consumer in different modes.
-    val hasConflictingModes =
-      structure.modules.any { module ->
-        val modes = module.directives[MetroDirectives.GENERATE_CLASSES_IN_IR]
-        true in modes && false in modes
-      }
-    if (hasConflictingModes) {
-      return true
-    }
-
     val irOnlyClassesSuite =
       testClassName == "IrOnlyClassesBoxTestGenerated" ||
         testClassName == "OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated"
-    if (
-      irOnlyClassesSuite &&
-        shouldSkipForCompilerVersion(
-          compilerVersion = COMPILER_VERSION,
-          compilerToolingVersion = DIRECTIVE_COMPILER_TOOLING_VERSION,
-          minVersion = MIN_IR_ONLY_CLASSES_COMPILER_VERSION,
-        )
-    ) {
-      return true
+    if (irOnlyClassesSuite) {
+      val optsOut =
+        structure.modules.any { false in it.directives[MetroDirectives.GENERATE_CLASSES_IN_IR] }
+      if (optsOut || TEST_COMPILER_TOOLING_VERSION < MIN_IR_CLASS_GENERATION_VERSION) {
+        return true
+      }
     }
+
     val minimumVersions = directives[MetroDirectives.MIN_COMPILER_VERSION].toMutableList()
     if (testServices.isJsBackend()) {
       minimumVersions += directives[MetroDirectives.MIN_JS_COMPILER_VERSION]
@@ -109,8 +97,6 @@ class MetroTestConfigurator(testServices: TestServices) : MetaTestConfigurator(t
   }
 
   companion object {
-    private const val MIN_IR_ONLY_CLASSES_COMPILER_VERSION = "2.4.20-dev-6138"
-
     /**
      * Determines whether a test should be skipped based on compiler version directives.
      *
@@ -164,25 +150,24 @@ fun RegisteredDirectivesBuilder.commonMetroTestDirectives() {
 }
 
 /**
- * Checks if the target version matches the actual compiler version.
- *
- * @param targetVersion The parsed target version
- * @param requiresFullMatch Whether all components (major, minor, patch) must match. If false, only
- *   major and minor are compared.
- * @param actualVersion The actual compiler version
+ * A major.minor target matches the whole release line. A target with a patch version also pins the
+ * classifier so a stable release has its own goldens.
  */
 private fun versionMatches(
   targetVersion: KotlinToolingVersion,
   requiresFullMatch: Boolean,
   actualVersion: KotlinToolingVersion,
 ): Boolean {
-  if (targetVersion.major != actualVersion.major) return false
-  if (targetVersion.minor != actualVersion.minor) return false
-  if (requiresFullMatch && targetVersion.patch != actualVersion.patch) return false
-  if (requiresFullMatch && targetVersion.classifier != null) {
-    return targetVersion.classifier.equals(actualVersion.classifier, ignoreCase = true)
+  if (targetVersion.major != actualVersion.major || targetVersion.minor != actualVersion.minor) {
+    return false
   }
-  return true
+
+  if (!requiresFullMatch) {
+    return true
+  }
+
+  return targetVersion.patch == actualVersion.patch &&
+    targetVersion.classifier.equals(actualVersion.classifier, ignoreCase = true)
 }
 
 private fun toolingVersionDirective(versionString: String): Pair<KotlinToolingVersion, Boolean> {

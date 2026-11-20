@@ -47,6 +47,7 @@ open class AbstractDiagnosticTest : AbstractPhasedJvmDiagnosticLightTreeTest() {
 
     with(builder) {
       configurePlugin()
+      configureIrHandlersStep { useHandlers(::RichIrDiagnosticsHandler) }
 
       useMetaTestConfigurators(::MetroTestConfigurator)
 
@@ -70,8 +71,8 @@ open class AbstractDiagnosticTest : AbstractPhasedJvmDiagnosticLightTreeTest() {
    * `setupHandlersForDiagnosticTest` are inlined verbatim.
    *
    * Active only while [NEEDS_LEGACY_GOLDEN_NAMING] is true (Kotlin < 2.4.20). Once Metro's floor
-   * moves to 2.4.20+, delete this method, the two `Metro*DiagnosticsHandler` files, and the version
-   * gate above; `super.configure(builder)` then suffices.
+   * moves to 2.4.20+, delete this method and the two legacy handler classes.
+   * [RichIrDiagnosticsHandler] runs on every supported version.
    */
   private fun configureWithMetroDiagnosticHandlers(builder: TestConfigurationBuilder) =
     with(builder) {

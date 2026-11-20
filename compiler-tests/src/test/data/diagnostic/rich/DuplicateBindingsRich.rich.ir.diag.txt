@@ -1,9 +1,9 @@
-/DuplicateBindingsRich.kt:12:11: error: <dim>   ╭─ </intensity><b>[Metro/DuplicateBinding] Multiple bindings found for String</intensity>
-<dim>   │ → </intensity>DuplicateBindingsRich.kt:15:13
+/DuplicateBindingsRich.kt:9:11: error: <dim>   ╭─ </intensity><b>[Metro/DuplicateBinding] Multiple bindings found for String</intensity>
+<dim>   │ → </intensity>DuplicateBindingsRich.kt:12:13
 <dim>   │</intensity>
-<dim>15 │ </intensity>@Provides fun provideString1(): <red>String</fg>
+<dim>12 │ </intensity>@Provides fun provideString1(): <red>String</fg>
 <dim>   │ </intensity><red>                                ⌃⌃⌃⌃⌃⌃</fg>
-<dim>16 │ </intensity>@Provides fun provideString2(): <red>String</fg>
+<dim>13 │ </intensity>@Provides fun provideString2(): <red>String</fg>
 <dim>   │ </intensity><red>                                ⌃⌃⌃⌃⌃⌃</fg>
 <dim>   ╰─</intensity>
 

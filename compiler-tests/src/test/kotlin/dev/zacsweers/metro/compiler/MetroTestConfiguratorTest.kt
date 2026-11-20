@@ -55,6 +55,12 @@ class MetroTestConfiguratorTest {
   }
 
   @Test
+  fun `exact stable target skips prereleases of that version`() {
+    assertTrue(shouldSkip("2.4.20-dev-6138", targetVersion = "2.4.20"))
+    assertFalse(shouldSkip("2.4.20-dev-6138", targetVersion = "2.4"))
+  }
+
+  @Test
   fun `target version mismatches minor`() {
     assertTrue(shouldSkip(KotlinVersion(2, 3, 0), targetVersion = "2.4"))
   }
