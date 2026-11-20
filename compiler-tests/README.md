@@ -1,183 +1,115 @@
-# compiler-tests
+# Compiler tests
 
-New compiler tests using JetBrains' official compiler testing infrastructure. If possible, write new compiler tests in here! From [this PR](https://github.com/ZacSweers/metro/pull/128).
-
-Essentially, you can have different kinds of tests and then each test is just a `.kt` file. There are a few categories here.
+Metro uses Kotlin's compiler test framework. Each fixture is a Kotlin source file under `compiler-tests/src/test/data/`. The fixture's directory determines which JUnit suites run it.
 
 ## Creating a new test
 
-Adding a new test is easy! The simple flow is just
+1. Add a `.kt` file under the appropriate directory below.
+2. From the repository root, generate the suites and run your fixture. For `MyTest.kt`, use the following command.
 
-1. Add a new test data file. These are `.kt` files under the `src/test/data` dir. There are categories described below.
-2. Run `./gradlew :compiler-tests:generateTests` to regenerate tests. This is important, as these files are not automatically picked up otherwise.
-3. After running you'll see a new unit test method generated in the relevant class in `src/test/java`, which you can now use to run your test!
+   ```shell
+   ./gradlew :compiler-tests:generateTests :compiler-tests:test --tests '*MyTest*' --quiet
+   ```
+
+3. Review the expected output and commit it with the fixture and the generated changes under `compiler-tests/src/test/java/`.
+
+Run `:compiler-tests:generateTests` whenever you add, move, or remove a fixture. For edits to an existing fixture, run `:compiler-tests:test` with the same filter. To update expected files, add `-PupdateTestData` and review the diff.
 
 Generate the checked-in Java with the default Kotlin version. To test another version, generate first, then run `./gradlew :compiler-tests:test -Pmetro.testCompilerVersion=2.3.0 --tests '*MyTest*'`. Older Kotlin generators can rewrite every suite. A full `./metrow regen` also generates the suites with the default version.
 
-Generation and a focused test run can also share one invocation from the repository root:
-
-```bash
-./gradlew :compiler-tests:generateTests :compiler-tests:test --tests '*MyTest*' --quiet
-```
-
-Replace `*MyTest*` with the generated class or method filter for your fixture. The generator uses the Kotlin test support without compiling the generated Java suites first. Java compilation runs after generation when both tasks are requested, so newly added tests are available in that same invocation. Ordinary `:compiler-tests:test` runs continue to use the checked-in suites without regenerating them.
-
-If you want to test something our first, you can also run the existing `ir/scratch.kt` or `fir/scratch.kt` tests as a sort of playground. The files are black and you can add whatever code you want to it, run it, and see the dumped output (IR or FIR, respectively) to see what the compiler generates for them. This is super helpful for debugging too.
+The Compiler DevKit plugin lets you run or debug a fixture from its source file in IntelliJ IDEA and apply the resulting diff. [Compiler DevKit](https://github.com/JetBrains/kotlin-compiler-devkit)
 
 ## Directives
 
-In all of these tests, the biggest way you will modify their behavior is through [directives](https://github.com/JetBrains/kotlin/tree/master/compiler/test-infrastructure#directives). Metro has its own in `MetroDirectives` (and new behaviors can be added as needed here), or you can use many of the [existing directives](https://github.com/JetBrains/kotlin/tree/master/compiler/tests-common-new/tests/org/jetbrains/kotlin/test/directives). They are specified as line comments and can be simple boolean flags like `RENDER_DIAGNOSTICS_FULL_TEXT` or be more complex like disabling to rendering of certain diagnostics with `DIAGNOSTICS: -PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE`. In each of the base tests, you can also configure default directives that you want with `defaultDirectives`. For example, the dump tests are basically diagnostics tests but with the `FIR_DUMP` diagnostic always enabled.
-
-## Setup
-
-Install the Compiler DevKit IntelliJ plugin from [here](https://github.com/JetBrains/kotlin-compiler-devkit).
-
-In short, it helps with working with these tests data files and associated tests in the IDE. This lets you run or debug tests directly from the test data file, as well as apply generate them and auto-apply diffs.
-
-Read its (short) docs on how to use it [here](https://github.com/JetBrains/kotlin-compiler-devkit).
+Directives are line comments that configure a fixture or a module within it. For example, `// METRO_JVM_ONLY` limits a fixture to the JVM, and `// MIN_COMPILER_VERSION: 2.4.20` sets its minimum Kotlin version. Each suite also provides defaults. [Metro directives](src/test/kotlin/dev/zacsweers/metro/compiler/MetroDirectives.kt), [Kotlin test infrastructure](https://github.com/JetBrains/kotlin/tree/master/compiler/test-infrastructure#directives)
 
 ## Categories
 
 ### Diagnostic
 
-Create a `.kt` file somewhere under the `test/src/data/diagnostic` directory, rerun the `generateTests` Gradle task, and a new test will be generated for the file. When run, any diagnostics will be injected directly into the file as a sort of [golden value test](https://en.wikipedia.org/wiki/Characterization_test). Note that the _lack_ of a produced golden value can also be a type of validation here, such as cases where you want to test that a diagnostic is _not_ emitted for some certain edge case in code.
+Use `src/test/data/diagnostic/` to check which diagnostics the compiler reports and where they appear. The framework compares the reported diagnostics with markers in the source. Leave a declaration unmarked to check that it compiles cleanly.
 
-There are two categories of diagnostic tests
+For a frontend (FIR) diagnostic, add `// RENDER_DIAGNOSTICS_FULL_TEXT` to check the message in a sibling `.diag.txt` file.
 
-#### 1. Frontend only
+For an IR diagnostic such as a graph validation error, use these directives to check the message in a sibling `.ir.diag.txt` file.
 
-For diagnostics emitted from FIR checkers (i.e. the `dev.zacsweers.metro.compiler.fir.checkers` package). Only the frontend of the compiler is executed for these, so they are extremely fast. Most diagnostics should be this type.
-
-These test files need this directive at the top of their files:
-
-```
-// RENDER_DIAGNOSTICS_FULL_TEXT
-```
-
-#### 2. Backend
-
-For diagnostics emitted from the backend (i.e., graph validation and IR transformation). The whole compiler is executed for these, so they are not as fast as FIR-only tests. This should almost exclusively be reserved for testing graph validation, which happens in the IR layer.
-
-These test files need this directive at the top of their files:
-
-```
+```kotlin
 // RUN_PIPELINE_TILL: FIR2IR
 // RENDER_IR_DIAGNOSTICS_FULL_TEXT
 ```
 
-The pipeline can be either `FIR2IR` (if they are expected to error) or `BACKEND` (if they are expected to succeed or only emit warnings).
+Use `FIR2IR` when the fixture expects an error during IR generation. Use `BACKEND` when compilation should finish, including fixtures that expect warnings. If Metro reports an error through its message collector, the test fails with the module and message. To check the diagnostic with source markers, report it on a declaration in the module under test.
+
+To check terminal styling, use `// DIAGNOSTICS_RENDER_MODE: RICH` in a JVM diagnostic fixture. The `.rich.ir.diag.txt` file uses readable tags for ANSI codes. [Rich diagnostic fixture](src/test/data/diagnostic/rich/MissingBindingRich.kt)
 
 ### Dump
 
-Create a `.kt` file somewhere under the `test/src/data/dump/fir` or `test/src/data/dump/ir` directory, rerun the `generateTests` Gradle... (you get the idea). When run, the entire IR or FIR tree for the `.kt` file will be dumped to a separate file `.fir.txt`. This is extremely helpful to figure out what exactly is being generated by a plugin. Only the frontend is executed for these tests as well. Take care to put the test in the right place. `fir` is purely to test output of `dev/zacsweers/metro/compiler/fir/generators` while `ir` is to test anything emitted during IR transformation.
+Use a dump test when the shape of a generated declaration matters. Fixtures under `src/test/data/dump/fir/` check the frontend tree in a sibling `.fir.txt` file. Fixtures under `src/test/data/dump/ir/` check a Kotlin rendering of the transformed IR in a sibling `.kt.txt` file. Add `// DUMP_IR` to check the raw tree in `.ir.txt` as well.
 
-Dump tests should be used sparingly as they are essentially change detector tests. They should be primarily focused on situations where you need to validate very specific behavior about the shape of generated code.
+To inspect generated code, paste a reproducer into one of the scratch fixtures, run its generated test, and inspect the diff. Restore the scratch files afterward. [FIR scratch fixture](src/test/data/dump/fir/scratch.kt), [IR scratch fixture](src/test/data/dump/ir/scratch.kt)
 
 ### Box
 
-These are the bread and butter functional tests.
+Use `src/test/data/box/` to exercise generated code. The runner compiles the fixture, calls `fun box(): String`, and expects `"OK"`. Fixtures can use Metro types and `kotlin.test` assertions without explicit imports. [Example box fixture](src/test/data/box/inject/assisted/BasicAssistedInject.kt)
 
-When run, the file will be compiled and the `box()` function will be executed, expecting `"OK"` as the output. You also have access to `kotlin.test.assert*` functions to validate behavior. These tests will run the entire compiler.
+The JVM and JS suites share box fixtures. The fast-init suites enable switching providers. The contribution-provider suites enable generated contribution providers. The standard JS suite follows the Gradle defaults for IR class generation and redundant mirrors. The JVM has separate suites for IR-generated classes. To run the JVM variant that omits redundant mirrors, add `-Pmetro.testOmitRedundantMirrors=true`. For cases that require a full multiplatform build, use the [integration tests](../samples/integration-tests/).
 
-```kotlin
-// test code
+Fixtures under `box/suspend/` can call `runBlocking` for suspend blocks that complete synchronously. To use the helper in another box directory, add `// WITH_COROUTINES`.
 
-fun box(): String {
-  // functional tests of the above code
-  return "OK"
-}
-```
-
-Note that `FastInitBoxTest` runs all the same box tests with switching providers enabled (`ENABLE_SWITCHING_PROVIDERS`), so every box test automatically gets coverage for both normal and switching provider code paths.
+If a fixture exercises the sample Metro compiler extensions, add `// WITH_SAMPLE_EXTENSIONS`. [Sample extension fixture](src/test/data/box/api/MetroFirExtensionSample.kt)
 
 #### Large/stress tests
 
-Tests that are expensive (large graphs, stress tests, etc.) should use the `StressTest` suffix in their file name (e.g., `LargeGraphStressTest.kt`). These tests are automatically **excluded** from normal test runs and **only** run when the `metro.enableLargeTests` Gradle property is set (and vice versa). This keeps normal CI fast while still exercising expensive scenarios in a dedicated step.
+Use the `StressTest` suffix for expensive fixtures such as `LargeGraphStressTest.kt`. Run them explicitly with `metro.enableLargeTests`. This selects only stress tests and sets the default test heap to 5 GB.
 
-To run large tests locally:
-```bash
-./gradlew :compiler-tests:test -Pmetro.enableLargeTests
+```shell
+./gradlew :compiler-tests:test -Pmetro.enableLargeTests --quiet
 ```
 
 #### More heap for focused tests
 
-Compose-heavy JS tests can need more than the default 2g heap even when they are not stress tests. Set `metro.compilerTestHeapSize` to increase heap without changing which tests run:
+Some Compose-heavy JS tests need more than the ordinary 2 GB test heap. Use `metro.compilerTestHeapSize` to adjust the heap independently of test selection. For example, run a fixture in the standard JS box suite with a 5 GB heap.
 
-```bash
+```shell
 ./gradlew :compiler-tests:test -Pmetro.compilerTestHeapSize=5g --tests '*JsBoxTestGenerated*MyTest*' --quiet
 ```
 
-Replace `MyTest` with the generated class or method for your fixture. The override also works with `generateTests` in the same invocation. It changes only the test JVM's maximum heap. Without it, ordinary runs keep 2g and `metro.enableLargeTests` runs keep 5g. Stress tests remain excluded unless `metro.enableLargeTests` is set.
-
 ### Reports
 
-Create a `.kt` fixture anywhere under `src/test/data/dump/reports`. Add a `CHECK_REPORTS` directive for each report to verify after compilation. For example, `// CHECK_REPORTS: keys-populated/AppGraph/Impl` in `graphs/Example.kt` checks the golden at `graphs/_reports/Example/keys-populated/AppGraph/Impl.txt`.
+Create a `.kt` fixture anywhere under `src/test/data/dump/reports/`. Add one `// CHECK_REPORTS` directive per report. For example, `// CHECK_REPORTS: merging-unmatched-replacements-fir/AppGraph` in `UnmatchedReplacement.kt` checks `_reports/UnmatchedReplacement/merging-unmatched-replacements-fir/AppGraph.txt`. [Unmatched replacement fixture](src/test/data/dump/reports/UnmatchedReplacement.kt)
 
 Generate the suite and run the fixture. The first run writes missing goldens and fails. Review the files under `_reports/<fixture-name>/`, then rerun the test. The generator skips `_reports` directories.
 
-## Debugging/FAQ
+## Multiple files and modules
 
-> I'm trying to figure out what Metro or kotlinc are generating, how can I see that?
-
-Easiest approach is to open the blank `ir/scratch.kt` file, add your repro code there (you can skip the `box` function if any), then run it and look at the generated diff. Remember not to check in these changes though!
-
-You can also run this with the debugger attached and debug code in the compiler.
-
-> How can I simulate incremental compilation?
-
-Unfortunately, these are not the right place :). Those tests belong in `ICTests.kt` and (if appropriate) `BindingContainerICTests.kt` in the `gradle-plugin` subproject.
-
-> How can I simulate multi-module or multi-file compilation?
-
-The pattern for this in compiler tests is using the `FILE:` and `MODULE:` directives.
-
-#### Multi-file
+Use `// FILE: Name.kt` to start a source file within a fixture. JVM fixtures can include Java files. Use `// MODULE: name(deps)(friends)(dependsOn)` to start a module. In this example, `main` depends on `lib` and contains the box function.
 
 ```kotlin
+// MODULE: lib
 // FILE: Example.kt
-@Inject class Example
+@Inject class Example {
+  val message = "OK"
+}
 
+// MODULE: main(lib)
 // FILE: AppGraph.kt
 @DependencyGraph
 interface AppGraph {
   val example: Example
 }
+
+// FILE: Main.kt
+fun box(): String = createGraph<AppGraph>().example.message
 ```
 
-Note you can add java files too if you're testing something with Dagger interop.
+For incremental compilation across successive builds, use the Gradle plugin's functional tests. [Incremental compilation tests](../gradle-plugin/src/functionalTest/kotlin/dev/zacsweers/metro/gradle/incremental/)
 
-#### Multi-module
+## Interop
 
-Module directives have a format of `name(deps)(friends)(dependsOn)`
+Choose the Dagger directive based on what the fixture exercises.
 
-```kotlin
-// MODULE: lib
-@Inject class Example
+- `// WITH_DAGGER` adds Dagger dependencies and configures its annotations.
+- `// ENABLE_DAGGER_INTEROP` also enables runtime interop with Dagger types.
+- `// ENABLE_DAGGER_KSP` also runs Dagger's symbol processor. Use it when the fixture needs Dagger-generated code.
 
-// FILE: main(lib)
-@DependencyGraph
-interface AppGraph {
-  val example: Example
-}
-```
-
-Note that `main` is the module that `box()` functions should be added to.
-
-> How can I test interop?
-
-There are a few different interop scenarios that have `MetroDirectives` set up for them (Dagger, Anvil, etc).
-
-The directives generally follow this pattern:
-- `WITH_DAGGER` - enables annotation interop only. Does not _run_ Dagger itself or enable runtime interop with Dagger types.
-- `ENABLE_DAGGER_INTEROP` - enables `WITH_DAGGER` plus runtime interop with Dagger types. Does not _run_ Dagger itself.
-- `ENABLE_DAGGER_KSP` - enables both of the above + enables Dagger KSP. This should be limited to scenarios where you need to test interop with Dagger-generated code.
-
-Anvil and other interop targets have similar directives.
-
-> My IR diagnostics aren't showing up?
-
-There are some cases where IR diagnostics will not show up in the first party test infra yet, namely for cases where you need to report a declaration that has no source. Unfortunately for now these scenarios need to be implemented in the legacy `compiler/src/test` tests as these essentially only emit through stdout.
-
-> Can I test multiplatform/non-JVM backend tests?
-
-Not yet. If you really need to integration-test these you can add them to `samples/integration-tests`.
+Other interop targets have their own directives. [Interop directives](src/test/kotlin/dev/zacsweers/metro/compiler/MetroDirectives.kt)
