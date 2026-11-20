@@ -81,8 +81,7 @@ open class AbstractIrDumpTest : AbstractKotlinCompilerWithTargetBackendTest(Targ
         -DUMP_KT_IR
         +MetroDirectives.METRO_DUMP_KT_IR
 
-        // Disable the new SKIP_NEW_KOTLIN_REFLECT_COMPATIBILITY_CHECK, we don't need this here
-        // However, this fails in our infra _before_ we
+        // Keep kotlin-reflect compatibility checks enabled in frameworks that offer this opt-out.
         SKIP_NEW_KOTLIN_REFLECT_COMPATIBILITY_CHECK_DIRECTIVE?.let { -it }
       }
 
