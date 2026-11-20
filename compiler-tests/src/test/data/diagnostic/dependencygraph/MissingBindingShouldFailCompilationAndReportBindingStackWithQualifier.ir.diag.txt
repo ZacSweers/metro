@@ -1,4 +1,4 @@
-/MissingBindingShouldFailCompilationAndReportBindingStackWithQualifier.kt:14:44: error: [Metro/MissingBinding] No binding found for @Named("hello") String
+/MissingBindingShouldFailCompilationAndReportBindingStackWithQualifier.kt:14:50: error: [Metro/MissingBinding] No binding found for @Named("hello") String
 
   test.ExampleGraph.exampleClass() -> ExampleClass -> @Named("hello") String
 

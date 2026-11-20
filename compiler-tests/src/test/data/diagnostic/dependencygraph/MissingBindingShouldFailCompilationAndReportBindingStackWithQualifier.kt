@@ -10,4 +10,4 @@ abstract class ExampleGraph() {
 }
 
 @Inject
-class ExampleClass(@Named("hello") private <!MISSING_BINDING!>val text: String<!>)
+class ExampleClass(@param:Named("hello") private <!MISSING_BINDING!>val text: String<!>)
