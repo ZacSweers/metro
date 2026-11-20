@@ -1,5 +1,6 @@
 // ENABLE_DAGGER_INTEROP
 // ENABLE_SUSPEND_PROVIDERS
+// WITH_COROUTINES
 import dagger.Lazy
 import javax.inject.Provider
 var interopComputations = 0

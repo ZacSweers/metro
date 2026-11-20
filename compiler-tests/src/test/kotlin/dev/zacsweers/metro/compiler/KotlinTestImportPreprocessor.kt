@@ -8,19 +8,11 @@ import org.jetbrains.kotlin.test.services.moduleStructure
 
 class KotlinTestImportPreprocessor(testServices: TestServices) : ImportsPreprocessor(testServices) {
   /**
-   * The compiler test framework's helper only supports suspend blocks that complete synchronously.
-   * That is intentional for these box tests: it works with `fun box(): String` on JVM and JS, and
-   * keeps kotlinx-coroutines-test and kotlinx-coroutines-core off fixture classpaths that are
-   * verifying they are not required.
+   * `helpers.runBlocking` supports suspend blocks that complete synchronously. This lets `box()`
+   * return a string on JVM and JS and keeps kotlinx.coroutines off the fixture classpath.
    *
-   * `runTest` is also awkward on JS: its asynchronous `TestResult` must be returned immediately,
-   * but compiler box tests must return a synchronous `String`.
-   *
-   * Tests of actual suspension, scheduling, or delays should use kotlinx.coroutines.test.runTest
-   * instead.
-   *
-   * Note we use this helper runBlocking since there's no standard runBlocking for web. It's a
-   * simple helper good enough for box tests.
+   * For tests that actually suspend, use `kotlinx.coroutines.test.runTest` in a test that can
+   * return its asynchronous result on JS.
    */
   private val withCoroutineHelpers by lazy {
     WITH_COROUTINE_HELPERS in testServices.moduleStructure.allDirectives

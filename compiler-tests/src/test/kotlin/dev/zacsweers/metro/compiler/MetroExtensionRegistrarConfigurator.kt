@@ -49,6 +49,7 @@ import org.jetbrains.kotlin.incremental.components.ExpectActualTracker
 import org.jetbrains.kotlin.test.TargetBackend
 import org.jetbrains.kotlin.test.builders.TestConfigurationBuilder
 import org.jetbrains.kotlin.test.cli.CliDirectives
+import org.jetbrains.kotlin.test.directives.AdditionalFilesDirectives.WITH_COROUTINES as WITH_COROUTINE_HELPERS
 import org.jetbrains.kotlin.test.directives.LanguageSettingsDirectives.LANGUAGE
 import org.jetbrains.kotlin.test.directives.model.singleOrZeroValue
 import org.jetbrains.kotlin.test.model.TestModule
@@ -74,6 +75,10 @@ fun TestConfigurationBuilder.configurePlugin(
     // Skip before Kotlin parses module-level language directives.
     assumeTrue(compatContext.supportsCompanionBlocks, "Compiler does not support companion blocks")
     defaultDirectives { LANGUAGE + "+CompanionBlocks" }
+  }
+  forTestsMatching("*/box/suspend/*") {
+    // Other box fixtures opt in to helpers.runBlocking with WITH_COROUTINES.
+    defaultDirectives { +WITH_COROUTINE_HELPERS }
   }
   forTestsMatching("*/box/derivedbindings/*") {
     // Every box fixture in this directory uses derived bindings, so none of them repeats the
