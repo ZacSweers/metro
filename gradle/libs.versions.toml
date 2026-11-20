@@ -15,7 +15,7 @@
 [versions]
 agp = "9.1.1"
 android-compileSdk = "37"
-androidx-lifecycle = "2.11.0"
+androidx-lifecycle = "2.11.1"
 androidx-lint-gradle = "1.0.0"
 annotation = "1.11.0"
 anvil = "0.5.4"
