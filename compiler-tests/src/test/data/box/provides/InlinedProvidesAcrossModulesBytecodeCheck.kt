@@ -43,6 +43,8 @@ object Bindings {
 }
 
 // MODULE: main(lib)
+// CHECK_BYTECODE_TEXT
+// FILE: Graph.kt
 import kotlin.reflect.KClass
 
 @DependencyGraph(bindingContainers = [Bindings::class])
@@ -63,6 +65,7 @@ interface AppGraph {
   val classLiteral: KClass<*>
 }
 
+// FILE: Test.kt
 fun box(): String {
   val graph = createGraph<AppGraph>()
   graph.byte
@@ -83,7 +86,6 @@ fun box(): String {
 }
 
 // The graph reads these values directly after decoding the library metadata.
-// CHECK_BYTECODE_TEXT
 // @AppGraph$Impl.class:
 // 1 BIPUSH 7
 // 1 SIPUSH 300

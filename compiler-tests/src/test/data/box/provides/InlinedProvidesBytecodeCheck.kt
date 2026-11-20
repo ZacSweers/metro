@@ -1,3 +1,5 @@
+// CHECK_BYTECODE_TEXT
+// FILE: Graph.kt
 import kotlin.reflect.KClass
 
 const val CONST_STRING = "const-prop-read"
@@ -59,6 +61,7 @@ interface AppGraph {
   val classLiteral: KClass<*>
 }
 
+// FILE: Test.kt
 fun box(): String {
   val graph = createGraph<AppGraph>()
   graph.byte
@@ -83,7 +86,6 @@ Each inlineable value appears in both the provides declaration and the graph acc
 */
 
 // <count> <instruction>
-// CHECK_BYTECODE_TEXT
 // @Bindings.class:
 // 1 BIPUSH 7
 // 1 SIPUSH 300
