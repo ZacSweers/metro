@@ -227,6 +227,7 @@ object MetroDirectives : SimpleDirectivesContainer() {
         "Verification runs inside MetroReportsChecker.",
     )
   val ENABLE_SERIALIZATION by directive("Enables the kotlinx-serialization compiler plugin.")
+  val WITH_SAMPLE_EXTENSIONS by directive("Load the sample Metro compiler extensions in api/.")
   val ENABLE_CIRCUIT by directive("Enables Circuit code gen.")
   val WITH_HILT by directive("Add Hilt-core as dependency.")
   val ENABLE_HILT_INTEROP by

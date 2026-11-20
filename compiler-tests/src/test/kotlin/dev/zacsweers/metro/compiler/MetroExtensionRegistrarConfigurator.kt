@@ -17,7 +17,6 @@ import dev.zacsweers.metro.compiler.api.GenerateProvidesContributionExtension
 import dev.zacsweers.metro.compiler.api.GenerateProvidesContributionIrExtension
 import dev.zacsweers.metro.compiler.api.GenerateProvidesContributionMetroExtension
 import dev.zacsweers.metro.compiler.api.GenerateProvidesInGraphExtension
-import dev.zacsweers.metro.compiler.api.fir.MetroContributionHintExtension
 import dev.zacsweers.metro.compiler.circuit.CircuitContributionExtension
 import dev.zacsweers.metro.compiler.circuit.CircuitFirExtension
 import dev.zacsweers.metro.compiler.circuit.CircuitIrDeclarationGenerationExtension
@@ -292,6 +291,7 @@ class MetroExtensionRegistrarConfigurator(
 
     if (!options.enabled) return
 
+    val withSampleExtensions = MetroDirectives.WITH_SAMPLE_EXTENSIONS in module.directives
     val classIds = ClassIds.fromOptions(options)
     val traceContext = TraceContext(options)
     FirExtensionRegistrarAdapter.registerExtension(
@@ -303,17 +303,25 @@ class MetroExtensionRegistrarConfigurator(
         traceContext = traceContext,
         loadExternalDeclarationExtensions = { session, options, compatContext ->
           buildList {
-            add(GenerateImplExtension.Factory().create(session, options, compatContext))
-            add(
-              GenerateProvidesContributionExtension.Factory()
-                .create(session, options, compatContext),
-            )
-            add(
-              GenerateBindsContributionExtension.Factory().create(session, options, compatContext),
-            )
-            add(GenerateDependencyGraphExtension.Factory().create(session, options, compatContext))
-            add(GenerateGraphExtensionExtension.Factory().create(session, options, compatContext))
-            add(GenerateProvidesInGraphExtension.Factory().create(session, options, compatContext))
+            if (withSampleExtensions) {
+              add(GenerateImplExtension.Factory().create(session, options, compatContext))
+              add(
+                GenerateProvidesContributionExtension.Factory()
+                  .create(session, options, compatContext),
+              )
+              add(
+                GenerateBindsContributionExtension.Factory()
+                  .create(session, options, compatContext),
+              )
+              add(
+                GenerateDependencyGraphExtension.Factory().create(session, options, compatContext),
+              )
+              add(GenerateGraphExtensionExtension.Factory().create(session, options, compatContext))
+              add(
+                GenerateProvidesInGraphExtension.Factory().create(session, options, compatContext),
+              )
+            }
+
             if (options.enableCircuitCodegen) {
               CircuitFirExtension.Factory().create(session, options, compatContext)?.let(::add)
               CircuitSerializableFirExtension.Factory()
@@ -329,16 +337,7 @@ class MetroExtensionRegistrarConfigurator(
         },
         loadExternalContributionHintExtensions = { session, options, compatContext ->
           buildList {
-            addAll(
-              listOfNotNull(
-                GenerateProvidesContributionExtension.Factory()
-                  .create(session, options, compatContext) as? MetroContributionHintExtension,
-                GenerateBindsContributionExtension.Factory().create(session, options, compatContext)
-                  as? MetroContributionHintExtension,
-                GenerateGraphExtensionExtension.Factory().create(session, options, compatContext)
-                  as? MetroContributionHintExtension,
-              ),
-            )
+            // Metro collects sample hints from the registered declaration extensions.
             if (options.enableHiltInterop) {
               HiltFirDeclarationExtension.HintFactory()
                 .create(session, options, compatContext)
@@ -348,19 +347,24 @@ class MetroExtensionRegistrarConfigurator(
         },
         loadExternalContributionExtensions = { session, options, compatContext ->
           buildList {
-            add(GenerateImplContributionExtension.Factory().create(session, options, compatContext))
-            add(
-              GenerateProvidesContributionMetroExtension.Factory()
-                .create(session, options, compatContext),
-            )
-            add(
-              GenerateBindsContributionMetroExtension.Factory()
-                .create(session, options, compatContext),
-            )
-            add(
-              GenerateGraphExtensionContributionExtension.Factory()
-                .create(session, options, compatContext),
-            )
+            if (withSampleExtensions) {
+              add(
+                GenerateImplContributionExtension.Factory().create(session, options, compatContext),
+              )
+              add(
+                GenerateProvidesContributionMetroExtension.Factory()
+                  .create(session, options, compatContext),
+              )
+              add(
+                GenerateBindsContributionMetroExtension.Factory()
+                  .create(session, options, compatContext),
+              )
+              add(
+                GenerateGraphExtensionContributionExtension.Factory()
+                  .create(session, options, compatContext),
+              )
+            }
+
             if (options.enableCircuitCodegen && !options.generateClassesInIr) {
               add(CircuitContributionExtension.Factory().create(session, options, compatContext)!!)
               add(
@@ -416,9 +420,12 @@ class MetroExtensionRegistrarConfigurator(
         ),
       )
     }
-    IrGenerationExtension.registerExtension(GenerateImplIrExtension())
-    IrGenerationExtension.registerExtension(GenerateProvidesContributionIrExtension())
-    IrGenerationExtension.registerExtension(GenerateProvidersInGraphIrExtension())
+    if (withSampleExtensions) {
+      IrGenerationExtension.registerExtension(GenerateImplIrExtension())
+      IrGenerationExtension.registerExtension(GenerateProvidesContributionIrExtension())
+      IrGenerationExtension.registerExtension(GenerateProvidersInGraphIrExtension())
+    }
+
     IrGenerationExtension.registerExtension(
       MetroIrGenerationExtension(
         messageCollector =

@@ -1,3 +1,4 @@
+// WITH_SAMPLE_EXTENSIONS
 // MIN_COMPILER_VERSION: 2.4
 // GENERATE_CLASSES_IN_IR: false
 // Regression test for duplicate BindsMirror constructors.
