@@ -3,7 +3,7 @@
 package dev.zacsweers.metro.compiler.fir.generators
 
 import dev.zacsweers.metro.compiler.api.fir.MetroFirDeclarationGenerationExtension
-import dev.zacsweers.metro.compiler.fir.isExtensionGenerated
+import dev.zacsweers.metro.compiler.fir.markAsExtensionGenerated
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.extensions.ExperimentalTopLevelDeclarationsGenerationApi
@@ -99,7 +99,7 @@ internal class CompositeMetroFirDeclarationGenerationExtension(
           // Tag extension-generated top-level classes so Metro knows not to generate
           // contribution providers for them (FIR can't generate top-level classes from
           // other generated top-level classes).
-          (symbol.fir as? FirClass)?.isExtensionGenerated = true
+          (symbol.fir as? FirClass)?.markAsExtensionGenerated()
         }
         return symbol
       }
@@ -151,7 +151,7 @@ internal class CompositeMetroFirDeclarationGenerationExtension(
           // Tag extension-generated nested classes so Metro knows not to use the
           // contribution provider path for them (predicates can't see FIR-generated classes,
           // so contribution provider holders would never be created).
-          (symbol.fir as? FirClass)?.isExtensionGenerated = true
+          (symbol.fir as? FirClass)?.markAsExtensionGenerated()
         }
         return symbol
       }
