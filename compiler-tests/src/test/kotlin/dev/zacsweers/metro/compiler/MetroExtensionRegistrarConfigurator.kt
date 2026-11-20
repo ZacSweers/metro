@@ -31,12 +31,12 @@ import dev.zacsweers.metro.compiler.compat.KotlinToolingVersion
 import dev.zacsweers.metro.compiler.fir.MetroFirExtensionRegistrar
 import dev.zacsweers.metro.compiler.hilt.HiltContributionExtension
 import dev.zacsweers.metro.compiler.hilt.HiltFirDeclarationExtension
-import dev.zacsweers.metro.compiler.interop.Ksp2AdditionalSourceProvider
 import dev.zacsweers.metro.compiler.interop.configureAnvilAnnotations
 import dev.zacsweers.metro.compiler.interop.configureDaggerAnnotations
 import dev.zacsweers.metro.compiler.interop.configureDaggerInterop
 import dev.zacsweers.metro.compiler.interop.configureGuiceInterop
 import dev.zacsweers.metro.compiler.interop.configureHiltAnnotations
+import dev.zacsweers.metro.compiler.interop.configureKsp
 import dev.zacsweers.metro.compiler.ir.MetroIrGenerationExtension
 import dev.zacsweers.metro.compiler.tracing.TraceContext
 import kotlin.io.path.Path
@@ -96,7 +96,7 @@ fun TestConfigurationBuilder.configurePlugin(
   configureGuiceInterop()
   configureHiltAnnotations()
   configureCircuit()
-  useAdditionalSourceProviders(::Ksp2AdditionalSourceProvider)
+  configureKsp()
   useAdditionalService { MetroMessageCollectorErrors() }
   useAfterAnalysisCheckers(::MetroReportsChecker, ::MetroMessageCollectorErrorsChecker)
 }
