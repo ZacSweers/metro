@@ -202,13 +202,10 @@ object MetroDirectives : SimpleDirectivesContainer() {
       }
     }
   val REPORTS_DESTINATION by
-    stringDirective(
-      "Relative path to a directory to dump Metro reports information. Example: 'metro/reports'.",
-    )
+    stringDirective("Relative path for reports within each module's temporary directory.")
   val CHECK_REPORTS by
     stringDirective(
-      "Checks a report against '_reports/<fixture-name>/<report-path>.txt' beside the fixture. " +
-        "Repeat this directive to check multiple reports.",
+      "Compare a report with its golden. The last module requesting the report owns the check.",
     )
   val NORMALIZE_REPORT_SOURCE_LOCATIONS by
     directive("Removes source-location fields from JSON reports before comparison.")

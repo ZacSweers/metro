@@ -11,25 +11,37 @@ import kotlinx.serialization.json.JsonObject
 import org.jetbrains.kotlin.test.directives.model.DirectivesContainer
 import org.jetbrains.kotlin.test.directives.model.RegisteredDirectives
 import org.jetbrains.kotlin.test.directives.model.singleOrZeroValue
+import org.jetbrains.kotlin.test.model.TestModule
 import org.jetbrains.kotlin.test.services.TestServices
 import org.jetbrains.kotlin.test.services.assertions
 import org.jetbrains.kotlin.test.services.moduleStructure
 import org.jetbrains.kotlin.test.services.temporaryDirectoryManager
 import org.opentest4j.AssertionFailedError
 
+/** Give each module its own report directory. Metro clears it before its first write. */
+internal fun TestServices.reportDirectory(module: TestModule): File {
+  val destination =
+    module.directives.singleOrZeroValue(MetroDirectives.REPORTS_DESTINATION)
+      ?: MetroReportsChecker.DEFAULT_REPORTS_DIR
+  val root = temporaryDirectoryManager.rootDir
+  if (moduleStructure.modules.size == 1) {
+    return File(root, destination)
+  }
+
+  return File(root.resolve(module.name), destination)
+}
+
 /**
- * Checks Metro reports and traces after compilation.
+ * Compares each distinct [MetroDirectives.CHECK_REPORTS] path with its golden. The last module
+ * requesting a path owns the check. Global checks apply to the final module. To target an earlier
+ * module, place its check between the `MODULE` and `FILE` directives.
  *
- * Reads each [MetroDirectives.CHECK_REPORTS] path from [MetroDirectives.REPORTS_DESTINATION]
- * (default [DEFAULT_REPORTS_DIR]). Its golden lives under `_reports/<fixture-name>/` beside the
- * fixture. For example, `// CHECK_REPORTS: keys-populated/AppGraph/Impl` in `Example.kt` checks
- * `_reports/Example/keys-populated/AppGraph/Impl.txt`. Each golden appends `.txt` to the requested
- * path even if it includes an extension. The suite generator skips `_reports` directories.
+ * Expected reports live under `_reports/<fixture-name>/` next to the fixture. Append `.txt` to each
+ * requested path, including paths that already have an extension.
  *
- * When [MetroDirectives.CHECK_TRACES] is set, also asserts that trace files were produced under
- * [MetroDirectives.TRACE_DESTINATION] (or [DEFAULT_TRACES_DIR] when unset), every filename matches
- * `<id>-(fir|ir)-<moduleName>.perfetto-trace`, all files share the same `<id>` prefix, and both
- * phases are represented.
+ * [MetroDirectives.CHECK_TRACES] checks that [MetroDirectives.TRACE_DESTINATION] (default
+ * [DEFAULT_TRACES_DIR]) contains both FIR and IR traces. Their names follow
+ * `<id>-(fir|ir)-<moduleName>.perfetto-trace` and share the compilation ID.
  */
 class MetroReportsChecker(testServices: TestServices) :
   MetroAfterAnalysisCheckerCompat(testServices) {
@@ -50,82 +62,73 @@ class MetroReportsChecker(testServices: TestServices) :
   override fun checkAfterAnalysis(thereWereFailures: Boolean) {
     val allDirectives = testServices.moduleStructure.allDirectives
 
-    if (allDirectives[MetroDirectives.CHECK_REPORTS].isNotEmpty()) {
-      checkReports(allDirectives)
+    val reportNames = allDirectives[MetroDirectives.CHECK_REPORTS]
+    if (reportNames.isNotEmpty()) {
+      checkReports(reportNames.distinct())
     }
-    if (thereWereFailures) return
+
+    if (thereWereFailures) {
+      return
+    }
 
     if (MetroDirectives.CHECK_TRACES in allDirectives) {
       checkTraces(allDirectives)
     }
   }
 
-  private fun checkReports(allDirectives: RegisteredDirectives) {
-    // Get the list of report names to check
-    val reportNamesToCheck = allDirectives[MetroDirectives.CHECK_REPORTS]
-    if (reportNamesToCheck.isEmpty()) return
-
-    // Get the reports destination from directives, or use default
-    val reportsDestination =
-      allDirectives.singleOrZeroValue(MetroDirectives.REPORTS_DESTINATION) ?: DEFAULT_REPORTS_DIR
-
-    val reportsDir =
-      File(testServices.temporaryDirectoryManager.rootDir.absolutePath, reportsDestination)
-
+  private fun checkReports(reportNames: List<String>) {
     val testDataFile = testServices.moduleStructure.originalTestDataFiles.first()
     val expectedRoot =
       testDataFile.resolveSibling("_reports").resolve(testDataFile.nameWithoutExtension)
 
-    var generatedMissingFiles = false
     var lastError: AssertionFailedError? = null
-    for (reportName in reportNamesToCheck) {
-      val baseFileName = reportFileName(reportName)
-      val reportFile = File(reportsDir, baseFileName)
-      val expectedFile = File(expectedRoot, expectedReportFileName(reportName))
+    for (reportName in reportNames) {
+      val actualContent = readReport(reportName)
+      val expectedFile = File(expectedRoot, "$reportName.txt")
+      try {
+        testServices.assertions.assertEqualsToFile(expectedFile, actualContent)
+      } catch (e: AssertionFailedError) {
+        if (e.message?.contains("Generating: ") != true) {
+          throw e
+        }
 
-      if (!reportFile.exists()) {
-        testServices.assertions.fail {
-          "Expected report '$reportName' was not generated. " +
-            "Report file not found: ${reportFile.absolutePath}"
-        }
-      } else {
-        val actualContent =
-          reportFile.readText().let { content ->
-            if (
-              MetroDirectives.NORMALIZE_REPORT_SOURCE_LOCATIONS in allDirectives &&
-                reportName.endsWith(".json")
-            ) {
-              normalizeReportSourceLocations(content)
-            } else {
-              content
-            }
-          }
-        try {
-          testServices.assertions.assertEqualsToFile(expectedFile, actualContent)
-        } catch (e: AssertionFailedError) {
-          if (e.message?.contains("Generating: ") == true) {
-            // Don't fail eagerly
-            generatedMissingFiles = true
-            lastError = e
-            System.err.println(e.message)
-          } else {
-            throw e
-          }
-        }
+        // Let the framework generate all missing goldens before failing.
+        lastError = e
+        System.err.println(e.message)
       }
     }
-    if (generatedMissingFiles) {
-      throw lastError!!
+
+    if (lastError != null) {
+      throw lastError
     }
   }
 
-  private fun reportFileName(reportName: String): String {
-    return if (File(reportName).extension.isEmpty()) "$reportName.txt" else reportName
-  }
+  /** Each module inherits the global checks, so the final module owns those paths. */
+  private fun readReport(reportName: String): String {
+    val module =
+      testServices.moduleStructure.modules.last {
+        reportName in it.directives[MetroDirectives.CHECK_REPORTS]
+      }
+    val fileName =
+      if (File(reportName).extension.isEmpty()) {
+        "$reportName.txt"
+      } else {
+        reportName
+      }
+    val file = testServices.reportDirectory(module).resolve(fileName)
+    if (!file.isFile) {
+      testServices.assertions.fail {
+        "Expected report '$reportName' from module '${module.name}' at ${file.absolutePath}"
+      }
+    }
 
-  private fun expectedReportFileName(reportName: String): String {
-    return if (File(reportName).extension.isEmpty()) reportFileName(reportName)
-    else "${reportName}.txt"
+    val content = file.readText()
+    val normalize = MetroDirectives.NORMALIZE_REPORT_SOURCE_LOCATIONS in module.directives
+    if (normalize && reportName.endsWith(".json")) {
+      return normalizeReportSourceLocations(content)
+    }
+
+    return content
   }
 
   private fun normalizeReportSourceLocations(content: String): String {
