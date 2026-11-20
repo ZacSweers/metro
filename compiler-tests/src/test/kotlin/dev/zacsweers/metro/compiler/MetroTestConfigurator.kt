@@ -72,29 +72,17 @@ class MetroTestConfigurator(testServices: TestServices) : MetaTestConfigurator(t
       return true
     }
 
-    // A fixture can compile its producer and consumer in different modes.
-    val hasConflictingModes =
-      structure.modules.any { module ->
-        val modes = module.directives[MetroDirectives.GENERATE_CLASSES_IN_IR]
-        true in modes && false in modes
-      }
-    if (hasConflictingModes) {
-      return true
-    }
-
     val irOnlyClassesSuite =
       testClassName == "IrOnlyClassesBoxTestGenerated" ||
         testClassName == "OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated"
-    if (
-      irOnlyClassesSuite &&
-        shouldSkipForCompilerVersion(
-          compilerVersion = COMPILER_VERSION,
-          compilerToolingVersion = DIRECTIVE_COMPILER_TOOLING_VERSION,
-          minVersion = MIN_IR_ONLY_CLASSES_COMPILER_VERSION,
-        )
-    ) {
-      return true
+    if (irOnlyClassesSuite) {
+      val optsOut =
+        structure.modules.any { false in it.directives[MetroDirectives.GENERATE_CLASSES_IN_IR] }
+      if (optsOut || TEST_COMPILER_TOOLING_VERSION < MIN_IR_CLASS_GENERATION_VERSION) {
+        return true
+      }
     }
+
     val minimumVersions = directives[MetroDirectives.MIN_COMPILER_VERSION].toMutableList()
     if (testServices.isJsBackend()) {
       minimumVersions += directives[MetroDirectives.MIN_JS_COMPILER_VERSION]
@@ -109,8 +97,6 @@ class MetroTestConfigurator(testServices: TestServices) : MetaTestConfigurator(t
   }
 
   companion object {
-    private const val MIN_IR_ONLY_CLASSES_COMPILER_VERSION = "2.4.20-dev-6138"
-
     /**
      * Determines whether a test should be skipped based on compiler version directives.
      *
