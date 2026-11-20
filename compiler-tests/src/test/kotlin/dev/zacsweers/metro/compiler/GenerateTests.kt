@@ -14,6 +14,7 @@ fun main() {
       testsRoot = "compiler-tests/src/test/java",
     ) {
       val jsExcludes = listOf("interop", "circuit")
+      val reportGoldenDirs = listOf("_reports")
 
       testClass<AbstractBoxTest> { model("box") }
       testClass<AbstractFastInitBoxTest> { model("box") }
@@ -28,16 +29,17 @@ fun main() {
       }
 
       testClass<AbstractDiagnosticTest> {
-        model("diagnostic", excludeDirsRecursively = listOf("_reports"))
+        model("diagnostic", excludeDirsRecursively = reportGoldenDirs)
       }
       testClass<AbstractJsDiagnosticTest> {
-        model("diagnostic", excludeDirsRecursively = jsExcludes + "_reports")
+        model("diagnostic", excludeDirsRecursively = jsExcludes + reportGoldenDirs)
       }
 
       testClass<AbstractFirDumpTest> { model("dump/fir") }
       testClass<AbstractIrDumpTest> { model("dump/ir") }
-      // Report fixtures live at the root. Their subdirectories contain expected outputs.
-      testClass<AbstractReportsTest> { model("dump/reports", recursive = false) }
+      testClass<AbstractReportsTest> {
+        model("dump/reports", excludeDirsRecursively = reportGoldenDirs)
+      }
     }
   }
 }

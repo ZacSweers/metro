@@ -21,7 +21,7 @@ public class ReportsTestGenerated extends AbstractReportsTest {
 
   @Test
   public void testAllFilesPresentInReports() {
-    KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports"), Pattern.compile("^(.+)\\.kt$"), null, false);
+    KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports"), Pattern.compile("^(.+)\\.kt$"), null, true, "_reports");
   }
 
   @Test
