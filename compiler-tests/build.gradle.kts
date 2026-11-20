@@ -42,9 +42,6 @@ val kotlin23 = KotlinToolingVersion(KotlinVersion(2, 3))
 
 val kotlin24Beta1 = KotlinToolingVersion(KotlinVersion(2, 4), "Beta1")
 
-// The test framework needs JUnit 5 starting with this build.
-val kotlin250Dev9169 = KotlinToolingVersion("2.5.0-dev-9169")
-
 // The test framework locates kotlin-scripting-common through KotlinJars starting with this build.
 val kotlin250Dev9992 = KotlinToolingVersion("2.5.0-dev-9992")
 
@@ -216,10 +213,9 @@ reflectVersion =
   }
 
 dependencies {
-  // Newer 2.5.0 test frameworks call Kotlin assertion helpers removed by JUnit 6.
-  if (testKotlinVersion >= kotlin250Dev9169) {
-    testImplementation(enforcedPlatform("org.junit:junit-bom:6.1.3"))
-  }
+  // The compiler test framework needs the Kotlin assertion helpers in recent Jupiter versions.
+  testImplementation(libs.junit.jupiter)
+  testRuntimeOnly(libs.junit.jupiter.platformLauncher)
 
   // 2.3.0 changed the test gen APIs around into different packages
   "generator230CompileOnly"(
