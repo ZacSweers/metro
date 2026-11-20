@@ -30,15 +30,14 @@ object MetroDirectives : SimpleDirectivesContainer() {
   val ENABLE_TOP_LEVEL_FUNCTION_INJECTION by directive("Enable top-level function injection.")
   val FIX_EMPTY_SMAP_RANGES by directive("Enable the workaround for empty JVM SMAP ranges.")
   val GENERATE_CONTRIBUTION_HINTS by
-    valueDirective("Enable/disable generation of contribution hint generation.") { it.toBoolean() }
-  val GENERATE_CONTRIBUTION_HINTS_IN_FIR by
-    directive("Enable/disable generation of contribution hint generation in FIR.")
+    valueDirective("Generate contribution hints.") { it.toBooleanStrict() }
+  val GENERATE_CONTRIBUTION_HINTS_IN_FIR by directive("Generate contribution hints in FIR.")
   val GENERATE_CLASSES_IN_IR by
     valueDirective("Enable/disable generation of metadata-visible hidden classes in IR.") {
-      it.toBoolean()
+      it.toBooleanStrict()
     }
   val OMIT_REDUNDANT_MIRRORS by
-    valueDirective("Omit redundant generated declaration mirrors.") { it.toBoolean() }
+    valueDirective("Omit redundant generated declaration mirrors.") { it.toBooleanStrict() }
   val ENABLE_PRIVATE_PROVIDER_PROPERTIES by
     directive("Enable private @Provides properties and their property mirrors.")
   val PUBLIC_SCOPED_PROVIDER_SEVERITY by
@@ -46,11 +45,11 @@ object MetroDirectives : SimpleDirectivesContainer() {
       "Control diagnostic severity reporting of public scoped providers.",
     )
   val SHRINK_UNUSED_BINDINGS by
-    valueDirective("Enable/disable shrinking of unused bindings.") { it.toBoolean() }
+    valueDirective("Enable/disable shrinking of unused bindings.") { it.toBooleanStrict() }
   val STATEMENTS_PER_INIT_FUN by
     valueDirective("Maximum statements per init function when chunking is enabled.") { it.toInt() }
   val ENABLE_GRAPH_SHARDING by
-    valueDirective("Enable/disable graph sharding of binding graphs.") { it.toBoolean() }
+    valueDirective("Enable/disable graph sharding of binding graphs.") { it.toBooleanStrict() }
   val KEYS_PER_GRAPH_SHARD by
     valueDirective("Maximum number of binding keys per graph shard when sharding is enabled.") {
       it.toInt()
@@ -73,10 +72,10 @@ object MetroDirectives : SimpleDirectivesContainer() {
     }
   val FORCE_PROVIDER_GETTERS by
     valueDirective("Use getters for unscoped providers and provider conversions.") {
-      it.toBoolean()
+      it.toBooleanStrict()
     }
   val ENABLE_SWITCHING_PROVIDERS by
-    valueDirective("Enable SwitchingProviders for deferred class loading.") { it.toBoolean() }
+    valueDirective("Enable SwitchingProviders for deferred class loading.") { it.toBooleanStrict() }
   val ENABLE_FULL_BINDING_GRAPH_VALIDATION by
     directive(
       "Enable/disable full binding graph validation of binds and provides declarations even if they are unused.",
@@ -127,7 +126,7 @@ object MetroDirectives : SimpleDirectivesContainer() {
   val PARALLEL_THREADS by
     valueDirective("Number of threads to use for parallel Metro processing.") { it.toInt() }
   val ENABLE_PROVIDER_INLINING by
-    valueDirective("Enable/disable provider body inlining.") { it.toBoolean() }
+    valueDirective("Enable/disable provider body inlining.") { it.toBooleanStrict() }
   val ENABLE_SUSPEND_PROVIDERS by
     directive(
       "Enable experimental suspend provider support and add Metro's runtime-coroutines artifact.",
@@ -150,7 +149,7 @@ object MetroDirectives : SimpleDirectivesContainer() {
     valueDirective(
       "Generate top-level contribution provider classes with @Provides functions instead of nested @Binds interfaces.",
     ) {
-      it.toBoolean()
+      it.toBooleanStrict()
     }
   // Dependency directives.
   val WITH_ANVIL by directive("Add Anvil as dependency and configure custom annotations.")
@@ -159,7 +158,7 @@ object MetroDirectives : SimpleDirectivesContainer() {
       "Enable or disable Anvil interoperability.",
       applicability = DirectiveApplicability.Module,
     ) {
-      it.toBoolean()
+      it.toBooleanStrict()
     }
   val WITH_KI_ANVIL by
     directive("Add kotlin-inject-nnvil as dependency and configure custom annotations.")
@@ -182,15 +181,17 @@ object MetroDirectives : SimpleDirectivesContainer() {
 
   // Anvil KSP options
   val ANVIL_GENERATE_DAGGER_FACTORIES by
-    valueDirective("Enable/disable generation of Dagger factories in Anvil KSP.") { it.toBoolean() }
+    valueDirective("Enable/disable generation of Dagger factories in Anvil KSP.") {
+      it.toBooleanStrict()
+    }
   val ANVIL_GENERATE_DAGGER_FACTORIES_ONLY by
     valueDirective(
       "Enable/disable generating only Dagger factories in Anvil KSP, skip component merging. Default is true.",
     ) {
-      it.toBoolean()
+      it.toBooleanStrict()
     }
   val ANVIL_DISABLE_COMPONENT_MERGING by
-    valueDirective("Enable/disable component merging in Anvil KSP.") { it.toBoolean() }
+    valueDirective("Enable/disable component merging in Anvil KSP.") { it.toBooleanStrict() }
   val ANVIL_EXTRA_CONTRIBUTING_ANNOTATIONS by
     stringDirective(
       "Colon-separated list of extra contributing annotations for Anvil KSP. Example: 'com.example.MyAnnotation:com.example.OtherAnnotation'.",

@@ -142,31 +142,20 @@ class MetroExtensionRegistrarConfigurator(
       module.directives.singleOrZeroValue(MetroDirectives.FORCE_PROVIDER_GETTERS)?.let {
         forceProviderGetters = it
       }
+      // Fixture values follow suite defaults when both supply a directive.
       enableSwitchingProviders =
-        // Weird but necessary because we may set a default in default configurations that we
-        // override in the test, so just take the last one from the file
-        module.directives[MetroDirectives.ENABLE_SWITCHING_PROVIDERS]
-          .lastOrNull()
-          ?.toString()
-          ?.toBoolean() ?: false
+        module.directives[MetroDirectives.ENABLE_SWITCHING_PROVIDERS].lastOrNull() ?: false
       enableFullBindingGraphValidation =
         MetroDirectives.ENABLE_FULL_BINDING_GRAPH_VALIDATION in module.directives
       enableGraphImplClassAsReturnType =
         MetroDirectives.ENABLE_GRAPH_IMPL_CLASS_AS_RETURN_TYPE in module.directives
       generateContributionHints =
-        // Let fixture directives override the suite default.
         module.directives[MetroDirectives.GENERATE_CONTRIBUTION_HINTS].lastOrNull() ?: true
       generateClassesInIr =
-        module.directives[MetroDirectives.GENERATE_CLASSES_IN_IR]
-          .lastOrNull()
-          ?.toString()
-          ?.toBoolean() ?: false
+        module.directives[MetroDirectives.GENERATE_CLASSES_IN_IR].lastOrNull() ?: false
       fixEmptySmapRanges = MetroDirectives.FIX_EMPTY_SMAP_RANGES in module.directives
       omitRedundantMirrors =
-        module.directives[MetroDirectives.OMIT_REDUNDANT_MIRRORS]
-          .lastOrNull()
-          ?.toString()
-          ?.toBoolean() ?: false
+        module.directives[MetroDirectives.OMIT_REDUNDANT_MIRRORS].lastOrNull() ?: false
 
       val shouldGenerateContributionHintsInFir =
         MetroDirectives.GENERATE_CONTRIBUTION_HINTS_IN_FIR in module.directives ||
@@ -239,12 +228,7 @@ class MetroExtensionRegistrarConfigurator(
         MetroDirectives.ENABLE_KCLASS_TO_CLASS_INTEROP in module.directives
 
       generateContributionProviders =
-        // Weird but necessary because we may set a default in default configurations that we
-        // override in the test, so just take the last one from the file
-        module.directives[MetroDirectives.GENERATE_CONTRIBUTION_PROVIDERS]
-          .lastOrNull()
-          ?.toString()
-          ?.toBoolean() ?: false
+        module.directives[MetroDirectives.GENERATE_CONTRIBUTION_PROVIDERS].lastOrNull() ?: false
 
       // Configure interop annotations using builder helper methods
       if (MetroDirectives.WITH_KI_ANVIL in module.directives) {
