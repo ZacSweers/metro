@@ -13,6 +13,7 @@ import org.jetbrains.kotlin.test.backend.ir.IrBackendInput
 import org.jetbrains.kotlin.test.backend.ir.IrDiagnosticsHandler
 import org.jetbrains.kotlin.test.directives.DiagnosticsDirectives
 import org.jetbrains.kotlin.test.directives.FirDiagnosticsDirectives
+import org.jetbrains.kotlin.test.directives.model.RegisteredDirectives
 import org.jetbrains.kotlin.test.model.TestFile
 import org.jetbrains.kotlin.test.model.TestModule
 import org.jetbrains.kotlin.test.services.ServiceRegistrationData
@@ -34,41 +35,28 @@ import org.jetbrains.kotlin.test.utils.MultiModuleInfoDumper
  */
 class MetroIrDiagnosticsHandler(testServices: TestServices) : AbstractIrHandler(testServices) {
   private val delegate = IrDiagnosticsHandler(testServices)
-  private val dumper = MultiModuleInfoDumper(moduleHeaderTemplate = "// -- Module: <%s> --")
+  private val dump = IrDiagnosticsDump(testServices)
 
   override val additionalServices: List<ServiceRegistrationData>
     get() = delegate.additionalServices
 
   override fun processModule(module: TestModule, info: IrBackendInput) {
     delegate.processModule(module, info)
-    if (DiagnosticsDirectives.RENDER_IR_DIAGNOSTICS_FULL_TEXT !in module.directives) return
-
-    for (currentModule in testServices.moduleStructure.modules) {
-      for (file in currentModule.files) {
-        val diagnostics = irDiagnosticsForFileCompat(info, file, testServices) ?: continue
-        val rendered = renderDiagnosticsAsLineColumn(diagnostics, file) ?: continue
-        dumper.builderForModule(module).appendLine(rendered)
-      }
+    if (DiagnosticsDirectives.RENDER_IR_DIAGNOSTICS_FULL_TEXT in module.directives) {
+      dump.append(module, info)
     }
   }
 
-  /**
-   * True when this test compiles with [DiagnosticsRenderMode.RICH] diagnostics. Rich output asserts
-   * against `.rich.ir.diag.txt` goldens with ANSI codes escaped via [AnsiMarkup] for readability.
-   */
-  private val isRichMode: Boolean
-    get() =
-      testServices.moduleStructure.allDirectives[MetroDirectives.DIAGNOSTICS_RENDER_MODE]
-        .lastOrNull() == DiagnosticsRenderMode.RICH
-
   override fun processAfterAllModules(someAssertionWasFailed: Boolean) {
     val directives = testServices.moduleStructure.allDirectives
-    if (FirDiagnosticsDirectives.USE_LATEST_LANGUAGE_VERSION in directives) return
+    if (FirDiagnosticsDirectives.USE_LATEST_LANGUAGE_VERSION in directives) {
+      return
+    }
+
     val testDataFile = testServices.moduleStructure.originalTestDataFiles.first()
-    val goldenSuffix = if (isRichMode) "rich.ir.diag.txt" else "ir.diag.txt"
     val expectedFile =
       testDataFile.parentFile.resolve(
-        "${testDataFile.nameWithoutExtension.removeSuffix(".fir")}.$goldenSuffix",
+        "${testDataFile.nameWithoutExtension.removeSuffix(".fir")}.ir.diag.txt",
       )
     if (DiagnosticsDirectives.RENDER_IR_DIAGNOSTICS_FULL_TEXT !in directives) {
       if (DiagnosticsDirectives.RENDER_ALL_DIAGNOSTICS_FULL_TEXT !in directives) {
@@ -79,8 +67,59 @@ class MetroIrDiagnosticsHandler(testServices: TestServices) : AbstractIrHandler(
       }
       return
     }
-    if (dumper.isEmpty() && !expectedFile.exists()) return
-    testServices.assertions.assertEqualsToFile(expectedFile, dumper.generateResultingDump())
+
+    if (dump.isEmpty() && !expectedFile.exists()) {
+      return
+    }
+
+    testServices.assertions.assertEqualsToFile(expectedFile, dump.render())
+  }
+}
+
+/**
+ * Checks readable rich IR goldens on every Kotlin version. Inline diagnostics use the usual
+ * handler.
+ */
+class RichIrDiagnosticsHandler(testServices: TestServices) : AbstractIrHandler(testServices) {
+  private val dump by lazy { IrDiagnosticsDump(testServices) }
+
+  override fun processModule(module: TestModule, info: IrBackendInput) {
+    if (module.directives.rendersRichDiagnostics()) {
+      dump.append(module, info)
+    }
+  }
+
+  override fun processAfterAllModules(someAssertionWasFailed: Boolean) {
+    val structure = testServices.moduleStructure
+    if (!structure.allDirectives.rendersRichDiagnostics()) {
+      return
+    }
+
+    val fixture = structure.originalTestDataFiles.first()
+    val golden = fixture.resolveSibling("${fixture.nameWithoutExtension}.rich.ir.diag.txt")
+    testServices.assertions.assertEqualsToFile(golden, AnsiMarkup.escape(dump.render()))
+  }
+
+  private fun RegisteredDirectives.rendersRichDiagnostics(): Boolean =
+    DiagnosticsRenderMode.RICH in this[MetroDirectives.DIAGNOSTICS_RENDER_MODE]
+}
+
+/** Collects source positions and messages while each module's IR is available. */
+private class IrDiagnosticsDump(private val testServices: TestServices) {
+  private val dumper = MultiModuleInfoDumper(moduleHeaderTemplate = "// -- Module: <%s> --")
+
+  fun isEmpty() = dumper.isEmpty()
+
+  fun render() = dumper.generateResultingDump()
+
+  fun append(module: TestModule, info: IrBackendInput) {
+    for (currentModule in testServices.moduleStructure.modules) {
+      for (file in currentModule.files) {
+        val diagnostics = irDiagnosticsForFileCompat(info, file, testServices) ?: continue
+        val rendered = renderDiagnosticsAsLineColumn(diagnostics, file) ?: continue
+        dumper.builderForModule(module).appendLine(rendered)
+      }
+    }
   }
 
   private fun renderDiagnosticsAsLineColumn(
@@ -105,7 +144,7 @@ class MetroIrDiagnosticsHandler(testServices: TestServices) : AbstractIrHandler(
                 is KtDiagnosticWithoutSource -> listOf(it.firstRange)
               },
             severity = severityToStringCompat(it.severity),
-            message = it.renderMessage().let { m -> if (isRichMode) AnsiMarkup.escape(m) else m },
+            message = it.renderMessage(),
           )
         }
         .sortedWith(

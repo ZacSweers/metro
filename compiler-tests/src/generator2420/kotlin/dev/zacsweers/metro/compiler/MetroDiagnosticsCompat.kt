@@ -9,6 +9,7 @@ import org.jetbrains.kotlin.test.Constructor
 import org.jetbrains.kotlin.test.backend.BlackBoxCodegenSuppressor
 import org.jetbrains.kotlin.test.backend.BlackBoxCodegenSuppressor.SuppressionChecker
 import org.jetbrains.kotlin.test.backend.handlers.NoIrCompilationErrorsHandler
+import org.jetbrains.kotlin.test.backend.handlers.findByPath
 import org.jetbrains.kotlin.test.backend.ir.IrBackendInput
 import org.jetbrains.kotlin.test.builders.RegisteredDirectivesBuilder
 import org.jetbrains.kotlin.test.builders.TestConfigurationBuilder
@@ -21,22 +22,22 @@ import org.jetbrains.kotlin.test.services.TestPhase
 import org.jetbrains.kotlin.test.services.TestServices
 import org.jetbrains.kotlin.utils.bind
 
-// Stubs: on Kotlin 2.4.20+ the framework natively produces post-KT-85292 file naming and
-// `line:column` format, so [NEEDS_LEGACY_GOLDEN_NAMING] is false and `AbstractDiagnosticTest`
-// just calls `super.configure`. None of these helpers are reachable at runtime here -- they
-// only exist so the call sites in src/test resolve at compile time.
+// Kotlin 2.4.20+ renders FIR goldens natively. Only the legacy handler calls this helper.
+fun mainFirFilesCompat(info: FirOutputArtifact): Map<TestFile, FirFile> =
+  error("Legacy FIR diagnostic handler used on Kotlin 2.4.20+.")
 
-private const val UNREACHABLE = "Metro diagnostic shim should not run on Kotlin 2.4.20+."
+fun severityToStringCompat(severity: Severity): String =
+  severity.toCompilerMessageSeverity().toString().lowercase()
 
-fun mainFirFilesCompat(info: FirOutputArtifact): Map<TestFile, FirFile> = error(UNREACHABLE)
-
-fun severityToStringCompat(severity: Severity): String = error(UNREACHABLE)
-
+/** Resolves the diagnostics for a file in a rich IR snapshot. */
 fun irDiagnosticsForFileCompat(
   info: IrBackendInput,
   file: TestFile,
   testServices: TestServices,
-): List<KtDiagnostic>? = error(UNREACHABLE)
+): List<KtDiagnostic>? =
+  file.findByPath(testServices) { path ->
+    info.diagnosticReporter.diagnosticsByFile.entries.firstOrNull { it.key?.path == path }?.value
+  }
 
 val noIrCompilationErrorsHandlerCtor: Constructor<AnalysisHandler<IrBackendInput>> =
   ::NoIrCompilationErrorsHandler
