@@ -164,25 +164,24 @@ fun RegisteredDirectivesBuilder.commonMetroTestDirectives() {
 }
 
 /**
- * Checks if the target version matches the actual compiler version.
- *
- * @param targetVersion The parsed target version
- * @param requiresFullMatch Whether all components (major, minor, patch) must match. If false, only
- *   major and minor are compared.
- * @param actualVersion The actual compiler version
+ * A major.minor target matches the whole release line. A target with a patch version also pins the
+ * classifier so a stable release has its own goldens.
  */
 private fun versionMatches(
   targetVersion: KotlinToolingVersion,
   requiresFullMatch: Boolean,
   actualVersion: KotlinToolingVersion,
 ): Boolean {
-  if (targetVersion.major != actualVersion.major) return false
-  if (targetVersion.minor != actualVersion.minor) return false
-  if (requiresFullMatch && targetVersion.patch != actualVersion.patch) return false
-  if (requiresFullMatch && targetVersion.classifier != null) {
-    return targetVersion.classifier.equals(actualVersion.classifier, ignoreCase = true)
+  if (targetVersion.major != actualVersion.major || targetVersion.minor != actualVersion.minor) {
+    return false
   }
-  return true
+
+  if (!requiresFullMatch) {
+    return true
+  }
+
+  return targetVersion.patch == actualVersion.patch &&
+    targetVersion.classifier.equals(actualVersion.classifier, ignoreCase = true)
 }
 
 private fun toolingVersionDirective(versionString: String): Pair<KotlinToolingVersion, Boolean> {

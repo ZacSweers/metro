@@ -378,7 +378,7 @@ FILE fqName:<root> fileName:/GeneratedCompanionSupertypes.kt
         BLOCK_BODY
           DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> () declared in kotlin.Any'
           INSTANCE_INITIALIZER_CALL classDescriptor='CLASS GENERATED[dev.zacsweers.metro.compiler.fir.Keys.MetroContributionClassDeclaration] OBJECT name:ToAppScope modality:FINAL visibility:public superTypes:[kotlin.Any]' type=<root>.ProviderContributionContributions.ToAppScope
-      FUN GENERATED[dev.zacsweers.metro.compiler.fir.Keys.MetroContributionCallableDeclaration] name:providesProviderContribution visibility:public modality:FINAL returnType:<root>.ProviderBinding
+      FUN GENERATED[dev.zacsweers.metro.compiler.fir.Keys.MetroContributionCallableDeclaration] name:providesProviderContribution visibility:public modality:FINAL returnType:<root>.ProviderBinding [companion]
         annotations:
           Provides
         BLOCK_BODY
@@ -492,7 +492,7 @@ FILE fqName:<root> fileName:/GeneratedCompanionSupertypes.kt
     thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:<root>.Bindings
     CLASS GENERATED[dev.zacsweers.metro.compiler.fir.Keys.ProviderFactoryClassDeclaration] CLASS name:ProvideStringMetroFactory modality:FINAL visibility:public superTypes:[dev.zacsweers.metro.internal.Factory<kotlin.String>]
       annotations:
-        CallableMetadata(callableName = "provideString", propertyName = "", startOffset = 231, endOffset = 287, newInstanceName = "provideString", isCompanionBlockMember = <null>)
+        CallableMetadata(callableName = "provideString", propertyName = "", startOffset = 225, endOffset = 281, newInstanceName = "provideString", isCompanionBlockMember = <null>)
       thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:<root>.Bindings.ProvideStringMetroFactory
       FIELD name:value type:dev.zacsweers.metro.Provider<kotlin.Int> visibility:private [final]
         EXPRESSION_BODY
