@@ -355,6 +355,7 @@ jobs:
         run: |
           ./scripts/run-ci-gradle.sh :compiler-tests:test --quiet \
             "-Pmetro.testCompilerVersion=$METRO_TEST_COMPILER_VERSION" \
+            --tests 'dev.zacsweers.metro.compiler.JsBoxTestGenerated$Api.testBindsInGeneratedContributesTo_SeparateCompilation' \
             --tests 'dev.zacsweers.metro.compiler.JsBoxTestGenerated$Inject$Assisted.testBasicAssistedInject' \
             --tests 'dev.zacsweers.metro.compiler.JsBoxTestGenerated$Multibindings.testMapProviderLazyValues' \
             --tests 'dev.zacsweers.metro.compiler.JsBoxTestGenerated$Suspend.testMixedSuspendChain' \

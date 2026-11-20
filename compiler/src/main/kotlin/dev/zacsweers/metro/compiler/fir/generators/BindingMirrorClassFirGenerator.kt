@@ -7,6 +7,7 @@ import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.fir.isAttachedExtensionMember
 import dev.zacsweers.metro.compiler.fir.markAsDeprecatedHidden
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.metroAnnotations
@@ -93,8 +94,7 @@ internal class BindingMirrorClassFirGenerator(
   ): Set<Name> {
     val result = mutableSetOf<Name>()
 
-    // Check if this class has any @Binds or @Multibinds members or is a contribution class decl
-    val hasBindingMembers =
+    val needsBindingMirror =
       classSymbol.declarationSymbols.filterIsInstance<FirCallableSymbol<*>>().any { callable ->
         val annotations =
           callable.metroAnnotations(
@@ -108,10 +108,10 @@ internal class BindingMirrorClassFirGenerator(
           )
         val isBinding =
           annotations.isBinds || annotations.isMultibinds || annotations.isBindsOptionalOf
-        isBinding && (!useDirectBindingDeclarations || !callable.isEffectivelyPublicInRawFir())
+        isBinding && (!useDirectBindingDeclarations || !callable.canBeReadDirectly())
       }
 
-    if (hasBindingMembers) {
+    if (needsBindingMirror) {
       mirrorClassesToGenerate.add(
         classSymbol.classId.createNestedClassId(Symbols.Names.BindsMirrorClass),
       )
@@ -153,8 +153,13 @@ internal class BindingMirrorClassFirGenerator(
   }
 }
 
+/** Checks whether another compilation can read this binding from the owner's metadata. */
 @OptIn(SymbolInternals::class)
-private fun FirCallableSymbol<*>.isEffectivelyPublicInRawFir(): Boolean {
+private fun FirCallableSymbol<*>.canBeReadDirectly(): Boolean {
+  if (fir.isAttachedExtensionMember == true) {
+    return false
+  }
+
   val callableVisibility = fir.status.visibility
   if (callableVisibility == Visibilities.Unknown && rawStatus.isOverride) return false
   if (callableVisibility != Visibilities.Public && callableVisibility != Visibilities.Unknown) {

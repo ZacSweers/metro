@@ -11,6 +11,7 @@ import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.compat.propertyIfAccessorCompat
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
+import dev.zacsweers.metro.compiler.fir.isAttachedExtensionMember
 import dev.zacsweers.metro.compiler.ir.BindsCallable
 import dev.zacsweers.metro.compiler.ir.BindsOptionalOfCallable
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
@@ -168,8 +169,12 @@ internal class BindsMirrorClassTransformer(context: IrMetroContext) :
   }
 }
 
+/**
+ * Matches the metadata check in
+ * [dev.zacsweers.metro.compiler.fir.generators.BindingMirrorClassFirGenerator].
+ */
 private fun IrSimpleFunction.canBeReadDirectly(): Boolean {
-  return isEffectivelyPublic()
+  return isEffectivelyPublic() && !isAttachedExtensionMember
 }
 
 internal data class BindsMirror(
