@@ -1,5 +1,7 @@
 // ENABLE_SWITCHING_PROVIDERS: true
 // STATEMENTS_PER_INIT_FUN: 2
+// CHECK_BYTECODE_TEXT
+// FILE: Graph.kt
 
 @SingleIn(AppScope::class)
 @Inject
@@ -35,6 +37,7 @@ interface AppGraph {
   val thing6: Thing6
 }
 
+// FILE: Test.kt
 fun box(): String {
   val graph = createGraph<AppGraph>()
   assertNotNull(graph.thing1)
@@ -48,7 +51,6 @@ fun box(): String {
 
 // <count> <instruction>
 // Asserts that invoke() routes directly to one helper and all switches lower to tableswitch.
-// CHECK_BYTECODE_TEXT
 // @AppGraph$Impl$SwitchingProvider.class:
 // 0 Intrinsics.areEqual
 // 0 IF_ICMPNE

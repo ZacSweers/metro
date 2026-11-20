@@ -17,7 +17,6 @@ import dev.zacsweers.metro.compiler.api.GenerateProvidesContributionExtension
 import dev.zacsweers.metro.compiler.api.GenerateProvidesContributionIrExtension
 import dev.zacsweers.metro.compiler.api.GenerateProvidesContributionMetroExtension
 import dev.zacsweers.metro.compiler.api.GenerateProvidesInGraphExtension
-import dev.zacsweers.metro.compiler.api.fir.MetroContributionHintExtension
 import dev.zacsweers.metro.compiler.circuit.CircuitContributionExtension
 import dev.zacsweers.metro.compiler.circuit.CircuitFirExtension
 import dev.zacsweers.metro.compiler.circuit.CircuitIrDeclarationGenerationExtension
@@ -39,7 +38,6 @@ import dev.zacsweers.metro.compiler.interop.configureDaggerInterop
 import dev.zacsweers.metro.compiler.interop.configureGuiceInterop
 import dev.zacsweers.metro.compiler.interop.configureHiltAnnotations
 import dev.zacsweers.metro.compiler.ir.MetroIrGenerationExtension
-import dev.zacsweers.metro.compiler.test.TEST_COMPILER_VERSION
 import dev.zacsweers.metro.compiler.tracing.TraceContext
 import kotlin.io.path.Path
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
@@ -51,6 +49,7 @@ import org.jetbrains.kotlin.incremental.components.ExpectActualTracker
 import org.jetbrains.kotlin.test.TargetBackend
 import org.jetbrains.kotlin.test.builders.TestConfigurationBuilder
 import org.jetbrains.kotlin.test.cli.CliDirectives
+import org.jetbrains.kotlin.test.directives.AdditionalFilesDirectives.WITH_COROUTINES as WITH_COROUTINE_HELPERS
 import org.jetbrains.kotlin.test.directives.LanguageSettingsDirectives.LANGUAGE
 import org.jetbrains.kotlin.test.directives.model.singleOrZeroValue
 import org.jetbrains.kotlin.test.model.TestModule
@@ -76,6 +75,10 @@ fun TestConfigurationBuilder.configurePlugin(
     // Skip before Kotlin parses module-level language directives.
     assumeTrue(compatContext.supportsCompanionBlocks, "Compiler does not support companion blocks")
     defaultDirectives { LANGUAGE + "+CompanionBlocks" }
+  }
+  forTestsMatching("*/box/suspend/*") {
+    // Other box fixtures opt in to helpers.runBlocking with WITH_COROUTINES.
+    defaultDirectives { +WITH_COROUTINE_HELPERS }
   }
   forTestsMatching("*/box/derivedbindings/*") {
     // Every box fixture in this directory uses derived bindings, so none of them repeats the
@@ -292,6 +295,7 @@ class MetroExtensionRegistrarConfigurator(
 
     if (!options.enabled) return
 
+    val withSampleExtensions = MetroDirectives.WITH_SAMPLE_EXTENSIONS in module.directives
     val classIds = ClassIds.fromOptions(options)
     val traceContext = TraceContext(options)
     FirExtensionRegistrarAdapter.registerExtension(
@@ -303,17 +307,25 @@ class MetroExtensionRegistrarConfigurator(
         traceContext = traceContext,
         loadExternalDeclarationExtensions = { session, options, compatContext ->
           buildList {
-            add(GenerateImplExtension.Factory().create(session, options, compatContext))
-            add(
-              GenerateProvidesContributionExtension.Factory()
-                .create(session, options, compatContext),
-            )
-            add(
-              GenerateBindsContributionExtension.Factory().create(session, options, compatContext),
-            )
-            add(GenerateDependencyGraphExtension.Factory().create(session, options, compatContext))
-            add(GenerateGraphExtensionExtension.Factory().create(session, options, compatContext))
-            add(GenerateProvidesInGraphExtension.Factory().create(session, options, compatContext))
+            if (withSampleExtensions) {
+              add(GenerateImplExtension.Factory().create(session, options, compatContext))
+              add(
+                GenerateProvidesContributionExtension.Factory()
+                  .create(session, options, compatContext),
+              )
+              add(
+                GenerateBindsContributionExtension.Factory()
+                  .create(session, options, compatContext),
+              )
+              add(
+                GenerateDependencyGraphExtension.Factory().create(session, options, compatContext),
+              )
+              add(GenerateGraphExtensionExtension.Factory().create(session, options, compatContext))
+              add(
+                GenerateProvidesInGraphExtension.Factory().create(session, options, compatContext),
+              )
+            }
+
             if (options.enableCircuitCodegen) {
               CircuitFirExtension.Factory().create(session, options, compatContext)?.let(::add)
               CircuitSerializableFirExtension.Factory()
@@ -329,16 +341,7 @@ class MetroExtensionRegistrarConfigurator(
         },
         loadExternalContributionHintExtensions = { session, options, compatContext ->
           buildList {
-            addAll(
-              listOfNotNull(
-                GenerateProvidesContributionExtension.Factory()
-                  .create(session, options, compatContext) as? MetroContributionHintExtension,
-                GenerateBindsContributionExtension.Factory().create(session, options, compatContext)
-                  as? MetroContributionHintExtension,
-                GenerateGraphExtensionExtension.Factory().create(session, options, compatContext)
-                  as? MetroContributionHintExtension,
-              ),
-            )
+            // Metro collects sample hints from the registered declaration extensions.
             if (options.enableHiltInterop) {
               HiltFirDeclarationExtension.HintFactory()
                 .create(session, options, compatContext)
@@ -348,19 +351,24 @@ class MetroExtensionRegistrarConfigurator(
         },
         loadExternalContributionExtensions = { session, options, compatContext ->
           buildList {
-            add(GenerateImplContributionExtension.Factory().create(session, options, compatContext))
-            add(
-              GenerateProvidesContributionMetroExtension.Factory()
-                .create(session, options, compatContext),
-            )
-            add(
-              GenerateBindsContributionMetroExtension.Factory()
-                .create(session, options, compatContext),
-            )
-            add(
-              GenerateGraphExtensionContributionExtension.Factory()
-                .create(session, options, compatContext),
-            )
+            if (withSampleExtensions) {
+              add(
+                GenerateImplContributionExtension.Factory().create(session, options, compatContext),
+              )
+              add(
+                GenerateProvidesContributionMetroExtension.Factory()
+                  .create(session, options, compatContext),
+              )
+              add(
+                GenerateBindsContributionMetroExtension.Factory()
+                  .create(session, options, compatContext),
+              )
+              add(
+                GenerateGraphExtensionContributionExtension.Factory()
+                  .create(session, options, compatContext),
+              )
+            }
+
             if (options.enableCircuitCodegen && !options.generateClassesInIr) {
               add(CircuitContributionExtension.Factory().create(session, options, compatContext)!!)
               add(
@@ -416,9 +424,12 @@ class MetroExtensionRegistrarConfigurator(
         ),
       )
     }
-    IrGenerationExtension.registerExtension(GenerateImplIrExtension())
-    IrGenerationExtension.registerExtension(GenerateProvidesContributionIrExtension())
-    IrGenerationExtension.registerExtension(GenerateProvidersInGraphIrExtension())
+    if (withSampleExtensions) {
+      IrGenerationExtension.registerExtension(GenerateImplIrExtension())
+      IrGenerationExtension.registerExtension(GenerateProvidesContributionIrExtension())
+      IrGenerationExtension.registerExtension(GenerateProvidersInGraphIrExtension())
+    }
+
     IrGenerationExtension.registerExtension(
       MetroIrGenerationExtension(
         messageCollector =
@@ -444,8 +455,6 @@ class MetroExtensionRegistrarConfigurator(
 }
 
 private val MIN_KOTLIN_VERSION_FOR_JS_FIR_CONTRIBUTION_HINTS = KotlinToolingVersion("2.3.21")
-
-private val TEST_COMPILER_TOOLING_VERSION = KotlinToolingVersion(TEST_COMPILER_VERSION)
 
 private fun TestServices.shouldGenerateContributionHintsInFirForBackend(): Boolean {
   return when (defaultsProvider.targetBackend) {

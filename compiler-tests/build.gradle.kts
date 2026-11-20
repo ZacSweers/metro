@@ -78,7 +78,6 @@ buildConfig {
       "COMPILER_VERSION",
       "KotlinVersion(${testKotlinVersion.major}, ${testKotlinVersion.minor}, ${testKotlinVersion.patch})",
     )
-    buildConfigField("String", "COMPILER_TOOLING_VERSION", "\"$testCompilerVersion\"")
   }
 }
 

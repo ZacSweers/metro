@@ -1,4 +1,5 @@
 // ENABLE_SUSPEND_PROVIDERS
+// WITH_COROUTINES
 
 // A suspend generic provider resolves through suspend accessors.
 interface Encoder<T> {

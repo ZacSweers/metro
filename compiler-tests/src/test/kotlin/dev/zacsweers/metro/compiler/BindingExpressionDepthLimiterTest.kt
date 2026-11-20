@@ -35,6 +35,7 @@ class BindingExpressionDepthLimiterTest : DynamicJvmBoxTest() {
     runDynamicBoxTest(testName) {
       if (usesSuspendBindings) {
         appendLine("// ENABLE_SUSPEND_PROVIDERS")
+        appendLine("// WITH_COROUTINES")
       }
       appendLine("private var created = 0")
       appendLine()

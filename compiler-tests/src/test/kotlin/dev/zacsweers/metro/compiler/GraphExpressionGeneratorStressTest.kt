@@ -85,6 +85,7 @@ class GraphExpressionGeneratorStressTest : DynamicJvmBoxTest() {
     runDynamicBoxTest(testName) {
       if (usesSuspendBindings) {
         appendLine("// ENABLE_SUSPEND_PROVIDERS")
+        appendLine("// WITH_COROUTINES")
       }
 
       val rootDependencies = buildList {

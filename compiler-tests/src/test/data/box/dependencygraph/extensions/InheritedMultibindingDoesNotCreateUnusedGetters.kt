@@ -1,5 +1,7 @@
 // METRO_JVM_ONLY
 // OMIT_REDUNDANT_MIRRORS: true
+// CHECK_BYTECODE_TEXT
+// FILE: Graph.kt
 
 @SingleIn(AppScope::class) @Inject class Scoped
 
@@ -43,6 +45,7 @@ interface SiblingGraph {
   val lazyScoped: Lazy<Scoped>
 }
 
+// FILE: Test.kt
 fun box(): String {
   val root = createGraph<RootGraph>()
   val child = root.child
@@ -64,7 +67,6 @@ fun box(): String {
   return "OK"
 }
 
-// CHECK_BYTECODE_TEXT
 // @RootGraph$Impl.class:
 // 1 NEW SharedByChildren
 // @RootGraph$Impl$ChildGraphImpl.class:

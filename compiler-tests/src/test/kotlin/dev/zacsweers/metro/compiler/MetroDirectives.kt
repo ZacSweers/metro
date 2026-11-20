@@ -18,9 +18,6 @@ object MetroDirectives : SimpleDirectivesContainer() {
   val MIN_JS_COMPILER_VERSION by
     stringDirective("Minimum Kotlin compiler version for the JS backend (inclusive), if any")
   val MAX_COMPILER_VERSION by stringDirective("Maximum kotlin compiler version (inclusive), if any")
-  // TODO eventually support multiple outputs
-  val CUSTOM_TEST_DATA_PER_COMPILER_VERSION by
-    directive("Generate custom test data files per compiler version")
   val COMPANION_MODE by
     enumDirective<CompanionMode>(
       "Controls generated graph creators and factory/injector helpers.",
@@ -227,6 +224,7 @@ object MetroDirectives : SimpleDirectivesContainer() {
         "Verification runs inside MetroReportsChecker.",
     )
   val ENABLE_SERIALIZATION by directive("Enables the kotlinx-serialization compiler plugin.")
+  val WITH_SAMPLE_EXTENSIONS by directive("Load the sample Metro compiler extensions in api/.")
   val ENABLE_CIRCUIT by directive("Enables Circuit code gen.")
   val WITH_HILT by directive("Add Hilt-core as dependency.")
   val ENABLE_HILT_INTEROP by
