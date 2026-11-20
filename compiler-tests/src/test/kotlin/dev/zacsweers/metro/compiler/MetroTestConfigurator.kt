@@ -13,6 +13,7 @@ import org.jetbrains.kotlin.test.directives.DiagnosticsDirectives
 import org.jetbrains.kotlin.test.directives.LanguageSettingsDirectives.OPT_IN
 import org.jetbrains.kotlin.test.directives.model.DirectivesContainer
 import org.jetbrains.kotlin.test.services.MetaTestConfigurator
+import org.jetbrains.kotlin.test.services.TestModuleStructure
 import org.jetbrains.kotlin.test.services.TestServices
 import org.jetbrains.kotlin.test.services.moduleStructure
 import org.jetbrains.kotlin.test.services.testInfo
@@ -21,10 +22,17 @@ class MetroTestConfigurator(testServices: TestServices) : MetaTestConfigurator(t
   override val directiveContainers: List<DirectivesContainer>
     get() = listOf(MetroDirectives)
 
-  override fun shouldSkipTest(): Boolean {
-    val directives = testServices.moduleStructure.allDirectives
-    if (MetroDirectives.METRO_IGNORE in directives) return true
-    if (MetroDirectives.METRO_JVM_ONLY in directives && !testServices.isJvmBackend()) return true
+  override fun shouldSkipTest(): Boolean = shouldSkipTest(testServices.moduleStructure)
+
+  /** Source providers can check eligibility before Kotlin registers the module structure. */
+  internal fun shouldSkipTest(structure: TestModuleStructure): Boolean {
+    val directives = structure.allDirectives
+    if (MetroDirectives.METRO_IGNORE in directives) {
+      return true
+    }
+    if (MetroDirectives.METRO_JVM_ONLY in directives && !testServices.isJvmBackend()) {
+      return true
+    }
 
     val testClassName = testServices.testInfo.className.substringAfterLast('.').substringBefore('$')
     if (
@@ -43,9 +51,7 @@ class MetroTestConfigurator(testServices: TestServices) : MetaTestConfigurator(t
       return true
     }
 
-    val jsDiagnosticSuite =
-      testServices.testInfo.className.substringAfterLast('.').substringBefore('$') ==
-        "JsDiagnosticTestGenerated"
+    val jsDiagnosticSuite = testClassName == "JsDiagnosticTestGenerated"
     if (testServices.isJsBackend() && jsDiagnosticSuite) {
       val rendersIrDiagnostics = DiagnosticsDirectives.RENDER_IR_DIAGNOSTICS_FULL_TEXT in directives
       val usesJvmInteropDependencies =
@@ -70,7 +76,7 @@ class MetroTestConfigurator(testServices: TestServices) : MetaTestConfigurator(t
 
     // A fixture can compile its producer and consumer in different modes.
     val hasConflictingModes =
-      testServices.moduleStructure.modules.any { module ->
+      structure.modules.any { module ->
         val modes = module.directives[MetroDirectives.GENERATE_CLASSES_IN_IR]
         true in modes && false in modes
       }
