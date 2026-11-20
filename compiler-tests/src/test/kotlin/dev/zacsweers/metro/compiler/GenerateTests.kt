@@ -36,7 +36,8 @@ fun main() {
 
       testClass<AbstractFirDumpTest> { model("dump/fir") }
       testClass<AbstractIrDumpTest> { model("dump/ir") }
-      testClass<AbstractReportsTest> { model("dump/reports") }
+      // Report fixtures live at the root. Their subdirectories contain expected outputs.
+      testClass<AbstractReportsTest> { model("dump/reports", recursive = false) }
     }
   }
 }
