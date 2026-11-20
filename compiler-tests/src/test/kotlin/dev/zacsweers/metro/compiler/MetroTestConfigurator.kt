@@ -63,17 +63,21 @@ class MetroTestConfigurator(testServices: TestServices) : MetaTestConfigurator(t
       if (rendersIrDiagnostics || usesJvmInteropDependencies) return true
     }
 
-    System.getProperty("metro.singleTestName")?.let { singleTest ->
-      return testServices.testInfo.methodName != singleTest
-    }
-
-    val generateClassesInIrDirectives = directives[MetroDirectives.GENERATE_CLASSES_IN_IR]
-    if (
-      generateClassesInIrDirectives.any { it.toString().toBoolean() } &&
-        generateClassesInIrDirectives.any { !it.toString().toBoolean() }
-    ) {
+    val singleTest = System.getProperty("metro.singleTestName")
+    if (singleTest != null && testServices.testInfo.methodName != singleTest) {
       return true
     }
+
+    // A fixture can compile its producer and consumer in different modes.
+    val hasConflictingModes =
+      testServices.moduleStructure.modules.any { module ->
+        val modes = module.directives[MetroDirectives.GENERATE_CLASSES_IN_IR]
+        true in modes && false in modes
+      }
+    if (hasConflictingModes) {
+      return true
+    }
+
     val irOnlyClassesSuite =
       testClassName == "IrOnlyClassesBoxTestGenerated" ||
         testClassName == "OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated"
