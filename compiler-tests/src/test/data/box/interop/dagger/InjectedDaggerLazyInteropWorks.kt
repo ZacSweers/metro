@@ -1,4 +1,4 @@
-// ENABLE_DAGGER_INTEROP
+// WITH_DAGGER
 package test
 
 import javax.inject.Inject

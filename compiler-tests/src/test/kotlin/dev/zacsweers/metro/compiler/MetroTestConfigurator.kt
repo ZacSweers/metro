@@ -49,19 +49,9 @@ class MetroTestConfigurator(testServices: TestServices) : MetaTestConfigurator(t
     val jsDiagnosticSuite = testClassName == "JsDiagnosticTestGenerated"
     if (testServices.isJsBackend() && jsDiagnosticSuite) {
       val rendersIrDiagnostics = DiagnosticsDirectives.RENDER_IR_DIAGNOSTICS_FULL_TEXT in directives
-      val usesJvmInteropDependencies =
-        MetroDirectives.WITH_ANVIL in directives ||
-          MetroDirectives.WITH_KI_ANVIL in directives ||
-          MetroDirectives.WITH_DAGGER in directives ||
-          MetroDirectives.ENABLE_DAGGER_INTEROP in directives ||
-          MetroDirectives.ENABLE_DAGGER_KSP in directives ||
-          MetroDirectives.ENABLE_ANVIL_KSP in directives ||
-          MetroDirectives.GUICE_ANNOTATIONS in directives ||
-          MetroDirectives.ENABLE_GUICE_INTEROP in directives ||
-          MetroDirectives.WITH_HILT in directives ||
-          MetroDirectives.ENABLE_HILT_INTEROP in directives ||
-          MetroDirectives.ENABLE_HILT_KSP in directives
-      if (rendersIrDiagnostics || usesJvmInteropDependencies) return true
+      if (rendersIrDiagnostics || MetroDirectives.needsJvmInteropLibraries(directives)) {
+        return true
+      }
     }
 
     val singleTest = System.getProperty("metro.singleTestName")

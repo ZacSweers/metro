@@ -149,7 +149,7 @@ object MetroDirectives : SimpleDirectivesContainer() {
       it.toBooleanStrict()
     }
   // Dependency directives.
-  val WITH_ANVIL by directive("Add Anvil as dependency and configure custom annotations.")
+  val WITH_ANVIL by directive("Enable Anvil annotations and Dagger interop.")
   val ENABLE_ANVIL_INTEROP by
     valueDirective(
       "Enable or disable Anvil interoperability.",
@@ -159,21 +159,20 @@ object MetroDirectives : SimpleDirectivesContainer() {
     }
   val WITH_KI_ANVIL by
     directive("Add kotlin-inject-nnvil as dependency and configure custom annotations.")
-  val WITH_DAGGER by directive("Add Dagger as dependency and configure custom annotations.")
-  val ENABLE_DAGGER_INTEROP by
-    directive("Enable Dagger interop. This implicitly applies WITH_DAGGER directive as well.")
+  val WITH_DAGGER by directive("Alias for ENABLE_DAGGER_INTEROP.")
+  val ENABLE_DAGGER_INTEROP by directive("Enable Dagger annotations and runtime interop.")
   val ENABLE_DAGGER_KSP by
     directive(
-      "Enable Dagger KSP processing. This implicitly applies WITH_DAGGER and ENABLE_DAGGER_INTEROP directives as well.",
+      "Run Dagger KSP processors and enable Dagger interop.",
     )
   val ENABLE_ANVIL_KSP by
     directive(
-      "Enable Anvil KSP processing. This implicitly applies WITH_DAGGER, ENABLE_DAGGER_INTEROP, and WITH_ANVIL directives as well.",
+      "Run Anvil KSP processors and enable Anvil and Dagger interop.",
     )
-  val GUICE_ANNOTATIONS by directive("Add Guice as dependency and configure custom annotations.")
+  val GUICE_ANNOTATIONS by directive("Alias for ENABLE_GUICE_INTEROP.")
   val ENABLE_GUICE_INTEROP by
     directive(
-      "Enable Guice runtime interop. This implicitly applies GUICE_ANNOTATIONS directive as well.",
+      "Enable Guice annotations and runtime interop.",
     )
 
   // Anvil KSP options
@@ -225,7 +224,7 @@ object MetroDirectives : SimpleDirectivesContainer() {
   val ENABLE_CIRCUIT by directive("Enables Circuit code gen.")
   val WITH_HILT by directive("Add Hilt-core as dependency.")
   val ENABLE_HILT_INTEROP by
-    directive("Enables Hilt @InstallIn/@AggregatedDeps interop. Implicitly applies WITH_HILT.")
+    directive("Enable Hilt @InstallIn/@AggregatedDeps interop and Dagger interop.")
   val ENABLE_HILT_KSP by
     directive(
       "Enable Hilt's KSP processors. Implicitly applies WITH_HILT and ENABLE_DAGGER_KSP since " +
@@ -241,14 +240,15 @@ object MetroDirectives : SimpleDirectivesContainer() {
       it.toInt()
     }
 
-  fun enableDaggerRuntime(directives: RegisteredDirectives): Boolean {
-    return WITH_DAGGER in directives ||
-      ENABLE_DAGGER_INTEROP in directives ||
-      ENABLE_DAGGER_KSP in directives ||
-      ENABLE_ANVIL_KSP in directives ||
-      // Hilt implies Dagger; pull dagger-runtime + javax/jakarta onto the compile classpath so
-      // `Singleton::class` etc. resolve in main modules that only have `// ENABLE_HILT_INTEROP`.
-      enableHilt(directives)
+  /** JS diagnostics skip fixtures that need any of the JVM interop libraries. */
+  fun needsJvmInteropLibraries(directives: RegisteredDirectives): Boolean {
+    val needsDagger = enableDaggerInterop(directives) || enableHilt(directives)
+    val needsOtherLibraries = enableGuiceInterop(directives) || WITH_KI_ANVIL in directives
+    return needsDagger || needsOtherLibraries
+  }
+
+  fun enableAnvilAnnotations(directives: RegisteredDirectives): Boolean {
+    return WITH_ANVIL in directives || enableAnvilKsp(directives)
   }
 
   fun enableHilt(directives: RegisteredDirectives): Boolean {
@@ -261,10 +261,14 @@ object MetroDirectives : SimpleDirectivesContainer() {
     return ENABLE_HILT_KSP in directives
   }
 
-  fun enableDaggerRuntimeInterop(directives: RegisteredDirectives): Boolean {
-    return ENABLE_DAGGER_INTEROP in directives ||
-      ENABLE_DAGGER_KSP in directives ||
-      ENABLE_ANVIL_KSP in directives
+  /** Anvil and Hilt annotation helpers also enable Dagger's runtime bridge. */
+  fun enableDaggerInterop(directives: RegisteredDirectives): Boolean {
+    if (enableAnvilAnnotations(directives) || ENABLE_HILT_INTEROP in directives) {
+      return true
+    }
+
+    val daggerRequested = WITH_DAGGER in directives || ENABLE_DAGGER_INTEROP in directives
+    return daggerRequested || enableDaggerKsp(directives)
   }
 
   fun enableDaggerKsp(directives: RegisteredDirectives): Boolean {
@@ -277,12 +281,8 @@ object MetroDirectives : SimpleDirectivesContainer() {
     return ENABLE_ANVIL_KSP in directives
   }
 
-  fun enableGuiceAnnotations(directives: RegisteredDirectives): Boolean {
-    return GUICE_ANNOTATIONS in directives || ENABLE_GUICE_INTEROP in directives
-  }
-
   fun enableGuiceInterop(directives: RegisteredDirectives): Boolean {
-    return ENABLE_GUICE_INTEROP in directives
+    return GUICE_ANNOTATIONS in directives || ENABLE_GUICE_INTEROP in directives
   }
 
   fun includeMetroRuntimeCoroutines(directives: RegisteredDirectives): Boolean {

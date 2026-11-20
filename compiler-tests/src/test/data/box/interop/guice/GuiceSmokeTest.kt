@@ -1,4 +1,4 @@
-// ENABLE_GUICE_INTEROP
+// GUICE_ANNOTATIONS
 import com.google.inject.Inject
 import com.google.inject.AbstractModule
 import com.google.inject.Provider

@@ -16,6 +16,15 @@ private val guiceClasspath =
   System.getProperty("guice.classpath")?.split(File.pathSeparator)?.map(::File)
     ?: error("Unable to get a valid classpath from 'guice.classpath' property")
 
+/** The Guice bridge transitively supplies Guice and the Jakarta bridge. */
+private fun TestModule.guiceClasspath(): List<File> {
+  return if (MetroDirectives.enableGuiceInterop(directives)) {
+    guiceClasspath
+  } else {
+    emptyList()
+  }
+}
+
 fun TestConfigurationBuilder.configureGuiceInterop() {
   useConfigurators(::GuiceInteropEnvironmentConfigurator)
   useCustomRuntimeClasspathProviders(::GuiceInteropClassPathProvider)
@@ -27,34 +36,13 @@ class GuiceInteropEnvironmentConfigurator(testServices: TestServices) :
     configuration: CompilerConfiguration,
     module: TestModule,
   ) {
-    val addGuiceInterop = MetroDirectives.enableGuiceInterop(module.directives)
-    val addGuiceRuntime = MetroDirectives.enableGuiceAnnotations(module.directives)
-
-    if (addGuiceInterop) {
-      for (file in guiceClasspath) {
-        configuration.addJvmClasspathRoot(file)
-      }
-    }
-
-    // Add jakarta interop when Guice runtime is enabled
-    if (addGuiceRuntime) {
-      for (file in jakartaInteropClasspath) {
-        configuration.addJvmClasspathRoot(file)
-      }
+    for (file in module.guiceClasspath()) {
+      configuration.addJvmClasspathRoot(file)
     }
   }
 }
 
 class GuiceInteropClassPathProvider(testServices: TestServices) :
   RuntimeClasspathProvider(testServices) {
-  override fun runtimeClassPaths(module: TestModule): List<File> {
-    val paths = mutableListOf<File>()
-
-    if (MetroDirectives.enableGuiceAnnotations(module.directives)) {
-      paths.addAll(guiceClasspath)
-      paths.addAll(jakartaInteropClasspath)
-    }
-
-    return paths
-  }
+  override fun runtimeClassPaths(module: TestModule): List<File> = module.guiceClasspath()
 }
