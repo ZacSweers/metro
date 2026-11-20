@@ -108,10 +108,6 @@ For incremental compilation across successive builds, use the Gradle plugin's fu
 
 ## Interop
 
-Choose the Dagger directive based on what the fixture exercises.
-
-- `// WITH_DAGGER` adds Dagger dependencies and configures its annotations.
-- `// ENABLE_DAGGER_INTEROP` also enables runtime interop with Dagger types.
-- `// ENABLE_DAGGER_KSP` also runs Dagger's symbol processor. Use it when the fixture needs Dagger-generated code.
+Use `// ENABLE_DAGGER_INTEROP` (or its alias `// WITH_DAGGER`) to use Dagger annotations and runtime types. If the fixture needs Dagger-generated code, use `// ENABLE_DAGGER_KSP`. KSP can resolve types from the module's dependencies. [KSP fixture](src/test/data/box/interop/dagger/KspUsesModuleClasspath.kt)
 
 Other interop targets have their own directives. [Interop directives](src/test/kotlin/dev/zacsweers/metro/compiler/MetroDirectives.kt)

@@ -31,12 +31,11 @@ import dev.zacsweers.metro.compiler.compat.KotlinToolingVersion
 import dev.zacsweers.metro.compiler.fir.MetroFirExtensionRegistrar
 import dev.zacsweers.metro.compiler.hilt.HiltContributionExtension
 import dev.zacsweers.metro.compiler.hilt.HiltFirDeclarationExtension
-import dev.zacsweers.metro.compiler.interop.Ksp2AdditionalSourceProvider
 import dev.zacsweers.metro.compiler.interop.configureAnvilAnnotations
-import dev.zacsweers.metro.compiler.interop.configureDaggerAnnotations
 import dev.zacsweers.metro.compiler.interop.configureDaggerInterop
 import dev.zacsweers.metro.compiler.interop.configureGuiceInterop
 import dev.zacsweers.metro.compiler.interop.configureHiltAnnotations
+import dev.zacsweers.metro.compiler.interop.configureKsp
 import dev.zacsweers.metro.compiler.ir.MetroIrGenerationExtension
 import dev.zacsweers.metro.compiler.tracing.TraceContext
 import kotlin.io.path.Path
@@ -91,12 +90,11 @@ fun TestConfigurationBuilder.configurePlugin(
   useSourcePreprocessor(::MetroDefaultImportPreprocessor)
 
   configureAnvilAnnotations()
-  configureDaggerAnnotations()
   configureDaggerInterop()
   configureGuiceInterop()
   configureHiltAnnotations()
   configureCircuit()
-  useAdditionalSourceProviders(::Ksp2AdditionalSourceProvider)
+  configureKsp()
   useAdditionalService { MetroMessageCollectorErrors() }
   useAfterAnalysisCheckers(::MetroReportsChecker, ::MetroMessageCollectorErrorsChecker)
 }
@@ -232,44 +230,28 @@ class MetroExtensionRegistrarConfigurator(
       if (MetroDirectives.WITH_KI_ANVIL in module.directives) {
         includeKotlinInjectAnvilAnnotations()
       }
-      if (
-        MetroDirectives.WITH_ANVIL in module.directives ||
-          MetroDirectives.ENABLE_ANVIL_KSP in module.directives
-      ) {
+      if (MetroDirectives.enableAnvilAnnotations(module.directives)) {
         includeAnvilAnnotations()
       }
       module.directives.singleOrZeroValue(MetroDirectives.ENABLE_ANVIL_INTEROP)?.let {
         enableDaggerAnvilInterop = it
       }
 
-      if (
-        MetroDirectives.WITH_DAGGER in module.directives ||
-          MetroDirectives.ENABLE_DAGGER_INTEROP in module.directives ||
-          MetroDirectives.enableDaggerKsp(module.directives)
-      ) {
+      if (MetroDirectives.ENABLE_HILT_INTEROP in module.directives) {
+        includeHiltAnnotations()
+      }
+
+      // The Hilt and Anvil helpers include Dagger annotations themselves.
+      if (!enableDaggerRuntimeInterop && MetroDirectives.enableDaggerInterop(module.directives)) {
         includeDaggerAnnotations()
       }
 
-      if (MetroDirectives.enableGuiceAnnotations(module.directives)) {
-        includeGuiceAnnotations()
-      }
-
-      // Override enableDaggerRuntimeInterop if needed
-      if (MetroDirectives.enableDaggerRuntimeInterop(module.directives)) {
-        enableDaggerRuntimeInterop = true
-      }
-
-      // Override enableGuiceRuntimeInterop if needed
       if (MetroDirectives.enableGuiceInterop(module.directives)) {
-        enableGuiceRuntimeInterop = true
+        includeGuiceAnnotations()
       }
 
       if (MetroDirectives.ENABLE_CIRCUIT in module.directives) {
         enableCircuitCodegen = true
-      }
-
-      if (MetroDirectives.ENABLE_HILT_INTEROP in module.directives) {
-        includeHiltAnnotations()
       }
 
       if (MetroDirectives.ENABLE_RUNTIME_TRACING in module.directives) {

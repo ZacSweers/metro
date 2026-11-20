@@ -11,7 +11,6 @@ import org.jetbrains.kotlin.test.directives.DiagnosticsDirectives
 import org.jetbrains.kotlin.test.directives.LanguageSettingsDirectives.OPT_IN
 import org.jetbrains.kotlin.test.directives.model.DirectivesContainer
 import org.jetbrains.kotlin.test.services.MetaTestConfigurator
-import org.jetbrains.kotlin.test.services.TestModuleStructure
 import org.jetbrains.kotlin.test.services.TestServices
 import org.jetbrains.kotlin.test.services.moduleStructure
 import org.jetbrains.kotlin.test.services.testInfo
@@ -20,10 +19,8 @@ class MetroTestConfigurator(testServices: TestServices) : MetaTestConfigurator(t
   override val directiveContainers: List<DirectivesContainer>
     get() = listOf(MetroDirectives)
 
-  override fun shouldSkipTest(): Boolean = shouldSkipTest(testServices.moduleStructure)
-
-  /** Source providers can check eligibility before Kotlin registers the module structure. */
-  internal fun shouldSkipTest(structure: TestModuleStructure): Boolean {
+  override fun shouldSkipTest(): Boolean {
+    val structure = testServices.moduleStructure
     val directives = structure.allDirectives
     if (MetroDirectives.METRO_IGNORE in directives) {
       return true
@@ -52,19 +49,9 @@ class MetroTestConfigurator(testServices: TestServices) : MetaTestConfigurator(t
     val jsDiagnosticSuite = testClassName == "JsDiagnosticTestGenerated"
     if (testServices.isJsBackend() && jsDiagnosticSuite) {
       val rendersIrDiagnostics = DiagnosticsDirectives.RENDER_IR_DIAGNOSTICS_FULL_TEXT in directives
-      val usesJvmInteropDependencies =
-        MetroDirectives.WITH_ANVIL in directives ||
-          MetroDirectives.WITH_KI_ANVIL in directives ||
-          MetroDirectives.WITH_DAGGER in directives ||
-          MetroDirectives.ENABLE_DAGGER_INTEROP in directives ||
-          MetroDirectives.ENABLE_DAGGER_KSP in directives ||
-          MetroDirectives.ENABLE_ANVIL_KSP in directives ||
-          MetroDirectives.GUICE_ANNOTATIONS in directives ||
-          MetroDirectives.ENABLE_GUICE_INTEROP in directives ||
-          MetroDirectives.WITH_HILT in directives ||
-          MetroDirectives.ENABLE_HILT_INTEROP in directives ||
-          MetroDirectives.ENABLE_HILT_KSP in directives
-      if (rendersIrDiagnostics || usesJvmInteropDependencies) return true
+      if (rendersIrDiagnostics || MetroDirectives.needsJvmInteropLibraries(directives)) {
+        return true
+      }
     }
 
     val singleTest = System.getProperty("metro.singleTestName")

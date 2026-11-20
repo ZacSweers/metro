@@ -12,9 +12,28 @@ import org.jetbrains.kotlin.test.services.EnvironmentConfigurator
 import org.jetbrains.kotlin.test.services.RuntimeClasspathProvider
 import org.jetbrains.kotlin.test.services.TestServices
 
-private val daggerInteropClasspath =
-  System.getProperty("daggerInterop.classpath")?.split(File.pathSeparator)?.map(::File)
-    ?: error("Unable to get a valid classpath from 'daggerInterop.classpath' property")
+/** Reads one fixture classpath supplied by the Gradle test task. */
+private fun classpath(property: String): List<File> {
+  val value =
+    checkNotNull(System.getProperty(property)) { "Missing classpath property '$property'" }
+  return value.split(File.pathSeparator).map(::File)
+}
+
+private val daggerRuntimeClasspath =
+  classpath("daggerRuntime.classpath") +
+    classpath("javaxInterop.classpath") +
+    classpath("jakartaInterop.classpath")
+
+private val daggerInteropClasspath = daggerRuntimeClasspath + classpath("daggerInterop.classpath")
+
+/** [MetroDirectives.WITH_HILT] needs Dagger's annotations. Interop also needs Metro's bridge. */
+private fun TestModule.daggerClasspath(): List<File> {
+  return when {
+    MetroDirectives.enableDaggerInterop(directives) -> daggerInteropClasspath
+    MetroDirectives.WITH_HILT in directives -> daggerRuntimeClasspath
+    else -> emptyList()
+  }
+}
 
 fun TestConfigurationBuilder.configureDaggerInterop() {
   useConfigurators(::DaggerInteropEnvironmentConfigurator)
@@ -27,20 +46,13 @@ class DaggerInteropEnvironmentConfigurator(testServices: TestServices) :
     configuration: CompilerConfiguration,
     module: TestModule,
   ) {
-    if (MetroDirectives.enableDaggerRuntimeInterop(module.directives)) {
-      for (file in daggerInteropClasspath) {
-        configuration.addJvmClasspathRoot(file)
-      }
+    for (file in module.daggerClasspath()) {
+      configuration.addJvmClasspathRoot(file)
     }
   }
 }
 
 class DaggerInteropClassPathProvider(testServices: TestServices) :
   RuntimeClasspathProvider(testServices) {
-  override fun runtimeClassPaths(module: TestModule): List<File> {
-    return when (MetroDirectives.enableDaggerRuntimeInterop(module.directives)) {
-      true -> daggerInteropClasspath
-      false -> emptyList()
-    }
-  }
+  override fun runtimeClassPaths(module: TestModule): List<File> = module.daggerClasspath()
 }

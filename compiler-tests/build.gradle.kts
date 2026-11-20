@@ -581,7 +581,6 @@ tasks.withType<Test>().configureEach {
   setClasspathProperty("jakartaInterop.classpath", jakartaInteropClasspath)
   setClasspathProperty("circuit.classpath", circuitRuntimeClasspath)
   setFilesProperty("circuit.klibClasspath", circuitRuntimeKlibClasspath)
-  setClasspathProperty("ksp.testRuntimeClasspath", testRuntimeClasspath)
 
   // Properties required to run the internal test framework.
   systemProperty("idea.ignore.disabled.plugins", "true")
