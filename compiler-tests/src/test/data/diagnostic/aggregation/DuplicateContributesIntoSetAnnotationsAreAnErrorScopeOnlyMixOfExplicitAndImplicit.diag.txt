@@ -1,0 +1,3 @@
+/DuplicateContributesIntoSetAnnotationsAreAnErrorScopeOnlyMixOfExplicitAndImplicit.kt:8:1: error: Duplicate `@ContributesIntoSet` annotations contributing to scope `AppScope`.
+
+/DuplicateContributesIntoSetAnnotationsAreAnErrorScopeOnlyMixOfExplicitAndImplicit.kt:9:1: error: Duplicate `@ContributesIntoSet` annotations contributing to scope `AppScope`.

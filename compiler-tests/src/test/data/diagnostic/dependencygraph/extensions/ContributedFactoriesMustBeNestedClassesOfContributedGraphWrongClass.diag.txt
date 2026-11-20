@@ -1,0 +1,1 @@
+/ContributedFactoriesMustBeNestedClassesOfContributedGraphWrongClass.kt:8:1: error: @GraphExtension.Factory declarations must be nested within the contributed graph they create but was test.SomewhereElse.

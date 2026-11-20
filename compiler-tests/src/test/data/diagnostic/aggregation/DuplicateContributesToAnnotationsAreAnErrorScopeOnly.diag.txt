@@ -1,0 +1,3 @@
+/DuplicateContributesToAnnotationsAreAnErrorScopeOnly.kt:6:1: error: Duplicate `@ContributesTo` annotations contributing to scope `AppScope`.
+
+/DuplicateContributesToAnnotationsAreAnErrorScopeOnly.kt:7:1: error: Duplicate `@ContributesTo` annotations contributing to scope `AppScope`.

@@ -1,0 +1,8 @@
+/ScopedGraphsCannotDependOnScopedBindingsWithMismatchedScopes.kt:9:11: error: [Metro/IncompatiblyScopedBindings] test.ExampleGraph (scopes '@SingleIn(AppScope::class)',
+    '@Singleton') may not reference bindings from different scopes
+
+  trace (in test.ExampleGraph):
+      Int (scoped to '@SingleIn(UserScope::class)')
+      Int is requested at test.ExampleGraph.intValue
+
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#incompatiblyscopedbindings

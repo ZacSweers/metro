@@ -1,0 +1,3 @@
+/MultibindsMustBeAbstract.kt:7:27: error: Non-private @Multibinds declarations must be abstract and not have a function or getter body.
+
+/MultibindsMustBeAbstract.kt:8:29: error: Non-private @Multibinds declarations must be abstract and not have a function or getter body.

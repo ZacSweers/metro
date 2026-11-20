@@ -109,6 +109,12 @@ public class ReportsTestGenerated extends AbstractReportsTest {
   }
 
   @Test
+  @TestMetadata("TypeKeyRendering.kt")
+  public void testTypeKeyRendering() {
+    run("TypeKeyRendering.kt");
+  }
+
+  @Test
   @TestMetadata("UnmatchedReplacement.kt")
   public void testUnmatchedReplacement() {
     run("UnmatchedReplacement.kt");

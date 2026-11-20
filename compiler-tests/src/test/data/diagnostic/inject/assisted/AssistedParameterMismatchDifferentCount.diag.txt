@@ -1,0 +1,3 @@
+/AssistedParameterMismatchDifferentCount.kt:6:20: warning: There is only one @Inject-annotated constructor. Consider moving the annotation to the class instead.
+
+/AssistedParameterMismatchDifferentCount.kt:12:9: error: Assisted factory function 'create' is missing parameters for @Assisted constructor parameters: message: String

@@ -1,0 +1,5 @@
+/ReceiverMustBeAGraphRegularGraphErrorGeneric.kt:13:27: error: `asContribution` type argument 'test.Base' is not a merged supertype of test.AppGraph.
+
+/ReceiverMustBeAGraphRegularGraphErrorGeneric.kt:14:45: error: `asContribution` type argument 'test.Base' is not a merged supertype of test.AppGraph.
+
+/ReceiverMustBeAGraphRegularGraphErrorGeneric.kt:15:42: error: `asContribution` type argument 'test.Base' is not a merged supertype of test.AppGraph.

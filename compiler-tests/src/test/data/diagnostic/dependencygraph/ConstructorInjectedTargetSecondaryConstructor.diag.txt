@@ -1,0 +1,1 @@
+/ConstructorInjectedTargetSecondaryConstructor.kt:9:14: warning: Injected class 'test.ExampleClass' is constructor-injected and can be instantiated by Metro directly, so this inject function is unnecessary.

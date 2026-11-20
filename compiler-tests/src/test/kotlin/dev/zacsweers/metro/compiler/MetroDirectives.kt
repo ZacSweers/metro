@@ -25,6 +25,18 @@ object MetroDirectives : SimpleDirectivesContainer() {
     )
   val GENERATE_ASSISTED_FACTORIES by directive("Enable assisted factories generation.")
   val ENABLE_TOP_LEVEL_FUNCTION_INJECTION by directive("Enable top-level function injection.")
+  val FUNCTION_INJECT_ANNOTATIONS_OVERRIDE by
+    valueDirective(
+      "Override the annotations that enable function injection. Use two quotes for an empty override.",
+    ) {
+      it.removeSurrounding("\"")
+    }
+  val ENABLE_FUNCTION_PROVIDERS by
+    valueDirective("Enable or disable function types as provider types.") { it.toBooleanStrict() }
+  val WARN_ON_INJECT_ANNOTATION_PLACEMENT by
+    valueDirective("Enable or disable warnings about where to place @Inject.") {
+      it.toBooleanStrict()
+    }
   val FIX_EMPTY_SMAP_RANGES by directive("Enable the workaround for empty JVM SMAP ranges.")
   val GENERATE_CONTRIBUTION_HINTS by
     valueDirective("Generate contribution hints.") { it.toBooleanStrict() }

@@ -1,0 +1,11 @@
+/AbsentNullableBindingDoesnTSatisfyNullableRequest.kt:12:13: error: [Metro/MissingBinding] No binding found for Int?
+
+  test.ExampleGraph.foo -> Foo -> Int?
+
+  trace (in test.ExampleGraph):
+      Int? is injected at test.ExampleGraph.Foo(…, input)
+      Foo is requested at test.ExampleGraph.foo
+
+  help: ensure Int? has an @Inject constructor or is provided by an @Provides or @Binds declaration
+        visible to ExampleGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding

@@ -1,0 +1,7 @@
+/UnscopedGraphsMayNotReferenceScopedTypes.kt:8:11: error: [Metro/IncompatiblyScopedBindings] test.ExampleGraph (unscoped) may not reference scoped bindings
+
+  trace (in test.ExampleGraph):
+      String (scoped to '@SingleIn(AppScope::class)')
+      String is requested at test.ExampleGraph.value
+
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#incompatiblyscopedbindings

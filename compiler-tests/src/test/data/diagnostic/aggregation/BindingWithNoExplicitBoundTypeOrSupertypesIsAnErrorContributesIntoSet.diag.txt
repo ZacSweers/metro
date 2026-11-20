@@ -1,0 +1,1 @@
+/BindingWithNoExplicitBoundTypeOrSupertypesIsAnErrorContributesIntoSet.kt:8:1: error: `@ContributesIntoSet`-annotated class test.Impl has no supertypes to bind to.

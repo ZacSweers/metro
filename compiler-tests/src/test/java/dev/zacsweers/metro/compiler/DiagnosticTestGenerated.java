@@ -69,6 +69,150 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("BindingAsNothingIsAnErrorContributesBinding.kt")
+    public void testBindingAsNothingIsAnErrorContributesBinding() {
+      run("BindingAsNothingIsAnErrorContributesBinding.kt");
+    }
+
+    @Test
+    @TestMetadata("BindingAsNothingIsAnErrorContributesIntoMap.kt")
+    public void testBindingAsNothingIsAnErrorContributesIntoMap() {
+      run("BindingAsNothingIsAnErrorContributesIntoMap.kt");
+    }
+
+    @Test
+    @TestMetadata("BindingAsNothingIsAnErrorContributesIntoSet.kt")
+    public void testBindingAsNothingIsAnErrorContributesIntoSet() {
+      run("BindingAsNothingIsAnErrorContributesIntoSet.kt");
+    }
+
+    @Test
+    @TestMetadata("BindingAssistedFactoryIsOkContributesBinding.kt")
+    public void testBindingAssistedFactoryIsOkContributesBinding() {
+      run("BindingAssistedFactoryIsOkContributesBinding.kt");
+    }
+
+    @Test
+    @TestMetadata("BindingAssistedFactoryIsOkContributesIntoMap.kt")
+    public void testBindingAssistedFactoryIsOkContributesIntoMap() {
+      run("BindingAssistedFactoryIsOkContributesIntoMap.kt");
+    }
+
+    @Test
+    @TestMetadata("BindingAssistedFactoryIsOkContributesIntoSet.kt")
+    public void testBindingAssistedFactoryIsOkContributesIntoSet() {
+      run("BindingAssistedFactoryIsOkContributesIntoSet.kt");
+    }
+
+    @Test
+    @TestMetadata("BindingCanBeAnyContributesBinding.kt")
+    public void testBindingCanBeAnyContributesBinding() {
+      run("BindingCanBeAnyContributesBinding.kt");
+    }
+
+    @Test
+    @TestMetadata("BindingCanBeAnyContributesIntoMap.kt")
+    public void testBindingCanBeAnyContributesIntoMap() {
+      run("BindingCanBeAnyContributesIntoMap.kt");
+    }
+
+    @Test
+    @TestMetadata("BindingCanBeAnyContributesIntoSet.kt")
+    public void testBindingCanBeAnyContributesIntoSet() {
+      run("BindingCanBeAnyContributesIntoSet.kt");
+    }
+
+    @Test
+    @TestMetadata("BindingClassMustBeInjectedContributesBinding.kt")
+    public void testBindingClassMustBeInjectedContributesBinding() {
+      run("BindingClassMustBeInjectedContributesBinding.kt");
+    }
+
+    @Test
+    @TestMetadata("BindingClassMustBeInjectedContributesIntoMap.kt")
+    public void testBindingClassMustBeInjectedContributesIntoMap() {
+      run("BindingClassMustBeInjectedContributesIntoMap.kt");
+    }
+
+    @Test
+    @TestMetadata("BindingClassMustBeInjectedContributesIntoSet.kt")
+    public void testBindingClassMustBeInjectedContributesIntoSet() {
+      run("BindingClassMustBeInjectedContributesIntoSet.kt");
+    }
+
+    @Test
+    @TestMetadata("BindingIsNotAssignableContributesBinding.kt")
+    public void testBindingIsNotAssignableContributesBinding() {
+      run("BindingIsNotAssignableContributesBinding.kt");
+    }
+
+    @Test
+    @TestMetadata("BindingIsNotAssignableContributesIntoMap.kt")
+    public void testBindingIsNotAssignableContributesIntoMap() {
+      run("BindingIsNotAssignableContributesIntoMap.kt");
+    }
+
+    @Test
+    @TestMetadata("BindingIsNotAssignableContributesIntoSet.kt")
+    public void testBindingIsNotAssignableContributesIntoSet() {
+      run("BindingIsNotAssignableContributesIntoSet.kt");
+    }
+
+    @Test
+    @TestMetadata("BindingMustNotBeTheSameAsTheClassContributesBinding.kt")
+    public void testBindingMustNotBeTheSameAsTheClassContributesBinding() {
+      run("BindingMustNotBeTheSameAsTheClassContributesBinding.kt");
+    }
+
+    @Test
+    @TestMetadata("BindingMustNotBeTheSameAsTheClassContributesIntoMap.kt")
+    public void testBindingMustNotBeTheSameAsTheClassContributesIntoMap() {
+      run("BindingMustNotBeTheSameAsTheClassContributesIntoMap.kt");
+    }
+
+    @Test
+    @TestMetadata("BindingMustNotBeTheSameAsTheClassContributesIntoSet.kt")
+    public void testBindingMustNotBeTheSameAsTheClassContributesIntoSet() {
+      run("BindingMustNotBeTheSameAsTheClassContributesIntoSet.kt");
+    }
+
+    @Test
+    @TestMetadata("BindingWithNoExplicitBoundTypeOrSupertypesIsAnErrorContributesBinding.kt")
+    public void testBindingWithNoExplicitBoundTypeOrSupertypesIsAnErrorContributesBinding() {
+      run("BindingWithNoExplicitBoundTypeOrSupertypesIsAnErrorContributesBinding.kt");
+    }
+
+    @Test
+    @TestMetadata("BindingWithNoExplicitBoundTypeOrSupertypesIsAnErrorContributesIntoMap.kt")
+    public void testBindingWithNoExplicitBoundTypeOrSupertypesIsAnErrorContributesIntoMap() {
+      run("BindingWithNoExplicitBoundTypeOrSupertypesIsAnErrorContributesIntoMap.kt");
+    }
+
+    @Test
+    @TestMetadata("BindingWithNoExplicitBoundTypeOrSupertypesIsAnErrorContributesIntoSet.kt")
+    public void testBindingWithNoExplicitBoundTypeOrSupertypesIsAnErrorContributesIntoSet() {
+      run("BindingWithNoExplicitBoundTypeOrSupertypesIsAnErrorContributesIntoSet.kt");
+    }
+
+    @Test
+    @TestMetadata("BindingWithNoSupertypesAndNotAnyIsAnErrorContributesBinding.kt")
+    public void testBindingWithNoSupertypesAndNotAnyIsAnErrorContributesBinding() {
+      run("BindingWithNoSupertypesAndNotAnyIsAnErrorContributesBinding.kt");
+    }
+
+    @Test
+    @TestMetadata("BindingWithNoSupertypesAndNotAnyIsAnErrorContributesIntoMap.kt")
+    public void testBindingWithNoSupertypesAndNotAnyIsAnErrorContributesIntoMap() {
+      run("BindingWithNoSupertypesAndNotAnyIsAnErrorContributesIntoMap.kt");
+    }
+
+    @Test
+    @TestMetadata("BindingWithNoSupertypesAndNotAnyIsAnErrorContributesIntoSet.kt")
+    public void testBindingWithNoSupertypesAndNotAnyIsAnErrorContributesIntoSet() {
+      run("BindingWithNoSupertypesAndNotAnyIsAnErrorContributesIntoSet.kt");
+    }
+
+    @Test
     @TestMetadata("ContributedInterfaceCanShareFunctionNamesWithGraphExtension.kt")
     public void testContributedInterfaceCanShareFunctionNamesWithGraphExtension() {
       run("ContributedInterfaceCanShareFunctionNamesWithGraphExtension.kt");
@@ -159,6 +303,84 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("DuplicateContributesBindingAnnotationsAreAnErrorScopeOnlyExplicit.kt")
+    public void testDuplicateContributesBindingAnnotationsAreAnErrorScopeOnlyExplicit() {
+      run("DuplicateContributesBindingAnnotationsAreAnErrorScopeOnlyExplicit.kt");
+    }
+
+    @Test
+    @TestMetadata("DuplicateContributesBindingAnnotationsAreAnErrorScopeOnlyImplicit.kt")
+    public void testDuplicateContributesBindingAnnotationsAreAnErrorScopeOnlyImplicit() {
+      run("DuplicateContributesBindingAnnotationsAreAnErrorScopeOnlyImplicit.kt");
+    }
+
+    @Test
+    @TestMetadata("DuplicateContributesBindingAnnotationsAreAnErrorScopeOnlyMixOfExplicitAndImplicit.kt")
+    public void testDuplicateContributesBindingAnnotationsAreAnErrorScopeOnlyMixOfExplicitAndImplicit() {
+      run("DuplicateContributesBindingAnnotationsAreAnErrorScopeOnlyMixOfExplicitAndImplicit.kt");
+    }
+
+    @Test
+    @TestMetadata("DuplicateContributesBindingAnnotationsAreAnErrorWithQualifiersExplicit.kt")
+    public void testDuplicateContributesBindingAnnotationsAreAnErrorWithQualifiersExplicit() {
+      run("DuplicateContributesBindingAnnotationsAreAnErrorWithQualifiersExplicit.kt");
+    }
+
+    @Test
+    @TestMetadata("DuplicateContributesIntoMapAnnotationsAreAnErrorScopeOnlyExplicit.kt")
+    public void testDuplicateContributesIntoMapAnnotationsAreAnErrorScopeOnlyExplicit() {
+      run("DuplicateContributesIntoMapAnnotationsAreAnErrorScopeOnlyExplicit.kt");
+    }
+
+    @Test
+    @TestMetadata("DuplicateContributesIntoMapAnnotationsAreAnErrorScopeOnlyImplicit.kt")
+    public void testDuplicateContributesIntoMapAnnotationsAreAnErrorScopeOnlyImplicit() {
+      run("DuplicateContributesIntoMapAnnotationsAreAnErrorScopeOnlyImplicit.kt");
+    }
+
+    @Test
+    @TestMetadata("DuplicateContributesIntoMapAnnotationsAreAnErrorScopeOnlyMixOfExplicitAndImplicit.kt")
+    public void testDuplicateContributesIntoMapAnnotationsAreAnErrorScopeOnlyMixOfExplicitAndImplicit() {
+      run("DuplicateContributesIntoMapAnnotationsAreAnErrorScopeOnlyMixOfExplicitAndImplicit.kt");
+    }
+
+    @Test
+    @TestMetadata("DuplicateContributesIntoMapAnnotationsAreAnErrorWithQualifiersExplicit.kt")
+    public void testDuplicateContributesIntoMapAnnotationsAreAnErrorWithQualifiersExplicit() {
+      run("DuplicateContributesIntoMapAnnotationsAreAnErrorWithQualifiersExplicit.kt");
+    }
+
+    @Test
+    @TestMetadata("DuplicateContributesIntoSetAnnotationsAreAnErrorScopeOnlyExplicit.kt")
+    public void testDuplicateContributesIntoSetAnnotationsAreAnErrorScopeOnlyExplicit() {
+      run("DuplicateContributesIntoSetAnnotationsAreAnErrorScopeOnlyExplicit.kt");
+    }
+
+    @Test
+    @TestMetadata("DuplicateContributesIntoSetAnnotationsAreAnErrorScopeOnlyImplicit.kt")
+    public void testDuplicateContributesIntoSetAnnotationsAreAnErrorScopeOnlyImplicit() {
+      run("DuplicateContributesIntoSetAnnotationsAreAnErrorScopeOnlyImplicit.kt");
+    }
+
+    @Test
+    @TestMetadata("DuplicateContributesIntoSetAnnotationsAreAnErrorScopeOnlyMixOfExplicitAndImplicit.kt")
+    public void testDuplicateContributesIntoSetAnnotationsAreAnErrorScopeOnlyMixOfExplicitAndImplicit() {
+      run("DuplicateContributesIntoSetAnnotationsAreAnErrorScopeOnlyMixOfExplicitAndImplicit.kt");
+    }
+
+    @Test
+    @TestMetadata("DuplicateContributesIntoSetAnnotationsAreAnErrorWithQualifiersExplicit.kt")
+    public void testDuplicateContributesIntoSetAnnotationsAreAnErrorWithQualifiersExplicit() {
+      run("DuplicateContributesIntoSetAnnotationsAreAnErrorWithQualifiersExplicit.kt");
+    }
+
+    @Test
+    @TestMetadata("DuplicateContributesToAnnotationsAreAnErrorScopeOnly.kt")
+    public void testDuplicateContributesToAnnotationsAreAnErrorScopeOnly() {
+      run("DuplicateContributesToAnnotationsAreAnErrorScopeOnly.kt");
+    }
+
+    @Test
     @TestMetadata("EqualContributionPriorities.kt")
     public void testEqualContributionPriorities() {
       run("EqualContributionPriorities.kt");
@@ -171,9 +393,27 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("ExplicitBoundTypesIntoMapMustDeclareMapKey.kt")
+    public void testExplicitBoundTypesIntoMapMustDeclareMapKey() {
+      run("ExplicitBoundTypesIntoMapMustDeclareMapKey.kt");
+    }
+
+    @Test
+    @TestMetadata("ExplicitBoundTypesIntoMapMustDeclareMapKeyClassIsOk.kt")
+    public void testExplicitBoundTypesIntoMapMustDeclareMapKeyClassIsOk() {
+      run("ExplicitBoundTypesIntoMapMustDeclareMapKeyClassIsOk.kt");
+    }
+
+    @Test
     @TestMetadata("ExposeImplBindingWithoutContributionProviders.kt")
     public void testExposeImplBindingWithoutContributionProviders() {
       run("ExposeImplBindingWithoutContributionProviders.kt");
+    }
+
+    @Test
+    @TestMetadata("ImplicitBoundTypesIntoMapMustDeclareMapKeyOnClass.kt")
+    public void testImplicitBoundTypesIntoMapMustDeclareMapKeyOnClass() {
+      run("ImplicitBoundTypesIntoMapMustDeclareMapKeyOnClass.kt");
     }
 
     @Test
@@ -228,6 +468,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     @TestMetadata("PrivateContributionError.kt")
     public void testPrivateContributionError() {
       run("PrivateContributionError.kt");
+    }
+
+    @Test
+    @TestMetadata("RepeatedContributesBindingSupportsMultipleScopesForADifferentTypeWithoutLeakingTheBindings.kt")
+    public void testRepeatedContributesBindingSupportsMultipleScopesForADifferentTypeWithoutLeakingTheBindings() {
+      run("RepeatedContributesBindingSupportsMultipleScopesForADifferentTypeWithoutLeakingTheBindings.kt");
     }
 
     @Test
@@ -588,9 +834,75 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("APrimaryScopeShouldBeDefinedBeforeAdditionalScopes.kt")
+    public void testAPrimaryScopeShouldBeDefinedBeforeAdditionalScopes() {
+      run("APrimaryScopeShouldBeDefinedBeforeAdditionalScopes.kt");
+    }
+
+    @Test
+    @TestMetadata("AbsentNullableBindingDoesnTSatisfyNullableRequest.kt")
+    public void testAbsentNullableBindingDoesnTSatisfyNullableRequest() {
+      run("AbsentNullableBindingDoesnTSatisfyNullableRequest.kt");
+    }
+
+    @Test
+    @TestMetadata("AccessorsCannotBeNothingFunction.kt")
+    public void testAccessorsCannotBeNothingFunction() {
+      run("AccessorsCannotBeNothingFunction.kt");
+    }
+
+    @Test
+    @TestMetadata("AccessorsCannotBeNothingProperty.kt")
+    public void testAccessorsCannotBeNothingProperty() {
+      run("AccessorsCannotBeNothingProperty.kt");
+    }
+
+    @Test
+    @TestMetadata("AccessorsCannotBeScopedProperty.kt")
+    public void testAccessorsCannotBeScopedProperty() {
+      run("AccessorsCannotBeScopedProperty.kt");
+    }
+
+    @Test
+    @TestMetadata("AccessorsCannotBeScopedPropertyGetterSite.kt")
+    public void testAccessorsCannotBeScopedPropertyGetterSite() {
+      run("AccessorsCannotBeScopedPropertyGetterSite.kt");
+    }
+
+    @Test
+    @TestMetadata("AccessorsCannotBeUnitFunctionExplicit.kt")
+    public void testAccessorsCannotBeUnitFunctionExplicit() {
+      run("AccessorsCannotBeUnitFunctionExplicit.kt");
+    }
+
+    @Test
+    @TestMetadata("AccessorsCannotBeUnitFunctionImplicit.kt")
+    public void testAccessorsCannotBeUnitFunctionImplicit() {
+      run("AccessorsCannotBeUnitFunctionImplicit.kt");
+    }
+
+    @Test
+    @TestMetadata("AccessorsCannotBeUnitProperty.kt")
+    public void testAccessorsCannotBeUnitProperty() {
+      run("AccessorsCannotBeUnitProperty.kt");
+    }
+
+    @Test
+    @TestMetadata("AdvancedDependencyChain.kt")
+    public void testAdvancedDependencyChain() {
+      run("AdvancedDependencyChain.kt");
+    }
+
+    @Test
     @TestMetadata("AllDuplicateBindingsAreReported.kt")
     public void testAllDuplicateBindingsAreReported() {
       run("AllDuplicateBindingsAreReported.kt");
+    }
+
+    @Test
+    @TestMetadata("AllFactoryParametersMustBeAnnotatedWithProvidesXORIncludes.kt")
+    public void testAllFactoryParametersMustBeAnnotatedWithProvidesXORIncludes() {
+      run("AllFactoryParametersMustBeAnnotatedWithProvidesXORIncludes.kt");
     }
 
     @Test
@@ -623,15 +935,69 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("BindingFailuresShouldOnlyBeFocusedOnTheCurrentContext.kt")
+    public void testBindingFailuresShouldOnlyBeFocusedOnTheCurrentContext() {
+      run("BindingFailuresShouldOnlyBeFocusedOnTheCurrentContext.kt");
+    }
+
+    @Test
     @TestMetadata("ClassBindingsCannotSatisfyNullable.kt")
     public void testClassBindingsCannotSatisfyNullable() {
       run("ClassBindingsCannotSatisfyNullable.kt");
     }
 
     @Test
+    @TestMetadata("ComplexCycleDetection.kt")
+    public void testComplexCycleDetection() {
+      run("ComplexCycleDetection.kt");
+    }
+
+    @Test
     @TestMetadata("ConfigurableMaxIrErrors.kt")
     public void testConfigurableMaxIrErrors() {
       run("ConfigurableMaxIrErrors.kt");
+    }
+
+    @Test
+    @TestMetadata("ConflictingOverridesForAccessorFunctions.kt")
+    public void testConflictingOverridesForAccessorFunctions() {
+      run("ConflictingOverridesForAccessorFunctions.kt");
+    }
+
+    @Test
+    @TestMetadata("ConflictingOverridesForAccessorProperties.kt")
+    public void testConflictingOverridesForAccessorProperties() {
+      run("ConflictingOverridesForAccessorProperties.kt");
+    }
+
+    @Test
+    @TestMetadata("ConflictingOverridesForInjectors.kt")
+    public void testConflictingOverridesForInjectors() {
+      run("ConflictingOverridesForInjectors.kt");
+    }
+
+    @Test
+    @TestMetadata("ConstructorInjectedTargetClassAnnotation.kt")
+    public void testConstructorInjectedTargetClassAnnotation() {
+      run("ConstructorInjectedTargetClassAnnotation.kt");
+    }
+
+    @Test
+    @TestMetadata("ConstructorInjectedTargetConstructorAnnotation.kt")
+    public void testConstructorInjectedTargetConstructorAnnotation() {
+      run("ConstructorInjectedTargetConstructorAnnotation.kt");
+    }
+
+    @Test
+    @TestMetadata("ConstructorInjectedTargetSecondaryConstructor.kt")
+    public void testConstructorInjectedTargetSecondaryConstructor() {
+      run("ConstructorInjectedTargetSecondaryConstructor.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributedGraphFactoriesMayNotBeNarrowerVisibility.kt")
+    public void testContributedGraphFactoriesMayNotBeNarrowerVisibility() {
+      run("ContributedGraphFactoriesMayNotBeNarrowerVisibility.kt");
     }
 
     @Test
@@ -671,9 +1037,117 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("DuplicateBindingsAreReportedDoubleBinds.kt")
+    public void testDuplicateBindingsAreReportedDoubleBinds() {
+      run("DuplicateBindingsAreReportedDoubleBinds.kt");
+    }
+
+    @Test
+    @TestMetadata("DuplicateBindingsAreReportedDoubleContributedBinds.kt")
+    public void testDuplicateBindingsAreReportedDoubleContributedBinds() {
+      run("DuplicateBindingsAreReportedDoubleContributedBinds.kt");
+    }
+
+    @Test
+    @TestMetadata("DuplicateBindingsAreReportedDoubleProvides.kt")
+    public void testDuplicateBindingsAreReportedDoubleProvides() {
+      run("DuplicateBindingsAreReportedDoubleProvides.kt");
+    }
+
+    @Test
+    @TestMetadata("DuplicateBindingsAreReportedDoubleProvidesAndBinds.kt")
+    public void testDuplicateBindingsAreReportedDoubleProvidesAndBinds() {
+      run("DuplicateBindingsAreReportedDoubleProvidesAndBinds.kt");
+    }
+
+    @Test
+    @TestMetadata("EffectivelyInternalGraphsCannotMergeFilePrivateContributions.kt")
+    public void testEffectivelyInternalGraphsCannotMergeFilePrivateContributions() {
+      run("EffectivelyInternalGraphsCannotMergeFilePrivateContributions.kt");
+    }
+
+    @Test
+    @TestMetadata("EmptyMultibindingWithNoOptInIsAnError.kt")
+    public void testEmptyMultibindingWithNoOptInIsAnError() {
+      run("EmptyMultibindingWithNoOptInIsAnError.kt");
+    }
+
+    @Test
+    @TestMetadata("EmptyMultibindingWithNoOptInIsAnErrorAndReportsSimilarTypesMap.kt")
+    public void testEmptyMultibindingWithNoOptInIsAnErrorAndReportsSimilarTypesMap() {
+      run("EmptyMultibindingWithNoOptInIsAnErrorAndReportsSimilarTypesMap.kt");
+    }
+
+    @Test
+    @TestMetadata("EmptyMultibindingWithNoOptInIsAnErrorAndReportsSimilarTypesSet.kt")
+    public void testEmptyMultibindingWithNoOptInIsAnErrorAndReportsSimilarTypesSet() {
+      run("EmptyMultibindingWithNoOptInIsAnErrorAndReportsSimilarTypesSet.kt");
+    }
+
+    @Test
     @TestMetadata("GraphAccessorsCannotBeMutable.kt")
     public void testGraphAccessorsCannotBeMutable() {
       run("GraphAccessorsCannotBeMutable.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphCreatorsCannotBeLocalClasses.kt")
+    public void testGraphCreatorsCannotBeLocalClasses() {
+      run("GraphCreatorsCannotBeLocalClasses.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphCreatorsMustBeAbstractClassesOrInterfaces.kt")
+    public void testGraphCreatorsMustBeAbstractClassesOrInterfaces() {
+      run("GraphCreatorsMustBeAbstractClassesOrInterfaces.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphCreatorsMustBeVisible.kt")
+    public void testGraphCreatorsMustBeVisible() {
+      run("GraphCreatorsMustBeVisible.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphCreatorsMustReturnGraphsInvalidReturnType.kt")
+    public void testGraphCreatorsMustReturnGraphsInvalidReturnType() {
+      run("GraphCreatorsMustReturnGraphsInvalidReturnType.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphCreatorsMustReturnGraphsNoReturnType.kt")
+    public void testGraphCreatorsMustReturnGraphsNoReturnType() {
+      run("GraphCreatorsMustReturnGraphsNoReturnType.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphFactoriesCannotInheritMultipleAbstractFunctions.kt")
+    public void testGraphFactoriesCannotInheritMultipleAbstractFunctions() {
+      run("GraphFactoriesCannotInheritMultipleAbstractFunctions.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphFactoriesFailsWithMoreThanOneAbstractFunction.kt")
+    public void testGraphFactoriesFailsWithMoreThanOneAbstractFunction() {
+      run("GraphFactoriesFailsWithMoreThanOneAbstractFunction.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphFactoriesFailsWithNoAbstractFunctions.kt")
+    public void testGraphFactoriesFailsWithNoAbstractFunctions() {
+      run("GraphFactoriesFailsWithNoAbstractFunctions.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphFactoriesParamsMustBeUniqueCheckBindsinstance.kt")
+    public void testGraphFactoriesParamsMustBeUniqueCheckBindsinstance() {
+      run("GraphFactoriesParamsMustBeUniqueCheckBindsinstance.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphFactoriesParamsMustBeUniqueCheckGraph.kt")
+    public void testGraphFactoriesParamsMustBeUniqueCheckGraph() {
+      run("GraphFactoriesParamsMustBeUniqueCheckGraph.kt");
     }
 
     @Test
@@ -797,9 +1271,51 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("GraphsCannotHaveConstructorsWithParameters.kt")
+    public void testGraphsCannotHaveConstructorsWithParameters() {
+      run("GraphsCannotHaveConstructorsWithParameters.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphsMustBeWellFormed.kt")
+    public void testGraphsMustBeWellFormed() {
+      run("GraphsMustBeWellFormed.kt");
+    }
+
+    @Test
+    @TestMetadata("IncludesCannotBePlatformTypesEnumsOrAnnotationClasses.kt")
+    public void testIncludesCannotBePlatformTypesEnumsOrAnnotationClasses() {
+      run("IncludesCannotBePlatformTypesEnumsOrAnnotationClasses.kt");
+    }
+
+    @Test
+    @TestMetadata("InjectorsCanOnlyHaveOneParameter.kt")
+    public void testInjectorsCanOnlyHaveOneParameter() {
+      run("InjectorsCanOnlyHaveOneParameter.kt");
+    }
+
+    @Test
+    @TestMetadata("InjectorsCannotHaveReturnTypes.kt")
+    public void testInjectorsCannotHaveReturnTypes() {
+      run("InjectorsCannotHaveReturnTypes.kt");
+    }
+
+    @Test
     @TestMetadata("InternalBindings.kt")
     public void testInternalBindings() {
       run("InternalBindings.kt");
+    }
+
+    @Test
+    @TestMetadata("InternalGraphsCannotMergeFilePrivateContributions.kt")
+    public void testInternalGraphsCannotMergeFilePrivateContributions() {
+      run("InternalGraphsCannotMergeFilePrivateContributions.kt");
+    }
+
+    @Test
+    @TestMetadata("MapCycleGraph.kt")
+    public void testMapCycleGraph() {
+      run("MapCycleGraph.kt");
     }
 
     @Test
@@ -821,9 +1337,57 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("MissingBindingShouldFailCompilationAndFunctionAccessor.kt")
+    public void testMissingBindingShouldFailCompilationAndFunctionAccessor() {
+      run("MissingBindingShouldFailCompilationAndFunctionAccessor.kt");
+    }
+
+    @Test
+    @TestMetadata("MissingBindingShouldFailCompilationAndFunctionAccessorWithQualifier.kt")
+    public void testMissingBindingShouldFailCompilationAndFunctionAccessorWithQualifier() {
+      run("MissingBindingShouldFailCompilationAndFunctionAccessorWithQualifier.kt");
+    }
+
+    @Test
+    @TestMetadata("MissingBindingShouldFailCompilationAndReportBindingStack.kt")
+    public void testMissingBindingShouldFailCompilationAndReportBindingStack() {
+      run("MissingBindingShouldFailCompilationAndReportBindingStack.kt");
+    }
+
+    @Test
+    @TestMetadata("MissingBindingShouldFailCompilationAndReportBindingStackWithQualifier.kt")
+    public void testMissingBindingShouldFailCompilationAndReportBindingStackWithQualifier() {
+      run("MissingBindingShouldFailCompilationAndReportBindingStackWithQualifier.kt");
+    }
+
+    @Test
+    @TestMetadata("MissingBindingShouldFailCompilationAndReportPropertyAccessor.kt")
+    public void testMissingBindingShouldFailCompilationAndReportPropertyAccessor() {
+      run("MissingBindingShouldFailCompilationAndReportPropertyAccessor.kt");
+    }
+
+    @Test
+    @TestMetadata("MissingBindingShouldFailCompilationAndReportPropertyAccessorWithGetSiteTargetQualifier.kt")
+    public void testMissingBindingShouldFailCompilationAndReportPropertyAccessorWithGetSiteTargetQualifier() {
+      run("MissingBindingShouldFailCompilationAndReportPropertyAccessorWithGetSiteTargetQualifier.kt");
+    }
+
+    @Test
+    @TestMetadata("MissingBindingShouldFailCompilationAndReportPropertyAccessorWithQualifier.kt")
+    public void testMissingBindingShouldFailCompilationAndReportPropertyAccessorWithQualifier() {
+      run("MissingBindingShouldFailCompilationAndReportPropertyAccessorWithQualifier.kt");
+    }
+
+    @Test
     @TestMetadata("MixedCycleParams.kt")
     public void testMixedCycleParams() {
       run("MixedCycleParams.kt");
+    }
+
+    @Test
+    @TestMetadata("MultipleEmptyMultibindsAreReportedTogether.kt")
+    public void testMultipleEmptyMultibindsAreReportedTogether() {
+      run("MultipleEmptyMultibindsAreReportedTogether.kt");
     }
 
     @Test
@@ -836,6 +1400,36 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     @TestMetadata("MultipleMissingDeps.kt")
     public void testMultipleMissingDeps() {
       run("MultipleMissingDeps.kt");
+    }
+
+    @Test
+    @TestMetadata("NonNullableMayNotBeBoundAsNullableType.kt")
+    public void testNonNullableMayNotBeBoundAsNullableType() {
+      run("NonNullableMayNotBeBoundAsNullableType.kt");
+    }
+
+    @Test
+    @TestMetadata("NullableMapMultibindingsMissing.kt")
+    public void testNullableMapMultibindingsMissing() {
+      run("NullableMapMultibindingsMissing.kt");
+    }
+
+    @Test
+    @TestMetadata("NullableSetMultibindingsMissing.kt")
+    public void testNullableSetMultibindingsMissing() {
+      run("NullableSetMultibindingsMissing.kt");
+    }
+
+    @Test
+    @TestMetadata("OptionalDepsWithBackReferencingDefault.kt")
+    public void testOptionalDepsWithBackReferencingDefault() {
+      run("OptionalDepsWithBackReferencingDefault.kt");
+    }
+
+    @Test
+    @TestMetadata("OverridesAnnotatedWithProvidesFromNonProvidesSupertypesAreOk.kt")
+    public void testOverridesAnnotatedWithProvidesFromNonProvidesSupertypesAreOk() {
+      run("OverridesAnnotatedWithProvidesFromNonProvidesSupertypesAreOk.kt");
     }
 
     @Test
@@ -857,9 +1451,57 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("ProvidersOverriddenFromSupertypesAreErrors.kt")
+    public void testProvidersOverriddenFromSupertypesAreErrors() {
+      run("ProvidersOverriddenFromSupertypesAreErrors.kt");
+    }
+
+    @Test
+    @TestMetadata("PublicGraphsCannotMergeEffectivelyPrivateContributions.kt")
+    public void testPublicGraphsCannotMergeEffectivelyPrivateContributions() {
+      run("PublicGraphsCannotMergeEffectivelyPrivateContributions.kt");
+    }
+
+    @Test
+    @TestMetadata("PublicGraphsCannotMergeInternalContributionsSimple.kt")
+    public void testPublicGraphsCannotMergeInternalContributionsSimple() {
+      run("PublicGraphsCannotMergeInternalContributionsSimple.kt");
+    }
+
+    @Test
+    @TestMetadata("QualifiedAccessorsAreInvalidWhenWidening.kt")
+    public void testQualifiedAccessorsAreInvalidWhenWidening() {
+      run("QualifiedAccessorsAreInvalidWhenWidening.kt");
+    }
+
+    @Test
+    @TestMetadata("QualifiedAccessorsAreValidWhenNarrowing.kt")
+    public void testQualifiedAccessorsAreValidWhenNarrowing() {
+      run("QualifiedAccessorsAreValidWhenNarrowing.kt");
+    }
+
+    @Test
     @TestMetadata("QualifiedRequestIsNotSatisfiedByUnqualifiedInjectClass.kt")
     public void testQualifiedRequestIsNotSatisfiedByUnqualifiedInjectClass() {
       run("QualifiedRequestIsNotSatisfiedByUnqualifiedInjectClass.kt");
+    }
+
+    @Test
+    @TestMetadata("ReceiverMustBeAGraphRegularGraphErrorGeneric.kt")
+    public void testReceiverMustBeAGraphRegularGraphErrorGeneric() {
+      run("ReceiverMustBeAGraphRegularGraphErrorGeneric.kt");
+    }
+
+    @Test
+    @TestMetadata("ReceiverMustBeAGraphRegularGraphErrors.kt")
+    public void testReceiverMustBeAGraphRegularGraphErrors() {
+      run("ReceiverMustBeAGraphRegularGraphErrors.kt");
+    }
+
+    @Test
+    @TestMetadata("ReceiverMustBeAGraphUselessCasts.kt")
+    public void testReceiverMustBeAGraphUselessCasts() {
+      run("ReceiverMustBeAGraphUselessCasts.kt");
     }
 
     @Test
@@ -875,9 +1517,93 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("ScopedGraphsCannotDependOnScopedBindingsWithMismatchedScopes.kt")
+    public void testScopedGraphsCannotDependOnScopedBindingsWithMismatchedScopes() {
+      run("ScopedGraphsCannotDependOnScopedBindingsWithMismatchedScopes.kt");
+    }
+
+    @Test
+    @TestMetadata("SelfReferencingGraphDependencyCycleShouldFail.kt")
+    public void testSelfReferencingGraphDependencyCycleShouldFail() {
+      run("SelfReferencingGraphDependencyCycleShouldFail.kt");
+    }
+
+    @Test
+    @TestMetadata("SimilarBindingsDifferentQualifiers.kt")
+    public void testSimilarBindingsDifferentQualifiers() {
+      run("SimilarBindingsDifferentQualifiers.kt");
+    }
+
+    @Test
+    @TestMetadata("SimilarBindingsDifferentQualifiersQualifierOnRequested.kt")
+    public void testSimilarBindingsDifferentQualifiersQualifierOnRequested() {
+      run("SimilarBindingsDifferentQualifiersQualifierOnRequested.kt");
+    }
+
+    @Test
+    @TestMetadata("SimilarBindingsMultibindingMap.kt")
+    public void testSimilarBindingsMultibindingMap() {
+      run("SimilarBindingsMultibindingMap.kt");
+    }
+
+    @Test
+    @TestMetadata("SimilarBindingsMultibindingSet.kt")
+    public void testSimilarBindingsMultibindingSet() {
+      run("SimilarBindingsMultibindingSet.kt");
+    }
+
+    @Test
+    @TestMetadata("SimilarBindingsMultiple.kt")
+    public void testSimilarBindingsMultiple() {
+      run("SimilarBindingsMultiple.kt");
+    }
+
+    @Test
+    @TestMetadata("SimilarBindingsSubtype.kt")
+    public void testSimilarBindingsSubtype() {
+      run("SimilarBindingsSubtype.kt");
+    }
+
+    @Test
+    @TestMetadata("SimilarBindingsSupertype.kt")
+    public void testSimilarBindingsSupertype() {
+      run("SimilarBindingsSupertype.kt");
+    }
+
+    @Test
+    @TestMetadata("SimpleCycleDetection.kt")
+    public void testSimpleCycleDetection() {
+      run("SimpleCycleDetection.kt");
+    }
+
+    @Test
+    @TestMetadata("SimpleMissingNonnullIsAbsent.kt")
+    public void testSimpleMissingNonnullIsAbsent() {
+      run("SimpleMissingNonnullIsAbsent.kt");
+    }
+
+    @Test
+    @TestMetadata("SimpleMissingNullableIsAbsent.kt")
+    public void testSimpleMissingNullableIsAbsent() {
+      run("SimpleMissingNullableIsAbsent.kt");
+    }
+
+    @Test
     @TestMetadata("SuspendDependencyCycleAdvice.kt")
     public void testSuspendDependencyCycleAdvice() {
       run("SuspendDependencyCycleAdvice.kt");
+    }
+
+    @Test
+    @TestMetadata("TargetGraphTypeCannotBeAFactoryParameter.kt")
+    public void testTargetGraphTypeCannotBeAFactoryParameter() {
+      run("TargetGraphTypeCannotBeAFactoryParameter.kt");
+    }
+
+    @Test
+    @TestMetadata("UnscopedGraphsMayNotReferenceScopedTypes.kt")
+    public void testUnscopedGraphsMayNotReferenceScopedTypes() {
+      run("UnscopedGraphsMayNotReferenceScopedTypes.kt");
     }
 
     @Test
@@ -956,6 +1682,54 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       }
 
       @Test
+      @TestMetadata("ChildGraphsCannotHaveTheSameAggregationScopeAsParentDirect.kt")
+      public void testChildGraphsCannotHaveTheSameAggregationScopeAsParentDirect() {
+        run("ChildGraphsCannotHaveTheSameAggregationScopeAsParentDirect.kt");
+      }
+
+      @Test
+      @TestMetadata("ChildGraphsCannotHaveTheSameScopeAnnotationsAsParentDirect.kt")
+      public void testChildGraphsCannotHaveTheSameScopeAnnotationsAsParentDirect() {
+        run("ChildGraphsCannotHaveTheSameScopeAnnotationsAsParentDirect.kt");
+      }
+
+      @Test
+      @TestMetadata("ContributedFactoriesMustBeNestedClassesOfContributedGraphTopLevel.kt")
+      public void testContributedFactoriesMustBeNestedClassesOfContributedGraphTopLevel() {
+        run("ContributedFactoriesMustBeNestedClassesOfContributedGraphTopLevel.kt");
+      }
+
+      @Test
+      @TestMetadata("ContributedFactoriesMustBeNestedClassesOfContributedGraphWrongClass.kt")
+      public void testContributedFactoriesMustBeNestedClassesOfContributedGraphWrongClass() {
+        run("ContributedFactoriesMustBeNestedClassesOfContributedGraphWrongClass.kt");
+      }
+
+      @Test
+      @TestMetadata("ContributedFactoriesMustContributeToADifferentScope.kt")
+      public void testContributedFactoriesMustContributeToADifferentScope() {
+        run("ContributedFactoriesMustContributeToADifferentScope.kt");
+      }
+
+      @Test
+      @TestMetadata("ContributedFactoriesMustOnlyContributeContributedGraphs.kt")
+      public void testContributedFactoriesMustOnlyContributeContributedGraphs() {
+        run("ContributedFactoriesMustOnlyContributeContributedGraphs.kt");
+      }
+
+      @Test
+      @TestMetadata("ContributedGraphFactoriesMustBeInterfaces.kt")
+      public void testContributedGraphFactoriesMustBeInterfaces() {
+        run("ContributedGraphFactoriesMustBeInterfaces.kt");
+      }
+
+      @Test
+      @TestMetadata("ContributedGraphWithQualifiedProvider.kt")
+      public void testContributedGraphWithQualifiedProvider() {
+        run("ContributedGraphWithQualifiedProvider.kt");
+      }
+
+      @Test
       @TestMetadata("DeepGraphExtensionChainEmitsWarning.kt")
       public void testDeepGraphExtensionChainEmitsWarning() {
         run("DeepGraphExtensionChainEmitsWarning.kt");
@@ -977,6 +1751,42 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       @TestMetadata("ExtensionsWithFactoriesMustUseThem.kt")
       public void testExtensionsWithFactoriesMustUseThem() {
         run("ExtensionsWithFactoriesMustUseThem.kt");
+      }
+
+      @Test
+      @TestMetadata("GraphAndExtensionImplementInterfaceBoundInChild.kt")
+      public void testGraphAndExtensionImplementInterfaceBoundInChild() {
+        run("GraphAndExtensionImplementInterfaceBoundInChild.kt");
+      }
+
+      @Test
+      @TestMetadata("GraphAndExtensionImplementInterfaceBoundInParent.kt")
+      public void testGraphAndExtensionImplementInterfaceBoundInParent() {
+        run("GraphAndExtensionImplementInterfaceBoundInParent.kt");
+      }
+
+      @Test
+      @TestMetadata("GraphAndExtensionImplementSameInterface.kt")
+      public void testGraphAndExtensionImplementSameInterface() {
+        run("GraphAndExtensionImplementSameInterface.kt");
+      }
+
+      @Test
+      @TestMetadata("GraphExtendsInterface.kt")
+      public void testGraphExtendsInterface() {
+        run("GraphExtendsInterface.kt");
+      }
+
+      @Test
+      @TestMetadata("GraphExtendsInterfaceBoundInChild.kt")
+      public void testGraphExtendsInterfaceBoundInChild() {
+        run("GraphExtendsInterfaceBoundInChild.kt");
+      }
+
+      @Test
+      @TestMetadata("GraphExtendsInterfaceBoundInParent.kt")
+      public void testGraphExtendsInterfaceBoundInParent() {
+        run("GraphExtendsInterfaceBoundInParent.kt");
       }
 
       @Test
@@ -1025,6 +1835,18 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       @TestMetadata("GraphPrivateSourceNotLeakedViaBindsAlias.kt")
       public void testGraphPrivateSourceNotLeakedViaBindsAlias() {
         run("GraphPrivateSourceNotLeakedViaBindsAlias.kt");
+      }
+
+      @Test
+      @TestMetadata("MultipleContributedGraphsShouldBeAbleToInjectDependencyFromParent.kt")
+      public void testMultipleContributedGraphsShouldBeAbleToInjectDependencyFromParent() {
+        run("MultipleContributedGraphsShouldBeAbleToInjectDependencyFromParent.kt");
+      }
+
+      @Test
+      @TestMetadata("MultipleLevelsOfProviderInheritance.kt")
+      public void testMultipleLevelsOfProviderInheritance() {
+        run("MultipleLevelsOfProviderInheritance.kt");
       }
 
       @Test
@@ -1605,6 +2427,24 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("AssistedFactoriesCannotHaveTypeParams.kt")
+    public void testAssistedFactoriesCannotHaveTypeParams() {
+      run("AssistedFactoriesCannotHaveTypeParams.kt");
+    }
+
+    @Test
+    @TestMetadata("CannotHaveMultipleInjectConstructors.kt")
+    public void testCannotHaveMultipleInjectConstructors() {
+      run("CannotHaveMultipleInjectConstructors.kt");
+    }
+
+    @Test
+    @TestMetadata("CannotHaveMultipleInjectTargets.kt")
+    public void testCannotHaveMultipleInjectTargets() {
+      run("CannotHaveMultipleInjectTargets.kt");
+    }
+
+    @Test
     @TestMetadata("CannotMixProviderOfLazyTypes.kt")
     public void testCannotMixProviderOfLazyTypes() {
       run("CannotMixProviderOfLazyTypes.kt");
@@ -1617,9 +2457,21 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("ConstructorPlacementWarningDisabled.kt")
+    public void testConstructorPlacementWarningDisabled() {
+      run("ConstructorPlacementWarningDisabled.kt");
+    }
+
+    @Test
     @TestMetadata("DesugaredProviderWarning.kt")
     public void testDesugaredProviderWarning() {
       run("DesugaredProviderWarning.kt");
+    }
+
+    @Test
+    @TestMetadata("InjectedClassesMustBeVisible.kt")
+    public void testInjectedClassesMustBeVisible() {
+      run("InjectedClassesMustBeVisible.kt");
     }
 
     @Test
@@ -1638,6 +2490,24 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     @TestMetadata("InjectingContributesClassWithoutExposeImplBindingQualified.kt")
     public void testInjectingContributesClassWithoutExposeImplBindingQualified() {
       run("InjectingContributesClassWithoutExposeImplBindingQualified.kt");
+    }
+
+    @Test
+    @TestMetadata("LocalClassesCannotBeInjected.kt")
+    public void testLocalClassesCannotBeInjected() {
+      run("LocalClassesCannotBeInjected.kt");
+    }
+
+    @Test
+    @TestMetadata("OnlyClassesCanBeInjected.kt")
+    public void testOnlyClassesCanBeInjected() {
+      run("OnlyClassesCanBeInjected.kt");
+    }
+
+    @Test
+    @TestMetadata("OnlyFinalAndOpenClassesCanBeInjected.kt")
+    public void testOnlyFinalAndOpenClassesCanBeInjected() {
+      run("OnlyFinalAndOpenClassesCanBeInjected.kt");
     }
 
     @Test
@@ -1720,6 +2590,18 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       }
 
       @Test
+      @TestMetadata("AssistedFactoriesMustHaveASingleAbstractFunctionImplementedFromSupertype.kt")
+      public void testAssistedFactoriesMustHaveASingleAbstractFunctionImplementedFromSupertype() {
+        run("AssistedFactoriesMustHaveASingleAbstractFunctionImplementedFromSupertype.kt");
+      }
+
+      @Test
+      @TestMetadata("AssistedFactoriesMustHaveASingleAbstractFunctionImplementedInSupertype.kt")
+      public void testAssistedFactoriesMustHaveASingleAbstractFunctionImplementedInSupertype() {
+        run("AssistedFactoriesMustHaveASingleAbstractFunctionImplementedInSupertype.kt");
+      }
+
+      @Test
       @TestMetadata("AssistedFactoryExtraParamReportsOnParam.kt")
       public void testAssistedFactoryExtraParamReportsOnParam() {
         run("AssistedFactoryExtraParamReportsOnParam.kt");
@@ -1753,6 +2635,66 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       @TestMetadata("AssistedFactoryWithMultipleSAMs.kt")
       public void testAssistedFactoryWithMultipleSAMs() {
         run("AssistedFactoryWithMultipleSAMs.kt");
+      }
+
+      @Test
+      @TestMetadata("AssistedParameterMismatchDifferentCount.kt")
+      public void testAssistedParameterMismatchDifferentCount() {
+        run("AssistedParameterMismatchDifferentCount.kt");
+      }
+
+      @Test
+      @TestMetadata("AssistedParameterMismatchDifferentCountOneEmpty.kt")
+      public void testAssistedParameterMismatchDifferentCountOneEmpty() {
+        run("AssistedParameterMismatchDifferentCountOneEmpty.kt");
+      }
+
+      @Test
+      @TestMetadata("AssistedParameterMismatchDifferentIdentifiers.kt")
+      public void testAssistedParameterMismatchDifferentIdentifiers() {
+        run("AssistedParameterMismatchDifferentIdentifiers.kt");
+      }
+
+      @Test
+      @TestMetadata("AssistedParameterMismatchDifferentTypes.kt")
+      public void testAssistedParameterMismatchDifferentTypes() {
+        run("AssistedParameterMismatchDifferentTypes.kt");
+      }
+
+      @Test
+      @TestMetadata("AssistedParameterMismatchMatchingIdentifiersDifferentTypes.kt")
+      public void testAssistedParameterMismatchMatchingIdentifiersDifferentTypes() {
+        run("AssistedParameterMismatchMatchingIdentifiersDifferentTypes.kt");
+      }
+
+      @Test
+      @TestMetadata("AssistedTypesCannotBeDependedOnDirectlyAccessor.kt")
+      public void testAssistedTypesCannotBeDependedOnDirectlyAccessor() {
+        run("AssistedTypesCannotBeDependedOnDirectlyAccessor.kt");
+      }
+
+      @Test
+      @TestMetadata("AssistedTypesCannotBeDependedOnDirectlyAccessorWithNoOtherRef.kt")
+      public void testAssistedTypesCannotBeDependedOnDirectlyAccessorWithNoOtherRef() {
+        run("AssistedTypesCannotBeDependedOnDirectlyAccessorWithNoOtherRef.kt");
+      }
+
+      @Test
+      @TestMetadata("AssistedTypesCannotBeDependedOnDirectlyClass.kt")
+      public void testAssistedTypesCannotBeDependedOnDirectlyClass() {
+        run("AssistedTypesCannotBeDependedOnDirectlyClass.kt");
+      }
+
+      @Test
+      @TestMetadata("AssistedTypesCannotBeDependedOnDirectlyMember.kt")
+      public void testAssistedTypesCannotBeDependedOnDirectlyMember() {
+        run("AssistedTypesCannotBeDependedOnDirectlyMember.kt");
+      }
+
+      @Test
+      @TestMetadata("AssistedTypesCannotBeDependedOnDirectlyProvider.kt")
+      public void testAssistedTypesCannotBeDependedOnDirectlyProvider() {
+        run("AssistedTypesCannotBeDependedOnDirectlyProvider.kt");
       }
 
       @Test
@@ -1794,6 +2736,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       }
 
       @Test
+      @TestMetadata("FunctionInjectionOverrideValidation.kt")
+      public void testFunctionInjectionOverrideValidation() {
+        run("FunctionInjectionOverrideValidation.kt");
+      }
+
+      @Test
       @TestMetadata("LazyAssistedFactoryFunctionInjection.kt")
       public void testLazyAssistedFactoryFunctionInjection() {
         run("LazyAssistedFactoryFunctionInjection.kt");
@@ -1809,8 +2757,32 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       }
 
       @Test
+      @TestMetadata("AbstractInjectionsAreNotAllowedAbstractClass.kt")
+      public void testAbstractInjectionsAreNotAllowedAbstractClass() {
+        run("AbstractInjectionsAreNotAllowedAbstractClass.kt");
+      }
+
+      @Test
       public void testAllFilesPresentInMember() {
         KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/inject/member"), Pattern.compile("^(.+)\\.kt$"), null, true, "_reports");
+      }
+
+      @Test
+      @TestMetadata("ComposableMemberInjection.kt")
+      public void testComposableMemberInjection() {
+        run("ComposableMemberInjection.kt");
+      }
+
+      @Test
+      @TestMetadata("ConstructorInjectedMemberPlacement.kt")
+      public void testConstructorInjectedMemberPlacement() {
+        run("ConstructorInjectedMemberPlacement.kt");
+      }
+
+      @Test
+      @TestMetadata("ConstructorPropertyParametersCannotBeAnnotatedInject.kt")
+      public void testConstructorPropertyParametersCannotBeAnnotatedInject() {
+        run("ConstructorPropertyParametersCannotBeAnnotatedInject.kt");
       }
 
       @Test
@@ -1832,9 +2804,33 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       }
 
       @Test
+      @TestMetadata("InjectedMemberReturnType.kt")
+      public void testInjectedMemberReturnType() {
+        run("InjectedMemberReturnType.kt");
+      }
+
+      @Test
+      @TestMetadata("InjectedPropertiesInInjectedClassesCanMoveUpNullableGetsNoWarning.kt")
+      public void testInjectedPropertiesInInjectedClassesCanMoveUpNullableGetsNoWarning() {
+        run("InjectedPropertiesInInjectedClassesCanMoveUpNullableGetsNoWarning.kt");
+      }
+
+      @Test
+      @TestMetadata("LateinitMemberInjectOfMissingDepShouldFail.kt")
+      public void testLateinitMemberInjectOfMissingDepShouldFail() {
+        run("LateinitMemberInjectOfMissingDepShouldFail.kt");
+      }
+
+      @Test
       @TestMetadata("MemberInjectedShowsInjectFunctionInTrace.kt")
       public void testMemberInjectedShowsInjectFunctionInTrace() {
         run("MemberInjectedShowsInjectFunctionInTrace.kt");
+      }
+
+      @Test
+      @TestMetadata("MemberInjectionsAreNotAllowedInNonClasses.kt")
+      public void testMemberInjectionsAreNotAllowedInNonClasses() {
+        run("MemberInjectionsAreNotAllowedInNonClasses.kt");
       }
 
       @Test
@@ -1859,6 +2855,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       @TestMetadata("MultipleSubtypesWithCommonParentMemberInjectionsDoNotWarnAboutDupes.kt")
       public void testMultipleSubtypesWithCommonParentMemberInjectionsDoNotWarnAboutDupes() {
         run("MultipleSubtypesWithCommonParentMemberInjectionsDoNotWarnAboutDupes.kt");
+      }
+
+      @Test
+      @TestMetadata("SuspendFunctionsAreUnsupported.kt")
+      public void testSuspendFunctionsAreUnsupported() {
+        run("SuspendFunctionsAreUnsupported.kt");
       }
 
       @Test
@@ -1899,6 +2901,18 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       @Test
       public void testAllFilesPresentInDagger() {
         KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/interop/dagger"), Pattern.compile("^(.+)\\.kt$"), null, true, "_reports");
+      }
+
+      @Test
+      @TestMetadata("AnvilRankIgnoredWithoutInterop.kt")
+      public void testAnvilRankIgnoredWithoutInterop() {
+        run("AnvilRankIgnoredWithoutInterop.kt");
+      }
+
+      @Test
+      @TestMetadata("AnvilSubcomponentQualifiedScopedBinding.kt")
+      public void testAnvilSubcomponentQualifiedScopedBinding() {
+        run("AnvilSubcomponentQualifiedScopedBinding.kt");
       }
 
       @Test
@@ -1980,9 +2994,21 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       }
 
       @Test
+      @TestMetadata("RankedBindingWithExplicitTypeAndMultipleSupertypes.kt")
+      public void testRankedBindingWithExplicitTypeAndMultipleSupertypes() {
+        run("RankedBindingWithExplicitTypeAndMultipleSupertypes.kt");
+      }
+
+      @Test
       @TestMetadata("SuppressedWarningInExternalModule.kt")
       public void testSuppressedWarningInExternalModule() {
         run("SuppressedWarningInExternalModule.kt");
+      }
+
+      @Test
+      @TestMetadata("TiedAnvilRanksAreDuplicateBindings.kt")
+      public void testTiedAnvilRanksAreDuplicateBindings() {
+        run("TiedAnvilRanksAreDuplicateBindings.kt");
       }
 
       @Test
@@ -2031,6 +3057,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("ElementsIntoSetMustBeACollection.kt")
+    public void testElementsIntoSetMustBeACollection() {
+      run("ElementsIntoSetMustBeACollection.kt");
+    }
+
+    @Test
     @TestMetadata("ElementsIntoSetMustHaveTypeArg.kt")
     public void testElementsIntoSetMustHaveTypeArg() {
       run("ElementsIntoSetMustHaveTypeArg.kt");
@@ -2061,9 +3093,21 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("IntoMapMissingMapKey.kt")
+    public void testIntoMapMissingMapKey() {
+      run("IntoMapMissingMapKey.kt");
+    }
+
+    @Test
     @TestMetadata("MapKeyDiagnostics.kt")
     public void testMapKeyDiagnostics() {
       run("MapKeyDiagnostics.kt");
+    }
+
+    @Test
+    @TestMetadata("MapKeyMissingIntoMap.kt")
+    public void testMapKeyMissingIntoMap() {
+      run("MapKeyMissingIntoMap.kt");
     }
 
     @Test
@@ -2085,9 +3129,99 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("MapsCannotHaveNullableKeys.kt")
+    public void testMapsCannotHaveNullableKeys() {
+      run("MapsCannotHaveNullableKeys.kt");
+    }
+
+    @Test
+    @TestMetadata("MapsCannotHaveStarProjectionKeys.kt")
+    public void testMapsCannotHaveStarProjectionKeys() {
+      run("MapsCannotHaveStarProjectionKeys.kt");
+    }
+
+    @Test
+    @TestMetadata("MapsCannotHaveStarProjectionValues.kt")
+    public void testMapsCannotHaveStarProjectionValues() {
+      run("MapsCannotHaveStarProjectionValues.kt");
+    }
+
+    @Test
     @TestMetadata("MissingBindingFunctionType.kt")
     public void testMissingBindingFunctionType() {
       run("MissingBindingFunctionType.kt");
+    }
+
+    @Test
+    @TestMetadata("MultibindingOverrides.kt")
+    public void testMultibindingOverrides() {
+      run("MultibindingOverrides.kt");
+    }
+
+    @Test
+    @TestMetadata("MultibindsCannotBeBindsOrProvides.kt")
+    public void testMultibindsCannotBeBindsOrProvides() {
+      run("MultibindsCannotBeBindsOrProvides.kt");
+    }
+
+    @Test
+    @TestMetadata("MultibindsCannotBeScoped.kt")
+    public void testMultibindsCannotBeScoped() {
+      run("MultibindsCannotBeScoped.kt");
+    }
+
+    @Test
+    @TestMetadata("MultibindsMustBeAbstract.kt")
+    public void testMultibindsMustBeAbstract() {
+      run("MultibindsMustBeAbstract.kt");
+    }
+
+    @Test
+    @TestMetadata("MultibindsMustBeMapsOrSets.kt")
+    public void testMultibindsMustBeMapsOrSets() {
+      run("MultibindsMustBeMapsOrSets.kt");
+    }
+
+    @Test
+    @TestMetadata("MultipleMapKeysAreAnError.kt")
+    public void testMultipleMapKeysAreAnError() {
+      run("MultipleMapKeysAreAnError.kt");
+    }
+
+    @Test
+    @TestMetadata("OnlyOneMultibindingAnnotationIsAllowed.kt")
+    public void testOnlyOneMultibindingAnnotationIsAllowed() {
+      run("OnlyOneMultibindingAnnotationIsAllowed.kt");
+    }
+
+    @Test
+    @TestMetadata("ProvidesOrBindsRequiredElementsIntoSet.kt")
+    public void testProvidesOrBindsRequiredElementsIntoSet() {
+      run("ProvidesOrBindsRequiredElementsIntoSet.kt");
+    }
+
+    @Test
+    @TestMetadata("ProvidesOrBindsRequiredIntoMap.kt")
+    public void testProvidesOrBindsRequiredIntoMap() {
+      run("ProvidesOrBindsRequiredIntoMap.kt");
+    }
+
+    @Test
+    @TestMetadata("ProvidesOrBindsRequiredIntoSet.kt")
+    public void testProvidesOrBindsRequiredIntoSet() {
+      run("ProvidesOrBindsRequiredIntoSet.kt");
+    }
+
+    @Test
+    @TestMetadata("SetsCannotHaveStarProjectionValues.kt")
+    public void testSetsCannotHaveStarProjectionValues() {
+      run("SetsCannotHaveStarProjectionValues.kt");
+    }
+
+    @Test
+    @TestMetadata("StarProjectionInMultibindingProvider.kt")
+    public void testStarProjectionInMultibindingProvider() {
+      run("StarProjectionInMultibindingProvider.kt");
     }
 
     @Test

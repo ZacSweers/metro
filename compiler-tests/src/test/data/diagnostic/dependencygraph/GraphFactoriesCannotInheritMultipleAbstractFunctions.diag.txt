@@ -1,0 +1,3 @@
+/GraphFactoriesCannotInheritMultipleAbstractFunctions.kt:17:13: error: @DependencyGraph.Factory declarations must have exactly one abstract function but found 2.
+
+/GraphFactoriesCannotInheritMultipleAbstractFunctions.kt:17:13: error: @DependencyGraph.Factory declarations must have exactly one abstract function but found 2.

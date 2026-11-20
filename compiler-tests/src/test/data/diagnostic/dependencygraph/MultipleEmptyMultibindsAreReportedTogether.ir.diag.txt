@@ -1,0 +1,19 @@
+/MultipleEmptyMultibindsAreReportedTogether.kt:9:19: error: [Metro/EmptyMultibinding] Multibinding Set<Int> was unexpectedly empty
+
+  help: annotate its declaration with `@Multibinds(allowEmpty = true)` if it can legitimately be
+        empty
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#emptymultibinding
+
+
+/MultipleEmptyMultibindsAreReportedTogether.kt:10:19: error: [Metro/EmptyMultibinding] Multibinding Set<String> was unexpectedly empty
+
+  help: annotate its declaration with `@Multibinds(allowEmpty = true)` if it can legitimately be
+        empty
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#emptymultibinding
+
+
+/MultipleEmptyMultibindsAreReportedTogether.kt:11:19: error: [Metro/EmptyMultibinding] Multibinding Map<String, Int> was unexpectedly empty
+
+  help: annotate its declaration with `@Multibinds(allowEmpty = true)` if it can legitimately be
+        empty
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#emptymultibinding

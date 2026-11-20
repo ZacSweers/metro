@@ -119,6 +119,19 @@ class MetroExtensionRegistrarConfigurator(
       generateAssistedFactories = MetroDirectives.GENERATE_ASSISTED_FACTORIES in module.directives
       enableTopLevelFunctionInjection =
         MetroDirectives.ENABLE_TOP_LEVEL_FUNCTION_INJECTION in module.directives
+      module.directives
+        .singleOrZeroValue(MetroDirectives.FUNCTION_INJECT_ANNOTATIONS_OVERRIDE)
+        ?.let {
+          applyRawOption("function-inject-annotations-override", it)
+        }
+      module.directives.singleOrZeroValue(MetroDirectives.ENABLE_FUNCTION_PROVIDERS)?.let {
+        enableFunctionProviders = it
+      }
+      module.directives
+        .singleOrZeroValue(MetroDirectives.WARN_ON_INJECT_ANNOTATION_PLACEMENT)
+        ?.let {
+          warnOnInjectAnnotationPlacement = it
+        }
       module.directives.singleOrZeroValue(MetroDirectives.SHRINK_UNUSED_BINDINGS)?.let {
         shrinkUnusedBindings = it
       }

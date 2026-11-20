@@ -1,0 +1,12 @@
+/RepeatedContributesBindingSupportsMultipleScopesForADifferentTypeWithoutLeakingTheBindings.kt:24:7: error: [Metro/MissingBinding] No binding found for ContributedInterface
+
+  trace (in test.AltGraph):
+      ContributedInterface is requested at test.AltGraph.contributedInterface
+
+  similar bindings:
+      - Impl (Subtype. Type: ConstructorInjected) -
+        RepeatedContributesBindingSupportsMultipleScopesForADifferentTypeWithoutLeakingTheBindings.kt:12:1
+
+  help: ensure ContributedInterface has an @Inject constructor or is provided by an @Provides or
+        @Binds declaration visible to AltGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding

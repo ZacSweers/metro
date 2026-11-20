@@ -1,0 +1,1 @@
+/MapsCannotHaveNullableKeys.kt:8:16: error: Multibinding map keys cannot be nullable. Use a non-nullable type instead.

@@ -1,0 +1,8 @@
+/ConflictingOverridesForAccessorFunctions.kt:15:28: error: [Metro/QualifierOverrideMismatch] Overridden accessor function test.AppGraph.Impl.string must have
+    the same qualifier annotations as the overridden accessor function
+
+  The final accessor function qualifier is absent but overridden symbol test.Parent2.string has
+  '@Named("qualified")'
+
+  help: match the qualifier annotations on overrides with their overridden declarations
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#qualifieroverridemismatch

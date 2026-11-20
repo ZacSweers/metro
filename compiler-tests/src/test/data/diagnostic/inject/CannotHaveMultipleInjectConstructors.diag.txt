@@ -1,0 +1,3 @@
+/CannotHaveMultipleInjectConstructors.kt:6:20: error: Only one `@Inject` constructor is allowed.
+
+/CannotHaveMultipleInjectConstructors.kt:7:3: error: Only one `@Inject` constructor is allowed.

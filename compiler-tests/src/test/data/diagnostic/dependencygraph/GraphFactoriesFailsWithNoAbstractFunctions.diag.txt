@@ -1,0 +1,1 @@
+/GraphFactoriesFailsWithNoAbstractFunctions.kt:9:13: error: @DependencyGraph.Factory declarations must have exactly one abstract function but found none.

@@ -1,0 +1,1 @@
+/NonNullableMayNotBeBoundAsNullableType.kt:15:12: error: Binds receiver type `kotlin.Int?` is not a subtype of bound type `kotlin.Int`.

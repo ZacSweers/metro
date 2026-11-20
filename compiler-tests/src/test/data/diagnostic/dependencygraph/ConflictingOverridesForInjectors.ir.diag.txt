@@ -1,0 +1,8 @@
+/ConflictingOverridesForInjectors.kt:19:28: error: [Metro/QualifierOverrideMismatch] Overridden injector function test.AppGraph.Impl.injectThing must
+    have the same qualifier annotations as the overridden injector function
+
+  The final injector function qualifier is absent but overridden symbol test.Parent2.injectThing has
+  '@Named("qualified")'
+
+  help: match the qualifier annotations on overrides with their overridden declarations
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#qualifieroverridemismatch

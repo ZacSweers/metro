@@ -1,0 +1,1 @@
+/AccessorsCannotBeNothingFunction.kt:8:7: error: Graph accessor members cannot return Nothing.

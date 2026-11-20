@@ -1,0 +1,1 @@
+/ContributedGraphFactoriesMustBeInterfaces.kt:13:18: error: Contributed @GraphExtension.Factory declarations can only be interfaces.

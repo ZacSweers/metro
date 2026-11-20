@@ -1,0 +1,3 @@
+/InjectedClassesMustBeVisible.kt:7:1: error: Injected classes must be public or internal.
+
+/InjectedClassesMustBeVisible.kt:11:3: error: Injected classes must be public or internal.

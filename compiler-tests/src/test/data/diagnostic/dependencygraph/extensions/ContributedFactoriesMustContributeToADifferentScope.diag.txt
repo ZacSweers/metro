@@ -1,0 +1,1 @@
+/ContributedFactoriesMustContributeToADifferentScope.kt:11:3: error: GraphExtension.Factory declarations must contribute to a different scope than their contributed graph. However, this factory and its contributed graph both contribute to 'test.LoggedInScope'.

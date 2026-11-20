@@ -1,0 +1,1 @@
+/GraphFactoriesParamsMustBeUniqueCheckBindsinstance.kt:12:48: error: DependencyGraph.Factory abstract function parameters must be unique.

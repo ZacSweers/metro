@@ -1,0 +1,1 @@
+/BindingWithNoExplicitBoundTypeOrSupertypesIsAnErrorContributesBinding.kt:8:1: error: `@ContributesBinding`-annotated class test.Impl has no supertypes to bind to.

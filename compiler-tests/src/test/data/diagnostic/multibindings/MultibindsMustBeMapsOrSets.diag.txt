@@ -1,0 +1,7 @@
+/MultibindsMustBeMapsOrSets.kt:7:19: error: `@Multibinds` declarations can only return a `Map` or `Set`.
+
+/MultibindsMustBeMapsOrSets.kt:8:40: error: `@Multibinds` declarations can only return a `Map` or `Set`.
+
+/MultibindsMustBeMapsOrSets.kt:9:36: error: `@Multibinds` declarations can only return a `Map` or `Set`.
+
+/MultibindsMustBeMapsOrSets.kt:10:36: error: `@Multibinds` declarations can only return a `Map` or `Set`.

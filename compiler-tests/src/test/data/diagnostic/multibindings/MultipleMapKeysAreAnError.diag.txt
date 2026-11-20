@@ -1,0 +1,3 @@
+/MultipleMapKeysAreAnError.kt:7:3: error: Only one @MapKey should be be used on a given @IntoMap declaration.
+
+/MultipleMapKeysAreAnError.kt:8:3: error: Only one @MapKey should be be used on a given @IntoMap declaration.

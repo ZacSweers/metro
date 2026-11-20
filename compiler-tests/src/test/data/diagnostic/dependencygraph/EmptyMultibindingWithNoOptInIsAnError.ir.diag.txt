@@ -1,0 +1,5 @@
+/EmptyMultibindingWithNoOptInIsAnError.kt:9:19: error: [Metro/EmptyMultibinding] Multibinding Set<String> was unexpectedly empty
+
+  help: annotate its declaration with `@Multibinds(allowEmpty = true)` if it can legitimately be
+        empty
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#emptymultibinding

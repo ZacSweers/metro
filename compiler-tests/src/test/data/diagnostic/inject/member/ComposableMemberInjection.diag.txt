@@ -1,0 +1,1 @@
+/Example.kt:13:27: error: Injected members cannot be composable functions.

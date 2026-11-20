@@ -1,0 +1,1 @@
+/AllFactoryParametersMustBeAnnotatedWithProvidesXORIncludes.kt:10:41: error: DependencyGraph.Factory abstract function parameters must be annotated with exactly one @Includes or @Provides.

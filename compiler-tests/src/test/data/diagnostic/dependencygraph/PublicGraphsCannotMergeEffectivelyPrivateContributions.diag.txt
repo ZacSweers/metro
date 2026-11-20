@@ -1,0 +1,3 @@
+/PublicGraphsCannotMergeEffectivelyPrivateContributions.kt:7:11: error: DependencyGraph declarations may not extend declarations with narrower visibility. Contributed supertype 'test.Parent.ContributedInterface' is effectively private but graph declaration 'test.ExampleGraph' is public.
+
+/PublicGraphsCannotMergeEffectivelyPrivateContributions.kt:11:13: error: @Contributes*-annotated classes cannot be private.

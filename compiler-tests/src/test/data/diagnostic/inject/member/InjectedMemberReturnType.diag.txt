@@ -1,0 +1,1 @@
+/InjectedMemberReturnType.kt:8:36: warning: Return types for injected member functions will always be ignored.

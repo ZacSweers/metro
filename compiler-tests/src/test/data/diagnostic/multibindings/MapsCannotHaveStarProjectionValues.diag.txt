@@ -1,0 +1,1 @@
+/MapsCannotHaveStarProjectionValues.kt:8:16: error: Multibinding Map values cannot be star projections. Use a concrete type instead.

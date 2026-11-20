@@ -1,0 +1,3 @@
+/ConstructorInjectedMemberPlacement.kt:7:24: warning: Non-null injected member property in constructor-injected class should usually be moved to the inject constructor. If this has a default value, use Metro's default values support.
+
+/ConstructorInjectedMemberPlacement.kt:8:15: warning: Non-null injected member property in constructor-injected class should usually be moved to the inject constructor. If this has a default value, use Metro's default values support.

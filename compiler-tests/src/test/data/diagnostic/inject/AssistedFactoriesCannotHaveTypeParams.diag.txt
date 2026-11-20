@@ -1,0 +1,1 @@
+/AssistedFactoriesCannotHaveTypeParams.kt:10:13: error: `@AssistedFactory` functions cannot have type parameters.

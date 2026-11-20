@@ -1,0 +1,3 @@
+/GraphCreatorsMustBeVisible.kt:36:3: error: @DependencyGraph.Factory declarations must be public or internal.
+
+/GraphCreatorsMustBeVisible.kt:44:3: error: @DependencyGraph.Factory declarations must be public or internal.

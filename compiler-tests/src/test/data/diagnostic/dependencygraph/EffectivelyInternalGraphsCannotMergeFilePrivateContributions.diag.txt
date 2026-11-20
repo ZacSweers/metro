@@ -1,0 +1,1 @@
+/EffectivelyInternalGraphsCannotMergeFilePrivateContributions.kt:12:1: error: @Contributes*-annotated classes cannot be private.

@@ -1,0 +1,5 @@
+/OnlyOneMultibindingAnnotationIsAllowed.kt:7:33: error: Only one of `@Multibinds`, `@ElementsIntoSet`, `@IntoMap`, or `@IntoSet` is allowed.
+
+/OnlyOneMultibindingAnnotationIsAllowed.kt:8:57: error: Only one of `@Multibinds`, `@ElementsIntoSet`, `@IntoMap`, or `@IntoSet` is allowed.
+
+/OnlyOneMultibindingAnnotationIsAllowed.kt:8:77: warning: Suspicious `@IntoSet` return type. This declaration returns a `Set<Int>`, which would create a `Set<Set<Int>>` multibinding. Did you mean to use `@ElementsIntoSet`? Or if this is intentional, suppress this warning with `@Suppress("SUSPICIOUS_SET_INTO_SET")`

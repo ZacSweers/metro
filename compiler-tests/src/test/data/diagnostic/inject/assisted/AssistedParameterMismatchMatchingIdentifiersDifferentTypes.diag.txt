@@ -1,0 +1,9 @@
+/AssistedParameterMismatchMatchingIdentifiersDifferentTypes.kt:7:20: warning: There is only one @Inject-annotated constructor. Consider moving the annotation to the class instead.
+
+/AssistedParameterMismatchMatchingIdentifiersDifferentTypes.kt:12:9: error: Parameter mismatch. Assisted factory and assisted inject constructor parameters must match (name and type) but found differences:
+  Missing from factory:
+    - count: String
+  Missing from constructor:
+    - count: Int
+
+  help: `count` parameter appears in both but has different types
