@@ -398,7 +398,7 @@ if (excludeJsBoxTests) {
   }
 }
 
-tasks.withType<Test> {
+tasks.withType<Test>().configureEach {
   val updateTestData = providers.gradleProperty("updateTestData").isPresent
   val debugCompilerTests = providers.gradleProperty("metro.debugCompilerTests").isPresent
   // Golden updates and debugging need a fresh test JVM on every invocation.
