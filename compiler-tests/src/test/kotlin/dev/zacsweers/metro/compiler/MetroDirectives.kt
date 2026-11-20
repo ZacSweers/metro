@@ -210,10 +210,8 @@ object MetroDirectives : SimpleDirectivesContainer() {
     )
   val CHECK_REPORTS by
     stringDirective(
-      "Specifies report file names to verify against expected files. Can be specified multiple times. " +
-        "Example: 'CHECK_REPORTS: merging-unmatched-exclusions-fir/test/AppGraph'. " +
-        "Expected files should be named '<testFile>/<diagnosticKey>/<path>/<reportName>.txt'. " +
-        "For report names with explicit extensions, append '.txt' to the expected file.",
+      "Checks a report against '_reports/<fixture-name>/<report-path>.txt' beside the fixture. " +
+        "Repeat this directive to check multiple reports.",
     )
   val NORMALIZE_REPORT_SOURCE_LOCATIONS by
     directive("Removes source-location fields from JSON reports before comparison.")

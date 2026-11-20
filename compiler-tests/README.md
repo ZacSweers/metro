@@ -12,6 +12,8 @@ Adding a new test is easy! The simple flow is just
 2. Run `./gradlew :compiler-tests:generateTests` to regenerate tests. This is important, as these files are not automatically picked up otherwise.
 3. After running you'll see a new unit test method generated in the relevant class in `src/test/java`, which you can now use to run your test!
 
+Generate the checked-in Java with the default Kotlin version. To test another version, generate first, then run `./gradlew :compiler-tests:test -Pmetro.testCompilerVersion=2.3.0 --tests '*MyTest*'`. Older Kotlin generators can rewrite every suite. A full `./metrow regen` also generates the suites with the default version.
+
 Generation and a focused test run can also share one invocation from the repository root:
 
 ```bash
@@ -109,15 +111,9 @@ Replace `MyTest` with the generated class or method for your fixture. The overri
 
 ### Reports
 
-Create a `.kt` file under `test/src/data/dump/reports`. These tests verify Metro's diagnostic report outputs (like unmatched exclusions/replacements during contribution merging). Use the `CHECK_REPORTS` directive to specify which report files to verify. The test runs through the full compilation pipeline (FIR + IR) and compares generated reports against golden files. Example:
-   ```kotlin
-   // CHECK_REPORTS: merging-unmatched-replacements-fir/dev/zacsweers/metro/AppScope
+Create a `.kt` fixture anywhere under `src/test/data/dump/reports`. Add a `CHECK_REPORTS` directive for each report to verify after compilation. For example, `// CHECK_REPORTS: keys-populated/AppGraph/Impl` in `graphs/Example.kt` checks the golden at `graphs/_reports/Example/keys-populated/AppGraph/Impl.txt`.
 
-   @DependencyGraph(AppScope::class)
-   interface AppGraph
-   ```
-
-Expected files are named `<testFile>/<diagnosticKey>/<path>/<reportName>.txt` (e.g., `MyTest/merging-unmatched-replacements-fir/AppGraph.txt`).
+Generate the suite and run the fixture. The first run writes missing goldens and fails. Review the files under `_reports/<fixture-name>/`, then rerun the test. The generator skips `_reports` directories.
 
 ## Debugging/FAQ
 

@@ -18,29 +18,13 @@ import org.jetbrains.kotlin.test.services.temporaryDirectoryManager
 import org.opentest4j.AssertionFailedError
 
 /**
- * AfterAnalysisChecker that verifies Metro report and trace outputs.
+ * Checks Metro reports and traces after compilation.
  *
- * When [MetroDirectives.REPORTS_DESTINATION] is configured and [MetroDirectives.CHECK_REPORTS]
- * specifies report names, this checker will:
- * 1. Find the specified report files in the reports destination
- * 2. Compare each report file against an expected file alongside the test data
- *
- * Expected files should be named: `<testFile>/<diagnosticKey>/<path>/<reportName>.txt`. A sibling
- * `_reports` directory changes that root to `_reports/<testFile>/...`, which keeps report goldens
- * out of generated-test discovery. If the report name includes an explicit extension, the expected
- * file appends `.txt` to avoid treating generated `.kt` reports as test inputs.
- *
- * Example usage:
- * ```
- * // REPORTS_DESTINATION: metro/reports
- * // CHECK_REPORTS: merging-unmatched-exclusions-fir/test/AppGraph
- * // CHECK_REPORTS: merging-unmatched-replacements-ir/test/AppGraph
- * ```
- *
- * This will look for report files named `merging-unmatched-exclusions-fir/test/AppGraph.txt` and
- * `merging-unmatched-replacements-ir/test/AppGraph.txt` in the reports directory, and compare them
- * against `<testFile>/merging-unmatched-exclusions-fir/test/AppGraph.txt` and
- * `<testFile>/merging-unmatched-replacements-ir/test/AppGraph.txt` respectively.
+ * Reads each [MetroDirectives.CHECK_REPORTS] path from [MetroDirectives.REPORTS_DESTINATION]
+ * (default [DEFAULT_REPORTS_DIR]). Its golden lives under `_reports/<fixture-name>/` beside the
+ * fixture. For example, `// CHECK_REPORTS: keys-populated/AppGraph/Impl` in `Example.kt` checks
+ * `_reports/Example/keys-populated/AppGraph/Impl.txt`. Each golden appends `.txt` to the requested
+ * path even if it includes an extension. The suite generator skips `_reports` directories.
  *
  * When [MetroDirectives.CHECK_TRACES] is set, also asserts that trace files were produced under
  * [MetroDirectives.TRACE_DESTINATION] (or [DEFAULT_TRACES_DIR] when unset), every filename matches
@@ -89,14 +73,8 @@ class MetroReportsChecker(testServices: TestServices) :
       File(testServices.temporaryDirectoryManager.rootDir.absolutePath, reportsDestination)
 
     val testDataFile = testServices.moduleStructure.originalTestDataFiles.first()
-    val legacyExpectedRoot = testDataFile.withoutExtension()
-    val sharedReportsRoot = testDataFile.parentFile.resolve("_reports")
     val expectedRoot =
-      if (sharedReportsRoot.isDirectory) {
-        sharedReportsRoot.resolve(legacyExpectedRoot.name)
-      } else {
-        legacyExpectedRoot
-      }
+      testDataFile.resolveSibling("_reports").resolve(testDataFile.nameWithoutExtension)
 
     var generatedMissingFiles = false
     var lastError: AssertionFailedError? = null
@@ -210,9 +188,5 @@ class MetroReportsChecker(testServices: TestServices) :
         "Expected at least one IR trace file, got ${files.map { it.name }}"
       }
     }
-  }
-
-  private fun File.withoutExtension(): File {
-    return parentFile.resolve(nameWithoutExtension)
   }
 }

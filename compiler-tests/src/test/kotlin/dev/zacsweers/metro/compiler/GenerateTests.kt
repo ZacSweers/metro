@@ -2,38 +2,44 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler
 
-import dev.zacsweers.metro.compiler.test.COMPILER_VERSION
-import dev.zacsweers.metro.compiler.test.OVERRIDE_COMPILER_VERSION
+import org.jetbrains.kotlin.generators.dsl.junit5.generateTestGroupSuiteWithJUnit5
 
+/**
+ * Generates the checked-in JUnit suites. [MetroTestConfigurator] handles compiler version limits.
+ */
 fun main() {
-  val targetCompilerVersion = COMPILER_VERSION
-  val versionString = targetCompilerVersion.toString().filterNot { it == '.' }
+  generateTestGroupSuiteWithJUnit5 {
+    testGroup(
+      testDataRoot = "compiler-tests/src/test/data",
+      testsRoot = "compiler-tests/src/test/java",
+    ) {
+      val jsExcludes = listOf("interop", "circuit")
+      val reportGoldenDirs = listOf("_reports")
 
-  val exclusionPattern =
-    if (OVERRIDE_COMPILER_VERSION.toBoolean()) {
-      // Exclude files with .k<version> where version != targetCompilerVersion
-      // Pattern must match the full filename (with ^ and $ anchors)
-      // language=RegExp
-      """^(.+)\.k(?!$versionString\b)\w+\.kt(s)?$"""
-    } else {
-      null
+      testClass<AbstractBoxTest> { model("box") }
+      testClass<AbstractFastInitBoxTest> { model("box") }
+      testClass<AbstractContributionProvidersBoxTest> { model("box") }
+      testClass<AbstractIrOnlyClassesBoxTest> { model("box") }
+      testClass<AbstractOmitRedundantMirrorsIrOnlyClassesBoxTest> { model("box") }
+
+      testClass<AbstractJsBoxTest> { model("box", excludeDirsRecursively = jsExcludes) }
+      testClass<AbstractJsFastInitBoxTest> { model("box", excludeDirsRecursively = jsExcludes) }
+      testClass<AbstractJsContributionProvidersBoxTest> {
+        model("box", excludeDirsRecursively = jsExcludes)
+      }
+
+      testClass<AbstractDiagnosticTest> {
+        model("diagnostic", excludeDirsRecursively = reportGoldenDirs)
+      }
+      testClass<AbstractJsDiagnosticTest> {
+        model("diagnostic", excludeDirsRecursively = jsExcludes + reportGoldenDirs)
+      }
+
+      testClass<AbstractFirDumpTest> { model("dump/fir") }
+      testClass<AbstractIrDumpTest> { model("dump/ir") }
+      testClass<AbstractReportsTest> {
+        model("dump/reports", excludeDirsRecursively = reportGoldenDirs)
+      }
     }
-
-  generateTests<
-    AbstractBoxTest,
-    AbstractFastInitBoxTest,
-    AbstractContributionProvidersBoxTest,
-    AbstractJsBoxTest,
-    AbstractJsFastInitBoxTest,
-    AbstractJsContributionProvidersBoxTest,
-    AbstractIrOnlyClassesBoxTest,
-    AbstractOmitRedundantMirrorsIrOnlyClassesBoxTest,
-    AbstractDiagnosticTest,
-    AbstractJsDiagnosticTest,
-    AbstractFirDumpTest,
-    AbstractIrDumpTest,
-    AbstractReportsTest,
-  >(
-    exclusionPattern,
-  )
+  }
 }
