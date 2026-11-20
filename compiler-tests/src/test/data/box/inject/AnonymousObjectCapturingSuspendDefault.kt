@@ -1,3 +1,5 @@
+// WITH_COROUTINES
+
 // Regression test for https://github.com/ZacSweers/metro/issues/3119.
 
 interface DefaultProvider {

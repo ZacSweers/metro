@@ -5,9 +5,7 @@ package dev.zacsweers.metro.compiler
 import dev.zacsweers.metro.compiler.compat.CompilerVersionAliases
 import dev.zacsweers.metro.compiler.compat.KotlinToolingVersion
 import dev.zacsweers.metro.compiler.test.BUILD_COMPILER_VERSION
-import dev.zacsweers.metro.compiler.test.COMPILER_TOOLING_VERSION
 import dev.zacsweers.metro.compiler.test.COMPILER_VERSION
-import dev.zacsweers.metro.compiler.test.TEST_COMPILER_VERSION
 import org.jetbrains.kotlin.test.builders.RegisteredDirectivesBuilder
 import org.jetbrains.kotlin.test.directives.DiagnosticsDirectives
 import org.jetbrains.kotlin.test.directives.LanguageSettingsDirectives.OPT_IN
@@ -22,9 +20,14 @@ class MetroTestConfigurator(testServices: TestServices) : MetaTestConfigurator(t
     get() = listOf(MetroDirectives)
 
   override fun shouldSkipTest(): Boolean {
-    val directives = testServices.moduleStructure.allDirectives
-    if (MetroDirectives.METRO_IGNORE in directives) return true
-    if (MetroDirectives.METRO_JVM_ONLY in directives && !testServices.isJvmBackend()) return true
+    val structure = testServices.moduleStructure
+    val directives = structure.allDirectives
+    if (MetroDirectives.METRO_IGNORE in directives) {
+      return true
+    }
+    if (MetroDirectives.METRO_JVM_ONLY in directives && !testServices.isJvmBackend()) {
+      return true
+    }
 
     val testClassName = testServices.testInfo.className.substringAfterLast('.').substringBefore('$')
     if (
@@ -43,50 +46,30 @@ class MetroTestConfigurator(testServices: TestServices) : MetaTestConfigurator(t
       return true
     }
 
-    val jsDiagnosticSuite =
-      testServices.testInfo.className.substringAfterLast('.').substringBefore('$') ==
-        "JsDiagnosticTestGenerated"
+    val jsDiagnosticSuite = testClassName == "JsDiagnosticTestGenerated"
     if (testServices.isJsBackend() && jsDiagnosticSuite) {
       val rendersIrDiagnostics = DiagnosticsDirectives.RENDER_IR_DIAGNOSTICS_FULL_TEXT in directives
-      val usesJvmInteropDependencies =
-        MetroDirectives.WITH_ANVIL in directives ||
-          MetroDirectives.WITH_KI_ANVIL in directives ||
-          MetroDirectives.WITH_DAGGER in directives ||
-          MetroDirectives.ENABLE_DAGGER_INTEROP in directives ||
-          MetroDirectives.ENABLE_DAGGER_KSP in directives ||
-          MetroDirectives.ENABLE_ANVIL_KSP in directives ||
-          MetroDirectives.GUICE_ANNOTATIONS in directives ||
-          MetroDirectives.ENABLE_GUICE_INTEROP in directives ||
-          MetroDirectives.WITH_HILT in directives ||
-          MetroDirectives.ENABLE_HILT_INTEROP in directives ||
-          MetroDirectives.ENABLE_HILT_KSP in directives
-      if (rendersIrDiagnostics || usesJvmInteropDependencies) return true
+      if (rendersIrDiagnostics || MetroDirectives.needsJvmInteropLibraries(directives)) {
+        return true
+      }
     }
 
-    System.getProperty("metro.singleTestName")?.let { singleTest ->
-      return testServices.testInfo.methodName != singleTest
-    }
-
-    val generateClassesInIrDirectives = directives[MetroDirectives.GENERATE_CLASSES_IN_IR]
-    if (
-      generateClassesInIrDirectives.any { it.toString().toBoolean() } &&
-        generateClassesInIrDirectives.any { !it.toString().toBoolean() }
-    ) {
+    val singleTest = System.getProperty("metro.singleTestName")
+    if (singleTest != null && testServices.testInfo.methodName != singleTest) {
       return true
     }
+
     val irOnlyClassesSuite =
       testClassName == "IrOnlyClassesBoxTestGenerated" ||
         testClassName == "OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated"
-    if (
-      irOnlyClassesSuite &&
-        shouldSkipForCompilerVersion(
-          compilerVersion = COMPILER_VERSION,
-          compilerToolingVersion = DIRECTIVE_COMPILER_TOOLING_VERSION,
-          minVersion = MIN_IR_ONLY_CLASSES_COMPILER_VERSION,
-        )
-    ) {
-      return true
+    if (irOnlyClassesSuite) {
+      val optsOut =
+        structure.modules.any { false in it.directives[MetroDirectives.GENERATE_CLASSES_IN_IR] }
+      if (optsOut || TEST_COMPILER_TOOLING_VERSION < MIN_IR_CLASS_GENERATION_VERSION) {
+        return true
+      }
     }
+
     val minimumVersions = directives[MetroDirectives.MIN_COMPILER_VERSION].toMutableList()
     if (testServices.isJsBackend()) {
       minimumVersions += directives[MetroDirectives.MIN_JS_COMPILER_VERSION]
@@ -101,8 +84,6 @@ class MetroTestConfigurator(testServices: TestServices) : MetaTestConfigurator(t
   }
 
   companion object {
-    private const val MIN_IR_ONLY_CLASSES_COMPILER_VERSION = "2.4.20-dev-6138"
-
     /**
      * Determines whether a test should be skipped based on compiler version directives.
      *
@@ -143,20 +124,11 @@ class MetroTestConfigurator(testServices: TestServices) : MetaTestConfigurator(t
 }
 
 private val BUILD_COMPILER_TOOLING_VERSION = KotlinToolingVersion(BUILD_COMPILER_VERSION)
-private val TEST_COMPILER_TOOLING_VERSION = KotlinToolingVersion(TEST_COMPILER_VERSION)
 
 // Prereleases rank above every same-base dev build, so version directives compare the dev build a
 // prerelease maps to.
-private val DIRECTIVE_COMPILER_TOOLING_VERSION: KotlinToolingVersion = directiveCompilerVersion()
-
-private fun directiveCompilerVersion(): KotlinToolingVersion {
-  val version = KotlinToolingVersion(COMPILER_TOOLING_VERSION)
-  val aliased = CompilerVersionAliases.map(version)
-  if (aliased == null) {
-    return version
-  }
-  return aliased
-}
+private val DIRECTIVE_COMPILER_TOOLING_VERSION =
+  CompilerVersionAliases.map(TEST_COMPILER_TOOLING_VERSION) ?: TEST_COMPILER_TOOLING_VERSION
 
 fun RegisteredDirectivesBuilder.commonMetroTestDirectives() {
   OPT_IN.with("dev.zacsweers.metro.ExperimentalMetroApi")
@@ -165,25 +137,24 @@ fun RegisteredDirectivesBuilder.commonMetroTestDirectives() {
 }
 
 /**
- * Checks if the target version matches the actual compiler version.
- *
- * @param targetVersion The parsed target version
- * @param requiresFullMatch Whether all components (major, minor, patch) must match. If false, only
- *   major and minor are compared.
- * @param actualVersion The actual compiler version
+ * A major.minor target matches the whole release line. A target with a patch version also pins the
+ * classifier so a stable release has its own goldens.
  */
 private fun versionMatches(
   targetVersion: KotlinToolingVersion,
   requiresFullMatch: Boolean,
   actualVersion: KotlinToolingVersion,
 ): Boolean {
-  if (targetVersion.major != actualVersion.major) return false
-  if (targetVersion.minor != actualVersion.minor) return false
-  if (requiresFullMatch && targetVersion.patch != actualVersion.patch) return false
-  if (requiresFullMatch && targetVersion.classifier != null) {
-    return targetVersion.classifier.equals(actualVersion.classifier, ignoreCase = true)
+  if (targetVersion.major != actualVersion.major || targetVersion.minor != actualVersion.minor) {
+    return false
   }
-  return true
+
+  if (!requiresFullMatch) {
+    return true
+  }
+
+  return targetVersion.patch == actualVersion.patch &&
+    targetVersion.classifier.equals(actualVersion.classifier, ignoreCase = true)
 }
 
 private fun toolingVersionDirective(versionString: String): Pair<KotlinToolingVersion, Boolean> {

@@ -1,3 +1,4 @@
+// WITH_SAMPLE_EXTENSIONS
 // GENERATE_CLASSES_IN_IR: false
 
 package test

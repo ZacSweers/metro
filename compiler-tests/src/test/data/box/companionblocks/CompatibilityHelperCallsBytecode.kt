@@ -1,7 +1,6 @@
 // MIN_COMPILER_VERSION: 2.5.0-dev-7307
 // METRO_JVM_ONLY
 // GENERATE_CLASSES_IN_IR: true
-// CHECK_BYTECODE_TEXT
 // MODULE: lib
 // COMPANION_MODE: COMPATIBILITY
 // FILE: Library.kt
@@ -21,6 +20,7 @@ abstract class LibBindings {
 }
 
 // MODULE: main(lib)
+// CHECK_BYTECODE_TEXT
 // COMPANION_MODE: COMPATIBILITY
 // FILE: Main.kt
 
@@ -50,6 +50,7 @@ interface AppGraph {
   @Provides fun values(): List<String> = listOf("values")
 }
 
+// FILE: Test.kt
 fun box(): String {
   val graph = createGraph<AppGraph>()
   assertEquals("OK", graph.lib.text)

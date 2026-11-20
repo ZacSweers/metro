@@ -1,4 +1,5 @@
 // ENABLE_SUSPEND_PROVIDERS
+// WITH_COROUTINES
 
 // A suspend reified provider resolves through suspend accessors and suspend providers.
 interface Encoder<T> {

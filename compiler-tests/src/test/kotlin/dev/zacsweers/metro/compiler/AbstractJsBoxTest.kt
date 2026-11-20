@@ -2,8 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler
 
+import dev.zacsweers.metro.compiler.compat.KotlinToolingVersion
+import org.jetbrains.kotlin.test.builders.RegisteredDirectivesBuilder
 import org.jetbrains.kotlin.test.builders.TestConfigurationBuilder
-import org.jetbrains.kotlin.test.directives.AdditionalFilesDirectives.WITH_COROUTINES as WITH_COROUTINE_HELPERS
 import org.jetbrains.kotlin.test.directives.ConfigurationDirectives.WITH_STDLIB
 import org.jetbrains.kotlin.test.services.EnvironmentBasedStandardLibrariesPathProvider
 import org.jetbrains.kotlin.test.services.KotlinStandardLibrariesPathProvider
@@ -25,38 +26,37 @@ open class AbstractJsBoxTest : KotlinJsBoxTestBase() {
 
       defaultDirectives {
         commonMetroTestDirectives()
+        configureVariant()
         +WITH_STDLIB
-        +WITH_COROUTINE_HELPERS
       }
+    }
+  }
 
-      forTestsMatching("CircuitSerializerRegistrationExpectActual.kt") {
-        defaultDirectives { -WITH_COROUTINE_HELPERS }
-      }
+  /** The standard JS suite follows the Gradle defaults for generated classes and mirrors. */
+  protected open fun RegisteredDirectivesBuilder.configureVariant() {
+    if (TEST_COMPILER_TOOLING_VERSION >= MIN_IR_CLASS_GENERATION_VERSION) {
+      MetroDirectives.GENERATE_CLASSES_IN_IR.with(true)
+    }
+    if (TEST_COMPILER_TOOLING_VERSION >= MIN_OMIT_MIRRORS_VERSION) {
+      MetroDirectives.OMIT_REDUNDANT_MIRRORS.with(true)
     }
   }
 }
 
-open class AbstractJsFastInitBoxTest : AbstractJsBoxTest() {
-  override fun configure(builder: TestConfigurationBuilder) {
-    super.configure(builder)
+private val MIN_OMIT_MIRRORS_VERSION = KotlinToolingVersion("2.4.0")
 
-    with(builder) { defaultDirectives { MetroDirectives.ENABLE_SWITCHING_PROVIDERS.with(true) } }
+open class AbstractJsFastInitBoxTest : AbstractJsBoxTest() {
+  override fun RegisteredDirectivesBuilder.configureVariant() {
+    MetroDirectives.ENABLE_SWITCHING_PROVIDERS.with(true)
   }
 }
 
 open class AbstractJsContributionProvidersBoxTest : AbstractJsBoxTest() {
-  override fun configure(builder: TestConfigurationBuilder) {
-    super.configure(builder)
-
-    with(builder) {
-      defaultDirectives {
-        // Only run on 2.3.21+ due to top-level requirements
-        MetroDirectives.MIN_COMPILER_VERSION.with("2.3.21")
-        MetroDirectives.GENERATE_CONTRIBUTION_HINTS.with(true)
-        +MetroDirectives.GENERATE_CONTRIBUTION_HINTS_IN_FIR
-
-        MetroDirectives.GENERATE_CONTRIBUTION_PROVIDERS.with(true)
-      }
-    }
+  override fun RegisteredDirectivesBuilder.configureVariant() {
+    // Top-level contribution providers on JS require Kotlin 2.3.21 or newer.
+    MetroDirectives.MIN_COMPILER_VERSION.with("2.3.21")
+    MetroDirectives.GENERATE_CONTRIBUTION_HINTS.with(true)
+    +MetroDirectives.GENERATE_CONTRIBUTION_HINTS_IN_FIR
+    MetroDirectives.GENERATE_CONTRIBUTION_PROVIDERS.with(true)
   }
 }

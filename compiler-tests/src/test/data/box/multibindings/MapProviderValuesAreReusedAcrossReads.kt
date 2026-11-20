@@ -1,3 +1,5 @@
+// CHECK_BYTECODE_TEXT
+// FILE: Graph.kt
 // Reading a Map<K, Provider<V>> twice should return the same provider for each entry, including
 // when the entries depend on an @Includes type.
 
@@ -47,6 +49,7 @@ interface WrappedGraph {
   val handlers: Provider<Map<String, Provider<Handler>>>
 }
 
+// FILE: Test.kt
 fun box(): String {
   var dependencyReads = 0
   val dep = Dep()
@@ -101,6 +104,5 @@ fun box(): String {
   return "OK"
 }
 
-// CHECK_BYTECODE_TEXT
 // @AppGraph$Impl.class:
 // 0 INVOKEDYNAMIC

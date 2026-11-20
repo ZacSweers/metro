@@ -11,26 +11,93 @@ import dev.zacsweers.metro.compiler.test.JVM_TARGET
 import java.io.File
 import java.util.EnumSet
 import java.util.ServiceLoader
+import org.jetbrains.kotlin.cli.common.config.addKotlinSourceRoot
+import org.jetbrains.kotlin.cli.common.config.kotlinSourceRoots
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.MessageRenderer
 import org.jetbrains.kotlin.cli.common.messages.PrintingMessageCollector
+import org.jetbrains.kotlin.cli.jvm.config.addJavaSourceRoot
+import org.jetbrains.kotlin.cli.jvm.config.javaSourceRoots
+import org.jetbrains.kotlin.cli.jvm.config.jvmClasspathRoots
+import org.jetbrains.kotlin.config.CompilerConfiguration
+import org.jetbrains.kotlin.test.TestInfrastructureInternals
+import org.jetbrains.kotlin.test.builders.TestConfigurationBuilder
 import org.jetbrains.kotlin.test.directives.model.RegisteredDirectives
 import org.jetbrains.kotlin.test.directives.model.singleOrZeroValue
 import org.jetbrains.kotlin.test.model.TestFile
 import org.jetbrains.kotlin.test.model.TestModule
-import org.jetbrains.kotlin.test.services.AdditionalSourceProvider
+import org.jetbrains.kotlin.test.services.DefaultsProvider
+import org.jetbrains.kotlin.test.services.EnvironmentConfigurator
+import org.jetbrains.kotlin.test.services.ModuleStructureTransformer
 import org.jetbrains.kotlin.test.services.TestModuleStructure
 import org.jetbrains.kotlin.test.services.TestServices
 import org.jetbrains.kotlin.test.services.getOrCreateTempDirectory
-import org.jetbrains.kotlin.test.services.isJavaFile
-import org.jetbrains.kotlin.test.services.isKtFile
 
-class Ksp2AdditionalSourceProvider(testServices: TestServices) :
-  AdditionalSourceProvider(testServices) {
-  override fun produceAdditionalFiles(
-    globalDirectives: RegisteredDirectives,
+/** Register this after the fixture's classpath configurators so KSP sees the complete classpath. */
+@OptIn(TestInfrastructureInternals::class)
+internal fun TestConfigurationBuilder.configureKsp() {
+  useModuleStructureTransformers(KspModuleTransformer())
+  useConfigurators(::KspEnvironmentConfigurator)
+}
+
+/** Owns the module's file list until KSP can append the generated sources. */
+private class KspModuleFiles(files: List<TestFile>) : ArrayList<TestFile>(files) {
+  var processed = false
+}
+
+/** Gives KSP modules a mutable file list before the framework starts compiling them. */
+@OptIn(TestInfrastructureInternals::class)
+private class KspModuleTransformer : ModuleStructureTransformer() {
+  override fun transformModuleStructure(
+    moduleStructure: TestModuleStructure,
+    defaultsProvider: DefaultsProvider,
+  ): TestModuleStructure {
+    if (moduleStructure.modules.none { it.usesKsp() }) {
+      return moduleStructure
+    }
+
+    return object : TestModuleStructure() {
+      override val modules =
+        moduleStructure.modules.map { module ->
+          if (module.usesKsp()) {
+            module.copy(files = KspModuleFiles(module.files))
+          } else {
+            module
+          }
+        }
+      override val originalTestDataFiles = moduleStructure.originalTestDataFiles
+      override val allDirectives = moduleStructure.allDirectives
+    }
+  }
+
+  private fun TestModule.usesKsp() =
+    MetroDirectives.enableDaggerKsp(directives) || MetroDirectives.enableAnvilKsp(directives)
+}
+
+/**
+ * Runs KSP just before the framework compiles the module. Its source roots are preprocessed. Its
+ * classpath includes the compiled dependencies from earlier fixture modules.
+ */
+private class KspEnvironmentConfigurator(testServices: TestServices) :
+  EnvironmentConfigurator(testServices) {
+  override fun configureCompilerConfiguration(
+    configuration: CompilerConfiguration,
     module: TestModule,
-    testModuleStructure: TestModuleStructure,
+  ) {
+    val files = module.files as? KspModuleFiles ?: return
+
+    // Later configurations start with the generated sources already in module.files.
+    if (files.processed) {
+      return
+    }
+
+    files.addAll(processModule(module, configuration))
+    files.processed = true
+  }
+
+  private fun processModule(
+    module: TestModule,
+    configuration: CompilerConfiguration,
   ): List<TestFile> {
     val daggerCompilerEnabled = MetroDirectives.enableDaggerKsp(module.directives)
     val anvilKspEnabled = MetroDirectives.enableAnvilKsp(module.directives)
@@ -66,9 +133,11 @@ class Ksp2AdditionalSourceProvider(testServices: TestServices) :
         addAll(hiltKspProcessors)
       }
     }
-    if (providers.isEmpty()) return emptyList()
+    if (providers.isEmpty()) {
+      return emptyList()
+    }
 
-    // Build anvil-ksp options
+    // Build Anvil KSP options.
     val anvilKspOptions: Map<String, String> = buildMap {
       if (anvilKspEnabled) {
         // Always use KSP merging backend
@@ -89,7 +158,7 @@ class Ksp2AdditionalSourceProvider(testServices: TestServices) :
           if (generateFactories) {
             module.directives.singleOrZeroValue(
               MetroDirectives.ANVIL_GENERATE_DAGGER_FACTORIES_ONLY,
-            )
+            ) ?: true
           } else {
             false
           }
@@ -107,28 +176,7 @@ class Ksp2AdditionalSourceProvider(testServices: TestServices) :
       }
     }
 
-    // Write out test files to KSP input directories
-    val kotlinInput = testServices.getOrCreateTempDirectory("ksp-kotlin-input-${module.name}")
-    val javaInput = testServices.getOrCreateTempDirectory("ksp-java-input-${module.name}")
-
-    for (testFile in module.files) {
-      val directory =
-        when {
-          testFile.isKtFile -> kotlinInput
-          testFile.isJavaFile -> javaInput
-          else -> continue
-        }
-
-      val path = directory.resolve(testFile.relativePath)
-      path.parentFile.mkdirs()
-      // TODO this escapes other preprocessors but
-      //  testServices.sourceFileProvider.getContentOfSourceFile calls testServices.moduleStructure
-      //  before it's available in 2.3.x
-      path.writeText(testFile.originalContent)
-      // path.writeText(testServices.sourceFileProvider.getContentOfSourceFile(testFile))
-    }
-
-    // Setup KSP output directories
+    // Set up the KSP output directories.
     val projectBase = testServices.getOrCreateTempDirectory("ksp-project-base-${module.name}")
     val caches = projectBase.resolve("caches").also { it.mkdirs() }
     val classOutput = projectBase.resolve("classes").also { it.mkdirs() }
@@ -147,9 +195,9 @@ class Ksp2AdditionalSourceProvider(testServices: TestServices) :
           allWarningsAsErrors = true // TODO is there a corresponding Directive?
 
           moduleName = module.name
-          sourceRoots = listOf(kotlinInput)
-          javaSourceRoots = listOf(javaInput)
-          libraries = hostClasspaths
+          sourceRoots = configuration.kotlinSourceRoots.map { File(it.path) }
+          javaSourceRoots = configuration.javaSourceRoots.map(::File)
+          libraries = configuration.jvmClasspathRoots
 
           projectBaseDir = projectBase
           outputBaseDir = outputBase
@@ -192,23 +240,26 @@ class Ksp2AdditionalSourceProvider(testServices: TestServices) :
       logger.reportAll(reportToCompilerSeverity)
     }
 
-    val kotlinKspTestFiles =
-      kotlinOutput.walkTopDown().filter { it.isFile }.map { it.toTestFile() }.toList()
-    val javaKspTestFiles =
-      javaOutput.walkTopDown().filter { it.isFile }.map { it.toTestFile() }.toList()
-    return kotlinKspTestFiles + javaKspTestFiles
+    // Analysis reads the configured roots. The test framework also needs the files for javac.
+    configuration.addJavaSourceRoot(javaOutput)
+    configuration.addKotlinSourceRoot(kotlinOutput.path)
+    return kotlinOutput.generatedFiles() + javaOutput.generatedFiles()
   }
 
-  private companion object {
-    /** Classpath passed from Gradle via system property, cached for reuse across tests. */
-    private val hostClasspaths: List<File> by lazy {
-      val classpathProperty =
-        System.getProperty("ksp.testRuntimeClasspath")
-          ?: error(
-            "ksp.testRuntimeClasspath system property not set. " +
-              "Make sure to run tests via Gradle.",
-          )
-      classpathProperty.split(File.pathSeparator).map(::File)
-    }
+  /** Keep package directories so two generated files may share a name. */
+  private fun File.generatedFiles(): List<TestFile> {
+    return walkTopDown()
+      .filter { it.isFile }
+      .map { file ->
+        TestFile(
+          relativePath = file.relativeTo(this).invariantSeparatorsPath,
+          originalContent = file.readText(),
+          directives = RegisteredDirectives.Empty,
+          originalFile = file,
+          startLineNumberInOriginalFile = 0,
+          isAdditional = true,
+        )
+      }
+      .toList()
   }
 }

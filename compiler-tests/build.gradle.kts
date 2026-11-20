@@ -29,21 +29,18 @@ sourceSets {
   register("generator2420")
 }
 
-val testCompilerVersionProvider =
+val testCompilerVersion =
   providers
     .gradleProperty("metro.testCompilerVersion")
     .orElse(providers.gradleProperty("kotlin_version"))
-
-val testCompilerVersion = testCompilerVersionProvider.orElse(libs.versions.kotlin).get()
+    .orElse(libs.versions.kotlin)
+    .get()
 
 val testKotlinVersion = KotlinToolingVersion(testCompilerVersion)
 
 val kotlin23 = KotlinToolingVersion(KotlinVersion(2, 3))
 
 val kotlin24Beta1 = KotlinToolingVersion(KotlinVersion(2, 4), "Beta1")
-
-// The test framework needs JUnit 5 starting with this build.
-val kotlin250Dev9169 = KotlinToolingVersion("2.5.0-dev-9169")
 
 // The test framework locates kotlin-scripting-common through KotlinJars starting with this build.
 val kotlin250Dev9992 = KotlinToolingVersion("2.5.0-dev-9992")
@@ -73,12 +70,6 @@ buildConfig {
     }
   }
   sourceSets.named("test") {
-    // Not a Boolean to avoid warnings about constants in if conditions
-    buildConfigField(
-      "String",
-      "OVERRIDE_COMPILER_VERSION",
-      "\"${testCompilerVersionProvider.isPresent}\"",
-    )
     buildConfigField("String", "JVM_TARGET", libs.versions.jvmTarget.map { "\"$it\"" })
     buildConfigField("String", "BUILD_COMPILER_VERSION", libs.versions.kotlin.map { "\"$it\"" })
     buildConfigField("String", "TEST_COMPILER_VERSION", "\"$testCompilerVersion\"")
@@ -87,7 +78,6 @@ buildConfig {
       "COMPILER_VERSION",
       "KotlinVersion(${testKotlinVersion.major}, ${testKotlinVersion.minor}, ${testKotlinVersion.patch})",
     )
-    buildConfigField("String", "COMPILER_TOOLING_VERSION", "\"$testCompilerVersion\"")
   }
 }
 
@@ -216,10 +206,9 @@ reflectVersion =
   }
 
 dependencies {
-  // Newer 2.5.0 test frameworks call Kotlin assertion helpers removed by JUnit 6.
-  if (testKotlinVersion >= kotlin250Dev9169) {
-    testImplementation(enforcedPlatform("org.junit:junit-bom:6.1.3"))
-  }
+  // The compiler test framework needs the Kotlin assertion helpers in recent Jupiter versions.
+  testImplementation(libs.junit.jupiter)
+  testRuntimeOnly(libs.junit.jupiter.platformLauncher)
 
   // 2.3.0 changed the test gen APIs around into different packages
   "generator230CompileOnly"(
@@ -402,7 +391,7 @@ if (excludeJsBoxTests) {
   }
 }
 
-tasks.withType<Test> {
+tasks.withType<Test>().configureEach {
   val updateTestData = providers.gradleProperty("updateTestData").isPresent
   val debugCompilerTests = providers.gradleProperty("metro.debugCompilerTests").isPresent
   // Golden updates and debugging need a fresh test JVM on every invocation.
@@ -497,6 +486,14 @@ tasks.withType<Test> {
 
   useJUnitPlatform()
 
+  if (testOmitRedundantMirrors?.toBooleanStrictOrNull() != true) {
+    filter {
+      excludeTestsMatching(
+        "dev.zacsweers.metro.compiler.OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated*",
+      )
+    }
+  }
+
   if (largeTestMode) {
     filter { includeTestsMatching("*StressTest*") }
   } else {
@@ -584,7 +581,6 @@ tasks.withType<Test> {
   setClasspathProperty("jakartaInterop.classpath", jakartaInteropClasspath)
   setClasspathProperty("circuit.classpath", circuitRuntimeClasspath)
   setFilesProperty("circuit.klibClasspath", circuitRuntimeKlibClasspath)
-  setClasspathProperty("ksp.testRuntimeClasspath", testRuntimeClasspath)
 
   // Properties required to run the internal test framework.
   systemProperty("idea.ignore.disabled.plugins", "true")

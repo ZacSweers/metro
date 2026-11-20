@@ -4154,6 +4154,12 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
       }
 
       @Test
+      @TestMetadata("KspUsesModuleClasspath.kt")
+      public void testKspUsesModuleClasspath() {
+        run("KspUsesModuleClasspath.kt");
+      }
+
+      @Test
       @TestMetadata("MapMultibindingLazyWithDaggerInterop.kt")
       public void testMapMultibindingLazyWithDaggerInterop() {
         run("MapMultibindingLazyWithDaggerInterop.kt");

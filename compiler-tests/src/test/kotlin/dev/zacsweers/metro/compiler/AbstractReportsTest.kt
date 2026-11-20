@@ -27,8 +27,7 @@ import org.jetbrains.kotlin.test.services.KotlinStandardLibrariesPathProvider
  * interface AppGraph { ... }
  * ```
  *
- * Expected files should be named `<testFile>/<diagnosticKey>/<path>/<reportName>.txt` alongside the
- * test data.
+ * [MetroReportsChecker] compares reports with goldens under `_reports/<fixture-name>/`.
  */
 open class AbstractReportsTest : AbstractPhasedJvmDiagnosticLightTreeTest() {
   override fun createKotlinStandardLibrariesPathProvider(): KotlinStandardLibrariesPathProvider {

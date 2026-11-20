@@ -1,5 +1,6 @@
 // MIN_COMPILER_VERSION: 2.5.0-dev-7307
 // ENABLE_SUSPEND_PROVIDERS
+// WITH_COROUTINES
 
 class ContextValue(val value: String)
 

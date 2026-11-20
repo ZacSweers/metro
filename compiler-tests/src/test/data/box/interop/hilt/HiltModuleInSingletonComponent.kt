@@ -24,10 +24,12 @@ import javax.inject.Singleton
 @DependencyGraph(Singleton::class)
 interface AppGraph {
   val message: String
+  val lazyMessage: dagger.Lazy<String>
 }
 
 fun box(): String {
   val graph = createGraph<AppGraph>()
   assertEquals("Hello from Hilt", graph.message)
+  assertEquals("Hello from Hilt", graph.lazyMessage.get())
   return "OK"
 }

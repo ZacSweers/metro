@@ -1,9 +1,6 @@
 // RUN_PIPELINE_TILL: BACKEND
-// This test is complementary to the [DeeplyNestedGraphsAreHandledWhenGeneratingReports] box test,
-// which verifies a sufficiently nested + long-named graph structure does not run into 'file name
-// too long' exceptions for the report files. We are not able to test the same behavior here because
-// defining a sufficiently nested graph in a dump test results in a 'file name too long' exception
-// for an equivalent '.class' file reference in the generated Java [ReportsTestGenerated] file.
+// This fixture checks the report contents at each level of nesting.
+// The DeeplyNestedGraphsAreHandledWhenGeneratingReports box test also exercises filename limits.
 
 // CHECK_REPORTS: keys-populated/AppGraph/Impl
 // CHECK_REPORTS: keys-populated/AppGraph/Impl/ChildGraphImpl
