@@ -98,7 +98,7 @@ class Ksp2AdditionalSourceProvider(testServices: TestServices) :
           if (generateFactories) {
             module.directives.singleOrZeroValue(
               MetroDirectives.ANVIL_GENERATE_DAGGER_FACTORIES_ONLY,
-            )
+            ) ?: true
           } else {
             false
           }
