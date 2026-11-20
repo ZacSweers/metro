@@ -493,6 +493,14 @@ tasks.withType<Test>().configureEach {
 
   useJUnitPlatform()
 
+  if (testOmitRedundantMirrors?.toBooleanStrictOrNull() != true) {
+    filter {
+      excludeTestsMatching(
+        "dev.zacsweers.metro.compiler.OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated*",
+      )
+    }
+  }
+
   if (largeTestMode) {
     filter { includeTestsMatching("*StressTest*") }
   } else {

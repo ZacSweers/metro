@@ -7,6 +7,7 @@ import com.google.devtools.ksp.processing.KSPJvmConfig
 import com.google.devtools.ksp.processing.SymbolProcessorProvider
 import dagger.internal.codegen.KspComponentProcessor
 import dev.zacsweers.metro.compiler.MetroDirectives
+import dev.zacsweers.metro.compiler.MetroTestConfigurator
 import dev.zacsweers.metro.compiler.test.JVM_TARGET
 import java.io.File
 import java.util.EnumSet
@@ -35,6 +36,14 @@ class Ksp2AdditionalSourceProvider(testServices: TestServices) :
     val daggerCompilerEnabled = MetroDirectives.enableDaggerKsp(module.directives)
     val anvilKspEnabled = MetroDirectives.enableAnvilKsp(module.directives)
     val hiltKspEnabled = MetroDirectives.enableHiltKsp(module.directives)
+    // Hilt processing also enables the Dagger compiler.
+    if (!daggerCompilerEnabled && !anvilKspEnabled) {
+      return emptyList()
+    }
+    if (MetroTestConfigurator(testServices).shouldSkipTest(testModuleStructure)) {
+      return emptyList()
+    }
+
     val providers = buildList {
       if (anvilKspEnabled) {
         val anvilKspProcessors =
