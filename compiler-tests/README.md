@@ -80,6 +80,8 @@ Create a `.kt` fixture anywhere under `src/test/data/dump/reports/`. Add one `//
 
 Generate the suite and run the fixture. The first run writes missing goldens and fails. Review the files under `_reports/<fixture-name>/`, then rerun the test. The generator skips `_reports` directories.
 
+In a multi-module fixture, put `// CHECK_REPORTS` between `// MODULE` and `// FILE` to check that module's output. A check before the first `// MODULE` reads the final module's output. [Multi-module report fixture](src/test/data/dump/reports/MultiModuleReports.kt)
+
 ## Multiple files and modules
 
 Use `// FILE: Name.kt` to start a source file within a fixture. JVM fixtures can include Java files. Use `// MODULE: name(deps)(friends)(dependsOn)` to start a module. In this example, `main` depends on `lib` and contains the box function.

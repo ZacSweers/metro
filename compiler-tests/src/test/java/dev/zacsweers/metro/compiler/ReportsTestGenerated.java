@@ -91,6 +91,12 @@ public class ReportsTestGenerated extends AbstractReportsTest {
   }
 
   @Test
+  @TestMetadata("MultiModuleReports.kt")
+  public void testMultiModuleReports() {
+    run("MultiModuleReports.kt");
+  }
+
+  @Test
   @TestMetadata("ProviderInlineFallbacks.kt")
   public void testProviderInlineFallbacks() {
     run("ProviderInlineFallbacks.kt");

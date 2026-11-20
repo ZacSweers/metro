@@ -193,18 +193,13 @@ class MetroExtensionRegistrarConfigurator(
       module.directives.singleOrZeroValue(MetroDirectives.MAX_IR_ERRORS_COUNT)?.let {
         maxIrErrorsCount = it
       }
-      // Use explicit REPORTS_DESTINATION or default if CHECK_REPORTS is present
-      val reportsDir =
-        module.directives.singleOrZeroValue(MetroDirectives.REPORTS_DESTINATION)
-          ?: if (module.directives[MetroDirectives.CHECK_REPORTS].isNotEmpty()) {
-            MetroReportsChecker.DEFAULT_REPORTS_DIR
-          } else {
-            null
-          }
-      reportsDir?.let {
-        reportsDestination =
-          Path("${testServices.temporaryDirectoryManager.rootDir.absolutePath}/$it")
+      val reportsRequested =
+        MetroDirectives.REPORTS_DESTINATION in module.directives ||
+          MetroDirectives.CHECK_REPORTS in module.directives
+      if (reportsRequested) {
+        reportsDestination = testServices.reportDirectory(module).toPath()
       }
+
       // Use explicit TRACE_DESTINATION or default if CHECK_TRACES is present
       val tracesDir =
         module.directives.singleOrZeroValue(MetroDirectives.TRACE_DESTINATION)
