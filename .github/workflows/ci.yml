@@ -155,10 +155,10 @@ jobs:
           # Each compiler version refreshes its own compilation and test outputs on main.
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
-      - name: Generate and test compiler
+      - name: Test compiler
         run: |
           ./scripts/run-ci-gradle.sh :compiler:test :compiler-tests:test --continue --quiet \
-            -Pmetro.generateCompilerTests \
+            ${{ matrix.kotlin-compiler == needs.generate-matrix.outputs.default_kotlin_version && '-Pmetro.generateCompilerTests' || '' }} \
             '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' \
             "-Pmetro.testOmitRedundantMirrors=$METRO_TEST_OMIT_REDUNDANT_MIRRORS" \
             -Pmetro.excludeJsBoxTests \
@@ -167,6 +167,12 @@ jobs:
             -Pmetro.compilerTestUseParallelGc=true \
             -Pmetro.legacyCompilerTestMaxParallelForks=2 \
             ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+
+      - name: Verify checked-in compiler test suites
+        if: matrix.kotlin-compiler == needs.generate-matrix.outputs.default_kotlin_version
+        run: |
+          git add --intent-to-add -- compiler-tests/src/test/java
+          git diff --exit-code -- compiler-tests/src/test/java
 
       - name: (Fail-only) Upload reports
         if: failure()
@@ -340,12 +346,6 @@ jobs:
         with:
           encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
-
-      - name: Generate tests
-        run: |
-          ./scripts/run-ci-gradle.sh :compiler-tests:generateTests --quiet \
-            "-Pmetro.testCompilerVersion=$METRO_TEST_COMPILER_VERSION" \
-            ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
 
       - name: Run JS box smoke tests
         if: matrix.suite == 'smoke'
