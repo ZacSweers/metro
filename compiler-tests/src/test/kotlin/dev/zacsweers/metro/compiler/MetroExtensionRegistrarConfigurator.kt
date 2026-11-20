@@ -38,7 +38,6 @@ import dev.zacsweers.metro.compiler.interop.configureDaggerInterop
 import dev.zacsweers.metro.compiler.interop.configureGuiceInterop
 import dev.zacsweers.metro.compiler.interop.configureHiltAnnotations
 import dev.zacsweers.metro.compiler.ir.MetroIrGenerationExtension
-import dev.zacsweers.metro.compiler.test.TEST_COMPILER_VERSION
 import dev.zacsweers.metro.compiler.tracing.TraceContext
 import kotlin.io.path.Path
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
@@ -451,8 +450,6 @@ class MetroExtensionRegistrarConfigurator(
 }
 
 private val MIN_KOTLIN_VERSION_FOR_JS_FIR_CONTRIBUTION_HINTS = KotlinToolingVersion("2.3.21")
-
-private val TEST_COMPILER_TOOLING_VERSION = KotlinToolingVersion(TEST_COMPILER_VERSION)
 
 private fun TestServices.shouldGenerateContributionHintsInFirForBackend(): Boolean {
   return when (defaultsProvider.targetBackend) {

@@ -5,9 +5,7 @@ package dev.zacsweers.metro.compiler
 import dev.zacsweers.metro.compiler.compat.CompilerVersionAliases
 import dev.zacsweers.metro.compiler.compat.KotlinToolingVersion
 import dev.zacsweers.metro.compiler.test.BUILD_COMPILER_VERSION
-import dev.zacsweers.metro.compiler.test.COMPILER_TOOLING_VERSION
 import dev.zacsweers.metro.compiler.test.COMPILER_VERSION
-import dev.zacsweers.metro.compiler.test.TEST_COMPILER_VERSION
 import org.jetbrains.kotlin.test.builders.RegisteredDirectivesBuilder
 import org.jetbrains.kotlin.test.directives.DiagnosticsDirectives
 import org.jetbrains.kotlin.test.directives.LanguageSettingsDirectives.OPT_IN
@@ -153,20 +151,11 @@ class MetroTestConfigurator(testServices: TestServices) : MetaTestConfigurator(t
 }
 
 private val BUILD_COMPILER_TOOLING_VERSION = KotlinToolingVersion(BUILD_COMPILER_VERSION)
-private val TEST_COMPILER_TOOLING_VERSION = KotlinToolingVersion(TEST_COMPILER_VERSION)
 
 // Prereleases rank above every same-base dev build, so version directives compare the dev build a
 // prerelease maps to.
-private val DIRECTIVE_COMPILER_TOOLING_VERSION: KotlinToolingVersion = directiveCompilerVersion()
-
-private fun directiveCompilerVersion(): KotlinToolingVersion {
-  val version = KotlinToolingVersion(COMPILER_TOOLING_VERSION)
-  val aliased = CompilerVersionAliases.map(version)
-  if (aliased == null) {
-    return version
-  }
-  return aliased
-}
+private val DIRECTIVE_COMPILER_TOOLING_VERSION =
+  CompilerVersionAliases.map(TEST_COMPILER_TOOLING_VERSION) ?: TEST_COMPILER_TOOLING_VERSION
 
 fun RegisteredDirectivesBuilder.commonMetroTestDirectives() {
   OPT_IN.with("dev.zacsweers.metro.ExperimentalMetroApi")

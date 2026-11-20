@@ -18,9 +18,6 @@ object MetroDirectives : SimpleDirectivesContainer() {
   val MIN_JS_COMPILER_VERSION by
     stringDirective("Minimum Kotlin compiler version for the JS backend (inclusive), if any")
   val MAX_COMPILER_VERSION by stringDirective("Maximum kotlin compiler version (inclusive), if any")
-  // TODO eventually support multiple outputs
-  val CUSTOM_TEST_DATA_PER_COMPILER_VERSION by
-    directive("Generate custom test data files per compiler version")
   val COMPANION_MODE by
     enumDirective<CompanionMode>(
       "Controls generated graph creators and factory/injector helpers.",
