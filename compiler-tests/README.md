@@ -5,11 +5,13 @@ Metro uses Kotlin's compiler test framework. Each fixture is a Kotlin source fil
 ## Creating a new test
 
 1. Add a `.kt` file under the appropriate directory below.
-2. From the repository root, generate the suites and run your fixture. For `MyTest.kt`, use the following command.
+2. From the repository root, generate the suites and run your fixture. For a box fixture named `MyTest.kt`, start with the standard JVM suite.
 
    ```shell
-   ./gradlew :compiler-tests:generateTests :compiler-tests:test --tests '*MyTest*' --quiet
+   ./gradlew :compiler-tests:generateTests :compiler-tests:test --tests 'BoxTestGenerated*testMyTest' --quiet
    ```
+
+   Use `--tests '*MyTest*'` to run all enabled variants of the box fixture, including JS. This filter also works for diagnostic and dump fixtures.
 
 3. Review the expected output and commit it with the fixture and the generated changes under `compiler-tests/src/test/java/`.
 
