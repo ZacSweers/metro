@@ -1,0 +1,1 @@
+/BindingIsNotAssignableContributesIntoSet.kt:8:46: error: Class test.Impl does not implement explicit bound type kotlin.Unit

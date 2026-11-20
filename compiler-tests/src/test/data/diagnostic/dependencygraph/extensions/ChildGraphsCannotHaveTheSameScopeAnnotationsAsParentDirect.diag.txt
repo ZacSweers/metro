@@ -1,0 +1,2 @@
+/ChildGraphsCannotHaveTheSameScopeAnnotationsAsParentDirect.kt:8:25: error: Graph extension 'test.ChildGraph' has overlapping scope annotations with parent graph 'test.ParentGraph':
+- @SingleIn(dev.zacsweers.metro.AppScope::class)

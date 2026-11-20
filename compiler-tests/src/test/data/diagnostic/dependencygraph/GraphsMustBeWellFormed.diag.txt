@@ -1,0 +1,15 @@
+/GraphsMustBeWellFormed.kt:11:24: error: DependencyGraph declarations should be non-sealed abstract classes or interfaces.
+
+/GraphsMustBeWellFormed.kt:12:29: error: DependencyGraph declarations should be non-sealed abstract classes or interfaces.
+
+/GraphsMustBeWellFormed.kt:13:35: error: DependencyGraph declarations should be non-sealed abstract classes or interfaces.
+
+/GraphsMustBeWellFormed.kt:14:29: error: DependencyGraph declarations should be non-sealed abstract classes or interfaces.
+
+/GraphsMustBeWellFormed.kt:15:31: error: DependencyGraph declarations should be non-sealed abstract classes or interfaces.
+
+/GraphsMustBeWellFormed.kt:16:35: error: DependencyGraph declarations should be non-sealed abstract classes or interfaces.
+
+/GraphsMustBeWellFormed.kt:17:18: error: DependencyGraph declarations must be public or internal.
+
+/GraphsMustBeWellFormed.kt:18:57: error: DependencyGraph declarations' primary constructor must be public or internal.

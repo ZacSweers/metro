@@ -1,0 +1,1 @@
+/APrimaryScopeShouldBeDefinedBeforeAdditionalScopes.kt:6:37: error: @DependencyGraph should have a primary `scope` defined if `additionalScopes` are defined.

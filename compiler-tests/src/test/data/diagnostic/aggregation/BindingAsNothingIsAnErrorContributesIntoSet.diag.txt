@@ -1,0 +1,1 @@
+/BindingAsNothingIsAnErrorContributesIntoSet.kt:8:46: error: Explicit bound types should not be `Nothing` or `Nothing?`.

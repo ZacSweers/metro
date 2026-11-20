@@ -1,0 +1,13 @@
+/TiedAnvilRanksAreDuplicateBindings.kt:20:11: error: [Metro/DuplicateBinding] Multiple bindings found for ContributedInterface
+
+      TiedAnvilRanksAreDuplicateBindings.kt:10:1
+        test.Impl1 contributes a binding of ContributedInterface
+        ~~~~~~~~~~                          ~~~~~~~~~~~~~~~~~~~~
+
+      TiedAnvilRanksAreDuplicateBindings.kt:16:1
+        test.Impl3 contributes a binding of ContributedInterface
+        ~~~~~~~~~~                          ~~~~~~~~~~~~~~~~~~~~
+
+  help: remove or disambiguate the duplicate bindings (e.g. with distinct qualifiers), or use
+        @IntoSet/@IntoMap if you intended a multibinding
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#duplicatebinding

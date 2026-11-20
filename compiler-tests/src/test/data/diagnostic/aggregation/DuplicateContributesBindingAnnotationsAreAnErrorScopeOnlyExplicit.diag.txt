@@ -1,0 +1,3 @@
+/DuplicateContributesBindingAnnotationsAreAnErrorScopeOnlyExplicit.kt:8:1: error: Duplicate `@ContributesBinding` annotations contributing to scope `AppScope`.
+
+/DuplicateContributesBindingAnnotationsAreAnErrorScopeOnlyExplicit.kt:9:1: error: Duplicate `@ContributesBinding` annotations contributing to scope `AppScope`.

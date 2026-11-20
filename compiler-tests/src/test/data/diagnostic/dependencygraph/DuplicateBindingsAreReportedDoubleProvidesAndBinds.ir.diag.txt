@@ -1,0 +1,13 @@
+/DuplicateBindingsAreReportedDoubleProvidesAndBinds.kt:8:11: error: [Metro/DuplicateBinding] Multiple bindings found for ExampleClass
+
+      DuplicateBindingsAreReportedDoubleProvidesAndBinds.kt:11:13
+        @Provides fun provideExampleClass1(): ExampleClass
+                                              ~~~~~~~~~~~~
+
+      DuplicateBindingsAreReportedDoubleProvidesAndBinds.kt:12:10
+        @Binds fun Impl2.provideExampleClass2(): ExampleClass
+                                                 ~~~~~~~~~~~~
+
+  help: remove or disambiguate the duplicate bindings (e.g. with distinct qualifiers), or use
+        @IntoSet/@IntoMap if you intended a multibinding
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#duplicatebinding

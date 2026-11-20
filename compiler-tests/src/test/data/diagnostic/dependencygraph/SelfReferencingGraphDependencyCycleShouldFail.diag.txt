@@ -1,0 +1,1 @@
+/SelfReferencingGraphDependencyCycleShouldFail.kt:16:33: error: DependencyGraph.Factory declarations cannot have their target graph type as parameters.

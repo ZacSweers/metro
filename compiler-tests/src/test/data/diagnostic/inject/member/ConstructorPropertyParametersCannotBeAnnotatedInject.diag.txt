@@ -1,0 +1,3 @@
+/ConstructorPropertyParametersCannotBeAnnotatedInject.kt:7:15: error: Constructor property parameters should not be annotated with `@Inject`. Annotate the constructor or class instead.
+
+/ConstructorPropertyParametersCannotBeAnnotatedInject.kt:8:19: error: Constructor property parameters should not be annotated with `@Inject`. Annotate the constructor or class instead.

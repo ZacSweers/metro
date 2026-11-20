@@ -1,0 +1,1 @@
+/BindingWithNoExplicitBoundTypeOrSupertypesIsAnErrorContributesIntoMap.kt:8:1: error: `@ContributesIntoMap`-annotated class test.Impl has no supertypes to bind to.

@@ -1,0 +1,1 @@
+/ContributedFactoriesMustOnlyContributeContributedGraphs.kt:8:1: error: @GraphExtension.Factory abstract function 'createExampleGraph' must return a graph extension but found test.ExampleGraph.

@@ -1,0 +1,5 @@
+/ReceiverMustBeAGraphRegularGraphErrors.kt:11:3: error: `asContribution` receiver must be annotated with a `@DependencyGraph` annotation.
+
+/ReceiverMustBeAGraphRegularGraphErrors.kt:12:21: error: `asContribution` receiver must be annotated with a `@DependencyGraph` annotation.
+
+/ReceiverMustBeAGraphRegularGraphErrors.kt:13:44: error: `asContribution` receiver must be annotated with a `@DependencyGraph` annotation.

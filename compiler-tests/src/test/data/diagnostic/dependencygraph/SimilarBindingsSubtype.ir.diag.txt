@@ -1,0 +1,11 @@
+/SimilarBindingsSubtype.kt:9:7: error: [Metro/MissingBinding] No binding found for Number
+
+  trace (in test.ExampleGraph):
+      Number is requested at test.ExampleGraph.int
+
+  similar bindings:
+      - Int (Subtype. Type: Provided) - SimilarBindingsSubtype.kt:11:13
+
+  help: ensure Number has an @Inject constructor or is provided by an @Provides or @Binds
+        declaration visible to ExampleGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding

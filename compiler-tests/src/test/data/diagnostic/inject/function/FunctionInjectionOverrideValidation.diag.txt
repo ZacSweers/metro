@@ -1,0 +1,1 @@
+/FunctionInjectionOverrideValidation.kt:12:5: error: Injected functions cannot have receiver parameters.

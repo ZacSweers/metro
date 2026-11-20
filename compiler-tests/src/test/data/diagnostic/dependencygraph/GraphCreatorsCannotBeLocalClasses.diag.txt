@@ -1,0 +1,1 @@
+/GraphCreatorsCannotBeLocalClasses.kt:11:20: error: @DependencyGraph.Factory declarations cannot be local classes.

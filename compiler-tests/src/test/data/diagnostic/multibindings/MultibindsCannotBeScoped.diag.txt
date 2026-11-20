@@ -1,0 +1,3 @@
+/MultibindsCannotBeScoped.kt:7:15: error: @Multibinds declarations may not have scopes.
+
+/MultibindsCannotBeScoped.kt:8:15: error: @Multibinds declarations may not have scopes.

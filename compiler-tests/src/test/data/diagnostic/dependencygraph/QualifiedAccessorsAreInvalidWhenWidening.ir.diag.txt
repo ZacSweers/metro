@@ -1,0 +1,12 @@
+/QualifiedAccessorsAreInvalidWhenWidening.kt:12:28: error: [Metro/QualifierOverrideMismatch] Overridden declarations must have matching qualifier annotations
+
+  accessor property test.AppGraph.Impl.prop
+      expected: '@Named("qualified")' (from test.Parent1.prop)
+      actual: absent
+
+  accessor function test.AppGraph.Impl.function
+      expected: '@Named("qualified")' (from test.Parent1.function)
+      actual: absent
+
+  help: match the qualifier annotations on overrides with their overridden declarations
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#qualifieroverridemismatch

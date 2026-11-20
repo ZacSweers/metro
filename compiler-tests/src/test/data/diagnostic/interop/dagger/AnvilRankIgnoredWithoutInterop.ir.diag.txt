@@ -1,0 +1,13 @@
+/AnvilRankIgnoredWithoutInterop.kt:18:11: error: [Metro/DuplicateBinding] Multiple bindings found for ContributedInterface
+
+      AnvilRankIgnoredWithoutInterop.kt:11:1
+        test.Impl1 contributes a binding of ContributedInterface
+        ~~~~~~~~~~                          ~~~~~~~~~~~~~~~~~~~~
+
+      AnvilRankIgnoredWithoutInterop.kt:14:1
+        test.Impl2 contributes a binding of ContributedInterface
+        ~~~~~~~~~~                          ~~~~~~~~~~~~~~~~~~~~
+
+  help: remove or disambiguate the duplicate bindings (e.g. with distinct qualifiers), or use
+        @IntoSet/@IntoMap if you intended a multibinding
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#duplicatebinding

@@ -1,0 +1,1 @@
+/AccessorsCannotBeScopedProperty.kt:8:3: error: Graph accessor members cannot have scope annotations. Did you mean to use a qualifier annotation?

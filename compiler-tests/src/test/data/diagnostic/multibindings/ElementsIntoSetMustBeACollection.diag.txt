@@ -1,0 +1,3 @@
+/ElementsIntoSetMustBeACollection.kt:7:41: error: `@ElementsIntoSet` must return a Collection.
+
+/ElementsIntoSetMustBeACollection.kt:8:49: error: `@ElementsIntoSet` must return a Collection.

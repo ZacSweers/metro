@@ -1,0 +1,1 @@
+/SuspendFunctionsAreUnsupported.kt:7:23: error: Injected functions cannot be suspend functions.

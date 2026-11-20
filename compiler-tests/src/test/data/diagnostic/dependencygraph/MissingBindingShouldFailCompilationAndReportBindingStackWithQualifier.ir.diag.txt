@@ -1,0 +1,11 @@
+/MissingBindingShouldFailCompilationAndReportBindingStackWithQualifier.kt:14:50: error: [Metro/MissingBinding] No binding found for @Named("hello") String
+
+  test.ExampleGraph.exampleClass() -> ExampleClass -> @Named("hello") String
+
+  trace (in test.ExampleGraph):
+      @Named("hello") String is injected at test.ExampleClass(…, text)
+      ExampleClass is requested at test.ExampleGraph.exampleClass()
+
+  help: ensure @Named("hello") String has an @Inject constructor or is provided by an @Provides or
+        @Binds declaration visible to ExampleGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding

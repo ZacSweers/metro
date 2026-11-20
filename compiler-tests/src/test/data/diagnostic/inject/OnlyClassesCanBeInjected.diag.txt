@@ -1,0 +1,7 @@
+/OnlyClassesCanBeInjected.kt:7:12: error: Only classes can be annotated with @Inject or have @Inject-annotated constructors.
+
+/OnlyClassesCanBeInjected.kt:13:8: error: Only classes can be annotated with @Inject or have @Inject-annotated constructors.
+
+/OnlyClassesCanBeInjected.kt:16:11: error: Only classes can be annotated with @Inject or have @Inject-annotated constructors.
+
+/OnlyClassesCanBeInjected.kt:19:18: error: Only classes can be annotated with @Inject or have @Inject-annotated constructors.

@@ -1,0 +1,1 @@
+/InjectorsCanOnlyHaveOneParameter.kt:8:7: error: Inject functions must have exactly one parameter.

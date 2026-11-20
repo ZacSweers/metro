@@ -14,3 +14,7 @@ interface ExampleGraph {
   @Binds
   val Int.bind: Number
 }
+
+<!DAGGER_REUSABLE_ERROR!>@Reusable<!>
+@Inject
+class MyClass

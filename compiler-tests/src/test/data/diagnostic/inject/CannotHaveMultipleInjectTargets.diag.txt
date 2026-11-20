@@ -1,0 +1,3 @@
+/CannotHaveMultipleInjectTargets.kt:7:20: warning: There is only one @Inject-annotated constructor. Consider moving the annotation to the class instead.
+
+/CannotHaveMultipleInjectTargets.kt:7:20: error: You should annotate either a class XOR constructor with `@Inject` but not both.

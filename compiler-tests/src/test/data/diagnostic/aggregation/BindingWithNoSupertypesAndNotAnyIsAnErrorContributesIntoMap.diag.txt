@@ -1,0 +1,1 @@
+/BindingWithNoSupertypesAndNotAnyIsAnErrorContributesIntoMap.kt:6:46: error: Redundant explicit bound type test.Impl is the same as the annotated class test.Impl.

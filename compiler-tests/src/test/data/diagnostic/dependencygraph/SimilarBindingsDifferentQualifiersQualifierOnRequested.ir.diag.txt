@@ -1,0 +1,12 @@
+/SimilarBindingsDifferentQualifiersQualifierOnRequested.kt:9:27: error: [Metro/MissingBinding] No binding found for @Named("qualified") Int
+
+  trace (in test.ExampleGraph):
+      @Named("qualified") Int is requested at test.ExampleGraph.int
+
+  similar bindings:
+      - Int (Different qualifier. Type: Provided) -
+        SimilarBindingsDifferentQualifiersQualifierOnRequested.kt:11:13
+
+  help: ensure @Named("qualified") Int has an @Inject constructor or is provided by an @Provides or
+        @Binds declaration visible to ExampleGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding

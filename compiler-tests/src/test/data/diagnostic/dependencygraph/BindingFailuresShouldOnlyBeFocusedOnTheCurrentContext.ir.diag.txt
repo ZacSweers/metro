@@ -1,0 +1,12 @@
+/BindingFailuresShouldOnlyBeFocusedOnTheCurrentContext.kt:11:7: error: [Metro/MissingBinding] No binding found for CharSequence
+
+  trace (in test.ExampleGraph):
+      CharSequence is requested at test.ExampleGraph.value2
+
+  similar bindings:
+      - String (Subtype. Type: Provided) -
+        BindingFailuresShouldOnlyBeFocusedOnTheCurrentContext.kt:14:3
+
+  help: ensure CharSequence has an @Inject constructor or is provided by an @Provides or @Binds
+        declaration visible to ExampleGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding

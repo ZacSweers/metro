@@ -1,0 +1,3 @@
+/AccessorsCannotBeUnitFunctionExplicit.kt:8:16: error: Graph accessor members must have a return type and cannot be Unit.
+
+/AccessorsCannotBeUnitFunctionExplicit.kt:8:16: warning: Suspicious injection of an unqualified object type 'kotlin.Unit'. This is probably unnecessary or unintentional.

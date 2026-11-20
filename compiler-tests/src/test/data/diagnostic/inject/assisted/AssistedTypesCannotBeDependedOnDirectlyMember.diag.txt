@@ -1,0 +1,8 @@
+/AssistedTypesCannotBeDependedOnDirectlyMember.kt:6:20: warning: There is only one @Inject-annotated constructor. Consider moving the annotation to the class instead.
+
+/AssistedTypesCannotBeDependedOnDirectlyMember.kt:25:24: error: ExampleClass uses assisted injection and cannot be injected directly into
+    test.Consumer.exampleClass
+
+  help: inject a corresponding @AssistedFactory type instead
+  note: it looks like the @AssistedFactory for ExampleClass is ExampleClassFactory
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#invalidbinding

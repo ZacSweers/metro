@@ -1,0 +1,5 @@
+/IncludesCannotBePlatformTypesEnumsOrAnnotationClasses.kt:13:17: error: @Includes cannot be applied to enums, annotations, or platform types.
+
+/IncludesCannotBePlatformTypesEnumsOrAnnotationClasses.kt:14:17: error: @Includes cannot be applied to enums, annotations, or platform types.
+
+/IncludesCannotBePlatformTypesEnumsOrAnnotationClasses.kt:15:17: error: @Includes cannot be applied to enums, annotations, or platform types.

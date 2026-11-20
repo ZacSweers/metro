@@ -1,0 +1,1 @@
+/ContributedGraphFactoriesMayNotBeNarrowerVisibility.kt:7:11: error: DependencyGraph declarations may not extend declarations with narrower visibility. Contributed supertype 'test.ContributedInterface.Factory' is effectively internal but graph declaration 'test.ExampleGraph' is public.

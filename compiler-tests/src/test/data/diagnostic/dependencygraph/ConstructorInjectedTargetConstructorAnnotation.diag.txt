@@ -1,0 +1,3 @@
+/ConstructorInjectedTargetConstructorAnnotation.kt:9:14: warning: Injected class 'test.ExampleClass' is constructor-injected and can be instantiated by Metro directly, so this inject function is unnecessary.
+
+/ConstructorInjectedTargetConstructorAnnotation.kt:12:20: warning: There is only one @Inject-annotated constructor. Consider moving the annotation to the class instead.

@@ -1,0 +1,7 @@
+/MultibindingOverrides.kt:5:15: error: Multibinding contributors cannot be overrides.
+
+/MultibindingOverrides.kt:6:30: error: Multibinding contributors cannot be overrides.
+
+/MultibindingOverrides.kt:7:22: error: Multibinding contributors cannot be overrides.
+
+/MultibindingOverrides.kt:8:44: error: Multibinding contributors cannot be overrides.

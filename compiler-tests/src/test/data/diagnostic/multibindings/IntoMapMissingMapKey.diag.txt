@@ -1,0 +1,1 @@
+/IntoMapMissingMapKey.kt:9:7: error: `@IntoMap` declarations must define a @MapKey annotation.

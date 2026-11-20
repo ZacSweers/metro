@@ -1,0 +1,2 @@
+/ChildGraphsCannotHaveTheSameAggregationScopeAsParentDirect.kt:7:25: error: Graph extension 'test.ChildGraph' has overlapping aggregation scopes with parent graph 'test.ParentGraph':
+- dev.zacsweers.metro.AppScope

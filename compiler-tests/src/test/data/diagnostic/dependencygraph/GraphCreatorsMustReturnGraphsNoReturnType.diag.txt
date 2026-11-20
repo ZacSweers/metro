@@ -1,0 +1,1 @@
+/GraphCreatorsMustReturnGraphsNoReturnType.kt:9:17: error: @DependencyGraph.Factory abstract function 'create' must return a dependency graph but found kotlin.Unit.

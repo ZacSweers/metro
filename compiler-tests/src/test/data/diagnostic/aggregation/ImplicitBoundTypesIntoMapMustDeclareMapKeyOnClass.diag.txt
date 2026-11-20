@@ -1,0 +1,1 @@
+/ImplicitBoundTypesIntoMapMustDeclareMapKeyOnClass.kt:8:1: error: `@ContributesIntoMap`-annotated class test.Impl must declare a map key on the class or an explicit bound type but doesn't.

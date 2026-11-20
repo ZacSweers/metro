@@ -1,0 +1,1 @@
+/LocalClassesCannotBeInjected.kt:8:9: error: Local classes cannot be annotated with @Inject or have @Inject-annotated constructors.

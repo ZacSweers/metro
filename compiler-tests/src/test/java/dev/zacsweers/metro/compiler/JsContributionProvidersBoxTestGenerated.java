@@ -45,6 +45,54 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     }
 
     @Test
+    @TestMetadata("AsContributionReceivers.kt")
+    public void testAsContributionReceivers() {
+      run("AsContributionReceivers.kt");
+    }
+
+    @Test
+    @TestMetadata("BSingleInIsRespectedWhenBindingInterfaceStartsWithALetterAFTERBAndInjectedIntoAWrapperClass.kt")
+    public void testBSingleInIsRespectedWhenBindingInterfaceStartsWithALetterAFTERBAndInjectedIntoAWrapperClass() {
+      run("BSingleInIsRespectedWhenBindingInterfaceStartsWithALetterAFTERBAndInjectedIntoAWrapperClass.kt");
+    }
+
+    @Test
+    @TestMetadata("BSingleInIsRespectedWhenInjectedDirectlyIntoA.kt")
+    public void testBSingleInIsRespectedWhenInjectedDirectlyIntoA() {
+      run("BSingleInIsRespectedWhenInjectedDirectlyIntoA.kt");
+    }
+
+    @Test
+    @TestMetadata("BSingleInIsRespectedWhenInjectedIntoAImplAndBindingInterfaceIsUsed.kt")
+    public void testBSingleInIsRespectedWhenInjectedIntoAImplAndBindingInterfaceIsUsed() {
+      run("BSingleInIsRespectedWhenInjectedIntoAImplAndBindingInterfaceIsUsed.kt");
+    }
+
+    @Test
+    @TestMetadata("BSingleInIsRespectedWhenInjectedIntoAWrapperClass.kt")
+    public void testBSingleInIsRespectedWhenInjectedIntoAWrapperClass() {
+      run("BSingleInIsRespectedWhenInjectedIntoAWrapperClass.kt");
+    }
+
+    @Test
+    @TestMetadata("BindingCanBeAncestorContributesBinding.kt")
+    public void testBindingCanBeAncestorContributesBinding() {
+      run("BindingCanBeAncestorContributesBinding.kt");
+    }
+
+    @Test
+    @TestMetadata("BindingCanBeAncestorContributesIntoMap.kt")
+    public void testBindingCanBeAncestorContributesIntoMap() {
+      run("BindingCanBeAncestorContributesIntoMap.kt");
+    }
+
+    @Test
+    @TestMetadata("BindingCanBeAncestorContributesIntoSet.kt")
+    public void testBindingCanBeAncestorContributesIntoSet() {
+      run("BindingCanBeAncestorContributesIntoSet.kt");
+    }
+
+    @Test
     @TestMetadata("BindingReplacementFromClassWithMultipleBindingsInGraphExtension.kt")
     public void testBindingReplacementFromClassWithMultipleBindingsInGraphExtension() {
       run("BindingReplacementFromClassWithMultipleBindingsInGraphExtension.kt");
@@ -54,6 +102,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     @TestMetadata("BindingReplacesProvider.kt")
     public void testBindingReplacesProvider() {
       run("BindingReplacesProvider.kt");
+    }
+
+    @Test
+    @TestMetadata("BindingScopeIsRespectedRegardlessOfWhereItIsInjected.kt")
+    public void testBindingScopeIsRespectedRegardlessOfWhereItIsInjected() {
+      run("BindingScopeIsRespectedRegardlessOfWhereItIsInjected.kt");
     }
 
     @Test
@@ -138,6 +192,180 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     @TestMetadata("ContributesBindingScopeArgumentOrder.kt")
     public void testContributesBindingScopeArgumentOrder() {
       run("ContributesBindingScopeArgumentOrder.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributesBindingSupportsExplicitBoundTypeWithClassLevelQualifier.kt")
+    public void testContributesBindingSupportsExplicitBoundTypeWithClassLevelQualifier() {
+      run("ContributesBindingSupportsExplicitBoundTypeWithClassLevelQualifier.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributesBindingWithGenericBoundType.kt")
+    public void testContributesBindingWithGenericBoundType() {
+      run("ContributesBindingWithGenericBoundType.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributesBindingWithGenericQualifiedBoundTypeFromAnotherModule.kt")
+    public void testContributesBindingWithGenericQualifiedBoundTypeFromAnotherModule() {
+      run("ContributesBindingWithGenericQualifiedBoundTypeFromAnotherModule.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributesBindingWithImplicitBoundType.kt")
+    public void testContributesBindingWithImplicitBoundType() {
+      run("ContributesBindingWithImplicitBoundType.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributesBindingWithImplicitBoundTypeAdditionalScope.kt")
+    public void testContributesBindingWithImplicitBoundTypeAdditionalScope() {
+      run("ContributesBindingWithImplicitBoundTypeAdditionalScope.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributesBindingWithImplicitBoundTypeFromAnotherModule.kt")
+    public void testContributesBindingWithImplicitBoundTypeFromAnotherModule() {
+      run("ContributesBindingWithImplicitBoundTypeFromAnotherModule.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributesBindingWithImplicitBoundTypeObject.kt")
+    public void testContributesBindingWithImplicitBoundTypeObject() {
+      run("ContributesBindingWithImplicitBoundTypeObject.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributesBindingWithImplicitQualifiedBoundType.kt")
+    public void testContributesBindingWithImplicitQualifiedBoundType() {
+      run("ContributesBindingWithImplicitQualifiedBoundType.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributesBindingWithMultipleBoundTypes.kt")
+    public void testContributesBindingWithMultipleBoundTypes() {
+      run("ContributesBindingWithMultipleBoundTypes.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributesBindingWithSpecificBoundType.kt")
+    public void testContributesBindingWithSpecificBoundType() {
+      run("ContributesBindingWithSpecificBoundType.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributesBindingWithSpecificQualifiedBoundType.kt")
+    public void testContributesBindingWithSpecificQualifiedBoundType() {
+      run("ContributesBindingWithSpecificQualifiedBoundType.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributesIntoMapSupportsExplicitBoundTypeWithClassLevelQualifier.kt")
+    public void testContributesIntoMapSupportsExplicitBoundTypeWithClassLevelQualifier() {
+      run("ContributesIntoMapSupportsExplicitBoundTypeWithClassLevelQualifier.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributesIntoMapWithGenericBoundType.kt")
+    public void testContributesIntoMapWithGenericBoundType() {
+      run("ContributesIntoMapWithGenericBoundType.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributesIntoMapWithGenericQualifiedBoundTypeFromAnotherModule.kt")
+    public void testContributesIntoMapWithGenericQualifiedBoundTypeFromAnotherModule() {
+      run("ContributesIntoMapWithGenericQualifiedBoundTypeFromAnotherModule.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributesIntoMapWithImplicitBoundType.kt")
+    public void testContributesIntoMapWithImplicitBoundType() {
+      run("ContributesIntoMapWithImplicitBoundType.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributesIntoMapWithImplicitBoundTypeFromAnotherCompilation.kt")
+    public void testContributesIntoMapWithImplicitBoundTypeFromAnotherCompilation() {
+      run("ContributesIntoMapWithImplicitBoundTypeFromAnotherCompilation.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributesIntoMapWithImplicitBoundTypeObject.kt")
+    public void testContributesIntoMapWithImplicitBoundTypeObject() {
+      run("ContributesIntoMapWithImplicitBoundTypeObject.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributesIntoMapWithImplicitQualifiedBoundType.kt")
+    public void testContributesIntoMapWithImplicitQualifiedBoundType() {
+      run("ContributesIntoMapWithImplicitQualifiedBoundType.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributesIntoMapWithSpecificBoundType.kt")
+    public void testContributesIntoMapWithSpecificBoundType() {
+      run("ContributesIntoMapWithSpecificBoundType.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributesIntoMapWithSpecificQualifiedBoundType.kt")
+    public void testContributesIntoMapWithSpecificQualifiedBoundType() {
+      run("ContributesIntoMapWithSpecificQualifiedBoundType.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributesIntoSetSupportsExplicitBoundTypeWithClassLevelQualifier.kt")
+    public void testContributesIntoSetSupportsExplicitBoundTypeWithClassLevelQualifier() {
+      run("ContributesIntoSetSupportsExplicitBoundTypeWithClassLevelQualifier.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributesIntoSetWithGenericBoundType.kt")
+    public void testContributesIntoSetWithGenericBoundType() {
+      run("ContributesIntoSetWithGenericBoundType.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributesIntoSetWithGenericQualifiedBoundTypeFromAnotherModule.kt")
+    public void testContributesIntoSetWithGenericQualifiedBoundTypeFromAnotherModule() {
+      run("ContributesIntoSetWithGenericQualifiedBoundTypeFromAnotherModule.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributesIntoSetWithImplicitBoundType.kt")
+    public void testContributesIntoSetWithImplicitBoundType() {
+      run("ContributesIntoSetWithImplicitBoundType.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributesIntoSetWithImplicitBoundTypeFromAnotherCompilation.kt")
+    public void testContributesIntoSetWithImplicitBoundTypeFromAnotherCompilation() {
+      run("ContributesIntoSetWithImplicitBoundTypeFromAnotherCompilation.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributesIntoSetWithImplicitBoundTypeObject.kt")
+    public void testContributesIntoSetWithImplicitBoundTypeObject() {
+      run("ContributesIntoSetWithImplicitBoundTypeObject.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributesIntoSetWithImplicitQualifiedBoundType.kt")
+    public void testContributesIntoSetWithImplicitQualifiedBoundType() {
+      run("ContributesIntoSetWithImplicitQualifiedBoundType.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributesIntoSetWithSpecificBoundType.kt")
+    public void testContributesIntoSetWithSpecificBoundType() {
+      run("ContributesIntoSetWithSpecificBoundType.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributesIntoSetWithSpecificQualifiedBoundType.kt")
+    public void testContributesIntoSetWithSpecificQualifiedBoundType() {
+      run("ContributesIntoSetWithSpecificQualifiedBoundType.kt");
     }
 
     @Test
@@ -231,6 +459,42 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     }
 
     @Test
+    @TestMetadata("DuplicateContributesBindingAnnotationsWithDifferentQualifiersAreOkExplicit.kt")
+    public void testDuplicateContributesBindingAnnotationsWithDifferentQualifiersAreOkExplicit() {
+      run("DuplicateContributesBindingAnnotationsWithDifferentQualifiersAreOkExplicit.kt");
+    }
+
+    @Test
+    @TestMetadata("DuplicateContributesBindingAnnotationsWithDifferentQualifiersAreOkMixed.kt")
+    public void testDuplicateContributesBindingAnnotationsWithDifferentQualifiersAreOkMixed() {
+      run("DuplicateContributesBindingAnnotationsWithDifferentQualifiersAreOkMixed.kt");
+    }
+
+    @Test
+    @TestMetadata("DuplicateContributesIntoMapAnnotationsWithDifferentQualifiersAreOkExplicit.kt")
+    public void testDuplicateContributesIntoMapAnnotationsWithDifferentQualifiersAreOkExplicit() {
+      run("DuplicateContributesIntoMapAnnotationsWithDifferentQualifiersAreOkExplicit.kt");
+    }
+
+    @Test
+    @TestMetadata("DuplicateContributesIntoMapAnnotationsWithDifferentQualifiersAreOkMixed.kt")
+    public void testDuplicateContributesIntoMapAnnotationsWithDifferentQualifiersAreOkMixed() {
+      run("DuplicateContributesIntoMapAnnotationsWithDifferentQualifiersAreOkMixed.kt");
+    }
+
+    @Test
+    @TestMetadata("DuplicateContributesIntoSetAnnotationsWithDifferentQualifiersAreOkExplicit.kt")
+    public void testDuplicateContributesIntoSetAnnotationsWithDifferentQualifiersAreOkExplicit() {
+      run("DuplicateContributesIntoSetAnnotationsWithDifferentQualifiersAreOkExplicit.kt");
+    }
+
+    @Test
+    @TestMetadata("DuplicateContributesIntoSetAnnotationsWithDifferentQualifiersAreOkMixed.kt")
+    public void testDuplicateContributesIntoSetAnnotationsWithDifferentQualifiersAreOkMixed() {
+      run("DuplicateContributesIntoSetAnnotationsWithDifferentQualifiersAreOkMixed.kt");
+    }
+
+    @Test
     @TestMetadata("ExcludeBindingContainerWithOrigin.kt")
     public void testExcludeBindingContainerWithOrigin() {
       run("ExcludeBindingContainerWithOrigin.kt");
@@ -249,6 +513,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     }
 
     @Test
+    @TestMetadata("ExcludeIncompatibleInternalContribution.kt")
+    public void testExcludeIncompatibleInternalContribution() {
+      run("ExcludeIncompatibleInternalContribution.kt");
+    }
+
+    @Test
     @TestMetadata("ExcludedBindingContainerReplacesEffectIgnored.kt")
     public void testExcludedBindingContainerReplacesEffectIgnored() {
       run("ExcludedBindingContainerReplacesEffectIgnored.kt");
@@ -258,6 +528,18 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     @TestMetadata("ExcludedBindingContainerReplacesEffectIgnoredMultiModule.kt")
     public void testExcludedBindingContainerReplacesEffectIgnoredMultiModule() {
       run("ExcludedBindingContainerReplacesEffectIgnoredMultiModule.kt");
+    }
+
+    @Test
+    @TestMetadata("ExcludedContributedBinding.kt")
+    public void testExcludedContributedBinding() {
+      run("ExcludedContributedBinding.kt");
+    }
+
+    @Test
+    @TestMetadata("ExcludedContributedInterface.kt")
+    public void testExcludedContributedInterface() {
+      run("ExcludedContributedInterface.kt");
     }
 
     @Test
@@ -291,6 +573,18 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     }
 
     @Test
+    @TestMetadata("ExclusionsAreRespectedIntoMap.kt")
+    public void testExclusionsAreRespectedIntoMap() {
+      run("ExclusionsAreRespectedIntoMap.kt");
+    }
+
+    @Test
+    @TestMetadata("ExclusionsAreRespectedIntoSet.kt")
+    public void testExclusionsAreRespectedIntoSet() {
+      run("ExclusionsAreRespectedIntoSet.kt");
+    }
+
+    @Test
     @TestMetadata("GenericArrayScopeAliases.kt")
     public void testGenericArrayScopeAliases() {
       run("GenericArrayScopeAliases.kt");
@@ -300,6 +594,24 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     @TestMetadata("GraphCanExplicitlyExtendContributedInterface.kt")
     public void testGraphCanExplicitlyExtendContributedInterface() {
       run("GraphCanExplicitlyExtendContributedInterface.kt");
+    }
+
+    @Test
+    @TestMetadata("ImplicitBoundTypesUseClassQualifierContributesBinding.kt")
+    public void testImplicitBoundTypesUseClassQualifierContributesBinding() {
+      run("ImplicitBoundTypesUseClassQualifierContributesBinding.kt");
+    }
+
+    @Test
+    @TestMetadata("ImplicitBoundTypesUseClassQualifierContributesIntoMap.kt")
+    public void testImplicitBoundTypesUseClassQualifierContributesIntoMap() {
+      run("ImplicitBoundTypesUseClassQualifierContributesIntoMap.kt");
+    }
+
+    @Test
+    @TestMetadata("ImplicitBoundTypesUseClassQualifierContributesIntoSet.kt")
+    public void testImplicitBoundTypesUseClassQualifierContributesIntoSet() {
+      run("ImplicitBoundTypesUseClassQualifierContributesIntoSet.kt");
     }
 
     @Test
@@ -387,6 +699,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     }
 
     @Test
+    @TestMetadata("NonPublicContributionsHaveNoHints.kt")
+    public void testNonPublicContributionsHaveNoHints() {
+      run("NonPublicContributionsHaveNoHints.kt");
+    }
+
+    @Test
     @TestMetadata("OriginFromUpstreamModule.kt")
     public void testOriginFromUpstreamModule() {
       run("OriginFromUpstreamModule.kt");
@@ -396,6 +714,30 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     @TestMetadata("RepeatedContributionPriorities.kt")
     public void testRepeatedContributionPriorities() {
       run("RepeatedContributionPriorities.kt");
+    }
+
+    @Test
+    @TestMetadata("ReplacedContributedBinding.kt")
+    public void testReplacedContributedBinding() {
+      run("ReplacedContributedBinding.kt");
+    }
+
+    @Test
+    @TestMetadata("ReplacedScopedBindingIsStillScoped.kt")
+    public void testReplacedScopedBindingIsStillScoped() {
+      run("ReplacedScopedBindingIsStillScoped.kt");
+    }
+
+    @Test
+    @TestMetadata("ReplacementsAreRespectedIntoMap.kt")
+    public void testReplacementsAreRespectedIntoMap() {
+      run("ReplacementsAreRespectedIntoMap.kt");
+    }
+
+    @Test
+    @TestMetadata("ReplacementsAreRespectedIntoSet.kt")
+    public void testReplacementsAreRespectedIntoSet() {
+      run("ReplacementsAreRespectedIntoSet.kt");
     }
 
     @Test
@@ -435,9 +777,27 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     }
 
     @Test
+    @TestMetadata("ScopedBindingContributesToSetAndInterface.kt")
+    public void testScopedBindingContributesToSetAndInterface() {
+      run("ScopedBindingContributesToSetAndInterface.kt");
+    }
+
+    @Test
+    @TestMetadata("ScopedBindingIsStillScoped.kt")
+    public void testScopedBindingIsStillScoped() {
+      run("ScopedBindingIsStillScoped.kt");
+    }
+
+    @Test
     @TestMetadata("ScopedContributedBindingCanBeAccessedFromChildWithClassHintsEnabled.kt")
     public void testScopedContributedBindingCanBeAccessedFromChildWithClassHintsEnabled() {
       run("ScopedContributedBindingCanBeAccessedFromChildWithClassHintsEnabled.kt");
+    }
+
+    @Test
+    @TestMetadata("ScopedDependencyInProvidedMultibinding.kt")
+    public void testScopedDependencyInProvidedMultibinding() {
+      run("ScopedDependencyInProvidedMultibinding.kt");
     }
 
     @Test
@@ -768,6 +1128,30 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     }
 
     @Test
+    @TestMetadata("APrivateProviderIsVisibleFromASupertypeInAnotherModule.kt")
+    public void testAPrivateProviderIsVisibleFromASupertypeInAnotherModule() {
+      run("APrivateProviderIsVisibleFromASupertypeInAnotherModule.kt");
+    }
+
+    @Test
+    @TestMetadata("AProviderIsVisibleFromASupertypeInAnotherModule.kt")
+    public void testAProviderIsVisibleFromASupertypeInAnotherModule() {
+      run("AProviderIsVisibleFromASupertypeInAnotherModule.kt");
+    }
+
+    @Test
+    @TestMetadata("AProviderWithADefaultIsVisibleFromASupertypeInAnotherModule.kt")
+    public void testAProviderWithADefaultIsVisibleFromASupertypeInAnotherModule() {
+      run("AProviderWithADefaultIsVisibleFromASupertypeInAnotherModule.kt");
+    }
+
+    @Test
+    @TestMetadata("AQualifiedProviderIsVisibleFromASupertypeInAnotherModule.kt")
+    public void testAQualifiedProviderIsVisibleFromASupertypeInAnotherModule() {
+      run("AQualifiedProviderIsVisibleFromASupertypeInAnotherModule.kt");
+    }
+
+    @Test
     public void testAllFilesPresentInBindingcontainers() {
       KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/bindingcontainers"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
     }
@@ -827,6 +1211,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     }
 
     @Test
+    @TestMetadata("FunctionValues.kt")
+    public void testFunctionValues() {
+      run("FunctionValues.kt");
+    }
+
+    @Test
     @TestMetadata("IncludedClassBindingContainer.kt")
     public void testIncludedClassBindingContainer() {
       run("IncludedClassBindingContainer.kt");
@@ -848,6 +1238,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     @TestMetadata("NestedBindingContainersRespectScopesAcrossModules.kt")
     public void testNestedBindingContainersRespectScopesAcrossModules() {
       run("NestedBindingContainersRespectScopesAcrossModules.kt");
+    }
+
+    @Test
+    @TestMetadata("NullableTypesDoNotConflictWithNonNullableTypes.kt")
+    public void testNullableTypesDoNotConflictWithNonNullableTypes() {
+      run("NullableTypesDoNotConflictWithNonNullableTypes.kt");
     }
 
     @Test
@@ -904,6 +1300,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     @TestMetadata("SwitchingProvidersGenerateTableSwitch.kt")
     public void testSwitchingProvidersGenerateTableSwitch() {
       run("SwitchingProvidersGenerateTableSwitch.kt");
+    }
+
+    @Test
+    @TestMetadata("UnscopedProviderFieldReuse.kt")
+    public void testUnscopedProviderFieldReuse() {
+      run("UnscopedProviderFieldReuse.kt");
     }
   }
 
@@ -1232,6 +1634,24 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     }
 
     @Test
+    @TestMetadata("AScopedInjectClassCanBeAccessedInAChildGraphWithoutAnExplicitAccessorWhenAssociatedHintsAreEnabled.kt")
+    public void testAScopedInjectClassCanBeAccessedInAChildGraphWithoutAnExplicitAccessorWhenAssociatedHintsAreEnabled() {
+      run("AScopedInjectClassCanBeAccessedInAChildGraphWithoutAnExplicitAccessorWhenAssociatedHintsAreEnabled.kt");
+    }
+
+    @Test
+    @TestMetadata("AScopedInjectClassCanBeAccessedInAChildGraphWithoutAnExplicitAccessorWhenAssociatedHintsAreEnabledDirectScopeLikeSingletonUsed.kt")
+    public void testAScopedInjectClassCanBeAccessedInAChildGraphWithoutAnExplicitAccessorWhenAssociatedHintsAreEnabledDirectScopeLikeSingletonUsed() {
+      run("AScopedInjectClassCanBeAccessedInAChildGraphWithoutAnExplicitAccessorWhenAssociatedHintsAreEnabledDirectScopeLikeSingletonUsed.kt");
+    }
+
+    @Test
+    @TestMetadata("AScopedInjectClassCanBeAccessedInParallelChildGraphsWithoutAnExplicitAccessorWhenAssociatedHintsAreEnabled.kt")
+    public void testAScopedInjectClassCanBeAccessedInParallelChildGraphsWithoutAnExplicitAccessorWhenAssociatedHintsAreEnabled() {
+      run("AScopedInjectClassCanBeAccessedInParallelChildGraphsWithoutAnExplicitAccessorWhenAssociatedHintsAreEnabled.kt");
+    }
+
+    @Test
     public void testAllFilesPresentInContributesgraphextension() {
       KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/contributesgraphextension"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
     }
@@ -1255,9 +1675,45 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     }
 
     @Test
+    @TestMetadata("ContributedGraphCanExtendAGenericInterface.kt")
+    public void testContributedGraphCanExtendAGenericInterface() {
+      run("ContributedGraphCanExtendAGenericInterface.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributedGraphCanInjectAnEmptyDeclaredMultibindingFromParent.kt")
+    public void testContributedGraphCanInjectAnEmptyDeclaredMultibindingFromParent() {
+      run("ContributedGraphCanInjectAnEmptyDeclaredMultibindingFromParent.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributedGraphCopiesScopeAnnotations.kt")
+    public void testContributedGraphCopiesScopeAnnotations() {
+      run("ContributedGraphCopiesScopeAnnotations.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributedGraphExtensionCanProvideMultibindings.kt")
+    public void testContributedGraphExtensionCanProvideMultibindings() {
+      run("ContributedGraphExtensionCanProvideMultibindings.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributedGraphExtensionSmoke.kt")
+    public void testContributedGraphExtensionSmoke() {
+      run("ContributedGraphExtensionSmoke.kt");
+    }
+
+    @Test
     @TestMetadata("ContributedGraphExtensionWithoutScope.kt")
     public void testContributedGraphExtensionWithoutScope() {
       run("ContributedGraphExtensionWithoutScope.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributedGraphsCanBeChained.kt")
+    public void testContributedGraphsCanBeChained() {
+      run("ContributedGraphsCanBeChained.kt");
     }
 
     @Test
@@ -1285,6 +1741,84 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     }
 
     @Test
+    @TestMetadata("ExcludedExtensionsHaveNoFactories.kt")
+    public void testExcludedExtensionsHaveNoFactories() {
+      run("ExcludedExtensionsHaveNoFactories.kt");
+    }
+
+    @Test
+    @TestMetadata("ExtensionBindingAcrossSiblingModules.kt")
+    public void testExtensionBindingAcrossSiblingModules() {
+      run("ExtensionBindingAcrossSiblingModules.kt");
+    }
+
+    @Test
+    @TestMetadata("ExtensionContributesSetWithBinds.kt")
+    public void testExtensionContributesSetWithBinds() {
+      run("ExtensionContributesSetWithBinds.kt");
+    }
+
+    @Test
+    @TestMetadata("ExtensionFactoryAsContribution.kt")
+    public void testExtensionFactoryAsContribution() {
+      run("ExtensionFactoryAsContribution.kt");
+    }
+
+    @Test
+    @TestMetadata("ExtensionInheritsSetWithBinds.kt")
+    public void testExtensionInheritsSetWithBinds() {
+      run("ExtensionInheritsSetWithBinds.kt");
+    }
+
+    @Test
+    @TestMetadata("ExtensionInjectorsReuseScopedBinding.kt")
+    public void testExtensionInjectorsReuseScopedBinding() {
+      run("ExtensionInjectorsReuseScopedBinding.kt");
+    }
+
+    @Test
+    @TestMetadata("ExtensionProviderAcrossSiblingModules.kt")
+    public void testExtensionProviderAcrossSiblingModules() {
+      run("ExtensionProviderAcrossSiblingModules.kt");
+    }
+
+    @Test
+    @TestMetadata("ForwardIncludedInputToExtension.kt")
+    public void testForwardIncludedInputToExtension() {
+      run("ForwardIncludedInputToExtension.kt");
+    }
+
+    @Test
+    @TestMetadata("GenericExtensionFactorySupertype.kt")
+    public void testGenericExtensionFactorySupertype() {
+      run("GenericExtensionFactorySupertype.kt");
+    }
+
+    @Test
+    @TestMetadata("InferParentScopedBindingForExtension.kt")
+    public void testInferParentScopedBindingForExtension() {
+      run("InferParentScopedBindingForExtension.kt");
+    }
+
+    @Test
+    @TestMetadata("InheritedContributedInterfaceProvider.kt")
+    public void testInheritedContributedInterfaceProvider() {
+      run("InheritedContributedInterfaceProvider.kt");
+    }
+
+    @Test
+    @TestMetadata("InheritedContributionSet.kt")
+    public void testInheritedContributionSet() {
+      run("InheritedContributionSet.kt");
+    }
+
+    @Test
+    @TestMetadata("MultipleModules.kt")
+    public void testMultipleModules() {
+      run("MultipleModules.kt");
+    }
+
+    @Test
     @TestMetadata("NestedContributedFactoryIsAvailableAsBinding.kt")
     public void testNestedContributedFactoryIsAvailableAsBinding() {
       run("NestedContributedFactoryIsAvailableAsBinding.kt");
@@ -1297,6 +1831,24 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     }
 
     @Test
+    @TestMetadata("ParamsAreForwardedExtends.kt")
+    public void testParamsAreForwardedExtends() {
+      run("ParamsAreForwardedExtends.kt");
+    }
+
+    @Test
+    @TestMetadata("ParamsAreForwardedProvides.kt")
+    public void testParamsAreForwardedProvides() {
+      run("ParamsAreForwardedProvides.kt");
+    }
+
+    @Test
+    @TestMetadata("ParamsAreForwardedQualifiedProvides.kt")
+    public void testParamsAreForwardedQualifiedProvides() {
+      run("ParamsAreForwardedQualifiedProvides.kt");
+    }
+
+    @Test
     @TestMetadata("ParentIncludesArePropgatedToExtensions.kt")
     public void testParentIncludesArePropgatedToExtensions() {
       run("ParentIncludesArePropgatedToExtensions.kt");
@@ -1306,6 +1858,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     @TestMetadata("ParentIncludesTypesAreSeenByExtensions.kt")
     public void testParentIncludesTypesAreSeenByExtensions() {
       run("ParentIncludesTypesAreSeenByExtensions.kt");
+    }
+
+    @Test
+    @TestMetadata("ParentScopedBindingAcrossIntermediateExtension.kt")
+    public void testParentScopedBindingAcrossIntermediateExtension() {
+      run("ParentScopedBindingAcrossIntermediateExtension.kt");
     }
 
     @Test
@@ -1330,6 +1888,24 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     @TestMetadata("ScopedBindingUsedByExtensionIsExposed.kt")
     public void testScopedBindingUsedByExtensionIsExposed() {
       run("ScopedBindingUsedByExtensionIsExposed.kt");
+    }
+
+    @Test
+    @TestMetadata("SimpleAbstractClass.kt")
+    public void testSimpleAbstractClass() {
+      run("SimpleAbstractClass.kt");
+    }
+
+    @Test
+    @TestMetadata("SingleComplexModuleWithContributed.kt")
+    public void testSingleComplexModuleWithContributed() {
+      run("SingleComplexModuleWithContributed.kt");
+    }
+
+    @Test
+    @TestMetadata("SingleComplexModuleWithContributedBinding.kt")
+    public void testSingleComplexModuleWithContributedBinding() {
+      run("SingleComplexModuleWithContributedBinding.kt");
     }
 
     @Test
@@ -1445,6 +2021,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     }
 
     @Test
+    @TestMetadata("BindNonNullAsNullable.kt")
+    public void testBindNonNullAsNullable() {
+      run("BindNonNullAsNullable.kt");
+    }
+
+    @Test
     @TestMetadata("ContributedAccessorsCanBeLazy.kt")
     public void testContributedAccessorsCanBeLazy() {
       run("ContributedAccessorsCanBeLazy.kt");
@@ -1469,6 +2051,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     }
 
     @Test
+    @TestMetadata("DefaultDependencyDuringTopologicalSort.kt")
+    public void testDefaultDependencyDuringTopologicalSort() {
+      run("DefaultDependencyDuringTopologicalSort.kt");
+    }
+
+    @Test
     @TestMetadata("DirectMapBindingFromGraphDep.kt")
     public void testDirectMapBindingFromGraphDep() {
       run("DirectMapBindingFromGraphDep.kt");
@@ -1490,6 +2078,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     @TestMetadata("GraphFactoriesSupportGenericProviders.kt")
     public void testGraphFactoriesSupportGenericProviders() {
       run("GraphFactoriesSupportGenericProviders.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphFactoryWithProvidedArgument.kt")
+    public void testGraphFactoryWithProvidedArgument() {
+      run("GraphFactoryWithProvidedArgument.kt");
     }
 
     @Test
@@ -1535,9 +2129,27 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     }
 
     @Test
+    @TestMetadata("GraphWithImplicitAdditionalScopes.kt")
+    public void testGraphWithImplicitAdditionalScopes() {
+      run("GraphWithImplicitAdditionalScopes.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphWithImplicitScope.kt")
+    public void testGraphWithImplicitScope() {
+      run("GraphWithImplicitScope.kt");
+    }
+
+    @Test
     @TestMetadata("GraphsCanHaveExistingImplClases.kt")
     public void testGraphsCanHaveExistingImplClases() {
       run("GraphsCanHaveExistingImplClases.kt");
+    }
+
+    @Test
+    @TestMetadata("IncludedAccessorsKeepQualifiers.kt")
+    public void testIncludedAccessorsKeepQualifiers() {
+      run("IncludedAccessorsKeepQualifiers.kt");
     }
 
     @Test
@@ -1580,6 +2192,18 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     @TestMetadata("IncludesGraphOnlyIncludesAccessors.kt")
     public void testIncludesGraphOnlyIncludesAccessors() {
       run("IncludesGraphOnlyIncludesAccessors.kt");
+    }
+
+    @Test
+    @TestMetadata("InheritedCompanionProvider.kt")
+    public void testInheritedCompanionProvider() {
+      run("InheritedCompanionProvider.kt");
+    }
+
+    @Test
+    @TestMetadata("InheritedProviderFunction.kt")
+    public void testInheritedProviderFunction() {
+      run("InheritedProviderFunction.kt");
     }
 
     @Test
@@ -1631,9 +2255,39 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     }
 
     @Test
+    @TestMetadata("MultibindingsMap.kt")
+    public void testMultibindingsMap() {
+      run("MultibindingsMap.kt");
+    }
+
+    @Test
+    @TestMetadata("MultibindingsMapProvider.kt")
+    public void testMultibindingsMapProvider() {
+      run("MultibindingsMapProvider.kt");
+    }
+
+    @Test
+    @TestMetadata("MultibindingsMapProviderDeclaredNonProvider.kt")
+    public void testMultibindingsMapProviderDeclaredNonProvider() {
+      run("MultibindingsMapProviderDeclaredNonProvider.kt");
+    }
+
+    @Test
+    @TestMetadata("MultibindingsMapProvidersOfLazy.kt")
+    public void testMultibindingsMapProvidersOfLazy() {
+      run("MultibindingsMapProvidersOfLazy.kt");
+    }
+
+    @Test
     @TestMetadata("MultipleBindsInSeparateGraphsAreValid.kt")
     public void testMultipleBindsInSeparateGraphsAreValid() {
       run("MultipleBindsInSeparateGraphsAreValid.kt");
+    }
+
+    @Test
+    @TestMetadata("MultipleMultibindingContributorsWithMatchingCallableIds.kt")
+    public void testMultipleMultibindingContributorsWithMatchingCallableIds() {
+      run("MultipleMultibindingContributorsWithMatchingCallableIds.kt");
     }
 
     @Test
@@ -1652,6 +2306,18 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     @TestMetadata("NullabilityInFunInterfaceContributions.kt")
     public void testNullabilityInFunInterfaceContributions() {
       run("NullabilityInFunInterfaceContributions.kt");
+    }
+
+    @Test
+    @TestMetadata("NullableAndNonNullBindings.kt")
+    public void testNullableAndNonNullBindings() {
+      run("NullableAndNonNullBindings.kt");
+    }
+
+    @Test
+    @TestMetadata("NullableBindingDependencyChain.kt")
+    public void testNullableBindingDependencyChain() {
+      run("NullableBindingDependencyChain.kt");
     }
 
     @Test
@@ -1694,6 +2360,18 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     @TestMetadata("PrivateBindsInOtherModule.kt")
     public void testPrivateBindsInOtherModule() {
       run("PrivateBindsInOtherModule.kt");
+    }
+
+    @Test
+    @TestMetadata("ProvidedRootReusesConstructorInjectedType.kt")
+    public void testProvidedRootReusesConstructorInjectedType() {
+      run("ProvidedRootReusesConstructorInjectedType.kt");
+    }
+
+    @Test
+    @TestMetadata("ProviderWithGetterAnnotation.kt")
+    public void testProviderWithGetterAnnotation() {
+      run("ProviderWithGetterAnnotation.kt");
     }
 
     @Test
@@ -1775,6 +2453,42 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     }
 
     @Test
+    @TestMetadata("ScopedAndUnscopedProviderReads.kt")
+    public void testScopedAndUnscopedProviderReads() {
+      run("ScopedAndUnscopedProviderReads.kt");
+    }
+
+    @Test
+    @TestMetadata("SimpleBindsExample.kt")
+    public void testSimpleBindsExample() {
+      run("SimpleBindsExample.kt");
+    }
+
+    @Test
+    @TestMetadata("SimpleExplicitOptedInMultibindingsWithNoContributorsIsEmpty.kt")
+    public void testSimpleExplicitOptedInMultibindingsWithNoContributorsIsEmpty() {
+      run("SimpleExplicitOptedInMultibindingsWithNoContributorsIsEmpty.kt");
+    }
+
+    @Test
+    @TestMetadata("SimpleImplicitMultibindingsFromAccessor.kt")
+    public void testSimpleImplicitMultibindingsFromAccessor() {
+      run("SimpleImplicitMultibindingsFromAccessor.kt");
+    }
+
+    @Test
+    @TestMetadata("SimpleMultibindsAccessedFromAccessor.kt")
+    public void testSimpleMultibindsAccessedFromAccessor() {
+      run("SimpleMultibindsAccessedFromAccessor.kt");
+    }
+
+    @Test
+    @TestMetadata("SimpleMultibindsAccessedFromAccessorDifferentOrderDeclaration.kt")
+    public void testSimpleMultibindsAccessedFromAccessorDifferentOrderDeclaration() {
+      run("SimpleMultibindsAccessedFromAccessorDifferentOrderDeclaration.kt");
+    }
+
+    @Test
     @TestMetadata("StaticGraphCompanions.kt")
     public void testStaticGraphCompanions() {
       run("StaticGraphCompanions.kt");
@@ -1784,6 +2498,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     @TestMetadata("StaticGraphCompanionsSeparateModules.kt")
     public void testStaticGraphCompanionsSeparateModules() {
       run("StaticGraphCompanionsSeparateModules.kt");
+    }
+
+    @Test
+    @TestMetadata("TransitiveScopedBindingsAreOrderedCorrectly.kt")
+    public void testTransitiveScopedBindingsAreOrderedCorrectly() {
+      run("TransitiveScopedBindingsAreOrderedCorrectly.kt");
     }
 
     @Test
@@ -1802,6 +2522,18 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     @TestMetadata("UserDeclaredGraphCompanionsAcrossModules.kt")
     public void testUserDeclaredGraphCompanionsAcrossModules() {
       run("UserDeclaredGraphCompanionsAcrossModules.kt");
+    }
+
+    @Test
+    @TestMetadata("WildcardSuppressionPreservesTypeKeys.kt")
+    public void testWildcardSuppressionPreservesTypeKeys() {
+      run("WildcardSuppressionPreservesTypeKeys.kt");
+    }
+
+    @Test
+    @TestMetadata("WrappedGraphAccessors.kt")
+    public void testWrappedGraphAccessors() {
+      run("WrappedGraphAccessors.kt");
     }
 
     @Nested
@@ -2050,6 +2782,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
       }
 
       @Test
+      @TestMetadata("ChildDeclaredBeforeParent.kt")
+      public void testChildDeclaredBeforeParent() {
+        run("ChildDeclaredBeforeParent.kt");
+      }
+
+      @Test
       @TestMetadata("ChildFactoryParamSupersedesSameTypedParentProvides.kt")
       public void testChildFactoryParamSupersedesSameTypedParentProvides() {
         run("ChildFactoryParamSupersedesSameTypedParentProvides.kt");
@@ -2182,6 +2920,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
       }
 
       @Test
+      @TestMetadata("GraphExtensionSmoke.kt")
+      public void testGraphExtensionSmoke() {
+        run("GraphExtensionSmoke.kt");
+      }
+
+      @Test
       @TestMetadata("GraphLifecycleClosedParent.kt")
       public void testGraphLifecycleClosedParent() {
         run("GraphLifecycleClosedParent.kt");
@@ -2302,6 +3046,18 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
       }
 
       @Test
+      @TestMetadata("InheritedAccessorsKeepQualifiers.kt")
+      public void testInheritedAccessorsKeepQualifiers() {
+        run("InheritedAccessorsKeepQualifiers.kt");
+      }
+
+      @Test
+      @TestMetadata("InheritedBinds.kt")
+      public void testInheritedBinds() {
+        run("InheritedBinds.kt");
+      }
+
+      @Test
       @TestMetadata("InheritedManagedBindingContainersShareInstances.kt")
       public void testInheritedManagedBindingContainersShareInstances() {
         run("InheritedManagedBindingContainersShareInstances.kt");
@@ -2350,9 +3106,27 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
       }
 
       @Test
+      @TestMetadata("MultibindingsWithParentAndChild.kt")
+      public void testMultibindingsWithParentAndChild() {
+        run("MultibindingsWithParentAndChild.kt");
+      }
+
+      @Test
       @TestMetadata("MultipleExtensionFactoriesAreValid.kt")
       public void testMultipleExtensionFactoriesAreValid() {
         run("MultipleExtensionFactoriesAreValid.kt");
+      }
+
+      @Test
+      @TestMetadata("MultipleLevelsThreeLevels.kt")
+      public void testMultipleLevelsThreeLevels() {
+        run("MultipleLevelsThreeLevels.kt");
+      }
+
+      @Test
+      @TestMetadata("MultipleLevelsThreeLevelsMultiModule.kt")
+      public void testMultipleLevelsThreeLevelsMultiModule() {
+        run("MultipleLevelsThreeLevelsMultiModule.kt");
       }
 
       @Test
@@ -2377,6 +3151,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
       @TestMetadata("ParentEmptyMapMultibindsPropagates.kt")
       public void testParentEmptyMapMultibindsPropagates() {
         run("ParentEmptyMapMultibindsPropagates.kt");
+      }
+
+      @Test
+      @TestMetadata("ParentExtendsInterfaceWithCompanionProvider.kt")
+      public void testParentExtendsInterfaceWithCompanionProvider() {
+        run("ParentExtendsInterfaceWithCompanionProvider.kt");
       }
 
       @Test
@@ -2416,6 +3196,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
       }
 
       @Test
+      @TestMetadata("ScopedBindingsAreInheritedImplicit.kt")
+      public void testScopedBindingsAreInheritedImplicit() {
+        run("ScopedBindingsAreInheritedImplicit.kt");
+      }
+
+      @Test
       @TestMetadata("ScopedExtensionsWithoutFactoriesShouldNotBeCached.kt")
       public void testScopedExtensionsWithoutFactoriesShouldNotBeCached() {
         run("ScopedExtensionsWithoutFactoriesShouldNotBeCached.kt");
@@ -2428,9 +3214,33 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
       }
 
       @Test
+      @TestMetadata("ScopedProviderAccessorVisibleToChild.kt")
+      public void testScopedProviderAccessorVisibleToChild() {
+        run("ScopedProviderAccessorVisibleToChild.kt");
+      }
+
+      @Test
+      @TestMetadata("ScopedProvidersAreRespected.kt")
+      public void testScopedProvidersAreRespected() {
+        run("ScopedProvidersAreRespected.kt");
+      }
+
+      @Test
+      @TestMetadata("ScopedProvidersFieldsAreReused.kt")
+      public void testScopedProvidersFieldsAreReused() {
+        run("ScopedProvidersFieldsAreReused.kt");
+      }
+
+      @Test
       @TestMetadata("SimpleExtension.kt")
       public void testSimpleExtension() {
         run("SimpleExtension.kt");
+      }
+
+      @Test
+      @TestMetadata("SimpleExtensionInAnotherModule.kt")
+      public void testSimpleExtensionInAnotherModule() {
+        run("SimpleExtensionInAnotherModule.kt");
       }
 
       @Test
@@ -2449,6 +3259,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
       @TestMetadata("UnchangedMultibindingsPreserveChildConstruction.kt")
       public void testUnchangedMultibindingsPreserveChildConstruction() {
         run("UnchangedMultibindingsPreserveChildConstruction.kt");
+      }
+
+      @Test
+      @TestMetadata("UnscopedInheritedProvidersRemainUnscoped.kt")
+      public void testUnscopedInheritedProvidersRemainUnscoped() {
+        run("UnscopedInheritedProvidersRemainUnscoped.kt");
       }
     }
 
@@ -3074,8 +3890,32 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     }
 
     @Test
+    @TestMetadata("AConstructorCanBeInjectedWithAParameterAnnotatedWithAQualifierWithAClassArgumentSatisfiedByABinding.kt")
+    public void testAConstructorCanBeInjectedWithAParameterAnnotatedWithAQualifierWithAClassArgumentSatisfiedByABinding() {
+      run("AConstructorCanBeInjectedWithAParameterAnnotatedWithAQualifierWithAClassArgumentSatisfiedByABinding.kt");
+    }
+
+    @Test
+    @TestMetadata("AConstructorCanBeInjectedWithAParameterAnnotatedWithAQualifierWithAClassArgumentSatisfiedByAProvider.kt")
+    public void testAConstructorCanBeInjectedWithAParameterAnnotatedWithAQualifierWithAClassArgumentSatisfiedByAProvider() {
+      run("AConstructorCanBeInjectedWithAParameterAnnotatedWithAQualifierWithAClassArgumentSatisfiedByAProvider.kt");
+    }
+
+    @Test
     public void testAllFilesPresentInInject() {
       KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/inject"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
+    }
+
+    @Test
+    @TestMetadata("AnInjectedClassIsVisibleFromAnotherModule.kt")
+    public void testAnInjectedClassIsVisibleFromAnotherModule() {
+      run("AnInjectedClassIsVisibleFromAnotherModule.kt");
+    }
+
+    @Test
+    @TestMetadata("AnInjectedClassWithAPrivateConstructorIsVisibleFromAnotherModule.kt")
+    public void testAnInjectedClassWithAPrivateConstructorIsVisibleFromAnotherModule() {
+      run("AnInjectedClassWithAPrivateConstructorIsVisibleFromAnotherModule.kt");
     }
 
     @Test
@@ -3088,6 +3928,18 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     @TestMetadata("AnonymousObjectSuspendDefault.kt")
     public void testAnonymousObjectSuspendDefault() {
       run("AnonymousObjectSuspendDefault.kt");
+    }
+
+    @Test
+    @TestMetadata("ConstructorFactoryArguments.kt")
+    public void testConstructorFactoryArguments() {
+      run("ConstructorFactoryArguments.kt");
+    }
+
+    @Test
+    @TestMetadata("ConstructorFactoryDeferredArguments.kt")
+    public void testConstructorFactoryDeferredArguments() {
+      run("ConstructorFactoryDeferredArguments.kt");
     }
 
     @Test
@@ -3278,6 +4130,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
       }
 
       @Test
+      @TestMetadata("ExplicitAssistedFactory.kt")
+      public void testExplicitAssistedFactory() {
+        run("ExplicitAssistedFactory.kt");
+      }
+
+      @Test
       @TestMetadata("GenericAssistedParams.kt")
       public void testGenericAssistedParams() {
         run("GenericAssistedParams.kt");
@@ -3334,6 +4192,48 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
       }
 
       @Test
+      @TestMetadata("AssistedComposeContextWithDefault.kt")
+      public void testAssistedComposeContextWithDefault() {
+        run("AssistedComposeContextWithDefault.kt");
+      }
+
+      @Test
+      @TestMetadata("EmptyFunctionInjectionAnnotationOverride.kt")
+      public void testEmptyFunctionInjectionAnnotationOverride() {
+        run("EmptyFunctionInjectionAnnotationOverride.kt");
+      }
+
+      @Test
+      @TestMetadata("FunctionInjectionAnnotationOverride.kt")
+      public void testFunctionInjectionAnnotationOverride() {
+        run("FunctionInjectionAnnotationOverride.kt");
+      }
+
+      @Test
+      @TestMetadata("FunctionInjectionArguments.kt")
+      public void testFunctionInjectionArguments() {
+        run("FunctionInjectionArguments.kt");
+      }
+
+      @Test
+      @TestMetadata("FunctionInjectionDeferredArguments.kt")
+      public void testFunctionInjectionDeferredArguments() {
+        run("FunctionInjectionDeferredArguments.kt");
+      }
+
+      @Test
+      @TestMetadata("FunctionInjectionOverrideWithInjectionDisabled.kt")
+      public void testFunctionInjectionOverrideWithInjectionDisabled() {
+        run("FunctionInjectionOverrideWithInjectionDisabled.kt");
+      }
+
+      @Test
+      @TestMetadata("FunctionInjectionQualifiers.kt")
+      public void testFunctionInjectionQualifiers() {
+        run("FunctionInjectionQualifiers.kt");
+      }
+
+      @Test
       @TestMetadata("FunctionSharesNameWithPrivateOverload.kt")
       public void testFunctionSharesNameWithPrivateOverload() {
         run("FunctionSharesNameWithPrivateOverload.kt");
@@ -3373,6 +4273,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
       @TestMetadata("InlineFunctionSmaps.kt")
       public void testInlineFunctionSmaps() {
         run("InlineFunctionSmaps.kt");
+      }
+
+      @Test
+      @TestMetadata("SuspendInjectedFunction.kt")
+      public void testSuspendInjectedFunction() {
+        run("SuspendInjectedFunction.kt");
       }
     }
 
@@ -3456,6 +4362,66 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
       }
 
       @Test
+      @TestMetadata("GraphEmptyInjectFunction.kt")
+      public void testGraphEmptyInjectFunction() {
+        run("GraphEmptyInjectFunction.kt");
+      }
+
+      @Test
+      @TestMetadata("GraphInjectFunctionConstructorInjected.kt")
+      public void testGraphInjectFunctionConstructorInjected() {
+        run("GraphInjectFunctionConstructorInjected.kt");
+      }
+
+      @Test
+      @TestMetadata("GraphInjectFunctionConstructorInjectedWithQualifiers.kt")
+      public void testGraphInjectFunctionConstructorInjectedWithQualifiers() {
+        run("GraphInjectFunctionConstructorInjectedWithQualifiers.kt");
+      }
+
+      @Test
+      @TestMetadata("GraphInjectFunctionGraphInjector.kt")
+      public void testGraphInjectFunctionGraphInjector() {
+        run("GraphInjectFunctionGraphInjector.kt");
+      }
+
+      @Test
+      @TestMetadata("GraphInjectFunctionGraphInjectorWithQualifier.kt")
+      public void testGraphInjectFunctionGraphInjectorWithQualifier() {
+        run("GraphInjectFunctionGraphInjectorWithQualifier.kt");
+      }
+
+      @Test
+      @TestMetadata("GraphInjectFunctionMemberSDependencyBindingsShouldBePickedUpByGraph.kt")
+      public void testGraphInjectFunctionMemberSDependencyBindingsShouldBePickedUpByGraph() {
+        run("GraphInjectFunctionMemberSDependencyBindingsShouldBePickedUpByGraph.kt");
+      }
+
+      @Test
+      @TestMetadata("GraphInjectFunctionSimple.kt")
+      public void testGraphInjectFunctionSimple() {
+        run("GraphInjectFunctionSimple.kt");
+      }
+
+      @Test
+      @TestMetadata("GraphInjectFunctionSimpleConstructedClass.kt")
+      public void testGraphInjectFunctionSimpleConstructedClass() {
+        run("GraphInjectFunctionSimpleConstructedClass.kt");
+      }
+
+      @Test
+      @TestMetadata("GraphInjectFunctionSimpleConstructedClassWithInheritedMembers.kt")
+      public void testGraphInjectFunctionSimpleConstructedClassWithInheritedMembers() {
+        run("GraphInjectFunctionSimpleConstructedClassWithInheritedMembers.kt");
+      }
+
+      @Test
+      @TestMetadata("GraphInjectFunctionSimpleConstructedClassWithPrivateInheritedMembers.kt")
+      public void testGraphInjectFunctionSimpleConstructedClassWithPrivateInheritedMembers() {
+        run("GraphInjectFunctionSimpleConstructedClassWithPrivateInheritedMembers.kt");
+      }
+
+      @Test
       @TestMetadata("InjectingParentAbstractVal.kt")
       public void testInjectingParentAbstractVal() {
         run("InjectingParentAbstractVal.kt");
@@ -3507,6 +4473,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
       @TestMetadata("MultiInheritanceMemberInject.kt")
       public void testMultiInheritanceMemberInject() {
         run("MultiInheritanceMemberInject.kt");
+      }
+
+      @Test
+      @TestMetadata("MultipleMembersInjectionOnASingleGraphArePermitted.kt")
+      public void testMultipleMembersInjectionOnASingleGraphArePermitted() {
+        run("MultipleMembersInjectionOnASingleGraphArePermitted.kt");
       }
 
       @Test
@@ -3659,6 +4631,18 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     }
 
     @Test
+    @TestMetadata("ContributedElementsInjectedIntoConstructor.kt")
+    public void testContributedElementsInjectedIntoConstructor() {
+      run("ContributedElementsInjectedIntoConstructor.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributedSetInjectedIntoConstructor.kt")
+    public void testContributedSetInjectedIntoConstructor() {
+      run("ContributedSetInjectedIntoConstructor.kt");
+    }
+
+    @Test
     @TestMetadata("DifferentMapWrappingTypes.kt")
     public void testDifferentMapWrappingTypes() {
       run("DifferentMapWrappingTypes.kt");
@@ -3731,6 +4715,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     }
 
     @Test
+    @TestMetadata("MapProviderWithContributedClass.kt")
+    public void testMapProviderWithContributedClass() {
+      run("MapProviderWithContributedClass.kt");
+    }
+
+    @Test
     @TestMetadata("MapValuedMapMultibinding.kt")
     public void testMapValuedMapMultibinding() {
       run("MapValuedMapMultibinding.kt");
@@ -3749,6 +4739,30 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     }
 
     @Test
+    @TestMetadata("MultibindsWithContributedElements.kt")
+    public void testMultibindsWithContributedElements() {
+      run("MultibindsWithContributedElements.kt");
+    }
+
+    @Test
+    @TestMetadata("NullableMapMultibindings.kt")
+    public void testNullableMapMultibindings() {
+      run("NullableMapMultibindings.kt");
+    }
+
+    @Test
+    @TestMetadata("NullableProviderMapMultibindings.kt")
+    public void testNullableProviderMapMultibindings() {
+      run("NullableProviderMapMultibindings.kt");
+    }
+
+    @Test
+    @TestMetadata("NullableSetMultibindings.kt")
+    public void testNullableSetMultibindings() {
+      run("NullableSetMultibindings.kt");
+    }
+
+    @Test
     @TestMetadata("PrimeMultibindingMapEnumKey.kt")
     public void testPrimeMultibindingMapEnumKey() {
       run("PrimeMultibindingMapEnumKey.kt");
@@ -3758,6 +4772,18 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     @TestMetadata("QualifiedMultibindingsAcrossModules.kt")
     public void testQualifiedMultibindingsAcrossModules() {
       run("QualifiedMultibindingsAcrossModules.kt");
+    }
+
+    @Test
+    @TestMetadata("SetInjectedIntoConstructor.kt")
+    public void testSetInjectedIntoConstructor() {
+      run("SetInjectedIntoConstructor.kt");
+    }
+
+    @Test
+    @TestMetadata("SetPassedToProvider.kt")
+    public void testSetPassedToProvider() {
+      run("SetPassedToProvider.kt");
     }
 
     @Test
@@ -4418,6 +5444,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     @TestMetadata("SuspendProviderParam.kt")
     public void testSuspendProviderParam() {
       run("SuspendProviderParam.kt");
+    }
+
+    @Test
+    @TestMetadata("SwitchingProviderResumesThroughChunkedRouting.kt")
+    public void testSwitchingProviderResumesThroughChunkedRouting() {
+      run("SwitchingProviderResumesThroughChunkedRouting.kt");
     }
 
     @Test

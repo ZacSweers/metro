@@ -1,0 +1,9 @@
+/GraphCreatorsMustBeAbstractClassesOrInterfaces.kt:36:14: error: @DependencyGraph.Factory declarations should be non-sealed abstract classes or interfaces.
+
+/GraphCreatorsMustBeAbstractClassesOrInterfaces.kt:44:14: error: @DependencyGraph.Factory declarations should be non-sealed abstract classes or interfaces.
+
+/GraphCreatorsMustBeAbstractClassesOrInterfaces.kt:54:9: error: @DependencyGraph.Factory declarations should be non-sealed abstract classes or interfaces.
+
+/GraphCreatorsMustBeAbstractClassesOrInterfaces.kt:64:20: error: @DependencyGraph.Factory declarations should be non-sealed abstract classes or interfaces.
+
+/GraphCreatorsMustBeAbstractClassesOrInterfaces.kt:72:16: error: @DependencyGraph.Factory declarations should be non-sealed abstract classes or interfaces.

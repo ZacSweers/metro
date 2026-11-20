@@ -1,0 +1,6 @@
+/NullableMapMultibindingsMissing.kt:10:7: error: [Metro/EmptyMultibinding] Multibinding Set<Int?> was unexpectedly empty
+
+  help: annotate its declaration with `@Multibinds(allowEmpty = true)` if it can legitimately be
+        empty
+  note: similar multibindings: Set<Int>
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#emptymultibinding

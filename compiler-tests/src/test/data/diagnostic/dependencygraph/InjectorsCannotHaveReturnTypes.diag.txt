@@ -1,0 +1,1 @@
+/InjectorsCannotHaveReturnTypes.kt:8:28: error: Inject functions must not return anything other than Unit.

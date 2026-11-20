@@ -1,0 +1,1 @@
+/BindingClassMustBeInjectedContributesIntoSet.kt:8:1: error: `@ContributesIntoSet` is only applicable to constructor-injected classes, assisted factories, or objects. Ensure test.Impl is injectable or a bindable object.

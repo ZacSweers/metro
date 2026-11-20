@@ -1,0 +1,3 @@
+/ProvidesOrBindsRequiredIntoMap.kt:7:38: error: `@IntoSet`, `@IntoMap`, and `@ElementsIntoSet` must be used in conjunction with `@Provides` or `@Binds` annotations.
+
+/ProvidesOrBindsRequiredIntoMap.kt:9:29: warning: Explicit class key value 'kotlin.Int::class' is the same as the implicit class key and can be omitted.

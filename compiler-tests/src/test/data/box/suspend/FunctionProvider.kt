@@ -1,6 +1,6 @@
 // ENABLE_SUSPEND_PROVIDERS
 
-// ENABLE_FUNCTION_PROVIDERS
+// ENABLE_FUNCTION_PROVIDERS: true
 // Test that suspend () -> T works as an injection type (parallel to () -> T)
 @DependencyGraph
 interface ExampleGraph {

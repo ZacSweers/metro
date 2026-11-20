@@ -1,0 +1,1 @@
+/BindingMustNotBeTheSameAsTheClassContributesBinding.kt:8:46: error: Redundant explicit bound type test.Impl is the same as the annotated class test.Impl.

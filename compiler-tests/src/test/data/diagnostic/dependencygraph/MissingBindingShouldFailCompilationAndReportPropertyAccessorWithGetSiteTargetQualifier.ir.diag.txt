@@ -1,0 +1,8 @@
+/MissingBindingShouldFailCompilationAndReportPropertyAccessorWithGetSiteTargetQualifier.kt:11:7: error: [Metro/MissingBinding] No binding found for @Named("hello") String
+
+  trace (in test.ExampleGraph):
+      @Named("hello") String is requested at test.ExampleGraph.text
+
+  help: ensure @Named("hello") String has an @Inject constructor or is provided by an @Provides or
+        @Binds declaration visible to ExampleGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding

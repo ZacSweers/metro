@@ -1,0 +1,3 @@
+/AbstractInjectionsAreNotAllowedAbstractClass.kt:7:15: error: Injected members cannot be abstract.
+
+/AbstractInjectionsAreNotAllowedAbstractClass.kt:8:11: error: Injected members cannot be abstract.

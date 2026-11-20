@@ -1,0 +1,3 @@
+/OnlyFinalAndOpenClassesCanBeInjected.kt:10:1: error: Only final and open classes be annotated with @Inject or have @Inject-annotated constructors.
+
+/OnlyFinalAndOpenClassesCanBeInjected.kt:13:1: error: Only final and open classes be annotated with @Inject or have @Inject-annotated constructors.

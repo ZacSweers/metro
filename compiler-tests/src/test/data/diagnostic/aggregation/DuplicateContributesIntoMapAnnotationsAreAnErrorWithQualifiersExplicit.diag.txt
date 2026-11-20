@@ -1,0 +1,3 @@
+/DuplicateContributesIntoMapAnnotationsAreAnErrorWithQualifiersExplicit.kt:8:1: error: Duplicate `@ContributesIntoMap` annotations contributing to scope `AppScope`.
+
+/DuplicateContributesIntoMapAnnotationsAreAnErrorWithQualifiersExplicit.kt:9:1: error: Duplicate `@ContributesIntoMap` annotations contributing to scope `AppScope`.

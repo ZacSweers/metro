@@ -1,0 +1,1 @@
+/ProvidesOrBindsRequiredElementsIntoSet.kt:7:24: error: `@IntoSet`, `@IntoMap`, and `@ElementsIntoSet` must be used in conjunction with `@Provides` or `@Binds` annotations.

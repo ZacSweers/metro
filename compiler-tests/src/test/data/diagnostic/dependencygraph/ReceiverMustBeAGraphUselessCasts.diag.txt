@@ -1,0 +1,5 @@
+/ReceiverMustBeAGraphUselessCasts.kt:12:27: error: `asContribution` type argument 'test.AppGraph' is the same as its receiver type. This is a useless cast.
+
+/ReceiverMustBeAGraphUselessCasts.kt:13:45: error: `asContribution` type argument 'test.AppGraph' is the same as its receiver type. This is a useless cast.
+
+/ReceiverMustBeAGraphUselessCasts.kt:14:41: error: `asContribution` type argument 'test.AppGraph' is the same as its receiver type. This is a useless cast.

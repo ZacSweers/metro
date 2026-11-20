@@ -1,0 +1,5 @@
+/MemberInjectionsAreNotAllowedInNonClasses.kt:8:15: error: Only regular classes can have member injections but containing class was ENUM_CLASS.
+
+/MemberInjectionsAreNotAllowedInNonClasses.kt:13:15: error: Only regular classes can have member injections but containing class was OBJECT.
+
+/MemberInjectionsAreNotAllowedInNonClasses.kt:18:15: error: Only regular classes can have member injections but containing class was INTERFACE.
