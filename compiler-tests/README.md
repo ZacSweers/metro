@@ -12,6 +12,8 @@ Adding a new test is easy! The simple flow is just
 2. Run `./gradlew :compiler-tests:generateTests` to regenerate tests. This is important, as these files are not automatically picked up otherwise.
 3. After running you'll see a new unit test method generated in the relevant class in `src/test/java`, which you can now use to run your test!
 
+Generate the checked-in Java with the default Kotlin version. To test another version, generate first, then run `./gradlew :compiler-tests:test -Pmetro.testCompilerVersion=2.3.0 --tests '*MyTest*'`. Older Kotlin generators can rewrite every suite. A full `./metrow regen` also generates the suites with the default version.
+
 Generation and a focused test run can also share one invocation from the repository root:
 
 ```bash

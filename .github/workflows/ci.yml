@@ -172,7 +172,10 @@ jobs:
         if: matrix.kotlin-compiler == needs.generate-matrix.outputs.default_kotlin_version
         run: |
           git add --intent-to-add -- compiler-tests/src/test/java
-          git diff --exit-code -- compiler-tests/src/test/java
+          if ! git diff --exit-code -- compiler-tests/src/test/java; then
+            echo "::error::Run ./gradlew :compiler-tests:generateTests with the default Kotlin version and commit the generated Java."
+            exit 1
+          fi
 
       - name: (Fail-only) Upload reports
         if: failure()
