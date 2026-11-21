@@ -255,8 +255,8 @@
   },
   "bindings": [
     {
-      "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"Handler\",\"-870559630\") Handler",
-      "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"Handler\", \"-870559630\") Handler",
+      "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"Handler\",\"-870559630#KeptHandler.MetroContributionToAppScope.BindsMirror.bindIntoSetAsHandler_intoset(KeptHandler.MetroContributionToAppScope,KeptHandler): Handler\") Handler",
+      "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"Handler\", \"-870559630#KeptHandler.MetroContributionToAppScope.BindsMirror.bindIntoSetAsHandler_intoset(KeptHandler.MetroContributionToAppScope,KeptHandler): Handler\") Handler",
       "bindingKind": "Alias",
       "isScoped": false,
       "nameHint": "bindIntoSetAsHandler",
@@ -267,13 +267,13 @@
           "hasDefault": false
         }
       ],
-      "isSynthetic": false,
+      "isSynthetic": true,
       "declaration": "KeptHandler",
       "aliasTarget": "KeptHandler"
     },
     {
-      "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|kotlin/Int\",\"1629395126\") kotlin/Int",
-      "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin/String|kotlin/Int\", \"1629395126\") kotlin.Int",
+      "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|kotlin/Int\",\"1629395126#AppGraph.mapValue(AppGraph): kotlin/Int\") kotlin/Int",
+      "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin/String|kotlin/Int\", \"1629395126#AppGraph.mapValue(AppGraph): kotlin/Int\") kotlin.Int",
       "bindingKind": "Provided",
       "isScoped": false,
       "nameHint": "mapValue",
@@ -549,8 +549,8 @@
       "nameHint": "mapOfStringToInt",
       "dependencies": [
         {
-          "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|kotlin/Int\",\"1629395126\") kotlin/Int",
-          "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin/String|kotlin/Int\", \"1629395126\") kotlin.Int",
+          "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|kotlin/Int\",\"1629395126#AppGraph.mapValue(AppGraph): kotlin/Int\") kotlin/Int",
+          "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin/String|kotlin/Int\", \"1629395126#AppGraph.mapValue(AppGraph): kotlin/Int\") kotlin.Int",
           "hasDefault": false
         }
       ],
@@ -559,7 +559,7 @@
         "type": "MAP",
         "allowEmpty": false,
         "sources": [
-          "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|kotlin/Int\",\"1629395126\") kotlin/Int"
+          "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|kotlin/Int\",\"1629395126#AppGraph.mapValue(AppGraph): kotlin/Int\") kotlin/Int"
         ]
       }
     },
@@ -571,8 +571,8 @@
       "nameHint": "setOfHandler",
       "dependencies": [
         {
-          "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"Handler\",\"-870559630\") Handler",
-          "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"Handler\", \"-870559630\") Handler",
+          "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"Handler\",\"-870559630#KeptHandler.MetroContributionToAppScope.BindsMirror.bindIntoSetAsHandler_intoset(KeptHandler.MetroContributionToAppScope,KeptHandler): Handler\") Handler",
+          "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"Handler\", \"-870559630#KeptHandler.MetroContributionToAppScope.BindsMirror.bindIntoSetAsHandler_intoset(KeptHandler.MetroContributionToAppScope,KeptHandler): Handler\") Handler",
           "hasDefault": false
         }
       ],
@@ -581,7 +581,7 @@
         "type": "SET",
         "allowEmpty": false,
         "sources": [
-          "@dev/zacsweers/metro/internal/MultibindingElement(\"Handler\",\"-870559630\") Handler"
+          "@dev/zacsweers/metro/internal/MultibindingElement(\"Handler\",\"-870559630#KeptHandler.MetroContributionToAppScope.BindsMirror.bindIntoSetAsHandler_intoset(KeptHandler.MetroContributionToAppScope,KeptHandler): Handler\") Handler"
         ]
       }
     }
@@ -658,8 +658,8 @@
       "outcome": "selected",
       "candidates": [
         {
-          "id": "81:@dev/zacsweers/metro/internal/MultibindingElement(\"Handler\",\"-870559630\") Handler|11:KeptHandler",
-          "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"Handler\",\"-870559630\") Handler",
+          "id": "224:@dev/zacsweers/metro/internal/MultibindingElement(\"Handler\",\"-870559630#KeptHandler.MetroContributionToAppScope.BindsMirror.bindIntoSetAsHandler_intoset(KeptHandler.MetroContributionToAppScope,KeptHandler): Handler\") Handler|11:KeptHandler",
+          "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"Handler\",\"-870559630#KeptHandler.MetroContributionToAppScope.BindsMirror.bindIntoSetAsHandler_intoset(KeptHandler.MetroContributionToAppScope,KeptHandler): Handler\") Handler",
           "status": "selected",
           "reason": "selected_explicit",
           "declaration": {
@@ -668,14 +668,14 @@
           },
           "relatedDeclarations": [],
           "details": [],
-          "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"Handler\", \"-870559630\") Handler"
+          "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"Handler\", \"-870559630#KeptHandler.MetroContributionToAppScope.BindsMirror.bindIntoSetAsHandler_intoset(KeptHandler.MetroContributionToAppScope,KeptHandler): Handler\") Handler"
         }
       ],
       "request": {
-        "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"Handler\",\"-870559630\") Handler",
+        "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"Handler\",\"-870559630#KeptHandler.MetroContributionToAppScope.BindsMirror.bindIntoSetAsHandler_intoset(KeptHandler.MetroContributionToAppScope,KeptHandler): Handler\") Handler",
         "hasDefault": false,
         "isOptional": false,
-        "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"Handler\", \"-870559630\") Handler"
+        "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"Handler\", \"-870559630#KeptHandler.MetroContributionToAppScope.BindsMirror.bindIntoSetAsHandler_intoset(KeptHandler.MetroContributionToAppScope,KeptHandler): Handler\") Handler"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -690,8 +690,8 @@
       "outcome": "selected",
       "candidates": [
         {
-          "id": "101:@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|kotlin/Int\",\"1629395126\") kotlin/Int|39:AppGraph.mapValue(AppGraph): kotlin/Int",
-          "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|kotlin/Int\",\"1629395126\") kotlin/Int",
+          "id": "141:@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|kotlin/Int\",\"1629395126#AppGraph.mapValue(AppGraph): kotlin/Int\") kotlin/Int|39:AppGraph.mapValue(AppGraph): kotlin/Int",
+          "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|kotlin/Int\",\"1629395126#AppGraph.mapValue(AppGraph): kotlin/Int\") kotlin/Int",
           "status": "selected",
           "reason": "selected_explicit",
           "declaration": {
@@ -700,14 +700,14 @@
           },
           "relatedDeclarations": [],
           "details": [],
-          "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin/String|kotlin/Int\", \"1629395126\") kotlin.Int"
+          "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin/String|kotlin/Int\", \"1629395126#AppGraph.mapValue(AppGraph): kotlin/Int\") kotlin.Int"
         }
       ],
       "request": {
-        "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|kotlin/Int\",\"1629395126\") kotlin/Int",
+        "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|kotlin/Int\",\"1629395126#AppGraph.mapValue(AppGraph): kotlin/Int\") kotlin/Int",
         "hasDefault": false,
         "isOptional": false,
-        "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin/String|kotlin/Int\", \"1629395126\") kotlin.Int"
+        "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin/String|kotlin/Int\", \"1629395126#AppGraph.mapValue(AppGraph): kotlin/Int\") kotlin.Int"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."

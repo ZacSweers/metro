@@ -46,7 +46,8 @@ private fun IrDeclarationWithName.declarationFqName(): String =
     else -> parent.kotlinFqName.child(name).asString()
   }
 
-private fun IrDeclarationWithName.bindingDeclarationId(): String =
+/** Encodes a qualified declaration signature without depending on source offsets or visibility. */
+internal fun IrDeclarationWithName.bindingDeclarationId(): String =
   when (this) {
     is IrValueParameter -> {
       val owner = parent as? IrFunction

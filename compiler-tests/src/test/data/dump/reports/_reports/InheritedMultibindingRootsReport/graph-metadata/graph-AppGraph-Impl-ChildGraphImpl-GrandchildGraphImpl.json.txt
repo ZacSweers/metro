@@ -164,8 +164,8 @@
   },
   "bindings": [
     {
-      "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"ValueFactory\",\"610231206\") ValueFactory",
-      "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"ValueFactory\", \"610231206\") ValueFactory",
+      "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"ValueFactory\",\"610231206#AppGraph.Companion.factory(AppGraph.Companion,ValueFactory): ValueFactory\") ValueFactory",
+      "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"ValueFactory\", \"610231206#AppGraph.Companion.factory(AppGraph.Companion,ValueFactory): ValueFactory\") ValueFactory",
       "bindingKind": "Provided",
       "isScoped": false,
       "nameHint": "factory",
@@ -180,8 +180,8 @@
       "declaration": "factory"
     },
     {
-      "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String\",\"-1409686752\") kotlin/String",
-      "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin/String\", \"-1409686752\") kotlin.String",
+      "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String\",\"-1409686752#AppGraph.Companion.name(AppGraph.Companion): kotlin/String\") kotlin/String",
+      "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin/String\", \"-1409686752#AppGraph.Companion.name(AppGraph.Companion): kotlin/String\") kotlin.String",
       "bindingKind": "Provided",
       "isScoped": false,
       "nameHint": "name",
@@ -233,8 +233,8 @@
       "nameHint": "setOfValueFactory",
       "dependencies": [
         {
-          "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"ValueFactory\",\"610231206\") ValueFactory",
-          "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"ValueFactory\", \"610231206\") ValueFactory",
+          "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"ValueFactory\",\"610231206#AppGraph.Companion.factory(AppGraph.Companion,ValueFactory): ValueFactory\") ValueFactory",
+          "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"ValueFactory\", \"610231206#AppGraph.Companion.factory(AppGraph.Companion,ValueFactory): ValueFactory\") ValueFactory",
           "hasDefault": false
         }
       ],
@@ -243,7 +243,7 @@
         "type": "SET",
         "allowEmpty": false,
         "sources": [
-          "@dev/zacsweers/metro/internal/MultibindingElement(\"ValueFactory\",\"610231206\") ValueFactory"
+          "@dev/zacsweers/metro/internal/MultibindingElement(\"ValueFactory\",\"610231206#AppGraph.Companion.factory(AppGraph.Companion,ValueFactory): ValueFactory\") ValueFactory"
         ]
       }
     },
@@ -255,8 +255,8 @@
       "nameHint": "setOfString",
       "dependencies": [
         {
-          "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String\",\"-1409686752\") kotlin/String",
-          "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin/String\", \"-1409686752\") kotlin.String",
+          "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String\",\"-1409686752#AppGraph.Companion.name(AppGraph.Companion): kotlin/String\") kotlin/String",
+          "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin/String\", \"-1409686752#AppGraph.Companion.name(AppGraph.Companion): kotlin/String\") kotlin.String",
           "hasDefault": false
         }
       ],
@@ -265,7 +265,7 @@
         "type": "SET",
         "allowEmpty": false,
         "sources": [
-          "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String\",\"-1409686752\") kotlin/String"
+          "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String\",\"-1409686752#AppGraph.Companion.name(AppGraph.Companion): kotlin/String\") kotlin/String"
         ]
       }
     }
@@ -280,8 +280,8 @@
       "outcome": "selected",
       "candidates": [
         {
-          "id": "90:@dev/zacsweers/metro/internal/MultibindingElement(\"ValueFactory\",\"610231206\") ValueFactory|73:AppGraph.Companion.factory(AppGraph.Companion,ValueFactory): ValueFactory",
-          "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"ValueFactory\",\"610231206\") ValueFactory",
+          "id": "164:@dev/zacsweers/metro/internal/MultibindingElement(\"ValueFactory\",\"610231206#AppGraph.Companion.factory(AppGraph.Companion,ValueFactory): ValueFactory\") ValueFactory|73:AppGraph.Companion.factory(AppGraph.Companion,ValueFactory): ValueFactory",
+          "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"ValueFactory\",\"610231206#AppGraph.Companion.factory(AppGraph.Companion,ValueFactory): ValueFactory\") ValueFactory",
           "status": "selected",
           "reason": "selected_explicit",
           "declaration": {
@@ -290,14 +290,14 @@
           },
           "relatedDeclarations": [],
           "details": [],
-          "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"ValueFactory\", \"610231206\") ValueFactory"
+          "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"ValueFactory\", \"610231206#AppGraph.Companion.factory(AppGraph.Companion,ValueFactory): ValueFactory\") ValueFactory"
         }
       ],
       "request": {
-        "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"ValueFactory\",\"610231206\") ValueFactory",
+        "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"ValueFactory\",\"610231206#AppGraph.Companion.factory(AppGraph.Companion,ValueFactory): ValueFactory\") ValueFactory",
         "hasDefault": false,
         "isOptional": false,
-        "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"ValueFactory\", \"610231206\") ValueFactory"
+        "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"ValueFactory\", \"610231206#AppGraph.Companion.factory(AppGraph.Companion,ValueFactory): ValueFactory\") ValueFactory"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -312,8 +312,8 @@
       "outcome": "selected",
       "candidates": [
         {
-          "id": "94:@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String\",\"-1409686752\") kotlin/String|58:AppGraph.Companion.name(AppGraph.Companion): kotlin/String",
-          "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String\",\"-1409686752\") kotlin/String",
+          "id": "153:@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String\",\"-1409686752#AppGraph.Companion.name(AppGraph.Companion): kotlin/String\") kotlin/String|58:AppGraph.Companion.name(AppGraph.Companion): kotlin/String",
+          "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String\",\"-1409686752#AppGraph.Companion.name(AppGraph.Companion): kotlin/String\") kotlin/String",
           "status": "selected",
           "reason": "selected_explicit",
           "declaration": {
@@ -322,14 +322,14 @@
           },
           "relatedDeclarations": [],
           "details": [],
-          "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin/String\", \"-1409686752\") kotlin.String"
+          "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin/String\", \"-1409686752#AppGraph.Companion.name(AppGraph.Companion): kotlin/String\") kotlin.String"
         }
       ],
       "request": {
-        "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String\",\"-1409686752\") kotlin/String",
+        "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String\",\"-1409686752#AppGraph.Companion.name(AppGraph.Companion): kotlin/String\") kotlin/String",
         "hasDefault": false,
         "isOptional": false,
-        "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin/String\", \"-1409686752\") kotlin.String"
+        "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin/String\", \"-1409686752#AppGraph.Companion.name(AppGraph.Companion): kotlin/String\") kotlin.String"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
