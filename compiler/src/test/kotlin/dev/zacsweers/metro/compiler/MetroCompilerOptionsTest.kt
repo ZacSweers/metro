@@ -11,6 +11,27 @@ import org.junit.Test
 
 class MetroCompilerOptionsTest {
 
+  @Test
+  fun `a new compilation clears only compiler reports`() {
+    val destination = kotlin.io.path.createTempDirectory().toFile()
+    try {
+      val unrelated = destination.resolve("notes.txt").apply { writeText("keep") }
+      val first = MetroOptions.buildOptions { reportsDestination = destination.toPath() }
+      val output = first.reportsDir.value!!.toFile()
+      val report = output.resolve("graph-metadata/old.json")
+      report.parentFile.mkdirs()
+      report.writeText("{}")
+
+      val second = MetroOptions.buildOptions { reportsDestination = destination.toPath() }
+      assertThat(second.reportsDir.value!!.toFile()).isEqualTo(output)
+      assertThat(output.isDirectory).isTrue()
+      assertThat(report.exists()).isFalse()
+      assertThat(unrelated.readText()).isEqualTo("keep")
+    } finally {
+      destination.deleteRecursively()
+    }
+  }
+
   private val compatContext by lazy { CompatContext.create() }
 
   @Test

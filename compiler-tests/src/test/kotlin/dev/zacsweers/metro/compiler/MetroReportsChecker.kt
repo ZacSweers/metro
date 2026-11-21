@@ -18,7 +18,7 @@ import org.jetbrains.kotlin.test.services.moduleStructure
 import org.jetbrains.kotlin.test.services.temporaryDirectoryManager
 import org.opentest4j.AssertionFailedError
 
-/** Give each module its own report directory. Metro clears it before its first write. */
+/** Give each module its own destination so later compilations preserve earlier reports. */
 internal fun TestServices.reportDirectory(module: TestModule): File {
   val destination =
     module.directives.singleOrZeroValue(MetroDirectives.REPORTS_DESTINATION)
@@ -115,7 +115,8 @@ class MetroReportsChecker(testServices: TestServices) :
       } else {
         reportName
       }
-    val file = testServices.reportDirectory(module).resolve(fileName)
+    val file =
+      testServices.reportDirectory(module).resolve(COMPILER_REPORTS_DIRECTORY).resolve(fileName)
     if (!file.isFile) {
       testServices.assertions.fail {
         "Expected report '$reportName' from module '${module.name}' at ${file.absolutePath}"

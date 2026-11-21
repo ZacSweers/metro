@@ -7,6 +7,7 @@ import com.autonomousapps.kit.GradleBuilder.buildAndFail
 import com.autonomousapps.kit.GradleProject
 import com.autonomousapps.kit.Source
 import com.autonomousapps.kit.Subproject
+import dev.zacsweers.metro.compiler.COMPILER_REPORTS_DIRECTORY
 import dev.zacsweers.metro.gradle.KmpTarget
 import dev.zacsweers.metro.gradle.KotlinToolingVersion
 import dev.zacsweers.metro.gradle.copy
@@ -98,10 +99,9 @@ abstract class BaseIncrementalCompilationTest(
     get() = buildDir.resolve("metro")
 
   protected fun MetroGradleProject.reports(compilation: String): Reports =
-    metroDir.resolveSafe(compilation).let(::Reports)
+    metroDir.resolveSafe(compilation).resolveSafe(COMPILER_REPORTS_DIRECTORY).let(::Reports)
 
-  // Metro's reports layout is `{reportsDestination}/{targetName}/{compilationName}/`, so the
-  // current parameterized target picks the `<target>/main` slice.
+  // Select the main compilation for the target under test.
   protected val MetroGradleProject.mainReports: Reports
     get() = reports("${target.gradleTargetName}/main")
 

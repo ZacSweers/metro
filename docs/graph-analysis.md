@@ -69,7 +69,7 @@ Combines the compiler's per-graph metadata from the selected compilation into on
 
 **Output:** `build/reports/metro/internalDebug/graphMetadata.json`
 
-The compiler writes individual reports under `{reportsDestination}/{target}/{compilation}/graph-metadata/`. The analysis and HTML tasks depend on the metadata task for the same compilation. You usually don't need to run it directly.
+The compiler writes individual reports under `{reportsDestination}/{target}/{compilation}/metro-compiler-reports/graph-metadata/`. The analysis and HTML tasks depend on the metadata task for the same compilation. You usually don't need to run it directly.
 
 ### `analyze<Target><Compilation>MetroGraph`
 

@@ -117,7 +117,7 @@ abstract class MetroCompilerTest {
             REPORTS_DESTINATION ->
               processor.option(
                 entry.raw.cliOption,
-                reportsDir.value?.absolutePathString().orEmpty(),
+                toBuilder().reportsDestination?.absolutePathString().orEmpty(),
               )
             TRACE_DESTINATION ->
               processor.option(
