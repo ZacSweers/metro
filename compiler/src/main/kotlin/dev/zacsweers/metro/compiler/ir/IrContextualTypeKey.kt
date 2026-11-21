@@ -227,6 +227,10 @@ internal class IrContextualTypeKey(
     private fun baseWrappedType(type: IrType): WrappedType<IrType> {
       if (type is IrSimpleType && type.arguments.size == 2) {
         if (type.classOrNull?.owner?.classId == StandardClassIds.Map) {
+          if (type.hasStarArgument()) {
+            return Canonical(type)
+          }
+
           return WrappedType.Map(
             type.arguments[0].typeOrFail,
             Canonical(type.arguments[1].typeOrFail),
@@ -452,6 +456,11 @@ private fun IrSimpleType.asWrappedType(
   patchMutableCollections: Boolean,
   declaration: IrDeclaration?,
 ): WrappedType<IrType> {
+  // A star has no type to unwrap. Keep the declared type for exact bindings.
+  if (hasStarArgument()) {
+    return Canonical(canonicalize(patchMutableCollections, context))
+  }
+
   val rawClassId = rawTypeOrNull()?.classId
 
   // Check if this is a Map type

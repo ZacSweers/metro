@@ -61,6 +61,7 @@ import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.getAnnotation
 import dev.zacsweers.metro.compiler.ir.graph.reporting.BindingDecisionCapture
 import dev.zacsweers.metro.compiler.ir.hasErrorTypes
+import dev.zacsweers.metro.compiler.ir.hasStarArgument
 import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.injectedFunctionOrNull
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
@@ -1187,7 +1188,8 @@ internal class IrBindingGraph(
     val rawClassId = type.rawTypeOrNull()?.classId
     val isSuspend = rawClassId == Symbols.ClassIds.suspendFunction0
     if (rawClassId != Symbols.ClassIds.function0 && !isSuspend) return null
-    val targetType = type.requireSimpleType().arguments[0].typeOrFail.render(short = true)
+    val targetType =
+      type.requireSimpleType().arguments[0].typeOrNull?.render(short = true) ?: return null
     val suspendPrefix = if (isSuspend) "suspend " else ""
     val providerName = if (isSuspend) "SuspendProvider" else "Provider"
     return "`$suspendPrefix() -> $targetType` is treated as a provider for `$targetType` when `enableFunctionProviders` is enabled " +
@@ -1229,6 +1231,12 @@ internal class IrBindingGraph(
     }
 
     val notes = buildList {
+      if (key.type.hasStarArgument()) {
+        add(
+          Note.help("replace '*' with a concrete type argument so Metro can resolve this binding"),
+        )
+      }
+
       functionProviderMigrationHintForMissing(key)?.let { add(Note.help(it)) }
 
       if (key in bindingLookup.getParentGraphPrivateKeys()) {

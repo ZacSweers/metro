@@ -1450,7 +1450,8 @@ internal class BindingLookup(
 
   context(context: IrMetroContext)
   private fun hydrateMemberInjectionAncestors(key: IrTypeKey): Set<IrBinding.MembersInjected> {
-    val targetType = key.type.requireSimpleType().arguments.first().typeOrFail
+    // A MembersInjector<*> needs an explicit binding because there's no target class to inject.
+    val targetType = key.type.requireSimpleType().arguments.first().typeOrNull ?: return emptySet()
     val targetClass = targetType.rawType()
     val remapper = targetClass.cachedDeepRemapperFor(targetType)
     val bindings = targetClass.computeMembersInjectorBindings(remapper)

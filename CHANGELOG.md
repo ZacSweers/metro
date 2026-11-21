@@ -15,6 +15,7 @@ Changelog
 - **[FIR/IR]** Keep nullable and non-null map bindings distinct during graph resolution.
 - **[FIR/IR]** Use the collection's element type for `@ElementsIntoSet` contributions from custom collections. Report an error if the collection itself is nullable.
 - **[FIR/IR]** Generate a separate injection helper for each overloaded `@Inject` method.
+- **[FIR/IR]** Preserve star projections in directly supplied maps and wrappers. Report a missing binding when Metro needs a concrete type argument to build a wrapper such as `Lazy<*>`.
 - **[IR]** Pass the right dependencies to injected methods across modules. Methods with different qualifiers could receive each other's values.
 - **[IR]** Fix a `ClassCastException` when a generated `@Provides` factory calls a member with an extension receiver or context parameters.
 - **[IR]** Call the property's setter for `@set:Inject`, including when the property has a backing field.

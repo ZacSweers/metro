@@ -1,0 +1,42 @@
+/StarProjectedWrapperRequests.kt:7:7: error: [Metro/MissingBinding] No binding found for Lazy<*>
+
+  trace (in Graph):
+      Lazy<*> is requested at Graph.lazy
+
+  help: replace '*' with a concrete type argument so Metro can resolve this binding
+  help: ensure Lazy<*> has an @Inject constructor or is provided by an @Provides or @Binds
+        declaration visible to Graph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
+
+
+/StarProjectedWrapperRequests.kt:8:7: error: [Metro/MissingBinding] No binding found for Provider<*>
+
+  trace (in Graph):
+      Provider<*> is requested at Graph.nested
+
+  help: replace '*' with a concrete type argument so Metro can resolve this binding
+  help: ensure Provider<*> has an @Inject constructor or is provided by an @Provides or @Binds
+        declaration visible to Graph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
+
+
+/StarProjectedWrapperRequests.kt:9:7: error: [Metro/MissingBinding] No binding found for Function0<*>
+
+  trace (in Graph):
+      Function0<*> is requested at Graph.function
+
+  help: replace '*' with a concrete type argument so Metro can resolve this binding
+  help: ensure Function0<*> has an @Inject constructor or is provided by an @Provides or @Binds
+        declaration visible to Graph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
+
+
+/StarProjectedWrapperRequests.kt:10:7: error: [Metro/MissingBinding] No binding found for MembersInjector<*>
+
+  trace (in Graph):
+      MembersInjector<*> is requested at Graph.injector
+
+  help: replace '*' with a concrete type argument so Metro can resolve this binding
+  help: ensure MembersInjector<*> has an @Inject constructor or is provided by an @Provides or
+        @Binds declaration visible to Graph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding

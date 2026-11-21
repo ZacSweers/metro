@@ -19,6 +19,7 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirFieldSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.ConeKotlinTypeProjection
+import org.jetbrains.kotlin.fir.types.ConeStarProjection
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.hasFlexibleMarkedNullability
@@ -208,6 +209,11 @@ internal fun ConeKotlinType.asFirContextualTypeKey(
 }
 
 private fun ConeKotlinType.asWrappedType(session: FirSession): WrappedType<ConeKotlinType> {
+  // A star has no type to unwrap. Keep the declared type for exact bindings.
+  if (ConeStarProjection in typeArguments) {
+    return Canonical(this)
+  }
+
   val rawClassId = classId
 
   // Check if this is a Map type
