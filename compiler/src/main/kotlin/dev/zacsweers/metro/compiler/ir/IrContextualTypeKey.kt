@@ -15,6 +15,7 @@ import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classOrNull
+import org.jetbrains.kotlin.ir.types.mergeNullability
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.types.typeWithArguments
@@ -95,15 +96,7 @@ internal class IrContextualTypeKey(
         innerType.wrapInProvider(context.builtinsFinderCompat().findClass(wt.lazyType)!!)
       }
 
-      is WrappedType.Map -> {
-        // For Map types, we need to create a Map<K, V> type
-        val keyType = wt.keyType
-        val valueType = IrContextualTypeKey(typeKey, wt.valueType, hasDefault).toIrType()
-
-        // Create a Map type with the key type and the processed value type
-        val mapClass = context.irBuiltIns.mapClass
-        mapClass.typeWith(keyType, valueType)
-      }
+      is WrappedType.Map -> wt.toIrType()
     }
   }
 
@@ -473,11 +466,12 @@ private fun IrSimpleType.asWrappedType(
     // Normalize map key type for canonical representation (Class -> KClass)
     val canonicalKeyType = keyType.typeOrFail.normalizeToKClassIfJavaClass()
 
-    return WrappedType.Map(canonicalKeyType, valueWrappedType) {
-      context.irBuiltIns.mapClass.typeWithArguments(
-        listOf(canonicalKeyType, valueWrappedType.canonicalType()),
-      )
-    }
+    // The map keeps its own nullability when we strip wrappers from its values.
+    val canonicalMap =
+      context.irBuiltIns.mapClass
+        .typeWith(canonicalKeyType, valueWrappedType.canonicalType())
+        .mergeNullability(this)
+    return WrappedType.Map(canonicalKeyType, valueWrappedType) { canonicalMap }
   }
 
   // Check if this is a Provider type
@@ -559,7 +553,7 @@ internal fun WrappedType<IrType>.toIrType(): IrType {
     is WrappedType.Map -> {
       val keyIrType = keyType
       val valueIrType = valueType.toIrType()
-      context.irBuiltIns.mapClass.typeWith(keyIrType, valueIrType)
+      context.irBuiltIns.mapClass.typeWith(keyIrType, valueIrType).mergeNullability(type())
     }
   }
 }

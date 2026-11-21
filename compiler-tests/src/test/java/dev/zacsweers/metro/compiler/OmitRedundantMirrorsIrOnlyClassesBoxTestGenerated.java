@@ -5855,6 +5855,12 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
     }
 
     @Test
+    @TestMetadata("NullableMapBindings.kt")
+    public void testNullableMapBindings() {
+      run("NullableMapBindings.kt");
+    }
+
+    @Test
     @TestMetadata("NullableMapMultibindings.kt")
     public void testNullableMapMultibindings() {
       run("NullableMapMultibindings.kt");

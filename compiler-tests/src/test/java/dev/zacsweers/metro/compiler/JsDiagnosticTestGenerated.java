@@ -2925,6 +2925,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("NullableMapForNonNullRequest.kt")
+    public void testNullableMapForNonNullRequest() {
+      run("NullableMapForNonNullRequest.kt");
+    }
+
+    @Test
     @TestMetadata("OnlyOneMultibindingAnnotationIsAllowed.kt")
     public void testOnlyOneMultibindingAnnotationIsAllowed() {
       run("OnlyOneMultibindingAnnotationIsAllowed.kt");
