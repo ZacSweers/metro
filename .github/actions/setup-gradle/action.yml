@@ -9,6 +9,10 @@ inputs:
     description: 'Whether gradle cache is read-only'
     required: false
     default: 'false'
+  testkit:
+    description: 'Reuse dependency downloads and compiled Kotlin scripts in TestKit builds'
+    required: false
+    default: 'false'
   konan:
     description: 'Whether to set up konan cache'
     required: false
@@ -40,11 +44,26 @@ runs:
       with:
         cache-read-only: ${{ inputs.cache-read-only }}
         cache-encryption-key: ${{ inputs.encryption-key }}
+        gradle-home-cache-includes: |
+          caches
+          notifications
+          ${{ inputs.testkit == 'true' && 'metro-testkit/caches/*/kotlin-dsl' || '' }}
         gradle-home-cache-excludes: |
           caches/jars-9
           caches/transforms-*
           caches/*/transforms
           wrapper/dists
+
+    - name: Configure TestKit cache
+      if: inputs.testkit == 'true'
+      shell: bash
+      run: |
+        gradle_home="${GRADLE_USER_HOME:-$HOME/.gradle}"
+        testkit_dir="$gradle_home/metro-testkit"
+        # Share downloads with the outer build while TestKit keeps its own compiled scripts.
+        mkdir -p "$gradle_home/caches/modules-2" "$testkit_dir/caches"
+        ln -s "$gradle_home/caches/modules-2" "$testkit_dir/caches/"
+        echo "METRO_TESTKIT_DIR=$testkit_dir" >> "$GITHUB_ENV"
 
     - name: Restore Gradle wrapper
       if: inputs.cache-read-only == 'true'
