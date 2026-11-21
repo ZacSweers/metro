@@ -204,6 +204,8 @@ jobs:
     env:
       METRO_TEST_OMIT_REDUNDANT_MIRRORS: ${{ matrix.kotlin-compiler == needs.generate-matrix.outputs.default_kotlin_version || matrix.kotlin-compiler == needs.generate-matrix.outputs.latest_kotlin_version }}
       METRO_TESTKIT_CONFIGURATION_CACHE: ${{ matrix.kotlin-compiler != needs.generate-matrix.outputs.default_kotlin_version }}
+      # A fixed version gives local publications stable filenames and wins over transitive Metro releases.
+      METRO_TESTKIT_VERSION: 9999.0.0-testkit
     permissions:
       checks: write
     steps:
@@ -232,6 +234,7 @@ jobs:
             "-Pmetro.testOmitRedundantMirrors=$METRO_TEST_OMIT_REDUNDANT_MIRRORS" \
             -Pmetro.functionalTestKmpTarget=jvm \
             -Pmetro.functionalTestMaxParallelForks=2 \
+            "-PVERSION_NAME=$METRO_TESTKIT_VERSION" -PRELEASE_SIGNING_ENABLED=false \
             -Pmetro.testkitLightweightPublications=true \
             "${fixture_cache_args[@]}" \
             ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
@@ -244,6 +247,7 @@ jobs:
             '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' \
             "-Pmetro.testOmitRedundantMirrors=$METRO_TEST_OMIT_REDUNDANT_MIRRORS" \
             -Pmetro.functionalTestKmpTarget=all \
+            "-PVERSION_NAME=$METRO_TESTKIT_VERSION" -PRELEASE_SIGNING_ENABLED=false \
             -Pmetro.testkitLightweightPublications=true \
             --tests 'dev.zacsweers.metro.gradle.CompanionBlocksKmpTest'
 
