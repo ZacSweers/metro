@@ -4,6 +4,10 @@ Changelog
 **Unreleased**
 --------------
 
+### Enhancements
+
+- **[IR]** Speed up compilation of graph extensions by reusing binding fingerprints that match the parent graph.
+
 ### Fixes
 
 - **[IR]** Pass the right dependencies to injected methods across modules. Methods with different qualifiers could receive each other's values.
