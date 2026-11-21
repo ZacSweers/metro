@@ -9,6 +9,7 @@ Changelog
 - **[IR]** Speed up compilation of graph extensions by reusing binding fingerprints that match the parent graph.
 - **[Compiler]** Speed up field naming in large graphs that use typed or minimal member names.
 - **[FIR]** Skip building compiler trace event names when tracing is disabled.
+- **[Compiler]** Reuse sorted dependencies during graph validation to reduce allocations.
 
 ### Fixes
 
