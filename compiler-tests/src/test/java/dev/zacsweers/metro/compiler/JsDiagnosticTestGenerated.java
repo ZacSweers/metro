@@ -2805,6 +2805,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("ElementsIntoSetWrongElement.kt")
+    public void testElementsIntoSetWrongElement() {
+      run("ElementsIntoSetWrongElement.kt");
+    }
+
+    @Test
     @TestMetadata("EmptyMultibindingFunctionType.kt")
     public void testEmptyMultibindingFunctionType() {
       run("EmptyMultibindingFunctionType.kt");

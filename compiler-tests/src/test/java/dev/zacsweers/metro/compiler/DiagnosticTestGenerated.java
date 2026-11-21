@@ -3075,6 +3075,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("ElementsIntoSetWrongElement.kt")
+    public void testElementsIntoSetWrongElement() {
+      run("ElementsIntoSetWrongElement.kt");
+    }
+
+    @Test
     @TestMetadata("EmptyMultibindingFunctionType.kt")
     public void testEmptyMultibindingFunctionType() {
       run("EmptyMultibindingFunctionType.kt");

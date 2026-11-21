@@ -32,6 +32,7 @@ import dev.zacsweers.metro.compiler.ir.ParentContextReader
 import dev.zacsweers.metro.compiler.ir.allowEmpty
 import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.asMemberOf
+import dev.zacsweers.metro.compiler.ir.collectionElementType
 import dev.zacsweers.metro.compiler.ir.declarationMirrorFunctionOrNull
 import dev.zacsweers.metro.compiler.ir.deepRemapperFor
 import dev.zacsweers.metro.compiler.ir.graph.expressions.IrOptionalExpressionGenerator
@@ -428,7 +429,7 @@ internal class BindingLookup(
         IrTypeKey(setType, qualifier)
       }
       annotations.isElementsIntoSet -> {
-        val elementType = (valueType as IrSimpleType).arguments.single().typeOrFail
+        val elementType = valueType.collectionElementType()
         val setType = metroContext.irBuiltIns.setClass.typeWith(elementType)
         IrTypeKey(setType, qualifier)
       }
@@ -488,8 +489,7 @@ internal class BindingLookup(
         // It's a Set
         val elementType =
           if (multibindingKeyData.isElementsIntoSet) {
-            // It's a collection type Collection<AuthInterceptor>, pull out the element type
-            originalElementTypeKey.type.requireSimpleType().arguments[0].typeOrFail
+            originalElementTypeKey.type.collectionElementType()
           } else {
             originalElementTypeKey.type
           }

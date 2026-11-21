@@ -22,7 +22,6 @@ import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.types.removeAnnotations
-import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
@@ -30,6 +29,13 @@ import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.name.StandardClassIds
+
+/** Resolves E in the contributed type's Collection<E> supertype. */
+context(context: IrMetroContext)
+internal fun IrType.collectionElementType(): IrType {
+  val element = context.irBuiltIns.collectionClass.owner.typeParameters.single()
+  return buildDeepSubstitutionMap(rawType(), this).getValue(element.symbol)
+}
 
 context(context: IrMetroContext)
 internal fun IrTypeKey.transformIfIntoMultibinding(
@@ -58,8 +64,7 @@ internal fun IrTypeKey.transformIfIntoMultibinding(
     } else {
       val elementTypeKey =
         if (annotations.isElementsIntoSet) {
-          val elementType = type.requireSimpleType().arguments.first().typeOrFail
-          copy(type = elementType)
+          copy(type = type.collectionElementType())
         } else {
           this
         }
