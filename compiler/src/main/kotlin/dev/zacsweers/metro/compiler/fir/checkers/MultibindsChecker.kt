@@ -294,13 +294,13 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
               MetroDiagnostics.MULTIBINDS_ERROR,
               "`@ElementsIntoSet` must return a Collection.",
             )
-          } else if (returnConeType.typeArguments.size != 1) {
+          } else if (returnConeType.isMarkedNullable) {
             reporter.reportOn(
               declaration.returnTypeRef.source ?: source,
               MetroDiagnostics.MULTIBINDS_ERROR,
-              "`@ElementsIntoSet` must return a Collection type with exactly one generic type argument.",
+              "`@ElementsIntoSet` must return a non-null Collection.",
             )
-          } else if (returnConeType.typeArguments[0] is ConeStarProjection) {
+          } else if (returnConeType.typeArguments.any { it is ConeStarProjection }) {
             reporter.reportOn(
               declaration.returnTypeRef.source ?: source,
               MetroDiagnostics.MULTIBINDS_ERROR,

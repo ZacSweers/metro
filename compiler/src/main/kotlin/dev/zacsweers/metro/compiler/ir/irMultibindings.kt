@@ -7,6 +7,7 @@ import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.graph.computeMultibindingId
 import dev.zacsweers.metro.compiler.graph.createMapBindingId
 import dev.zacsweers.metro.compiler.ir.graph.IrBinding
+import dev.zacsweers.metro.compiler.ir.graph.reporting.bindingDeclarationId
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.Objects
@@ -22,7 +23,6 @@ import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.types.removeAnnotations
-import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
@@ -30,6 +30,13 @@ import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.name.StandardClassIds
+
+/** Resolves E in the contributed type's Collection<E> supertype. */
+context(context: IrMetroContext)
+internal fun IrType.collectionElementType(): IrType {
+  val element = context.irBuiltIns.collectionClass.owner.typeParameters.single()
+  return buildDeepSubstitutionMap(rawType(), this).getValue(element.symbol)
+}
 
 context(context: IrMetroContext)
 internal fun IrTypeKey.transformIfIntoMultibinding(
@@ -58,8 +65,7 @@ internal fun IrTypeKey.transformIfIntoMultibinding(
     } else {
       val elementTypeKey =
         if (annotations.isElementsIntoSet) {
-          val elementType = type.requireSimpleType().arguments.first().typeOrFail
-          copy(type = elementType)
+          copy(type = type.collectionElementType())
         } else {
           this
         }
@@ -79,22 +85,25 @@ internal fun IrTypeKey.transformIfIntoMultibinding(
   )
 }
 
-/** Returns a unique ID for this specific binding */
+/**
+ * Identifies one contributor by its full signature, including the receiver of a property getter.
+ */
 internal val IrOverridableDeclaration<*>.multibindingElementId: String
   get() {
-    var isSuspend = false
-    val params =
+    val function =
       when (this) {
-        is IrProperty -> {
-          getter?.parameters?.map { it.type.rawType().kotlinFqName }.orEmpty()
-        }
-        is IrSimpleFunction -> {
-          isSuspend = this.isSuspend
-          this.parameters.map { it.type.rawType().kotlinFqName }
-        }
+        is IrProperty -> getter
+        is IrSimpleFunction -> this
       }
-    // Signature is only present if public, so we can't rely on it here.
-    return Objects.hash(parent.kotlinFqName, name, isSuspend, params).toString()
+
+    // Element IDs sort lexically. Keep the old hash prefix to preserve collection iteration order.
+    val isSuspend = function?.isSuspend == true
+    val params = function?.parameters.orEmpty().map { it.type.rawType().kotlinFqName }
+    val order = Objects.hash(parent.kotlinFqName, name, isSuspend, params)
+
+    // Private contributors can lack an IR symbol signature.
+    val signature = (function ?: this).bindingDeclarationId()
+    return "$order#$signature"
   }
 
 internal fun createMapBindingId(mapKey: IrType, elementTypeKey: IrTypeKey): String {

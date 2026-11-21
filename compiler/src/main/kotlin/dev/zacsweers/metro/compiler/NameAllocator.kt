@@ -103,116 +103,36 @@ private val CROSS_PLATFORM_RESERVED_KEYWORDS =
   )
 
 private const val SAFE_CODE = '_'.code
-private val RESERVED_KEYWORDS = KEYWORDS + CROSS_PLATFORM_RESERVED_KEYWORDS
+private const val FIRST_SUFFIX = 2
+private val RESERVED_NAMES = (KEYWORDS + CROSS_PLATFORM_RESERVED_KEYWORDS).associateWith { FIRST_SUFFIX }
 
 /**
- * Assigns Kotlin identifier names to avoid collisions, keywords, and invalid characters. To use,
- * first create an instance and allocate all of the names that you need. Typically this is a mix of
- * user-supplied names and constants:
- * ```kotlin
- * val nameAllocator = NameAllocator()
- * for (property in properties) {
- *   nameAllocator.newName(property.name, property)
- * }
- * nameAllocator.newName("sb", "string builder")
- * ```
- *
- * You can pass a unique tag object to an allocation. The tag lets you look up the allocated name
- * later with [get]. Typically the tag is the object that is being named. In the above example we use
- * `property` for the user-supplied property names, and `"string builder"` for our constant string
- * builder. Untagged allocations only reserve the name, and you can't look them up later.
- *
- * Once we've allocated names we can use them when generating code:
- * ```kotlin
- * val builder = FunSpec.builder("toString")
- *     .addModifiers(KModifier.OVERRIDE)
- *     .returns(String::class)
- *
- * builder.addStatement("val %N = %T()",
- *     nameAllocator.get("string builder"), StringBuilder::class)
- *
- * for (property in properties) {
- *   builder.addStatement("%N.append(%N)",
- *       nameAllocator.get("string builder"), nameAllocator.get(property))
- * }
- * builder.addStatement("return %N.toString()", nameAllocator.get("string builder"))
- * return builder.build()
- * ```
- *
- * The above code generates unique names if presented with conflicts. Given user-supplied properties
- * with names `ab` and `sb` this generates the following:
- * ```kotlin
- * override fun toString(): kotlin.String {
- *   val sb_ = java.lang.StringBuilder()
- *   sb_.append(ab)
- *   sb_.append(sb)
- *   return sb_.toString()
- * }
- * ```
- *
- * The underscore is appended to `sb` to avoid conflicting with the user-supplied `sb` property.
- * Underscores are also prefixed for names that start with a digit, and used to replace name-unsafe
- * characters like space or dash.
- *
- * When dealing with multiple independent inner scopes, use a [copy][NameAllocator.copy] of the
- * NameAllocator used for the outer scope to further refine name allocation for a specific inner
- * scope.
- *
- * Changes from upstream: added [Mode] support for use with member inject parameters. Tags are
- * optional, and untagged allocations skip the tag map.
+ * Allocates unique identifiers for generated declarations. [mode] controls the suffix on a
+ * collision. A tag lets [get] look up an allocated name later.
  */
-// TODO change to Name?
 internal class NameAllocator
 private constructor(
-  allocatedNames: Set<String>,
+  allocatedNames: Map<String, Int>,
   private val tagToName: ConcurrentHashMap<Any, String>,
   private val mode: Mode,
 ) {
-  /**
-   * @param preallocateKeywords If true, all Kotlin keywords will be preallocated. Requested names
-   *   which collide with keywords will be suffixed with underscores to avoid being used as
-   *   identifiers:
-   * ```kotlin
-   * val nameAllocator = NameAllocator(preallocateKeywords = true)
-   * println(nameAllocator.newName("when")) // prints "when_"
-   * ```
-   *
-   * If false, keywords will not get any special treatment:
-   * ```kotlin
-   * val nameAllocator = NameAllocator(preallocateKeywords = false)
-   * println(nameAllocator.newName("when")) // prints "when"
-   * ```
-   *
-   * Note that you can use the `%N` placeholder when emitting a name produced by [NameAllocator] to
-   * ensure it's properly escaped for use as an identifier:
-   * ```kotlin
-   * val nameAllocator = NameAllocator(preallocateKeywords = false)
-   * println(CodeBlock.of("%N", nameAllocator.newName("when"))) // prints "`when`"
-   * ```
-   *
-   * The default behaviour of [NameAllocator] is to preallocate keywords - this is the behaviour
-   * you'll get when using the no-arg constructor.
-   */
+  /** Reserves keywords across Kotlin targets when [preallocateKeywords] is enabled. */
   constructor(
     preallocateKeywords: Boolean = true,
     mode: Mode = Mode.UNDERSCORE,
   ) : this(
     allocatedNames =
       if (preallocateKeywords) {
-        RESERVED_KEYWORDS
+        RESERVED_NAMES
       } else {
-        emptySet()
+        emptyMap()
       },
     tagToName = ConcurrentHashMap(),
     mode = mode,
   )
 
-  private val allocatedNames =
-    ConcurrentHashMap<String, Unit>().apply {
-      for (allocated in allocatedNames) {
-        put(allocated, Unit)
-      }
-    }
+  // Each value is the first numeric suffix still worth checking for its name.
+  private val allocatedNames = ConcurrentHashMap(allocatedNames)
 
   fun allocatedNames(): Set<String> = allocatedNames.keys
 
@@ -221,19 +141,11 @@ private constructor(
     newNameImpl(suggestedName, tag, generateNewIfExisting = false)
   }
 
-  /**
-   * Return a new name using [suggestion] that will not be a Java identifier or clash with other
-   * names. If [tag] is non-null, the returned value can be queried multiple times by passing `tag`
-   * to [NameAllocator.get].
-   */
+  /** Sanitizes [suggestion] and claims a unique name. Each [tag] can be used once. */
   fun newName(suggestion: String, tag: Any? = null): String {
     return newNameImpl(suggestion, tag, generateNewIfExisting = true)
   }
 
-  /**
-   * Return a new name using [suggestion] that will not be a Java identifier or clash with other
-   * names. Only tagged allocations are recorded in [tagToName].
-   */
   private fun newNameImpl(suggestion: String, tag: Any?, generateNewIfExisting: Boolean): String {
     val cleanedSuggestion = toSafeIdentifier(suggestion)
     if (tag == null) {
@@ -250,34 +162,34 @@ private constructor(
    * [generateNewIfExisting] is false, this returns the taken name without claiming a new one.
    */
   private fun allocate(cleanedSuggestion: String, generateNewIfExisting: Boolean): String {
-    return buildString {
-      append(cleanedSuggestion)
-      var count = 1
-      while (allocatedNames.putIfAbsent(toString(), Unit) != null) {
-        if (!generateNewIfExisting) break
-        when (mode) {
-          UNDERSCORE -> append('_')
-          COUNT -> {
-            deleteRange(cleanedSuggestion.length, length)
-            append(++count)
-          }
-        }
-      }
+    val first = allocatedNames.putIfAbsent(cleanedSuggestion, FIRST_SUFFIX)
+    if (first == null || !generateNewIfExisting) {
+      return cleanedSuggestion
     }
+
+    var suffix = first
+    var candidate = cleanedSuggestion
+    do {
+      candidate = when (mode) {
+        Mode.UNDERSCORE -> candidate + "_"
+        Mode.COUNT -> cleanedSuggestion + suffix++
+      }
+    } while (allocatedNames.putIfAbsent(candidate, FIRST_SUFFIX) != null)
+
+    if (mode == Mode.COUNT) {
+      // Names stay claimed. A concurrent allocation may have advanced the suffix already.
+      allocatedNames.replace(cleanedSuggestion, first, suffix)
+    }
+
+    return candidate
   }
 
   /** Retrieve a name created with [NameAllocator.newName]. */
   operator fun get(tag: Any): String = requireNotNull(tagToName[tag]) { "unknown tag: $tag" }
 
-  /**
-   * Create a deep copy of this NameAllocator. Useful to create multiple independent refinements of
-   * a NameAllocator to be used in the respective definition of multiples, independently-scoped,
-   * inner code blocks.
-   *
-   * @return A deep copy of this NameAllocator.
-   */
+  /** Copies the current reservations and tags for an independent scope. */
   fun copy(): NameAllocator {
-    return NameAllocator(allocatedNames.keys, ConcurrentHashMap(tagToName), mode = mode)
+    return NameAllocator(allocatedNames, ConcurrentHashMap(tagToName), mode = mode)
   }
 
   internal enum class Mode {

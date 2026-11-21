@@ -12,6 +12,25 @@ import kotlin.test.Test
 class GraphExpressionGeneratorStressTest : DynamicJvmBoxTest() {
 
   @Test
+  fun graphExtensionWithRepeatedDiamonds() {
+    runDynamicBoxTest("GraphExtensionWithRepeatedDiamonds") {
+      // Each level doubles the paths to the leaves that both graphs share.
+      appendLine("@Inject class A0")
+      appendLine("@Inject class B0")
+      for (level in 1..28) {
+        val previous = level - 1
+        appendLine("@Inject class A$level(val a: A$previous, val b: B$previous)")
+        appendLine("@Inject class B$level(val a: A$previous, val b: B$previous)")
+      }
+
+      appendLine("@DependencyGraph interface Parent { val a: A28; val child: Child }")
+      appendLine("@GraphExtension interface Child { val a: A28 }")
+      // Only exercise graph creation. Requesting an unscoped A28 instantiates every path.
+      appendLine("fun box(): String { createGraph<Parent>().child; return \"OK\" }")
+    }
+  }
+
+  @Test
   fun deepAcyclicConstructorChain() {
     runGeneratedGraphTest(
       testName = "DeepAcyclicConstructorChain",

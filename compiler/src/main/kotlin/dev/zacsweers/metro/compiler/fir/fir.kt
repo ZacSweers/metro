@@ -376,6 +376,7 @@ internal fun FirClassSymbol<*>.callableDeclarations(
   }
 }
 
+/** Checks that the factory's only abstract member is a function Metro can implement. */
 context(context: CheckerContext)
 internal inline fun FirClass.singleAbstractFunction(
   session: FirSession,
@@ -384,7 +385,16 @@ internal inline fun FirClass.singleAbstractFunction(
   allowProtected: Boolean = false,
   onError: () -> Nothing,
 ): FirNamedFunctionSymbol {
-  val abstractFunctions = symbol.collectAbstractFunctions(session).orEmpty()
+  val abstractFunctions = symbol.collectAbstractFunctions(session, exitOnAbstractProperties = true)
+  if (abstractFunctions == null) {
+    reporter.reportOn(
+      source,
+      MetroDiagnostics.METRO_DECLARATION_ERROR,
+      "$type cannot have abstract properties.",
+    )
+    onError()
+  }
+
   if (abstractFunctions.size != 1) {
     if (abstractFunctions.isEmpty()) {
       reporter.reportOn(
@@ -1472,13 +1482,19 @@ internal fun StringBuilder.renderType(
     renderType(short, abbreviatedType, includeAbbreviation = false)
     append(" (typealias to ")
   }
-  if (type.classId == Symbols.ClassIds.function0) {
-    // the native renderer changes this format in later versions, so short-hand it for consistency
-    append("() -> ")
-    renderType(short, type.typeArguments[0].type!!, includeAbbreviation)
-  } else if (type.classId == Symbols.ClassIds.suspendFunction0) {
-    append("suspend () -> ")
-    renderType(short, type.typeArguments[0].type!!, includeAbbreviation)
+  val classId = type.classId
+  if (classId == Symbols.ClassIds.function0 || classId == Symbols.ClassIds.suspendFunction0) {
+    // Render functions consistently across compiler versions. A star needs the named form.
+    val result = type.typeArguments.singleOrNull()?.type
+    if (result == null) {
+      append(classId.shortClassName).append("<*>")
+    } else {
+      if (classId == Symbols.ClassIds.suspendFunction0) {
+        append("suspend ")
+      }
+      append("() -> ")
+      renderType(short, result, includeAbbreviation)
+    }
   } else {
     val renderer =
       object :

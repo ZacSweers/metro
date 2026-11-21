@@ -111,6 +111,22 @@ class SccTest {
   }
 
   @Test
+  fun reachableAdjacencyKeepsLeavesAndOnlyVisitedDependents() {
+    val graph =
+      sortedMapOf<Int, SortedSet<Int>>(
+        0 to sortedSetOf(1, 2),
+        1 to sortedSetOf(2),
+        2 to sortedSetOf<Int>(),
+        3 to sortedSetOf(2),
+      )
+
+    val adjacency =
+      graph.computeStronglyConnectedComponents(roots = sortedSetOf(0)).reachableAdjacency
+    assertEquals(graph - 3, adjacency.forward)
+    assertEquals(mapOf(1 to setOf(0), 2 to setOf(0, 1)), adjacency.reverse)
+  }
+
+  @Test
   fun throwsOnInvalidGraph() {
     val graph = sortedMapOf(1 to untypedSortedSetOf(2))
 

@@ -125,6 +125,9 @@ internal class MetroAnnotations<T>(
     qualifier: T? = this.qualifier,
     mapKey: T? = this.mapKey,
     lazyClassKey: T? = this.lazyClassKey,
+    scopes: Set<T> = this.scopes,
+    qualifiers: Set<T> = this.qualifiers,
+    mapKeys: Set<T> = this.mapKeys,
   ): MetroAnnotations<T> {
     return MetroAnnotations(
       isDependencyGraph = isDependencyGraph,
@@ -148,11 +151,16 @@ internal class MetroAnnotations<T>(
       qualifier = qualifier,
       mapKey = mapKey,
       lazyClassKey = lazyClassKey,
+      scopes = scopes,
+      qualifiers = qualifiers,
+      mapKeys = mapKeys,
       symbol = symbol,
     )
   }
 
-  /** Combines annotation sites on a declaration while retaining their binding roles. */
+  /**
+   * Keeps binding roles and all annotations needed to report conflicts across declaration sites.
+   */
   fun mergeWith(other: MetroAnnotations<T>): MetroAnnotations<T> =
     copy(
       isDependencyGraph = isDependencyGraph || other.isDependencyGraph,
@@ -167,6 +175,8 @@ internal class MetroAnnotations<T>(
       isElementsIntoSet = isElementsIntoSet || other.isElementsIntoSet,
       isIntoMap = isIntoMap || other.isIntoMap,
       isAssistedFactory = isAssistedFactory || other.isAssistedFactory,
+      isComposable = isComposable || other.isComposable,
+      isOptionalBinding = isOptionalBinding || other.isOptionalBinding,
       isGraphPrivate = isGraphPrivate || other.isGraphPrivate,
       multibinds = multibinds ?: other.multibinds,
       assisted = assisted ?: other.assisted,
@@ -174,7 +184,18 @@ internal class MetroAnnotations<T>(
       qualifier = qualifier ?: other.qualifier,
       mapKey = mapKey ?: other.mapKey,
       lazyClassKey = lazyClassKey ?: other.lazyClassKey,
+      scopes = scopes.merge(other.scopes),
+      qualifiers = qualifiers.merge(other.qualifiers),
+      mapKeys = mapKeys.merge(other.mapKeys),
     )
+
+  /** Most declarations have annotations at a single site and can reuse that set. */
+  private fun Set<T>.merge(other: Set<T>): Set<T> =
+    when {
+      other.isEmpty() -> this
+      isEmpty() -> other
+      else -> this + other
+    }
 
   enum class Kind {
     DependencyGraph,

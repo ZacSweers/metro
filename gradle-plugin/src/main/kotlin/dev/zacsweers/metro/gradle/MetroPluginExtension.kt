@@ -535,8 +535,8 @@ constructor(
 
   /**
    * If set, the Metro compiler will dump verbose report diagnostics about resolved dependency
-   * graphs to the given destination. Outputs are per-compilation granularity (i.e.
-   * `build/metro/main/...`).
+   * graphs under `{destination}/{target}/{compilation}/metro-compiler-reports/`. Each compilation
+   * clears its own `metro-compiler-reports` directory before writing reports.
    *
    * This behaves similar to the compose-compiler's option of the same name.
    *

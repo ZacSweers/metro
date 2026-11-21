@@ -142,6 +142,9 @@ public data class RawMetroOption<T : Any>(
   }
 }
 
+/** Directory under the configured destination that the compiler replaces on each run. */
+public const val COMPILER_REPORTS_DIRECTORY: String = "metro-compiler-reports"
+
 public enum class MetroOption(public val raw: RawMetroOption<*>) {
   DEBUG(
     RawMetroOption.boolean(
@@ -168,7 +171,8 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       name = "reports-destination",
       defaultValue = "",
       valueDescription = "<path>",
-      description = "Directory where Metro writes diagnostic and metadata reports.",
+      description =
+        "Parent of the $COMPILER_REPORTS_DIRECTORY directory that Metro clears before writing reports.",
       required = false,
       allowMultipleOccurrences = false,
       valueMapper = { it },
@@ -1647,10 +1651,11 @@ public class MetroOptions(
   public val reportsEnabled: Boolean
     get() = rawReportsDestination != null
 
+  /** The compiler owns this subdirectory and clears it on first use. */
   @OptIn(ExperimentalPathApi::class)
   @Transient
   public val reportsDir: Lazy<Path?> = lazy {
-    rawReportsDestination?.apply {
+    rawReportsDestination?.resolve(COMPILER_REPORTS_DIRECTORY)?.apply {
       if (exists()) {
         deleteRecursively()
       }

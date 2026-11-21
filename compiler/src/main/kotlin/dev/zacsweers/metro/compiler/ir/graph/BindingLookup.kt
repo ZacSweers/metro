@@ -13,7 +13,6 @@ import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.getOrInit
 import dev.zacsweers.metro.compiler.graph.DerivedCandidateSelection
 import dev.zacsweers.metro.compiler.graph.MAX_DERIVED_BINDING_DEPTH
-import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.graph.explanation.BindingReason
 import dev.zacsweers.metro.compiler.graph.isDivergentDerivation
 import dev.zacsweers.metro.compiler.graph.selectBinding
@@ -33,11 +32,14 @@ import dev.zacsweers.metro.compiler.ir.ParentContextReader
 import dev.zacsweers.metro.compiler.ir.allowEmpty
 import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.asMemberOf
+import dev.zacsweers.metro.compiler.ir.classMapSource
+import dev.zacsweers.metro.compiler.ir.collectionElementType
 import dev.zacsweers.metro.compiler.ir.declarationMirrorFunctionOrNull
 import dev.zacsweers.metro.compiler.ir.deepRemapperFor
 import dev.zacsweers.metro.compiler.ir.graph.expressions.IrOptionalExpressionGenerator
 import dev.zacsweers.metro.compiler.ir.graph.expressions.optionalType
 import dev.zacsweers.metro.compiler.ir.graph.reporting.BindingDecisionCapture
+import dev.zacsweers.metro.compiler.ir.kotlinClassMapKey
 import dev.zacsweers.metro.compiler.ir.mapKeyType
 import dev.zacsweers.metro.compiler.ir.padForConsole
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
@@ -133,14 +135,9 @@ internal class BindingLookup(
   // Keys explicitly declared in this graph (for unused key reporting)
   private val locallyDeclaredKeys = mutableSetOf<IrTypeKey>()
 
-  // Type keys for non-multibinding Map bindings, for targeted incompatible value type validation
-  val directMapTypeKeys: Set<IrTypeKey>
-    field: MutableSet<IrTypeKey> = mutableSetOf()
-
-  // Tracks the actual requested contextual type when a direct Map binding is skipped
-  // (e.g., the Map<K, Provider<V>> that was requested but couldn't be satisfied)
-  val skippedDirectMapRequests: Map<IrTypeKey, IrContextualTypeKey>
-    field: MutableMap<IrTypeKey, IrContextualTypeKey> = mutableMapOf()
+  // Keep the selected declaration for diagnostics, including derived bindings.
+  val skippedDirectMapRequests: Map<IrTypeKey, Pair<IrContextualTypeKey, IrBinding>>
+    field: MutableMap<IrTypeKey, Pair<IrContextualTypeKey, IrBinding>> = mutableMapOf()
 
   /** Information about a registered injector function for MembersInjected binding creation. */
   private data class InjectorFunctionInfo(
@@ -326,14 +323,6 @@ internal class BindingLookup(
       locallyDeclaredKeys += binding.typeKey
     }
 
-    // Track non-multibinding Map bindings for targeted validation.
-    // Direct Map<K, V> bindings cannot satisfy Map<K, Provider<V>> requests.
-    if (
-      binding !is IrBinding.Multibinding && binding.contextualTypeKey.wrappedType is WrappedType.Map
-    ) {
-      directMapTypeKeys += binding.typeKey
-    }
-
     // If this is a multibinding contributor, register it
     when (binding) {
       is IrBinding.BindingWithAnnotations if binding.annotations.isIntoMultibinding -> {
@@ -386,7 +375,6 @@ internal class BindingLookup(
     optionalBindingDeclarations.clear()
     optionalBindingsCache.clear()
     locallyDeclaredKeys.clear()
-    directMapTypeKeys.clear()
     skippedDirectMapRequests.clear()
     registeredInjectorFunctions.clear()
     genericBindingIndex.clear()
@@ -443,7 +431,7 @@ internal class BindingLookup(
         IrTypeKey(setType, qualifier)
       }
       annotations.isElementsIntoSet -> {
-        val elementType = (valueType as IrSimpleType).arguments.single().typeOrFail
+        val elementType = valueType.collectionElementType()
         val setType = metroContext.irBuiltIns.setClass.typeWith(elementType)
         IrTypeKey(setType, qualifier)
       }
@@ -503,8 +491,7 @@ internal class BindingLookup(
         // It's a Set
         val elementType =
           if (multibindingKeyData.isElementsIntoSet) {
-            // It's a collection type Collection<AuthInterceptor>, pull out the element type
-            originalElementTypeKey.type.requireSimpleType().arguments[0].typeOrFail
+            originalElementTypeKey.type.collectionElementType()
           } else {
             originalElementTypeKey.type
           }
@@ -800,7 +787,10 @@ internal class BindingLookup(
           multibinding = { lookupMultibinding(contextKey, stack) },
           optional = { lookupOptionalBinding(contextKey, stack) },
           derived = { deriveBinding(contextKey, stack, onlyDynamic = false) },
-          implicit = { lookupImplicitBinding(contextKey, currentBindings, stack) },
+          implicit = {
+            lookupClassMapAdapter(contextKey, currentBindings, stack, onDuplicateBindings)
+              ?: lookupImplicitBinding(contextKey, currentBindings, stack)
+          },
         )
 
       val resolved = selected ?: emptySet()
@@ -812,6 +802,32 @@ internal class BindingLookup(
 
       resolved
     }
+
+  /** Only adapt a Kotlin class map after lookup exhausts the exact Java class key. */
+  context(context: IrMetroContext)
+  private fun lookupClassMapAdapter(
+    requested: IrContextualTypeKey,
+    currentBindings: ScatterMap<IrTypeKey, IrBinding>,
+    stack: IrBindingStack,
+    onDuplicateBindings: (IrTypeKey, List<IrBinding>) -> Unit,
+  ): Set<IrBinding>? {
+    val sourceKey = requested.typeKey.kotlinClassMapKey() ?: return null
+    val source = requested.classMapSource(sourceKey)
+    val matches = lookup(source, currentBindings, stack, onDuplicateBindings)
+    if (matches.none { !it.isTransient }) {
+      return null
+    }
+
+    val adapter =
+      IrBinding.Alias(
+        typeKey = requested.typeKey,
+        aliasedType = sourceKey,
+        bindsCallable = null,
+        parameters = Parameters.empty(),
+        kotlinClassMap = source,
+      )
+    return setOf(adapter)
+  }
 
   /**
    * Returns the binding registered for [contextKey]'s key. Without one, a dynamic generic candidate
@@ -879,9 +895,7 @@ internal class BindingLookup(
   ): IrBinding? {
     val key = contextKey.typeKey
 
-    if (cannotSupplyWrappedMapValues(contextKey, binding)) {
-      // Remember the request, then fall through to a missing binding.
-      skippedDirectMapRequests[key] = contextKey
+    if (rejectsDirectMapRequest(contextKey, binding)) {
       decisionCapture?.rejected(contextKey, stack, binding, BindingReason.INCOMPATIBLE_MAP_VALUE)
 
       return null
@@ -911,36 +925,30 @@ internal class BindingLookup(
     return binding
   }
 
-  /**
-   * Returns true if [contextKey] asks for wrapped map values that [binding] can't supply.
-   *
-   * A request like `Map<K, Provider<V>>` wraps each value in `Provider`, `Lazy`, or
-   * `SuspendProvider`. Only multibinding contributions can supply wrapped map values. A directly
-   * provided `Map<K, V>` can't. A direct binding whose own return type wraps the values still
-   * satisfies the request, because the wrapping is explicit there.
-   */
-  private fun cannotSupplyWrappedMapValues(
+  /** Direct maps supply their declared values. A multibinding can build wrappers per request. */
+  fun rejectsDirectMapRequest(
     contextKey: IrContextualTypeKey,
     binding: IrBinding,
   ): Boolean {
-    val requestsWrappedMapValues =
-      contextKey.isMapProvider || contextKey.isMapLazy || contextKey.isMapSuspendProvider
-    val isDirectMapBinding = contextKey.typeKey in directMapTypeKeys
-    val isWrappedRequestForDirectMap = requestsWrappedMapValues && isDirectMapBinding
-
-    if (!isWrappedRequestForDirectMap) {
+    if (!binding.isDirectMap) {
       return false
     }
 
-    // A declaration whose own type already wraps the values can still satisfy the request.
-    val declaresWrappedValues =
-      when (binding) {
-        is Provided -> binding.providerFactory.contextualTypeKey.isDeferrable
-        is IrBinding.GraphDependency -> binding.contextualTypeKey.isDeferrable
-        else -> false
+    // A parent token stores a canonical key. Inspect the declaration when we have it.
+    val source =
+      if (binding is IrBinding.GraphDependency && binding.token != null) {
+        bindingsCache[binding.typeKey] ?: return false
+      } else {
+        binding
       }
+    val declared = context(metroContext) { source.declaredMapType() }
+    val requestedValue = contextKey.wrappedType.findMapValueType()
+    if (requestedValue == declared.wrappedType.findMapValueType()) {
+      return false
+    }
 
-    return !declaresWrappedValues
+    skippedDirectMapRequests[contextKey.typeKey] = contextKey to source
+    return true
   }
 
   /**
@@ -1442,7 +1450,8 @@ internal class BindingLookup(
 
   context(context: IrMetroContext)
   private fun hydrateMemberInjectionAncestors(key: IrTypeKey): Set<IrBinding.MembersInjected> {
-    val targetType = key.type.requireSimpleType().arguments.first().typeOrFail
+    // A MembersInjector<*> needs an explicit binding because there's no target class to inject.
+    val targetType = key.type.requireSimpleType().arguments.first().typeOrNull ?: return emptySet()
     val targetClass = targetType.rawType()
     val remapper = targetClass.cachedDeepRemapperFor(targetType)
     val bindings = targetClass.computeMembersInjectorBindings(remapper)

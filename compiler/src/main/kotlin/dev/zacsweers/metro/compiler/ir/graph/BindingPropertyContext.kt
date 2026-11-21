@@ -70,7 +70,18 @@ internal class BindingPropertyContext(
       // Dependencies come before their consumers, so their fingerprints already exist.
       for (key in sortedKeys) {
         val binding = bindingGraph.findBinding(key) ?: continue
-        fingerprint(binding, this)?.let { put(key, it) }
+        val candidate = fingerprint(binding, this) ?: continue
+
+        // Sharing equal fingerprints lets consumers compare each shared dependency by identity.
+        val ancestor = nearestAncestorWith(key)?.fingerprints?.get(key)
+        put(
+          key,
+          if (ancestor != null && candidate == ancestor) {
+            ancestor
+          } else {
+            candidate
+          },
+        )
       }
     }
   }
@@ -156,8 +167,8 @@ internal class BindingPropertyContext(
     if (key.hasDefault) {
       return null
     }
-    val fingerprint = fingerprints[key.typeKey] as? BindingFingerprint.Built ?: return null
     val ancestor = nearestAncestorWith(key.typeKey) ?: return null
+    val fingerprint = fingerprints[key.typeKey] as? BindingFingerprint.Built ?: return null
     if (fingerprint != ancestor.fingerprints[key.typeKey]) {
       return null
     }
@@ -265,7 +276,7 @@ internal class BindingPropertyContext(
 
     // For aliases, try the aliased target
     bindingGraph.findBinding(key.typeKey)?.let {
-      if (it is IrBinding.Alias) {
+      if (it is IrBinding.Alias && it.kotlinClassMap == null) {
         return get(key.withIrTypeKey(it.aliasedType), searchParents)
       }
     }

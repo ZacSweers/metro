@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.gradle
 
+import dev.zacsweers.metro.compiler.COMPILER_REPORTS_DIRECTORY
 import dev.zacsweers.metro.gradle.analysis.AnalyzeGraphTask
 import dev.zacsweers.metro.gradle.analysis.GenerateGraphHtmlTask
 import dev.zacsweers.metro.gradle.artifacts.GenerateGraphMetadataTask
@@ -289,7 +290,12 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
           .fold(baseDir) { dir, segment -> dir.dir(segment) }
       }
 
-    registerGraphReportTasks(project, extension, kotlinCompilation, reportsDir)
+    registerGraphReportTasks(
+      project,
+      extension,
+      kotlinCompilation,
+      reportsDir.map { it.dir(COMPILER_REPORTS_DIRECTORY) },
+    )
     if (isJvmTarget) {
       registerHiddenDependencyTasks(project, extension, kotlinCompilation)
     }

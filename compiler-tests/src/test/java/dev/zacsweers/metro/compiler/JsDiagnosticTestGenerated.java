@@ -55,6 +55,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     run("ConflictingAnnotationRoles.kt");
   }
 
+  @Test
+  @TestMetadata("FactoryAbstractProperties.kt")
+  public void testFactoryAbstractProperties() {
+    run("FactoryAbstractProperties.kt");
+  }
+
   @Nested
   @TestMetadata("compiler-tests/src/test/data/diagnostic/aggregation")
   @TestDataPath("$PROJECT_ROOT")
@@ -1251,6 +1257,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("MissingBindingTraceThroughConstructors.kt")
+    public void testMissingBindingTraceThroughConstructors() {
+      run("MissingBindingTraceThroughConstructors.kt");
+    }
+
+    @Test
     @TestMetadata("MixedCycleParams.kt")
     public void testMixedCycleParams() {
       run("MixedCycleParams.kt");
@@ -2389,6 +2401,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("StarProjectedWrapperRequests.kt")
+    public void testStarProjectedWrapperRequests() {
+      run("StarProjectedWrapperRequests.kt");
+    }
+
+    @Test
     @TestMetadata("SuggestInjectClassOnSingleContructor.kt")
     public void testSuggestInjectClassOnSingleContructor() {
       run("SuggestInjectClassOnSingleContructor.kt");
@@ -2769,9 +2787,21 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("ClassMapValueWrappers.kt")
+    public void testClassMapValueWrappers() {
+      run("ClassMapValueWrappers.kt");
+    }
+
+    @Test
     @TestMetadata("DaggerLazyClassKeyIsUnsupported.kt")
     public void testDaggerLazyClassKeyIsUnsupported() {
       run("DaggerLazyClassKeyIsUnsupported.kt");
+    }
+
+    @Test
+    @TestMetadata("DirectMapValueWrappers.kt")
+    public void testDirectMapValueWrappers() {
+      run("DirectMapValueWrappers.kt");
     }
 
     @Test
@@ -2796,6 +2826,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     @TestMetadata("ElementsIntoSetMustHaveTypeArg.kt")
     public void testElementsIntoSetMustHaveTypeArg() {
       run("ElementsIntoSetMustHaveTypeArg.kt");
+    }
+
+    @Test
+    @TestMetadata("ElementsIntoSetWrongElement.kt")
+    public void testElementsIntoSetWrongElement() {
+      run("ElementsIntoSetWrongElement.kt");
     }
 
     @Test
@@ -2916,6 +2952,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     @TestMetadata("MultipleMapKeysAreAnError.kt")
     public void testMultipleMapKeysAreAnError() {
       run("MultipleMapKeysAreAnError.kt");
+    }
+
+    @Test
+    @TestMetadata("NullableMapForNonNullRequest.kt")
+    public void testNullableMapForNonNullRequest() {
+      run("NullableMapForNonNullRequest.kt");
     }
 
     @Test
@@ -3056,6 +3098,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     @TestMetadata("LazyAssistedFactoryProvides.kt")
     public void testLazyAssistedFactoryProvides() {
       run("LazyAssistedFactoryProvides.kt");
+    }
+
+    @Test
+    @TestMetadata("MultiplePropertyBindingAnnotations.kt")
+    public void testMultiplePropertyBindingAnnotations() {
+      run("MultiplePropertyBindingAnnotations.kt");
     }
 
     @Test

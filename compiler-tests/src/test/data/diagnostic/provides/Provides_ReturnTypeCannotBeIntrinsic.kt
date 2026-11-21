@@ -32,6 +32,7 @@ interface ExampleGraph {
 
   // With `enableFunctionProviders` enabled (the default), Function0 is an intrinsic type
   @Provides fun provideFunction(): <!INTRINSIC_BINDING_ERROR!>() -> String<!> = { "" }
+  @Provides fun provideProjectedFunction(): <!INTRINSIC_BINDING_ERROR!>Function0<*><!> = { "" }
 }
 
 // Companion object @Provides is also checked

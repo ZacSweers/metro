@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.generators
 
+import dev.zacsweers.metro.compiler.MemberInjectorNames
 import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.api.fir.metroGeneratedInjectClassData
-import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.Keys
@@ -204,9 +204,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
     val isAssistedInject: Boolean,
   ) {
     private val parameterNameAllocator = NameAllocator()
-    // Don't preallocate as these are always prefixed later with "inject"
-    private val memberKeyAllocator =
-      NameAllocator(preallocateKeywords = false, mode = NameAllocator.Mode.COUNT)
+    private val helperNames = MemberInjectorNames()
     // Generated injection methods belong to the class that declares the injected member.
     private var declaredInjectedMembers: Map<Name, List<MetroFirValueParameter>>? = null
     private var parentHasMemberInjections: Boolean? = null
@@ -347,7 +345,6 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
                     session = session,
                     symbol = setterParam,
                     name = parameterNameAllocator.newName(propertyName),
-                    memberKey = memberKeyAllocator.newName(propertyName),
                     // Resolve qualifier from the property so annotations like @Named
                     // on the property are properly included in the type key.
                     qualifierSource = injectedMember,
@@ -360,28 +357,22 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
                     session = session,
                     symbol = fieldSymbol,
                     name = parameterNameAllocator.newName(propertyName),
-                    memberKey = memberKeyAllocator.newName(propertyName),
                   )
                 } else {
                   return@forEach
                 }
-              members[param.memberInjectorFunctionName] = listOf(param)
+              members[helperNames.allocate(propertyName)] = listOf(param)
             }
             is FirNamedFunctionSymbol -> {
-              val functionName = injectedMember.name
-              val memberKey = memberKeyAllocator.newName(functionName)
               val params =
                 injectedMember.valueParameterSymbols.map {
                   MetroFirValueParameter(
                     session = session,
                     symbol = it,
                     name = parameterNameAllocator.newName(it.name),
-                    memberKey = memberKey,
                   )
                 }
-              val memberInjectorFunctionName =
-                "inject${memberKey.capitalizeUS().asString()}".asName()
-              members[memberInjectorFunctionName] = params
+              members[helperNames.allocate(injectedMember.name)] = params
             }
             // Handle injected fields from java supertypes (i.e. Dagger-processed)
             is FirFieldSymbol -> {
@@ -406,9 +397,8 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
                   session = session,
                   symbol = injectedMember,
                   name = parameterNameAllocator.newName(propertyName),
-                  memberKey = memberKeyAllocator.newName(propertyName),
                 )
-              members[param.memberInjectorFunctionName] = listOf(param)
+              members[helperNames.allocate(propertyName)] = listOf(param)
             }
           }
         }

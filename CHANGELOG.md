@@ -4,6 +4,32 @@ Changelog
 **Unreleased**
 --------------
 
+### Enhancements
+
+- **[IR]** Speed up compilation of graph extensions by reusing binding fingerprints that match the parent graph.
+- **[Compiler]** Speed up field naming in large graphs that use typed or minimal member names.
+- **[FIR]** Skip building compiler trace event names when tracing is disabled.
+- **[Compiler]** Reuse sorted dependencies during graph validation to reduce allocations.
+
+### Fixes
+
+- **[FIR]** Report an error when a factory declares or inherits an abstract property that Metro cannot implement.
+- **[FIR/IR]** Honor `@get:OptionalBinding` on graph accessors. Report conflicting qualifiers, scopes, and map keys on properties.
+- **[FIR/IR]** Keep nullable and non-null map bindings distinct during graph resolution.
+- **[FIR/IR]** Use the collection's element type for `@ElementsIntoSet` contributions from custom collections. Report an error if the collection itself is nullable.
+- **[FIR/IR]** Generate a separate injection helper for each overloaded `@Inject` method.
+- **[FIR/IR]** Preserve star projections in directly supplied maps and wrappers. Report a missing binding when Metro needs a concrete type argument to build a wrapper such as `Lazy<*>`.
+- **[IR]** Pass the right dependencies to injected methods across modules. Methods with different qualifiers could receive each other's values.
+- **[IR]** Fix a `ClassCastException` when a generated `@Provides` factory calls a member with an extension receiver or context parameters.
+- **[IR]** Call the property's setter for `@set:Inject`, including when the property has a backing field.
+- **[IR]** Report an error when a directly provided map has incompatible value wrappers, regardless of accessor order. For example, `Map<K, V>` cannot supply `Map<K, Provider<V>>`.
+- **[IR]** Use a provided map with Java `Class` keys directly when `enableKClassToClassInterop` is enabled. Metro converts a map with Kotlin `KClass` keys when the graph needs that fallback.
+- **[IR]** Resolve an extension receiver when its suspend provider runs. This supports suspend receivers and gives each call a fresh unscoped receiver.
+- **[IR]** Fix a compiler crash when two set or map contributions have names with the same hash, such as `provideAa` and `provideBB`.
+- **[Compiler]** Show the path from a graph accessor to a missing binding through intermediate dependencies.
+- **[Compiler]** Preserve unrelated files in `reportsDestination`. Raw compiler reports now go in a `metro-compiler-reports/` subdirectory. Scripts that read Gradle compilation reports should add this directory after the compilation name. A clean build removes old reports under the build directory.
+- **[IDE]** Discard results from canceled workers during parallel index reads.
+
 1.6.0
 -----
 
