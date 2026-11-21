@@ -122,6 +122,7 @@ message MemberInjectionsProto {
   // The simple name of the generated injector class
   string injector_class_name = 1;
 
+  // Names of the helpers for this class's injected members in declaration order.
   repeated string member_inject_functions = 2;
 }
 

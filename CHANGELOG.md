@@ -4,6 +4,10 @@ Changelog
 **Unreleased**
 --------------
 
+### Fixes
+
+- **[IR]** Pass the right dependencies to injected methods across modules. Methods with different qualifiers could receive each other's values.
+
 1.6.0
 -----
 
