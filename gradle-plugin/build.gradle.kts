@@ -279,6 +279,9 @@ tasks.named<Test>("functionalTest") {
     "native" -> nativePatterns.forEach { filter.includeTestsMatching(it) }
     "portable" -> nativePatterns.forEach { filter.excludeTestsMatching(it) }
   }
+  providers.environmentVariable("METRO_TESTKIT_DIR").orNull?.let {
+    systemProperty("org.gradle.testkit.dir", it)
+  }
   testkitConfigurationCache.orNull?.let { systemProperty("metro.testkitConfigurationCache", it) }
   systemProperty("metro.testkitConfigurationCacheReadOnly", testkitConfigurationCacheReadOnly.get())
 }

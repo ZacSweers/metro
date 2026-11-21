@@ -217,6 +217,7 @@ jobs:
         with:
           encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+          testkit: true
           # NativeICTests retains its per-version toolchain coverage in this job.
           konan: true
           konan-cache-read-only: ${{ github.ref != 'refs/heads/main' || matrix.kotlin-compiler == needs.generate-matrix.outputs.default_kotlin_version }}
