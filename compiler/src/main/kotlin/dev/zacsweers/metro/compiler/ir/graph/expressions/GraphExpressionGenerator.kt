@@ -12,6 +12,8 @@ import dev.zacsweers.metro.compiler.ir.ParentContext
 import dev.zacsweers.metro.compiler.ir.ProviderFactory
 import dev.zacsweers.metro.compiler.ir.asCanonicalProviderKey
 import dev.zacsweers.metro.compiler.ir.canonicalize
+import dev.zacsweers.metro.compiler.ir.classMapSource
+import dev.zacsweers.metro.compiler.ir.convertKClassMapToClassMap
 import dev.zacsweers.metro.compiler.ir.createAndAddTemporaryVariable
 import dev.zacsweers.metro.compiler.ir.graph.BindingProperty
 import dev.zacsweers.metro.compiler.ir.graph.BindingPropertyContext
@@ -424,12 +426,26 @@ private constructor(
           // For binds functions, just use the backing type
           val aliasedBinding = binding.aliasedBinding(bindingGraph)
           check(aliasedBinding != binding) { "Aliased binding aliases itself" }
-          generateBindingCode(
-            aliasedBinding,
-            contextualTypeKey = contextualTypeKey.withIrTypeKey(aliasedBinding.typeKey),
-            accessType = accessType,
-            fieldInitKey = fieldInitKey,
-          )
+          if (binding.kotlinClassMap == null) {
+            generateBindingCode(
+              aliasedBinding,
+              contextualTypeKey = contextualTypeKey.withIrTypeKey(aliasedBinding.typeKey),
+              accessType = accessType,
+              fieldInitKey = fieldInitKey,
+            )
+          } else {
+            val requested = contextualTypeKey.canonicalize()
+            val sourceKey = requested.classMapSource(binding.aliasedType)
+            val source =
+              generateBindingCode(aliasedBinding, sourceKey, AccessType.INSTANCE, fieldInitKey)
+            convertKClassMapToClassMap(source, requested)
+              .toTargetType(
+                contextualTypeKey = contextualTypeKey,
+                actual = AccessType.INSTANCE,
+                requested = accessType,
+                useInstanceFactory = false,
+              )
+          }
         }
 
         is Provided -> {

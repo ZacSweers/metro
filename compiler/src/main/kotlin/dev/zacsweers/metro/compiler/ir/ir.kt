@@ -77,6 +77,8 @@ import org.jetbrains.kotlin.ir.builders.irExprBody
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.builders.irGetObject
+import org.jetbrains.kotlin.ir.builders.irIfNull
+import org.jetbrains.kotlin.ir.builders.irNull
 import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.builders.irString
 import org.jetbrains.kotlin.ir.builders.irVararg
@@ -880,13 +882,13 @@ internal fun IrBuilderWithScope.typeAsProviderArgument(
   // a graph type may itself implement a provider interface without being a provider field that
   // Metro should invoke.
   if (isAssisted || isGraphInstance) {
-    return maybeConvertMapKeysToJavaClass(bindingCode, contextKey)
+    return bindingCode
   }
 
   // Included graph accessors can already return the complete requested wrapper stack. Preserve
   // that value as-is rather than treating it as the canonical provider stored by this graph.
   if (bindingCode.type == contextKey.toIrType()) {
-    return maybeConvertMapKeysToJavaClass(bindingCode, contextKey)
+    return bindingCode
   }
 
   if (
@@ -911,7 +913,7 @@ internal fun IrBuilderWithScope.typeAsProviderArgument(
         bindingType.implementsProviderType() -> false
         else -> {
           // Not a stored provider. This includes direct values and assisted lazy values.
-          return maybeConvertMapKeysToJavaClass(bindingCode, contextKey)
+          return bindingCode
         }
       }
 
@@ -946,7 +948,7 @@ internal fun IrBuilderWithScope.typeAsProviderArgument(
       canonicalProvider
     }
 
-  if (!contextKey.wrappedType.requiresProviderCapture(contextKey.rawType)) {
+  if (!contextKey.wrappedType.requiresProviderCapture()) {
     return materializeWrappedType(
       contextKey = contextKey,
       wrappedType = contextKey.wrappedType,
@@ -978,24 +980,7 @@ private fun IrBuilderWithScope.materializeWrappedType(
   usesSuspendProvider: Boolean,
 ): IrExpression {
   val symbols = context.metroSymbols
-  val classMapKeyInteropType = wrappedType.classMapKeyInteropType(rawType)
-  val requiresClassMapKeyConversion = classMapKeyInteropType != null
-  val currentWrappedType =
-    if (classMapKeyInteropType != null) {
-      val mapWrappedType = wrappedType.scalarLeaf() as WrappedType.Map<IrType>
-      val declaredMapKeyType = classMapKeyInteropType.arguments[0].typeOrFail
-      val declaredCanonicalMapType =
-        context.irBuiltIns.mapClass.typeWith(
-          declaredMapKeyType,
-          mapWrappedType.valueType.canonicalType(),
-        )
-
-      // Framework adapters need the declared map key without changing the canonical binding key.
-      wrappedType.withCanonicalType(declaredCanonicalMapType)
-    } else {
-      wrappedType
-    }
-  val currentKey = contextKey.withWrappedType(currentWrappedType, rawType)
+  val currentKey = contextKey.withWrappedType(wrappedType, rawType)
   val leafType = wrappedType.scalarLeaf().toIrType()
   val canonicalProviderType =
     if (usesSuspendProvider) {
@@ -1008,25 +993,22 @@ private fun IrBuilderWithScope.materializeWrappedType(
     is WrappedType.Canonical,
     is WrappedType.Map -> {
       val valueType = wrappedType.toIrType()
-      val value =
-        if (usesSuspendProvider) {
-          irInvoke(
-            dispatchReceiver = provider(),
-            callee = symbols.suspendProviderInvoke,
-            typeHint = valueType,
-          )
-        } else {
-          irInvoke(
-            dispatchReceiver = provider(),
-            callee = symbols.providerInvoke,
-            typeHint = valueType,
-          )
-        }
-      maybeConvertMapKeysToJavaClass(value, currentKey)
+      if (usesSuspendProvider) {
+        irInvoke(
+          dispatchReceiver = provider(),
+          callee = symbols.suspendProviderInvoke,
+          typeHint = valueType,
+        )
+      } else {
+        irInvoke(
+          dispatchReceiver = provider(),
+          callee = symbols.providerInvoke,
+          typeHint = valueType,
+        )
+      }
     }
     is WrappedType.Provider -> {
       val innerType = wrappedType.immediateInnerType()!!
-      val canReuseScalarProvider = innerType.isScalarLeaf() && !requiresClassMapKeyConversion
       if (wrappedType.isExactProviderOfKotlinLazy()) {
         val valueType = (innerType as WrappedType.Lazy).innerType.canonicalType()
         val metroProviderOfLazy =
@@ -1038,7 +1020,7 @@ private fun IrBuilderWithScope.materializeWrappedType(
             typeHint = valueType.wrapInLazy(symbols).wrapInProvider(symbols.metroProvider),
           )
         with(symbols.providerTypeConverter) { metroProviderOfLazy.convertTo(currentKey) }
-      } else if (canReuseScalarProvider) {
+      } else if (innerType.isScalarLeaf()) {
         check(!usesSuspendProvider)
         with(symbols.providerTypeConverter) {
           provider().convertTo(currentKey, providerType = canonicalProviderType)
@@ -1046,9 +1028,8 @@ private fun IrBuilderWithScope.materializeWrappedType(
       } else {
         val innerIrType = innerType.toIrType()
         val innerRawType = rawType.wrapperValueTypeOrNull() ?: innerIrType
-        val innerResultType = if (requiresClassMapKeyConversion) innerRawType else innerIrType
         val metroProvider =
-          metroProviderReturning(innerResultType) {
+          metroProviderReturning(innerIrType) {
             materializeWrappedType(
               contextKey,
               innerType,
@@ -1062,8 +1043,7 @@ private fun IrBuilderWithScope.materializeWrappedType(
     }
     is WrappedType.Lazy -> {
       val innerType = wrappedType.immediateInnerType()!!
-      val canReuseScalarProvider = innerType.isScalarLeaf() && !requiresClassMapKeyConversion
-      if (canReuseScalarProvider) {
+      if (innerType.isScalarLeaf()) {
         check(!usesSuspendProvider)
         with(symbols.providerTypeConverter) {
           provider().convertTo(currentKey, providerType = canonicalProviderType)
@@ -1071,9 +1051,8 @@ private fun IrBuilderWithScope.materializeWrappedType(
       } else {
         val innerIrType = innerType.toIrType()
         val innerRawType = rawType.wrapperValueTypeOrNull() ?: innerIrType
-        val innerResultType = if (requiresClassMapKeyConversion) innerRawType else innerIrType
         val metroProvider =
-          metroProviderReturning(innerResultType) {
+          metroProviderReturning(innerIrType) {
             materializeWrappedType(
               contextKey,
               innerType,
@@ -1087,8 +1066,7 @@ private fun IrBuilderWithScope.materializeWrappedType(
     }
     is WrappedType.SuspendProvider -> {
       val innerType = wrappedType.immediateInnerType()!!
-      val canReuseScalarProvider = innerType.isScalarLeaf() && !requiresClassMapKeyConversion
-      if (canReuseScalarProvider) {
+      if (innerType.isScalarLeaf()) {
         check(usesSuspendProvider)
         with(symbols.providerTypeConverter) {
           provider().convertTo(currentKey, providerType = canonicalProviderType)
@@ -1096,9 +1074,8 @@ private fun IrBuilderWithScope.materializeWrappedType(
       } else {
         val innerIrType = innerType.toIrType()
         val innerRawType = rawType.wrapperValueTypeOrNull() ?: innerIrType
-        val innerResultType = if (requiresClassMapKeyConversion) innerRawType else innerIrType
         val metroProvider =
-          metroSuspendProviderReturning(innerResultType) {
+          metroSuspendProviderReturning(innerIrType) {
             materializeWrappedType(
               contextKey,
               innerType,
@@ -1113,14 +1090,12 @@ private fun IrBuilderWithScope.materializeWrappedType(
     is WrappedType.SuspendLazy -> {
       val innerType = wrappedType.immediateInnerType()!!
       val innerIrType = innerType.toIrType()
-      val canReuseScalarProvider = innerType.isScalarLeaf() && !requiresClassMapKeyConversion
-      if (canReuseScalarProvider) {
+      if (innerType.isScalarLeaf()) {
         check(usesSuspendProvider)
         provider().suspendDoubleCheckLazy(symbols, innerIrType)
       } else {
         val innerRawType = rawType.wrapperValueTypeOrNull() ?: innerIrType
-        val innerResultType = if (requiresClassMapKeyConversion) innerRawType else innerIrType
-        metroSuspendProviderReturning(innerResultType) {
+        metroSuspendProviderReturning(innerIrType) {
             materializeWrappedType(
               contextKey,
               innerType,
@@ -1129,27 +1104,18 @@ private fun IrBuilderWithScope.materializeWrappedType(
               usesSuspendProvider,
             )
           }
-          .suspendDoubleCheckLazy(symbols, innerResultType)
+          .suspendDoubleCheckLazy(symbols, innerIrType)
       }
     }
   }
 }
 
-context(context: IrMetroContext)
-private fun WrappedType<IrType>.requiresProviderCapture(rawType: IrType?): Boolean {
-  val requiresClassMapKeyConversion = classMapKeyInteropType(rawType) != null
-  return when (this) {
-    is WrappedType.Canonical,
-    is WrappedType.Map -> false
-    is WrappedType.Provider -> {
-      val usesProviderOfLazyOptimization = isExactProviderOfKotlinLazy()
-      val requiresMaterializedValue = !innerType.isScalarLeaf() || requiresClassMapKeyConversion
-      !usesProviderOfLazyOptimization && requiresMaterializedValue
-    }
-    is WrappedType.Lazy -> !innerType.isScalarLeaf() || requiresClassMapKeyConversion
-    is WrappedType.SuspendProvider -> !innerType.isScalarLeaf() || requiresClassMapKeyConversion
-    is WrappedType.SuspendLazy -> !innerType.isScalarLeaf() || requiresClassMapKeyConversion
+private fun WrappedType<IrType>.requiresProviderCapture(): Boolean {
+  if (this is WrappedType.Provider && isExactProviderOfKotlinLazy()) {
+    return false
   }
+
+  return immediateInnerType()?.isScalarLeaf() == false
 }
 
 context(context: IrMetroContext)
@@ -1239,78 +1205,16 @@ private fun IrType?.wrapperValueTypeOrNull(): IrType? {
   return simpleType.arguments.singleOrNull()?.typeOrNull
 }
 
-context(context: IrMetroContext)
-private fun WrappedType<IrType>.classMapKeyInteropType(rawType: IrType?): IrSimpleType? {
-  if (!context.options.enableKClassToClassInterop) return null
-
-  var currentWrappedType = this
-  var currentRawType = rawType
-  while (currentWrappedType !is WrappedType.Map) {
-    currentWrappedType = currentWrappedType.immediateInnerType() ?: return null
-    currentRawType = currentRawType.wrapperValueTypeOrNull() ?: return null
-  }
-
-  val declaredMapType = currentRawType as? IrSimpleType ?: return null
-  if (declaredMapType.rawTypeOrNull()?.classId != StandardClassIds.Map) return null
-
-  val declaredKeyType = declaredMapType.arguments.firstOrNull()?.typeOrNull ?: return null
-  if (declaredKeyType.rawTypeOrNull()?.classId != Symbols.ClassIds.JavaLangClass) return null
-
-  return declaredMapType
-}
-
-/**
- * If KClass/Class interop is enabled and the consumer declared `Map<Class<*>, V>`, converts a
- * `Map<KClass<*>, V>` expression to `Map<Class<*>, V>` via `mapKeys { it.key.java }`.
- */
+/** Emits `map.mapKeys { it.key.java }` for a Java class map backed by a Kotlin class map. */
 context(context: IrMetroContext, scope: IrBuilderWithScope)
-private fun maybeConvertMapKeysToJavaClass(
+internal fun convertKClassMapToClassMap(
   bindingCode: IrExpression,
-  contextKey: IrContextualTypeKey,
+  requested: IrContextualTypeKey,
 ): IrExpression {
-  if (!context.options.enableKClassToClassInterop) return bindingCode
-
-  // Check if the consumer's raw type is a Map with Class<*> keys
-  val rawType = contextKey.rawType ?: return bindingCode
-  val rawTypeClassId = rawType.rawTypeOrNull()?.classId ?: return bindingCode
-  if (rawTypeClassId != StandardClassIds.Map) return bindingCode
-  if (rawType !is IrSimpleType) {
-    reportCompilerBug("Map type unexpectedly not an IrSimpleType: ${rawType.dumpKotlinLike()}")
-  }
-  if (rawType.arguments.size != 2) {
-    reportCompilerBug(
-      "Map type unexpectedly doesn't have two type args: ${rawType.dumpKotlinLike()}",
-    )
-  }
-
+  val rawType = requested.toIrType().requireSimpleType()
   val keyType = rawType.arguments[0].typeOrFail
-  val rawKeyClassId = keyType.rawType().classId
-  if (rawKeyClassId != Symbols.ClassIds.JavaLangClass) return bindingCode
-
-  val rawKeyTypeProjection = rawType.arguments[0] as? IrTypeProjection ?: return bindingCode
-  val kclassKeyType =
-    makeTypeProjection(
-      rawKeyTypeProjection.type.normalizeToKClassIfJavaClass(),
-      rawKeyTypeProjection.variance,
-    )
+  val kclassKeyType = keyType.normalizeToKClassIfJavaClass()
   val valueType = rawType.arguments[1]
-
-  // The consumer declared Map<Class<*>, V>, convert map keys from KClass to Class
-  return convertClassMapToKClassMap(
-    keyType = keyType,
-    kclassKeyType = kclassKeyType,
-    valueType = valueType,
-    bindingCode = bindingCode,
-  )
-}
-
-context(context: IrMetroContext, scope: IrBuilderWithScope)
-private fun convertClassMapToKClassMap(
-  keyType: IrType,
-  kclassKeyType: IrTypeArgument,
-  valueType: IrTypeArgument,
-  bindingCode: IrExpression,
-): IrExpression {
   val mapKeysFunction = context.metroSymbols.mapKeysFunction
   val mapEntryKeyGetter = context.metroSymbols.mapEntryKeyGetter
   val kClassJavaGetter =
@@ -1331,35 +1235,51 @@ private fun convertClassMapToKClassMap(
       valueParameters = listOf(entryType),
       returnType = keyType,
     ) { function ->
-      // entry.key.java
-      +irReturn(
+      val key =
         irInvoke(
-          extensionReceiver =
-            // entry.key
-            irInvoke(
-              // entry
-              dispatchReceiver = irGet(function.regularParameters[0]),
-              callee = mapEntryKeyGetter,
-              typeHint = kclassKeyType.typeOrNullableAny,
-            ),
-          // key.java
-          callee = kClassJavaGetter,
-          typeHint = keyType,
-          typeArgs =
-            listOf(kclassKeyType.typeOrFail.requireSimpleType().arguments[0].typeOrNullableAny),
-        ),
+          dispatchReceiver = irGet(function.regularParameters[0]),
+          callee = mapEntryKeyGetter,
+          typeHint = kclassKeyType,
+        )
+      +irReturn(
+        convertNonNull(key, keyType) { receiver ->
+          irInvoke(
+            extensionReceiver = receiver,
+            callee = kClassJavaGetter,
+            typeHint = keyType,
+            typeArgs = listOf(kclassKeyType.requireSimpleType().arguments[0].typeOrNullableAny),
+          )
+        },
       )
     }
 
   // map.mapKeys(lambda) —> mapKeys<K, V, R>(transform)
-  val resultType = context.irBuiltIns.mapClass.typeWithArguments(listOf(keyType, valueType))
-  return scope.irInvoke(
-    extensionReceiver = bindingCode,
-    callee = mapKeysFunction,
-    typeArgs = listOf(kclassKeyType.typeOrNullableAny, valueType.typeOrNullableAny, keyType),
-    args = listOf(lambda),
-    typeHint = resultType,
-  )
+  return scope.convertNonNull(bindingCode, rawType) { receiver ->
+    scope.irInvoke(
+      extensionReceiver = receiver,
+      callee = mapKeysFunction,
+      typeArgs = listOf(kclassKeyType, valueType.typeOrNullableAny, keyType),
+      args = listOf(lambda),
+      typeHint = rawType,
+    )
+  }
+}
+
+/** Preserves null maps and null keys while evaluating each source once. */
+context(context: IrMetroContext)
+private fun IrBuilderWithScope.convertNonNull(
+  value: IrExpression,
+  targetType: IrType,
+  convert: (IrExpression) -> IrExpression,
+): IrExpression {
+  if (!targetType.isMarkedNullable()) {
+    return convert(value)
+  }
+
+  return irBlock(resultType = targetType) {
+    val source = createAndAddTemporaryVariable(value, nameHint = "source")
+    +irIfNull(targetType, irGet(source), irNull(), convert(irGet(source)))
+  }
 }
 
 /**
@@ -1378,6 +1298,32 @@ internal fun IrType.normalizeToKClassIfJavaClass(): IrType {
   } else {
     this
   }
+}
+
+/** Keeps the requested value wrappers on the Kotlin map used for class interop. */
+context(context: IrMetroContext)
+internal fun IrContextualTypeKey.classMapSource(sourceKey: IrTypeKey): IrContextualTypeKey {
+  val map = wrappedType.scalarLeaf().withCanonicalType(sourceKey.type)
+  return IrContextualTypeKey(sourceKey, map)
+}
+
+/** Returns the Kotlin-keyed map that can back this Java-keyed request when interop is enabled. */
+context(context: IrMetroContext)
+internal fun IrTypeKey.kotlinClassMapKey(): IrTypeKey? {
+  if (!context.options.enableKClassToClassInterop || classId != StandardClassIds.Map) {
+    return null
+  }
+
+  val mapType = type.requireSimpleType()
+  val key = mapType.arguments[0].typeOrNull ?: return null
+  val normalized = key.normalizeToKClassIfJavaClass()
+  if (normalized === key) {
+    return null
+  }
+
+  val normalizedMap =
+    context.irBuiltIns.mapClass.typeWithArguments(listOf(normalized, mapType.arguments[1]))
+  return copy(type = normalizedMap.mergeNullability(mapType))
 }
 
 context(context: IrMetroContext)

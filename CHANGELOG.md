@@ -17,6 +17,7 @@ Changelog
 - **[IR]** Fix a `ClassCastException` when a generated `@Provides` factory calls a member with an extension receiver or context parameters.
 - **[IR]** Call the property's setter for `@set:Inject`, including when the property has a backing field.
 - **[IR]** Report an error when a directly provided map has incompatible value wrappers, regardless of accessor order. For example, `Map<K, V>` cannot supply `Map<K, Provider<V>>`.
+- **[IR]** Use a provided map with Java `Class` keys directly when `enableKClassToClassInterop` is enabled. Metro converts a map with Kotlin `KClass` keys when the graph needs that fallback.
 - **[Compiler]** Preserve unrelated files in `reportsDestination`. Raw compiler reports now go in a `metro-compiler-reports/` subdirectory. Scripts that read Gradle compilation reports should add this directory after the compilation name. A clean build removes old reports under the build directory.
 
 1.6.0
