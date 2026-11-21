@@ -1385,6 +1385,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("MissingBindingTraceThroughConstructors.kt")
+    public void testMissingBindingTraceThroughConstructors() {
+      run("MissingBindingTraceThroughConstructors.kt");
+    }
+
+    @Test
     @TestMetadata("MixedCycleParams.kt")
     public void testMixedCycleParams() {
       run("MixedCycleParams.kt");

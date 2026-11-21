@@ -14,8 +14,12 @@
 
 /DerivedBindingMissingParameter.kt:18:25: error: [Metro/MissingBinding] No binding found for Decoder<Token>
 
+  AppGraph.consumer -> Consumer -> Encoder<Set<Token>> -> Decoder<Token>
+
   trace (in AppGraph):
       Decoder<Token> is injected at Encoders.set(…, element)
+      Encoder<Set<Token>> is injected at Consumer(…, tokens)
+      Consumer is requested at AppGraph.consumer
 
   note: `Encoder<Set<Token>>` is derived from `Encoders.set` with `T = Token`
   help: ensure Decoder<Token> has an @Inject constructor or is provided by an @Provides or @Binds

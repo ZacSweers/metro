@@ -23,6 +23,7 @@ Changelog
 - **[IR]** Use a provided map with Java `Class` keys directly when `enableKClassToClassInterop` is enabled. Metro converts a map with Kotlin `KClass` keys when the graph needs that fallback.
 - **[IR]** Resolve an extension receiver when its suspend provider runs. This supports suspend receivers and gives each call a fresh unscoped receiver.
 - **[IR]** Fix a compiler crash when two set or map contributions have names with the same hash, such as `provideAa` and `provideBB`.
+- **[Compiler]** Show the path from a graph accessor to a missing binding through intermediate dependencies.
 - **[Compiler]** Preserve unrelated files in `reportsDestination`. Raw compiler reports now go in a `metro-compiler-reports/` subdirectory. Scripts that read Gradle compilation reports should add this directory after the compilation name. A clean build removes old reports under the build directory.
 
 1.6.0

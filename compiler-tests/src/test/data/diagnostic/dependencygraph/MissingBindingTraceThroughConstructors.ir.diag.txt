@@ -1,0 +1,13 @@
+/MissingBindingTraceThroughConstructors.kt:9:22: error: [Metro/MissingBinding] No binding found for Missing
+
+  ExampleGraph.root -> Root -> First -> Second -> Missing
+
+  trace (in ExampleGraph):
+      Missing is injected at Second(…, missing)
+      Second is injected at First(…, second)
+      First is injected at Root(…, first)
+      Root is requested at ExampleGraph.root
+
+  help: ensure Missing has an @Inject constructor or is provided by an @Provides or @Binds
+        declaration visible to ExampleGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
