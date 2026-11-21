@@ -13,6 +13,7 @@ Changelog
 - **[FIR/IR]** Honor `@get:OptionalBinding` on graph accessors. Report conflicting qualifiers, scopes, and map keys on properties.
 - **[IR]** Pass the right dependencies to injected methods across modules. Methods with different qualifiers could receive each other's values.
 - **[IR]** Fix a `ClassCastException` when a generated `@Provides` factory calls a member with an extension receiver or context parameters.
+- **[IR]** Call the property's setter for `@set:Inject`, including when the property has a backing field.
 - **[Compiler]** Preserve unrelated files in `reportsDestination`. Raw compiler reports now go in a `metro-compiler-reports/` subdirectory. Scripts that read Gradle compilation reports should add this directory after the compilation name. A clean build removes old reports under the build directory.
 
 1.6.0
