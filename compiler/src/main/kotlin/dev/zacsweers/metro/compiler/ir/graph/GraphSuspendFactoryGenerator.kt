@@ -62,8 +62,8 @@ import org.jetbrains.kotlin.ir.util.primaryConstructor
  *
  * The nested class takes only the binding's dependencies and holds no graph reference. Each dep is
  * held as a `SuspendProvider<X>` when `X` is suspend in this graph, or a `Provider<X>` otherwise.
- * Receivers are held as plain instances. Its suspend `invoke()` awaits the suspend deps and calls
- * the source constructor/function directly.
+ * Dispatch receivers are held as plain instances. Its suspend `invoke()` awaits the suspend deps
+ * and calls the source constructor/function directly.
  *
  * Example:
  * ```kotlin
@@ -119,9 +119,9 @@ internal class GraphSuspendFactoryGenerator(
     cache.getOrPut(binding.typeKey) { generate(binding, orderedParams, buildSourceCall) }
 
   /**
-   * One field per source parameter. Receivers (graph/container instances) are held as plain
-   * instances; deps are held as SuspendProvider<X> when suspend in this graph, Provider<X>
-   * otherwise. Parameters already declared as deferred wrappers keep that wrapper type.
+   * One field per source parameter. The factory holds the graph or container instance directly.
+   * Dependencies include the extension receiver. Each is held as a SuspendProvider<X> when it
+   * suspends in this graph, or as a Provider<X> otherwise. Declared wrappers keep their type.
    */
   private data class ParamField(val param: Parameter, val field: IrField)
 
@@ -150,13 +150,10 @@ internal class GraphSuspendFactoryGenerator(
         val paramInits =
           ArrayList<Pair<org.jetbrains.kotlin.ir.declarations.IrValueParameter, IrField>>()
         for (param in orderedParams) {
-          val isReceiver =
-            param.isGraphInstance ||
-              param.kind == IrParameterKind.DispatchReceiver ||
-              param.kind == IrParameterKind.ExtensionReceiver
+          val holdInstance = param.isGraphInstance || param.kind == IrParameterKind.DispatchReceiver
           val ctxKey = param.contextualTypeKey
           val fieldType: IrType =
-            if (isReceiver) {
+            if (holdInstance) {
               ctxKey.toIrType()
             } else {
               val defaultUsesSuspendProvider = bindingGraph.isTransitivelySuspend(ctxKey.typeKey)
