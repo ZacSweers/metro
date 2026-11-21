@@ -376,6 +376,7 @@ internal fun FirClassSymbol<*>.callableDeclarations(
   }
 }
 
+/** Checks that the factory's only abstract member is a function Metro can implement. */
 context(context: CheckerContext)
 internal inline fun FirClass.singleAbstractFunction(
   session: FirSession,
@@ -384,7 +385,16 @@ internal inline fun FirClass.singleAbstractFunction(
   allowProtected: Boolean = false,
   onError: () -> Nothing,
 ): FirNamedFunctionSymbol {
-  val abstractFunctions = symbol.collectAbstractFunctions(session).orEmpty()
+  val abstractFunctions = symbol.collectAbstractFunctions(session, exitOnAbstractProperties = true)
+  if (abstractFunctions == null) {
+    reporter.reportOn(
+      source,
+      MetroDiagnostics.METRO_DECLARATION_ERROR,
+      "$type cannot have abstract properties.",
+    )
+    onError()
+  }
+
   if (abstractFunctions.size != 1) {
     if (abstractFunctions.isEmpty()) {
       reporter.reportOn(

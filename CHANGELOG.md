@@ -10,6 +10,7 @@ Changelog
 
 ### Fixes
 
+- **[FIR]** Report an error when a factory declares or inherits an abstract property that Metro cannot implement.
 - **[FIR/IR]** Honor `@get:OptionalBinding` on graph accessors. Report conflicting qualifiers, scopes, and map keys on properties.
 - **[FIR/IR]** Keep nullable and non-null map bindings distinct during graph resolution.
 - **[FIR/IR]** Use the collection's element type for `@ElementsIntoSet` contributions from custom collections. Report an error if the collection itself is nullable.

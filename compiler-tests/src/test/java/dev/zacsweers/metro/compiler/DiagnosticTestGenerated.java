@@ -55,6 +55,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     run("ConflictingAnnotationRoles.kt");
   }
 
+  @Test
+  @TestMetadata("FactoryAbstractProperties.kt")
+  public void testFactoryAbstractProperties() {
+    run("FactoryAbstractProperties.kt");
+  }
+
   @Nested
   @TestMetadata("compiler-tests/src/test/data/diagnostic/aggregation")
   @TestDataPath("$PROJECT_ROOT")

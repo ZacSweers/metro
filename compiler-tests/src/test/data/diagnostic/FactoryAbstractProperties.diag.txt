@@ -1,0 +1,3 @@
+/FactoryAbstractProperties.kt:7:11: error: @AssistedFactory declarations cannot have abstract properties.
+
+/FactoryAbstractProperties.kt:19:13: error: @DependencyGraph.Factory declarations cannot have abstract properties.
