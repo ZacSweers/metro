@@ -563,7 +563,8 @@ internal class BindingContainerTransformer(
               typeArgs = factoryCls.typeParameters.map { it.defaultType },
               args =
                 parametersAsProviderArguments(
-                  parameters = sourceParameters,
+                  // The helper takes the dispatch receiver before context and extension arguments.
+                  parameters = reference.parameters,
                   receiver = invokeFunction.dispatchReceiverParameter!!,
                   providerFieldsByKey = providerFieldsByKey,
                   nameToField = nameToField,

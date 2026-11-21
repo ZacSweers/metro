@@ -7,6 +7,7 @@ Changelog
 ### Fixes
 
 - **[IR]** Pass the right dependencies to injected methods across modules. Methods with different qualifiers could receive each other's values.
+- **[IR]** Fix a `ClassCastException` when a generated `@Provides` factory calls a member with an extension receiver or context parameters.
 
 1.6.0
 -----
