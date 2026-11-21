@@ -2775,6 +2775,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("DirectMapValueWrappers.kt")
+    public void testDirectMapValueWrappers() {
+      run("DirectMapValueWrappers.kt");
+    }
+
+    @Test
     @TestMetadata("DuplicateEffectiveMapKeys.kt")
     public void testDuplicateEffectiveMapKeys() {
       run("DuplicateEffectiveMapKeys.kt");

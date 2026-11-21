@@ -48,6 +48,7 @@ import dev.zacsweers.metro.compiler.graph.partitionBySCCs
 import dev.zacsweers.metro.compiler.graph.putGraphRoot
 import dev.zacsweers.metro.compiler.graph.toText
 import dev.zacsweers.metro.compiler.graph.toTraceSection
+import dev.zacsweers.metro.compiler.graph.withEntry
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrBoundTypeResolver
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
@@ -1249,30 +1250,28 @@ internal class IrBindingGraph(
 
     var locationNotes = emptyList<Note>()
     val sections = buildList {
-      bindingLookup.skippedDirectMapRequests[key]?.let { requestedContextKey ->
-        bindingLookup.getAvailableBindings()[key]?.let { directBinding ->
-          // Use rawType to render with Provider/Lazy wrapping preserved, since
-          // IrContextualTypeKey.render() delegates to WrappedType.Map.render() which
-          // renders the canonical map type without value wrapping.
-          // Short render here since we already have the full render mentioned earlier in the trace
-          val requestedType =
-            requestedContextKey.rawType?.render(short = true)
-              ?: requestedContextKey.render(short = true, includeQualifier = false)
-          val locationDiagnostic = directBinding.renderLocationDiagnostic(underlineTypeKey = true)
-          locationNotes = locationDiagnostic.notes
-          add(
-            DiagnosticSection.Locations(
-              header =
-                textOf(
-                  "A directly-provided '${key.render(short = true, includeQualifier = false)}' binding exists, " +
-                    "but direct Map bindings cannot satisfy '$requestedType' requests. " +
-                    "Provider-, Lazy-, or SuspendProvider-wrapped map values (e.g., Map<K, Provider<V>>) only work with a Map " +
-                    "multibinding created with `@IntoMap` or `@Multibinds`.",
-                ),
-              items = listOf(locationDiagnostic.toLocatedItem()),
-            ),
-          )
-        }
+      bindingLookup.skippedDirectMapRequests[key]?.let { (requestedContextKey, directBinding) ->
+        // Render the declared types so the value wrappers are visible.
+        val declared = context(metroContext) { directBinding.declaredMapType() }
+        val declaredType =
+          declared.rawType?.render(short = true)
+            ?: declared.render(short = true, includeQualifier = false)
+        val requestedType =
+          requestedContextKey.rawType?.render(short = true)
+            ?: requestedContextKey.render(short = true, includeQualifier = false)
+        val locationDiagnostic = directBinding.renderLocationDiagnostic(underlineTypeKey = true)
+        locationNotes = locationDiagnostic.notes
+        add(
+          DiagnosticSection.Locations(
+            header =
+              textOf(
+                "The directly provided '$declaredType' has a different value type from " +
+                  "'$requestedType'. Only a map multibinding created with `@IntoMap` or " +
+                  "`@Multibinds` can adapt its value wrappers.",
+              ),
+            items = listOf(locationDiagnostic.toLocatedItem()),
+          ),
+        )
       }
     }
 
@@ -1514,6 +1513,43 @@ internal class IrBindingGraph(
     return MapClassKey(classId, component)
   }
 
+  /** Requests sharing a canonical key can bypass lookup after the first request resolves it. */
+  private fun validateDirectMapRequests(
+    directMaps: Map<IrTypeKey, IrBinding>,
+    roots: Map<IrContextualTypeKey, IrBindingStack.Entry>,
+    adjacency: GraphAdjacency<IrTypeKey>,
+    diagnosticRoutes: IrDiagnosticRoutes,
+  ) {
+    fun rejects(request: IrContextualTypeKey): Boolean {
+      val source = directMaps[request.typeKey] ?: return false
+      return bindingLookup.rejectsDirectMapRequest(request, source)
+    }
+
+    for ((request, entry) in roots) {
+      if (rejects(request)) {
+        val stack = newBindingStack()
+        stack.withEntry(entry) { realGraph.reportMissingBinding(request.typeKey, stack) }
+      }
+    }
+
+    // Only inspect reachable consumers of direct maps. Each can request several map shapes.
+    val consumers = mutableSetOf<IrTypeKey>()
+    for (key in directMaps.keys) {
+      consumers.addAll(adjacency.reverse[key].orEmpty())
+    }
+
+    for (key in consumers) {
+      val consumer = realGraph.bindings.getValue(key)
+      for (request in consumer.dependencies) {
+        if (rejects(request)) {
+          val stack = buildStackToRoot(key, diagnosticRoutes)
+          val entry = bindingStackEntryForDependency(consumer, request, request.typeKey)
+          stack.withEntry(entry) { realGraph.reportMissingBinding(request.typeKey, stack) }
+        }
+      }
+    }
+  }
+
   private fun validateBindings(
     bindings: ScatterMap<IrTypeKey, IrBinding>,
     stack: IrBindingStack,
@@ -1568,7 +1604,12 @@ internal class IrBindingGraph(
     val suspendProvidersEnabled = metroContext.options.enableSuspendProviders
     var hasDirectSuspendBinding = false
     var hasDisabledSuspendProviderUse = false
+    val directMaps = mutableMapOf<IrTypeKey, IrBinding>()
     bindings.forEachValue { binding ->
+      if (binding.isDirectMap) {
+        directMaps[binding.typeKey] = binding
+      }
+
       if (suspendProvidersEnabled) {
         if (binding.isSuspend) {
           hasDirectSuspendBinding = true
@@ -1607,6 +1648,11 @@ internal class IrBindingGraph(
       }
       structuralValidator.validate(binding, onIssue = reportIssue)
     }
+
+    if (directMaps.isNotEmpty()) {
+      validateDirectMapRequests(directMaps, roots, adjacency, diagnosticRoutes)
+    }
+
     if (!suspendProvidersEnabled) {
       for ((contextKey, metroFunction) in node.accessors) {
         if (metroFunction.ir.isSuspend || contextKey.wrappedType.containsSuspendWrapper()) {

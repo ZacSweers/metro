@@ -1,6 +1,3 @@
-// TODO
-//  providing a Map<String, Int> should not make it
-//  possible to get a Map<String, () -> Int> later
 @DependencyGraph
 interface ExampleGraph {
   @Provides @IntoMap @StringKey("a") fun provideEntryA(): Int = 1
