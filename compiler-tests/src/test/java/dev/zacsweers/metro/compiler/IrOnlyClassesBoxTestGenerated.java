@@ -5655,6 +5655,12 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
     }
 
     @Test
+    @TestMetadata("MemberInjectionOrderAcrossModules.kt")
+    public void testMemberInjectionOrderAcrossModules() {
+      run("MemberInjectionOrderAcrossModules.kt");
+    }
+
+    @Test
     @TestMetadata("MemberInjectsAcrossModules.kt")
     public void testMemberInjectsAcrossModules() {
       run("MemberInjectsAcrossModules.kt");

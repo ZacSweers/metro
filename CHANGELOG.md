@@ -4,6 +4,10 @@ Changelog
 **Unreleased**
 --------------
 
+### Fixes
+
+- **[IR]** Record `@Inject` methods in declaration order in library metadata. Sorting them by name could swap two `@Named` arguments of the same type when another module injected the class.
+
 1.6.0
 -----
 

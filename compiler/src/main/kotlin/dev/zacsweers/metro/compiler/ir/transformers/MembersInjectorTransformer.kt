@@ -139,7 +139,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
       return MemberInjectionsProto(
         // Simple name is fine because it's always nested in the parent class
         injector_class_name = injectorClass!!.name.asString(),
-        member_inject_functions = declaredInjectFunctions.keys.map { it.name.asString() }.sorted(),
+        member_inject_functions = declaredInjectFunctions.keys.map { it.name.asString() },
       )
     }
 
@@ -817,6 +817,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
     }
   }
 
+  /** Reads helper parameters in the order the producer used for its injector's `create()`. */
   private fun deriveParametersFromInjectFunctionNames(
     clazz: IrClass,
     injectFunctionNames: List<String>,
@@ -830,50 +831,54 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
     val producerCompanionMode = injectedClassMetadata.companion_mode.toCompanionMode()
     val container = injectorClass.factoryHelperDeclarationContainer(producerCompanionMode)
 
-    // Try to get create() function to determine the correct parameter order
-    val createFunction = container.requireSimpleFunction(Symbols.StringNames.CREATE).owner
+    val helpers = injectFunctionNames.mapNotNull { container.injectHelperOrNull(it) }
+    return container.inCreateOrder(helpers).map { function ->
+      extractParametersFromInjectFunction(
+        clazz = clazz,
+        nameAllocator = nameAllocator,
+        function = function,
+        // Source member lookups are only necessary for Dagger setters
+        sourceMemberParametersMap = null,
+      )
+    }
+  }
 
-    val allCreateParams = createFunction.regularParameters
-
-    // Match each inject function to its position in create() params by parameter name
-    data class MatchedFunction(val functionName: String, val startPosition: Int)
-
-    // TODO what about overloads of the same name?
-    val matchedFunctions = injectFunctionNames.mapNotNull { functionName ->
-      // Extract member name from inject function name (e.g., "injectMessage" -> "message")
-      val memberName = functionName.removePrefix("inject").decapitalizeUS()
-
-      // Find the position of this member in create() params by matching parameter names
-      val foundPosition = allCreateParams.indexOfFirst { param ->
-        param.name.asString() == memberName
-      }
-
-      if (foundPosition >= 0) {
-        MatchedFunction(functionName, foundPosition)
-      } else {
-        null
-      }
+  /**
+   * Older producers alphabetized the helper names. Recover their order only when the helpers'
+   * dependencies exactly match the parameters of `create()` after its inherited parameters.
+   */
+  private fun IrClass.inCreateOrder(helpers: List<IrSimpleFunction>): List<IrSimpleFunction> {
+    if (helpers.size < 2) {
+      return helpers
     }
 
-    // If we successfully matched all functions, sort by create() order
-    val sortedFunctionNames =
-      if (matchedFunctions.size == injectFunctionNames.size) {
-        matchedFunctions.sortedBy { it.startPosition }.map { it.functionName }
-      } else {
-        // Fallback to the original sorted order if matching failed
-        injectFunctionNames
-      }
+    fun List<IrSimpleFunction>.dependencyNames() = flatMap { helper ->
+      helper.regularParameters.drop(1).map { it.name }
+    }
 
-    // Extract parameters in the determined order
-    return sortedFunctionNames.mapNotNull { functionName ->
-      container.injectHelperOrNull(functionName)?.let { function ->
-        extractParametersFromInjectFunction(
-          clazz = clazz,
-          nameAllocator = nameAllocator,
-          function = function,
-          // Source member lookups are only necessary for Dagger setters
-          sourceMemberParametersMap = null,
-        )
+    val recorded = helpers.dependencyNames()
+    val create = requireSimpleFunction(Symbols.StringNames.CREATE).owner
+    val expected = create.regularParameters.takeLast(recorded.size).map { it.name }
+    if (recorded == expected) {
+      return helpers
+    }
+
+    // The first parameter is the instance. Only helpers with dependencies appear in create().
+    val withDependencies = helpers.filter { it.regularParameters.size > 1 }
+    val byFirstDependency =
+      withDependencies.associateByTo(HashMap()) { it.regularParameters[1].name }
+    val ordered = expected.mapNotNull(byFirstDependency::remove)
+    if (ordered.size != withDependencies.size || ordered.dependencyNames() != expected) {
+      return helpers
+    }
+
+    // Keep no-argument methods in their recorded slots.
+    val remaining = ordered.iterator()
+    return helpers.map { helper ->
+      if (helper.regularParameters.size > 1) {
+        remaining.next()
+      } else {
+        helper
       }
     }
   }

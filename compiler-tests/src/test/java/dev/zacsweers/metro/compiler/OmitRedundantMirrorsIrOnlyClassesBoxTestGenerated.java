@@ -5655,6 +5655,12 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
     }
 
     @Test
+    @TestMetadata("MemberInjectionOrderAcrossModules.kt")
+    public void testMemberInjectionOrderAcrossModules() {
+      run("MemberInjectionOrderAcrossModules.kt");
+    }
+
+    @Test
     @TestMetadata("MemberInjectsAcrossModules.kt")
     public void testMemberInjectsAcrossModules() {
       run("MemberInjectsAcrossModules.kt");
