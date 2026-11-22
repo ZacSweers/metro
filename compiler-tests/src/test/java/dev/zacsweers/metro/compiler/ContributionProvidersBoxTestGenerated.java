@@ -6175,6 +6175,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
     }
 
     @Test
+    @TestMetadata("StarProjectedBindings.kt")
+    public void testStarProjectedBindings() {
+      run("StarProjectedBindings.kt");
+    }
+
+    @Test
     @TestMetadata("StatusTransformedPrivateProviderAnnotationsArePropagated.kt")
     public void testStatusTransformedPrivateProviderAnnotationsArePropagated() {
       run("StatusTransformedPrivateProviderAnnotationsArePropagated.kt");

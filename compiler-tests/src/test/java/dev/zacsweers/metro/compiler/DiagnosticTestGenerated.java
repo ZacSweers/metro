@@ -2523,6 +2523,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("StarProjectedWrapperRequests.kt")
+    public void testStarProjectedWrapperRequests() {
+      run("StarProjectedWrapperRequests.kt");
+    }
+
+    @Test
     @TestMetadata("SuggestInjectClassOnSingleContructor.kt")
     public void testSuggestInjectClassOnSingleContructor() {
       run("SuggestInjectClassOnSingleContructor.kt");

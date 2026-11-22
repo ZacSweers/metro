@@ -35,6 +35,7 @@ import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.findInjectableConstructor
 import dev.zacsweers.metro.compiler.ir.generateDefaultConstructorBody
 import dev.zacsweers.metro.compiler.ir.getOrCreateMetadataVisibleHiddenNestedClass
+import dev.zacsweers.metro.compiler.ir.hasStarArgument
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
@@ -88,8 +89,6 @@ import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrExpression
-import org.jetbrains.kotlin.ir.types.IrSimpleType
-import org.jetbrains.kotlin.ir.types.IrStarProjection
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.isUnit
@@ -1056,9 +1055,8 @@ internal fun IrStatementsBuilder<*>.addMemberInjection(
 ) {
   val sourceClass = instanceReceiver.type.classOrNull!!.owner
   val typeRemapper = sourceClass.deepRemapperFor(instanceReceiver.type)
-  val instanceType = instanceReceiver.type
-  val hasStarProjection =
-    instanceType is IrSimpleType && instanceType.arguments.any { it is IrStarProjection }
+  val hasStarProjection = instanceReceiver.type.hasStarArgument()
+
   for ((function, parameters) in injectFunctions) {
     // Kotlin injector methods can live in the injector class's companion object.
     val functionOwner = function.parentAsClass

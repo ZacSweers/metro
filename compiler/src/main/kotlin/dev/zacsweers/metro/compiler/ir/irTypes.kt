@@ -10,6 +10,7 @@ import org.jetbrains.kotlin.ir.declarations.IrTypeParametersContainer
 import org.jetbrains.kotlin.ir.symbols.IrTypeParameterSymbol
 import org.jetbrains.kotlin.ir.types.IrErrorType
 import org.jetbrains.kotlin.ir.types.IrSimpleType
+import org.jetbrains.kotlin.ir.types.IrStarProjection
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.IrTypeArgument
 import org.jetbrains.kotlin.ir.types.IrTypeProjection
@@ -250,6 +251,13 @@ internal fun IrClass.allSupertypesSequence(
 context(context: IrPluginContext)
 internal val IrTypeArgument.typeOrNullableAny: IrType
   get() = (this as? IrTypeProjection)?.type ?: context.irBuiltIns.anyNType
+
+/** Whether one of this type's immediate arguments is a star projection. */
+internal fun IrType.hasStarArgument(): Boolean {
+  val arguments = (this as? IrSimpleType)?.arguments ?: return false
+  // Index the list because the compiler can compact it while we read it.
+  return arguments.indices.any { arguments[it] is IrStarProjection }
+}
 
 internal fun IrType.hasErrorTypes(): Boolean {
   // Quick base checks
