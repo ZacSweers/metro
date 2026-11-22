@@ -4643,6 +4643,12 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
     }
 
     @Test
+    @TestMetadata("CollidingContributorNames.kt")
+    public void testCollidingContributorNames() {
+      run("CollidingContributorNames.kt");
+    }
+
+    @Test
     @TestMetadata("ContributedElementsInjectedIntoConstructor.kt")
     public void testContributedElementsInjectedIntoConstructor() {
       run("ContributedElementsInjectedIntoConstructor.kt");
