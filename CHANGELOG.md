@@ -14,6 +14,7 @@ Changelog
 - **[FIR/IR]** Fix `@get:` site targets for `@OptionalBinding`.
 - **[IR]** Record `@Inject` methods in declaration order in library metadata. Sorting them by name could swap two `@Named` arguments of the same type when another module injected the class.
 - **[IR]** Fix a `ClassCastException` in generated factories that passed an `@Provides` method's extension receiver or context parameter in the argument slot for the graph.
+- **[IR]** Fix `@set:Inject` writing directly to the backing field and skipping the custom setter.
 
 1.6.0
 -----

@@ -501,15 +501,20 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
               val bodyExpression: IrExpression =
                 if (params.isProperty) {
                   val value = regularParameters[1]
-                  val irField = params.irProperty!!.backingField
-                  if (irField == null) {
+                  val property = params.irProperty!!
+                  val field = property.backingField
+                  // An explicit setter injection must run the setter even on a backed property.
+                  val setter = property.setter
+                  val injectSetter =
+                    setter?.isAnnotatedWithAny(metroSymbols.injectAnnotations) == true
+                  if (injectSetter || field == null) {
                     irInvoke(
                       irGet(instanceParam),
-                      callee = params.ir!!.symbol,
+                      callee = checkNotNull(setter).symbol,
                       args = listOf(irGet(value)),
                     )
                   } else {
-                    irSetField(irGet(instanceParam), irField, irGet(value))
+                    irSetField(irGet(instanceParam), field, irGet(value))
                   }
                 } else {
                   irInvoke(

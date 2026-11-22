@@ -5691,6 +5691,12 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
     }
 
     @Test
+    @TestMetadata("PropertyInjectionUseSite.kt")
+    public void testPropertyInjectionUseSite() {
+      run("PropertyInjectionUseSite.kt");
+    }
+
+    @Test
     @TestMetadata("ScopedInjectIntoBaseMember.kt")
     public void testScopedInjectIntoBaseMember() {
       run("ScopedInjectIntoBaseMember.kt");
