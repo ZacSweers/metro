@@ -78,6 +78,7 @@ interface AppGraph {
   val greeting: Greeting
   val shout: Shout
   val text: CharSequence
+  val textProvider: Provider<CharSequence>
   val long: Long
   @Named("mixed") val mixed: String
   @Named("nameLength") val nameLength: Int
@@ -85,6 +86,7 @@ interface AppGraph {
   @Named("localMixed") val localMixed: String
   @Named("localMixedLength") val localMixedLength: Int
   @Named("graphMixed") val graphMixed: String
+  @Named("graphMixed") val graphMixedProvider: Provider<String>
   val local: Short
   val float: Float
   val graphValue: Double
@@ -117,6 +119,7 @@ fun box(): String {
   assertEquals("hello metro", graph.greeting.value)
   assertEquals("HELLO METRO", graph.shout.value)
   assertEquals("hello metro x3!", graph.text)
+  assertEquals("hello metro x3!", graph.textProvider())
   assertEquals(6L, graph.long)
   assertEquals(">name3", graph.mixed)
   assertEquals(4, graph.nameLength)
@@ -124,6 +127,7 @@ fun box(): String {
   assertEquals(">name3", graph.localMixed)
   assertEquals(14, graph.localMixedLength)
   assertEquals(">name", graph.graphMixed)
+  assertEquals(">name", graph.graphMixedProvider())
   assertEquals(5.toShort(), graph.local)
   assertEquals(11f, graph.float)
   assertEquals(11.0, graph.graphValue)
