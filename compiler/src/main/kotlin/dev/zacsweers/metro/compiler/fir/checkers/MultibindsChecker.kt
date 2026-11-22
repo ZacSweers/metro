@@ -33,15 +33,19 @@ import org.jetbrains.kotlin.fir.declarations.FirPropertyAccessor
 import org.jetbrains.kotlin.fir.declarations.FirValueParameter
 import org.jetbrains.kotlin.fir.declarations.utils.isEnumClass
 import org.jetbrains.kotlin.fir.declarations.utils.isOverride
+import org.jetbrains.kotlin.fir.resolve.defaultType
+import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.types.ConeStarProjection
 import org.jetbrains.kotlin.fir.types.ConeTypeProjection
 import org.jetbrains.kotlin.fir.types.classLikeLookupTagIfAny
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
+import org.jetbrains.kotlin.fir.types.constructClassLikeType
 import org.jetbrains.kotlin.fir.types.isArrayType
 import org.jetbrains.kotlin.fir.types.isKClassType
 import org.jetbrains.kotlin.fir.types.isMarkedNullable
 import org.jetbrains.kotlin.fir.types.isPrimitive
 import org.jetbrains.kotlin.fir.types.isString
+import org.jetbrains.kotlin.fir.types.isSubtypeOf
 import org.jetbrains.kotlin.fir.types.type
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.StandardClassIds
@@ -294,11 +298,20 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
               MetroDiagnostics.MULTIBINDS_ERROR,
               "`@ElementsIntoSet` must return a Collection.",
             )
-          } else if (returnConeType.typeArguments.size != 1) {
+          } else if (returnConeType.isMarkedNullable) {
             reporter.reportOn(
               declaration.returnTypeRef.source ?: source,
               MetroDiagnostics.MULTIBINDS_ERROR,
-              "`@ElementsIntoSet` must return a Collection type with exactly one generic type argument.",
+              "`@ElementsIntoSet` must return a non-null Collection.",
+            )
+          } else if (
+            returnConeType.typeArguments.size != 1 || !returnType.hasElementParameter(session)
+          ) {
+            reporter.reportOn(
+              declaration.returnTypeRef.source ?: source,
+              MetroDiagnostics.MULTIBINDS_ERROR,
+              "`@ElementsIntoSet` requires the collection's only type argument to be its element type. " +
+                "Declare the return type as `Set<E>` and use `toSet()`, or return `Collection<E>` directly.",
             )
           } else if (returnConeType.typeArguments[0] is ConeStarProjection) {
             reporter.reportOn(
@@ -310,6 +323,13 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
         }
       }
     }
+  }
+
+  /** IR uses the sole argument of C<E> as the set element, so C<E> must implement Collection<E>. */
+  private fun FirClassSymbol<*>.hasElementParameter(session: FirSession): Boolean {
+    val declared = defaultType()
+    val collection = StandardClassIds.Collection.constructClassLikeType(declared.typeArguments)
+    return declared.isSubtypeOf(collection, session)
   }
 
   private fun ConeTypeProjection.isStarOrProviderOfStar(

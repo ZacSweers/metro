@@ -4667,6 +4667,12 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
     }
 
     @Test
+    @TestMetadata("ElementsIntoSetCollectionSubtype.kt")
+    public void testElementsIntoSetCollectionSubtype() {
+      run("ElementsIntoSetCollectionSubtype.kt");
+    }
+
+    @Test
     @TestMetadata("ElementsIntoSetProperty.kt")
     public void testElementsIntoSetProperty() {
       run("ElementsIntoSetProperty.kt");

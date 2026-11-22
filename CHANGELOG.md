@@ -11,6 +11,7 @@ Changelog
 ### Fixes
 
 - **[Compiler]** Preserve unrelated files when clearing old reports from `reportsDestination`.
+- **[FIR]** `@ElementsIntoSet` could put lists in a `Set<String>` when a provider returned `Batch<String>` and `Batch<T>` implemented `List<List<T>>`. Metro now reports a compile error. Declare `Set<List<String>>` and return `batch.toSet()`.
 - **[FIR/IR]** Fix `@get:` site targets for `@OptionalBinding`.
 - **[FIR/IR]** Fix a bug where a provider returning `Map<K, V>?` could supply `null` to a non-null `Map<K, V>` accessor.
 - **[IR]** Record `@Inject` methods in declaration order in library metadata. Sorting them by name could swap two `@Named` arguments of the same type when another module injected the class.
