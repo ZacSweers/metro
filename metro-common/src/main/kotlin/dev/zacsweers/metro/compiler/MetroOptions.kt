@@ -8,10 +8,7 @@ import dev.drewhamilton.poko.Poko
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.Locale
-import kotlin.io.path.ExperimentalPathApi
 import kotlin.io.path.createDirectories
-import kotlin.io.path.deleteRecursively
-import kotlin.io.path.exists
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
@@ -1647,15 +1644,10 @@ public class MetroOptions(
   public val reportsEnabled: Boolean
     get() = rawReportsDestination != null
 
-  @OptIn(ExperimentalPathApi::class)
+  /** The configured report directory. Its first use clears the previous compilation's reports. */
   @Transient
   public val reportsDir: Lazy<Path?> = lazy {
-    rawReportsDestination?.apply {
-      if (exists()) {
-        deleteRecursively()
-      }
-      createDirectories()
-    }
+    rawReportsDestination?.apply { resetCompilerReports() }
   }
 
   public val traceEnabled: Boolean

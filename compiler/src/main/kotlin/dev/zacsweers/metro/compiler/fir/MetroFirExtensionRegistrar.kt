@@ -17,6 +17,7 @@ import dev.zacsweers.metro.compiler.circuit.CircuitSymbols
 import dev.zacsweers.metro.compiler.circuit.generateCircuitFactoriesInFir
 import dev.zacsweers.metro.compiler.circuit.generateCircuitSerializerRegistrationsInFir
 import dev.zacsweers.metro.compiler.compat.CompatContext
+import dev.zacsweers.metro.compiler.createCompilerReport
 import dev.zacsweers.metro.compiler.fir.generators.AssistedFactoryFirGenerator
 import dev.zacsweers.metro.compiler.fir.generators.BindingMirrorClassFirGenerator
 import dev.zacsweers.metro.compiler.fir.generators.CompositeMetroFirDeclarationGenerationExtension
@@ -36,9 +37,6 @@ import dev.zacsweers.metro.compiler.letIf
 import dev.zacsweers.metro.compiler.tracing.TraceContext
 import java.util.ServiceLoader
 import kotlin.io.path.appendText
-import kotlin.io.path.createFile
-import kotlin.io.path.createParentDirectories
-import kotlin.io.path.deleteIfExists
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrar
@@ -257,11 +255,7 @@ public class MetroFirExtensionRegistrar(
       val output: (String) -> Unit =
         if (options.reportsEnabled) {
           val outputFile =
-            reportsDir.value!!.resolve("fir-${type.name.lowercase()}-$tag.txt").apply {
-              deleteIfExists()
-              createParentDirectories()
-              createFile()
-            }
+            reportsDir.value!!.createCompilerReport("fir-${type.name.lowercase()}-$tag.txt")
           val lambda: (String) -> Unit = { text: String ->
             if (options.debug) {
               println(text)

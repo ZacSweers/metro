@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.ir.graph
 
 import dev.zacsweers.metro.compiler.Origins
+import dev.zacsweers.metro.compiler.createCompilerReport
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.graph.WrappedType.Canonical
 import dev.zacsweers.metro.compiler.graph.WrappedType.Provider
@@ -14,8 +15,6 @@ import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.renderSourceLocation
 import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
-import kotlin.io.path.createDirectories
-import kotlin.io.path.createParentDirectories
 import kotlin.io.path.writeText
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
@@ -46,8 +45,6 @@ internal class GraphMetadataReporter(
     codegenStats: CodegenStats?,
   ) {
     val reportsDir = context.reportsDir ?: return
-    val outputDir = reportsDir.resolve("graph-metadata")
-    outputDir.createDirectories()
 
     val bindings =
       bindingGraph
@@ -223,8 +220,7 @@ internal class GraphMetadataReporter(
     }
 
     val fileName = graphReportFileName(node.sourceGraph.kotlinFqName.asString(), "json", "graph-")
-    val outputFile = outputDir.resolve(fileName)
-    outputFile.createParentDirectories()
+    val outputFile = reportsDir.createCompilerReport("graph-metadata/$fileName")
     outputFile.writeText(json.encodeToString(JsonObject.serializer(), graphJson))
   }
 

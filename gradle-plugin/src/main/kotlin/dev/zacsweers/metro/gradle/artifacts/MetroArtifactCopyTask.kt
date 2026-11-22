@@ -2,10 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.gradle.artifacts
 
+import dev.zacsweers.metro.compiler.compilerReportFiles
 import dev.zacsweers.metro.gradle.capitalizeUS
 import kotlin.io.path.ExperimentalPathApi
+import kotlin.io.path.copyTo
 import kotlin.io.path.copyToRecursively
 import kotlin.io.path.createDirectories
+import kotlin.io.path.createParentDirectories
 import kotlin.io.path.deleteRecursively
 import kotlin.io.path.exists
 import org.gradle.api.DefaultTask
@@ -63,7 +66,15 @@ internal abstract class MetroArtifactCopyTask : DefaultTask(), MetroArtifacts {
         createDirectories()
       }
 
-    if (kotlincReportsDir.exists()) {
+    val reports = kotlincReportsDir.compilerReportFiles()
+    if (reports != null) {
+      for (report in reports) {
+        val output = reportsDir.resolve(kotlincReportsDir.relativize(report))
+        output.createParentDirectories()
+        report.copyTo(output, overwrite = true)
+      }
+    } else if (kotlincReportsDir.exists()) {
+      // Older compilers clear the entire directory before writing reports.
       kotlincReportsDir.copyToRecursively(reportsDir, overwrite = true, followLinks = false)
     } else {
       // Do nothing else, that compilation probably didn't run

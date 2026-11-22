@@ -12,6 +12,7 @@ import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.compat.IrGeneratedDeclarationsRegistrarCompat
+import dev.zacsweers.metro.compiler.createCompilerReport
 import dev.zacsweers.metro.compiler.createDiagnosticReportPath
 import dev.zacsweers.metro.compiler.diagnostics.DiagnosticBatch
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnostic
@@ -25,8 +26,6 @@ import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.io.File
 import java.nio.file.Path
 import kotlin.io.path.appendText
-import kotlin.io.path.createParentDirectories
-import kotlin.io.path.deleteIfExists
 import kotlin.io.path.writeText
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
@@ -286,11 +285,6 @@ internal fun writeDiagnostic(diagnosticKey: String, fileName: String, text: () -
 context(context: IrMetroContext)
 internal fun writeDiagnostic(diagnosticKey: String, fileName: () -> String, text: () -> String) {
   context.reportsDir
-    ?.resolve(createDiagnosticReportPath(diagnosticKey, fileName()))
-    ?.apply {
-      // Ensure that the path leading up to the file has been created
-      createParentDirectories()
-      deleteIfExists()
-    }
+    ?.createCompilerReport(createDiagnosticReportPath(diagnosticKey, fileName()))
     ?.writeText(text())
 }

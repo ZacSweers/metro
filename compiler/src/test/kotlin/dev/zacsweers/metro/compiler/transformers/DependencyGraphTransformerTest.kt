@@ -22,6 +22,25 @@ import org.junit.Test
 
 class DependencyGraphTransformerTest : MetroCompilerTest() {
 
+  @Test
+  fun `a new compilation clears only compiler reports`() {
+    val destination = temporaryFolder.newFolder()
+    val options = metroOptions.toBuilder().reportsDestination(destination.toPath()).build()
+    val notes = destination.resolve("notes.txt").apply { writeText("keep") }
+
+    compile(source("@DependencyGraph interface OldGraph"), options = options)
+    val metadata = destination.resolve("graph-metadata")
+    val oldGraph = metadata.resolve("graph-test-OldGraph.json")
+    assertThat(oldGraph.isFile).isTrue()
+
+    val unrelated = metadata.resolve("other.json").apply { writeText("{}") }
+    compile(source("@DependencyGraph interface NewGraph"), options = options)
+    assertThat(oldGraph.exists()).isFalse()
+    assertThat(metadata.resolve("graph-test-NewGraph.json").isFile).isTrue()
+    assertThat(unrelated.readText()).isEqualTo("{}")
+    assertThat(notes.readText()).isEqualTo("keep")
+  }
+
   // Won't work until we no longer look for the factory SAM function in interfaces
   // during nested callable name generation
   @Ignore
