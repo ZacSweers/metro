@@ -1,8 +1,15 @@
 /MissingMemberInjectionShouldFailBinding2.kt:22:39: error: [Metro/MissingBinding] No binding found for MembersInjector<ClassWithoutMembersInjector>
 
+  SubscopeGraph.membersInjectors -> @ForScope(AppSubscope::class) Map<KClass<*>, MembersInjector<*>>
+    -> @ForScope(AppSubscope::class) Map<KClass<*>, MembersInjector<*>>
+    -> MembersInjector<ClassWithoutMembersInjector>
+
   trace (in TestGraph.Impl.SubscopeGraphImpl):
       MembersInjector<ClassWithoutMembersInjector> is injected at
           SubscopeMultibindingModule.bindClassWithoutMembersInjector(…, instance)
+      @ForScope(AppSubscope::class) Map<KClass<*>, MembersInjector<*>> is a defined multibinding
+      @ForScope(AppSubscope::class) Map<KClass<*>, MembersInjector<*>> is requested at
+          SubscopeGraph.membersInjectors
 
   help: ensure MembersInjector<ClassWithoutMembersInjector> has an @Inject constructor or is
         provided by an @Provides or @Binds declaration visible to SubscopeGraphImpl

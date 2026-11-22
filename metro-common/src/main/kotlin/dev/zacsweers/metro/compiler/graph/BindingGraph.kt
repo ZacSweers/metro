@@ -181,6 +181,7 @@ public open class MutableBindingGraph<
 
     val deferrableDependencies = HashMap<TypeKey, Set<TypeKey>>()
     val implicitlyDeferrableKeys = HashSet<TypeKey>()
+    val missingEdges = mutableMapOf<TypeKey, MutableMap<TypeKey, ContextualTypeKey>>()
 
     /**
      * Build the full adjacency mapping of keys to all their dependencies.
@@ -239,22 +240,16 @@ public open class MutableBindingGraph<
               it.typeKey == missing && !it.hasDefault
             }
           if (contextKey != null) {
-            val stackCopy = stack.copy()
-            val stackEntry = stackCopy.newBindingStackEntry(contextKey, binding, roots)
-
-            // If there's a root entry for the missing binding, add it into the stack too
-            val matchingRootEntry =
-              roots.entries.firstOrNull { it.key.typeKey == binding.typeKey }?.value
-            matchingRootEntry?.let { stackCopy.push(it) }
-            stackCopy.withEntry(stackEntry) { reportMissingBinding(missing, stackCopy) }
+            missingEdges.getOrPut(source) { mutableMapOf() }[missing] = contextKey
+            missingBindings.getOrPut(missing) {
+              stack.newBindingStackEntry(contextKey, binding, roots)
+            }
           }
         }
       }
 
-    // Report all missing bindings _after_ building adjacency so we can backtrace where possible
-    missingBindings.forEach { (key, stack) ->
-      ensureActive()
-      reportMissingBinding(key, stack)
+    if (missingBindings.isNotEmpty()) {
+      reportMissingBindings(roots, fullAdjacency, missingEdges, missingBindings, ensureActive)
     }
 
     val sortedRootKeys = TreeSet<TypeKey>()
@@ -319,16 +314,62 @@ public open class MutableBindingGraph<
     }
   }
 
+  /** Reports the shortest route to each missing key, or its immediate request if unreachable. */
+  private fun reportMissingBindings(
+    roots: Map<ContextualTypeKey, BindingStackEntry>,
+    adjacency: Map<TypeKey, Set<TypeKey>>,
+    missingEdges: Map<TypeKey, Map<TypeKey, ContextualTypeKey>>,
+    missingBindings: Map<TypeKey, BindingStackEntry>,
+    ensureActive: () -> Unit,
+  ) {
+    // Include missing required dependencies only in the diagnostic index.
+    val diagnosticAdjacency =
+      adjacency +
+        missingEdges.mapValues { (source, targets) ->
+          ensureActive()
+          adjacency.getValue(source) + targets.keys
+        }
+
+    // An optional root with a fallback can't explain why a dependency is required.
+    val diagnosticRoots = roots.filterKeys { !it.hasDefault || it.typeKey in bindings }
+    val routes = DiagnosticRoutes(diagnosticRoots, diagnosticAdjacency)
+
+    for ((missing, fallback) in missingBindings) {
+      ensureActive()
+      val stack = newBindingStack()
+      val route =
+        routes.routeToRoot(missing, ensureActive) { source, target ->
+          val binding = bindings.getValue(source)
+          val request =
+            missingEdges[source]?.get(target)
+              ?: binding.dependencies.first {
+                ensureActive()
+                it.typeKey == target
+              }
+          stack.newBindingStackEntry(request, binding, roots)
+        }
+
+      if (route.isEmpty()) {
+        stack.push(fallback)
+      } else {
+        route.forEach(stack::push)
+      }
+
+      reportMissingBinding(missing, stack)
+    }
+  }
+
+  /** Resolves graph dependencies and saves a request site for each unresolved required key. */
   context(traceScope: TraceScope)
   private fun populateGraph(
     roots: Map<ContextualTypeKey, BindingStackEntry>,
     stack: BindingStack,
     ensureActive: () -> Unit,
-  ): Map<TypeKey, BindingStack> {
+  ): MutableMap<TypeKey, BindingStackEntry> {
     // Traverse all the bindings up front to
     // First ensure all the roots' bindings are present
     // Defer missing binding reporting until after we finish populating
-    val missingBindings = mutableMapOf<TypeKey, BindingStack>()
+    val missingBindings = mutableMapOf<TypeKey, BindingStackEntry>()
     for ((contextKey, entry) in roots) {
       ensureActive()
       if (contextKey.typeKey !in bindings) {
@@ -346,7 +387,7 @@ public open class MutableBindingGraph<
               }
           }
         } else if (!contextKey.hasDefault) {
-          stack.withEntry(entry) { missingBindings[contextKey.typeKey] = stack.copy() }
+          missingBindings[contextKey.typeKey] = entry
         }
       } else {
         val binding = bindings.getValue(contextKey.typeKey)
@@ -396,7 +437,8 @@ public open class MutableBindingGraph<
             onDependencyResolved?.invoke(binding, depKey, existing)
             continue
           }
-          stack.withEntry(stack.newBindingStackEntry(depKey, binding, roots)) {
+          val entry = stack.newBindingStackEntry(depKey, binding, roots)
+          stack.withEntry(entry) {
             // If the binding isn't present, we'll report it later
             val newBindings =
               trace("Compute new bindings") { computeBindings(depKey, bindings, stack) }
@@ -415,7 +457,7 @@ public open class MutableBindingGraph<
             } else if (depKey.hasDefault) {
               // Do nothing here, it has a default value and missing is ok
             } else {
-              missingBindings[typeKey] = stack.copy()
+              missingBindings[typeKey] = entry
             }
           }
         }
