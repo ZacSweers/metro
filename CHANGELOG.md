@@ -27,6 +27,7 @@ Changelog
 - **[IR]** Fix a `ClassCastException` when injecting a provided `Map<Class<*>, V>` with `enableKClassToClassInterop` enabled. Metro tried to convert keys that were already Java classes.
 - **[IR]** Fix a `NoSuchMethodError` when `createGraph()` tried to call a suspend function synchronously to get an extension receiver (e.g. `@Provides suspend fun next(): Int` for `@Provides fun Int.twice(): Long`).
 - **[IR]** Fix a compiler crash when two `@IntoSet` or `@IntoMap` functions have names with the same hash code, such as `provideAa` and `provideBB`.
+- **[IDEA-plugin]** Discard a file snapshot if its worker is canceled while reading it for the IDE index.
 
 1.6.0
 -----

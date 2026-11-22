@@ -101,9 +101,11 @@ public suspend fun <T, R> List<T>.parallelMapIndexed(
       launch(context) {
         try {
           for (index in input) {
-            // Channel fast paths skip cancellation checks. Bail before starting a read.
+            // Buffered channels can receive and send without checking cancellation.
             ensureActive()
-            completed.send(IndexedValue(index, read(index, get(index))))
+            val result = read(index, get(index))
+            ensureActive()
+            completed.send(IndexedValue(index, result))
           }
         } catch (failure: Throwable) {
           // A read can cancel itself independently of the pool's parent. Wake the collector so that
