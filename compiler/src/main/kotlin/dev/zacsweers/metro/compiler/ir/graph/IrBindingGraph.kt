@@ -1607,8 +1607,15 @@ internal class IrBindingGraph(
     var hasDisabledSuspendProviderUse = false
     val directMaps = mutableMapOf<IrTypeKey, IrBinding>()
     bindings.forEachValue { binding ->
-      if (binding.isDirectMap) {
-        directMaps[binding.typeKey] = binding
+      // A class map adapter preserves the source map's value wrappers.
+      val source =
+        if (binding is IrBinding.Alias && binding.kotlinClassMap != null) {
+          bindings[binding.aliasedType]
+        } else {
+          binding
+        }
+      if (source?.isDirectMap == true) {
+        directMaps[binding.typeKey] = source
       }
 
       if (suspendProvidersEnabled) {

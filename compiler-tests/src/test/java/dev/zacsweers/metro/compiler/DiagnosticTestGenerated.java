@@ -3039,6 +3039,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("ClassMapValueWrappers.kt")
+    public void testClassMapValueWrappers() {
+      run("ClassMapValueWrappers.kt");
+    }
+
+    @Test
     @TestMetadata("DaggerLazyClassKeyIsUnsupported.kt")
     public void testDaggerLazyClassKeyIsUnsupported() {
       run("DaggerLazyClassKeyIsUnsupported.kt");

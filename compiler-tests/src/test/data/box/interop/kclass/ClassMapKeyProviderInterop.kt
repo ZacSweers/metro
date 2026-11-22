@@ -16,11 +16,13 @@ interface ExampleGraph {
   fun provideGoodbye(): Greeting = GoodbyeGreeting()
 
   val greetings: Map<Class<*>, () -> Greeting>
+  val instances: Map<Class<*>, Greeting>
 }
 
 fun box(): String {
   val graph = createGraph<ExampleGraph>()
   val map = graph.greetings
+  assertIs<HelloGreeting>(graph.instances[HelloGreeting::class.java])
   assertEquals(2, map.size)
   // Verify keys are Class instances and values are providers
   for (key in map.keys) {

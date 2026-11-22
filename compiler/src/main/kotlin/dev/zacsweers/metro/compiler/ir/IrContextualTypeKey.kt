@@ -463,8 +463,7 @@ private fun IrSimpleType.asWrappedType(
     val valueWrappedType =
       valueType.typeOrFail.requireSimpleType().asWrappedType(patchMutableCollections, declaration)
 
-    // Normalize map key type for canonical representation (Class -> KClass)
-    val canonicalKeyType = keyType.typeOrFail.normalizeToKClassIfJavaClass()
+    val canonicalKeyType = keyType.typeOrFail
 
     // The map keeps its own nullability when we strip wrappers from its values.
     val canonicalMap =

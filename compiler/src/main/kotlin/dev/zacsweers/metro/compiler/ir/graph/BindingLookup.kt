@@ -32,11 +32,13 @@ import dev.zacsweers.metro.compiler.ir.ParentContextReader
 import dev.zacsweers.metro.compiler.ir.allowEmpty
 import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.asMemberOf
+import dev.zacsweers.metro.compiler.ir.classMapSource
 import dev.zacsweers.metro.compiler.ir.declarationMirrorFunctionOrNull
 import dev.zacsweers.metro.compiler.ir.deepRemapperFor
 import dev.zacsweers.metro.compiler.ir.graph.expressions.IrOptionalExpressionGenerator
 import dev.zacsweers.metro.compiler.ir.graph.expressions.optionalType
 import dev.zacsweers.metro.compiler.ir.graph.reporting.BindingDecisionCapture
+import dev.zacsweers.metro.compiler.ir.kotlinClassMapKey
 import dev.zacsweers.metro.compiler.ir.mapKeyType
 import dev.zacsweers.metro.compiler.ir.padForConsole
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
@@ -785,7 +787,10 @@ internal class BindingLookup(
           multibinding = { lookupMultibinding(contextKey, stack) },
           optional = { lookupOptionalBinding(contextKey, stack) },
           derived = { deriveBinding(contextKey, stack, onlyDynamic = false) },
-          implicit = { lookupImplicitBinding(contextKey, currentBindings, stack) },
+          implicit = {
+            lookupClassMapAdapter(contextKey, currentBindings, stack, onDuplicateBindings)
+              ?: lookupImplicitBinding(contextKey, currentBindings, stack)
+          },
         )
 
       val resolved = selected ?: emptySet()
@@ -797,6 +802,32 @@ internal class BindingLookup(
 
       resolved
     }
+
+  /** Only adapt a Kotlin class map after lookup exhausts the exact Java class key. */
+  context(context: IrMetroContext)
+  private fun lookupClassMapAdapter(
+    requested: IrContextualTypeKey,
+    currentBindings: ScatterMap<IrTypeKey, IrBinding>,
+    stack: IrBindingStack,
+    onDuplicateBindings: (IrTypeKey, List<IrBinding>) -> Unit,
+  ): Set<IrBinding>? {
+    val sourceKey = requested.typeKey.kotlinClassMapKey() ?: return null
+    val source = requested.classMapSource(sourceKey)
+    val matches = lookup(source, currentBindings, stack, onDuplicateBindings)
+    if (matches.none { !it.isTransient }) {
+      return null
+    }
+
+    val adapter =
+      IrBinding.Alias(
+        typeKey = requested.typeKey,
+        aliasedType = sourceKey,
+        bindsCallable = null,
+        parameters = Parameters.empty(),
+        kotlinClassMap = source,
+      )
+    return setOf(adapter)
+  }
 
   /**
    * Returns the binding registered for [contextKey]'s key. Without one, a dynamic generic candidate

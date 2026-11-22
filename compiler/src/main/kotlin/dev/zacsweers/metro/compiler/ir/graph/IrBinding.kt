@@ -478,6 +478,10 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     val aliasedType: IrTypeKey,
     val bindsCallable: BindsCallable?,
     override val parameters: Parameters,
+    /**
+     * A synthetic alias converts the keys of this map when requested through Java class interop.
+     */
+    val kotlinClassMap: IrContextualTypeKey? = null,
   ) : StaticBinding {
     val ir = bindsCallable?.function
     override val annotations: MetroAnnotations<IrAnnotation> =
@@ -497,7 +501,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
 
     override val scope: IrAnnotation? = null
     override val dependencies: List<IrContextualTypeKey> by memoize {
-      listOf(IrContextualTypeKey.create(aliasedType))
+      listOf(kotlinClassMap ?: IrContextualTypeKey.create(aliasedType))
     }
     override val nameHint: String by memoize {
       ir?.name?.asString() ?: typeKey.type.rawType().name.asString()

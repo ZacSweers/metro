@@ -5548,6 +5548,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       }
 
       @Test
+      @TestMetadata("DirectClassMapKeyInterop.kt")
+      public void testDirectClassMapKeyInterop() {
+        run("DirectClassMapKeyInterop.kt");
+      }
+
+      @Test
       @TestMetadata("KClassMapKeyInterop.kt")
       public void testKClassMapKeyInterop() {
         run("KClassMapKeyInterop.kt");

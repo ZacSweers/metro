@@ -276,7 +276,7 @@ internal class BindingPropertyContext(
 
     // For aliases, try the aliased target
     bindingGraph.findBinding(key.typeKey)?.let {
-      if (it is IrBinding.Alias) {
+      if (it is IrBinding.Alias && it.kotlinClassMap == null) {
         return get(key.withIrTypeKey(it.aliasedType), searchParents)
       }
     }

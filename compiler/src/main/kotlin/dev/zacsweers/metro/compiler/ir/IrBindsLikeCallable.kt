@@ -282,11 +282,9 @@ internal fun MetroSimpleFunction.toMultibindsCallable(
   isInterop: Boolean,
   callableMetadata: IrCallableMetadata = ir.irCallableMetadata(annotations, isInterop),
 ): MultibindsCallable {
-  return MultibindsCallable(
-    callableMetadata,
-    IrContextualTypeKey.from(callableMetadata.function, patchMutableCollections = isInterop)
-      .typeKey,
-  )
+  val key =
+    IrContextualTypeKey.from(callableMetadata.function, patchMutableCollections = isInterop).typeKey
+  return MultibindsCallable(callableMetadata, key.kotlinClassMapKey() ?: key)
 }
 
 context(context: IrMetroContext)
