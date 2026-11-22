@@ -63,7 +63,6 @@ import dev.zacsweers.metro.compiler.ir.trackClassLookup
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.ir.typeRemapperFor
 import dev.zacsweers.metro.compiler.memoize
-import dev.zacsweers.metro.compiler.memoized
 import dev.zacsweers.metro.compiler.newName
 import dev.zacsweers.metro.compiler.proto.MemberInjectionsProto
 import dev.zacsweers.metro.compiler.reportCompilerBug
@@ -636,13 +635,12 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
       }
   }
 
+  /** Looks up each class's own parameters in one pass through the hierarchy. */
   private fun IrClass.getOrComputeMemberInjectParameters(): Map<ClassId, List<Parameters>> {
-    // Compute supertypes once - we'll need them for either cached lookup or fresh computation
     val allTypes =
       allSupertypesSequence(excludeSelf = false, excludeAny = true)
         .mapNotNull { it.rawTypeOrNull() }
         .filterNot { it.isInterface }
-        .memoized()
 
     val result =
       processTypes(allTypes) { clazz, classId, nameAllocator ->
@@ -1006,7 +1004,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
   /**
    * Common logic for processing types and collecting injectable member parameters.
    *
-   * @param types The precomputed sequence of types to process
+   * @param types The classes to visit starting from the most derived class
    * @param membersExtractor Function that takes (clazz, classId, nameAllocator) and returns a list
    *   of Parameters for that class
    */
