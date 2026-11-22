@@ -42,6 +42,15 @@ internal inline fun <reified T : Any> Any.expectAsOrNull(): T? {
   return this
 }
 
+/** FIR and IR allocate one helper name per injected member in declaration order. */
+internal class MemberInjectorNames {
+  // The inject prefix keeps generated names clear of Kotlin keywords.
+  private val allocator =
+    NameAllocator(preallocateKeywords = false, mode = NameAllocator.Mode.COUNT)
+
+  fun allocate(member: Name): Name = allocator.newName("inject${member.capitalizeUS()}").asName()
+}
+
 internal fun Name.capitalizeUS(): Name {
   val newName =
     asString().replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.US) else it.toString() }

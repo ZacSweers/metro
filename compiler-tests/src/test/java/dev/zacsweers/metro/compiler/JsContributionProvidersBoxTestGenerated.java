@@ -4593,6 +4593,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     }
 
     @Test
+    @TestMetadata("OverloadedInjectedMethods.kt")
+    public void testOverloadedInjectedMethods() {
+      run("OverloadedInjectedMethods.kt");
+    }
+
+    @Test
     @TestMetadata("PropertyInjectionUseSite.kt")
     public void testPropertyInjectionUseSite() {
       run("PropertyInjectionUseSite.kt");

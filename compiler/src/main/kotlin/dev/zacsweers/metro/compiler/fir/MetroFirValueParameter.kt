@@ -2,8 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir
 
-import dev.zacsweers.metro.compiler.asName
-import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.generatedContextParameterName
 import dev.zacsweers.metro.compiler.letIf
 import dev.zacsweers.metro.compiler.memoize
@@ -22,14 +20,12 @@ internal interface MetroFirValueParameter {
   val name: Name
   val contextKey: FirContextualTypeKey
   val isAssisted: Boolean
-  val memberInjectorFunctionName: Name
 
   companion object {
     operator fun invoke(
       session: FirSession,
       symbol: FirCallableSymbol<*>,
       name: Name? = null,
-      memberKey: Name? = null,
       wrapInProvider: Boolean = false,
       providerClassId: ClassId = Symbols.ClassIds.metroProvider,
       stripLazyIfWrappedInProvider: Boolean = false,
@@ -54,9 +50,6 @@ internal interface MetroFirValueParameter {
               symbol.resolvedReturnType.classId?.let { generatedContextParameterName(it) }
                 ?: symbol.name
             }
-        }
-        override val memberInjectorFunctionName: Name by memoize {
-          "inject${(memberKey ?: this.name).capitalizeUS().asString()}".asName()
         }
         override val isAssisted: Boolean by memoize {
           symbol.isAnnotatedWithAny(session, session.classIds.assistedAnnotations)
