@@ -11,6 +11,7 @@ Changelog
 ### Fixes
 
 - **[Compiler]** Preserve unrelated files when clearing old reports from `reportsDestination`.
+- **[FIR]** Report abstract properties on `@AssistedFactory` and `@DependencyGraph.Factory` at compile time. Reading one on an assisted factory could throw `AbstractMethodError`.
 - **[FIR]** `@ElementsIntoSet` could put lists in a `Set<String>` when a provider returned `Batch<String>` and `Batch<T>` implemented `List<List<T>>`. Metro now reports a compile error. Declare `Set<List<String>>` and return `batch.toSet()`.
 - **[FIR/IR]** Fix `@get:` site targets for `@OptionalBinding`.
 - **[FIR/IR]** Fix a bug where a provider returning `Map<K, V>?` could supply `null` to a non-null `Map<K, V>` accessor.
