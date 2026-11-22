@@ -21,7 +21,6 @@ import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.ConeKotlinTypeProjection
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneType
-import org.jetbrains.kotlin.fir.types.constructType
 import org.jetbrains.kotlin.fir.types.hasFlexibleMarkedNullability
 import org.jetbrains.kotlin.fir.types.typeContext
 import org.jetbrains.kotlin.fir.types.withNullability
@@ -219,9 +218,7 @@ private fun ConeKotlinType.asWrappedType(session: FirSession): WrappedType<ConeK
     // Recursively analyze the value type
     val valueWrappedType = valueType.asWrappedType(session)
 
-    return WrappedType.Map(keyType, valueWrappedType) {
-      session.metroFirBuiltIns.mapClassSymbol.constructType(arrayOf(keyType, valueType))
-    }
+    return WrappedType.Map(keyType, valueWrappedType) { this }
   }
 
   // Check if this is a Provider type
