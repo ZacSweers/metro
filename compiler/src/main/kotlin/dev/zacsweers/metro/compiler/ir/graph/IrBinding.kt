@@ -67,6 +67,29 @@ import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.StandardClassIds
+
+/** Map multibindings synthesize value wrappers. Other maps supply their declared values. */
+internal val IrBinding.isDirectMap: Boolean
+  get() = typeKey.classId == StandardClassIds.Map && this !is IrBinding.Multibinding
+
+/**
+ * Recovers the value wrappers from the declaration after its binding key has been canonicalized.
+ */
+context(context: IrMetroContext)
+internal fun IrBinding.declaredMapType(): IrContextualTypeKey =
+  when (this) {
+    is IrBinding.Provided -> providerFactory.contextualTypeKey
+    is IrBinding.Alias -> {
+      val function = bindsCallable?.function
+      if (function == null) {
+        contextualTypeKey
+      } else {
+        IrContextualTypeKey.from(function).withIrTypeKey(typeKey)
+      }
+    }
+    else -> contextualTypeKey
+  }
 
 internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextualTypeKey> {
   override val typeKey: IrTypeKey

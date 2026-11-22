@@ -6,10 +6,9 @@
       Map<String, String> is injected at FooComponent.provideFoo(…, bar)
       Int is requested at FooComponent.value
 
-  A directly-provided 'Map<String, String>' binding exists, but direct Map bindings cannot satisfy
-  'Map<String, Function0<String>>' requests. Provider-, Lazy-, or SuspendProvider-wrapped map values
-  (e.g., Map<K, Provider<V>>) only work with a Map multibinding created with `@IntoMap` or
-  `@Multibinds`.
+  The directly provided 'Map<String, String>' has a different value type from 'Map<String,
+  Function0<String>>'. Only a map multibinding created with `@IntoMap` or `@Multibinds` can adapt
+  its value wrappers.
       IncompatibleMapValueType.kt:16:16
         @Provides bar: kotlin.collections.Map<kotlin.String, kotlin.String>
                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -27,10 +26,9 @@
       Map<String, String> is injected at SuspendFooComponent.provideFoo(…, bar)
       Int is requested at SuspendFooComponent.value
 
-  A directly-provided 'Map<String, String>' binding exists, but direct Map bindings cannot satisfy
-  'Map<String, SuspendFunction0<String>>' requests. Provider-, Lazy-, or SuspendProvider-wrapped map
-  values (e.g., Map<K, Provider<V>>) only work with a Map multibinding created with `@IntoMap` or
-  `@Multibinds`.
+  The directly provided 'Map<String, String>' has a different value type from 'Map<String,
+  SuspendFunction0<String>>'. Only a map multibinding created with `@IntoMap` or `@Multibinds` can
+  adapt its value wrappers.
       IncompatibleMapValueType.kt:29:16
         @Provides bar: kotlin.collections.Map<kotlin.String, kotlin.String>
                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

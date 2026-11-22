@@ -15,6 +15,7 @@ Changelog
 - **[IR]** Record `@Inject` methods in declaration order in library metadata. Sorting them by name could swap two `@Named` arguments of the same type when another module injected the class.
 - **[IR]** Fix a `ClassCastException` in generated factories that passed an `@Provides` method's extension receiver or context parameter in the argument slot for the graph.
 - **[IR]** Fix `@set:Inject` writing directly to the backing field and skipping the custom setter.
+- **[IR]** If a graph already exposed a provided `Map<String, String>`, Metro could reuse it for a `Map<String, () -> String>` accessor. Metro now reports a missing binding for the second accessor.
 
 1.6.0
 -----

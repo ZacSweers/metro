@@ -65,6 +65,8 @@ open class AbstractJsDiagnosticTest : AbstractKotlinCompilerTest() {
         } else {
           useHandlers(::IrDiagnosticsHandler)
         }
+        // Stop after collecting IR errors so the phase checker sees where compilation failed.
+        useHandlers(noIrCompilationErrorsHandlerCtor)
       }
 
       configureLoweredIrHandlersStep {
