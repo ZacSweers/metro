@@ -257,9 +257,15 @@ tasks.withType<Test>().configureEach {
 }
 
 tasks.named<Test>("functionalTest") {
-  // Native and web artifacts are consumed outside the test JVM classpath.
+  // The fixtures resolve native and web artifacts outside the test JVM classpath.
+  val repository = rootProject.fileTree(rootProject.layout.buildDirectory.dir("functionalTestRepo"))
+  if (!project.version.toString().endsWith("-SNAPSHOT", ignoreCase = true)) {
+    // Fixed versions resolve by filename. Maven rewrites its indexes with each publication.
+    repository.exclude("**/maven-metadata.xml*")
+  }
+
   inputs
-    .dir(rootProject.layout.buildDirectory.dir("functionalTestRepo"))
+    .files(repository)
     .withPropertyName("functionalTestRepository")
     .withPathSensitivity(PathSensitivity.RELATIVE)
   maxParallelForks = functionalTestMaxParallelForks.get()
@@ -272,6 +278,9 @@ tasks.named<Test>("functionalTest") {
   when (functionalTestMacosPartition) {
     "native" -> nativePatterns.forEach { filter.includeTestsMatching(it) }
     "portable" -> nativePatterns.forEach { filter.excludeTestsMatching(it) }
+  }
+  providers.environmentVariable("METRO_TESTKIT_DIR").orNull?.let {
+    systemProperty("org.gradle.testkit.dir", it)
   }
   testkitConfigurationCache.orNull?.let { systemProperty("metro.testkitConfigurationCache", it) }
   systemProperty("metro.testkitConfigurationCacheReadOnly", testkitConfigurationCacheReadOnly.get())
