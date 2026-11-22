@@ -6305,6 +6305,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
     }
 
     @Test
+    @TestMetadata("ExtensionReceiverInSuspendFactory.kt")
+    public void testExtensionReceiverInSuspendFactory() {
+      run("ExtensionReceiverInSuspendFactory.kt");
+    }
+
+    @Test
     @TestMetadata("ForceSuspendProviderGetters.kt")
     public void testForceSuspendProviderGetters() {
       run("ForceSuspendProviderGetters.kt");

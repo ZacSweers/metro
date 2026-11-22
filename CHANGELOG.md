@@ -19,6 +19,7 @@ Changelog
 - **[IR]** Fix `@set:Inject` writing directly to the backing field and skipping the custom setter.
 - **[IR]** If a graph already exposed a provided `Map<String, String>`, Metro could reuse it for a `Map<String, () -> String>` accessor. Metro now reports a missing binding for the second accessor.
 - **[IR]** Fix a `ClassCastException` when injecting a provided `Map<Class<*>, V>` with `enableKClassToClassInterop` enabled. Metro tried to convert keys that were already Java classes.
+- **[IR]** Fix a `NoSuchMethodError` when `createGraph()` tried to call a suspend function synchronously to get an extension receiver (e.g. `@Provides suspend fun next(): Int` for `@Provides fun Int.twice(): Long`).
 
 1.6.0
 -----
