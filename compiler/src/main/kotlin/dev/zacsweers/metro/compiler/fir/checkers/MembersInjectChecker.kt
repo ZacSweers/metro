@@ -128,7 +128,7 @@ internal object MembersInjectChecker : FirClassChecker(MppCheckerKind.Common) {
           MetroDiagnostics.MEMBERS_INJECT_ERROR,
           "Injected functions cannot be suspend functions.",
         )
-      } else if (annotations.isComposable) {
+      } else if (callable is FirNamedFunctionSymbol && annotations.isComposable) {
         reporter.reportOn(
           callable.source,
           MetroDiagnostics.MEMBERS_INJECT_ERROR,

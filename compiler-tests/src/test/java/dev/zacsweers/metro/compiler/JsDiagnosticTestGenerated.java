@@ -3059,6 +3059,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("MultiplePropertyBindingAnnotations.kt")
+    public void testMultiplePropertyBindingAnnotations() {
+      run("MultiplePropertyBindingAnnotations.kt");
+    }
+
+    @Test
     @TestMetadata("ParameterlessBindsContributionProviders.kt")
     public void testParameterlessBindsContributionProviders() {
       run("ParameterlessBindsContributionProviders.kt");
