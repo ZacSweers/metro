@@ -3,10 +3,17 @@
 import foundry.gradle.properties.PropertyResolver
 import foundry.gradle.properties.StartParameterProperties
 import foundry.gradle.properties.createPropertiesProvider
+import org.commonmark.parser.Parser
+import org.commonmark.renderer.html.HtmlRenderer
 import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask
 import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
+
+buildscript {
+  repositories { mavenCentral() }
+  dependencies { classpath(libs.commonmark) }
+}
 
 plugins {
   alias(libs.plugins.kotlin.jvm)
@@ -144,6 +151,18 @@ val pluginVersion =
       versionName
     }
   }
+
+// The plugin descriptor expects HTML. Render only the selected release notes.
+val ideaChangeNotes =
+  providers
+    .fileContents(layout.projectDirectory.file("../CHANGELOG.md"))
+    .asText
+    .zip(versionProvider, ::ideaReleaseNotes)
+    .filter(String::isNotBlank)
+    .map { markdown ->
+      val notes = Parser.builder().build().parse(markdown)
+      HtmlRenderer.builder().escapeHtml(true).sanitizeUrls(true).build().render(notes)
+    }
 
 val defaultPublishingChannels = isSnapshotVersion.map { snapshotVersion ->
   if (snapshotVersion) {
@@ -337,6 +356,7 @@ intellijPlatform {
     id.set("dev.zacsweers.metro.idea")
     name.set("Metro")
     version.set(pluginVersion)
+    changeNotes.set(ideaChangeNotes)
     description.set(
       providers.fileContents(layout.projectDirectory.file("marketplace-description.html")).asText,
     )
