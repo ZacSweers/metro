@@ -13,6 +13,9 @@ import dev.zacsweers.metro.compiler.graph.WrappedType
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.psi.KtAnnotationEntry
 
+/** Identifies the collection and its contributing declaration across graph contexts. */
+internal class MultibindingContribution(val bindingId: String, val elementId: String)
+
 /**
  * A declaration that originates a binding for [typeKey]. The Analysis API analog of the compiler's
  * `IrBinding`, with subtypes named after their IR counterparts. The pointer usually targets a
@@ -41,9 +44,12 @@ internal sealed interface KaBinding :
   val implementationName: String?
     get() = null
 
-  /** The multibinding id this binding contributes to, or null for regular bindings. */
-  val multibindingId: String?
+  /** Captured during extraction so validation can identify the element without reading PSI. */
+  val multibindingContribution: MultibindingContribution?
     get() = null
+
+  val multibindingId: String?
+    get() = multibindingContribution?.bindingId
 
   /** The contributed or injected class a binding originates from. */
   val originClassId: ClassId?
@@ -176,7 +182,7 @@ internal sealed interface KaBinding :
     typeKey: KaTypeKey,
     override val scope: KaAnnotationSnapshot? = null,
     override val implementationName: String? = null,
-    override val multibindingId: String? = null,
+    override val multibindingContribution: MultibindingContribution? = null,
     override val mapKeyValue: String? = null,
     override val originClassId: ClassId? = null,
     override val containerId: ClassId? = null,
@@ -210,7 +216,7 @@ internal sealed interface KaBinding :
     val consumedKey: KaContextualTypeKey?,
     override val scope: KaAnnotationSnapshot? = null,
     override val implementationName: String? = null,
-    override val multibindingId: String? = null,
+    override val multibindingContribution: MultibindingContribution? = null,
     override val mapKeyValue: String? = null,
     override val originClassId: ClassId? = null,
     override val containerId: ClassId? = null,
@@ -337,7 +343,7 @@ internal sealed interface KaBinding :
     /** Whether this node stands in for a binding scoped to an ancestor graph. */
     val isParentScoped: Boolean = false,
     /** Collection information survives parent delegation for duplicate map-key checks. */
-    override val multibindingId: String? = null,
+    override val multibindingContribution: MultibindingContribution? = null,
     override val mapKeyValue: String? = null,
   ) : KaBinding {
     override val dependencies: List<KaContextualTypeKey> = listOf(ownerKey.canonicalContextKey())

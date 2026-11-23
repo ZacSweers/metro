@@ -413,7 +413,7 @@ internal class KaBindingLookup(
         ownerKey = parentKey,
         accessorIsSuspend = parentTransitiveSuspend(binding),
         isParentScoped = true,
-        multibindingId = binding.multibindingId,
+        multibindingContribution = binding.multibindingContribution,
         mapKeyValue = binding.mapKeyValue,
       )
     }
@@ -497,8 +497,8 @@ internal class KaBindingLookup(
     contributions: List<KaBinding>,
     declarations: List<KaBinding.Multibinding>,
   ): Set<KaBinding> {
-    val elementKeys = contributions.mapIndexed { i, contribution ->
-      val elementId = "${contribution.originClassId?.asFqNameString() ?: "element"}#$i"
+    val elementKeys = contributions.map { contribution ->
+      val elementId = checkNotNull(contribution.multibindingContribution).elementId
       val qualifier =
         KaAnnotationSnapshot(
           MULTIBINDING_ELEMENT_CLASS_ID,
@@ -561,7 +561,7 @@ private fun KaBinding.withElementKey(elementKey: KaTypeKey): KaBinding {
         typeKey = elementKey,
         scope = scope,
         implementationName = implementationName,
-        multibindingId = multibindingId,
+        multibindingContribution = multibindingContribution,
         mapKeyValue = mapKeyValue,
         originClassId = originClassId,
         containerId = containerId,
@@ -594,7 +594,7 @@ private fun KaBinding.Alias.copy(
     consumedKey = consumedKey,
     scope = scope,
     implementationName = implementationName,
-    multibindingId = multibindingId,
+    multibindingContribution = multibindingContribution,
     mapKeyValue = mapKeyValue,
     originClassId = originClassId,
     containerId = containerId,

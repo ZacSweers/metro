@@ -4,6 +4,10 @@ package dev.zacsweers.metro.compiler.graph
 
 import dev.zacsweers.metro.compiler.graph.identity.TypeIdentity
 import dev.zacsweers.metro.compiler.graph.identity.TypeKeyIdentity
+import java.util.Objects
+import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.FqName
+import org.jetbrains.kotlin.name.Name
 
 /**
  * A binding key made of a type and an optional qualifier.
@@ -53,4 +57,43 @@ public fun createMapBindingId(
 ): String {
   // Encoded names escape `|`, so the separator can't be confused with either part.
   return "${mapKeyType.encoded}|${elementTypeKey.computeMultibindingId()}"
+}
+
+/**
+ * Identifies a contributor across graphs. Include all receivers in [parameterTypes] in declaration
+ * order. For a property [callableName] names its getter. A missing getter has no [returnType].
+ */
+public fun multibindingElementId(
+  owner: FqName,
+  name: Name,
+  isSuspend: Boolean,
+  parameterTypes: List<TypeIdentity>,
+  returnType: TypeIdentity?,
+  callableName: Name = name,
+): String {
+  // Element IDs sort lexically. Keep the old hash prefix to preserve collection iteration order.
+  val rawNames = parameterTypes.map { type ->
+    (type as? TypeIdentity.Class)?.let { ClassId.fromString(it.classId, false).asSingleFqName() }
+  }
+  val order = Objects.hash(owner, name, isSuspend, rawNames)
+  val fqName = owner.child(callableName)
+  val signature =
+    if (returnType == null) {
+      "${fqName.asString()}: null"
+    } else {
+      callableDeclarationId(fqName, parameterTypes, returnType)
+    }
+
+  return "$order#$signature"
+}
+
+/** Encodes the full signature even for private declarations that lack an IR symbol signature. */
+public fun callableDeclarationId(
+  fqName: FqName,
+  parameterTypes: List<TypeIdentity>,
+  returnType: TypeIdentity,
+): String = buildString {
+  append(fqName.asString())
+  parameterTypes.joinTo(this, separator = ",", prefix = "(", postfix = "): ") { it.encoded }
+  append(returnType.encoded)
 }

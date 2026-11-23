@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph.reporting
 
+import dev.zacsweers.metro.compiler.graph.callableDeclarationId
 import dev.zacsweers.metro.compiler.graph.explanation.BindingCandidateStatus
 import dev.zacsweers.metro.compiler.graph.explanation.BindingDeclaration
 import dev.zacsweers.metro.compiler.graph.explanation.BindingExplanationCandidate
@@ -47,21 +48,20 @@ private fun IrDeclarationWithName.declarationFqName(): String =
   }
 
 /** Encodes a qualified declaration signature without depending on source offsets or visibility. */
-internal fun IrDeclarationWithName.bindingDeclarationId(): String =
+private fun IrDeclarationWithName.bindingDeclarationId(): String =
   when (this) {
     is IrValueParameter -> {
       val owner = parent as? IrFunction
       val ownerId = owner?.bindingDeclarationId() ?: parent.kotlinFqName.asString()
       "$ownerId#${name.asString()}"
     }
+
     is IrFunction ->
-      buildString {
-        append(kotlinFqName.asString())
-        append('(')
-        append(parameters.joinToString(",") { it.type.typeIdentity().encoded })
-        append("): ")
-        append(returnType.typeIdentity().encoded)
-      }
+      callableDeclarationId(
+        kotlinFqName,
+        parameters.map { it.type.typeIdentity() },
+        returnType.typeIdentity(),
+      )
     is IrProperty -> "${declarationFqName()}: ${getter?.returnType?.typeIdentity()?.encoded}"
     else -> declarationFqName()
   }

@@ -19,6 +19,7 @@ import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaContextualTypeKey
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
 import dev.zacsweers.metro.idea.model.KaTypeKey
+import dev.zacsweers.metro.idea.model.MultibindingContribution
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.psi.KtAnnotationEntry
 import org.jetbrains.kotlin.psi.KtElement
@@ -44,8 +45,8 @@ internal class BindingData(
   val implementationName: String?,
   /** For alias bindings, the key of the source/impl binding this delegates to. */
   val consumedKey: KaContextualTypeKey? = null,
-  /** For multibinding contributions, the multibinding id. See [KaBinding]. */
-  val multibindingId: String? = null,
+  /** See [KaBinding.multibindingContribution]. */
+  val multibindingContribution: MultibindingContribution? = null,
   /** See [KaBinding.originClassId]. */
   val originClassId: ClassId? = null,
   /** See [KaBinding.replaces]. */
@@ -81,6 +82,9 @@ internal class BindingData(
   /** See [KaBinding.genericSignature]. */
   val genericSignature: GenericBindingSignature? = null,
 ) {
+  val multibindingId: String?
+    get() = multibindingContribution?.bindingId
+
   /** All dependencies used for graph traversal. */
   val dependencies: List<KaContextualTypeKey> =
     if (kind == Kind.CONSTRUCTOR_INJECTED) {

@@ -6,11 +6,10 @@ import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.graph.computeMultibindingId
 import dev.zacsweers.metro.compiler.graph.createMapBindingId
+import dev.zacsweers.metro.compiler.graph.multibindingElementId
 import dev.zacsweers.metro.compiler.ir.graph.IrBinding
-import dev.zacsweers.metro.compiler.ir.graph.reporting.bindingDeclarationId
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
-import java.util.Objects
 import org.jetbrains.kotlin.builtins.StandardNames
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.builders.irString
@@ -91,14 +90,14 @@ internal val IrOverridableDeclaration<*>.multibindingElementId: String
         is IrSimpleFunction -> this
       }
 
-    // Element IDs sort lexically. Keep the old hash prefix to preserve collection iteration order.
-    val isSuspend = function?.isSuspend == true
-    val params = function?.parameters.orEmpty().map { it.type.rawType().kotlinFqName }
-    val order = Objects.hash(parent.kotlinFqName, name, isSuspend, params)
-
-    // Private contributors can lack an IR symbol signature.
-    val signature = (function ?: this).bindingDeclarationId()
-    return "$order#$signature"
+    return multibindingElementId(
+      owner = parent.kotlinFqName,
+      name = name,
+      isSuspend = function?.isSuspend == true,
+      parameterTypes = function?.parameters.orEmpty().map { it.type.typeIdentity() },
+      returnType = function?.returnType?.typeIdentity(),
+      callableName = function?.name ?: name,
+    )
   }
 
 internal fun createMapBindingId(mapKey: IrType, elementTypeKey: IrTypeKey): String {

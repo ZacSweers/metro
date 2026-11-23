@@ -218,7 +218,7 @@ internal class CompilerContractReader(
     val rawBindings = metadata.getValue("bindings").jsonArray.objects().map(::RawCompilerBinding)
     // The IDE contract compares rendered keys. Multibinding sources only carry encoded keys.
     val renderedKeys = rawBindings.associate { it.encodedKey to it.key }
-    val keyMap = canonicalKeyMap(rawBindings.map { KeyEntry(it.key, it.declaration) })
+    val keyMap = rawBindings.associate { it.key to normalizeKey(it.key, it.generatedDeclaration) }
     val bindings =
       rawBindings
         .map { raw ->
@@ -270,10 +270,12 @@ internal class CompilerContractReader(
         .filter(String::isNotBlank)
         .map { implKeyMap[it] ?: it }
         .distinct()
-    val missingEntries = rawKeys.filterNot(knownKeys::containsKey).map { KeyEntry(it, null) }
-    val fallbackMap = canonicalKeyMap(missingEntries)
-    val keys = rawKeys.map { knownKeys[it] ?: fallbackMap.getValue(it) }
-    return if (sort) keys.sorted() else keys
+    val keys = rawKeys.map { knownKeys[it] ?: normalizeRender(it) }
+    return if (sort) {
+      keys.sorted()
+    } else {
+      keys
+    }
   }
 
   private fun readDiagnostics(report: String): List<DiagnosticContract> {
@@ -350,9 +352,12 @@ internal fun ValidationContract.Companion.fromIdea(
 ): ValidationContract {
   val rawBindings = mutableListOf<RawIdeaBinding>()
   result.bindings.forEach { key, binding -> rawBindings += RawIdeaBinding(key, binding) }
-  val typeKeyMap = canonicalKeyMap(rawBindings.map { KeyEntry(it.typeKey, it.declaration) })
-  val contextualKeyMap =
-    canonicalKeyMap(rawBindings.map { KeyEntry(it.contextualKey, it.declaration) })
+  val typeKeyMap = rawBindings.associate {
+    it.typeKey to normalizeKey(it.typeKey, it.generatedDeclaration)
+  }
+  val contextualKeyMap = rawBindings.associate {
+    it.contextualKey to normalizeKey(it.contextualKey, it.generatedDeclaration)
+  }
 
   val roots =
     index
@@ -461,6 +466,9 @@ private class RawCompilerBinding(json: JsonObject) {
   val encodedKey = json.getValue("key").jsonPrimitive.content
   val key = json.getValue("renderedKey").jsonPrimitive.content
   val declaration = json["declaration"]?.jsonPrimitive?.contentOrNull
+  val generatedDeclaration = declaration.takeIf {
+    json.getValue("isSynthetic").jsonPrimitive.boolean
+  }
   val scope = json["scope"]?.jsonPrimitive?.contentOrNull
   val dependencies =
     json.getValue("dependencies").jsonArray.objects().map { dependency ->
@@ -485,9 +493,13 @@ private class RawIdeaBinding(val key: KaTypeKey, val binding: KaBinding) {
   val declaration =
     binding.originClassId?.shortClassName?.asString()
       ?: (binding.pointer.element as? KtNamedDeclaration)?.name
+  val generatedDeclaration =
+    when (binding) {
+      is KaBinding.Alias -> declaration.takeIf { binding.isClassContribution }
+      is KaBinding.Provided -> declaration.takeIf { binding.isClassContribution }
+      else -> null
+    }
 }
-
-private data class KeyEntry(val raw: String, val declaration: String?)
 
 /** Maps generated nested implementation names onto the source graph path used by the IDE. */
 private fun generatedGraphKeys(graphPath: List<String>): Map<String, String> = buildMap {
@@ -500,39 +512,19 @@ private fun generatedGraphKeys(graphPath: List<String>): Map<String, String> = b
   }
 }
 
-private fun canonicalKeyMap(entries: List<KeyEntry>): Map<String, String> {
-  val direct = mutableMapOf<String, String>()
-  val elements = mutableMapOf<String, MutableList<ElementKey>>()
-  for (entry in entries.distinctBy(KeyEntry::raw)) {
-    val normalized = normalizeRender(entry.raw)
-    val match = MULTIBINDING_ELEMENT.matchEntire(normalized)
-    if (match == null) {
-      direct[entry.raw] = normalized
-      continue
-    }
-    val element =
-      ElementKey(entry.raw, match.groupValues[1], match.groupValues[2], entry.declaration)
-    elements.getOrPut(element.signature) { mutableListOf() } += element
+/**
+ * Compare full element IDs for authored callables. The IDE sees the class behind a generated
+ * member.
+ */
+private fun normalizeKey(raw: String, generatedDeclaration: String?): String {
+  val normalized = normalizeRender(raw)
+  if (generatedDeclaration == null) {
+    return normalized
   }
-  for (group in elements.values) {
-    group
-      .sortedWith(compareBy<ElementKey>({ it.declaration.orEmpty() }, { it.raw }))
-      .forEachIndexed { index, element ->
-        direct[element.raw] =
-          "@dev.zacsweers.metro.internal.MultibindingElement(\"${element.bindingId}\", \"#$index\") ${element.type}"
-      }
-  }
-  return direct
-}
 
-private data class ElementKey(
-  val raw: String,
-  val bindingId: String,
-  val type: String,
-  val declaration: String?,
-) {
-  val signature: String
-    get() = "$bindingId|$type"
+  val match = MULTIBINDING_ELEMENT.matchEntire(normalized) ?: return normalized
+  val elementId = checkNotNull(match.groups[1])
+  return normalized.replaceRange(elementId.range, generatedDeclaration)
 }
 
 private fun JsonObject.toRootContract(): RootContract {
@@ -610,5 +602,5 @@ private val DIAGNOSTIC_HEADER = Regex(""".*\[Metro/([^]]+)] (.*)""")
 private val ANNOTATION_ARGUMENT_NAME = Regex("""([,(]\s*)[A-Za-z_][A-Za-z0-9_]*\s*=\s*""")
 private val ANNOTATION_SPAN = Regex("""@[A-Za-z0-9_.]+\([^)]*\)""")
 private val MULTIBINDING_ELEMENT =
-  Regex("""@dev\.zacsweers\.metro(?:\.internal)?\.MultibindingElement\("([^"]+)", "[^"]+"\) (.+)""")
+  Regex("""@dev\.zacsweers\.metro\.internal\.MultibindingElement\("[^"]+", "([^"]+)"\) .+""")
 private val WHITESPACE = Regex("""\s+""")

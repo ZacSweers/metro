@@ -28,6 +28,7 @@ import dev.zacsweers.metro.idea.index.retryCancelledIndexBuild
 import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.DeclarationResolutionScope
 import dev.zacsweers.metro.idea.model.GraphQueryContext
+import dev.zacsweers.metro.idea.model.KaAnnotationValueSnapshot
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.tracing.IdeTraceOutput
 import dev.zacsweers.metro.idea.tracing.IdeTraceRecorder
@@ -1218,6 +1219,84 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
       )
 
     assertEquals(listOf(MetroDiagnosticId.DUPLICATE_MAP_KEYS), result.diagnostics.map { it.id })
+  }
+
+  fun testParentAndChildShareScopedMapElementKeys() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        @GraphExtension interface ChildGraph {
+          val values: Map<String, String>
+          @Provides @IntoMap @StringKey("child") fun childValue(): String = "child"
+        }
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val child: ChildGraph
+          val values: Map<String, String>
+          @Provides @IntoMap @StringKey("first") @SingleIn(AppScope::class) fun first(): String = "first"
+          @Provides @IntoMap @StringKey("second") @SingleIn(AppScope::class) fun second(): String = "second"
+        }
+        """,
+      )
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val graph = index.graphs.single { it.name == "AppGraph" }
+    val (child, parent) =
+      project.service<MetroGraphValidationService>().validateWithExtensions(file, graph).map {
+        val result = it.requireCompleted()
+        assertTrue(
+          result.diagnostics.joinToString { d -> d.render() },
+          result.diagnostics.isEmpty(),
+        )
+        result
+      }
+    val parentMap =
+      parent.bindings.asMap().values.filterIsInstance<KaBinding.Multibinding>().single()
+    val childMap = child.bindings.asMap().values.filterIsInstance<KaBinding.Multibinding>().single()
+    assertEquals(2, parentMap.sourceBindings.size)
+    assertEquals(3, childMap.sourceBindings.size)
+    assertEquals(parentMap.sourceBindings.toSet(), child.parentReservations.keys)
+    for (key in parentMap.sourceBindings) {
+      assertTrue(key in childMap.sourceBindings)
+      assertSame(parent.bindings[key]!!.pointer.element, child.bindings[key]!!.pointer.element)
+    }
+  }
+
+  fun testSetElementIdsDistinguishOverloadedGettersWithCollidingReceiverHashes() {
+    val result =
+      validate(
+        """
+        interface Service
+        @Inject class Aa : Service
+        @Inject class BB : Service
+
+        @DependencyGraph interface AppGraph {
+          val services: Set<Service>
+          @Binds @IntoSet val Aa.bind: Service
+          @Binds @IntoSet val BB.bind: Service
+        }
+        """,
+      )
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+
+    val services =
+      result.bindings.asMap().values.filterIsInstance<KaBinding.Multibinding>().single()
+    val ids =
+      services.sourceBindings.map { key ->
+        val qualifier = checkNotNull(key.qualifier)
+        assertEquals(MetroClassIds.multibindingElement, qualifier.classId)
+        val argument = qualifier.arguments.single { it.first.asString() == "elementId" }
+        (argument.second as KaAnnotationValueSnapshot.Literal).value as String
+      }
+    // Aa and BB hash to the same value. Only the full getter signature distinguishes the elements.
+    assertEquals(1, ids.map { it.substringBefore('#').toInt() }.distinct().size)
+    assertEquals(
+      setOf(
+        "test.AppGraph.<get-bind>(test/AppGraph,test/Aa): test/Service",
+        "test.AppGraph.<get-bind>(test/AppGraph,test/BB): test/Service",
+      ),
+      ids.map { it.substringAfter('#') }.toSet(),
+    )
   }
 
   fun testEmptyMultibindingIsReported() {

@@ -15,6 +15,7 @@ import dev.zacsweers.metro.compiler.circuit.CircuitClassIds
 import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.graph.computeMultibindingId
 import dev.zacsweers.metro.compiler.graph.identity.TypeIdentity
+import dev.zacsweers.metro.compiler.graph.multibindingElementId
 import dev.zacsweers.metro.idea.annotationScopeKeys
 import dev.zacsweers.metro.idea.checkCanceledEvery
 import dev.zacsweers.metro.idea.hasAnyAnnotation
@@ -35,6 +36,7 @@ import dev.zacsweers.metro.idea.model.KaContextualTypeKey
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
 import dev.zacsweers.metro.idea.model.KaTypeKey
 import dev.zacsweers.metro.idea.model.KaTypeSnapshot
+import dev.zacsweers.metro.idea.model.MultibindingContribution
 import dev.zacsweers.metro.idea.model.canonicalContextKey
 import dev.zacsweers.metro.idea.model.multibindingId
 import dev.zacsweers.metro.idea.qualifierAnnotation
@@ -830,12 +832,27 @@ internal class FileShardBuilder(
     contributions += ContributionEntry(ptr(declaration), scopes)
     val factoryType = (findClass(factoryClassId) as? KaNamedClassSymbol)?.defaultType ?: return
     val elementKey = typeKey(factoryType, null)
+    // Circuit generates its factory later. Use the annotated source declaration as its identity.
+    val elementId =
+      when (val symbol = declaration.symbol) {
+        is KaNamedFunctionSymbol -> callableElementId(symbol)
+        is KaNamedClassSymbol ->
+          multibindingElementId(
+            owner = symbol.classId?.asSingleFqName() ?: return,
+            name = CircuitClassIds.CircuitInject.shortClassName,
+            isSuspend = false,
+            parameterTypes = emptyList(),
+            returnType = elementKey.type.identity,
+          )
+        else -> return
+      }
     bindings +=
       KaBinding.Provided(
         ptr(declaration),
         elementKey,
         implementationName = declaration.name,
-        multibindingId = elementKey.computeMultibindingId(),
+        multibindingContribution =
+          MultibindingContribution(elementKey.computeMultibindingId(), elementId),
         contributionScopes = scopes,
         dependencies = dependencies,
       )
