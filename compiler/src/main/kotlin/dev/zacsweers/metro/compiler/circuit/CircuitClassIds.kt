@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.circuit
 
-import dev.zacsweers.metro.compiler.capitalizeUS
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
@@ -19,7 +18,6 @@ internal object CircuitCallableIds {
 }
 
 internal object CircuitNames {
-  val Factory = Name.identifier("CircuitFactory")
   val SubCircuitFactory = Name.identifier("SubCircuitFactory")
   val create = Name.identifier("create")
   val screen = Name.identifier("screen")
@@ -55,7 +53,6 @@ internal enum class CircuitCodegenTarget(
   val presenterClassId: ClassId,
   val presenterFactoryClassId: ClassId,
   val nestedFactoryName: Name,
-  private val functionFactorySuffix: String,
 ) {
   CIRCUIT(
     injectAnnotation = CircuitClassIds.CircuitInject,
@@ -65,8 +62,7 @@ internal enum class CircuitCodegenTarget(
     uiFactoryClassId = CircuitClassIds.UiFactory,
     presenterClassId = CircuitClassIds.Presenter,
     presenterFactoryClassId = CircuitClassIds.PresenterFactory,
-    nestedFactoryName = CircuitNames.Factory,
-    functionFactorySuffix = "Factory",
+    nestedFactoryName = CircuitClassIds.nestedFactoryName,
   ),
   SUBCIRCUIT(
     injectAnnotation = CircuitClassIds.SubCircuitInject,
@@ -77,7 +73,6 @@ internal enum class CircuitCodegenTarget(
     presenterClassId = CircuitClassIds.SubPresenter,
     presenterFactoryClassId = CircuitClassIds.SubPresenterFactory,
     nestedFactoryName = CircuitNames.SubCircuitFactory,
-    functionFactorySuffix = "SubCircuitFactory",
   );
 
   val annotationName: String
@@ -96,7 +91,7 @@ internal enum class CircuitCodegenTarget(
     }
 
   fun functionFactoryName(functionName: String): Name =
-    Name.identifier("${functionName.capitalizeUS()}$functionFactorySuffix")
+    CircuitClassIds.functionFactoryName(functionName, isSubCircuit = this == SUBCIRCUIT)
 
   fun functionFactoryType(returnsUnit: Boolean): FactoryType =
     if (this == SUBCIRCUIT || returnsUnit) FactoryType.UI else FactoryType.PRESENTER
