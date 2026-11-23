@@ -38,7 +38,7 @@ internal class SuspendBindingAnalysis(
 
   private val worklist =
     SuspendBindingWorklist(
-      findBinding = findBinding,
+      findBinding = { key, _ -> findBinding(key) },
       bindingIsSuspend = { it.isSuspend },
       skipDependencyTraversal = { it is IrBinding.AssistedFactory },
       rules = rules,

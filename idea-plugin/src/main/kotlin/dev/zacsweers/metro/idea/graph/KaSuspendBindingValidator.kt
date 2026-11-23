@@ -37,7 +37,7 @@ internal class KaSuspendBindingValidator(
   private val runtimeCoroutinesAvailable: Boolean,
   private val report: (MetroDiagnostic, KaBindingStack, List<KaBinding>) -> Unit,
 ) {
-  private val suspendBindingAnalysis = SuspendBindingAnalysis(bindings::get)
+  private val suspendBindingAnalysis = SuspendBindingAnalysis { key, _ -> bindings[key] }
 
   fun validate(): Set<KaTypeKey> {
     val requests = graphConsumers.map { consumer ->

@@ -284,7 +284,7 @@ private class ValidationFixture(
       )
     val analysis =
       SuspendBindingWorklist(
-        findBinding = bindings::get,
+        findBinding = { key, _ -> bindings[key] },
         bindingIsSuspend = { it.metadata.isSuspend },
         skipDependencyTraversal = { it.metadata.assistedFactory != null },
         rules = rules,

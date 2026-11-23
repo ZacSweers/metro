@@ -25,6 +25,8 @@ package dev.zacsweers.metro.compiler.graph
  * generation changes, and each key enters the propagation queue only the first time it is marked
  * suspend. These properties also make cycles terminate without a separate fixpoint pass.
  *
+ * @param findBinding receives the requested key and the key that requested it. Roots have no
+ *   requester. A lookup that derives generic bindings needs this link to detect divergence.
  * @param checkCanceled cancellation callback polled during analysis and witness construction. If it
  *   throws, discard this worklist because its incremental state may be incomplete.
  */
@@ -34,7 +36,7 @@ public class SuspendBindingWorklist<
   ContextualTypeKey : BaseContextualTypeKey<Type, TypeKey, ContextualTypeKey>,
   Binding : BaseBinding<Type, TypeKey, ContextualTypeKey>,
 >(
-  private val findBinding: (TypeKey) -> Binding?,
+  private val findBinding: (key: TypeKey, requestingKey: TypeKey?) -> Binding?,
   private val bindingIsSuspend: (Binding) -> Boolean,
   private val skipDependencyTraversal: (Binding) -> Boolean,
   private val rules: SuspendBindingRules<Type, TypeKey, ContextualTypeKey, Binding>,
@@ -158,7 +160,7 @@ public class SuspendBindingWorklist<
         checkCanceled()
         if (dependency.isDeferrable) continue
         val depKey = dependency.typeKey
-        val depBinding = resolve(depKey)
+        val depBinding = resolve(depKey, key)
         if (depBinding == null) {
           pendingEdges.getOrPut(depKey, ::mutableListOf) += PendingEdge(key, dependency)
           continue
@@ -177,12 +179,23 @@ public class SuspendBindingWorklist<
     }
   }
 
-  private fun resolve(key: TypeKey): Binding? {
+  private fun resolve(key: TypeKey, requestingKey: TypeKey? = null): Binding? {
     discoveredBindings[key]?.let {
       return it
     }
-    if (unresolvedGenerations[key] == analyzedGraphGeneration) return null
-    val binding = findBinding(key)
+    val missedGeneration = unresolvedGenerations[key]
+    if (missedGeneration == analyzedGraphGeneration) {
+      return null
+    }
+
+    // A retry after a graph change keeps the requester from the original pending edge.
+    val requester =
+      if (missedGeneration == null) {
+        requestingKey
+      } else {
+        pendingEdges[key]?.firstOrNull()?.consumer ?: requestingKey
+      }
+    val binding = findBinding(key, requester)
     if (binding == null) {
       unresolvedGenerations[key] = analyzedGraphGeneration
       return null

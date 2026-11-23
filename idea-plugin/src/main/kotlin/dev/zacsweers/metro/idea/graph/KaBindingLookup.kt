@@ -468,8 +468,10 @@ internal class KaBindingLookup(
         resolveParentGraph,
       )
     parentSuspendLookup = lookup
-    val analysis = SuspendBindingAnalysis { key ->
-      lookup.lookup(key.canonicalContextKey()) { _, _ -> }.firstOrNull { it.typeKey == key }
+    val analysis = SuspendBindingAnalysis { key, requester ->
+      lookup
+        .lookup(key.canonicalContextKey(), requester) { _, _ -> }
+        .firstOrNull { it.typeKey == key }
     }
     parentSuspendAnalysis = analysis
     return analysis

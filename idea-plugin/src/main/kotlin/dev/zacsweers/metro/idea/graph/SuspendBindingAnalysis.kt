@@ -12,10 +12,10 @@ import dev.zacsweers.metro.idea.model.KaTypeKey
 import dev.zacsweers.metro.idea.model.KaTypeSnapshot
 
 /** IDEA binding-model adapter for the shared suspend propagation worklist. */
-internal class SuspendBindingAnalysis(findBinding: (KaTypeKey) -> KaBinding?) {
+internal class SuspendBindingAnalysis(findBinding: (KaTypeKey, KaTypeKey?) -> KaBinding?) {
   internal val rules =
     SuspendBindingRules<KaTypeSnapshot, KaTypeKey, KaContextualTypeKey, KaBinding>(
-      findBinding = findBinding,
+      findBinding = { key -> findBinding(key, null) },
       bindingCanPassThrough = { binding, dependency ->
         binding is KaBinding.GraphDependency && binding.canPassThrough(dependency)
       },

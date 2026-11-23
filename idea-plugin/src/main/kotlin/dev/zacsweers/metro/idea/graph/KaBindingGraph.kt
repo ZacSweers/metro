@@ -160,7 +160,7 @@ internal class KaBindingGraph(
     if (!options.enableSuspendProviders) {
       return null
     }
-    val suspendKeys = SuspendBindingAnalysis(bindings::get).analyze(cycleKeys)
+    val suspendKeys = SuspendBindingAnalysis { key, _ -> bindings[key] }.analyze(cycleKeys)
     return cycleKeys.firstOrNull { it in suspendKeys }
   }
 
