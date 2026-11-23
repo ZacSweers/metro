@@ -178,6 +178,8 @@ internal class FileShard(
    */
   val sharedDeclarationFiles: Set<VirtualFile>,
   val graphInterfaces: List<GraphInterfaceSurface> = emptyList(),
+  /** Missing graph parents have no declaration file to register in [dependencyFiles]. */
+  val missingParents: SourceClassDependencies? = null,
 ) {
   companion object {
     val EMPTY =

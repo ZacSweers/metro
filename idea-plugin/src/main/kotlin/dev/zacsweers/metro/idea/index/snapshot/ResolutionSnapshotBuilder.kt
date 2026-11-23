@@ -161,6 +161,8 @@ internal class ResolutionSnapshotBuilder(
     val finalizedSource = collectedSource.withLibrarySummary(summary.withoutReadContexts())
     val classDependencies =
       SourceClassDependencies.Builder(SmartPointerManager.getInstance(project))
+    // Missing parents belong to the current shards even when the class summary is reused.
+    rawSource.missingParents.forEach(classDependencies::include)
     classDependencies.include(summary.sourceClasses.dependencies)
     val source = rawSource.withAddedClassBindings(summary.sourceClasses.addedBindings)
     val buildersByKey = linkedMapOf<SnapshotKey, BindingIndexBuilder>()

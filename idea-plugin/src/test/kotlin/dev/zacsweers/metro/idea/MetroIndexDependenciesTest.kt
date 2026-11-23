@@ -44,6 +44,45 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
     module.addMetroRuntimeLibrary()
   }
 
+  fun testNewJavaClassRefreshesAnUnresolvedGraphAccessor() {
+    val graph =
+      myFixture.configureMetroFile(
+        "@DependencyGraph interface AppGraph { val request: JavaType }",
+      )
+    val service = project.service<MetroResolutionService>()
+    val initial = service.awaitIndex(graph)
+    assertTrue(initial.consumers.single().key.type.isError)
+
+    myFixture.addFileToProject("test/JavaType.java", "package test; public class JavaType {}")
+    PsiDocumentManager.getInstance(project).commitAllDocuments()
+    val request = service.awaitIndex(graph).consumers.single()
+    assertFalse(request.key.type.isError)
+    assertEquals("test.JavaType", request.key.renderedType)
+  }
+
+  fun testNewParentAddsInheritedAccessorsToAnUnchangedGraph() {
+    val graph =
+      myFixture.configureMetroFile(
+        """
+      import test.generated.Parent as Base
+      @DependencyGraph interface AppGraph : Base
+      """,
+      )
+    val service = project.service<MetroResolutionService>()
+    val initial = service.awaitIndex(graph)
+    assertTrue(initial.consumers.isEmpty())
+
+    myFixture.addFileToProject("test/Other.kt", "package test\ninterface Other")
+    assertSame(initial, service.awaitIndex(graph))
+
+    myFixture.addFileToProject(
+      "test/generated/Parent.kt",
+      "package test.generated\ninterface Parent { val request: String }",
+    )
+    PsiDocumentManager.getInstance(project).commitAllDocuments()
+    assertEquals("kotlin.String", service.awaitIndex(graph).consumers.single().key.renderedType)
+  }
+
   fun testNewObjectRefreshesAnUnresolvedGraphAccessor() {
     val graph =
       myFixture.configureMetroFile(

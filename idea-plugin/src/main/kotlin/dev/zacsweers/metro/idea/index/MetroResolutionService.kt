@@ -2466,7 +2466,7 @@ private constructor(
     return result.build()
   }
 
-  /** Directory moves can replace several Kotlin files without reporting individual PSI children. */
+  /** Directory moves can replace several source files without individual PSI events. */
   private fun collectDirectoryChanges(
     virtualFile: VirtualFile,
     state: SourceSnapshot?,
@@ -2495,8 +2495,12 @@ private constructor(
       val current = remaining.removeFirst()
       if (!current.isValid || !current.virtualFile.isValid) continue
       if (!visitedDirectories.add(current.virtualFile)) continue
-      for (file in current.files.filterIsInstance<KtFile>()) {
+      for (file in current.files) {
         ProgressManager.checkCanceled()
+        if (file !is KtFile && file !is PsiJavaFile) {
+          continue
+        }
+
         checkPsiClassificationActive()
         val fileVirtualFile = file.virtualFile ?: continue
         val structuralChange = PendingFileChange(structuralChange = true)
@@ -2519,12 +2523,23 @@ private constructor(
     var ownerFiles = state?.dependencyOwnersFor(virtualFile)
     val alreadyIndexed = state != null && virtualFile in state.shards
     val file =
-      virtualFile
-        .takeIf { it.isValid }
-        ?.let {
-          PsiManager.getInstance(project).findFile(it) as? KtFile
-        }
-    if (file == null || !file.isValid) {
+      if (virtualFile.isValid) {
+        PsiManager.getInstance(project).findFile(virtualFile)?.takeIf { it.isValid }
+      } else {
+        null
+      }
+
+    // Java declarations can satisfy a missing type even though only Kotlin files own shards.
+    if (file != null && state != null) {
+      val recoverableOwners = state.classBindingDependencies.ownersForAvailableDeclarations(file)
+      if (recoverableOwners.isNotEmpty()) {
+        ownerFiles = ownerFiles.orEmpty() + recoverableOwners
+        // The requesting shard can be textually unchanged while a missing class becomes available.
+        result.forceRebuildFiles += recoverableOwners
+      }
+    }
+
+    if (file !is KtFile) {
       result.fingerprints[virtualFile] = null
       result.irrelevantFilesToRemove += virtualFile
       if (change.structuralChange) result.requestedToRemove += virtualFile
@@ -2548,14 +2563,6 @@ private constructor(
         result.forceAll = true
       }
       return
-    }
-
-    val recoverableOwners =
-      state?.classBindingDependencies?.ownersForAvailableDeclarations(file).orEmpty()
-    if (recoverableOwners.isNotEmpty()) {
-      ownerFiles = ownerFiles.orEmpty() + recoverableOwners
-      // The requesting shard can be textually unchanged while a missing class becomes available.
-      result.forceRebuildFiles += recoverableOwners
     }
 
     val hasSharedDeclarations = fileHasSharedDeclarationsCached(file)

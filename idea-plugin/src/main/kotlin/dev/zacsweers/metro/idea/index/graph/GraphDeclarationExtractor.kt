@@ -13,10 +13,12 @@ import dev.zacsweers.metro.idea.checkCanceledEvery
 import dev.zacsweers.metro.idea.hasAnyAnnotation
 import dev.zacsweers.metro.idea.implicitSingleInAnnotation
 import dev.zacsweers.metro.idea.index.FactoryInputEntry
+import dev.zacsweers.metro.idea.index.SourceClassDependencies
 import dev.zacsweers.metro.idea.index.callableBindingView
 import dev.zacsweers.metro.idea.index.classListArgument
 import dev.zacsweers.metro.idea.index.graphFactoryInputs
 import dev.zacsweers.metro.idea.index.typeKey
+import dev.zacsweers.metro.idea.index.typeSnapshot
 import dev.zacsweers.metro.idea.model.ConsumerEntry
 import dev.zacsweers.metro.idea.model.GraphDeclarationId
 import dev.zacsweers.metro.idea.model.GraphExtensionFactoryAccessor
@@ -33,6 +35,7 @@ import org.jetbrains.kotlin.analysis.api.symbols.KaClassSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedClassSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolOrigin
 import org.jetbrains.kotlin.analysis.api.types.KaClassType
+import org.jetbrains.kotlin.analysis.api.types.KaErrorType
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.psi.KtCallableDeclaration
 import org.jetbrains.kotlin.psi.KtClassOrObject
@@ -52,6 +55,10 @@ internal class GraphDeclarationExtractor(
   private val onInstanceBinding: ((KaBinding.BoundInstance) -> Unit)? = null,
 ) {
   private var cancellationWorkIndex = 0
+  private var missingParents: SourceClassDependencies.Builder? = null
+
+  /** Unresolved parents of source graphs extracted into this file shard. */
+  fun missingParentDependencies(): SourceClassDependencies? = missingParents?.build()
 
   private fun checkCanceled() {
     checkCanceledEvery(cancellationWorkIndex++)
@@ -147,12 +154,29 @@ internal class GraphDeclarationExtractor(
       // belong to this unconditional surface; implicit contributions are selected after merging.
       val writtenSupertypes =
         ktClass.superTypeListEntries.asSequence().flatMap { entry ->
-          val type = entry.typeReference?.type?.fullyExpandedType as? KaClassType
-          if (type == null) emptySequence() else sequenceOf(type) + type.allSupertypes
+          val type = entry.typeReference?.type?.fullyExpandedType
+          when (type) {
+            is KaErrorType -> sequenceOf(type)
+            is KaClassType -> sequenceOf(type) + type.allSupertypes
+            else -> emptySequence()
+          }
         }
       for (superType in writtenSupertypes) {
         checkCanceled()
-        if (superType.isAnyType) continue
+        if (superType is KaErrorType) {
+          if (classSymbol.origin != KaSymbolOrigin.LIBRARY) {
+            val dependencies = missingParents ?: SourceClassDependencies.Builder(pointerManager)
+            dependencies.recordErrorTypes(typeSnapshot(superType), ktClass, graphPointer)
+            missingParents = dependencies
+          }
+
+          continue
+        }
+
+        if (superType.isAnyType) {
+          continue
+        }
+
         val classType = superType as? KaClassType ?: continue
         val superClass = classType.symbol as? KaNamedClassSymbol ?: continue
         val superClassId = superClass.classId ?: continue

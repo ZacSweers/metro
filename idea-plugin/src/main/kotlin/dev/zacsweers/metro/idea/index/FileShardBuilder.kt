@@ -252,6 +252,7 @@ internal class FileShardBuilder(
         cacheDependencies.mapNotNullTo(mutableSetOf()) { it.virtualFile },
         sharedDeclarationDependencies.mapNotNullTo(mutableSetOf()) { it.virtualFile },
         graphInterfaces,
+        missingParents = graphDeclarations.missingParentDependencies(),
       )
     }
   }
