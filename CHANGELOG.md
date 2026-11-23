@@ -37,6 +37,7 @@ Changelog
 - **[IDEA]** **Go to Metro Binding** on a provider's extension receiver now jumps to the receiver's binding. It used to jump back to the provider itself.
 - **[IDEA]** Pinning a graph no longer hides a generic provider's consumers from **Find Usages** or the gutter.
 - **[IDEA]** **Select in Metro** now finds the generic provider in the graph browser when it supplies a concrete type.
+- **[IDEA]** When graphs specialize an inherited generic parameter differently, its inlay hint now shows the implementation from the pinned graph.
 - **[IDEA]** **Find Usages** on a generic provider returning a `Set` or `Map` now includes requests that use it.
 - **[IDEA]** In projects without graphs, **Find Usages** no longer lists consumers in modules that can't see the provider.
 - **[IDEA]** In projects without graphs, **Find Usages** no longer reports consumers for generic providers when derived bindings are disabled.
