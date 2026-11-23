@@ -408,6 +408,22 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
     assertEquals("test/Analytics", setDep.multibindingId())
   }
 
+  fun testCanonicalRequestSharesItsTypeSnapshotWithTheDeclaredType() {
+    project.setMetroOptions("enable-derived-bindings" to "true")
+    val file =
+      myFixture.configureMetroFile(
+        """
+      interface Box<T>
+      @DependencyGraph interface AppGraph { val value: Box<String> }
+      """,
+      )
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val key =
+      index.consumerEntryAt(file.declarationsIncludingNested().property("value"))!!.contextKey
+    assertNotNull(key.typeKey.type.hierarchy)
+    assertSame(key.rawType, key.typeKey.type)
+  }
+
   fun testTypeSnapshotsRestoreStarsVarianceAndNullability() = allowAnalysisOnEdt {
     module.addKotlinStdlibLibrary()
     val file =

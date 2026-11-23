@@ -64,7 +64,7 @@ internal fun KaSession.renderShortKeyType(type: KaType): String {
   )
 }
 
-/** Builds a [KaTypeKey] for [type], capturing a restorable pointer and both renderings. */
+/** Builds a binding key whose type snapshot can outlive this analysis session. */
 internal fun KaSession.typeKey(type: KaType, qualifier: KaAnnotationSnapshot?): KaTypeKey {
   return KaTypeKey(typeSnapshot(type), qualifier)
 }
@@ -327,15 +327,16 @@ internal fun KaSession.contextualTypeKey(
   options: MetroOptions,
 ): KaContextualTypeKey {
   val declaredType = type.fullyExpandedType
-  // A requested key's type arguments can become a generic provider's type arguments.
-  val rawSnapshot = typeSnapshot(declaredType, captureHierarchy = options.enableDerivedBindings)
   val wrappedType = declaredType.asWrappedType(options)
-  val keySnapshot =
+  val keySnapshot = wrappedType.canonicalType()
+  // Canonical and map nodes already hold a snapshot of the full declared type.
+  val rawSnapshot =
     when (wrappedType) {
-      is WrappedType.Canonical -> wrappedType.type
-      is WrappedType.Map -> rawSnapshot
-      else -> wrappedType.canonicalType()
+      is WrappedType.Canonical,
+      is WrappedType.Map -> keySnapshot
+      else -> typeSnapshot(declaredType, captureHierarchy = options.enableDerivedBindings)
     }
+
   return KaContextualTypeKey(
     typeKey = KaTypeKey(keySnapshot, qualifier),
     wrappedType = wrappedType,
@@ -366,6 +367,7 @@ private fun KaType.asWrappedType(options: MetroOptions): WrappedType<KaTypeSnaps
           .orEmpty()
       },
     )
+  // A requested key's type arguments can become a generic provider's type arguments.
   return wrapped.mapTypes {
     session.typeSnapshot(it, captureHierarchy = options.enableDerivedBindings)
   }
