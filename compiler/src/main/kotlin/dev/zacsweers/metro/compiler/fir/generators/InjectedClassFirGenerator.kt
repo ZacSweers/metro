@@ -187,10 +187,8 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
       .symbol
   }
 
-  // TODO apparently writing these types of caches is bad and
-  //  generate* functions should be side-effect-free, but honestly
-  //  how is this practical without this? Or is it ok if it's just an
-  //  internal cache? Unclear what "should not leak" means.
+  // TODO Check that the injected-class and provides-factory caches are safe to keep.
+  // FIR declaration generation should be side-effect-free.
   //  Or use session.firCachesFactory.createCache?
   private val injectFactoryClassIdsToInjectedClass = mutableMapOf<ClassId, InjectedClass>()
   private val injectFactoryClassIdsToSymbols = mutableMapOf<ClassId, FirClassLikeSymbol<*>>()

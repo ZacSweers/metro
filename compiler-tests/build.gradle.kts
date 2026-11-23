@@ -128,7 +128,6 @@ val circuitRuntimeClasspath =
   configurations.create("circuitRuntimeClasspath") {
     attributes {
       // Force JVM variants
-      // TODO in future non-jvm tests we need others
       attribute(KotlinPlatformType.attribute, KotlinPlatformType.jvm)
     }
   }

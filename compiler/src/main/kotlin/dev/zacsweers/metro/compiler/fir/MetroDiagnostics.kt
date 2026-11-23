@@ -371,7 +371,6 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
           STRING,
           STRING,
         )
-        // TODO eventually this will change to allow function injection
         put(
           ONLY_CLASSES_CAN_BE_INJECTED,
           "Only classes can be annotated with @Inject or have @Inject-annotated constructors.",

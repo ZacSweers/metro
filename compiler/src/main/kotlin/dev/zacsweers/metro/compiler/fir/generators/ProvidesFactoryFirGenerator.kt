@@ -63,10 +63,6 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
     register(session.predicates.providesAnnotationPredicate)
   }
 
-  // TODO apparently writing these types of caches is bad and
-  //  generate* functions should be side-effect-free, but honestly
-  //  how is this practical without this? Or is it ok if it's just an
-  //  internal cache? Unclear what "should not leak" means.
   private val providerFactoryClassIdsToCallables = mutableMapOf<ClassId, ProviderCallable>()
   private val providerFactoryClassIdsToSymbols = mutableMapOf<ClassId, FirClassLikeSymbol<*>>()
 

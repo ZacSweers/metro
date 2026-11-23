@@ -221,8 +221,8 @@ class CycleBreakingTests {
     assertEquals(message, barInstance.call())
   }
 
-  // TODO this wrapper is because of a strange bug in kotlinc where TypeResolverService
-  //  can't resolve cyclical referencing sibling types
+  // TODO Recheck whether all four cyclic graph fixtures still need nested wrappers.
+  // These wrappers let TypeResolverService resolve cyclical references between sibling types.
   object CyclicalGraphWithProvidesBrokenWithProvider {
     @DependencyGraph
     interface Graph {
@@ -266,8 +266,6 @@ class CycleBreakingTests {
     assertEquals(message + "3", barInstance.call())
   }
 
-  // TODO this wrapper is because of a strange bug in kotlinc where TypeResolverService
-  //  can't resolve cyclical referencing sibling types
   object CyclicalGraphWithProvidesBrokenWithLazy {
     @DependencyGraph
     interface Graph {
@@ -313,8 +311,6 @@ class CycleBreakingTests {
     assertEquals(message + "1", barInstance.call())
   }
 
-  // TODO this wrapper is because of a strange bug in kotlinc where TypeResolverService
-  //  can't resolve cyclical referencing sibling types
   object CyclicalGraphWithProvidesBrokenWithProviderOfLazy {
     @DependencyGraph
     interface Graph {
@@ -359,8 +355,6 @@ class CycleBreakingTests {
     assertSame(foo, barInstance.foo)
   }
 
-  // TODO this wrapper is because of a strange bug in kotlinc where TypeResolverService
-  //  can't resolve cyclical referencing sibling types
   object CyclicalGraphWithProvidesBrokenWithProviderScoped {
     @Singleton
     @DependencyGraph

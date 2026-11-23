@@ -373,7 +373,7 @@ internal class ParentContext(
     private val shardProperty: IrProperty? = null,
     private val ancestorChain: List<IrProperty>? = null,
     private val shardGraphProperty: IrProperty? = null,
-    // TODO use AccessType
+    // TODO Use AccessType for parent-property tokens and collected binding properties.
     val isProviderProperty: Boolean,
     /** Whether the property stores a SuspendProvider (suspend binding fields). */
     val isSuspendProviderProperty: Boolean = false,

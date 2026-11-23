@@ -95,7 +95,7 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
 
     val providesFactoryClass = result.ExampleGraph.providesFactoryClass(companion = true)
     // These should be objects since they require no parameters
-    // TODO these appear to need metadata annotations written correctly to work
+    // TODO Restore both objectInstance assertions once generated factory metadata supports them.
     //    assertThat(providesFactoryClass.kotlin.objectInstance).isNotNull()
     // Exercise calling the static provideValue function directly
     val providedValue = providesFactoryClass.provideValueAs<String>("provideValue")
@@ -126,7 +126,6 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
 
     val providesFactoryClass = result.ExampleGraph.providesFactoryClass(companion = true)
     // These should be objects since they require no parameters
-    // TODO these appear to need metadata annotations written correctly to work
     //    assertThat(providesFactoryClass.kotlin.objectInstance).isNotNull()
     // Exercise calling the static provideValue function directly
     val providedValue = providesFactoryClass.provideValueAs<String>("value")

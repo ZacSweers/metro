@@ -417,7 +417,7 @@ suspend fun <T> Any.invokeSuspendInstanceFunction(name: String, vararg args: Any
 
 /** Returns a new instance of a graph's factory class by invoking its static "factory" function. */
 fun Class<*>.invokeGraphFactory(): Any {
-  // TODO update callers to new location
+  // TODO Move legacy factory and no-arg callers to the graph's companion.
   val staticMethod = staticMethods().singleOrNull { it.name == "factory" }
   return if (staticMethod != null) {
     staticMethod.invoke()!!
@@ -430,7 +430,6 @@ fun Class<*>.invokeGraphFactory(): Any {
 
 /** Creates a graph instance via its generated no-arg static create() function. */
 fun Class<*>.createGraphWithNoArgs(): Any {
-  // TODO update callers to new location
   // We're in a graph impl right now, so go up one and then find its companion object
   return enclosingClass.invokeStaticInvokeOperator()
 }

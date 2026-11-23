@@ -839,7 +839,6 @@ private fun <T : Comparable<T>> Iterable<T>.topologicalSort(
     throw IllegalArgumentException("No element for $missing found for $source")
   },
 ): List<T> {
-  // TODO this is really just here for tests
   val fakeMap =
     MutableScatterMap<T, Any>().apply {
       for (key in this@topologicalSort) {

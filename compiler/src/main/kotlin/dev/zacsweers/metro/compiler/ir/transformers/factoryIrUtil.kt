@@ -201,7 +201,8 @@ private fun transformStaticCreateFunction(
   targetConstructor: IrConstructorSymbol,
   parameters: Parameters,
   providerFunction: IrFunction?,
-  patchCreationParams: Boolean, // TODO eventually move this to function creation
+  patchCreationParams:
+    Boolean, // TODO Apply parameter defaults when creating the factory functions.
   copyQualifiers: Boolean,
   createFunction: IrSimpleFunction,
 ) {
@@ -347,7 +348,6 @@ private fun transformStaticNewInstanceFunction(
     val valueParametersToMap = nonDispatchParameters.filter {
       it.origin == Origins.RegularParameter
     }
-    // TODO move to function creation
     copyParameterDefaultValues(
       providerFunction = targetFunction,
       sourceMetroParameters = sourceMetroParameters,

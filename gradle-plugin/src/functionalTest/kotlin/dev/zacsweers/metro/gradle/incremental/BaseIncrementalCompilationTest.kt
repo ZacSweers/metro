@@ -192,12 +192,6 @@ abstract class BaseIncrementalCompilationTest(
     fun parentKeysUsedBy(extension: String) =
       readFileLines("parent-keys-used/$implFqName-by-$extension.txt")
 
-    fun graphMetadata() {
-      // /graph-metadata/graph-test-AppGraph.json"
-      // /graph-metadata/graph-test-AppGraph2.json"
-      TODO()
-    }
-
     fun unmatchedExclusionsFir(graphFqName: String): String {
       return reportsDir.resolveSafe("merging-unmatched-exclusions-fir/$graphFqName.txt").readText()
     }

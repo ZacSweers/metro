@@ -322,10 +322,6 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     val elementsIntoSet: Boolean
       get() = annotations.isElementsIntoSet
 
-    // TODO are both necessary? Is there any case where only one is specified?
-    val intoMap: Boolean
-      get() = annotations.isIntoMap
-
     val mapKey: IrAnnotation? = annotations.mapKey
     override val typeKey: IrTypeKey = contextualTypeKey.typeKey
 

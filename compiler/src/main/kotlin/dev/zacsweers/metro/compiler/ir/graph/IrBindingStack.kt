@@ -444,8 +444,8 @@ internal class IrBindingStackImpl(override val graph: IrClass, private val logge
   IrBindingStack {
   override val graphFqName: FqName by memoize { graph.kotlinFqName }
 
-  // TODO can we use one structure?
-  // TODO can we use scattermap's IntIntMap? Store the typekey hash to its index
+  // TODO Use one structure for the binding stack and its membership index.
+  // An IntIntMap keyed by type-key hash would also need collision handling.
   private val entrySet = mutableSetOf<IrTypeKey>()
   private val stack = ArrayDeque<Entry>()
   override val entries: List<Entry> = stack
@@ -651,7 +651,7 @@ internal fun bindingStackEntryForDependency(
     is Multibinding -> {
       Entry.contributedToMultibinding(callingBinding.contextualTypeKey, callingBinding.declaration)
     }
-    is ObjectClass -> TODO()
+    is ObjectClass,
     is BoundInstance -> TODO()
     is GraphDependency -> {
       Entry.injectedAt(contextKey, callingBinding.getter, displayTypeKey = targetKey)

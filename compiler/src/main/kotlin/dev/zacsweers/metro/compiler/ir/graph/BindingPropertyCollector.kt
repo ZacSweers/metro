@@ -55,7 +55,6 @@ internal class BindingPropertyCollector(
      * Whether this property returns a Provider type. Always true for FIELD properties, and true for
      * GETTER properties when accessed via Provider (e.g., multibindings with factoryRefCount > 0).
      */
-    // TODO replace with AccessType
     val isProviderType: Boolean = propertyKind == PropertyKind.FIELD,
     /**
      * The switching ID for this property when using switching providers mode. IDs are unique within

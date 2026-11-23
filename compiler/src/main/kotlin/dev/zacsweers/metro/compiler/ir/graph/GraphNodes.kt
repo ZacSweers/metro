@@ -1679,7 +1679,6 @@ internal class GraphNodes(
           }
 
       // TODO only if annotated @BindingContainer?
-      // TODO need to look up accessors and binds functions
       if (isGraph) {
         // TODO is this duplicating info we already have in the proto?
         for (type in supertypes) {
