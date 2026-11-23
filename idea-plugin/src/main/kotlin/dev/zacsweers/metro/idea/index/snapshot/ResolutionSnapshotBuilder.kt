@@ -28,7 +28,6 @@ import dev.zacsweers.metro.idea.index.LibraryGraphDiscovery
 import dev.zacsweers.metro.idea.index.LibraryIndexPostProcessor
 import dev.zacsweers.metro.idea.index.SourceClassBindingPostProcessor
 import dev.zacsweers.metro.idea.index.SourceClassDependencies
-import dev.zacsweers.metro.idea.metroIdeState
 import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.BindingIndexBuilder
 import dev.zacsweers.metro.idea.model.ClassBindingIdentity
@@ -42,6 +41,7 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModule
 import org.jetbrains.kotlin.idea.stubindex.KotlinAnnotationsIndex
+import org.jetbrains.kotlin.idea.stubindex.KotlinTypeAliasByExpansionShortNameIndex
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.psi.KtAnnotationEntry
 import org.jetbrains.kotlin.psi.KtCallExpression
@@ -113,8 +113,9 @@ internal class ResolutionSnapshotBuilder(
 
     val collectedSource =
       trace.phaseSuspend("source.scan") { sourceTrace ->
-        if (coldSweep) {
-          coldSweep(
+        if (coldSweep || pending.forceAll) {
+          discoverAndScan(
+            previous.takeUnless { coldSweep },
             targets.first().key.fingerprint.options,
             inputs,
             pending,
@@ -294,7 +295,9 @@ internal class ResolutionSnapshotBuilder(
     return builder.build()
   }
 
-  private suspend fun coldSweep(
+  /** Global changes can retarget an annotation alias in a file outside the previous snapshot. */
+  private suspend fun discoverAndScan(
+    previous: SourceSnapshot?,
     options: MetroOptions,
     inputs: IndexInputs,
     pending: SourceSnapshotChanges,
@@ -307,12 +310,26 @@ internal class ResolutionSnapshotBuilder(
     val discovery =
       trace.phaseSuspend("source.discover") { phase ->
         readSnapshotStage(project, checkCurrent, phase) {
-          val annotationIds = projectSweepAnnotationIds(options)
+          val ids = projectSweepAnnotationIds(options)
+          val aliases = annotationTypeAliases(ids)
+          val annotationIds = ids + aliases
           val shortNames = annotationIds.mapToSet { it.shortClassName.asString() }
+          val files =
+            if (previous == null) {
+              candidateFiles(annotationIds, includeDynamicGraphs = true)
+            } else {
+              // Only alias users can become relevant without an edit to the annotated file.
+              buildSet {
+                addAll(previous.shardOrder)
+                addAll(pending.dirty)
+                addAll(candidateFiles(aliases, includeDynamicGraphs = false))
+              }
+            }
+
           SourceFileDiscovery(
-            candidateFiles(annotationIds, shortNames),
+            files,
             shortNames,
-            moduleFingerprints(),
+            previous?.moduleFingerprints ?: moduleFingerprints(),
           )
         }
       }
@@ -323,7 +340,7 @@ internal class ResolutionSnapshotBuilder(
       },
     )
     return sourceScanner.scan(
-      previous = null,
+      previous = previous,
       files = discovery.files,
       inputs = inputs,
       moduleFingerprints = discovery.moduleFingerprints,
@@ -345,15 +362,7 @@ internal class ResolutionSnapshotBuilder(
     trace: IdeTraceOperation?,
     checkCurrent: () -> Unit,
   ): SourceSnapshot {
-    val dirty =
-      if (pending.forceAll) {
-        buildSet {
-          addAll(prev.shardOrder)
-          addAll(pending.dirty)
-        }
-      } else {
-        pending.dirty
-      }
+    val dirty = pending.dirty
     onSourceFilesScheduled(
       buildSet {
         addAll(prev.shardOrder)
@@ -544,8 +553,33 @@ internal class ResolutionSnapshotBuilder(
     return ids
   }
 
+  /** Follow chains of aliases through the stub index. Shard analysis checks resolved identities. */
+  private fun annotationTypeAliases(ids: Set<ClassId>): Set<ClassId> {
+    val aliases = linkedSetOf<ClassId>()
+    val names = ArrayDeque(ids.map { it.shortClassName.asString() })
+    val seen = mutableSetOf<String>()
+    val scope = GlobalSearchScope.allScope(project)
+    while (names.isNotEmpty()) {
+      ProgressManager.checkCanceled()
+      val name = names.removeFirst()
+      if (!seen.add(name)) {
+        continue
+      }
+
+      for (alias in KotlinTypeAliasByExpansionShortNameIndex[name, project, scope]) {
+        val id = alias.getClassId() ?: continue
+        if (aliases.add(id)) {
+          names.addLast(id.shortClassName.asString())
+        }
+      }
+    }
+
+    return aliases
+  }
+
   fun projectSweepShortNames(fallbackOptions: MetroOptions): Set<String> {
-    return projectSweepAnnotationIds(fallbackOptions).mapToSet { it.shortClassName.asString() }
+    val ids = projectSweepAnnotationIds(fallbackOptions)
+    return (ids + annotationTypeAliases(ids)).mapToSet { it.shortClassName.asString() }
   }
 
   /** Compiler output/report settings do not change semantic fingerprints or source declarations. */
@@ -567,10 +601,11 @@ internal class ResolutionSnapshotBuilder(
   /** Files containing any Metro-relevant annotation or an exact aliased import, via indexes. */
   private fun candidateFiles(
     annotationIds: Set<ClassId>,
-    shortNames: Set<String>,
+    includeDynamicGraphs: Boolean,
   ): Set<VirtualFile> {
     val searchScope = GlobalSearchScope.projectScope(project)
     val files = LinkedHashSet<VirtualFile>()
+    val shortNames = annotationIds.mapToSet { it.shortClassName.asString() }
     for (shortName in shortNames.sorted()) {
       ProgressManager.checkCanceled()
       for (entry in KotlinAnnotationsIndex[shortName, project, searchScope]) {
@@ -585,7 +620,13 @@ internal class ResolutionSnapshotBuilder(
         ?: annotationId.shortClassName.asString()
     }
     val searchHelper = PsiSearchHelper.getInstance(project)
-    for (callableId in DYNAMIC_GRAPH_CALLABLES.keys) {
+    val callables =
+      if (includeDynamicGraphs) {
+        DYNAMIC_GRAPH_CALLABLES.keys
+      } else {
+        emptySet()
+      }
+    for (callableId in callables) {
       val callableName = callableId.callableName.asString()
       searchHelper.processElementsWithWord(
         { element, _ ->
@@ -625,22 +666,18 @@ internal class ResolutionSnapshotBuilder(
   }
 
   fun containsRelevantAnnotation(file: KtFile, shortNames: Set<String>): Boolean {
-    var hasAliasedImport = false
-    for (directive in file.importDirectives) {
-      ProgressManager.checkCanceled()
-      if (directive.aliasName != null) {
-        hasAliasedImport = true
-        break
+    // Match the same spellings as the stub sweep. Resolution filters out unrelated annotations.
+    val importAliases =
+      file.importDirectives.mapNotNull { directive ->
+        ProgressManager.checkCanceled()
+        val alias = directive.aliasName ?: return@mapNotNull null
+        alias.takeIf { directive.importedFqName?.shortName()?.asString() in shortNames }
       }
-    }
     val names =
-      if (hasAliasedImport) {
-        shortNames +
-          file.annotationShortNamesIncludingAliases(
-            sweepAnnotationIds(file.metroIdeState().options),
-          )
-      } else {
+      if (importAliases.isEmpty()) {
         shortNames
+      } else {
+        shortNames + importAliases
       }
     var hasRelevantAnnotation = false
     PsiTreeUtil.processElements(file) { element ->

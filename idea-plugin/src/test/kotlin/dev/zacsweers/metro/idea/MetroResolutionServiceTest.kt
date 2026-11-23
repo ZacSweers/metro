@@ -606,6 +606,56 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     assertEquals(listOf("test.AliasedService"), index.bindings.map { it.typeKey.renderedType })
   }
 
+  fun testGraphDiscoveredThroughAnnotationTypeAliasAfterEdits() {
+    val source =
+      """
+      package test
+
+      typealias GraphAlias = dev.zacsweers.metro.DependencyGraph
+      @GraphAlias interface AppGraph
+      """
+        .trimIndent()
+    val file = myFixture.addFileToProject("test/AppGraph.kt", source)
+    val service = project.service<MetroResolutionService>()
+    assertEquals(listOf("AppGraph"), service.awaitIndex(module).graphs.map { it.name })
+
+    val documents = PsiDocumentManager.getInstance(project)
+    val document = checkNotNull(documents.getDocument(file))
+    WriteCommandAction.runWriteCommandAction(project) {
+      document.setText(source.replace("AppGraph", "RenamedGraph"))
+    }
+    documents.commitAllDocuments()
+
+    assertEquals(listOf("RenamedGraph"), service.awaitIndex(module).graphs.map { it.name })
+  }
+
+  fun testRetargetingAnnotationTypeAliasRediscoversUnchangedGraph() {
+    val aliases =
+      myFixture.addFileToProject(
+        "aliases/Aliases.kt",
+        "package aliases\nannotation class Other\ntypealias Root = Other\ntypealias GraphAlias = Root",
+      )
+    myFixture.addFileToProject(
+      "test/AppGraph.kt",
+      "package test\nimport aliases.GraphAlias as Graph\n@Graph interface AppGraph",
+    )
+    val service = project.service<MetroResolutionService>()
+    assertTrue(service.awaitIndex(module).graphs.isEmpty())
+
+    val documents = PsiDocumentManager.getInstance(project)
+    val document = checkNotNull(documents.getDocument(aliases))
+    val before = document.text
+    WriteCommandAction.runWriteCommandAction(project) {
+      document.setText(before.replace("Root = Other", "Root = dev.zacsweers.metro.DependencyGraph"))
+    }
+    documents.commitAllDocuments()
+    assertEquals(listOf("AppGraph"), service.awaitIndex(module).graphs.map { it.name })
+
+    WriteCommandAction.runWriteCommandAction(project) { document.setText(before) }
+    documents.commitAllDocuments()
+    assertTrue(service.awaitIndex(module).graphs.isEmpty())
+  }
+
   fun testUnrelatedAliasedAnnotationDoesNotActivateMetroIndexing() {
     myFixture.addFileToProject("other/Inject.kt", "package other\n\nannotation class Inject")
     myFixture.addFileToProject(
