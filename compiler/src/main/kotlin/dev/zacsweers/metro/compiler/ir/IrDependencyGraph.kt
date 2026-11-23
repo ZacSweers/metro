@@ -13,6 +13,7 @@ import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.api.ir.MetroIrContributionExtension
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.compat.IrGeneratedDeclarationsRegistrarCompat
+import dev.zacsweers.metro.compiler.createCompilerReport
 import dev.zacsweers.metro.compiler.diagnostics.render.DiagnosticRenderer
 import dev.zacsweers.metro.compiler.diagnostics.render.SourceFileCache
 import dev.zacsweers.metro.compiler.diagnostics.render.renderProfileFor
@@ -25,8 +26,6 @@ import java.nio.file.Path
 import java.util.ServiceLoader
 import java.util.concurrent.ForkJoinPool
 import kotlin.io.path.appendText
-import kotlin.io.path.createFile
-import kotlin.io.path.deleteIfExists
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.incremental.components.ExpectActualTracker
@@ -134,18 +133,13 @@ internal interface IrDependencyGraph {
   @SingleIn(IrScope::class)
   @ReportFile("log.txt")
   fun provideLogFile(options: MetroOptions): Path? =
-    options.reportsDir.value?.resolve("log.txt")?.apply {
-      deleteIfExists()
-      createFile()
-    }
+    options.reportsDir.value?.createCompilerReport("log.txt")
 
   @Provides
   @SingleIn(IrScope::class)
   @ReportFile("lookups.csv")
   fun provideLookupFile(options: MetroOptions): Path? =
-    options.reportsDir.value?.resolve("lookups.csv")?.apply {
-      deleteIfExists()
-      createFile()
+    options.reportsDir.value?.createCompilerReport("lookups.csv")?.apply {
       appendText("file,position,scopeFqName,scopeKind,name")
     }
 
@@ -153,9 +147,7 @@ internal interface IrDependencyGraph {
   @SingleIn(IrScope::class)
   @ReportFile("expectActualReports.csv")
   fun provideExpectActualFile(options: MetroOptions): Path? =
-    options.reportsDir.value?.resolve("expectActualReports.csv")?.apply {
-      deleteIfExists()
-      createFile()
+    options.reportsDir.value?.createCompilerReport("expectActualReports.csv")?.apply {
       appendText("expected,actual")
     }
 

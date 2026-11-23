@@ -103,7 +103,8 @@ private val CROSS_PLATFORM_RESERVED_KEYWORDS =
   )
 
 private const val SAFE_CODE = '_'.code
-private val RESERVED_KEYWORDS = KEYWORDS + CROSS_PLATFORM_RESERVED_KEYWORDS
+private const val FIRST_SUFFIX = 2
+private val RESERVED_NAMES = (KEYWORDS + CROSS_PLATFORM_RESERVED_KEYWORDS).associateWith { FIRST_SUFFIX }
 
 /**
  * Assigns Kotlin identifier names to avoid collisions, keywords, and invalid characters. To use,
@@ -122,7 +123,7 @@ private val RESERVED_KEYWORDS = KEYWORDS + CROSS_PLATFORM_RESERVED_KEYWORDS
  * `property` for the user-supplied property names, and `"string builder"` for our constant string
  * builder. Untagged allocations only reserve the name, and you can't look them up later.
  *
- * Once we've allocated names we can use them when generating code:
+ * A KotlinPoet builder can use the allocated names when generating code.
  * ```kotlin
  * val builder = FunSpec.builder("toString")
  *     .addModifiers(KModifier.OVERRIDE)
@@ -158,20 +159,19 @@ private val RESERVED_KEYWORDS = KEYWORDS + CROSS_PLATFORM_RESERVED_KEYWORDS
  * NameAllocator used for the outer scope to further refine name allocation for a specific inner
  * scope.
  *
- * Changes from upstream: added [Mode] support for use with member inject parameters. Tags are
- * optional, and untagged allocations skip the tag map.
+ * Metro adds [Mode.COUNT] to KotlinPoet's allocator for names such as member injection helpers.
+ * Tags are optional, and untagged allocations skip the tag map.
  */
 // TODO change to Name?
 internal class NameAllocator
 private constructor(
-  allocatedNames: Set<String>,
+  allocatedNames: Map<String, Int>,
   private val tagToName: ConcurrentHashMap<Any, String>,
   private val mode: Mode,
 ) {
   /**
-   * @param preallocateKeywords If true, all Kotlin keywords will be preallocated. Requested names
-   *   which collide with keywords will be suffixed with underscores to avoid being used as
-   *   identifiers:
+   * @param preallocateKeywords If true, reserve Kotlin and cross-platform keywords. The default
+   *   mode appends underscores when a name collides with a keyword.
    * ```kotlin
    * val nameAllocator = NameAllocator(preallocateKeywords = true)
    * println(nameAllocator.newName("when")) // prints "when_"
@@ -183,8 +183,7 @@ private constructor(
    * println(nameAllocator.newName("when")) // prints "when"
    * ```
    *
-   * Note that you can use the `%N` placeholder when emitting a name produced by [NameAllocator] to
-   * ensure it's properly escaped for use as an identifier:
+   * KotlinPoet's `%N` placeholder escapes a name for use as an identifier.
    * ```kotlin
    * val nameAllocator = NameAllocator(preallocateKeywords = false)
    * println(CodeBlock.of("%N", nameAllocator.newName("when"))) // prints "`when`"
@@ -199,20 +198,16 @@ private constructor(
   ) : this(
     allocatedNames =
       if (preallocateKeywords) {
-        RESERVED_KEYWORDS
+        RESERVED_NAMES
       } else {
-        emptySet()
+        emptyMap()
       },
     tagToName = ConcurrentHashMap(),
     mode = mode,
   )
 
-  private val allocatedNames =
-    ConcurrentHashMap<String, Unit>().apply {
-      for (allocated in allocatedNames) {
-        put(allocated, Unit)
-      }
-    }
+  // Each value is the first numeric suffix still worth checking for its name.
+  private val allocatedNames = ConcurrentHashMap(allocatedNames)
 
   fun allocatedNames(): Set<String> = allocatedNames.keys
 
@@ -222,18 +217,14 @@ private constructor(
   }
 
   /**
-   * Return a new name using [suggestion] that will not be a Java identifier or clash with other
-   * names. If [tag] is non-null, the returned value can be queried multiple times by passing `tag`
-   * to [NameAllocator.get].
+   * Sanitizes [suggestion] and claims a unique name. Each [tag] can name one allocation. Pass the
+   * tag to [get] to retrieve the name as often as needed.
    */
   fun newName(suggestion: String, tag: Any? = null): String {
     return newNameImpl(suggestion, tag, generateNewIfExisting = true)
   }
 
-  /**
-   * Return a new name using [suggestion] that will not be a Java identifier or clash with other
-   * names. Only tagged allocations are recorded in [tagToName].
-   */
+  /** Only tagged allocations are recorded in [tagToName]. */
   private fun newNameImpl(suggestion: String, tag: Any?, generateNewIfExisting: Boolean): String {
     val cleanedSuggestion = toSafeIdentifier(suggestion)
     if (tag == null) {
@@ -250,20 +241,26 @@ private constructor(
    * [generateNewIfExisting] is false, this returns the taken name without claiming a new one.
    */
   private fun allocate(cleanedSuggestion: String, generateNewIfExisting: Boolean): String {
-    return buildString {
-      append(cleanedSuggestion)
-      var count = 1
-      while (allocatedNames.putIfAbsent(toString(), Unit) != null) {
-        if (!generateNewIfExisting) break
-        when (mode) {
-          UNDERSCORE -> append('_')
-          COUNT -> {
-            deleteRange(cleanedSuggestion.length, length)
-            append(++count)
-          }
-        }
-      }
+    val first = allocatedNames.putIfAbsent(cleanedSuggestion, FIRST_SUFFIX)
+    if (first == null || !generateNewIfExisting) {
+      return cleanedSuggestion
     }
+
+    var suffix = first
+    var candidate = cleanedSuggestion
+    do {
+      candidate = when (mode) {
+        Mode.UNDERSCORE -> candidate + "_"
+        Mode.COUNT -> cleanedSuggestion + suffix++
+      }
+    } while (allocatedNames.putIfAbsent(candidate, FIRST_SUFFIX) != null)
+
+    if (mode == Mode.COUNT) {
+      // Names stay claimed. A concurrent allocation may have advanced the suffix already.
+      allocatedNames.replace(cleanedSuggestion, first, suffix)
+    }
+
+    return candidate
   }
 
   /** Retrieve a name created with [NameAllocator.newName]. */
@@ -277,7 +274,7 @@ private constructor(
    * @return A deep copy of this NameAllocator.
    */
   fun copy(): NameAllocator {
-    return NameAllocator(allocatedNames.keys, ConcurrentHashMap(tagToName), mode = mode)
+    return NameAllocator(allocatedNames, ConcurrentHashMap(tagToName), mode = mode)
   }
 
   internal enum class Mode {

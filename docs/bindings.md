@@ -131,6 +131,18 @@ interface SetMultibinding {
 }
 ```
 
+If a custom collection has no type parameter or its type parameter differs from its element type, declare the element type explicitly on the `@ElementsIntoSet` provider.
+
+```kotlin
+class UserIds : ArrayList<Long>()
+
+@Provides
+@ElementsIntoSet
+fun userIds(ids: UserIds): Set<Long> = ids.toSet()
+```
+
+You can also return `ids` directly with a declared return type of `Collection<Long>` to avoid copying it.
+
 Map multibindings use `@IntoMap` and require a *map key* annotation. Map keys are any annotation annotated with `@MapKey`. Metro’s runtime includes a number of common ones like `@ClassKey` and `@StringKey`.
 
 ```kotlin

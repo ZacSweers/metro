@@ -40,7 +40,10 @@ public class TraceContext(private val options: MetroOptions) : Closeable {
 
   /** Creates a new FIR driver for the given session/module. Null when tracing is disabled. */
   public fun newFirDriverOrNull(moduleName: String): AbstractTraceDriver? {
-    if (firClosed) return null
+    if (firClosed || !options.traceEnabled) {
+      return null
+    }
+
     val driver = newDriver(phase = "fir", moduleName)
     firDrivers.add(driver)
     return driver

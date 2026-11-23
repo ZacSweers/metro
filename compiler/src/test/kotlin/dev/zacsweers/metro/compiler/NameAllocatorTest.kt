@@ -69,6 +69,19 @@ class NameAllocatorTest {
   }
 
   @Test
+  fun `counted suffixes skip reservations made between allocations`() {
+    val names = NameAllocator(mode = Mode.COUNT)
+    names.reserveName("provider4")
+    assertThat(names.newName("provider")).isEqualTo("provider")
+    assertThat(names.newName("provider")).isEqualTo("provider2")
+
+    names.reserveName("provider3")
+    assertThat(names.newName("provider")).isEqualTo("provider5")
+    assertThat(names.newName("provider2")).isEqualTo("provider22")
+    assertThat(names.newName("provider")).isEqualTo("provider6")
+  }
+
+  @Test
   fun characterMappingSubstituteWithCount() {
     val nameAllocator = NameAllocator(mode = Mode.COUNT)
     assertThat(nameAllocator.newName("a-b", 1)).isEqualTo("a_b")

@@ -20,7 +20,7 @@ interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
-    @MultibindingElement(bindingId = "kotlin/Int|kotlin/Int", elementId = "-1823364611")
+    @MultibindingElement(bindingId = "kotlin/Int|kotlin/Int", elementId = "-1823364611#AppGraph.provideInt(AppGraph): kotlin/Int")
     private val provideIntProvider: Provider<Int>
       field = create(instance = <this>)
 

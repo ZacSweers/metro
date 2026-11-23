@@ -6,10 +6,10 @@ import dev.zacsweers.metro.ContributesIntoSet
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.binding
+import dev.zacsweers.metro.compiler.MemberInjectorNames
 import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.asName
-import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
 import dev.zacsweers.metro.compiler.escapeIfNull
@@ -35,6 +35,7 @@ import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.findInjectableConstructor
 import dev.zacsweers.metro.compiler.ir.generateDefaultConstructorBody
 import dev.zacsweers.metro.compiler.ir.getOrCreateMetadataVisibleHiddenNestedClass
+import dev.zacsweers.metro.compiler.ir.hasStarArgument
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
@@ -62,7 +63,6 @@ import dev.zacsweers.metro.compiler.ir.trackClassLookup
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.ir.typeRemapperFor
 import dev.zacsweers.metro.compiler.memoize
-import dev.zacsweers.metro.compiler.memoized
 import dev.zacsweers.metro.compiler.newName
 import dev.zacsweers.metro.compiler.proto.MemberInjectionsProto
 import dev.zacsweers.metro.compiler.reportCompilerBug
@@ -88,8 +88,6 @@ import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrExpression
-import org.jetbrains.kotlin.ir.types.IrSimpleType
-import org.jetbrains.kotlin.ir.types.IrStarProjection
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.isUnit
@@ -139,7 +137,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
       return MemberInjectionsProto(
         // Simple name is fine because it's always nested in the parent class
         injector_class_name = injectorClass!!.name.asString(),
-        member_inject_functions = declaredInjectFunctions.keys.map { it.name.asString() }.sorted(),
+        member_inject_functions = declaredInjectFunctions.keys.map { it.name.asString() },
       )
     }
 
@@ -227,26 +225,11 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
       val directInjectedMembers = injectedMembersByClass[injectedClassId].orEmpty()
 
       val declaredInjectFunctions =
-        if (creatorsClass != null) {
-          directInjectedMembers.associateBy { params ->
-            val name =
-              if (params.isProperty) {
-                params.irProperty!!.name
-              } else {
-                params.callableId.callableName
-              }
-            val baseHelperName = "inject${name.capitalizeUS().asString()}".asName()
-            val helperName =
-              if (creatorsClass.isObject) {
-                baseHelperName
-              } else {
-                receiverlessInjectHelperName(baseHelperName, params.regularParameters.size)
-              }
-            creatorsClass.injectHelperOrNull(helperName.asString())
-              ?: reportCompilerBug("No $helperName() helper in ${creatorsClass.kotlinFqName}")
-          }
-        } else {
-          emptyMap()
+        when {
+          creatorsClass == null -> emptyMap()
+          // Binary parameter lists already carry their resolved Metro or Dagger helper.
+          isExternal -> directInjectedMembers.associateBy { it.ir as IrSimpleFunction }
+          else -> creatorsClass.getOrCreateInjectHelpers(declaration, directInjectedMembers)
         }
 
       return MemberInjectClass(
@@ -335,61 +318,6 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
     }
 
     val helperOwner = injectorClass.factoryHelperDeclarationContainer()
-    if (
-      options.generateClassesInIr &&
-        helperOwner.functions.none { it.origin == Origins.MembersInjectorStaticInjectFunction }
-    ) {
-      val directMemberInjectParameters =
-        declaration.getOrComputeMemberInjectParameters()[injectedClassId].orEmpty()
-      for (params in directMemberInjectParameters) {
-        val name =
-          if (params.isProperty) {
-            params.irProperty!!.name
-          } else {
-            params.callableId.callableName
-          }
-        // Helpers on a class are companion-block members, which have no receiver.
-        val isStatic = !helperOwner.isObject
-        val baseHelperName = "inject${name.capitalizeUS().asString()}".asName()
-        val helperName =
-          if (isStatic) {
-            receiverlessInjectHelperName(baseHelperName, params.regularParameters.size)
-          } else {
-            baseHelperName
-          }
-        helperOwner
-          .addFunction(
-            helperName.asString(),
-            irBuiltIns.unitType,
-            isStatic = isStatic,
-            origin = Origins.MembersInjectorStaticInjectFunction,
-          )
-          .apply {
-            val copiedTypeParameters = copyTypeParametersFrom(declaration)
-            val injectedType = declaration.symbol.typeWithParameters(copiedTypeParameters)
-            val typeRemapper =
-              typeRemapperFor(
-                copiedTypeParameters.map { it.defaultType },
-                declaration,
-              )
-            addValueParameter(
-              name = Symbols.Names.instance,
-              type = injectedType,
-              origin = Origins.InstanceParameter,
-            )
-            addParameters(
-              params.regularParameters,
-              wrapInProvider = false,
-              copyQualifiers = true,
-              stubDefaults = false,
-              typeRemapper = typeRemapper::remapType,
-            )
-            addStaticAnnotations(this)
-            metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(this)
-          }
-      }
-    }
-
     val memberInjectClass =
       trace("computeMemberInjectClass") {
         computeMemberInjectClass(injectorClass, helperOwner, isDagger = false)
@@ -501,15 +429,20 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
               val bodyExpression: IrExpression =
                 if (params.isProperty) {
                   val value = regularParameters[1]
-                  val irField = params.irProperty!!.backingField
-                  if (irField == null) {
+                  val property = params.irProperty!!
+                  val field = property.backingField
+                  // An explicit setter injection must run the setter even on a backed property.
+                  val setter = property.setter
+                  val injectSetter =
+                    setter?.isAnnotatedWithAny(metroSymbols.injectAnnotations) == true
+                  if (injectSetter || field == null) {
                     irInvoke(
                       irGet(instanceParam),
-                      callee = params.ir!!.symbol,
+                      callee = checkNotNull(setter).symbol,
                       args = listOf(irGet(value)),
                     )
                   } else {
-                    irSetField(irGet(instanceParam), irField, irGet(value))
+                    irSetField(irGet(instanceParam), field, irGet(value))
                   }
                 } else {
                   irInvoke(
@@ -580,6 +513,73 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
     return memberInjectClass.also { generatedInjectors[injectedClassId] = Optional.of(it) }
   }
 
+  /** Resolves the helpers declared by FIR or creates them for an IR-generated injector. */
+  private fun IrClass.getOrCreateInjectHelpers(
+    declaration: IrClass,
+    members: List<Parameters>,
+  ): Map<IrSimpleFunction, Parameters> {
+    if (members.isEmpty()) {
+      return emptyMap()
+    }
+
+    val helperNames = MemberInjectorNames()
+    // Helpers on a class are companion-block members, which have no receiver.
+    val isStatic = !isObject
+    val existing =
+      functions
+        .filter { it.origin == Origins.MembersInjectorStaticInjectFunction }
+        .associateBy { it.name }
+    return members.associateBy { params ->
+      val memberName = params.irProperty?.name ?: params.callableId.callableName
+      val baseName = helperNames.allocate(memberName)
+      val helperName =
+        if (isStatic) {
+          receiverlessInjectHelperName(baseName, params.regularParameters.size)
+        } else {
+          baseName
+        }
+
+      val function = existing[helperName]
+      if (function != null) {
+        return@associateBy function
+      }
+
+      if (!options.generateClassesInIr) {
+        reportCompilerBug("No $helperName() helper in $kotlinFqName")
+      }
+
+      addFunction(
+          helperName.asString(),
+          irBuiltIns.unitType,
+          isStatic = isStatic,
+          origin = Origins.MembersInjectorStaticInjectFunction,
+        )
+        .apply {
+          val copiedTypeParameters = copyTypeParametersFrom(declaration)
+          val injectedType = declaration.symbol.typeWithParameters(copiedTypeParameters)
+          val typeRemapper =
+            typeRemapperFor(
+              copiedTypeParameters.map { it.defaultType },
+              declaration,
+            )
+          addValueParameter(
+            name = Symbols.Names.instance,
+            type = injectedType,
+            origin = Origins.InstanceParameter,
+          )
+          addParameters(
+            params.regularParameters,
+            wrapInProvider = false,
+            copyQualifiers = true,
+            stubDefaults = false,
+            typeRemapper = typeRemapper::remapType,
+          )
+          addStaticAnnotations(this)
+          metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(this)
+        }
+    }
+  }
+
   private fun createMembersInjectorShell(
     declaration: IrClass,
     injectedMembersByClass: Map<ClassId, List<Parameters>>,
@@ -635,13 +635,12 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
       }
   }
 
+  /** Looks up each class's own parameters in one pass through the hierarchy. */
   private fun IrClass.getOrComputeMemberInjectParameters(): Map<ClassId, List<Parameters>> {
-    // Compute supertypes once - we'll need them for either cached lookup or fresh computation
     val allTypes =
       allSupertypesSequence(excludeSelf = false, excludeAny = true)
         .mapNotNull { it.rawTypeOrNull() }
         .filterNot { it.isInterface }
-        .memoized()
 
     val result =
       processTypes(allTypes) { clazz, classId, nameAllocator ->
@@ -817,6 +816,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
     }
   }
 
+  /** Reads helper parameters in the order the producer used for its injector's `create()`. */
   private fun deriveParametersFromInjectFunctionNames(
     clazz: IrClass,
     injectFunctionNames: List<String>,
@@ -830,50 +830,54 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
     val producerCompanionMode = injectedClassMetadata.companion_mode.toCompanionMode()
     val container = injectorClass.factoryHelperDeclarationContainer(producerCompanionMode)
 
-    // Try to get create() function to determine the correct parameter order
-    val createFunction = container.requireSimpleFunction(Symbols.StringNames.CREATE).owner
+    val helpers = injectFunctionNames.mapNotNull { container.injectHelperOrNull(it) }
+    return container.inCreateOrder(helpers).map { function ->
+      extractParametersFromInjectFunction(
+        clazz = clazz,
+        nameAllocator = nameAllocator,
+        function = function,
+        // Source member lookups are only necessary for Dagger setters
+        sourceMemberParametersMap = null,
+      )
+    }
+  }
 
-    val allCreateParams = createFunction.regularParameters
-
-    // Match each inject function to its position in create() params by parameter name
-    data class MatchedFunction(val functionName: String, val startPosition: Int)
-
-    // TODO what about overloads of the same name?
-    val matchedFunctions = injectFunctionNames.mapNotNull { functionName ->
-      // Extract member name from inject function name (e.g., "injectMessage" -> "message")
-      val memberName = functionName.removePrefix("inject").decapitalizeUS()
-
-      // Find the position of this member in create() params by matching parameter names
-      val foundPosition = allCreateParams.indexOfFirst { param ->
-        param.name.asString() == memberName
-      }
-
-      if (foundPosition >= 0) {
-        MatchedFunction(functionName, foundPosition)
-      } else {
-        null
-      }
+  /**
+   * Older producers alphabetized the helper names. Recover their order only when the helpers'
+   * dependencies exactly match the parameters of `create()` after its inherited parameters.
+   */
+  private fun IrClass.inCreateOrder(helpers: List<IrSimpleFunction>): List<IrSimpleFunction> {
+    if (helpers.size < 2) {
+      return helpers
     }
 
-    // If we successfully matched all functions, sort by create() order
-    val sortedFunctionNames =
-      if (matchedFunctions.size == injectFunctionNames.size) {
-        matchedFunctions.sortedBy { it.startPosition }.map { it.functionName }
-      } else {
-        // Fallback to the original sorted order if matching failed
-        injectFunctionNames
-      }
+    fun List<IrSimpleFunction>.dependencyNames() = flatMap { helper ->
+      helper.regularParameters.drop(1).map { it.name }
+    }
 
-    // Extract parameters in the determined order
-    return sortedFunctionNames.mapNotNull { functionName ->
-      container.injectHelperOrNull(functionName)?.let { function ->
-        extractParametersFromInjectFunction(
-          clazz = clazz,
-          nameAllocator = nameAllocator,
-          function = function,
-          // Source member lookups are only necessary for Dagger setters
-          sourceMemberParametersMap = null,
-        )
+    val recorded = helpers.dependencyNames()
+    val create = requireSimpleFunction(Symbols.StringNames.CREATE).owner
+    val expected = create.regularParameters.takeLast(recorded.size).map { it.name }
+    if (recorded == expected) {
+      return helpers
+    }
+
+    // The first parameter is the instance. Only helpers with dependencies appear in create().
+    val withDependencies = helpers.filter { it.regularParameters.size > 1 }
+    val byFirstDependency =
+      withDependencies.associateByTo(HashMap()) { it.regularParameters[1].name }
+    val ordered = expected.mapNotNull(byFirstDependency::remove)
+    if (ordered.size != withDependencies.size || ordered.dependencyNames() != expected) {
+      return helpers
+    }
+
+    // Keep no-argument methods in their recorded slots.
+    val remaining = ordered.iterator()
+    return helpers.map { helper ->
+      if (helper.regularParameters.size > 1) {
+        remaining.next()
+      } else {
+        helper
       }
     }
   }
@@ -1000,7 +1004,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
   /**
    * Common logic for processing types and collecting injectable member parameters.
    *
-   * @param types The precomputed sequence of types to process
+   * @param types The classes to visit starting from the most derived class
    * @param membersExtractor Function that takes (clazz, classId, nameAllocator) and returns a list
    *   of Parameters for that class
    */
@@ -1049,9 +1053,8 @@ internal fun IrStatementsBuilder<*>.addMemberInjection(
 ) {
   val sourceClass = instanceReceiver.type.classOrNull!!.owner
   val typeRemapper = sourceClass.deepRemapperFor(instanceReceiver.type)
-  val instanceType = instanceReceiver.type
-  val hasStarProjection =
-    instanceType is IrSimpleType && instanceType.arguments.any { it is IrStarProjection }
+  val hasStarProjection = instanceReceiver.type.hasStarArgument()
+
   for ((function, parameters) in injectFunctions) {
     // Kotlin injector methods can live in the injector class's companion object.
     val functionOwner = function.parentAsClass

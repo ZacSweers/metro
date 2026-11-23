@@ -174,8 +174,8 @@
   },
   "bindings": [
     {
-      "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|parity/aggregation/Handler\",\"-678079832\") parity/aggregation/Handler",
-      "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin/String|parity/aggregation/Handler\", \"-678079832\") parity.aggregation.Handler",
+      "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|parity/aggregation/Handler\",\"-678079832#parity.aggregation.AggregateBindings.Companion.primaryHandler(parity/aggregation/AggregateBindings.Companion,parity/aggregation/Repo): parity/aggregation/Handler\") parity/aggregation/Handler",
+      "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin/String|parity/aggregation/Handler\", \"-678079832#parity.aggregation.AggregateBindings.Companion.primaryHandler(parity/aggregation/AggregateBindings.Companion,parity/aggregation/Repo): parity/aggregation/Handler\") parity.aggregation.Handler",
       "bindingKind": "Provided",
       "isScoped": false,
       "nameHint": "primaryHandler",
@@ -190,8 +190,8 @@
       "declaration": "primaryHandler"
     },
     {
-      "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|parity/aggregation/Handler\",\"42302901\") parity/aggregation/Handler",
-      "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin/String|parity/aggregation/Handler\", \"42302901\") parity.aggregation.Handler",
+      "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|parity/aggregation/Handler\",\"42302901#parity.aggregation.AggregateBindings.Companion.secondaryHandler(parity/aggregation/AggregateBindings.Companion): parity/aggregation/Handler\") parity/aggregation/Handler",
+      "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin/String|parity/aggregation/Handler\", \"42302901#parity.aggregation.AggregateBindings.Companion.secondaryHandler(parity/aggregation/AggregateBindings.Companion): parity/aggregation/Handler\") parity.aggregation.Handler",
       "bindingKind": "Provided",
       "isScoped": false,
       "nameHint": "secondaryHandler",
@@ -200,8 +200,8 @@
       "declaration": "secondaryHandler"
     },
     {
-      "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"parity/aggregation/Handler\",\"2113724328\") parity/aggregation/Handler",
-      "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"parity/aggregation/Handler\", \"2113724328\") parity.aggregation.Handler",
+      "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"parity/aggregation/Handler\",\"2113724328#parity.aggregation.AppHandler.MetroContributionToAppScope.BindsMirror.bindIntoSetAsHandler_intoset(parity/aggregation/AppHandler.MetroContributionToAppScope,parity/aggregation/AppHandler): parity/aggregation/Handler\") parity/aggregation/Handler",
+      "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"parity/aggregation/Handler\", \"2113724328#parity.aggregation.AppHandler.MetroContributionToAppScope.BindsMirror.bindIntoSetAsHandler_intoset(parity/aggregation/AppHandler.MetroContributionToAppScope,parity/aggregation/AppHandler): parity/aggregation/Handler\") parity.aggregation.Handler",
       "bindingKind": "Alias",
       "isScoped": false,
       "nameHint": "bindIntoSetAsHandler",
@@ -212,7 +212,7 @@
           "hasDefault": false
         }
       ],
-      "isSynthetic": false,
+      "isSynthetic": true,
       "declaration": "AppHandler",
       "aliasTarget": "parity/aggregation/AppHandler"
     },
@@ -224,13 +224,13 @@
       "nameHint": "mapOfStringToHandler",
       "dependencies": [
         {
-          "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|parity/aggregation/Handler\",\"-678079832\") parity/aggregation/Handler",
-          "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin/String|parity/aggregation/Handler\", \"-678079832\") parity.aggregation.Handler",
+          "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|parity/aggregation/Handler\",\"-678079832#parity.aggregation.AggregateBindings.Companion.primaryHandler(parity/aggregation/AggregateBindings.Companion,parity/aggregation/Repo): parity/aggregation/Handler\") parity/aggregation/Handler",
+          "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin/String|parity/aggregation/Handler\", \"-678079832#parity.aggregation.AggregateBindings.Companion.primaryHandler(parity/aggregation/AggregateBindings.Companion,parity/aggregation/Repo): parity/aggregation/Handler\") parity.aggregation.Handler",
           "hasDefault": false
         },
         {
-          "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|parity/aggregation/Handler\",\"42302901\") parity/aggregation/Handler",
-          "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin/String|parity/aggregation/Handler\", \"42302901\") parity.aggregation.Handler",
+          "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|parity/aggregation/Handler\",\"42302901#parity.aggregation.AggregateBindings.Companion.secondaryHandler(parity/aggregation/AggregateBindings.Companion): parity/aggregation/Handler\") parity/aggregation/Handler",
+          "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin/String|parity/aggregation/Handler\", \"42302901#parity.aggregation.AggregateBindings.Companion.secondaryHandler(parity/aggregation/AggregateBindings.Companion): parity/aggregation/Handler\") parity.aggregation.Handler",
           "hasDefault": false
         }
       ],
@@ -239,8 +239,8 @@
         "type": "MAP",
         "allowEmpty": false,
         "sources": [
-          "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|parity/aggregation/Handler\",\"-678079832\") parity/aggregation/Handler",
-          "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|parity/aggregation/Handler\",\"42302901\") parity/aggregation/Handler"
+          "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|parity/aggregation/Handler\",\"-678079832#parity.aggregation.AggregateBindings.Companion.primaryHandler(parity/aggregation/AggregateBindings.Companion,parity/aggregation/Repo): parity/aggregation/Handler\") parity/aggregation/Handler",
+          "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|parity/aggregation/Handler\",\"42302901#parity.aggregation.AggregateBindings.Companion.secondaryHandler(parity/aggregation/AggregateBindings.Companion): parity/aggregation/Handler\") parity/aggregation/Handler"
         ]
       }
     },
@@ -267,8 +267,8 @@
       "nameHint": "setOfHandler",
       "dependencies": [
         {
-          "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"parity/aggregation/Handler\",\"2113724328\") parity/aggregation/Handler",
-          "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"parity/aggregation/Handler\", \"2113724328\") parity.aggregation.Handler",
+          "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"parity/aggregation/Handler\",\"2113724328#parity.aggregation.AppHandler.MetroContributionToAppScope.BindsMirror.bindIntoSetAsHandler_intoset(parity/aggregation/AppHandler.MetroContributionToAppScope,parity/aggregation/AppHandler): parity/aggregation/Handler\") parity/aggregation/Handler",
+          "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"parity/aggregation/Handler\", \"2113724328#parity.aggregation.AppHandler.MetroContributionToAppScope.BindsMirror.bindIntoSetAsHandler_intoset(parity/aggregation/AppHandler.MetroContributionToAppScope,parity/aggregation/AppHandler): parity/aggregation/Handler\") parity.aggregation.Handler",
           "hasDefault": false
         }
       ],
@@ -277,7 +277,7 @@
         "type": "SET",
         "allowEmpty": false,
         "sources": [
-          "@dev/zacsweers/metro/internal/MultibindingElement(\"parity/aggregation/Handler\",\"2113724328\") parity/aggregation/Handler"
+          "@dev/zacsweers/metro/internal/MultibindingElement(\"parity/aggregation/Handler\",\"2113724328#parity.aggregation.AppHandler.MetroContributionToAppScope.BindsMirror.bindIntoSetAsHandler_intoset(parity/aggregation/AppHandler.MetroContributionToAppScope,parity/aggregation/AppHandler): parity/aggregation/Handler\") parity/aggregation/Handler"
         ]
       }
     },
@@ -405,8 +405,8 @@
       "outcome": "selected",
       "candidates": [
         {
-          "id": "133:@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|parity/aggregation/Handler\",\"-678079832\") parity/aggregation/Handler|161:parity.aggregation.AggregateBindings.Companion.primaryHandler(parity/aggregation/AggregateBindings.Companion,parity/aggregation/Repo): parity/aggregation/Handler",
-          "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|parity/aggregation/Handler\",\"-678079832\") parity/aggregation/Handler",
+          "id": "295:@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|parity/aggregation/Handler\",\"-678079832#parity.aggregation.AggregateBindings.Companion.primaryHandler(parity/aggregation/AggregateBindings.Companion,parity/aggregation/Repo): parity/aggregation/Handler\") parity/aggregation/Handler|161:parity.aggregation.AggregateBindings.Companion.primaryHandler(parity/aggregation/AggregateBindings.Companion,parity/aggregation/Repo): parity/aggregation/Handler",
+          "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|parity/aggregation/Handler\",\"-678079832#parity.aggregation.AggregateBindings.Companion.primaryHandler(parity/aggregation/AggregateBindings.Companion,parity/aggregation/Repo): parity/aggregation/Handler\") parity/aggregation/Handler",
           "status": "selected",
           "reason": "selected_explicit",
           "declaration": {
@@ -415,14 +415,14 @@
           },
           "relatedDeclarations": [],
           "details": [],
-          "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin/String|parity/aggregation/Handler\", \"-678079832\") parity.aggregation.Handler"
+          "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin/String|parity/aggregation/Handler\", \"-678079832#parity.aggregation.AggregateBindings.Companion.primaryHandler(parity/aggregation/AggregateBindings.Companion,parity/aggregation/Repo): parity/aggregation/Handler\") parity.aggregation.Handler"
         }
       ],
       "request": {
-        "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|parity/aggregation/Handler\",\"-678079832\") parity/aggregation/Handler",
+        "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|parity/aggregation/Handler\",\"-678079832#parity.aggregation.AggregateBindings.Companion.primaryHandler(parity/aggregation/AggregateBindings.Companion,parity/aggregation/Repo): parity/aggregation/Handler\") parity/aggregation/Handler",
         "hasDefault": false,
         "isOptional": false,
-        "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin/String|parity/aggregation/Handler\", \"-678079832\") parity.aggregation.Handler"
+        "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin/String|parity/aggregation/Handler\", \"-678079832#parity.aggregation.AggregateBindings.Companion.primaryHandler(parity/aggregation/AggregateBindings.Companion,parity/aggregation/Repo): parity/aggregation/Handler\") parity.aggregation.Handler"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -437,8 +437,8 @@
       "outcome": "selected",
       "candidates": [
         {
-          "id": "131:@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|parity/aggregation/Handler\",\"42302901\") parity/aggregation/Handler|139:parity.aggregation.AggregateBindings.Companion.secondaryHandler(parity/aggregation/AggregateBindings.Companion): parity/aggregation/Handler",
-          "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|parity/aggregation/Handler\",\"42302901\") parity/aggregation/Handler",
+          "id": "271:@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|parity/aggregation/Handler\",\"42302901#parity.aggregation.AggregateBindings.Companion.secondaryHandler(parity/aggregation/AggregateBindings.Companion): parity/aggregation/Handler\") parity/aggregation/Handler|139:parity.aggregation.AggregateBindings.Companion.secondaryHandler(parity/aggregation/AggregateBindings.Companion): parity/aggregation/Handler",
+          "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|parity/aggregation/Handler\",\"42302901#parity.aggregation.AggregateBindings.Companion.secondaryHandler(parity/aggregation/AggregateBindings.Companion): parity/aggregation/Handler\") parity/aggregation/Handler",
           "status": "selected",
           "reason": "selected_explicit",
           "declaration": {
@@ -447,14 +447,14 @@
           },
           "relatedDeclarations": [],
           "details": [],
-          "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin/String|parity/aggregation/Handler\", \"42302901\") parity.aggregation.Handler"
+          "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin/String|parity/aggregation/Handler\", \"42302901#parity.aggregation.AggregateBindings.Companion.secondaryHandler(parity/aggregation/AggregateBindings.Companion): parity/aggregation/Handler\") parity.aggregation.Handler"
         }
       ],
       "request": {
-        "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|parity/aggregation/Handler\",\"42302901\") parity/aggregation/Handler",
+        "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"kotlin/String|parity/aggregation/Handler\",\"42302901#parity.aggregation.AggregateBindings.Companion.secondaryHandler(parity/aggregation/AggregateBindings.Companion): parity/aggregation/Handler\") parity/aggregation/Handler",
         "hasDefault": false,
         "isOptional": false,
-        "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin/String|parity/aggregation/Handler\", \"42302901\") parity.aggregation.Handler"
+        "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin/String|parity/aggregation/Handler\", \"42302901#parity.aggregation.AggregateBindings.Companion.secondaryHandler(parity/aggregation/AggregateBindings.Companion): parity/aggregation/Handler\") parity.aggregation.Handler"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
@@ -469,8 +469,8 @@
       "outcome": "selected",
       "candidates": [
         {
-          "id": "119:@dev/zacsweers/metro/internal/MultibindingElement(\"parity/aggregation/Handler\",\"2113724328\") parity/aggregation/Handler|29:parity.aggregation.AppHandler",
-          "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"parity/aggregation/Handler\",\"2113724328\") parity/aggregation/Handler",
+          "id": "335:@dev/zacsweers/metro/internal/MultibindingElement(\"parity/aggregation/Handler\",\"2113724328#parity.aggregation.AppHandler.MetroContributionToAppScope.BindsMirror.bindIntoSetAsHandler_intoset(parity/aggregation/AppHandler.MetroContributionToAppScope,parity/aggregation/AppHandler): parity/aggregation/Handler\") parity/aggregation/Handler|29:parity.aggregation.AppHandler",
+          "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"parity/aggregation/Handler\",\"2113724328#parity.aggregation.AppHandler.MetroContributionToAppScope.BindsMirror.bindIntoSetAsHandler_intoset(parity/aggregation/AppHandler.MetroContributionToAppScope,parity/aggregation/AppHandler): parity/aggregation/Handler\") parity/aggregation/Handler",
           "status": "selected",
           "reason": "selected_explicit",
           "declaration": {
@@ -479,14 +479,14 @@
           },
           "relatedDeclarations": [],
           "details": [],
-          "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"parity/aggregation/Handler\", \"2113724328\") parity.aggregation.Handler"
+          "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"parity/aggregation/Handler\", \"2113724328#parity.aggregation.AppHandler.MetroContributionToAppScope.BindsMirror.bindIntoSetAsHandler_intoset(parity/aggregation/AppHandler.MetroContributionToAppScope,parity/aggregation/AppHandler): parity/aggregation/Handler\") parity.aggregation.Handler"
         }
       ],
       "request": {
-        "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"parity/aggregation/Handler\",\"2113724328\") parity/aggregation/Handler",
+        "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"parity/aggregation/Handler\",\"2113724328#parity.aggregation.AppHandler.MetroContributionToAppScope.BindsMirror.bindIntoSetAsHandler_intoset(parity/aggregation/AppHandler.MetroContributionToAppScope,parity/aggregation/AppHandler): parity/aggregation/Handler\") parity/aggregation/Handler",
         "hasDefault": false,
         "isOptional": false,
-        "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"parity/aggregation/Handler\", \"2113724328\") parity.aggregation.Handler"
+        "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"parity/aggregation/Handler\", \"2113724328#parity.aggregation.AppHandler.MetroContributionToAppScope.BindsMirror.bindIntoSetAsHandler_intoset(parity/aggregation/AppHandler.MetroContributionToAppScope,parity/aggregation/AppHandler): parity/aggregation/Handler\") parity.aggregation.Handler"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."

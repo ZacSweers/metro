@@ -4,6 +4,31 @@ Changelog
 **Unreleased**
 --------------
 
+### Enhancements
+
+- **[Compiler]** Stop copying and re-sorting each binding's dependencies when ordering the graph.
+- **[FIR]** Skip formatting class and function names for FIR trace events when compiler tracing is disabled.
+- **[IR]** Compare shared bindings only once when compiling graph extensions. This cut compile time from 43.5 s to 3.2 s on a 58-class test graph.
+
+### Fixes
+
+- **[Compiler]** Preserve unrelated files when clearing old reports from `reportsDestination`.
+- **[Compiler]** Include the graph accessor in missing-binding errors, even when the missing dependency is several constructors deep.
+- **[FIR]** Report abstract properties on `@AssistedFactory` and `@DependencyGraph.Factory` at compile time. Reading one on an assisted factory could throw `AbstractMethodError`.
+- **[FIR]** `@ElementsIntoSet` could put lists in a `Set<String>` when a provider returned `Batch<String>` and `Batch<T>` implemented `List<List<T>>`. Metro now reports a compile error. Declare `Set<List<String>>` and return `batch.toSet()`.
+- **[FIR/IR]** Fix `@get:` site targets for `@OptionalBinding`.
+- **[FIR/IR]** Fix a bug where a provider returning `Map<K, V>?` could supply `null` to a non-null `Map<K, V>` accessor.
+- **[FIR/IR]** Fix a JVM compiler crash (`Function has no body`) when a class has overloaded `@Inject` methods such as `accept(Int)` and `accept(String)`.
+- **[FIR/IR]** Fix a compiler crash when resolving bindings with star projections such as `Map<String, *>` and `Lazy<*>`.
+- **[IR]** Record `@Inject` methods in declaration order in library metadata. Sorting them by name could swap two `@Named` arguments of the same type when another module injected the class.
+- **[IR]** Fix a `ClassCastException` in generated factories that passed an `@Provides` method's extension receiver or context parameter in the argument slot for the graph.
+- **[IR]** Fix `@set:Inject` writing directly to the backing field and skipping the custom setter.
+- **[IR]** If a graph already exposed a provided `Map<String, String>`, Metro could reuse it for a `Map<String, () -> String>` accessor. Metro now reports a missing binding for the second accessor.
+- **[IR]** Fix a `ClassCastException` when injecting a provided `Map<Class<*>, V>` with `enableKClassToClassInterop` enabled. Metro tried to convert keys that were already Java classes.
+- **[IR]** Fix a `NoSuchMethodError` when `createGraph()` tried to call a suspend function synchronously to get an extension receiver (e.g. `@Provides suspend fun next(): Int` for `@Provides fun Int.twice(): Long`).
+- **[IR]** Fix a compiler crash when two `@IntoSet` or `@IntoMap` functions have names with the same hash code, such as `provideAa` and `provideBB`.
+- **[IDEA-plugin]** Discard a file snapshot if its worker is canceled while reading it for the IDE index.
+
 1.6.0
 -----
 

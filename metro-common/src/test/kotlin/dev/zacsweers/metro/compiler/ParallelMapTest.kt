@@ -11,6 +11,7 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNotSame
 import kotlin.test.assertSame
@@ -25,6 +26,7 @@ import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -55,6 +57,24 @@ class ParallelMapTest {
       listOf("read 1", "accept 1=2", "read 2", "accept 2=4", "read 3", "accept 3=6"),
       events,
     )
+  }
+
+  @Test
+  fun `a worker that cancels itself cannot publish its result`() = runBlocking {
+    val failure =
+      assertFailsWith<CancellationException> {
+        listOf(1)
+          .parallelMap(
+            parallelism = 2,
+            read = { item ->
+              currentCoroutineContext().job.cancel(CancellationException("Canceled during read"))
+              item
+            },
+            accept = { _, _ -> fail("Accepted a canceled read") },
+          )
+      }
+    assertEquals("Canceled during read", failure.message)
+    assertTrue(coroutineContext.job.isActive)
   }
 
   @Test

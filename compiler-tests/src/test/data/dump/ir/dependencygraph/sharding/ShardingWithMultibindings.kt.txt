@@ -169,7 +169,7 @@ interface TestGraph {
         <this>.#service2Provider = provider<Provider<Service2>, Service2>(delegate = create())
       }
 
-      @MultibindingElement(bindingId = "kotlin/Any", elementId = "1716830850")
+      @MultibindingElement(bindingId = "kotlin/Any", elementId = "1716830850#Module1.provideService1(Module1,Service1): kotlin/Any")
       internal val provideService1Provider: Provider<Any>
 
       internal val service1Provider: Provider<Service1>
@@ -192,7 +192,7 @@ interface TestGraph {
 
       internal val collectorProvider: Provider<Collector>
 
-      @MultibindingElement(bindingId = "kotlin/Any", elementId = "1716890464")
+      @MultibindingElement(bindingId = "kotlin/Any", elementId = "1716890464#Module2.provideService2(Module2,Service2): kotlin/Any")
       internal val provideService2Provider: Provider<Any>
 
     }

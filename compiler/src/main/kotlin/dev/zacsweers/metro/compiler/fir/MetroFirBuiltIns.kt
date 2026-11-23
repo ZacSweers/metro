@@ -5,14 +5,12 @@ package dev.zacsweers.metro.compiler.fir
 import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.compat.CompatContext
+import dev.zacsweers.metro.compiler.createCompilerReport
 import dev.zacsweers.metro.compiler.createDiagnosticReportPath
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.TraceContext
 import dev.zacsweers.metro.compiler.tracing.TraceScope
-import java.nio.file.Path
-import kotlin.io.path.createParentDirectories
-import kotlin.io.path.deleteIfExists
 import kotlin.io.path.writeText
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.extensions.FirExtensionSessionComponent
@@ -221,24 +219,10 @@ internal class MetroFirBuiltIns(
     text: () -> String,
   ) {
     if (session.isCli() && options.reportsEnabled) {
-      options.reportsDir.value?.let { writeDiagnostic(it, diagnosticKey, fileName(), text()) }
+      options.reportsDir.value
+        ?.createCompilerReport(createDiagnosticReportPath(diagnosticKey, fileName()))
+        ?.writeText(text())
     }
-  }
-
-  private fun writeDiagnostic(
-    reportsDir: Path,
-    diagnosticKey: String,
-    fileName: String,
-    text: String,
-  ) {
-    reportsDir
-      .resolve(createDiagnosticReportPath(diagnosticKey, fileName))
-      .apply {
-        // Ensure that the path leading up to the file has been created
-        createParentDirectories()
-        deleteIfExists()
-      }
-      .writeText(text)
   }
 
   companion object {

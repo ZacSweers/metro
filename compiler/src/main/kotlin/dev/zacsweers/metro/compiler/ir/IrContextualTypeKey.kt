@@ -15,6 +15,7 @@ import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classOrNull
+import org.jetbrains.kotlin.ir.types.mergeNullability
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.types.typeWithArguments
@@ -95,15 +96,7 @@ internal class IrContextualTypeKey(
         innerType.wrapInProvider(context.builtinsFinderCompat().findClass(wt.lazyType)!!)
       }
 
-      is WrappedType.Map -> {
-        // For Map types, we need to create a Map<K, V> type
-        val keyType = wt.keyType
-        val valueType = IrContextualTypeKey(typeKey, wt.valueType, hasDefault).toIrType()
-
-        // Create a Map type with the key type and the processed value type
-        val mapClass = context.irBuiltIns.mapClass
-        mapClass.typeWith(keyType, valueType)
-      }
+      is WrappedType.Map -> wt.toIrType()
     }
   }
 
@@ -234,6 +227,10 @@ internal class IrContextualTypeKey(
     private fun baseWrappedType(type: IrType): WrappedType<IrType> {
       if (type is IrSimpleType && type.arguments.size == 2) {
         if (type.classOrNull?.owner?.classId == StandardClassIds.Map) {
+          if (type.hasStarArgument()) {
+            return Canonical(type)
+          }
+
           return WrappedType.Map(
             type.arguments[0].typeOrFail,
             Canonical(type.arguments[1].typeOrFail),
@@ -459,6 +456,11 @@ private fun IrSimpleType.asWrappedType(
   patchMutableCollections: Boolean,
   declaration: IrDeclaration?,
 ): WrappedType<IrType> {
+  // A star has no type to unwrap. Keep the declared type for exact bindings.
+  if (hasStarArgument()) {
+    return Canonical(canonicalize(patchMutableCollections, context))
+  }
+
   val rawClassId = rawTypeOrNull()?.classId
 
   // Check if this is a Map type
@@ -470,14 +472,14 @@ private fun IrSimpleType.asWrappedType(
     val valueWrappedType =
       valueType.typeOrFail.requireSimpleType().asWrappedType(patchMutableCollections, declaration)
 
-    // Normalize map key type for canonical representation (Class -> KClass)
-    val canonicalKeyType = keyType.typeOrFail.normalizeToKClassIfJavaClass()
+    val canonicalKeyType = keyType.typeOrFail
 
-    return WrappedType.Map(canonicalKeyType, valueWrappedType) {
-      context.irBuiltIns.mapClass.typeWithArguments(
-        listOf(canonicalKeyType, valueWrappedType.canonicalType()),
-      )
-    }
+    // The map keeps its own nullability when we strip wrappers from its values.
+    val canonicalMap =
+      context.irBuiltIns.mapClass
+        .typeWith(canonicalKeyType, valueWrappedType.canonicalType())
+        .mergeNullability(this)
+    return WrappedType.Map(canonicalKeyType, valueWrappedType) { canonicalMap }
   }
 
   // Check if this is a Provider type
@@ -559,7 +561,7 @@ internal fun WrappedType<IrType>.toIrType(): IrType {
     is WrappedType.Map -> {
       val keyIrType = keyType
       val valueIrType = valueType.toIrType()
-      context.irBuiltIns.mapClass.typeWith(keyIrType, valueIrType)
+      context.irBuiltIns.mapClass.typeWith(keyIrType, valueIrType).mergeNullability(type())
     }
   }
 }

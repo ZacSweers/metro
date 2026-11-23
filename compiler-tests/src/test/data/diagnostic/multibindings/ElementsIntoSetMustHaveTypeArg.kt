@@ -2,8 +2,10 @@
 
 interface Bindings {
   // bad
-  @ElementsIntoSet @Provides fun provideFloats(): <!MULTIBINDS_ERROR!>CustomSet<!> = CustomSet()
+  @ElementsIntoSet @Provides fun provideNullable(): <!MULTIBINDS_ERROR!>List<String>?<!> = null
   @ElementsIntoSet @Provides fun provideAny(): <!MULTIBINDS_ERROR!>Set<*><!> = setOf(3)
+  @ElementsIntoSet @Provides fun provideFloats(): <!MULTIBINDS_ERROR!>CustomSet<!> = CustomSet()
+  @ElementsIntoSet @Provides fun batch(): <!MULTIBINDS_ERROR!>Batch<String><!> = Batch()
   // ok
   @ElementsIntoSet @Provides fun provideInts(): Set<Int> = setOf(3)
   @ElementsIntoSet @Provides fun provideLongs(): List<Long> = listOf(3L)
@@ -11,3 +13,5 @@ interface Bindings {
 }
 
 class CustomSet : Set<Float> by setOf(3f)
+
+class Batch<T> : ArrayList<List<T>>()

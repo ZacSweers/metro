@@ -25,7 +25,6 @@
 **/MapProviderFactoryTest.kt
 **/MapProviderLazyFactory.kt
 **/MembersInjector.kt
-**/MemoizedSequence.kt
 **/MetroIrPrettyKotlinDumpHandler.kt
 **/Multibinds.kt
 **/NameAllocator.kt

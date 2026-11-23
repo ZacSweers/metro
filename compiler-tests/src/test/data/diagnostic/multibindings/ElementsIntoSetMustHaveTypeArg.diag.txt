@@ -1,3 +1,7 @@
-/ElementsIntoSetMustHaveTypeArg.kt:6:51: error: `@ElementsIntoSet` must return a Collection type with exactly one generic type argument.
+/ElementsIntoSetMustHaveTypeArg.kt:6:53: error: `@ElementsIntoSet` must return a non-null Collection.
 
 /ElementsIntoSetMustHaveTypeArg.kt:7:48: error: `@ElementsIntoSet` cannot return a star projection type.
+
+/ElementsIntoSetMustHaveTypeArg.kt:8:51: error: `@ElementsIntoSet` requires the collection's only type argument to be its element type. Declare the return type as `Set<E>` and use `toSet()`, or return `Collection<E>` directly.
+
+/ElementsIntoSetMustHaveTypeArg.kt:9:43: error: `@ElementsIntoSet` requires the collection's only type argument to be its element type. Declare the return type as `Set<E>` and use `toSet()`, or return `Collection<E>` directly.

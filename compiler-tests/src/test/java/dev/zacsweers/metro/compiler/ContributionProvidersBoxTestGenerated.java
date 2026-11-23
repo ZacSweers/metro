@@ -5548,6 +5548,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
       }
 
       @Test
+      @TestMetadata("DirectClassMapKeyInterop.kt")
+      public void testDirectClassMapKeyInterop() {
+        run("DirectClassMapKeyInterop.kt");
+      }
+
+      @Test
       @TestMetadata("KClassMapKeyInterop.kt")
       public void testKClassMapKeyInterop() {
         run("KClassMapKeyInterop.kt");
@@ -5655,6 +5661,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
     }
 
     @Test
+    @TestMetadata("MemberInjectionOrderAcrossModules.kt")
+    public void testMemberInjectionOrderAcrossModules() {
+      run("MemberInjectionOrderAcrossModules.kt");
+    }
+
+    @Test
     @TestMetadata("MemberInjectsAcrossModules.kt")
     public void testMemberInjectsAcrossModules() {
       run("MemberInjectsAcrossModules.kt");
@@ -5682,6 +5694,18 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
     @TestMetadata("MethodBeforeFieldInjectionWithoutInterop.kt")
     public void testMethodBeforeFieldInjectionWithoutInterop() {
       run("MethodBeforeFieldInjectionWithoutInterop.kt");
+    }
+
+    @Test
+    @TestMetadata("OverloadedInjectedMethods.kt")
+    public void testOverloadedInjectedMethods() {
+      run("OverloadedInjectedMethods.kt");
+    }
+
+    @Test
+    @TestMetadata("PropertyInjectionUseSite.kt")
+    public void testPropertyInjectionUseSite() {
+      run("PropertyInjectionUseSite.kt");
     }
 
     @Test
@@ -5729,6 +5753,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
     }
 
     @Test
+    @TestMetadata("CollidingContributorNames.kt")
+    public void testCollidingContributorNames() {
+      run("CollidingContributorNames.kt");
+    }
+
+    @Test
     @TestMetadata("ContributedElementsInjectedIntoConstructor.kt")
     public void testContributedElementsInjectedIntoConstructor() {
       run("ContributedElementsInjectedIntoConstructor.kt");
@@ -5750,6 +5780,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
     @TestMetadata("DirectMapAndMultibindingValues.kt")
     public void testDirectMapAndMultibindingValues() {
       run("DirectMapAndMultibindingValues.kt");
+    }
+
+    @Test
+    @TestMetadata("ElementsIntoSetCollectionSubtype.kt")
+    public void testElementsIntoSetCollectionSubtype() {
+      run("ElementsIntoSetCollectionSubtype.kt");
     }
 
     @Test
@@ -5840,6 +5876,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
     @TestMetadata("MultibindsWithContributedElements.kt")
     public void testMultibindsWithContributedElements() {
       run("MultibindsWithContributedElements.kt");
+    }
+
+    @Test
+    @TestMetadata("NullableMapBindings.kt")
+    public void testNullableMapBindings() {
+      run("NullableMapBindings.kt");
     }
 
     @Test
@@ -6133,6 +6175,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
     }
 
     @Test
+    @TestMetadata("StarProjectedBindings.kt")
+    public void testStarProjectedBindings() {
+      run("StarProjectedBindings.kt");
+    }
+
+    @Test
     @TestMetadata("StatusTransformedPrivateProviderAnnotationsArePropagated.kt")
     public void testStatusTransformedPrivateProviderAnnotationsArePropagated() {
       run("StatusTransformedPrivateProviderAnnotationsArePropagated.kt");
@@ -6272,6 +6320,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
     @TestMetadata("DepInConstructorInjectedAccessor.kt")
     public void testDepInConstructorInjectedAccessor() {
       run("DepInConstructorInjectedAccessor.kt");
+    }
+
+    @Test
+    @TestMetadata("ExtensionReceiverInSuspendFactory.kt")
+    public void testExtensionReceiverInSuspendFactory() {
+      run("ExtensionReceiverInSuspendFactory.kt");
     }
 
     @Test

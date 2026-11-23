@@ -140,6 +140,7 @@ For Compose-heavy JS tests that exhaust the default 2g heap, use `-Pmetro.compil
 ## Working Style
 
 - Don't hard-wrap prose. This covers commit messages, PR descriptions, Markdown docs, and the changelog. Write each paragraph as one line.
+- Within each changelog section, order entries by component from Compiler → FIR → FIR/IR → IR → Gradle → Runtime. Put other components such as IDEA-plugin afterward.
 - NEVER explore Gradle caches, .gradle directories, or external library internals to understand dependencies. If you need to understand an external API, ask me or check official docs via WebFetch. Do not spelunk.
 - When I explicitly tell you to skip something, leave something commented out, or not touch a specific thing - respect that completely. Do not revisit, re-enable, or re-suggest it.
 - Avoid dense expression chains with trailing Elvis fallbacks or `?: run { ... }` blocks. Prefer named local values, early returns, or small helpers when fallback logic has multiple steps.

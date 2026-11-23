@@ -19,9 +19,9 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirFieldSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.ConeKotlinTypeProjection
+import org.jetbrains.kotlin.fir.types.ConeStarProjection
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneType
-import org.jetbrains.kotlin.fir.types.constructType
 import org.jetbrains.kotlin.fir.types.hasFlexibleMarkedNullability
 import org.jetbrains.kotlin.fir.types.typeContext
 import org.jetbrains.kotlin.fir.types.withNullability
@@ -209,6 +209,11 @@ internal fun ConeKotlinType.asFirContextualTypeKey(
 }
 
 private fun ConeKotlinType.asWrappedType(session: FirSession): WrappedType<ConeKotlinType> {
+  // A star has no type to unwrap. Keep the declared type for exact bindings.
+  if (ConeStarProjection in typeArguments) {
+    return Canonical(this)
+  }
+
   val rawClassId = classId
 
   // Check if this is a Map type
@@ -219,9 +224,7 @@ private fun ConeKotlinType.asWrappedType(session: FirSession): WrappedType<ConeK
     // Recursively analyze the value type
     val valueWrappedType = valueType.asWrappedType(session)
 
-    return WrappedType.Map(keyType, valueWrappedType) {
-      session.metroFirBuiltIns.mapClassSymbol.constructType(arrayOf(keyType, valueType))
-    }
+    return WrappedType.Map(keyType, valueWrappedType) { this }
   }
 
   // Check if this is a Provider type

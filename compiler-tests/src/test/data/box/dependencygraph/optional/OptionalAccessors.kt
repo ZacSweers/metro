@@ -24,6 +24,13 @@ interface AppGraph : Base {
   @OptionalBinding
   fun presentLong(): Long = 3L
 
+  @get:OptionalBinding
+  val presentString: String
+    get() = "default"
+
+  @Provides
+  fun provideString(): String = "provided"
+
   @Provides
   fun provideLong(): Long = 4L
 
@@ -38,5 +45,6 @@ fun box(): String {
   assertEquals('a', graph.presentChar())
   assertEquals(3, graph.absentInt)
   assertEquals(4L, graph.presentLong())
+  assertEquals("provided", graph.presentString)
   return "OK"
 }
