@@ -14,12 +14,11 @@ public class TypeKeyIdentity(
 ) : Comparable<TypeKeyIdentity> {
   public val encoded: String by
     lazy(LazyThreadSafetyMode.PUBLICATION) {
-      buildString {
-        qualifier?.let {
-          it.encodeTo(this)
-          append(' ')
-        }
-        type.encodeTo(this)
+      // Hashing the key already needs the type's encoding.
+      if (qualifier == null) {
+        type.encoded
+      } else {
+        "${qualifier.encoded} ${type.encoded}"
       }
     }
 
