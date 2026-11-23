@@ -8996,14 +8996,23 @@
 <h2 id="unreleased"><strong>Unreleased</strong><a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
 <h3 id="enhancements">Enhancements<a class="headerlink" href="#enhancements" title="Permanent link">&para;</a></h3>
 <ul>
-<li><strong>[Compiler]</strong> Stop copying and re-sorting each binding&rsquo;s dependencies when ordering the graph.</li>
+<li><strong>[core]</strong> Stop copying and re-sorting each binding&rsquo;s dependencies when ordering the graph.</li>
+<li><strong>[core]</strong> Store one copy of the encoded type for each unqualified binding key.</li>
 <li><strong>[FIR]</strong> Skip formatting class and function names for FIR trace events when compiler tracing is disabled.</li>
 <li><strong>[IR]</strong> Compare shared bindings only once when compiling graph extensions. This cut compile time from 43.5 s to 3.2 s on a 58-class test graph.</li>
+<li><strong>[IDEA]</strong> The IDE&rsquo;s Plugins dialog and JetBrains Marketplace now list IDEA and core changes and credit contributors.</li>
+<li><strong>[IDEA]</strong> Opening a second module with the same Metro options now reuses the existing graph index.</li>
+<li><strong>[IDEA]</strong> Reading cached gutter icons and inlay hints no longer queues extra work for the index.</li>
+<li><strong>[IDEA]</strong> Look up binding data once per file when drawing inlay hints.</li>
+<li><strong>[IDEA]</strong> Avoid taking a second snapshot of the same Kotlin type when indexing a plain binding request or a map request.</li>
+<li><strong>[IDEA]</strong> Stop copying the full batch of pending file edits each time another edit arrives.</li>
 </ul>
 <h3 id="fixes">Fixes<a class="headerlink" href="#fixes" title="Permanent link">&para;</a></h3>
 <ul>
+<li><strong>[core]</strong> Include the graph accessor in missing-binding errors, even when the missing dependency is several constructors deep.</li>
+<li><strong>[core]</strong> Generated set and map entries now have the same graph keys in the IDE and compiler reports, including entries from libraries.</li>
+<li><strong>[core]</strong> Set and map entries declared as properties now use the property name in both the IDE and compiler reports.</li>
 <li><strong>[Compiler]</strong> Preserve unrelated files when clearing old reports from <code>reportsDestination</code>.</li>
-<li><strong>[Compiler]</strong> Include the graph accessor in missing-binding errors, even when the missing dependency is several constructors deep.</li>
 <li><strong>[FIR]</strong> Report abstract properties on <code>@AssistedFactory</code> and <code>@DependencyGraph.Factory</code> at compile time. Reading one on an assisted factory could throw <code>AbstractMethodError</code>.</li>
 <li><strong>[FIR]</strong> <code>@ElementsIntoSet</code> could put lists in a <code>Set&lt;String&gt;</code> when a provider returned <code>Batch&lt;String&gt;</code> and <code>Batch&lt;T&gt;</code> implemented <code>List&lt;List&lt;T&gt;&gt;</code>. Metro now reports a compile error. Declare <code>Set&lt;List&lt;String&gt;&gt;</code> and return <code>batch.toSet()</code>.</li>
 <li><strong>[FIR/IR]</strong> Fix <code>@get:</code> site targets for <code>@OptionalBinding</code>.</li>
@@ -9017,7 +9026,23 @@
 <li><strong>[IR]</strong> Fix a <code>ClassCastException</code> when injecting a provided <code>Map&lt;Class&lt;*&gt;, V&gt;</code> with <code>enableKClassToClassInterop</code> enabled. Metro tried to convert keys that were already Java classes.</li>
 <li><strong>[IR]</strong> Fix a <code>NoSuchMethodError</code> when <code>createGraph()</code> tried to call a suspend function synchronously to get an extension receiver (e.g. <code>@Provides suspend fun next(): Int</code> for <code>@Provides fun Int.twice(): Long</code>).</li>
 <li><strong>[IR]</strong> Fix a compiler crash when two <code>@IntoSet</code> or <code>@IntoMap</code> functions have names with the same hash code, such as <code>provideAa</code> and <code>provideBB</code>.</li>
-<li><strong>[IDEA-plugin]</strong> Discard a file snapshot if its worker is canceled while reading it for the IDE index.</li>
+<li><strong>[IDEA]</strong> Discard a file snapshot if its worker is canceled while reading it for the IDE index.</li>
+<li><strong>[IDEA]</strong> After a lookup in the inactive graph browser, unrelated edits no longer trigger an index build.</li>
+<li><strong>[IDEA]</strong> Selecting a module with Metro disabled no longer triggers index rebuilds in other modules on unrelated edits.</li>
+<li><strong>[IDEA]</strong> The graph browser now finds graphs annotated through a Kotlin <code>typealias</code>. Changing the alias updates the index without an edit to the graph.</li>
+<li><strong>[IDEA]</strong> When a missing parent interface appears, the graph browser picks up its inherited accessors without an edit to the graph.</li>
+<li><strong>[IDEA]</strong> Graph accessors that refer to a missing Java class now resolve when the class appears.</li>
+<li><strong>[IDEA]</strong> Fix false suspend errors in child graphs when a parent&rsquo;s generic binding recursively requests larger types.</li>
+<li><strong>[IDEA]</strong> Adding an entry to a child graph&rsquo;s map no longer flags scoped entries inherited from the parent as duplicate keys.</li>
+<li><strong>[IDEA]</strong> Graph validation now reports duplicate map keys when different annotations unwrap to the same value.</li>
+<li><strong>[IDEA]</strong> A matching generic provider in a dynamic graph&rsquo;s container now overrides a static provider. An exact provider in the dynamic container still wins.</li>
+<li><strong>[IDEA]</strong> <strong>Go to Metro Binding</strong> on a provider&rsquo;s extension receiver now jumps to the receiver&rsquo;s binding. It used to jump back to the provider itself.</li>
+<li><strong>[IDEA]</strong> Pinning a graph no longer hides a generic provider&rsquo;s consumers from <strong>Find Usages</strong> or the gutter.</li>
+<li><strong>[IDEA]</strong> <strong>Select in Metro</strong> now finds the generic provider in the graph browser when it supplies a concrete type.</li>
+<li><strong>[IDEA]</strong> When graphs specialize an inherited generic parameter differently, its inlay hint now shows the implementation from the pinned graph.</li>
+<li><strong>[IDEA]</strong> <strong>Find Usages</strong> on a generic provider returning a <code>Set</code> or <code>Map</code> now includes requests that use it.</li>
+<li><strong>[IDEA]</strong> In projects without graphs, <strong>Find Usages</strong> no longer lists consumers in modules that can&rsquo;t see the provider.</li>
+<li><strong>[IDEA]</strong> In projects without graphs, <strong>Find Usages</strong> no longer reports consumers for generic providers when derived bindings are disabled.</li>
 </ul>
 <h2 id="160">1.6.0<a class="headerlink" href="#160" title="Permanent link">&para;</a></h2>
 <p><em>2026-11-16</em></p>
@@ -11741,7 +11766,7 @@ Possible fixes:
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 23, 2026 17:06:46 UTC">November 23, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 23, 2026 18:26:49 UTC">November 23, 2026</span>
   </span>
 
     
