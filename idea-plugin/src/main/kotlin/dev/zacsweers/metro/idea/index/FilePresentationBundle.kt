@@ -18,6 +18,7 @@ import dev.zacsweers.metro.idea.model.GraphPath
 import dev.zacsweers.metro.idea.model.IndexGenerationToken
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
+import dev.zacsweers.metro.idea.model.declarationBinding
 import dev.zacsweers.metro.idea.model.matchingContextEntry
 import dev.zacsweers.metro.idea.model.selectConsumerEntry
 import java.util.IdentityHashMap
@@ -350,7 +351,7 @@ internal class FilePresentationBundleBuilder(
         ProgressManager.checkCanceled()
         val resolvesByContext =
           resolution(consumer).perContext.mapValues { (_, bindings) ->
-            bindings.any(bindingSet::contains)
+            bindings.any { it.declarationBinding() in bindingSet }
           }
         ReverseUsageCandidate(consumer, resolvesByContext)
       }

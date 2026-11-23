@@ -9,6 +9,8 @@ import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.GraphQueryContext
 import dev.zacsweers.metro.idea.model.KaBinding
+import dev.zacsweers.metro.idea.navigation.metroEditorTargets
+import dev.zacsweers.metro.idea.usages.metroUsageRelations
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtProperty
@@ -390,6 +392,49 @@ class MetroDerivedBindingResolutionTest : BasePlatformTestCase() {
       setOf("users", "strings"),
       consumers.mapTo(mutableSetOf()) { (it.pointer.element as? KtProperty)?.name },
     )
+  }
+
+  fun testPinnedReverseUsagesResolveToTheGenericDeclaration() {
+    val fixture =
+      configure(
+        """
+        interface Box<T>
+        @DependencyGraph interface AppGraph {
+          val value: Box<String>
+          @Provides fun <T> box(): Box<T> = error("unused")
+        }
+        """,
+      )
+    val declarations = fixture.file.declarationsIncludingNested()
+    val provider = declarations.function("box")
+    val consumer = declarations.property("value")
+    val path = fixture.queryContext.graphContext.path
+    val usages =
+      checkNotNull(fixture.file.awaitMetroPresentation().declaration(provider)?.reverseUsage)
+
+    assertEquals(consumer, usages.consumersFor(path).single().pointer.element)
+    assertEquals(consumer, fixture.index.metroUsageRelations(provider, path).single().declaration)
+  }
+
+  fun testRevealForDerivedBindingTargetsTheGenericBrowserRow() {
+    val fixture =
+      configure(
+        """
+        interface Box<T>
+        @DependencyGraph interface AppGraph {
+          val value: Box<String>
+          @Provides fun <T> box(): Box<T> = error("unused")
+        }
+        """,
+      )
+    val declarations = fixture.file.declarationsIncludingNested()
+    val offset = declarations.property("value").textOffset
+    val targets = metroEditorTargets(fixture.index, fixture.file, offset, null)
+    val target = checkNotNull(targets.reveal.single().binding)
+    val rows = fixture.index.createResolutionSession().bindingsInContext(fixture.queryContext)
+
+    assertEquals(declarations.function("box"), target.pointer.element)
+    assertTrue(rows.any { it.pointer == target.pointer && it.typeKey == target.key })
   }
 
   fun testGenericProvidersAreIgnoredWhenDerivedBindingsAreDisabled() {

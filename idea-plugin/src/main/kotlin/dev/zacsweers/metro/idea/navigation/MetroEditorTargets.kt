@@ -12,12 +12,11 @@ import dev.zacsweers.metro.idea.model.GraphContext
 import dev.zacsweers.metro.idea.model.GraphPath
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaTypeKey
+import dev.zacsweers.metro.idea.model.declarationBinding
 import dev.zacsweers.metro.idea.model.matchingContext
 import org.jetbrains.kotlin.psi.KtFile
 
-/**
- * One binding's navigation pointer and exact key, captured during the editor query's read action.
- */
+/** The declaration pointer and key identify the browser row. The label shows the resolved type. */
 internal data class MetroBindingTarget(
   val pointer: SmartPsiElementPointer<*>,
   val key: KaTypeKey,
@@ -175,7 +174,8 @@ internal fun bindingTarget(binding: KaBinding): MetroBindingTarget {
     binding.location()?.let { append(" (").append(it).append(')') }
     module?.name?.let { append(" [").append(it).append(']') }
   }
-  return MetroBindingTarget(binding.pointer, binding.typeKey, text)
+  val declaration = binding.declarationBinding()
+  return MetroBindingTarget(declaration.pointer, declaration.typeKey, text)
 }
 
 /** Applies editor pin matching, retaining context choices when the pin belongs to another graph. */

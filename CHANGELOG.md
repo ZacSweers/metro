@@ -33,6 +33,8 @@ Changelog
 - **[IR]** Fix a compiler crash when two `@IntoSet` or `@IntoMap` functions have names with the same hash code, such as `provideAa` and `provideBB`.
 - **[IDEA-plugin]** Discard a file snapshot if its worker is canceled while reading it for the IDE index.
 - **[IDEA]** **Go to Metro Binding** on a provider's extension receiver now jumps to the receiver's binding. It used to jump back to the provider itself.
+- **[IDEA]** Pinning a graph no longer hides a generic provider's consumers from **Find Usages** or the gutter.
+- **[IDEA]** **Select in Metro** now finds the generic provider in the graph browser when it supplies a concrete type.
 
 1.6.0
 -----
