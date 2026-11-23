@@ -53,6 +53,7 @@ import org.jetbrains.kotlin.ir.types.typeWithArguments
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.nonDispatchParameters
 import org.jetbrains.kotlin.platform.isJs
+import org.jetbrains.kotlin.platform.jvm.isJvm
 
 internal class MultibindingExpressionGenerator(
   private val parentGenerator: BindingExpressionGenerator<IrBinding>,
@@ -180,8 +181,8 @@ internal class MultibindingExpressionGenerator(
           irInvoke(callee = callee, typeHint = binding.typeKey.type, typeArgs = listOf(elementType))
         }
 
-        1 if (collectionProviders.isEmpty()) -> {
-          // setOf(<one>)
+        1 if (collectionProviders.isEmpty() && platform.isJvm()) -> {
+          // Use the JVM singleton, which rejects mutation.
           val callee = metroSymbols.setOfSingleton
           val provider = individualProviders.single()
           val args =

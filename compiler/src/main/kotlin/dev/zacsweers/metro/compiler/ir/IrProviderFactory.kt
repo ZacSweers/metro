@@ -78,15 +78,6 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
     get() = function.dispatchReceiverParameter != null && providerParentClass?.isObject != true
 
   /**
-   * Returns true if the provider can bypass factory instantiation. For Metro factories, this means
-   * calling the original provider function or property. For Dagger factories, this means calling
-   * the original provider function.
-   */
-  val canBypassFactory: Boolean
-    // TODO what about !contextualTypeKey.isDeferrable?
-    get() = true
-
-  /**
    * Returns true if the original provides declaration can be called directly (not via factory
    * static method). This requires the function to be public and accessible.
    */

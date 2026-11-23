@@ -5,7 +5,9 @@ package dev.zacsweers.metro.sample
 import dagger.Component
 import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.Includes
+import dev.zacsweers.metro.createGraphFactory
 import kotlin.test.Test
+import kotlin.test.assertEquals
 
 /** Basic tests having dagger components and metro graphs depend on each other. */
 class DaggerDependenciesTest {
@@ -20,13 +22,12 @@ class DaggerDependenciesTest {
     }
   }
 
-  // TODO Restore both sample tests once KAPT and KSP reliably link the generated Dagger classes.
   @Test
   fun testGraphDependingOnComponent() {
-    //    val graph =
-    //      createGraphFactory<GraphDependingOnComponent.Factory>()
-    //        .create(DaggerStringComponent.factory().create("Hello, world!"))
-    //    assertEquals("Hello, world!", graph.message)
+    val graph =
+      createGraphFactory<GraphDependingOnComponent.Factory>()
+        .create(DaggerStringComponent.factory().create("Hello, world!"))
+    assertEquals("Hello, world!", graph.message)
   }
 
   @Component(dependencies = [StringGraph::class])
@@ -41,9 +42,9 @@ class DaggerDependenciesTest {
 
   @Test
   fun testDaggerComponentDependingOnGraph() {
-    //    val component =
-    //      DaggerDaggerDependenciesTest_ComponentDependingOnGraph.factory()
-    //        .create(createGraphFactory<StringGraph.Factory>().create("Hello, world!"))
-    //    assertEquals("Hello, world!", component.message)
+    val component =
+      DaggerDaggerDependenciesTest_ComponentDependingOnGraph.factory()
+        .create(createGraphFactory<StringGraph.Factory>().create("Hello, world!"))
+    assertEquals("Hello, world!", component.message)
   }
 }

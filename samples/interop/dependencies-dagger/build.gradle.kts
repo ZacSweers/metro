@@ -9,7 +9,7 @@ plugins {
 
 // TODO add KSP/KAPT dual mode?
 dependencies {
-  ksp(libs.dagger.compiler)
+  kspTest(libs.dagger.compiler)
   implementation(libs.dagger.runtime)
   testImplementation(libs.kotlin.test)
 }
