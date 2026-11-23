@@ -154,7 +154,6 @@ internal class ContributionIrTransformer(
   private val contributionsByClass = mutableMapOf<ClassId, Map<ClassId, Set<Contribution>>>()
 
   override fun visitClass(declaration: IrClass, data: IrContributionData): IrStatement {
-    // TODO others?
     val shouldSkip = declaration.isLocal
     if (shouldSkip) {
       return declaration

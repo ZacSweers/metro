@@ -1,6 +1,5 @@
 // ENABLE_CIRCUIT
 // RENDER_DIAGNOSTICS_FULL_TEXT
-// TODO untested
 
 import com.slack.circuit.runtime.CircuitUiState
 import com.slack.circuit.runtime.screen.Screen

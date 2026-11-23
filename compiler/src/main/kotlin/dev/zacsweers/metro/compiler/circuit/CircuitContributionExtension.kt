@@ -96,11 +96,6 @@ public class CircuitContributionExtension(
     // Only return contribution if scope matches
     if (scopeClassId != requestedScopeClassId) return null
 
-    // Check if this is a valid UI or Presenter type
-    // TODO checker
-    //    val isValidType = symbols.isUiType(classSymbol) || symbols.isPresenterType(classSymbol)
-    //    if (!isValidType) return null
-
     val factoryClassId = classSymbol.classId.createNestedClassId(target.nestedFactoryName)
 
     // Compute the MetroContribution ClassId and construct the type directly.

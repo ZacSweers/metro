@@ -78,8 +78,6 @@ internal class GraphFactoryFirSupertypeGenerator(
     }
     return declaration.symbol.isCompanion &&
       declaration.getContainingClassSymbol()?.isDependencyGraph(session) == true
-    // TODO why does the above work but not the predicate matcher?
-    //  session.predicateBasedProvider.matches(dependencyGraphCompanionPredicate, declaration)
   }
 
   override fun computeAdditionalSupertypes(
@@ -90,7 +88,7 @@ internal class GraphFactoryFirSupertypeGenerator(
     val graphCreator =
       computeCompanionSupertype(classLikeDeclaration, typeResolver) ?: return emptyList()
 
-    // TODO generics?
+    // TODO Preserve type arguments when building the graph companion's supertype.
     return listOf(graphCreator)
   }
 
@@ -117,7 +115,6 @@ internal class GraphFactoryFirSupertypeGenerator(
       return null
     }
 
-    // TODO generics?
     val type = graphCreator.defaultType()
     return type
   }

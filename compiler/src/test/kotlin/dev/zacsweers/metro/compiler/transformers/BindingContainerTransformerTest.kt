@@ -95,8 +95,7 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
 
     val providesFactoryClass = result.ExampleGraph.providesFactoryClass(companion = true)
     // These should be objects since they require no parameters
-    // TODO these appear to need metadata annotations written correctly to work
-    //    assertThat(providesFactoryClass.kotlin.objectInstance).isNotNull()
+    assertThat(providesFactoryClass.kotlin.objectInstance).isNotNull()
     // Exercise calling the static provideValue function directly
     val providedValue = providesFactoryClass.provideValueAs<String>("provideValue")
     assertThat(providedValue).isEqualTo("Hello, world!")
@@ -126,8 +125,7 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
 
     val providesFactoryClass = result.ExampleGraph.providesFactoryClass(companion = true)
     // These should be objects since they require no parameters
-    // TODO these appear to need metadata annotations written correctly to work
-    //    assertThat(providesFactoryClass.kotlin.objectInstance).isNotNull()
+    assertThat(providesFactoryClass.kotlin.objectInstance).isNotNull()
     // Exercise calling the static provideValue function directly
     val providedValue = providesFactoryClass.provideValueAs<String>("value")
     assertThat(providedValue).isEqualTo("Hello, world!")
@@ -398,7 +396,4 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
       .customBindingContainerAnnotations(setOf(ClassId.fromString("dagger/Module")))
       .build()
   }
-
-  // TODO
-  //  companion object with value params (missing receiver)
 }

@@ -196,7 +196,6 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val SCOPED_PROVIDES_SHOULD_BE_PRIVATE_ERROR by error1<KtElement, String>(VISIBILITY_MODIFIER)
   val SCOPED_PROVIDES_SHOULD_BE_PRIVATE_WARNING by warning1<KtElement, String>(VISIBILITY_MODIFIER)
   val PROVIDES_PROPERTIES_CANNOT_BE_PRIVATE by error1<KtElement, String>(VISIBILITY_MODIFIER)
-  // TODO make this severity configurable
   val PROVIDES_COULD_BE_BINDS by warning1<KtElement, String>(NAME_IDENTIFIER)
   val PROVIDER_OVERRIDES by error0<KtElement>(MODALITY_MODIFIER)
   val PROVIDES_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
@@ -371,7 +370,6 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
           STRING,
           STRING,
         )
-        // TODO eventually this will change to allow function injection
         put(
           ONLY_CLASSES_CAN_BE_INJECTED,
           "Only classes can be annotated with @Inject or have @Inject-annotated constructors.",

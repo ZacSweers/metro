@@ -20,7 +20,7 @@ class DaggerDependenciesTest {
     }
   }
 
-  // TODO KAPT/KSP are unreliable here, the generated code is not always linked :(
+  // TODO Restore both sample tests once KAPT and KSP reliably link the generated Dagger classes.
   @Test
   fun testGraphDependingOnComponent() {
     //    val graph =
@@ -39,7 +39,6 @@ class DaggerDependenciesTest {
     }
   }
 
-  // TODO KAPT/KSP are unreliable here, the generated code is not always linked :(
   @Test
   fun testDaggerComponentDependingOnGraph() {
     //    val component =

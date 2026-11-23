@@ -27,13 +27,10 @@ public class MapProviderFactory<K : Any, V>
 private constructor(contributingMap: Map<K, Provider<V>>) :
   AbstractMapFactory<K, V, Provider<V>>(contributingMap), Lazy<Map<K, Provider<V>>> {
 
-  /**
-   * Returns a `Map<K, Provider<V>>` whose iteration order is that of the elements given by each of
-   * the providers, which are invoked in the order given at creation.
-   */
+  /** Returns the entries in the order their keys were added. */
   override fun invoke(): Map<K, Provider<V>> = contributingMap()
 
-  // TODO are these overrides right?
+  // The factory eagerly stores the map and preserves its entry providers.
   override fun isInitialized(): Boolean = true
 
   override val value: Map<K, Provider<V>> = invoke()

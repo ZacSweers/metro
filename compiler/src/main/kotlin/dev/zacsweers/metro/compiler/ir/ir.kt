@@ -643,7 +643,7 @@ internal fun IrBuilderWithScope.irTemporaryVariable(
   return temporary
 }
 
-// TODO create an instance of this that caches lookups?
+// TODO Cache declared and inherited callable-member lookups.
 context(context: IrMetroContext)
 internal fun IrClass.declaredCallableMembers(
   functionFilter: (IrSimpleFunction) -> Boolean = { true },
@@ -659,7 +659,6 @@ internal fun IrClass.declaredCallableMembers(
     preserveDeclarationOrder = preserveDeclarationOrder,
   )
 
-// TODO create an instance of this that caches lookups?
 context(context: IrMetroContext)
 internal fun IrClass.allCallableMembers(
   excludeAnyFunctions: Boolean = true,
@@ -2304,7 +2303,6 @@ internal fun typeRemapperFor(substitutionMap: Map<IrTypeParameterSymbol, IrType>
                     else -> arg
                   }
                 }
-              // TODO impl use
               type.buildSimpleType { arguments = newArguments }
             }
           }

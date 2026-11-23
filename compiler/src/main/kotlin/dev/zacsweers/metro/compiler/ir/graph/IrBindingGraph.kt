@@ -158,7 +158,6 @@ internal class IrBindingGraph(
   metroContext: IrMetroContext,
   private val node: GraphNode.Local,
   private val newBindingStack: () -> IrBindingStack,
-  // TODO improve this cleanup
   bindingLookup: BindingLookup,
   private val contributionData: IrContributionData,
   private val boundTypeResolver: IrBoundTypeResolver,
@@ -1461,7 +1460,6 @@ internal class IrBindingGraph(
     }
   }
 
-  // TODO iterate on this more!
   internal fun dumpGraph(name: String, short: Boolean): String {
     if (realGraph.bindings.isEmpty()) return "Empty binding graph"
 

@@ -895,7 +895,6 @@ internal fun FirClassSymbol<*>.constructType(
 }
 
 // Annoyingly, FirDeclarationOrigin.Plugin does not implement equals()
-// TODO this still doesn't seem to work in 2.2
 internal fun FirBasedSymbol<*>.hasOrigin(vararg keys: GeneratedDeclarationKey): Boolean {
   for (key in keys) {
     if (hasOrigin(key.origin)) return true
@@ -1452,7 +1451,7 @@ internal fun FirClassSymbol<*>.implementsAny(
       useSiteSession = session,
       substituteTypes = true,
     )
-    // TODO remove expectAs in 2.3.20
+    // TODO Drop the FIR supertype casts when the minimum Kotlin version reaches 2.3.20.
     .any { it.expectAs<ConeKotlinType>().classId?.let { it in supertypes } == true }
 }
 
@@ -1601,7 +1600,6 @@ private fun buildSubstitutionMapInner(
   while (currentClass != null) {
     val superType =
       currentClass.resolvedSuperTypes.firstOrNull {
-        // TODO remove expectAs in 2.3.20
         it.classId != session.builtinTypes.anyType.coneType.expectAs<ConeKotlinType>().classId
       }
 

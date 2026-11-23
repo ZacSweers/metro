@@ -781,15 +781,6 @@ private fun FirBasedSymbol<*>.metroAnnotations(
             yield(field.metroAnnotations(session, callingContainer = thisContainer, kinds = kinds))
           }
         }
-      } else if (thisContainer is FirNamedFunctionSymbol) {
-        // TODO?
-        //  correspondingPropertySymbol?.owner?.let { property ->
-        //    if (property != callingContainer) {
-        //      val propertyAnnotations =
-        //        property.metroAnnotations(ids, callingContainer = thisContainer, kinds = kinds)
-        //      yield(propertyAnnotations)
-        //    }
-        //  }
       }
     }
     .reduce(MetroAnnotations<MetroFirAnnotation>::mergeWith)

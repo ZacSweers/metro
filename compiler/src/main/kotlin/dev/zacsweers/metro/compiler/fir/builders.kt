@@ -20,7 +20,6 @@ import org.jetbrains.kotlin.fir.declarations.origin
 import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
 import org.jetbrains.kotlin.fir.expressions.buildResolvedArgumentList
 import org.jetbrains.kotlin.fir.expressions.builder.buildArgumentList
-import org.jetbrains.kotlin.fir.expressions.builder.buildExpressionStub
 import org.jetbrains.kotlin.fir.expressions.builder.buildFunctionCall
 import org.jetbrains.kotlin.fir.expressions.builder.buildLiteralExpression
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
@@ -183,7 +182,6 @@ internal fun FirDeclarationGenerationExtension.buildSimpleValueParameter(
   type: FirTypeRef,
   containingFunctionSymbol: FirFunctionSymbol<*>,
   origin: FirDeclarationOrigin = Keys.RegularParameter.origin,
-  hasDefaultValue: Boolean = false,
   isCrossinline: Boolean = false,
   isNoinline: Boolean = false,
   isVararg: Boolean = false,
@@ -196,12 +194,6 @@ internal fun FirDeclarationGenerationExtension.buildSimpleValueParameter(
     returnTypeRef = type
     this.name = name
     symbol = FirValueParameterSymbol()
-    if (hasDefaultValue) {
-      // TODO: check how it will actually work in fir2ir
-      defaultValue = buildExpressionStub {
-        coneTypeOrNull = session.builtinTypes.nothingType.coneType
-      }
-    }
     this.containingDeclarationSymbol = containingFunctionSymbol
     this.isCrossinline = isCrossinline
     this.isNoinline = isNoinline

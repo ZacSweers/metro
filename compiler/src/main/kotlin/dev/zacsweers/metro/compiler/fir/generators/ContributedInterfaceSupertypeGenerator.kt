@@ -606,7 +606,6 @@ internal class ContributedInterfaceSupertypeGenerator(
       val replacedClassIds =
         contributionClassLikes
           .mapNotNull {
-            // TODO remove expectAs in 2.3.20
             val contributionClassId = it.expectAs<ConeKotlinType>().classId
             if (contributionClassId in removedContributionClassIds) {
               return@mapNotNull null
