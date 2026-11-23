@@ -1989,6 +1989,45 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     )
   }
 
+  fun testGraphlessReverseUsagesRespectConsumerModuleVisibility() {
+    val app =
+      fixture.addFileToProject(
+        "app/test/Bindings.kt",
+        """
+        package test
+        import dev.zacsweers.metro.*
+
+        @BindingContainer object Bindings {
+          @Provides fun text(): String = ""
+        }
+
+        @Inject class Local(val label: String)
+        """
+          .trimIndent(),
+      ) as KtFile
+    val bridge =
+      fixture.addFileToProject(
+        "bridge/test/Target.kt",
+        """
+        package test
+        import dev.zacsweers.metro.*
+
+        @Inject class Unrelated(val label: String)
+        """
+          .trimIndent(),
+      ) as KtFile
+    val index = fixture.project.service<MetroResolutionService>().awaitIndex(app)
+    val session = index.createResolutionSession()
+    val declarations = app.declarationsIncludingNested()
+    val provider = index.bindingEntriesAt(declarations.function("text"))
+    val local = checkNotNull(session.consumerEntryAt(declarations.parameter("label")))
+    val unrelated =
+      checkNotNull(session.consumerEntryAt(bridge.declarationsIncludingNested().parameter("label")))
+
+    assertTrue(session.resolveConsumer(unrelated).candidateBindings.isEmpty())
+    assertEquals(listOf(local), session.consumersFor(provider))
+  }
+
   fun testSameFqnGraphsInUnrelatedModulesKeepTheirOwnAccessors() {
     val appFile =
       fixture.addFileToProject(

@@ -2123,13 +2123,16 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
         candidates += lookups.consumersByKey[entry.typeKey].orEmpty()
       }
     }
-    if (graphs.isEmpty()) return candidates.toList()
 
     for (consumer in candidates) {
+      ProgressManager.checkCanceled()
       val resolution = resolveConsumer(session, consumer)
       val pinnedBindings = graphPath?.let { resolution.perContext.matchingContextEntry(it)?.value }
       val resolvesToEntry =
-        if (pinnedBindings != null) {
+        if (graphs.isEmpty()) {
+          // Without graphs the consumer's module determines which declarations it can see.
+          resolution.global.any { it in bindingSet }
+        } else if (pinnedBindings != null) {
           pinnedBindings.any { it.declarationBinding() in bindingSet }
         } else {
           resolution.perContext.values.any { contextBindings ->

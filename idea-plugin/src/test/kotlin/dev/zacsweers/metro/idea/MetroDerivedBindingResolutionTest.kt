@@ -462,6 +462,24 @@ class MetroDerivedBindingResolutionTest : BasePlatformTestCase() {
     assertTrue(rows.any { it.pointer == target.pointer && it.typeKey == target.key })
   }
 
+  fun testGraphlessReverseUsagesIgnoreDisabledGenericProviders() {
+    project.setMetroOptions()
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface Box<T>
+        @BindingContainer object Bindings {
+          @Provides fun <T> box(): Box<T> = error("unused")
+        }
+        @Inject class Target(val dependency: Box<Int>)
+        """,
+      )
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val provider = index.bindingEntriesAt(file.declarationsIncludingNested().function("box"))
+
+    assertTrue(index.consumersFor(provider).isEmpty())
+  }
+
   fun testGenericProvidersAreIgnoredWhenDerivedBindingsAreDisabled() {
     project.setMetroOptions()
     val fixture =
