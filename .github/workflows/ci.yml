@@ -92,7 +92,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     permissions:
-      checks: write
+      contents: read
 
     steps:
       - name: Checkout
@@ -123,10 +123,12 @@ jobs:
           path: |
             **/build/reports/**
 
+      # Keep failures on the job so a passing retry clears the failed check.
       - name: Publish Test Report
         uses: mikepenz/action-junit-report@v6
         if: failure()
         with:
+          annotate_only: true
           report_paths: '**/build/test-results/**/TEST-*.xml'
           check_name: 'Test Report - core'
 
@@ -142,7 +144,7 @@ jobs:
     env:
       METRO_TEST_OMIT_REDUNDANT_MIRRORS: ${{ matrix.kotlin-compiler == needs.generate-matrix.outputs.default_kotlin_version || matrix.kotlin-compiler == needs.generate-matrix.outputs.latest_kotlin_version }}
     permissions:
-      checks: write
+      contents: read
 
     steps:
       - name: Checkout
@@ -189,6 +191,7 @@ jobs:
         uses: mikepenz/action-junit-report@v6
         if: failure()
         with:
+          annotate_only: true
           report_paths: '**/build/test-results/**/TEST-*.xml'
           check_name: 'Test Report - compatibility / ${{ matrix.kotlin-compiler }}'
 
@@ -207,7 +210,7 @@ jobs:
       # A fixed version gives local publications stable filenames and wins over transitive Metro releases.
       METRO_TESTKIT_VERSION: 9999.0.0-testkit
     permissions:
-      checks: write
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -263,6 +266,7 @@ jobs:
         uses: mikepenz/action-junit-report@v6
         if: failure()
         with:
+          annotate_only: true
           report_paths: 'gradle-plugin/build/test-results/functionalTest/*.xml'
           check_name: 'Test Report - Gradle compatibility / ${{ matrix.kotlin-compiler }}'
 
@@ -273,7 +277,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     permissions:
-      checks: write
+      contents: read
 
     steps:
       - name: Checkout
@@ -326,6 +330,7 @@ jobs:
         uses: mikepenz/action-junit-report@v6
         if: failure()
         with:
+          annotate_only: true
           report_paths: '**/build/test-results/**/TEST-*.xml'
           check_name: 'Test Report - shaded compiler / Ubuntu JDK 21'
 
@@ -343,7 +348,7 @@ jobs:
       # PR smoke tests use the default compiler. Main runs the full JS suites with the latest compiler.
       METRO_TEST_COMPILER_VERSION: ${{ matrix.suite == 'smoke' && needs.generate-matrix.outputs.default_kotlin_version || needs.generate-matrix.outputs.latest_kotlin_version }}
     permissions:
-      checks: write
+      contents: read
 
     steps:
       - name: Checkout
@@ -419,6 +424,7 @@ jobs:
         uses: mikepenz/action-junit-report@v6
         if: failure()
         with:
+          annotate_only: true
           report_paths: '**/build/test-results/**/TEST-*.xml'
           check_name: 'Test Report - js box / ${{ matrix.suite }}'
 
@@ -428,7 +434,7 @@ jobs:
     if: needs.changes.outputs.full == 'true'
     runs-on: ubuntu-latest
     permissions:
-      checks: write
+      contents: read
 
     steps:
       - name: Checkout
@@ -459,6 +465,7 @@ jobs:
         uses: mikepenz/action-junit-report@v6
         if: failure()
         with:
+          annotate_only: true
           report_paths: 'samples/**/build/test-results/**/TEST-*.xml'
           check_name: 'Test Report - samples'
 
@@ -468,7 +475,7 @@ jobs:
     if: needs.changes.outputs.idea == 'true'
     runs-on: ubuntu-latest
     permissions:
-      checks: write
+      contents: read
 
     steps:
       - name: Checkout
@@ -496,6 +503,7 @@ jobs:
         uses: mikepenz/action-junit-report@v6
         if: failure()
         with:
+          annotate_only: true
           report_paths: 'idea-plugin/**/build/test-results/**/TEST-*.xml'
           check_name: 'Test Report - idea-plugin'
 
@@ -553,7 +561,7 @@ jobs:
     name: multiplatform / ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     permissions:
-      checks: write
+      contents: read
     # Windows runners default to PowerShell, which mis-parses gradle `-Pkey.with.dots=value` args
     # (splits on the dot). Forcing bash everywhere keeps `./gradlew … -P…` consistent across OSes;
     # Git Bash ships with the Windows runner image.
@@ -649,6 +657,7 @@ jobs:
         uses: mikepenz/action-junit-report@v6
         if: failure()
         with:
+          annotate_only: true
           report_paths: |
             **/build/test-results/**/TEST-*.xml
             samples/**/build/test-results/**/TEST-*.xml
