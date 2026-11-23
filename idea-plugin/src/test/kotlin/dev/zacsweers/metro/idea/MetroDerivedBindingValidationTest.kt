@@ -195,6 +195,46 @@ class MetroDerivedBindingValidationTest : BasePlatformTestCase() {
     )
   }
 
+  fun testParentSuspendLookupStopsAtDivergentDerivation() {
+    project.setMetroOptions(
+      MetroDerivedBindingResolutionTest.DERIVED_BINDINGS_OPTION,
+      "enable-suspend-providers" to "true",
+    )
+    // The exact suspend binding bounds the walk even if the divergence check regresses.
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface Encoder<T>
+        @SingleIn(AppScope::class) @Inject class Cache(val encoder: Encoder<String>)
+
+        @BindingContainer
+        object Encoders {
+          @Provides fun <T> wrapped(inner: Encoder<List<T>>): Encoder<T> = error("unused")
+          @Provides suspend fun terminal(): Encoder<List<List<List<List<String>>>>> = error("unused")
+        }
+
+        @GraphExtension interface ChildGraph {
+          val cache: Cache
+        }
+
+        @DependencyGraph(AppScope::class, bindingContainers = [Encoders::class])
+        interface AppGraph {
+          val child: ChildGraph
+        }
+        """,
+      )
+
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val parent = index.graphs.single { it.name == "AppGraph" }
+    val results =
+      project.service<MetroGraphValidationService>().validateWithExtensions(file, parent)
+    results.first().requireCompleted().assertNoDiagnostics()
+    assertEquals(
+      listOf(MetroDiagnosticId.DIVERGENT_DERIVED_BINDING),
+      results.last().requireCompleted().diagnostics.map { it.id },
+    )
+  }
+
   fun testExtensionUsesParentUnscopedAndParentScopedGenericProviders() {
     val source =
       """

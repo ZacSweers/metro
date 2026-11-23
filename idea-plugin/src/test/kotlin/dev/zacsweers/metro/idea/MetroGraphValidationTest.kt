@@ -28,6 +28,7 @@ import dev.zacsweers.metro.idea.index.retryCancelledIndexBuild
 import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.DeclarationResolutionScope
 import dev.zacsweers.metro.idea.model.GraphQueryContext
+import dev.zacsweers.metro.idea.model.KaAnnotationValueSnapshot
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.tracing.IdeTraceOutput
 import dev.zacsweers.metro.idea.tracing.IdeTraceRecorder
@@ -407,6 +408,28 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     val rendered = diagnostic.render()
     assertTrue(rendered, "No binding found for MissingThing" in rendered)
     assertTrue(rendered, "MissingThing is requested at test.AppGraph.missing" in rendered)
+  }
+
+  fun testTransitiveMissingBindingTraceReachesGraphAccessor() {
+    val result =
+      validate(
+        """
+        interface Missing
+        @Inject class Target(val missing: Missing)
+        @Inject class Outer(val target: Target)
+
+        @DependencyGraph interface AppGraph {
+          val entryPoint: Outer
+        }
+        """,
+      )
+
+    val diagnostic = result.diagnostics.single()
+    assertEquals(MetroDiagnosticId.MISSING_BINDING, diagnostic.id)
+    val rendered = diagnostic.render()
+    assertTrue(rendered, "Missing is injected at" in rendered)
+    assertTrue(rendered, "Target is injected at" in rendered)
+    assertTrue(rendered, "Outer is requested at test.AppGraph.entryPoint" in rendered)
   }
 
   fun testOptionalAbsenceIsNotAnError() {
@@ -1101,6 +1124,48 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     assertTrue(diagnostic.stack.isNotEmpty())
   }
 
+  fun testDifferentMapKeyAnnotationsWithEqualUnwrappedValuesAreDuplicates() {
+    val result =
+      validate(
+        """
+        @MapKey annotation class RouteKey(val path: String = "same")
+
+        @DependencyGraph interface AppGraph {
+          val values: Map<String, Int>
+          @Provides @IntoMap @StringKey("same") fun first(): Int = 1
+          @Provides @IntoMap @RouteKey fun second(): Int = 2
+        }
+        """,
+      )
+
+    val diagnostic = result.diagnostics.single()
+    assertEquals(MetroDiagnosticId.DUPLICATE_MAP_KEYS, diagnostic.id)
+    val rendered = diagnostic.render()
+    assertTrue(rendered, "StringKey" in rendered)
+    assertTrue(rendered, "RouteKey" in rendered)
+    assertTrue(
+      rendered,
+      diagnostic.diagnostic.notes.any { "unwrapValue = true" in it.text.toString() },
+    )
+  }
+
+  fun testWrappedMapKeysCompareAllAnnotationArguments() {
+    val result =
+      validate(
+        """
+        @MapKey(unwrapValue = false) annotation class RouteKey(val path: String, val version: Int)
+
+        @DependencyGraph interface AppGraph {
+          val values: Map<RouteKey, Int>
+          @Provides @IntoMap @RouteKey("same", 1) fun first(): Int = 1
+          @Provides @IntoMap @RouteKey("same", 2) fun second(): Int = 2
+        }
+        """,
+      )
+
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+  }
+
   fun testMapPriorityPreventsDuplicateMapKeyDiagnostic() {
     project.setMetroOptions("custom-into-map" to "test/PrioritizedMapContribution")
 
@@ -1196,6 +1261,86 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
       )
 
     assertEquals(listOf(MetroDiagnosticId.DUPLICATE_MAP_KEYS), result.diagnostics.map { it.id })
+  }
+
+  fun testParentAndChildShareScopedMapElementKeys() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        @GraphExtension interface ChildGraph {
+          val values: Map<String, String>
+          @Provides @IntoMap @StringKey("child") fun childValue(): String = "child"
+        }
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val child: ChildGraph
+          val values: Map<String, String>
+          @Provides @IntoMap @StringKey("first") @SingleIn(AppScope::class) fun first(): String = "first"
+          @Provides @IntoMap @StringKey("second") @SingleIn(AppScope::class) fun second(): String = "second"
+        }
+        """,
+      )
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val graph = index.graphs.single { it.name == "AppGraph" }
+    val (child, parent) =
+      project.service<MetroGraphValidationService>().validateWithExtensions(file, graph).map {
+        val result = it.requireCompleted()
+        assertTrue(
+          result.diagnostics.joinToString { d -> d.render() },
+          result.diagnostics.isEmpty(),
+        )
+        result
+      }
+    val parentMap =
+      parent.bindings.asMap().values.filterIsInstance<KaBinding.Multibinding>().single()
+    val childMap = child.bindings.asMap().values.filterIsInstance<KaBinding.Multibinding>().single()
+    assertEquals(2, parentMap.sourceBindings.size)
+    assertEquals(3, childMap.sourceBindings.size)
+    assertEquals(parentMap.sourceBindings.toSet(), child.parentReservations.keys)
+    for (key in parentMap.sourceBindings) {
+      assertTrue(key in childMap.sourceBindings)
+      assertSame(parent.bindings[key]!!.pointer.element, child.bindings[key]!!.pointer.element)
+    }
+  }
+
+  fun testSetElementIdsDistinguishOverloadedGettersWithCollidingReceiverHashes() {
+    val result =
+      validate(
+        """
+        interface Service
+        @Inject class Aa : Service
+        @Inject class BB : Service
+
+        @DependencyGraph interface AppGraph {
+          val services: Set<Service>
+          @Binds @IntoSet val Aa.bind: Service
+          @Binds @IntoSet val BB.bind: Service
+          @Binds @IntoSet fun Aa.bind(): Service
+        }
+        """,
+      )
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+
+    val services =
+      result.bindings.asMap().values.filterIsInstance<KaBinding.Multibinding>().single()
+    val ids =
+      services.sourceBindings.map { key ->
+        val qualifier = checkNotNull(key.qualifier)
+        assertEquals(MetroClassIds.multibindingElement, qualifier.classId)
+        val argument = qualifier.arguments.single { it.first.asString() == "elementId" }
+        (argument.second as KaAnnotationValueSnapshot.Literal).value as String
+      }
+    // All three hashes collide. The receiver and declaration kind distinguish the elements.
+    assertEquals(1, ids.map { it.substringBefore('#').toInt() }.distinct().size)
+    assertEquals(
+      setOf(
+        "val test.AppGraph.bind(test/AppGraph,test/Aa): test/Service",
+        "val test.AppGraph.bind(test/AppGraph,test/BB): test/Service",
+        "test.AppGraph.bind(test/AppGraph,test/Aa): test/Service",
+      ),
+      ids.map { it.substringAfter('#') }.toSet(),
+    )
   }
 
   fun testEmptyMultibindingIsReported() {

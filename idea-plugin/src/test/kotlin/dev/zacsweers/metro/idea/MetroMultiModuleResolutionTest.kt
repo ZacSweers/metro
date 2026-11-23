@@ -40,6 +40,7 @@ import dev.zacsweers.metro.idea.navigation.metroEditorTargets
 import java.util.IdentityHashMap
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlinx.coroutines.runBlocking
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModuleProvider
 import org.jetbrains.kotlin.config.CompilerSettings
 import org.jetbrains.kotlin.idea.facet.KotlinFacetType
@@ -127,6 +128,97 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
       ),
       state.optionsFingerprint,
     )
+  }
+
+  fun testInactiveBrowserMissDoesNotBuildAfterAnEdit() {
+    val graph =
+      fixture.addFileToProject(
+        "app/test/Graph.kt",
+        "package test\n@dev.zacsweers.metro.DependencyGraph interface AppGraph",
+      )
+    val app = checkNotNull(ModuleUtilCore.findModuleForPsiElement(graph))
+    val service = fixture.project.service<MetroResolutionService>()
+    awaitSourceChanges(service)
+    assertFalse(service.isGraphBrowserActivated)
+    assertSame(BindingIndex.EMPTY, service.indexForToolWindow(app))
+
+    fixture.addFileToProject("app/test/Other.kt", "package test\nclass Other")
+    awaitSourceChanges(service)
+    assertFalse(service.isGraphBrowserActivated)
+    assertSame(BindingIndex.EMPTY, service.cachedIndex(graph))
+  }
+
+  fun testDisabledBrowserModuleDoesNotRebuildEnabledModulesAfterUnrelatedEdits() {
+    val graph =
+      fixture.addFileToProject(
+        "app/test/Graph.kt",
+        "package test\n@dev.zacsweers.metro.DependencyGraph interface AppGraph",
+      )
+    val other = fixture.addFileToProject("library/test/Other.kt", "package test\nclass Other")
+    val app = checkNotNull(ModuleUtilCore.findModuleForPsiElement(graph))
+    val library = checkNotNull(ModuleUtilCore.findModuleForPsiElement(other))
+    library.setModuleMetroOptions("enabled" to "false")
+    val service = fixture.project.service<MetroResolutionService>()
+    val initial = service.awaitIndex(app)
+    assertSame(initial, service.indexForToolWindow(app))
+    assertTrue(service.isGraphBrowserActivated)
+    assertSame(BindingIndex.EMPTY, service.indexForToolWindow(library))
+
+    fixture.addFileToProject("app/test/Unrelated.kt", "package test\nclass Unrelated")
+    awaitSourceChanges(service)
+    assertSame(initial, service.cachedIndex(graph))
+  }
+
+  fun testDisablingADemandedModuleStopsRebuildsForUnrelatedEdits() {
+    val graph =
+      fixture.addFileToProject(
+        "app/test/Graph.kt",
+        "package test\n@dev.zacsweers.metro.DependencyGraph interface AppGraph",
+      )
+    val other = fixture.addFileToProject("library/test/Other.kt", "package test\nclass Other")
+    val library = checkNotNull(ModuleUtilCore.findModuleForPsiElement(other))
+    val service = fixture.project.service<MetroResolutionService>()
+    val initial = service.awaitIndex(graph)
+    assertSame(initial, service.indexForToolWindow(library))
+
+    library.setModuleMetroOptions("enabled" to "false")
+    val updated = service.awaitIndex(graph)
+    assertNotSame(BindingIndex.EMPTY, updated)
+    assertSame(BindingIndex.EMPTY, service.cachedIndex(other))
+
+    fixture.addFileToProject("app/test/Unrelated.kt", "package test\nclass Unrelated")
+    awaitSourceChanges(service)
+    assertSame(updated, service.cachedIndex(graph))
+  }
+
+  fun testEquivalentModulesShareAnIndexUntilTheirOptionsDiverge() {
+    val graph =
+      fixture.addFileToProject(
+        "app/test/Graph.kt",
+        "package test\n@dev.zacsweers.metro.DependencyGraph interface AppGraph",
+      )
+    val other = fixture.addFileToProject("library/test/Other.kt", "package test\nclass Other")
+    val app = checkNotNull(ModuleUtilCore.findModuleForPsiElement(graph))
+    val library = checkNotNull(ModuleUtilCore.findModuleForPsiElement(other))
+    val service = fixture.project.service<MetroResolutionService>()
+    val initial = service.awaitIndex(app)
+    assertEquals(listOf("AppGraph"), initial.graphs.map { it.name })
+    assertSame(initial, service.awaitIndex(library))
+    assertSame(initial, service.cachedIndex(graph))
+
+    library.setModuleMetroOptions("enable-function-providers" to "false")
+    awaitSourceChanges(service)
+    val updated = service.cachedIndex(other)
+    assertNotSame(BindingIndex.EMPTY, updated)
+    assertNotSame(service.cachedIndex(graph), updated)
+    assertSame(service.cachedIndex(graph).generationToken, updated.generationToken)
+  }
+
+  /** Waits for the coordinator without requesting an index or registering browser demand. */
+  private fun awaitSourceChanges(service: MetroResolutionService) {
+    IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
+    val barrier = CompletableFuture.runAsync { runBlocking { service.awaitCoordinatorBarrier() } }
+    PlatformTestUtil.waitForFuture(barrier, 30_000)
   }
 
   fun testClassArrivalInInvisibleModulePreservesAnUnresolvedGraphSnapshot() {
@@ -1987,6 +2079,45 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
         it.classId == hiddenContainerId || it.classId == hiddenServiceId
       },
     )
+  }
+
+  fun testGraphlessReverseUsagesRespectConsumerModuleVisibility() {
+    val app =
+      fixture.addFileToProject(
+        "app/test/Bindings.kt",
+        """
+        package test
+        import dev.zacsweers.metro.*
+
+        @BindingContainer object Bindings {
+          @Provides fun text(): String = ""
+        }
+
+        @Inject class Local(val label: String)
+        """
+          .trimIndent(),
+      ) as KtFile
+    val bridge =
+      fixture.addFileToProject(
+        "bridge/test/Target.kt",
+        """
+        package test
+        import dev.zacsweers.metro.*
+
+        @Inject class Unrelated(val label: String)
+        """
+          .trimIndent(),
+      ) as KtFile
+    val index = fixture.project.service<MetroResolutionService>().awaitIndex(app)
+    val session = index.createResolutionSession()
+    val declarations = app.declarationsIncludingNested()
+    val provider = index.bindingEntriesAt(declarations.function("text"))
+    val local = checkNotNull(session.consumerEntryAt(declarations.parameter("label")))
+    val unrelated =
+      checkNotNull(session.consumerEntryAt(bridge.declarationsIncludingNested().parameter("label")))
+
+    assertTrue(session.resolveConsumer(unrelated).candidateBindings.isEmpty())
+    assertEquals(listOf(local), session.consumersFor(provider))
   }
 
   fun testSameFqnGraphsInUnrelatedModulesKeepTheirOwnAccessors() {

@@ -181,8 +181,8 @@
   },
   "bindings": [
     {
-      "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"libtest/LibAnalytics\",\"483501658#libtest.LibAnalyticsImpl.MetroContributionToAppScope.BindsMirror.bindIntoSetAsLibAnalytics_intoset(libtest/LibAnalyticsImpl.MetroContributionToAppScope.BindsMirror,libtest/LibAnalyticsImpl): libtest/LibAnalytics\") libtest/LibAnalytics",
-      "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"libtest/LibAnalytics\", \"483501658#libtest.LibAnalyticsImpl.MetroContributionToAppScope.BindsMirror.bindIntoSetAsLibAnalytics_intoset(libtest/LibAnalyticsImpl.MetroContributionToAppScope.BindsMirror,libtest/LibAnalyticsImpl): libtest/LibAnalytics\") libtest.LibAnalytics",
+      "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"libtest/LibAnalytics\",\"libtest/LibAnalyticsImpl|dev/zacsweers/metro/AppScope\") libtest/LibAnalytics",
+      "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"libtest/LibAnalytics\", \"libtest/LibAnalyticsImpl|dev/zacsweers/metro/AppScope\") libtest.LibAnalytics",
       "bindingKind": "Alias",
       "isScoped": false,
       "nameHint": "bindIntoSetAsLibAnalytics",
@@ -193,7 +193,7 @@
           "hasDefault": false
         }
       ],
-      "isSynthetic": true,
+      "isSynthetic": false,
       "declaration": "LibAnalyticsImpl",
       "aliasTarget": "libtest/LibAnalyticsImpl"
     },
@@ -205,8 +205,8 @@
       "nameHint": "setOfLibAnalytics",
       "dependencies": [
         {
-          "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"libtest/LibAnalytics\",\"483501658#libtest.LibAnalyticsImpl.MetroContributionToAppScope.BindsMirror.bindIntoSetAsLibAnalytics_intoset(libtest/LibAnalyticsImpl.MetroContributionToAppScope.BindsMirror,libtest/LibAnalyticsImpl): libtest/LibAnalytics\") libtest/LibAnalytics",
-          "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"libtest/LibAnalytics\", \"483501658#libtest.LibAnalyticsImpl.MetroContributionToAppScope.BindsMirror.bindIntoSetAsLibAnalytics_intoset(libtest/LibAnalyticsImpl.MetroContributionToAppScope.BindsMirror,libtest/LibAnalyticsImpl): libtest/LibAnalytics\") libtest.LibAnalytics",
+          "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"libtest/LibAnalytics\",\"libtest/LibAnalyticsImpl|dev/zacsweers/metro/AppScope\") libtest/LibAnalytics",
+          "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"libtest/LibAnalytics\", \"libtest/LibAnalyticsImpl|dev/zacsweers/metro/AppScope\") libtest.LibAnalytics",
           "hasDefault": false
         }
       ],
@@ -215,7 +215,7 @@
         "type": "SET",
         "allowEmpty": false,
         "sources": [
-          "@dev/zacsweers/metro/internal/MultibindingElement(\"libtest/LibAnalytics\",\"483501658#libtest.LibAnalyticsImpl.MetroContributionToAppScope.BindsMirror.bindIntoSetAsLibAnalytics_intoset(libtest/LibAnalyticsImpl.MetroContributionToAppScope.BindsMirror,libtest/LibAnalyticsImpl): libtest/LibAnalytics\") libtest/LibAnalytics"
+          "@dev/zacsweers/metro/internal/MultibindingElement(\"libtest/LibAnalytics\",\"libtest/LibAnalyticsImpl|dev/zacsweers/metro/AppScope\") libtest/LibAnalytics"
         ]
       }
     },
@@ -331,8 +331,8 @@
       "outcome": "selected",
       "candidates": [
         {
-          "id": "318:@dev/zacsweers/metro/internal/MultibindingElement(\"libtest/LibAnalytics\",\"483501658#libtest.LibAnalyticsImpl.MetroContributionToAppScope.BindsMirror.bindIntoSetAsLibAnalytics_intoset(libtest/LibAnalyticsImpl.MetroContributionToAppScope.BindsMirror,libtest/LibAnalyticsImpl): libtest/LibAnalytics\") libtest/LibAnalytics|24:libtest.LibAnalyticsImpl",
-          "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"libtest/LibAnalytics\",\"483501658#libtest.LibAnalyticsImpl.MetroContributionToAppScope.BindsMirror.bindIntoSetAsLibAnalytics_intoset(libtest/LibAnalyticsImpl.MetroContributionToAppScope.BindsMirror,libtest/LibAnalyticsImpl): libtest/LibAnalytics\") libtest/LibAnalytics",
+          "id": "150:@dev/zacsweers/metro/internal/MultibindingElement(\"libtest/LibAnalytics\",\"libtest/LibAnalyticsImpl|dev/zacsweers/metro/AppScope\") libtest/LibAnalytics|24:libtest.LibAnalyticsImpl",
+          "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"libtest/LibAnalytics\",\"libtest/LibAnalyticsImpl|dev/zacsweers/metro/AppScope\") libtest/LibAnalytics",
           "status": "selected",
           "reason": "selected_explicit",
           "declaration": {
@@ -341,14 +341,14 @@
           },
           "relatedDeclarations": [],
           "details": [],
-          "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"libtest/LibAnalytics\", \"483501658#libtest.LibAnalyticsImpl.MetroContributionToAppScope.BindsMirror.bindIntoSetAsLibAnalytics_intoset(libtest/LibAnalyticsImpl.MetroContributionToAppScope.BindsMirror,libtest/LibAnalyticsImpl): libtest/LibAnalytics\") libtest.LibAnalytics"
+          "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"libtest/LibAnalytics\", \"libtest/LibAnalyticsImpl|dev/zacsweers/metro/AppScope\") libtest.LibAnalytics"
         }
       ],
       "request": {
-        "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"libtest/LibAnalytics\",\"483501658#libtest.LibAnalyticsImpl.MetroContributionToAppScope.BindsMirror.bindIntoSetAsLibAnalytics_intoset(libtest/LibAnalyticsImpl.MetroContributionToAppScope.BindsMirror,libtest/LibAnalyticsImpl): libtest/LibAnalytics\") libtest/LibAnalytics",
+        "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"libtest/LibAnalytics\",\"libtest/LibAnalyticsImpl|dev/zacsweers/metro/AppScope\") libtest/LibAnalytics",
         "hasDefault": false,
         "isOptional": false,
-        "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"libtest/LibAnalytics\", \"483501658#libtest.LibAnalyticsImpl.MetroContributionToAppScope.BindsMirror.bindIntoSetAsLibAnalytics_intoset(libtest/LibAnalyticsImpl.MetroContributionToAppScope.BindsMirror,libtest/LibAnalyticsImpl): libtest/LibAnalytics\") libtest.LibAnalytics"
+        "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"libtest/LibAnalytics\", \"libtest/LibAnalyticsImpl|dev/zacsweers/metro/AppScope\") libtest.LibAnalytics"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."

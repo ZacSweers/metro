@@ -20,6 +20,7 @@ import com.intellij.util.WaitFor
 import com.intellij.util.ui.UIUtil
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
 import dev.zacsweers.metro.compiler.graph.WrappedType
+import dev.zacsweers.metro.compiler.graph.generatedMultibindingElementId
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.index.AutomaticRefreshWindow
 import dev.zacsweers.metro.idea.index.ConsumerOwnershipBundle
@@ -604,6 +605,56 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
     assertEquals(listOf("AliasedGraph"), index.graphs.map { it.name })
     assertEquals(listOf("test.AliasedService"), index.bindings.map { it.typeKey.renderedType })
+  }
+
+  fun testGraphDiscoveredThroughAnnotationTypeAliasAfterEdits() {
+    val source =
+      """
+      package test
+
+      typealias GraphAlias = dev.zacsweers.metro.DependencyGraph
+      @GraphAlias interface AppGraph
+      """
+        .trimIndent()
+    val file = myFixture.addFileToProject("test/AppGraph.kt", source)
+    val service = project.service<MetroResolutionService>()
+    assertEquals(listOf("AppGraph"), service.awaitIndex(module).graphs.map { it.name })
+
+    val documents = PsiDocumentManager.getInstance(project)
+    val document = checkNotNull(documents.getDocument(file))
+    WriteCommandAction.runWriteCommandAction(project) {
+      document.setText(source.replace("AppGraph", "RenamedGraph"))
+    }
+    documents.commitAllDocuments()
+
+    assertEquals(listOf("RenamedGraph"), service.awaitIndex(module).graphs.map { it.name })
+  }
+
+  fun testRetargetingAnnotationTypeAliasRediscoversUnchangedGraph() {
+    val aliases =
+      myFixture.addFileToProject(
+        "aliases/Aliases.kt",
+        "package aliases\nannotation class Other\ntypealias Root = Other\ntypealias GraphAlias = Root",
+      )
+    myFixture.addFileToProject(
+      "test/AppGraph.kt",
+      "package test\nimport aliases.GraphAlias as Graph\n@Graph interface AppGraph",
+    )
+    val service = project.service<MetroResolutionService>()
+    assertTrue(service.awaitIndex(module).graphs.isEmpty())
+
+    val documents = PsiDocumentManager.getInstance(project)
+    val document = checkNotNull(documents.getDocument(aliases))
+    val before = document.text
+    WriteCommandAction.runWriteCommandAction(project) {
+      document.setText(before.replace("Root = Other", "Root = dev.zacsweers.metro.DependencyGraph"))
+    }
+    documents.commitAllDocuments()
+    assertEquals(listOf("AppGraph"), service.awaitIndex(module).graphs.map { it.name })
+
+    WriteCommandAction.runWriteCommandAction(project) { document.setText(before) }
+    documents.commitAllDocuments()
+    assertTrue(service.awaitIndex(module).graphs.isEmpty())
   }
 
   fun testUnrelatedAliasedAnnotationDoesNotActivateMetroIndexing() {
@@ -3802,13 +3853,17 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         @Inject class Repository
 
         @CircuitInject(HomeScreen::class, AppScope::class)
-        fun HomePresenter(repository: Repository, navigator: Navigator, screen: HomeScreen): HomeState {
+        fun homePresenter(repository: Repository, navigator: Navigator, screen: HomeScreen): HomeState {
           return HomeState()
         }
 
         @CircuitInject(HomeScreen::class, AppScope::class)
         fun HomeUi(state: HomeState, modifier: Modifier, repository: Repository) {
         }
+
+        @Inject
+        @CircuitInject(HomeScreen::class, OtherScope::class)
+        class OtherPresenter : Presenter<HomeState>
 
         @DependencyGraph(AppScope::class)
         interface CircuitGraph {
@@ -3827,7 +3882,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     val declarations = file.declarationsIncludingNested()
 
     // Both functions contribute generated factories into the scope's factory sets
-    val presenterEntry = index.bindingEntriesAt(declarations.function("HomePresenter")).single()
+    val presenterEntry = index.bindingEntriesAt(declarations.function("homePresenter")).single()
     assertEquals("multibinding contribution", presenterEntry.label)
     assertEquals(
       "com.slack.circuit.runtime.presenter.Presenter.Factory",
@@ -3841,11 +3896,33 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       uiEntry.contributionScopes,
     )
 
+    // The compiler uses each generated factory as the origin of its set element.
+    assertEquals(
+      generatedMultibindingElementId(
+        ClassId.topLevel(FqName("test.HomePresenterFactory")),
+        ClassId.topLevel(FqName("dev.zacsweers.metro.AppScope")),
+      ),
+      presenterEntry.multibindingContribution?.elementId,
+    )
+    val otherPresenter =
+      index.bindingEntriesAt(declarations.klass("OtherPresenter")).single {
+        it.multibindingContribution != null
+      }
+    assertEquals(
+      generatedMultibindingElementId(
+        ClassId.fromString("test/OtherPresenter.CircuitFactory"),
+        ClassId.topLevel(FqName("test.OtherScope")),
+      ),
+      otherPresenter.multibindingContribution?.elementId,
+    )
+
     // The graph's factory set accessors resolve to the contributions
+    val circuitGraph =
+      index.contextsFor(index.graphEntryAt(declarations.klass("CircuitGraph"))!!).single()
     val presenterFactories = index.consumerEntryAt(declarations.property("presenterFactories"))!!
     assertEquals(
-      listOf("HomePresenter"),
-      index.bindingsFor(presenterFactories).mapNotNull {
+      listOf("homePresenter"),
+      index.bindingsFor(presenterFactories, index.queryContext(circuitGraph)!!).mapNotNull {
         (it.pointer.element as? KtNamedDeclaration)?.name
       },
     )
@@ -3882,7 +3959,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       index.contributionsForScopes(graph.scopeKeys).mapNotNull {
         (it.pointer.element as? KtNamedDeclaration)?.name
       }
-    assertTrue(contributionNames.containsAll(listOf("HomePresenter", "HomeUi")))
+    assertTrue(contributionNames.containsAll(listOf("homePresenter", "HomeUi")))
   }
 
   fun testGraphFactoryInstanceBindingsResolve() {
@@ -5720,11 +5797,15 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       val services =
         index.consumerEntryAt(file.declarationsIncludingNested().property("services"))!!
 
+      val bindings = index.resolveConsumer(services).uniformBindings.orEmpty()
       assertEquals(
         setOf("LibContainedSetImpl", "AdditionalContained"),
-        index.resolveConsumer(services).uniformBindings.orEmpty().mapTo(mutableSetOf()) {
-          it.implementationName
-        },
+        bindings.mapTo(mutableSetOf()) { it.implementationName },
+      )
+      val provider = bindings.single { it.implementationName == "LibContainedSetImpl" }
+      assertEquals(
+        "libtest/LibContainedSetImpl|libtest/LibMultibindingScope",
+        provider.multibindingContribution?.elementId,
       )
     }
   }

@@ -4,8 +4,10 @@ package dev.zacsweers.metro.idea.index
 
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
+import com.intellij.psi.PsiJavaFile
 import com.intellij.psi.SmartPointerManager
 import com.intellij.psi.SmartPsiElementPointer
 import dev.zacsweers.metro.idea.model.KaTypeSnapshot
@@ -13,6 +15,7 @@ import org.jetbrains.kotlin.analysis.api.KaPlatformInterface
 import org.jetbrains.kotlin.analysis.api.platform.projectStructure.KaResolutionScope
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModule
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModuleProvider
+import org.jetbrains.kotlin.idea.base.psi.classIdIfNonLocal
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.psi.KtClassOrObject
@@ -34,7 +37,7 @@ private constructor(
    * Finds available declarations whose names and module visibility can satisfy missing requests.
    */
   @OptIn(KaPlatformInterface::class)
-  fun ownersForAvailableDeclarations(file: KtFile): Set<VirtualFile> {
+  fun ownersForAvailableDeclarations(file: PsiFile): Set<VirtualFile> {
     if (unresolvedOwners.isEmpty() && errorTypeOwners.isEmpty()) {
       return emptySet()
     }
@@ -52,20 +55,38 @@ private constructor(
         }
       }
     }
-    file.accept(
-      object : KtTreeVisitorVoid() {
-        override fun visitClassOrObject(classOrObject: KtClassOrObject) {
-          ProgressManager.checkCanceled()
-          val classId = classOrObject.getClassId()
-          if (classId != null) {
-            addVisibleOwners(errorTypeOwners[classId.shortClassName])
-            addVisibleOwners(errorTypeOwners[null])
-            addVisibleOwners(unresolvedOwners[classId])
-          }
-          super.visitClassOrObject(classOrObject)
+    fun matchClass(classId: ClassId?) {
+      ProgressManager.checkCanceled()
+      if (classId == null) {
+        return
+      }
+
+      addVisibleOwners(errorTypeOwners[classId.shortClassName])
+      addVisibleOwners(errorTypeOwners[null])
+      addVisibleOwners(unresolvedOwners[classId])
+    }
+
+    when (file) {
+      is KtFile ->
+        file.accept(
+          object : KtTreeVisitorVoid() {
+            override fun visitClassOrObject(classOrObject: KtClassOrObject) {
+              matchClass(classOrObject.getClassId())
+              super.visitClassOrObject(classOrObject)
+            }
+          },
+        )
+      is PsiJavaFile -> {
+        val classes = ArrayDeque<PsiClass>()
+        classes.addAll(file.classes)
+        while (classes.isNotEmpty()) {
+          val declaration = classes.removeLast()
+          matchClass(declaration.classIdIfNonLocal)
+          classes.addAll(declaration.innerClasses)
         }
-      },
-    )
+      }
+    }
+
     return result
   }
 

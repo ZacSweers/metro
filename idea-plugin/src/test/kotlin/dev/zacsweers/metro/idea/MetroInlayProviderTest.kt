@@ -284,6 +284,14 @@ class MetroInlayProviderTest : DeclarativeInlayHintsProviderTestCase() {
   }
 
   fun testDifferentGenericProviderSpecializationsDoNotShowAnImplementationInlay() {
+    assertSpecializedProviderInlay(null, "")
+  }
+
+  fun testPinSelectsImplementationForInheritedGenericParameter() {
+    assertSpecializedProviderInlay("OtherGraph", "/*<#  OtherImplementation #>*/")
+  }
+
+  private fun assertSpecializedProviderInlay(pinnedGraph: String?, inlay: String) {
     doTestMetroProvider(
       "ContextDependentGenericProvider.kt",
       """
@@ -304,7 +312,7 @@ class MetroInlayProviderTest : DeclarativeInlayHintsProviderTestCase() {
       class OtherImplementation : OtherApi
 
       interface GenericBase<T> {
-        @Provides fun provideText(value: T): String = value.toString()
+        @Provides fun provideText(value: T$inlay): String = value.toString()
       }
 
       @DependencyGraph(AppScope::class)
@@ -319,6 +327,11 @@ class MetroInlayProviderTest : DeclarativeInlayHintsProviderTestCase() {
       """
         .trimIndent(),
       MetroInjectedImplementationInlayProvider(),
-    )
+    ) { index ->
+      if (pinnedGraph != null) {
+        val graph = index.graphs.single { it.name == pinnedGraph }
+        project.service<GraphContextPinService>().pin(index.contextsFor(graph).single().path)
+      }
+    }
   }
 }

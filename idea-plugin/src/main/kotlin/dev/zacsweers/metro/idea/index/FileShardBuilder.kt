@@ -14,6 +14,7 @@ import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.circuit.CircuitClassIds
 import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.graph.computeMultibindingId
+import dev.zacsweers.metro.compiler.graph.generatedMultibindingElementId
 import dev.zacsweers.metro.compiler.graph.identity.TypeIdentity
 import dev.zacsweers.metro.idea.annotationScopeKeys
 import dev.zacsweers.metro.idea.checkCanceledEvery
@@ -35,6 +36,7 @@ import dev.zacsweers.metro.idea.model.KaContextualTypeKey
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
 import dev.zacsweers.metro.idea.model.KaTypeKey
 import dev.zacsweers.metro.idea.model.KaTypeSnapshot
+import dev.zacsweers.metro.idea.model.MultibindingContribution
 import dev.zacsweers.metro.idea.model.canonicalContextKey
 import dev.zacsweers.metro.idea.model.multibindingId
 import dev.zacsweers.metro.idea.qualifierAnnotation
@@ -252,6 +254,7 @@ internal class FileShardBuilder(
         cacheDependencies.mapNotNullTo(mutableSetOf()) { it.virtualFile },
         sharedDeclarationDependencies.mapNotNullTo(mutableSetOf()) { it.virtualFile },
         graphInterfaces,
+        missingParents = graphDeclarations.missingParentDependencies(),
       )
     }
   }
@@ -743,23 +746,25 @@ internal class FileShardBuilder(
   }
 
   /**
-   * Mirrors the compiler's Metro-native Circuit codegen (`CircuitContributionExtension` and
-   * `CircuitFirExtension`): a `@CircuitInject(screen, scope)` declaration generates a factory
-   * contributed into `Set<Ui.Factory>`/`Set<Presenter.Factory>` at the scope, with the
-   * declaration's non-circuit-provided parameters injected through it.
+   * Mirrors `CircuitContributionExtension` and `CircuitFirExtension`. Each `@CircuitInject` factory
+   * contributes to its scope's `Set<Ui.Factory>` or `Set<Presenter.Factory>`. The factory injects
+   * the parameters that Circuit doesn't supply.
    */
   private fun processCircuitInject(declaration: KtDeclaration) {
     when (declaration) {
       is KtNamedFunction -> {
-        if (!declaration.isTopLevel || !processedCircuitInjects.add(declaration)) return
+        if (!declaration.isTopLevel || !processedCircuitInjects.add(declaration)) {
+          return
+        }
+
         analyze(declaration) {
           val symbol = declaration.symbol as? KaNamedFunctionSymbol ?: return@analyze
           val annotation =
             symbol.annotations.firstOrNull { it.classId == CircuitClassIds.CircuitInject }
               ?: return@analyze
 
-          // Presenters return CircuitUiState subtypes; UI functions are Unit-returning Composables
-          val factoryClassId =
+          // Presenters return CircuitUiState subtypes. UI composables return Unit.
+          val factoryInterfaceId =
             when {
               symbol.returnType.isUnitType -> CircuitClassIds.UiFactory
               isCircuitProvidedType(symbol.returnType) -> CircuitClassIds.PresenterFactory
@@ -767,6 +772,12 @@ internal class FileShardBuilder(
             }
 
           val scopes = annotationScopeKeys(annotation)
+          val generatedFactoryId =
+            ClassId(
+              declaration.containingKtFile.packageFqName,
+              CircuitClassIds.functionFactoryName(symbol.name.asString()),
+            )
+
           // The generated factory injects the declaration's non-circuit-provided, non-assisted
           // parameters.
           val dependencies =
@@ -775,7 +786,13 @@ internal class FileShardBuilder(
               .filterNot { it.hasAnyAnnotation(options.assistedAnnotations) }
               .filterNot { isCircuitProvidedType(it.returnType) }
               .map { dependencyKey(it, options) }
-          addCircuitContribution(declaration, scopes, factoryClassId, dependencies)
+          addCircuitContribution(
+            declaration,
+            scopes,
+            factoryInterfaceId,
+            generatedFactoryId,
+            dependencies,
+          )
 
           for (parameter in declaration.valueParameters) {
             checkCanceled()
@@ -784,7 +801,10 @@ internal class FileShardBuilder(
         }
       }
       is KtClassOrObject -> {
-        if (!processedCircuitInjects.add(declaration)) return
+        if (!processedCircuitInjects.add(declaration)) {
+          return
+        }
+
         analyze(declaration) {
           val classSymbol = declaration.symbol as? KaNamedClassSymbol ?: return@analyze
           val annotation =
@@ -794,13 +814,17 @@ internal class FileShardBuilder(
             classSymbol.defaultType.allSupertypes
               .onEach { checkCanceled() }
               .mapNotNull { (it as? KaClassType)?.classId }
-          val factoryClassId =
+          val factoryInterfaceId =
             when {
               CircuitClassIds.Ui in supertypeIds -> CircuitClassIds.UiFactory
               CircuitClassIds.Presenter in supertypeIds -> CircuitClassIds.PresenterFactory
               else -> return@analyze
             }
+
           val scopes = annotationScopeKeys(annotation)
+          val classId = classSymbol.classId ?: return@analyze
+          val generatedFactoryId = classId.createNestedClassId(CircuitClassIds.nestedFactoryName)
+
           // The generated factory constructs the class, injecting its non-circuit-provided,
           // non-assisted constructor parameters.
           val dependencies =
@@ -811,7 +835,13 @@ internal class FileShardBuilder(
               .filterNot { it.hasAnyAnnotation(options.assistedAnnotations) }
               .filterNot { isCircuitProvidedType(it.returnType) }
               .map { dependencyKey(it, options) }
-          addCircuitContribution(declaration, scopes, factoryClassId, dependencies)
+          addCircuitContribution(
+            declaration,
+            scopes,
+            factoryInterfaceId,
+            generatedFactoryId,
+            dependencies,
+          )
         }
         // Constructor dependencies are covered by the regular inject sweep when annotated
         processInjectClass(declaration)
@@ -820,21 +850,27 @@ internal class FileShardBuilder(
     }
   }
 
+  /** The generated factory is the origin of the set element. Navigation points to the source. */
   private fun KaSession.addCircuitContribution(
     declaration: KtDeclaration,
     scopes: Set<ClassId>,
-    factoryClassId: ClassId,
+    factoryInterfaceId: ClassId,
+    generatedFactoryId: ClassId,
     dependencies: List<KaContextualTypeKey>,
   ) {
+    val scope = scopes.singleOrNull() ?: return
     contributions += ContributionEntry(ptr(declaration), scopes)
-    val factoryType = (findClass(factoryClassId) as? KaNamedClassSymbol)?.defaultType ?: return
+    val factoryType = (findClass(factoryInterfaceId) as? KaNamedClassSymbol)?.defaultType ?: return
     val elementKey = typeKey(factoryType, null)
+    val elementId = generatedMultibindingElementId(generatedFactoryId, scope)
+
     bindings +=
       KaBinding.Provided(
         ptr(declaration),
         elementKey,
         implementationName = declaration.name,
-        multibindingId = elementKey.computeMultibindingId(),
+        multibindingContribution =
+          MultibindingContribution(elementKey.computeMultibindingId(), elementId),
         contributionScopes = scopes,
         dependencies = dependencies,
       )

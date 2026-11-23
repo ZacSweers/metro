@@ -9,6 +9,11 @@ import org.junit.Test
 
 class TypeKeyIdentityTest {
   @Test
+  fun `an unqualified key shares the encoding of its type`() {
+    assertThat(key(string).encoded).isSameInstanceAs(string.encoded)
+  }
+
+  @Test
   fun `equal identities compare as zero and hash alike`() {
     val left = key(string, named("one"))
     val right = key(string, named("one"))

@@ -38,10 +38,12 @@ internal class SourceFileArrivalListener(
       if (!file.isValid || !fileIndex.isInContent(file)) continue
       if (file.isDirectory) {
         directories += file
-      } else if (file.extension == "kt" || file.extension == "kts") {
+      } else if (file.extension in SOURCE_EXTENSIONS) {
         files += file
       }
     }
     if (files.isNotEmpty() || directories.isNotEmpty()) onArrivals(files, directories)
   }
 }
+
+private val SOURCE_EXTENSIONS = setOf("kt", "kts", "java")

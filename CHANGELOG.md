@@ -6,14 +6,23 @@ Changelog
 
 ### Enhancements
 
-- **[Compiler]** Stop copying and re-sorting each binding's dependencies when ordering the graph.
+- **[core]** Stop copying and re-sorting each binding's dependencies when ordering the graph.
+- **[core]** Store one copy of the encoded type for each unqualified binding key.
 - **[FIR]** Skip formatting class and function names for FIR trace events when compiler tracing is disabled.
 - **[IR]** Compare shared bindings only once when compiling graph extensions. This cut compile time from 43.5 s to 3.2 s on a 58-class test graph.
+- **[IDEA]** The IDE's Plugins dialog and JetBrains Marketplace now list IDEA and core changes and credit contributors.
+- **[IDEA]** Opening a second module with the same Metro options now reuses the existing graph index.
+- **[IDEA]** Reading cached gutter icons and inlay hints no longer queues extra work for the index.
+- **[IDEA]** Look up binding data once per file when drawing inlay hints.
+- **[IDEA]** Avoid taking a second snapshot of the same Kotlin type when indexing a plain binding request or a map request.
+- **[IDEA]** Stop copying the full batch of pending file edits each time another edit arrives.
 
 ### Fixes
 
+- **[core]** Include the graph accessor in missing-binding errors, even when the missing dependency is several constructors deep.
+- **[core]** Generated set and map entries now have the same graph keys in the IDE and compiler reports, including entries from libraries.
+- **[core]** Set and map entries declared as properties now use the property name in both the IDE and compiler reports.
 - **[Compiler]** Preserve unrelated files when clearing old reports from `reportsDestination`.
-- **[Compiler]** Include the graph accessor in missing-binding errors, even when the missing dependency is several constructors deep.
 - **[FIR]** Report abstract properties on `@AssistedFactory` and `@DependencyGraph.Factory` at compile time. Reading one on an assisted factory could throw `AbstractMethodError`.
 - **[FIR]** `@ElementsIntoSet` could put lists in a `Set<String>` when a provider returned `Batch<String>` and `Batch<T>` implemented `List<List<T>>`. Metro now reports a compile error. Declare `Set<List<String>>` and return `batch.toSet()`.
 - **[FIR/IR]** Fix `@get:` site targets for `@OptionalBinding`.
@@ -27,7 +36,23 @@ Changelog
 - **[IR]** Fix a `ClassCastException` when injecting a provided `Map<Class<*>, V>` with `enableKClassToClassInterop` enabled. Metro tried to convert keys that were already Java classes.
 - **[IR]** Fix a `NoSuchMethodError` when `createGraph()` tried to call a suspend function synchronously to get an extension receiver (e.g. `@Provides suspend fun next(): Int` for `@Provides fun Int.twice(): Long`).
 - **[IR]** Fix a compiler crash when two `@IntoSet` or `@IntoMap` functions have names with the same hash code, such as `provideAa` and `provideBB`.
-- **[IDEA-plugin]** Discard a file snapshot if its worker is canceled while reading it for the IDE index.
+- **[IDEA]** Discard a file snapshot if its worker is canceled while reading it for the IDE index.
+- **[IDEA]** After a lookup in the inactive graph browser, unrelated edits no longer trigger an index build.
+- **[IDEA]** Selecting a module with Metro disabled no longer triggers index rebuilds in other modules on unrelated edits.
+- **[IDEA]** The graph browser now finds graphs annotated through a Kotlin `typealias`. Changing the alias updates the index without an edit to the graph.
+- **[IDEA]** When a missing parent interface appears, the graph browser picks up its inherited accessors without an edit to the graph.
+- **[IDEA]** Graph accessors that refer to a missing Java class now resolve when the class appears.
+- **[IDEA]** Fix false suspend errors in child graphs when a parent's generic binding recursively requests larger types.
+- **[IDEA]** Adding an entry to a child graph's map no longer flags scoped entries inherited from the parent as duplicate keys.
+- **[IDEA]** Graph validation now reports duplicate map keys when different annotations unwrap to the same value.
+- **[IDEA]** A matching generic provider in a dynamic graph's container now overrides a static provider. An exact provider in the dynamic container still wins.
+- **[IDEA]** **Go to Metro Binding** on a provider's extension receiver now jumps to the receiver's binding. It used to jump back to the provider itself.
+- **[IDEA]** Pinning a graph no longer hides a generic provider's consumers from **Find Usages** or the gutter.
+- **[IDEA]** **Select in Metro** now finds the generic provider in the graph browser when it supplies a concrete type.
+- **[IDEA]** When graphs specialize an inherited generic parameter differently, its inlay hint now shows the implementation from the pinned graph.
+- **[IDEA]** **Find Usages** on a generic provider returning a `Set` or `Map` now includes requests that use it.
+- **[IDEA]** In projects without graphs, **Find Usages** no longer lists consumers in modules that can't see the provider.
+- **[IDEA]** In projects without graphs, **Find Usages** no longer reports consumers for generic providers when derived bindings are disabled.
 
 1.6.0
 -----

@@ -7,6 +7,7 @@ import dev.zacsweers.metro.idea.index.FactoryInputEntry
 import dev.zacsweers.metro.idea.index.GraphInterfaceSurface
 import dev.zacsweers.metro.idea.index.IndexBuildPhase
 import dev.zacsweers.metro.idea.index.IndexBuildProgressReporter
+import dev.zacsweers.metro.idea.index.SourceClassDependencies
 import dev.zacsweers.metro.idea.model.AssistedSite
 import dev.zacsweers.metro.idea.model.BindingContainerEntry
 import dev.zacsweers.metro.idea.model.ConsumerEntry
@@ -31,6 +32,7 @@ internal fun aggregateSource(
   val assistedSites = mutableListOf<AssistedSite>()
   val bindingContainers = mutableListOf<BindingContainerEntry>()
   val graphInterfaces = mutableListOf<GraphInterfaceSurface>()
+  val missingParents = mutableListOf<SourceClassDependencies>()
   val dynamicGraphs = linkedMapOf<DynamicGraphId, DynamicGraphCall>()
   val factoryInputs = FactoryInputMerger(bindings)
   var completed = 0
@@ -50,6 +52,7 @@ internal fun aggregateSource(
       assistedSites += shard.assistedSites
       bindingContainers += shard.bindingContainers
       graphInterfaces += shard.graphInterfaces
+      shard.missingParents?.let(missingParents::add)
       for (dynamicGraph in shard.dynamicGraphs) {
         dynamicGraphs.putIfAbsent(dynamicGraph.id, dynamicGraph)
       }
@@ -81,6 +84,7 @@ internal fun aggregateSource(
     dynamicGraphs.values.toList(),
     graphInterfaceSurfaces = graphInterfaces,
     factoryInputs = mergedInputs,
+    missingParents = missingParents,
   )
 }
 
@@ -152,6 +156,7 @@ internal data class SourceAggregate(
   val graphInterfaceSurfaces: List<GraphInterfaceSurface> = emptyList(),
   /** Shared input identities used when binary graph factories join this source snapshot. */
   val factoryInputs: List<FactoryInputEntry> = emptyList(),
+  val missingParents: List<SourceClassDependencies> = emptyList(),
 ) {
   /** Reuses binary candidates while retaining the current source graph's own member instances. */
   fun withGraphInterfaces(overlay: GraphInterfaceOverlay): SourceAggregate {

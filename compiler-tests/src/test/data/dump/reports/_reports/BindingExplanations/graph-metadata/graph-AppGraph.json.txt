@@ -255,8 +255,8 @@
   },
   "bindings": [
     {
-      "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"Handler\",\"-870559630#KeptHandler.MetroContributionToAppScope.BindsMirror.bindIntoSetAsHandler_intoset(KeptHandler.MetroContributionToAppScope,KeptHandler): Handler\") Handler",
-      "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"Handler\", \"-870559630#KeptHandler.MetroContributionToAppScope.BindsMirror.bindIntoSetAsHandler_intoset(KeptHandler.MetroContributionToAppScope,KeptHandler): Handler\") Handler",
+      "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"Handler\",\"KeptHandler|dev/zacsweers/metro/AppScope\") Handler",
+      "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"Handler\", \"KeptHandler|dev/zacsweers/metro/AppScope\") Handler",
       "bindingKind": "Alias",
       "isScoped": false,
       "nameHint": "bindIntoSetAsHandler",
@@ -267,7 +267,7 @@
           "hasDefault": false
         }
       ],
-      "isSynthetic": true,
+      "isSynthetic": false,
       "declaration": "KeptHandler",
       "aliasTarget": "KeptHandler"
     },
@@ -571,8 +571,8 @@
       "nameHint": "setOfHandler",
       "dependencies": [
         {
-          "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"Handler\",\"-870559630#KeptHandler.MetroContributionToAppScope.BindsMirror.bindIntoSetAsHandler_intoset(KeptHandler.MetroContributionToAppScope,KeptHandler): Handler\") Handler",
-          "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"Handler\", \"-870559630#KeptHandler.MetroContributionToAppScope.BindsMirror.bindIntoSetAsHandler_intoset(KeptHandler.MetroContributionToAppScope,KeptHandler): Handler\") Handler",
+          "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"Handler\",\"KeptHandler|dev/zacsweers/metro/AppScope\") Handler",
+          "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"Handler\", \"KeptHandler|dev/zacsweers/metro/AppScope\") Handler",
           "hasDefault": false
         }
       ],
@@ -581,7 +581,7 @@
         "type": "SET",
         "allowEmpty": false,
         "sources": [
-          "@dev/zacsweers/metro/internal/MultibindingElement(\"Handler\",\"-870559630#KeptHandler.MetroContributionToAppScope.BindsMirror.bindIntoSetAsHandler_intoset(KeptHandler.MetroContributionToAppScope,KeptHandler): Handler\") Handler"
+          "@dev/zacsweers/metro/internal/MultibindingElement(\"Handler\",\"KeptHandler|dev/zacsweers/metro/AppScope\") Handler"
         ]
       }
     }
@@ -658,8 +658,8 @@
       "outcome": "selected",
       "candidates": [
         {
-          "id": "224:@dev/zacsweers/metro/internal/MultibindingElement(\"Handler\",\"-870559630#KeptHandler.MetroContributionToAppScope.BindsMirror.bindIntoSetAsHandler_intoset(KeptHandler.MetroContributionToAppScope,KeptHandler): Handler\") Handler|11:KeptHandler",
-          "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"Handler\",\"-870559630#KeptHandler.MetroContributionToAppScope.BindsMirror.bindIntoSetAsHandler_intoset(KeptHandler.MetroContributionToAppScope,KeptHandler): Handler\") Handler",
+          "id": "111:@dev/zacsweers/metro/internal/MultibindingElement(\"Handler\",\"KeptHandler|dev/zacsweers/metro/AppScope\") Handler|11:KeptHandler",
+          "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"Handler\",\"KeptHandler|dev/zacsweers/metro/AppScope\") Handler",
           "status": "selected",
           "reason": "selected_explicit",
           "declaration": {
@@ -668,14 +668,14 @@
           },
           "relatedDeclarations": [],
           "details": [],
-          "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"Handler\", \"-870559630#KeptHandler.MetroContributionToAppScope.BindsMirror.bindIntoSetAsHandler_intoset(KeptHandler.MetroContributionToAppScope,KeptHandler): Handler\") Handler"
+          "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"Handler\", \"KeptHandler|dev/zacsweers/metro/AppScope\") Handler"
         }
       ],
       "request": {
-        "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"Handler\",\"-870559630#KeptHandler.MetroContributionToAppScope.BindsMirror.bindIntoSetAsHandler_intoset(KeptHandler.MetroContributionToAppScope,KeptHandler): Handler\") Handler",
+        "key": "@dev/zacsweers/metro/internal/MultibindingElement(\"Handler\",\"KeptHandler|dev/zacsweers/metro/AppScope\") Handler",
         "hasDefault": false,
         "isOptional": false,
-        "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"Handler\", \"-870559630#KeptHandler.MetroContributionToAppScope.BindsMirror.bindIntoSetAsHandler_intoset(KeptHandler.MetroContributionToAppScope,KeptHandler): Handler\") Handler"
+        "renderedKey": "@dev.zacsweers.metro.internal.MultibindingElement(\"Handler\", \"KeptHandler|dev/zacsweers/metro/AppScope\") Handler"
       },
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."

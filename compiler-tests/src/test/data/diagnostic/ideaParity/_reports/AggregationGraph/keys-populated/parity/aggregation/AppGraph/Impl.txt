@@ -1,10 +1,14 @@
 @dev.zacsweers.metro.internal.MultibindingElement("kotlin/String|parity/aggregation/Handler", "-678079832#parity.aggregation.AggregateBindings.Companion.primaryHandler(parity/aggregation/AggregateBindings.Companion,parity/aggregation/Repo): parity/aggregation/Handler") parity.aggregation.Handler
 @dev.zacsweers.metro.internal.MultibindingElement("kotlin/String|parity/aggregation/Handler", "42302901#parity.aggregation.AggregateBindings.Companion.secondaryHandler(parity/aggregation/AggregateBindings.Companion): parity/aggregation/Handler") parity.aggregation.Handler
-@dev.zacsweers.metro.internal.MultibindingElement("parity/aggregation/Handler", "2113724328#parity.aggregation.AppHandler.MetroContributionToAppScope.BindsMirror.bindIntoSetAsHandler_intoset(parity/aggregation/AppHandler.MetroContributionToAppScope,parity/aggregation/AppHandler): parity/aggregation/Handler") parity.aggregation.Handler
+@dev.zacsweers.metro.internal.MultibindingElement("kotlin/String|parity/aggregation/Handler", "parity/aggregation/AppHandler|dev/zacsweers/metro/AppScope|@dev/zacsweers/metro/StringKey("first")") parity.aggregation.Handler
+@dev.zacsweers.metro.internal.MultibindingElement("kotlin/String|parity/aggregation/Handler", "parity/aggregation/AppHandler|dev/zacsweers/metro/AppScope|@dev/zacsweers/metro/StringKey("second")") parity.aggregation.Handler
+@dev.zacsweers.metro.internal.MultibindingElement("parity/aggregation/Handler", "-235419834#val parity.aggregation.AppGraph.localHandler(parity/aggregation/AppGraph,parity/aggregation/LocalHandler): parity/aggregation/Handler") parity.aggregation.Handler
+@dev.zacsweers.metro.internal.MultibindingElement("parity/aggregation/Handler", "parity/aggregation/AppHandler|dev/zacsweers/metro/AppScope") parity.aggregation.Handler
 kotlin.collections.Map<kotlin.String, parity.aggregation.Handler>
 kotlin.collections.Set<parity.aggregation.EmptyElement>
 kotlin.collections.Set<parity.aggregation.Handler>
 parity.aggregation.AppHandler
+parity.aggregation.LocalHandler
 parity.aggregation.RealRepo
 parity.aggregation.Repo
 parity.aggregation.ScopedValue

@@ -35,11 +35,13 @@ import dev.zacsweers.metro.compiler.graph.incompatibleScopeDiagnostic
 import dev.zacsweers.metro.compiler.graph.putGraphRoot
 import dev.zacsweers.metro.compiler.graph.toText
 import dev.zacsweers.metro.compiler.graph.toTraceSection
+import dev.zacsweers.metro.compiler.graph.unwrappedMapKeysNote
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.idea.model.BindingResolutionSession
 import dev.zacsweers.metro.idea.model.GraphContext
 import dev.zacsweers.metro.idea.model.GraphQueryContext
 import dev.zacsweers.metro.idea.model.KaAnnotationSnapshot
+import dev.zacsweers.metro.idea.model.KaAnnotationValueSnapshot
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaContextualTypeKey
 import dev.zacsweers.metro.idea.model.KaTypeKey
@@ -160,7 +162,7 @@ internal class KaBindingGraph(
     if (!options.enableSuspendProviders) {
       return null
     }
-    val suspendKeys = SuspendBindingAnalysis(bindings::get).analyze(cycleKeys)
+    val suspendKeys = SuspendBindingAnalysis { key, _ -> bindings[key] }.analyze(cycleKeys)
     return cycleKeys.firstOrNull { it in suspendKeys }
   }
 
@@ -352,7 +354,7 @@ internal class KaBindingGraph(
         multibindingAllowsEmpty = { (it as KaBinding.Multibinding).allowEmpty },
         multibindingSourceKeys = { (it as KaBinding.Multibinding).sourceBindings },
         isMapContribution = { it.multibindingId != null },
-        mapKeyOf = { it.mapKeyValue },
+        mapKeyOf = { it.mapKey?.effectiveValue },
         rootKeys = rootsByTypeKey.keys,
         reverseAdjacency = adjacency.reverse,
       )
@@ -476,7 +478,7 @@ internal class KaBindingGraph(
   }
 
   private fun reportStructuralIssue(
-    issue: GraphValidationIssue<KaBinding, KaAnnotationSnapshot, String>,
+    issue: GraphValidationIssue<KaBinding, KaAnnotationSnapshot, KaAnnotationValueSnapshot>,
     stack: KaBindingStack,
     diagnosticRoutes: KaDiagnosticRoutes,
     roots: Map<KaTypeKey, KaBindingStack.Entry>,
@@ -494,7 +496,6 @@ internal class KaBindingGraph(
           checkNotNull(issue.multibinding as? KaBinding.Multibinding) {
             "Only multibindings can produce duplicate map key issues"
           },
-          issue.mapKey,
           issue.contributions,
           stack,
           diagnosticRoutes,
@@ -534,12 +535,12 @@ internal class KaBindingGraph(
 
   private fun reportDuplicateMapKey(
     binding: KaBinding.Multibinding,
-    mapKey: String?,
     contributions: List<KaBinding>,
     stack: KaBindingStack,
     diagnosticRoutes: KaDiagnosticRoutes,
   ) {
-    checkNotNull(mapKey) { "Map key should not be null for map multibindings" }
+    val mapKeys = contributions.map { checkNotNull(it.mapKey) }
+    val representative = mapKeys.first()
 
     val diagnosticStack = buildStackToRoot(binding.typeKey, diagnosticRoutes, stack)
     val locationDiagnostics = contributions.map(sources::locationDiagnostic)
@@ -549,10 +550,16 @@ internal class KaBindingGraph(
       report(
         duplicateMapKeysDiagnostic(
           typeKey = binding.typeKey,
-          mapKeyRender = mapKey,
+          mapKeyRender = representative.annotationRender,
           locations = locations,
           trace = diagnosticStack.toTraceSection(),
-          extraNotes = locationDiagnostics.flatMap { it.notes }.distinct(),
+          extraNotes =
+            buildList {
+              addAll(locationDiagnostics.flatMap { it.notes }.distinct())
+              if (mapKeys.all { it.unwrapValue }) {
+                add(unwrappedMapKeysNote(mapKeys.map { it.annotationRender }.distinct()))
+              }
+            },
         ),
         diagnosticStack,
       )

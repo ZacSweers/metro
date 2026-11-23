@@ -258,12 +258,23 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
    * owned by a farther graph. Equivalent declarations on the same level all remain, so the derived
    * stage reports them as ambiguous.
    */
-  internal fun derivedCandidates(key: KaTypeKey, plan: GraphQueryPlan): List<KaBinding> {
+  internal fun derivedCandidates(
+    key: KaTypeKey,
+    plan: GraphQueryPlan,
+    onlyDynamic: Boolean = false,
+  ): List<KaBinding> {
     val lookupKey = key.genericLookupKey() ?: return emptyList()
     val templates = lookups.genericBindingsByRawKey[lookupKey] ?: return emptyList()
 
+    val dynamicContainers =
+      plan.structure.queryContext.graphContext.dynamicGraph?.containerKeys.orEmpty()
     val available = templates.filterIndexed { index, template ->
       checkCanceledEvery(index)
+      // A child's static declaration can't shadow a dynamic provider inherited from its parent.
+      if (onlyDynamic && template.includedContainerKey !in dynamicContainers) {
+        return@filterIndexed false
+      }
+
       val isEnabled = template.genericSignature?.isEnabled == true
       isEnabled && isBindingInContext(template, plan)
     }
@@ -2123,13 +2134,16 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
         candidates += lookups.consumersByKey[entry.typeKey].orEmpty()
       }
     }
-    if (graphs.isEmpty()) return candidates.toList()
 
     for (consumer in candidates) {
+      ProgressManager.checkCanceled()
       val resolution = resolveConsumer(session, consumer)
       val pinnedBindings = graphPath?.let { resolution.perContext.matchingContextEntry(it)?.value }
       val resolvesToEntry =
-        if (pinnedBindings != null) {
+        if (graphs.isEmpty()) {
+          // Without graphs the consumer's module determines which declarations it can see.
+          resolution.global.any { it in bindingSet }
+        } else if (pinnedBindings != null) {
           pinnedBindings.any { it.declarationBinding() in bindingSet }
         } else {
           resolution.perContext.values.any { contextBindings ->

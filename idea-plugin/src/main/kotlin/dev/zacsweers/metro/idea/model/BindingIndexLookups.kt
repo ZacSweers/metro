@@ -300,10 +300,7 @@ private constructor(
       if (genericBindingsByRawKey.isNotEmpty()) {
         for ((index, consumer) in consumers.withIndex()) {
           checkCanceledEvery(index)
-          if (consumer.multibindingId != null) {
-            continue
-          }
-
+          // A collection request can resolve to a generic provider when it has no contributions.
           val rawKey = consumer.key.genericLookupKey() ?: continue
           if (rawKey !in genericBindingsByRawKey) {
             continue

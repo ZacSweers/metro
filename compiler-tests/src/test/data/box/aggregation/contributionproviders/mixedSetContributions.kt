@@ -21,7 +21,7 @@ class ExposedProviderPlugin : ProviderPlugin
 
 @Inject
 @ContributesIntoSet(AppScope::class)
-class GeneratedAliasPlugin : ProviderPlugin
+class HiddenProviderPlugin : ProviderPlugin
 
 @DependencyGraph(AppScope::class)
 interface AppGraph {
@@ -36,9 +36,10 @@ fun box(): String {
     setOf("GeneratedProviderPlugin", "ExposedAliasPlugin"),
     graph.aliasPlugins.map { it::class.simpleName }.toSet(),
   )
+  // The generated provider sorts before the alias by callable ID, even though its class sorts last.
   assertEquals(
-    setOf("ExposedProviderPlugin", "GeneratedAliasPlugin"),
-    graph.providerPlugins.map { it::class.simpleName }.toSet(),
+    listOf("HiddenProviderPlugin", "ExposedProviderPlugin"),
+    graph.providerPlugins.map { it::class.simpleName },
   )
   assertIs<ExposedProviderPlugin>(graph.retainedAliasImplementation)
   return "OK"

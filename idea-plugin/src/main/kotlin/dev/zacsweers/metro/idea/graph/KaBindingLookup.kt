@@ -413,8 +413,8 @@ internal class KaBindingLookup(
         ownerKey = parentKey,
         accessorIsSuspend = parentTransitiveSuspend(binding),
         isParentScoped = true,
-        multibindingId = binding.multibindingId,
-        mapKeyValue = binding.mapKeyValue,
+        multibindingContribution = binding.multibindingContribution,
+        mapKey = binding.mapKey,
       )
     }
   }
@@ -468,8 +468,10 @@ internal class KaBindingLookup(
         resolveParentGraph,
       )
     parentSuspendLookup = lookup
-    val analysis = SuspendBindingAnalysis { key ->
-      lookup.lookup(key.canonicalContextKey()) { _, _ -> }.firstOrNull { it.typeKey == key }
+    val analysis = SuspendBindingAnalysis { key, requester ->
+      lookup
+        .lookup(key.canonicalContextKey(), requester) { _, _ -> }
+        .firstOrNull { it.typeKey == key }
     }
     parentSuspendAnalysis = analysis
     return analysis
@@ -495,8 +497,8 @@ internal class KaBindingLookup(
     contributions: List<KaBinding>,
     declarations: List<KaBinding.Multibinding>,
   ): Set<KaBinding> {
-    val elementKeys = contributions.mapIndexed { i, contribution ->
-      val elementId = "${contribution.originClassId?.asFqNameString() ?: "element"}#$i"
+    val elementKeys = contributions.map { contribution ->
+      val elementId = checkNotNull(contribution.multibindingContribution).elementId
       val qualifier =
         KaAnnotationSnapshot(
           MULTIBINDING_ELEMENT_CLASS_ID,
@@ -559,8 +561,8 @@ private fun KaBinding.withElementKey(elementKey: KaTypeKey): KaBinding {
         typeKey = elementKey,
         scope = scope,
         implementationName = implementationName,
-        multibindingId = multibindingId,
-        mapKeyValue = mapKeyValue,
+        multibindingContribution = multibindingContribution,
+        mapKey = mapKey,
         originClassId = originClassId,
         containerId = containerId,
         ownerGraphId = ownerGraphId,
@@ -592,8 +594,8 @@ private fun KaBinding.Alias.copy(
     consumedKey = consumedKey,
     scope = scope,
     implementationName = implementationName,
-    multibindingId = multibindingId,
-    mapKeyValue = mapKeyValue,
+    multibindingContribution = multibindingContribution,
+    mapKey = mapKey,
     originClassId = originClassId,
     containerId = containerId,
     ownerGraphId = ownerGraphId,

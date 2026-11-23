@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.circuit
 
+import dev.zacsweers.metro.compiler.capitalizeUS
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
@@ -28,6 +29,20 @@ public object CircuitClassIds {
     ClassId(FqName(CIRCUIT_SERIALIZATION_PACKAGE), Name.identifier("CircuitSerializable"))
   public val SubCircuitInject: ClassId =
     ClassId(FqName(SUBCIRCUIT_PACKAGE), Name.identifier("SubCircuitInject"))
+
+  /** Name of the factory nested in a class annotated with `@CircuitInject`. */
+  public val nestedFactoryName: Name = Name.identifier("CircuitFactory")
+
+  /** Name of the top-level factory generated in the annotated function's package. */
+  public fun functionFactoryName(functionName: String, isSubCircuit: Boolean = false): Name {
+    val suffix =
+      if (isSubCircuit) {
+        "SubCircuitFactory"
+      } else {
+        "Factory"
+      }
+    return Name.identifier("${functionName.capitalizeUS()}$suffix")
+  }
 
   // Runtime types
   public val Screen: ClassId =

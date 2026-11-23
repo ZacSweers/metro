@@ -38,6 +38,13 @@ internal fun shortNames(classIds: Set<ClassId>): Set<String> {
   return classIds.mapToSet { it.shortClassName.asString() }
 }
 
+/** The immediate origin owns a generated contribution even when it has an origin of its own. */
+internal fun KaClassSymbol.originClassId(options: MetroOptions): ClassId? {
+  val annotation = annotations.firstOrNull { it.classId in options.originAnnotations }
+  val value = annotation?.arguments?.firstOrNull { it.name.asString() == "value" } ?: return null
+  return classLiteralClassId(value.expression)
+}
+
 /** Records origin aliases in nearest-first order and tracks their files for cache invalidation. */
 internal fun KaSession.contributionOriginClassIds(
   classSymbol: KaNamedClassSymbol,
@@ -49,9 +56,7 @@ internal fun KaSession.contributionOriginClassIds(
   var current: KaClassSymbol = classSymbol
   while (true) {
     ProgressManager.checkCanceled()
-    val annotation = current.annotations.firstOrNull { it.classId in options.originAnnotations }
-    val argument = annotation?.arguments?.firstOrNull { it.name.asString() == "value" } ?: break
-    val originClassId = classLiteralClassId(argument.expression) ?: break
+    val originClassId = current.originClassId(options) ?: break
     // Broken or cyclic generated origins still retain every alias we've already resolved.
     if (!visited.add(originClassId)) {
       break
@@ -105,8 +110,8 @@ internal fun BindingData.toKaBinding(
         typeKey = key,
         scope = scope,
         implementationName = implementationName,
-        multibindingId = multibindingId,
-        mapKeyValue = mapKeyValue,
+        multibindingContribution = multibindingContribution,
+        mapKey = mapKey,
         originClassId = originClassId,
         containerId = containerId,
         includedContainerKey = includedContainerKey,
@@ -130,8 +135,8 @@ internal fun BindingData.toKaBinding(
         consumedKey = consumedKey,
         scope = scope,
         implementationName = implementationName,
-        multibindingId = multibindingId,
-        mapKeyValue = mapKeyValue,
+        multibindingContribution = multibindingContribution,
+        mapKey = mapKey,
         originClassId = originClassId,
         containerId = containerId,
         includedContainerKey = includedContainerKey,

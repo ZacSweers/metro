@@ -31,6 +31,7 @@ import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.index.retryCancelledIndexBuild
 import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.GraphPath
+import dev.zacsweers.metro.idea.model.declarationBinding
 import dev.zacsweers.metro.idea.model.matchingContextEntry
 import org.jetbrains.kotlin.psi.KtDeclaration
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
@@ -169,7 +170,9 @@ internal fun BindingIndex.metroUsageRelations(
           val pinnedBindings =
             session.resolveConsumer(consumer).perContext.matchingContextEntry(pinnedPath)?.value
               ?: continue
-          if (pinnedBindings.none { it in targetBindingSet }) continue
+          if (pinnedBindings.none { it.declarationBinding() in targetBindingSet }) {
+            continue
+          }
         }
         val declaration = consumer.pointer.element?.metroSourceDeclaration() ?: continue
         addUsageRelation(result, declaration, MetroUsageRelationship.INJECTED_AT)

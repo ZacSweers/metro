@@ -54,6 +54,10 @@ internal fun explainBindingSelection(
   rejectionFor: (KaBinding) -> BindingRejection?,
 ): BindingExplanation {
   val selected = selection?.bindings.orEmpty().toSet()
+  val dynamicContainers = context.dynamicGraph?.containerKeys.orEmpty()
+  val derivedOverride =
+    selection?.tier == BindingTier.DERIVED &&
+      selected.any { it.includedContainerKey in dynamicContainers }
   val lessSpecific = selection?.lessSpecificDerivedBindings.orEmpty().toSet()
   val ambiguousDerived = selection?.ambiguousDerivedBindings.orEmpty().toSet()
   val allCandidates = (selected + lessSpecific + ambiguousDerived + candidates).toList()
@@ -64,6 +68,7 @@ internal fun explainBindingSelection(
     checkCanceledEvery(index)
     val assistedTarget = binding is KaBinding.ConstructorInjected && binding.isAssisted
     val isSelected = binding in selected && !assistedTarget
+    val staticCallable = binding is KaBinding.Provided || binding is KaBinding.Alias
     val rejection = rejectionFor(binding)
     val reason =
       when {
@@ -75,6 +80,7 @@ internal fun explainBindingSelection(
         isSelected -> checkNotNull(selection).tier.selectionReason()
         binding in lessSpecific -> BindingReason.LESS_SPECIFIC
         rejection != null -> rejection
+        derivedOverride && staticCallable -> BindingReason.DYNAMIC_REPLACEMENT
         selection?.tier == BindingTier.OPTIONAL && binding is KaBinding.CustomWrapper ->
           BindingReason.EARLIER_OPTIONAL
         else -> BindingReason.HIGHER_PRECEDENCE

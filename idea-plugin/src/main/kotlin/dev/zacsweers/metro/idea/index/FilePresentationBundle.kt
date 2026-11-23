@@ -18,6 +18,8 @@ import dev.zacsweers.metro.idea.model.GraphPath
 import dev.zacsweers.metro.idea.model.IndexGenerationToken
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
+import dev.zacsweers.metro.idea.model.declarationBinding
+import dev.zacsweers.metro.idea.model.matchingContext
 import dev.zacsweers.metro.idea.model.matchingContextEntry
 import dev.zacsweers.metro.idea.model.selectConsumerEntry
 import java.util.IdentityHashMap
@@ -210,7 +212,19 @@ internal class FileDeclarationPresentation(
   val inlayConsumer: ConsumerEntry?,
   val graph: GraphPresentation?,
   val assistedSite: AssistedSite?,
-)
+) {
+  /** A pin can select one specialization of an inherited parameter shared by several graphs. */
+  fun inlayConsumerFor(path: GraphPath?): ConsumerEntry? {
+    if (path == null || consumerResolutions.size < 2) {
+      return inlayConsumer
+    }
+
+    val contexts = consumerResolutions.values.flatMapTo(linkedSetOf()) { it.perContext.keys }
+    val context = contexts.matchingContext(path) ?: return inlayConsumer
+    val match = consumerResolutions.entries.singleOrNull { context in it.value.perContext }
+    return match?.key ?: inlayConsumer
+  }
+}
 
 /** Filters resolved consumers when the user pins a graph, preserving their original order. */
 internal class ReverseUsagePresentation(candidates: List<ReverseUsageCandidate>) {
@@ -350,7 +364,7 @@ internal class FilePresentationBundleBuilder(
         ProgressManager.checkCanceled()
         val resolvesByContext =
           resolution(consumer).perContext.mapValues { (_, bindings) ->
-            bindings.any(bindingSet::contains)
+            bindings.any { it.declarationBinding() in bindingSet }
           }
         ReverseUsageCandidate(consumer, resolvesByContext)
       }

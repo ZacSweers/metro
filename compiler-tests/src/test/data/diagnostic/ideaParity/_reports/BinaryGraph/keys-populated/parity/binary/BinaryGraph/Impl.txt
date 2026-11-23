@@ -1,4 +1,4 @@
-@dev.zacsweers.metro.internal.MultibindingElement("libtest/LibAnalytics", "483501658#libtest.LibAnalyticsImpl.MetroContributionToAppScope.BindsMirror.bindIntoSetAsLibAnalytics_intoset(libtest/LibAnalyticsImpl.MetroContributionToAppScope.BindsMirror,libtest/LibAnalyticsImpl): libtest/LibAnalytics") libtest.LibAnalytics
+@dev.zacsweers.metro.internal.MultibindingElement("libtest/LibAnalytics", "libtest/LibAnalyticsImpl|dev/zacsweers/metro/AppScope") libtest.LibAnalytics
 kotlin.collections.Set<libtest.LibAnalytics>
 libtest.LibAnalyticsImpl
 libtest.LibClientWithDeps

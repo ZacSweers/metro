@@ -11,7 +11,9 @@ class SuspendBindingWorklistTest {
 
   @Test
   fun `same root is updated after a missing dependency is added`() {
-    val fixture = AnalysisFixture()
+    val requests = mutableListOf<Pair<String, String?>>()
+    val fixture =
+      AnalysisFixture(onLookup = { key, requester -> requests += key.type to requester?.type })
     fixture.put(binding("A", "B"))
 
     assertThat(fixture.analysis.isSuspend(key("A"))).isFalse()
@@ -27,6 +29,7 @@ class SuspendBindingWorklistTest {
     assertThat(fixture.analysis.isSuspend(key("A"))).isTrue()
     assertThat(fixture.lookupCount("A")).isEqualTo(1)
     assertThat(fixture.lookupCount("B")).isEqualTo(2)
+    assertThat(requests).containsExactly("A" to null, "B" to "A", "B" to "A").inOrder()
   }
 
   @Test
@@ -465,6 +468,7 @@ private typealias TestAnalysis =
 
 private class AnalysisFixture(
   private val checkCanceled: () -> Unit = {},
+  private val onLookup: (StringTypeKey, StringTypeKey?) -> Unit = { _, _ -> },
   private val onExpand: (TestBinding) -> Unit = {},
 ) {
   private val bindings = mutableMapOf<StringTypeKey, TestBinding>()
@@ -487,7 +491,8 @@ private class AnalysisFixture(
 
   val analysis: TestAnalysis =
     SuspendBindingWorklist(
-      findBinding = { key ->
+      findBinding = { key, requester ->
+        onLookup(key, requester)
         lookupCounts[key] = lookupCounts.getOrDefault(key, 0) + 1
         bindings[key]
       },

@@ -6,6 +6,7 @@ import com.intellij.openapi.components.service
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
+import dev.zacsweers.metro.compiler.graph.explanation.BindingReason
 import dev.zacsweers.metro.idea.graph.GraphValidationProgress
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.index.MetroResolutionService
@@ -67,6 +68,65 @@ class MetroDynamicGraphTest : BasePlatformTestCase() {
         .validate(file, dynamicContext)
         .requireCompleted()
     assertTrue(result.diagnostics.isEmpty())
+  }
+
+  fun testDynamicGenericReplacesStaticBindingsAndPreservesDynamicExactBindings() {
+    project.setMetroOptions(MetroDerivedBindingResolutionTest.DERIVED_BINDINGS_OPTION)
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface Encoder<T>
+
+        @BindingContainer object RealEncoders {
+          @Provides fun real(): Encoder<String> = error("unused")
+          @Provides fun <T> list(): Encoder<List<T>> = error("unused")
+        }
+
+        @BindingContainer object FakeEncoders {
+          @Provides fun <T> fake(): Encoder<T> = error("unused")
+          @Provides fun exact(): Encoder<Int> = error("unused")
+        }
+
+        @DependencyGraph(bindingContainers = [RealEncoders::class])
+        interface AppGraph {
+          val string: Encoder<String>
+          val strings: Encoder<List<String>>
+          val number: Encoder<Int>
+        }
+
+        val dynamic = createDynamicGraph<AppGraph>(FakeEncoders)
+        """,
+      )
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val contexts = index.contextsFor(index.graphs.single())
+    val static = contexts.single { it.dynamicGraph == null }
+    val dynamic = contexts.single { it.dynamicGraph != null }
+    val declarations = file.declarationsIncludingNested()
+    val string = checkNotNull(index.consumerEntryAt(declarations.property("string")))
+    val strings = checkNotNull(index.consumerEntryAt(declarations.property("strings")))
+    val number = checkNotNull(index.consumerEntryAt(declarations.property("number")))
+
+    assertEquals(listOf("real"), index.providerNames(string, static))
+    assertEquals(listOf("list"), index.providerNames(strings, static))
+    assertEquals(listOf("fake"), index.providerNames(string, dynamic))
+    assertEquals(listOf("fake"), index.providerNames(strings, dynamic))
+    assertEquals(listOf("exact"), index.providerNames(number, dynamic))
+
+    val explanation = index.withResolutionSession { session ->
+      index.explainBindings(session, string, checkNotNull(session.queryContext(dynamic)))
+    }
+    val real = declarations.function("real")
+    assertTrue(
+      explanation.candidates.any {
+        it.binding.pointer.element == real && it.reasonCode == BindingReason.DYNAMIC_REPLACEMENT
+      },
+    )
+
+    val result =
+      project.service<MetroGraphValidationService>().validate(file, dynamic).requireCompleted()
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    assertEquals(declarations.function("fake"), result.bindings[string.key]?.pointer?.element)
+    assertEquals(declarations.function("exact"), result.bindings[number.key]?.pointer?.element)
   }
 
   fun testEquivalentCallsShareAContextWithinAFileButNotAcrossFiles() {

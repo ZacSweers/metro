@@ -188,7 +188,7 @@ open class GraphAnalysisBenchmark {
         bindingCanPassThrough = { _, _ -> false },
       )
     return SuspendBindingWorklist(
-      findBinding = indexedBindings::get,
+      findBinding = { key, _ -> indexedBindings[key] },
       bindingIsSuspend = { binding ->
         hasSuspendSources && binding.typeKey in suspendSourceKeys
       },
@@ -273,7 +273,7 @@ open class RepresentativeGraphBenchmark {
       )
     val worklist =
       SuspendBindingWorklist(
-        findBinding = bindingsByKey::get,
+        findBinding = { key, _ -> bindingsByKey[key] },
         bindingIsSuspend = { binding -> binding.typeKey in suspendSourceKeys },
         skipDependencyTraversal = { false },
         rules = rules,

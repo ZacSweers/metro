@@ -70,7 +70,7 @@ internal fun BindingIndex.selectBindingsForKey(
     )
 
   return selectBinding(
-    registered = { selectRegisteredBinding(request) },
+    registered = { selectRegisteredBinding(request, derivedBindingVerifier) },
     multibinding = { selectMultibinding(request) },
     optional = { selectOptionalBinding(request) },
     derived = { selectDerivedBinding(typeKey, plan, derivedBindingVerifier) },
@@ -99,17 +99,37 @@ private class SelectionRequest(
 }
 
 /**
- * Selects the explicit declarations from the nearest graph that owns the key. Without any, it
- * selects the binding the graph generates for the key.
+ * Selects the nearest explicit declarations. A matching dynamic generic provider replaces static
+ * providers and aliases. Exact dynamic bindings and graph inputs keep their precedence.
  */
-private fun BindingIndex.selectRegisteredBinding(request: SelectionRequest): KaBindingSelection? {
+private fun BindingIndex.selectRegisteredBinding(
+  request: SelectionRequest,
+  verifier: DerivedBindingVerifier?,
+): KaBindingSelection? {
+  val dynamic = request.plan.structure.queryContext.graphContext.dynamicGraph
+  val replacement =
+    if (dynamic != null && request.typeKey !in dynamic.bindingKeys) {
+      selectDerivedBinding(request.typeKey, request.plan, verifier, onlyDynamic = true)
+    } else {
+      null
+    }
+
   if (request.indexedTier == BindingTier.EXPLICIT) {
     val explicit = request.candidatesIn(BindingTier.EXPLICIT)
-    val nearest = nearestExplicitBindings(explicit, request.plan)
-    return KaBindingSelection(BindingTier.EXPLICIT, nearest)
+    val remaining =
+      if (replacement == null) {
+        explicit
+      } else {
+        explicit.filterNot { it is KaBinding.Provided || it is KaBinding.Alias }
+      }
+
+    if (remaining.isNotEmpty()) {
+      val nearest = nearestExplicitBindings(remaining, request.plan)
+      return KaBindingSelection(BindingTier.EXPLICIT, nearest)
+    }
   }
 
-  val generated = request.plan.generatedBindings.forKey(request.typeKey) ?: return null
+  val generated = request.plan.generatedBindings.forKey(request.typeKey) ?: return replacement
   return KaBindingSelection(BindingTier.GENERATED_GRAPH, listOf(generated))
 }
 
@@ -169,13 +189,14 @@ private fun BindingIndex.selectDerivedBinding(
   key: KaTypeKey,
   plan: BindingIndex.GraphQueryPlan,
   verifier: DerivedBindingVerifier?,
+  onlyDynamic: Boolean = false,
 ): KaBindingSelection? {
   // Most projects have no generic declarations, so they skip everything below.
   if (!hasGenericBindings) {
     return null
   }
 
-  val candidates = derivedCandidates(key, plan)
+  val candidates = derivedCandidates(key, plan, onlyDynamic)
   if (candidates.isEmpty()) {
     return null
   }

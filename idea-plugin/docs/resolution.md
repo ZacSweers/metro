@@ -43,13 +43,9 @@ flowchart TD
     click Presentation "../src/main/kotlin/dev/zacsweers/metro/idea/index/FilePresentationBundle.kt"
 ```
 
-The coordinator processes source changes, project inputs, settings, manual refresh, ordinary build
-requests, and file presentations in that priority order. It checks new arrivals after each work item
-and waits when no work can run. Draining moves requests into its pending state. It still needs to
-classify the changes to decide what needs rebuilding.
+The coordinator processes settings, source changes, project inputs, manual refresh, ordinary builds, and file presentations in that order. It checks the queue after each work item. Draining transfers ownership of pending changes to the coordinator. Classification determines which files need rebuilding.
 
-A query for an untracked source file also queues a PSI event to inspect it. This advances the semantic
-clock even if the file turns out to contain no Metro declarations.
+Readers record the modules that need future updates in a concurrent set. A warm presentation with current anchors needs no queue event. An inactive browser that finds no cached index records no demand. A query for an untracked source file queues a PSI event for classification. This advances the semantic clock even if the file contains no Metro declarations.
 
 File presentation workers compute gutter, code vision, and inlay data. They send results through
 ingress so the coordinator can check the attempt and index before publishing. At most two presentation
@@ -81,9 +77,7 @@ Queries accept a generation as current when all three checks pass:
 - `classifiedSemanticClock` matches ingress's `semanticClock`.
 - Its `IndexInputs` match the current project trackers.
 
-In manual mode, the browser shows a stale-data notice while classification is pending or
-`latestSemanticRevision` is ahead of `graphBrowserRefreshRevision`. Compiler-setting changes that only
-affect generated output can update `IndexInputs` while keeping the same indexes and generation token.
+In manual mode, the active browser marks data stale while classification is pending. It also marks a retained presentation stale if its revision lags behind `latestSemanticRevision` or its `IndexInputs` differ from the project trackers. Compiler settings that affect only generated output can update `IndexInputs` without changing the indexes or generation token.
 
 ### An edit arrives during a build
 
@@ -104,10 +98,7 @@ service stops its work and cancels waiting requests.
 
 ## 2. Build a complete generation, then publish it
 
-Modules with the same compiler-option fingerprint and library-resolution setting share an index.
-Each such group is an index target. `ResolutionSnapshotBuilder` prepares one builder per target inside
-the coordinator's smart read action. It reads PSI and the Kotlin Analysis API there, and records module
-visibility and source identities for later queries.
+The coordinator groups requested modules by compiler-option fingerprint in project module order. Each group is an index target. `ResolutionSnapshotBuilder` captures PSI, module visibility and source identities in smart read actions. Each index serves all enabled modules with the same fingerprint and library setting. A manual refresh builds every target.
 
 ```mermaid
 flowchart TD
@@ -266,12 +257,7 @@ Editor inspections read completed, current results. They perform no binding reso
 sealing. The optional pinned-graph service debounces index changes, cancels superseded work, and
 submits quiet validation requests through the same service as explicit actions.
 
-The IDE and compiler use their own types, caches, and diagnostic reporting. Both call
-`MutableBindingGraph.seal()` and the validation rules in `metro-common`. They also share the lazy
-lookup order: registered bindings, multibindings, optional declarations, then implicit injection.
-The IDE keeps its binding categories and assisted-request checks alongside its selection adapter.
-Contribution rules such as `computeMergePlan` also live in `metro-common`. Request scheduling,
-captured module visibility, navigation pointers, and editor updates live in `idea-plugin`.
+The IDE and compiler call `MutableBindingGraph.seal()` and share validation and contribution rules in `metro-common`. [Lookup](../../metro-common/src/main/kotlin/dev/zacsweers/metro/compiler/graph/BindingSelection.kt) tries registered bindings, multibindings, optional declarations, derived bindings, then implicit injection. It stops at the first match. The derived stage selects the most specific generic binding for the requested key. The IDE handles its own assisted-request checks, module visibility and editor updates.
 
 Binding explanation snapshots, decision codes, and plain-text rendering live in
 `metro-common`'s `graph.explanation` package. The IDE captures those snapshots beside its navigation

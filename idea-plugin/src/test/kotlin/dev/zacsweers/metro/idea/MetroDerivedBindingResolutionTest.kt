@@ -9,6 +9,8 @@ import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.GraphQueryContext
 import dev.zacsweers.metro.idea.model.KaBinding
+import dev.zacsweers.metro.idea.navigation.metroEditorTargets
+import dev.zacsweers.metro.idea.usages.metroUsageRelations
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtProperty
@@ -390,6 +392,92 @@ class MetroDerivedBindingResolutionTest : BasePlatformTestCase() {
       setOf("users", "strings"),
       consumers.mapTo(mutableSetOf()) { (it.pointer.element as? KtProperty)?.name },
     )
+  }
+
+  fun testCollectionReverseUsagesIncludeOnlyRequestsThatUseTheGenericProvider() {
+    val fixture =
+      configure(
+        """
+        @DependencyGraph interface AppGraph {
+          @Provides fun <T> fallbackSet(): Set<T> = emptySet()
+          @Provides fun <T> fallbackMap(): Map<String, T> = emptyMap()
+          @Provides @IntoSet fun string(): String = "a"
+          val ints: Set<Int>
+          val strings: Set<String>
+          val byName: Map<String, Int>
+        }
+        """,
+      )
+    val declarations = fixture.file.declarationsIncludingNested()
+
+    for ((consumerName, providerName) in
+      listOf("ints" to "fallbackSet", "byName" to "fallbackMap")) {
+      val consumer = declarations.property(consumerName)
+      val provider = declarations.function(providerName)
+      assertEquals(provider, fixture.index.metroUsageRelations(consumer, null).single().declaration)
+      assertEquals(consumer, fixture.index.metroUsageRelations(provider, null).single().declaration)
+    }
+  }
+
+  fun testPinnedReverseUsagesResolveToTheGenericDeclaration() {
+    val fixture =
+      configure(
+        """
+        interface Box<T>
+        @DependencyGraph interface AppGraph {
+          val value: Box<String>
+          @Provides fun <T> box(): Box<T> = error("unused")
+        }
+        """,
+      )
+    val declarations = fixture.file.declarationsIncludingNested()
+    val provider = declarations.function("box")
+    val consumer = declarations.property("value")
+    val path = fixture.queryContext.graphContext.path
+    val usages =
+      checkNotNull(fixture.file.awaitMetroPresentation().declaration(provider)?.reverseUsage)
+
+    assertEquals(consumer, usages.consumersFor(path).single().pointer.element)
+    assertEquals(consumer, fixture.index.metroUsageRelations(provider, path).single().declaration)
+  }
+
+  fun testRevealForDerivedBindingTargetsTheGenericBrowserRow() {
+    val fixture =
+      configure(
+        """
+        interface Box<T>
+        @DependencyGraph interface AppGraph {
+          val value: Box<String>
+          @Provides fun <T> box(): Box<T> = error("unused")
+        }
+        """,
+      )
+    val declarations = fixture.file.declarationsIncludingNested()
+    val offset = declarations.property("value").textOffset
+    val targets = metroEditorTargets(fixture.index, fixture.file, offset, null)
+    val target = checkNotNull(targets.reveal.single().binding)
+    val rows = fixture.index.createResolutionSession().bindingsInContext(fixture.queryContext)
+
+    assertEquals(declarations.function("box"), target.pointer.element)
+    assertTrue(rows.any { it.pointer == target.pointer && it.typeKey == target.key })
+  }
+
+  fun testGraphlessReverseUsagesIgnoreDisabledGenericProviders() {
+    project.setMetroOptions()
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface Box<T>
+        @BindingContainer object Bindings {
+          @Provides fun <T> box(): Box<T> = error("unused")
+        }
+        @Inject class Target(val dependency: Box<Int>)
+        """,
+      )
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val provider = index.bindingEntriesAt(file.declarationsIncludingNested().function("box"))
+
+    assertTrue(index.consumersFor(provider).isEmpty())
   }
 
   fun testGenericProvidersAreIgnoredWhenDerivedBindingsAreDisabled() {

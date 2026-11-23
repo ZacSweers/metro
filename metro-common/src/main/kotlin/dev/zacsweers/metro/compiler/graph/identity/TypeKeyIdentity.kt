@@ -14,12 +14,11 @@ public class TypeKeyIdentity(
 ) : Comparable<TypeKeyIdentity> {
   public val encoded: String by
     lazy(LazyThreadSafetyMode.PUBLICATION) {
-      buildString {
-        qualifier?.let {
-          it.encodeTo(this)
-          append(' ')
-        }
-        type.encodeTo(this)
+      // Hashing the key already needs the type's encoding.
+      if (qualifier == null) {
+        type.encoded
+      } else {
+        "${qualifier.encoded} ${type.encoded}"
       }
     }
 
@@ -284,7 +283,7 @@ public sealed class AnnotationValueIdentity {
 }
 
 /** Escapes characters the encoding uses as separators, so names can't run into each other. */
-private fun StringBuilder.appendName(name: String) {
+internal fun StringBuilder.appendName(name: String) {
   for (char in name) {
     val isPlain = char.isLetterOrDigit() || char == '_' || char == '$' || char == '/' || char == '.'
     if (isPlain) {

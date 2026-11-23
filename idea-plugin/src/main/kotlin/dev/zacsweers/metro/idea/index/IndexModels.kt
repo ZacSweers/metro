@@ -18,7 +18,9 @@ import dev.zacsweers.metro.idea.model.KaAnnotationSnapshot
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaContextualTypeKey
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
+import dev.zacsweers.metro.idea.model.KaMapKey
 import dev.zacsweers.metro.idea.model.KaTypeKey
+import dev.zacsweers.metro.idea.model.MultibindingContribution
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.psi.KtAnnotationEntry
 import org.jetbrains.kotlin.psi.KtElement
@@ -44,8 +46,8 @@ internal class BindingData(
   val implementationName: String?,
   /** For alias bindings, the key of the source/impl binding this delegates to. */
   val consumedKey: KaContextualTypeKey? = null,
-  /** For multibinding contributions, the multibinding id. See [KaBinding]. */
-  val multibindingId: String? = null,
+  /** See [KaBinding.multibindingContribution]. */
+  val multibindingContribution: MultibindingContribution? = null,
   /** See [KaBinding.originClassId]. */
   val originClassId: ClassId? = null,
   /** See [KaBinding.replaces]. */
@@ -68,8 +70,8 @@ internal class BindingData(
   val isAssisted: Boolean = false,
   /** See [KaBinding.memberInjectionOwnerIds]. */
   val memberInjectionOwnerIds: Set<ClassId> = emptySet(),
-  /** See [KaBinding.mapKeyValue]. */
-  val mapKeyValue: String? = null,
+  /** See [KaBinding.mapKey]. */
+  val mapKey: KaMapKey? = null,
   /** See [KaBinding.Alias.isClassContribution]. */
   val isClassContribution: Boolean = false,
   /** See [KaBinding.Multibinding.allowEmpty]. */
@@ -81,6 +83,12 @@ internal class BindingData(
   /** See [KaBinding.genericSignature]. */
   val genericSignature: GenericBindingSignature? = null,
 ) {
+  val multibindingId: String?
+    get() = multibindingContribution?.bindingId
+
+  val mapKeyValue: String?
+    get() = mapKey?.annotationRender
+
   /** All dependencies used for graph traversal. */
   val dependencies: List<KaContextualTypeKey> =
     if (kind == Kind.CONSTRUCTOR_INJECTED) {
@@ -178,6 +186,8 @@ internal class FileShard(
    */
   val sharedDeclarationFiles: Set<VirtualFile>,
   val graphInterfaces: List<GraphInterfaceSurface> = emptyList(),
+  /** Missing graph parents have no declaration file to register in [dependencyFiles]. */
+  val missingParents: SourceClassDependencies? = null,
 ) {
   companion object {
     val EMPTY =

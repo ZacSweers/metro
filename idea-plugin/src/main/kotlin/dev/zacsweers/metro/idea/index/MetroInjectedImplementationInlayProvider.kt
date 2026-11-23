@@ -18,6 +18,8 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import dev.zacsweers.metro.idea.GraphContextPinService
 import dev.zacsweers.metro.idea.MetroSettings
+import dev.zacsweers.metro.idea.model.GraphPath
+import dev.zacsweers.metro.idea.model.matchingContextEntry
 import org.jetbrains.kotlin.name.StandardClassIds
 import org.jetbrains.kotlin.psi.KtElement
 import org.jetbrains.kotlin.psi.KtFile
@@ -42,16 +44,23 @@ class MetroInjectedImplementationInlayProvider : InlayHintsProvider {
 
   override fun createCollector(file: PsiFile, editor: Editor): InlayHintsCollector? {
     val ktFile = file as? KtFile ?: return null
-    if (!MetroSettings.getInstance(ktFile.project).state.enableBindingResolution) return null
-    return Collector
+    if (!MetroSettings.getInstance(ktFile.project).state.enableBindingResolution) {
+      return null
+    }
+
+    val bundle =
+      ktFile.project.service<MetroResolutionService>().presentationBundle(ktFile) ?: return null
+    return Collector(bundle, ktFile.project.service<GraphContextPinService>().pinnedPath)
   }
 
-  private object Collector : SharedBypassCollector {
+  /** All inlays in a file pass use the same published binding data and pin. */
+  private class Collector(
+    private val bundle: FilePresentationBundle,
+    private val pinnedPath: GraphPath?,
+  ) : SharedBypassCollector {
     override fun collectFromElement(element: PsiElement, sink: InlayTreeSink) {
       if (element !is KtParameter && element !is KtProperty && element !is KtNamedFunction) return
       element as KtElement
-      val bundle =
-        element.project.service<MetroResolutionService>().presentationBundle(element) ?: return
       val presentation = bundle.declaration(element) ?: return
       // Only implicitly assisted parameters get the inlay; explicit @Assisted already reads as
       // assisted in source.
@@ -71,10 +80,9 @@ class MetroInjectedImplementationInlayProvider : InlayHintsProvider {
         }
         return
       }
-      val consumer = presentation.inlayConsumer ?: return
+      val consumer = presentation.inlayConsumerFor(pinnedPath) ?: return
       val resolution = presentation.consumerResolutions.getValue(consumer)
-      val pinned =
-        element.project.service<GraphContextPinService>().matchingEntry(resolution.perContext)
+      val pinned = pinnedPath?.let { resolution.perContext.matchingContextEntry(it) }
       val bindings = pinned?.value ?: resolution.uniformBindings ?: return
       if (bindings.isEmpty()) return
 

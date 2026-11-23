@@ -415,7 +415,11 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
 
       val rawTypeKey =
         signatureContextKey.typeKey.copy(qualifier = callableMetadata.annotations.qualifier)
-      val typeKey = rawTypeKey.transformIfIntoMultibinding(callableMetadata.annotations)
+      val typeKey =
+        rawTypeKey.transformIfIntoMultibinding(
+          callableMetadata.annotations,
+          callableMetadata.function,
+        )
       val hasInstanceDependency =
         callableMetadata.function.dispatchReceiverParameter != null &&
           callableMetadata.function.parentClassOrNull?.isObject != true

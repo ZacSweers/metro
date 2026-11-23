@@ -122,6 +122,33 @@ internal class KaAnnotationSnapshot(
 }
 
 /**
+ * Declaration matching and contribution priority compare the annotation. Duplicate detection
+ * compares the key that Metro will put in the map after unwrapping any single argument.
+ */
+internal class KaMapKey(
+  val keyType: TypeIdentity,
+  private val annotation: KaAnnotationSnapshot,
+  val unwrapValue: Boolean,
+) {
+  val annotationIdentity
+    get() = annotation.identity
+
+  val annotationRender = annotation.render(short = false)
+  val effectiveValue: KaAnnotationValueSnapshot =
+    if (unwrapValue) {
+      // Incomplete source can lack a usable argument. Keep its annotation identity in that case.
+      when (val value = annotation.arguments.singleOrNull()?.second) {
+        null,
+        KaAnnotationValueSnapshot.Absent,
+        KaAnnotationValueSnapshot.Unsupported -> KaAnnotationValueSnapshot.Nested(annotation)
+        else -> value
+      }
+    } else {
+      KaAnnotationValueSnapshot.Nested(annotation)
+    }
+}
+
+/**
  * Reads annotation snapshots. Class literals only have a class ID here, so they're read as
  * [TypeIdentity] values.
  */

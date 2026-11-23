@@ -9,15 +9,19 @@ package parity.aggregation
 
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.BindingContainer
+import dev.zacsweers.metro.Binds
 import dev.zacsweers.metro.ContributesBinding
+import dev.zacsweers.metro.ContributesIntoMap
 import dev.zacsweers.metro.ContributesIntoSet
 import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.IntoMap
+import dev.zacsweers.metro.IntoSet
 import dev.zacsweers.metro.Multibinds
 import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.StringKey
+import dev.zacsweers.metro.binding
 
 abstract class OtherScope private constructor()
 
@@ -35,7 +39,11 @@ interface Handler
 
 @Inject
 @ContributesIntoSet(AppScope::class)
+@ContributesIntoMap(AppScope::class, binding = binding<@StringKey("first") Handler>())
+@ContributesIntoMap(AppScope::class, binding = binding<@StringKey("second") Handler>())
 class AppHandler : Handler
+
+@Inject class LocalHandler : Handler
 
 @Inject
 @ContributesIntoSet(OtherScope::class)
@@ -71,6 +79,8 @@ class ScopedValue
 )
 interface AppGraph {
   val repo: Repo
+  @Binds @IntoSet val LocalHandler.localHandler: Handler
+
   val handlers: Set<Handler>
   val handlersByName: Map<String, Handler>
   val emptyElements: Set<EmptyElement>
