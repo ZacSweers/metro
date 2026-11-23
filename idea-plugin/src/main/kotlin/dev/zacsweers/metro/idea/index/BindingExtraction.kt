@@ -11,6 +11,7 @@ import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.graph.BoundTypeResolution
 import dev.zacsweers.metro.compiler.graph.computeMultibindingId
 import dev.zacsweers.metro.compiler.graph.createMapBindingId
+import dev.zacsweers.metro.compiler.graph.generatedMultibindingElementId
 import dev.zacsweers.metro.compiler.graph.identity.Nullability
 import dev.zacsweers.metro.compiler.graph.identity.TypeArgumentIdentity
 import dev.zacsweers.metro.compiler.graph.identity.TypeIdentity
@@ -56,7 +57,6 @@ import org.jetbrains.kotlin.analysis.api.types.KaClassType
 import org.jetbrains.kotlin.analysis.api.types.KaType
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.name.ClassId
-import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.StandardClassIds
 import org.jetbrains.kotlin.psi.KtAnnotationEntry
@@ -219,16 +219,9 @@ internal fun callableBindingView(symbol: KaCallableSymbol): CallableBindingView 
 }
 
 /** Identify the original declaration even when a graph specializes an inherited member. */
-internal fun KaSession.callableElementId(symbol: KaCallableSymbol): String {
-  val id = symbol.callableId
-  val owner = id?.classId?.asSingleFqName() ?: id?.packageName ?: FqName.ROOT
-  val name = id?.callableName ?: Name.special("<anonymous>")
-  val callableName =
-    if (symbol is KaPropertySymbol) {
-      Name.special("<get-${name.asString()}>")
-    } else {
-      name
-    }
+private fun KaSession.callableElementId(symbol: KaCallableSymbol): String? {
+  val id = symbol.callableId ?: return null
+  val owner = id.classId?.asSingleFqName() ?: id.packageName
 
   // Kotlin IR orders dispatch, context and extension receivers before the value parameters.
   val parameters = buildList {
@@ -245,7 +238,8 @@ internal fun KaSession.callableElementId(symbol: KaCallableSymbol): String {
 
   return multibindingElementId(
     owner = owner,
-    name = callableName,
+    name = id.callableName,
+    isProperty = symbol is KaPropertySymbol,
     isSuspend = (symbol as? KaNamedFunctionSymbol)?.isSuspend == true,
     parameterTypes = parameters,
     returnType = typeIdentity(symbol.returnType),
@@ -409,6 +403,20 @@ private fun KtCallableDeclaration.callableBindingData(
     callableBindingView(symbol).bindingData(session, options)
   }
 
+/** Recover the source contribution from a generated library member's container. */
+private fun KaSession.generatedElementId(
+  symbol: KaCallableSymbol,
+  options: MetroOptions,
+  mapKey: KaMapKey?,
+): String? {
+  val owner = symbol.containingDeclaration as? KaClassSymbol ?: return null
+  val contribution =
+    owner.annotations.firstOrNull { it.classId == MetroClassIds.metroContribution } ?: return null
+  val scope = annotationScopeKeys(contribution).singleOrNull() ?: return null
+  val origin = owner.originClassId(options) ?: return null
+  return generatedMultibindingElementId(origin, scope, mapKey?.annotationIdentity)
+}
+
 /** Computes callable binding data from declaration metadata and use-site-substituted types. */
 internal fun CallableBindingView.bindingData(
   session: KaSession,
@@ -468,7 +476,12 @@ internal fun CallableBindingView.bindingData(
           else -> canonicalKey.computeMultibindingId()
         }
 
-      return MultibindingContribution(bindingId, callableElementId(symbol))
+      val elementId = generatedElementId(symbol, options, mapKeyInfo) ?: callableElementId(symbol)
+      if (elementId == null) {
+        return null
+      }
+
+      return MultibindingContribution(bindingId, elementId)
     }
 
     when {
@@ -799,18 +812,15 @@ private fun KtClassOrObject.classBindingData(
       val isKeyedCustomSetContribution = isCustomSetContribution && classMapKeyInfo != null
       val isMapContribution = isMapAnnotation || isKeyedCustomSetContribution
 
-      // Source classes have no generated callable yet. The annotation's position on the class
-      // distinguishes repeatable contributions and stays the same in parent and child graphs.
-      fun contribution(bindingId: String): MultibindingContribution {
+      fun contribution(bindingId: String): MultibindingContribution? {
+        val origin = originClassId ?: return null
+        val targetScope = contributionScopes.singleOrNull() ?: return null
         val elementId =
-          multibindingElementId(
-            owner = originClassId?.asSingleFqName() ?: FqName.ROOT,
-            name = Name.special("<${classId.shortClassName.asString()}-$index>"),
-            isSuspend = false,
-            parameterTypes = emptyList(),
-            returnType = elementKey.type.identity,
+          generatedMultibindingElementId(
+            origin,
+            targetScope,
+            contributionMapKeyInfo?.annotationIdentity,
           )
-
         return MultibindingContribution(bindingId, elementId)
       }
 
@@ -846,7 +856,7 @@ private fun KtClassOrObject.classBindingData(
               implementationName = ktClass.name,
               consumedKey = consumedKey,
               multibindingContribution =
-                contribution(createMapBindingId(mapKeyInfo.keyType, elementKey)),
+                contribution(createMapBindingId(mapKeyInfo.keyType, elementKey)) ?: continue,
               originClassId = originClassId,
               replaces = replaces,
               contributionScopes = contributionScopes,
@@ -867,7 +877,8 @@ private fun KtClassOrObject.classBindingData(
               scope = scope,
               implementationName = ktClass.name,
               consumedKey = consumedKey,
-              multibindingContribution = contribution(elementKey.computeMultibindingId()),
+              multibindingContribution =
+                contribution(elementKey.computeMultibindingId()) ?: continue,
               originClassId = originClassId,
               replaces = replaces,
               contributionScopes = contributionScopes,

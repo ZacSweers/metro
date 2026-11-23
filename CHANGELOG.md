@@ -40,6 +40,8 @@ Changelog
 - **[IDEA]** When a missing parent interface appears, the graph browser picks up its inherited accessors without an edit to the graph.
 - **[IDEA]** Graph accessors that refer to a missing Java class now resolve when the class appears.
 - **[IDEA]** Fix false suspend errors in child graphs when a parent's generic binding recursively requests larger types.
+- **[IDEA]** Generated set and map entries now have the same graph keys in the IDE and compiler reports, including entries from libraries.
+- **[IDEA]** Set and map entries declared as properties now use the property name in both the IDE and compiler reports.
 - **[IDEA]** Adding an entry to a child graph's map no longer flags scoped entries inherited from the parent as duplicate keys.
 - **[IDEA]** Graph validation now reports duplicate map keys when different annotations unwrap to the same value.
 - **[IDEA]** A matching generic provider in a dynamic graph's container now overrides a static provider. An exact provider in the dynamic container still wins.

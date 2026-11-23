@@ -90,7 +90,6 @@ internal class Symbols(
     const val INTO_SET = "IntoSet"
     const val IMPL = "Impl"
     const val INVOKE = "invoke"
-    const val METRO_CONTRIBUTION = "MetroContribution"
     const val MULTIBINDING = "multibinding"
     const val METRO_CONTRIBUTION_NAME_PREFIX = "MetroContribution"
     const val METRO_FACTORY = "MetroFactory"
@@ -126,8 +125,7 @@ internal class Symbols(
       metroRuntimeInternalPackage.child("GraphFactoryInvokeFunctionMarker".asName())
     val CallableMetadataClass =
       metroRuntimeInternalPackage.child(StringNames.CALLABLE_METADATA.asName())
-    val MetroContribution =
-      metroRuntimeInternalPackage.child(StringNames.METRO_CONTRIBUTION.asName())
+    val MetroContribution = MetroClassIds.metroContribution.asSingleFqName()
 
     fun scopeHint(scopeClassId: ClassId): FqName {
       return CallableIds.scopeHint(scopeClassId).asSingleFqName()
@@ -185,8 +183,7 @@ internal class Symbols(
     val metroAssistedMarker =
       ClassId(FqNames.metroRuntimeInternalPackage, "AssistedMarker".asName())
     val metroBinds = MetroClassIds.binds
-    val metroContribution =
-      ClassId(FqNames.metroRuntimeInternalPackage, StringNames.METRO_CONTRIBUTION.asName())
+    val metroContribution = MetroClassIds.metroContribution
     val metroFactory = ClassId(FqNames.metroRuntimeInternalPackage, Names.FactoryClass)
     val metroSuspendFactory =
       ClassId(FqNames.metroRuntimeInternalPackage, Names.SuspendFactoryClass)

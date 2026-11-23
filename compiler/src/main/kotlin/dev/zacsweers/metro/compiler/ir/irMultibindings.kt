@@ -6,6 +6,9 @@ import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.graph.computeMultibindingId
 import dev.zacsweers.metro.compiler.graph.createMapBindingId
+import dev.zacsweers.metro.compiler.graph.generatedMultibindingElementId
+import dev.zacsweers.metro.compiler.graph.identity.AnnotationValueIdentity
+import dev.zacsweers.metro.compiler.graph.identity.ConstantKind
 import dev.zacsweers.metro.compiler.graph.multibindingElementId
 import dev.zacsweers.metro.compiler.ir.graph.IrBinding
 import dev.zacsweers.metro.compiler.reportCompilerBug
@@ -28,12 +31,17 @@ import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.kotlinFqName
+import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.name.StandardClassIds
 
+/**
+ * [sourceFunction] restores the contributor's declaration when [annotations] came from a mirror.
+ */
 context(context: IrMetroContext)
 internal fun IrTypeKey.transformIfIntoMultibinding(
   annotations: MetroAnnotations<IrAnnotation>,
+  sourceFunction: IrSimpleFunction? = null,
 ): IrTypeKey {
   if (!annotations.isIntoMultibinding) {
     return this
@@ -47,7 +55,17 @@ internal fun IrTypeKey.transformIfIntoMultibinding(
         "Expected symbol to be an IrSymbol but was ${rawSymbol::class.simpleName}",
       )
 
-  val elementId = declaration.multibindingElementId
+  val function = sourceFunction ?: declaration as? IrSimpleFunction
+  val source = function?.correspondingPropertySymbol?.owner ?: function ?: declaration
+  val callableId = declaration.callableElementId()
+  val generatedId = source.generatedElementId(annotations.mapKey)
+  val elementId =
+    when {
+      generatedId != null -> generatedId
+      source is IrProperty -> source.callableElementId(usePropertyName = true)
+      source === declaration -> callableId
+      else -> source.callableElementId()
+    }
 
   // Compute bindingId and multibindingTypeKey based on the annotation type
   val bindingId =
@@ -66,39 +84,71 @@ internal fun IrTypeKey.transformIfIntoMultibinding(
       elementTypeKey.computeMultibindingId()
     }
 
-  val newQualifier =
+  val annotation =
     buildAnnotation(rawSymbol, context.metroSymbols.multibindingElement) {
       it.arguments[0] = irString(bindingId)
       it.arguments[1] = irString(elementId)
     }
+  val qualifier = IrAnnotation(annotation)
+
+  // Keep the old qualifier for ordering only when the source ID changed.
+  val orderQualifier =
+    if (elementId == callableId) {
+      null
+    } else {
+      val identity = qualifier.identity
+      val orderId = AnnotationValueIdentity.Constant(ConstantKind.String, callableId)
+      identity.copy(arguments = listOf(identity.arguments.first(), orderId)).encoded
+    }
 
   return copy(
-    qualifier = IrAnnotation(newQualifier),
+    qualifier = qualifier,
     multibindingKeyData =
-      IrTypeKey.MultibindingKeyData(this, annotations.mapKey, annotations.isElementsIntoSet),
+      IrTypeKey.MultibindingKeyData(
+        this,
+        annotations.mapKey,
+        annotations.isElementsIntoSet,
+        orderQualifier,
+      ),
   )
 }
 
-/**
- * Identifies one contributor by its full signature, including the receiver of a property getter.
- */
-internal val IrOverridableDeclaration<*>.multibindingElementId: String
-  get() {
-    val function =
-      when (this) {
-        is IrProperty -> getter
-        is IrSimpleFunction -> this
-      }
+/** Generated aliases and providers carry their origin and scope on the enclosing container. */
+context(context: IrMetroContext)
+private fun IrOverridableDeclaration<*>.generatedElementId(mapKey: IrAnnotation?): String? {
+  val holder = parentClassOrNull ?: return null
+  val marker = holder.getAnnotation(Symbols.FqNames.MetroContribution) ?: return null
+  val scope = marker.scopeOrNull() ?: return null
+  val origin = holder.originClassId() ?: return null
 
-    return multibindingElementId(
-      owner = parent.kotlinFqName,
-      name = name,
-      isSuspend = function?.isSuspend == true,
-      parameterTypes = function?.parameters.orEmpty().map { it.type.typeIdentity() },
-      returnType = function?.returnType?.typeIdentity(),
-      callableName = function?.name ?: name,
-    )
-  }
+  return generatedMultibindingElementId(origin, scope, mapKey?.identity)
+}
+
+/** The original getter name is needed only for the compiler's collection order. */
+private fun IrOverridableDeclaration<*>.callableElementId(
+  usePropertyName: Boolean = false,
+): String {
+  val function =
+    when (this) {
+      is IrProperty -> getter
+      is IrSimpleFunction -> this
+    }
+
+  return multibindingElementId(
+    owner = parent.kotlinFqName,
+    name = name,
+    isSuspend = function?.isSuspend == true,
+    parameterTypes = function?.parameters.orEmpty().map { it.type.typeIdentity() },
+    returnType = function?.returnType?.typeIdentity(),
+    callableName =
+      if (usePropertyName) {
+        name
+      } else {
+        function?.name ?: name
+      },
+    isProperty = usePropertyName,
+  )
+}
 
 internal fun createMapBindingId(mapKey: IrType, elementTypeKey: IrTypeKey): String {
   return createMapBindingId(mapKey.typeIdentity(), elementTypeKey)

@@ -843,9 +843,28 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val typeKey: IrTypeKey = contextualTypeKey.typeKey
     override val scope: IrAnnotation? = null
     private var dependenciesFinalized = false
-    override val dependencies by memoize {
+
+    /** Dependencies are in the order the generated collection visits its contributors. */
+    override val dependencies: List<IrContextualTypeKey> by memoize {
       dependenciesFinalized = true
-      sourceBindings.map { IrContextualTypeKey(it) }
+      val sources = sourceBindings.mapTo(ArrayList(sourceBindings.size)) { IrContextualTypeKey(it) }
+
+      // Reproduce the original type key order using the callable qualifier.
+      if (
+        sources.size > 1 && sources.any { it.typeKey.multibindingKeyData?.orderQualifier != null }
+      ) {
+        sources.sortWith(
+          compareBy(
+            {
+              it.typeKey.multibindingKeyData?.orderQualifier
+                ?: it.typeKey.qualifier?.identity?.encoded
+            },
+            { it.typeKey.identity.type.encoded },
+          ),
+        )
+      }
+
+      sources
     }
     override val parameters: Parameters = Parameters.empty()
 

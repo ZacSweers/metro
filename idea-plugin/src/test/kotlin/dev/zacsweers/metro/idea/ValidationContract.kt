@@ -128,19 +128,17 @@ internal class CompilerContractReader(
 
   fun contract(case: ParityCase): ValidationContract {
     val metadata = case.metadataReport?.let { readMetadata(it) }
-    val keyMap = metadata?.keyMap.orEmpty()
-    // Generated implementation names are outside the parity contract. Child reports key the
-    // parent dependency by its generated graph class, so fold those onto the source graph key.
+    // Child reports key the parent dependency by its generated graph class. Map that key to
+    // the source graph while preserving the full IDs of generated multibinding elements.
     // Nested extension impls are named Root.Impl.<Child>Impl, so walk the chain root-first.
     val implKeyMap = generatedGraphKeys(case.graphPath)
     return ValidationContract(
       graphPath = case.graphPath,
       roots = metadata?.roots,
-      populatedKeys = case.populatedReport?.let { readKeys(it, keyMap, implKeyMap, sort = true) },
+      populatedKeys = case.populatedReport?.let { readKeys(it, implKeyMap, sort = true) },
       bindings = metadata?.bindings,
-      validatedKeys = case.validatedReport?.let { readKeys(it, keyMap, implKeyMap, sort = false) },
-      deferredKeys =
-        case.deferredReport?.let { readKeys(it, keyMap, implKeyMap, sort = true).toSet() },
+      validatedKeys = case.validatedReport?.let { readKeys(it, implKeyMap, sort = false) },
+      deferredKeys = case.deferredReport?.let { readKeys(it, implKeyMap, sort = true).toSet() },
       diagnostics = case.diagnosticReport?.let(::readDiagnostics).orEmpty(),
     )
   }
@@ -216,15 +214,12 @@ internal class CompilerContractReader(
       .sortedBy(RootContract::key)
 
     val rawBindings = metadata.getValue("bindings").jsonArray.objects().map(::RawCompilerBinding)
-    // The IDE contract compares rendered keys. Multibinding sources only carry encoded keys.
-    val renderedKeys = rawBindings.associate { it.encodedKey to it.key }
-    val keyMap = rawBindings.associate { it.key to normalizeKey(it.key, it.generatedDeclaration) }
     val bindings =
       rawBindings
         .map { raw ->
           val multibinding = raw.multibinding
           BindingContract(
-            key = keyMap.getValue(raw.key),
+            key = normalizeRender(raw.key),
             declaration =
               raw.declaration.takeUnless {
                 multibinding != null || raw.kind == "GraphExtension"
@@ -234,7 +229,7 @@ internal class CompilerContractReader(
               raw.dependencies
                 .map { dependency ->
                   DependencyContract(
-                    key = keyMap[dependency.key] ?: normalizeRender(dependency.key),
+                    key = normalizeRender(dependency.key),
                     hasDefault = dependency.hasDefault,
                   )
                 }
@@ -244,33 +239,29 @@ internal class CompilerContractReader(
                 MultibindingContract(
                   type = it.type,
                   allowEmpty = it.allowEmpty,
-                  sources =
-                    it.sources
-                      .map { source -> renderedKeys[source] ?: source }
-                      .map { source -> keyMap[source] ?: normalizeRender(source) }
-                      .sorted(),
+                  sources = it.sources.sorted(),
                 )
               },
           )
         }
         .sortedWith(bindingComparator)
-    return MetadataContract(roots, bindings, keyMap)
+    return MetadataContract(roots, bindings)
   }
 
   private fun readKeys(
     report: String,
-    knownKeys: Map<String, String>,
     implKeyMap: Map<String, String>,
     sort: Boolean,
   ): List<String> {
-    val rawKeys =
+    val keys =
       reportsRoot
         .resolve(report)
         .readLines()
         .filter(String::isNotBlank)
         .map { implKeyMap[it] ?: it }
         .distinct()
-    val keys = rawKeys.map { knownKeys[it] ?: normalizeRender(it) }
+        .map(::normalizeRender)
+
     return if (sort) {
       keys.sorted()
     } else {
@@ -352,12 +343,6 @@ internal fun ValidationContract.Companion.fromIdea(
 ): ValidationContract {
   val rawBindings = mutableListOf<RawIdeaBinding>()
   result.bindings.forEach { key, binding -> rawBindings += RawIdeaBinding(key, binding) }
-  val typeKeyMap = rawBindings.associate {
-    it.typeKey to normalizeKey(it.typeKey, it.generatedDeclaration)
-  }
-  val contextualKeyMap = rawBindings.associate {
-    it.contextualKey to normalizeKey(it.contextualKey, it.generatedDeclaration)
-  }
 
   val roots =
     index
@@ -376,7 +361,7 @@ internal fun ValidationContract.Companion.fromIdea(
         val binding = raw.binding
         val multibinding = binding as? KaBinding.Multibinding
         BindingContract(
-          key = contextualKeyMap.getValue(raw.contextualKey),
+          key = normalizeRender(raw.contextualKey),
           declaration =
             raw.declaration.takeUnless {
               multibinding != null || binding is KaBinding.GraphExtension
@@ -385,9 +370,8 @@ internal fun ValidationContract.Companion.fromIdea(
           dependencies =
             binding.dependencies
               .map { dependency ->
-                val rawKey = dependency.render(short = false)
                 DependencyContract(
-                  key = contextualKeyMap[rawKey] ?: normalizeRender(rawKey),
+                  key = normalizeRender(dependency.render(short = false)),
                   hasDefault = dependency.hasDefault,
                 )
               }
@@ -402,28 +386,19 @@ internal fun ValidationContract.Companion.fromIdea(
                     "SET"
                   },
                 allowEmpty = it.allowEmpty,
-                sources =
-                  it.dependencies
-                    .map { dependency ->
-                      val rawKey = dependency.render(short = false)
-                      contextualKeyMap[rawKey] ?: normalizeRender(rawKey)
-                    }
-                    .sorted(),
+                // Compare the encoded source keys verbatim, including the element IDs.
+                sources = it.sourceBindings.map { source -> source.identity.encoded }.sorted(),
               )
             },
         )
       }
       .sortedWith(bindingComparator)
-  val populatedKeys = rawBindings.map { typeKeyMap.getValue(it.typeKey) }.sorted()
+  val populatedKeys = rawBindings.map { normalizeRender(it.typeKey) }.sorted()
   val validatedKeys =
-    result.topology?.sortedKeys?.map { key ->
-      val rawKey = key.render(short = false)
-      typeKeyMap[rawKey] ?: normalizeRender(rawKey)
-    }
+    result.topology?.sortedKeys?.map { key -> normalizeRender(key.render(short = false)) }
   val deferredKeys =
     result.topology?.deferredTypes?.mapTo(mutableSetOf()) { key ->
-      val rawKey = key.render(short = false)
-      typeKeyMap[rawKey] ?: normalizeRender(rawKey)
+      normalizeRender(key.render(short = false))
     }
   return ValidationContract(
     graphPath = context.chain.mapNotNull { it.classId?.asFqNameString() },
@@ -447,7 +422,6 @@ internal fun ValidationContract.Companion.fromIdea(
 private data class MetadataContract(
   val roots: List<RootContract>,
   val bindings: List<BindingContract>,
-  val keyMap: Map<String, String>,
 )
 
 private data class RawDependency(
@@ -463,12 +437,10 @@ private data class RawMultibinding(
 
 private class RawCompilerBinding(json: JsonObject) {
   val kind = json.getValue("bindingKind").jsonPrimitive.content
-  val encodedKey = json.getValue("key").jsonPrimitive.content
   val key = json.getValue("renderedKey").jsonPrimitive.content
-  val declaration = json["declaration"]?.jsonPrimitive?.contentOrNull
-  val generatedDeclaration = declaration.takeIf {
-    json.getValue("isSynthetic").jsonPrimitive.boolean
-  }
+  // IR reports the getter as the declaration. IDEA navigates to the property.
+  val declaration =
+    json["declaration"]?.jsonPrimitive?.contentOrNull?.removeSurrounding("<get-", ">")
   val scope = json["scope"]?.jsonPrimitive?.contentOrNull
   val dependencies =
     json.getValue("dependencies").jsonArray.objects().map { dependency ->
@@ -493,12 +465,6 @@ private class RawIdeaBinding(val key: KaTypeKey, val binding: KaBinding) {
   val declaration =
     binding.originClassId?.shortClassName?.asString()
       ?: (binding.pointer.element as? KtNamedDeclaration)?.name
-  val generatedDeclaration =
-    when (binding) {
-      is KaBinding.Alias -> declaration.takeIf { binding.isClassContribution }
-      is KaBinding.Provided -> declaration.takeIf { binding.isClassContribution }
-      else -> null
-    }
 }
 
 /** Maps generated nested implementation names onto the source graph path used by the IDE. */
@@ -510,21 +476,6 @@ private fun generatedGraphKeys(graphPath: List<String>): Map<String, String> = b
       else "$implName.${graphFqName.substringAfterLast('.')}Impl"
     put(implName, graphFqName)
   }
-}
-
-/**
- * Compare full element IDs for authored callables. The IDE sees the class behind a generated
- * member.
- */
-private fun normalizeKey(raw: String, generatedDeclaration: String?): String {
-  val normalized = normalizeRender(raw)
-  if (generatedDeclaration == null) {
-    return normalized
-  }
-
-  val match = MULTIBINDING_ELEMENT.matchEntire(normalized) ?: return normalized
-  val elementId = checkNotNull(match.groups[1])
-  return normalized.replaceRange(elementId.range, generatedDeclaration)
 }
 
 private fun JsonObject.toRootContract(): RootContract {
@@ -601,6 +552,4 @@ private val DIAGNOSTIC_MARKUP_OPEN = Regex("""<![^>]*!>""")
 private val DIAGNOSTIC_HEADER = Regex(""".*\[Metro/([^]]+)] (.*)""")
 private val ANNOTATION_ARGUMENT_NAME = Regex("""([,(]\s*)[A-Za-z_][A-Za-z0-9_]*\s*=\s*""")
 private val ANNOTATION_SPAN = Regex("""@[A-Za-z0-9_.]+\([^)]*\)""")
-private val MULTIBINDING_ELEMENT =
-  Regex("""@dev\.zacsweers\.metro\.internal\.MultibindingElement\("[^"]+", "([^"]+)"\) .+""")
 private val WHITESPACE = Regex("""\s+""")

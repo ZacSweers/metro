@@ -260,7 +260,7 @@ internal fun MetroSimpleFunction.toBindsCallable(
   // Metadata reconstruction restores the container's type parameters for later specialization.
   val sourceFunction = callableMetadata.function
   val rawTarget = IrContextualTypeKey.from(sourceFunction).typeKey
-  val typeKey = rawTarget.transformIfIntoMultibinding(callableMetadata.annotations)
+  val typeKey = rawTarget.transformIfIntoMultibinding(callableMetadata.annotations, sourceFunction)
   val nonDispatchParameters = sourceFunction.nonDispatchParameters
   val source =
     when (nonDispatchParameters.size) {

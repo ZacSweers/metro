@@ -2,8 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.graph
 
+import dev.zacsweers.metro.compiler.graph.identity.AnnotationIdentity
 import dev.zacsweers.metro.compiler.graph.identity.TypeIdentity
 import dev.zacsweers.metro.compiler.graph.identity.TypeKeyIdentity
+import dev.zacsweers.metro.compiler.graph.identity.appendName
 import java.util.Objects
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
@@ -60,8 +62,27 @@ public fun createMapBindingId(
 }
 
 /**
+ * Identifies a class contribution before and after code generation. The binding ID already
+ * distinguishes qualified bound types. A class can contribute several map keys to the same scope.
+ */
+public fun generatedMultibindingElementId(
+  origin: ClassId,
+  scope: ClassId,
+  mapKey: AnnotationIdentity? = null,
+): String = buildString {
+  appendName(origin.asString())
+  append('|')
+  appendName(scope.asString())
+  if (mapKey != null) {
+    append('|')
+    append(mapKey.encoded)
+  }
+}
+
+/**
  * Identifies a contributor across graphs. Include all receivers in [parameterTypes] in declaration
- * order. For a property [callableName] names its getter. A missing getter has no [returnType].
+ * order. Properties use their declared name. The compiler also uses the original getter signature
+ * to preserve collection order.
  */
 public fun multibindingElementId(
   owner: FqName,
@@ -70,8 +91,9 @@ public fun multibindingElementId(
   parameterTypes: List<TypeIdentity>,
   returnType: TypeIdentity?,
   callableName: Name = name,
+  isProperty: Boolean = false,
 ): String {
-  // Element IDs sort lexically. Keep the old hash prefix to preserve collection iteration order.
+  // Keep the original hash prefix for callable keys that also determine collection order.
   val rawNames = parameterTypes.map { type ->
     (type as? TypeIdentity.Class)?.let { ClassId.fromString(it.classId, false).asSingleFqName() }
   }
@@ -84,7 +106,12 @@ public fun multibindingElementId(
       callableDeclarationId(fqName, parameterTypes, returnType)
     }
 
-  return "$order#$signature"
+  // A property and a function can share the same name, receivers and return type.
+  return if (isProperty) {
+    "$order#val $signature"
+  } else {
+    "$order#$signature"
+  }
 }
 
 /** Encodes the full signature even for private declarations that lack an IR symbol signature. */

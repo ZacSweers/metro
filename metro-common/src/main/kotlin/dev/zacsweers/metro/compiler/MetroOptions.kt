@@ -101,6 +101,7 @@ public object MetroClassIds {
   public val suspendLazy: ClassId = metroRuntimePackage.classId("SuspendLazy")
   public val suspendDoubleCheck: ClassId = metroRuntimeInternalPackage.classId("SuspendDoubleCheck")
   public val includes: ClassId = metroRuntimePackage.classId("Includes")
+  public val metroContribution: ClassId = metroRuntimeInternalPackage.classId("MetroContribution")
   public val multibindingElement: ClassId =
     metroRuntimeInternalPackage.classId("MultibindingElement")
   public val hasMemberInjections: ClassId = metroRuntimePackage.classId("HasMemberInjections")

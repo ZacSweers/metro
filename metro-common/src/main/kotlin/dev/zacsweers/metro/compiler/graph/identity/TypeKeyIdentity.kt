@@ -283,7 +283,7 @@ public sealed class AnnotationValueIdentity {
 }
 
 /** Escapes characters the encoding uses as separators, so names can't run into each other. */
-private fun StringBuilder.appendName(name: String) {
+internal fun StringBuilder.appendName(name: String) {
   for (char in name) {
     val isPlain = char.isLetterOrDigit() || char == '_' || char == '$' || char == '/' || char == '.'
     if (isPlain) {

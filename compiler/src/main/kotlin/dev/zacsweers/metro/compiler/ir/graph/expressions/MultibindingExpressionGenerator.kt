@@ -124,8 +124,8 @@ internal class MultibindingExpressionGenerator(
   ): IrExpression {
     val elementType = (binding.typeKey.type as IrSimpleType).arguments.single().typeOrFail
     val (collectionProviders, individualProviders) =
-      binding.sourceBindings
-        .map { bindingGraph.requireBinding(it) }
+      binding.dependencies
+        .map { bindingGraph.requireBinding(it.typeKey) }
         .partition { it.typeKey.multibindingKeyData?.isElementsIntoSet ?: false }
 
     val actualAccessType: AccessType
@@ -183,7 +183,7 @@ internal class MultibindingExpressionGenerator(
         1 if (collectionProviders.isEmpty()) -> {
           // setOf(<one>)
           val callee = metroSymbols.setOfSingleton
-          val provider = binding.sourceBindings.first().let { bindingGraph.requireBinding(it) }
+          val provider = individualProviders.single()
           val args =
             listOf(
               generateMultibindingArgument(
@@ -740,7 +740,7 @@ internal class MultibindingExpressionGenerator(
       }
 
       val sourceBindings =
-        binding.sourceBindings.map { sourceKey -> bindingGraph.requireBinding(sourceKey) }
+        binding.dependencies.map { source -> bindingGraph.requireBinding(source.typeKey) }
 
       /** Converts a JS provider map to a map of functions. Other maps pass through unchanged. */
       fun IrExpression.toFunctionMapIfNeeded(): IrExpression {

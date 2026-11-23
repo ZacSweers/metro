@@ -154,6 +154,8 @@ private constructor(
     /** The original @MapKey annotation for multibinding map contributions. */
     val mapKey: IrAnnotation? = null,
     val isElementsIntoSet: Boolean = false,
+    /** Encoded callable qualifier when collection iteration order differs from source key order. */
+    val orderQualifier: String? = null,
   )
 
   companion object {

@@ -127,9 +127,12 @@ internal class KaAnnotationSnapshot(
  */
 internal class KaMapKey(
   val keyType: TypeIdentity,
-  annotation: KaAnnotationSnapshot,
+  private val annotation: KaAnnotationSnapshot,
   val unwrapValue: Boolean,
 ) {
+  val annotationIdentity
+    get() = annotation.identity
+
   val annotationRender = annotation.render(short = false)
   val effectiveValue: KaAnnotationValueSnapshot =
     if (unwrapValue) {

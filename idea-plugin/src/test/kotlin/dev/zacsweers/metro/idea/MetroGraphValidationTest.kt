@@ -1316,6 +1316,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
           val services: Set<Service>
           @Binds @IntoSet val Aa.bind: Service
           @Binds @IntoSet val BB.bind: Service
+          @Binds @IntoSet fun Aa.bind(): Service
         }
         """,
       )
@@ -1330,12 +1331,13 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         val argument = qualifier.arguments.single { it.first.asString() == "elementId" }
         (argument.second as KaAnnotationValueSnapshot.Literal).value as String
       }
-    // Aa and BB hash to the same value. Only the full getter signature distinguishes the elements.
+    // All three hashes collide. The receiver and declaration kind distinguish the elements.
     assertEquals(1, ids.map { it.substringBefore('#').toInt() }.distinct().size)
     assertEquals(
       setOf(
-        "test.AppGraph.<get-bind>(test/AppGraph,test/Aa): test/Service",
-        "test.AppGraph.<get-bind>(test/AppGraph,test/BB): test/Service",
+        "val test.AppGraph.bind(test/AppGraph,test/Aa): test/Service",
+        "val test.AppGraph.bind(test/AppGraph,test/BB): test/Service",
+        "test.AppGraph.bind(test/AppGraph,test/Aa): test/Service",
       ),
       ids.map { it.substringAfter('#') }.toSet(),
     )
