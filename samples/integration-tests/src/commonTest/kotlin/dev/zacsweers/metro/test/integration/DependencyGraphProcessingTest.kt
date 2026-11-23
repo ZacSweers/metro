@@ -26,6 +26,7 @@ import dev.zacsweers.metro.createGraphFactory
 import kotlin.reflect.KClass
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFails
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import kotlin.test.assertNotSame
@@ -472,12 +473,7 @@ class DependencyGraphProcessingTest {
     // Each call yields a new set instance
     assertNotSame(graph.ints, graph.ints)
 
-    // Ensure we return immutable types
-    // TODO on the JVM we get Collections.singleton() but other platforms just us HashSet. Maybe we
-    //  should use our own? Or use buildSet
-    if (isJvm()) {
-      assertFailsWith<UnsupportedOperationException> { (graph.ints as MutableSet<Int>).clear() }
-    }
+    assertFails { (graph.ints as MutableSet<Int>).clear() }
   }
 
   @DependencyGraph

@@ -507,9 +507,7 @@ private constructor(
             requestsSuspendProvider && !binding.isSuspend && isTransitivelySuspend
 
           val alwaysCallsDirectly = callsSuspendProviderDirectly || isReifiedProvider
-          val callsProviderDirectly = requestsInstance || alwaysCallsDirectly
-          // TODO what if the return type is a Provider?
-          val canBypassFactory = providerFactory.canBypassFactory && callsProviderDirectly
+          val canBypassFactory = requestsInstance || alwaysCallsDirectly
 
           // A reified provider requested as a provider holds its dependency providers in temporary
           // variables, so the wrapping lambda doesn't capture the graph.

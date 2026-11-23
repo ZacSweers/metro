@@ -209,9 +209,7 @@ class CycleBreakingTests {
   @Test
   fun `provides injections cycle can be broken with provider`() {
     val message = "Hello, world!"
-    val graph =
-      createGraphFactory<CyclicalGraphWithProvidesBrokenWithProvider.Graph.Factory>()
-        .create(message)
+    val graph = createGraphFactory<ProviderCycleGraph.Factory>().create(message)
 
     val foo = graph.foo
     assertEquals(message, foo.call())
@@ -221,37 +219,36 @@ class CycleBreakingTests {
     assertEquals(message, barInstance.call())
   }
 
-  // TODO Recheck whether all four cyclic graph fixtures still need nested wrappers.
-  // These wrappers let TypeResolverService resolve cyclical references between sibling types.
-  object CyclicalGraphWithProvidesBrokenWithProvider {
-    @DependencyGraph
-    interface Graph {
-      val foo: Foo
+  @DependencyGraph
+  interface ProviderCycleGraph {
+    val foo: ProviderCycleFoo
 
-      @DependencyGraph.Factory
-      fun interface Factory {
-        fun create(@Provides message: String): Graph
-      }
-
-      @Provides private fun provideFoo(barProvider: () -> Bar): Foo = Foo(barProvider)
-
-      @Provides private fun provideBar(foo: Foo, message: String): Bar = Bar(foo, message)
+    @DependencyGraph.Factory
+    fun interface Factory {
+      fun create(@Provides message: String): ProviderCycleGraph
     }
 
-    class Foo(val barProvider: () -> Bar) : Callable<String> {
-      override fun call() = barProvider().call()
-    }
+    @Provides
+    private fun provideFoo(barProvider: () -> ProviderCycleBar): ProviderCycleFoo =
+      ProviderCycleFoo(barProvider)
 
-    class Bar(val foo: Foo, val message: String) : Callable<String> {
-      override fun call() = message
-    }
+    @Provides
+    private fun provideBar(foo: ProviderCycleFoo, message: String): ProviderCycleBar =
+      ProviderCycleBar(foo, message)
+  }
+
+  class ProviderCycleFoo(val barProvider: () -> ProviderCycleBar) : Callable<String> {
+    override fun call() = barProvider().call()
+  }
+
+  class ProviderCycleBar(val foo: ProviderCycleFoo, val message: String) : Callable<String> {
+    override fun call() = message
   }
 
   @Test
   fun `provides injections cycle can be broken with lazy`() {
     val message = "Hello, world!"
-    val graph =
-      createGraphFactory<CyclicalGraphWithProvidesBrokenWithLazy.Graph.Factory>().create(message)
+    val graph = createGraphFactory<LazyCycleGraph.Factory>().create(message)
 
     val foo = graph.foo
     // Multiple calls to the underlying lazy should result in its single instance's count
@@ -266,38 +263,37 @@ class CycleBreakingTests {
     assertEquals(message + "3", barInstance.call())
   }
 
-  object CyclicalGraphWithProvidesBrokenWithLazy {
-    @DependencyGraph
-    interface Graph {
-      val foo: Foo
+  @DependencyGraph
+  interface LazyCycleGraph {
+    val foo: LazyCycleFoo
 
-      @DependencyGraph.Factory
-      fun interface Factory {
-        fun create(@Provides message: String): Graph
-      }
-
-      @Provides private fun provideFoo(barLazy: Lazy<Bar>): Foo = Foo(barLazy)
-
-      @Provides private fun provideBar(foo: Foo, message: String): Bar = Bar(foo, message)
+    @DependencyGraph.Factory
+    fun interface Factory {
+      fun create(@Provides message: String): LazyCycleGraph
     }
 
-    class Foo(val barLazy: Lazy<Bar>) : Callable<String> {
-      override fun call() = barLazy.value.call()
-    }
+    @Provides
+    private fun provideFoo(barLazy: Lazy<LazyCycleBar>): LazyCycleFoo = LazyCycleFoo(barLazy)
 
-    class Bar(val foo: Foo, val message: String) : Callable<String> {
-      private var counter = 0
+    @Provides
+    private fun provideBar(foo: LazyCycleFoo, message: String): LazyCycleBar =
+      LazyCycleBar(foo, message)
+  }
 
-      override fun call() = message + counter++
-    }
+  class LazyCycleFoo(val barLazy: Lazy<LazyCycleBar>) : Callable<String> {
+    override fun call() = barLazy.value.call()
+  }
+
+  class LazyCycleBar(val foo: LazyCycleFoo, val message: String) : Callable<String> {
+    private var counter = 0
+
+    override fun call() = message + counter++
   }
 
   @Test
   fun `provides injections cycle can be broken with provider of lazy`() {
     val message = "Hello, world!"
-    val graph =
-      createGraphFactory<CyclicalGraphWithProvidesBrokenWithProviderOfLazy.Graph.Factory>()
-        .create(message)
+    val graph = createGraphFactory<ProviderOfLazyCycleGraph.Factory>().create(message)
 
     val foo = graph.foo
     // Multiple calls to the underlying provider return new but different lazy instances
@@ -311,38 +307,41 @@ class CycleBreakingTests {
     assertEquals(message + "1", barInstance.call())
   }
 
-  object CyclicalGraphWithProvidesBrokenWithProviderOfLazy {
-    @DependencyGraph
-    interface Graph {
-      val foo: Foo
+  @DependencyGraph
+  interface ProviderOfLazyCycleGraph {
+    val foo: ProviderOfLazyCycleFoo
 
-      @DependencyGraph.Factory
-      fun interface Factory {
-        fun create(@Provides message: String): Graph
-      }
-
-      @Provides private fun provideFoo(barLazyProvider: () -> Lazy<Bar>): Foo = Foo(barLazyProvider)
-
-      @Provides private fun provideBar(foo: Foo, message: String): Bar = Bar(foo, message)
+    @DependencyGraph.Factory
+    fun interface Factory {
+      fun create(@Provides message: String): ProviderOfLazyCycleGraph
     }
 
-    class Foo(val barLazyProvider: () -> Lazy<Bar>) : Callable<String> {
-      override fun call() = barLazyProvider().value.call()
-    }
+    @Provides
+    private fun provideFoo(
+      barLazyProvider: () -> Lazy<ProviderOfLazyCycleBar>,
+    ): ProviderOfLazyCycleFoo = ProviderOfLazyCycleFoo(barLazyProvider)
 
-    class Bar(val foo: Foo, val message: String) : Callable<String> {
-      private var counter = 0
+    @Provides
+    private fun provideBar(foo: ProviderOfLazyCycleFoo, message: String): ProviderOfLazyCycleBar =
+      ProviderOfLazyCycleBar(foo, message)
+  }
 
-      override fun call() = message + counter++
-    }
+  class ProviderOfLazyCycleFoo(val barLazyProvider: () -> Lazy<ProviderOfLazyCycleBar>) :
+    Callable<String> {
+    override fun call() = barLazyProvider().value.call()
+  }
+
+  class ProviderOfLazyCycleBar(val foo: ProviderOfLazyCycleFoo, val message: String) :
+    Callable<String> {
+    private var counter = 0
+
+    override fun call() = message + counter++
   }
 
   @Test
   fun `scoped provides injections cycle can be broken with provider`() {
     val message = "Hello, world!"
-    val graph =
-      createGraphFactory<CyclicalGraphWithProvidesBrokenWithProviderScoped.Graph.Factory>()
-        .create(message)
+    val graph = createGraphFactory<ScopedProviderCycleGraph.Factory>().create(message)
 
     val foo = graph.foo
     assertEquals(message, foo.call())
@@ -355,32 +354,36 @@ class CycleBreakingTests {
     assertSame(foo, barInstance.foo)
   }
 
-  object CyclicalGraphWithProvidesBrokenWithProviderScoped {
+  @Singleton
+  @DependencyGraph
+  interface ScopedProviderCycleGraph {
+    val foo: ScopedProviderCycleFoo
+
+    @DependencyGraph.Factory
+    fun interface Factory {
+      fun create(@Provides message: String): ScopedProviderCycleGraph
+    }
+
     @Singleton
-    @DependencyGraph
-    interface Graph {
-      val foo: Foo
+    @Provides
+    private fun provideFoo(barProvider: () -> ScopedProviderCycleBar): ScopedProviderCycleFoo =
+      ScopedProviderCycleFoo(barProvider)
 
-      @DependencyGraph.Factory
-      fun interface Factory {
-        fun create(@Provides message: String): Graph
-      }
+    @Provides
+    private fun provideBar(foo: ScopedProviderCycleFoo, message: String): ScopedProviderCycleBar =
+      ScopedProviderCycleBar(foo, message)
+  }
 
-      @Singleton @Provides private fun provideFoo(barProvider: () -> Bar): Foo = Foo(barProvider)
-
-      @Provides private fun provideBar(foo: Foo, message: String): Bar = Bar(foo, message)
+  class ScopedProviderCycleFoo(val barProvider: () -> ScopedProviderCycleBar) : Callable<String> {
+    override fun call(): String {
+      val bar = barProvider()
+      check(bar.foo === this)
+      return bar.call()
     }
+  }
 
-    class Foo(val barProvider: () -> Bar) : Callable<String> {
-      override fun call(): String {
-        val bar = barProvider()
-        check(bar.foo === this)
-        return bar.call()
-      }
-    }
-
-    class Bar(val foo: Foo, val message: String) : Callable<String> {
-      override fun call() = message
-    }
+  class ScopedProviderCycleBar(val foo: ScopedProviderCycleFoo, val message: String) :
+    Callable<String> {
+    override fun call() = message
   }
 }

@@ -160,7 +160,6 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
             }
           }
 
-          val replaces = emptySet<ClassId>() // TODO implement
           val checkIntoSet by memoize {
             checkBindingContribution(
               session,
@@ -173,7 +172,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
               contributesIntoSetAnnotations,
               isMapBinding = false,
             ) { bindingType, _ ->
-              Contribution.ContributesIntoSet(declaration, annotation, scope, replaces, bindingType)
+              Contribution.ContributesIntoSet(declaration, annotation, scope, bindingType)
             }
           }
           val checkIntoMap by memoize {
@@ -192,7 +191,6 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
                 declaration,
                 annotation,
                 scope,
-                replaces,
                 bindingType,
                 mapKey!!,
               )
@@ -200,8 +198,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
           }
           when (classId) {
             in classIds.contributesToAnnotations -> {
-              val contribution =
-                Contribution.ContributesTo(declaration, annotation, scope, replaces)
+              val contribution = Contribution.ContributesTo(declaration, annotation, scope)
               addContributionAndCheckForDuplicate(
                 session,
                 contribution,
@@ -236,7 +233,6 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
                       declaration,
                       annotation,
                       scope,
-                      replaces,
                       bindingType,
                     )
                   }
@@ -699,11 +695,11 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
     }
   }
 
+  /** Identifies duplicate contributions before graph merging applies replacements. */
   sealed interface Contribution {
     val declaration: FirClass
     val annotation: FirAnnotation
     val scope: ClassId
-    val replaces: Set<ClassId>
 
     sealed interface BindingContribution : Contribution {
       val bindingType: FirTypeKey
@@ -714,7 +710,6 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
       override val declaration: FirClass,
       @Poko.Skip override val annotation: FirAnnotation,
       override val scope: ClassId,
-      override val replaces: Set<ClassId>,
     ) : Contribution
 
     @Poko
@@ -722,7 +717,6 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
       override val declaration: FirClass,
       @Poko.Skip override val annotation: FirAnnotation,
       override val scope: ClassId,
-      override val replaces: Set<ClassId>,
       override val bindingType: FirTypeKey,
     ) : Contribution, BindingContribution
 
@@ -731,7 +725,6 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
       override val declaration: FirClass,
       @Poko.Skip override val annotation: FirAnnotation,
       override val scope: ClassId,
-      override val replaces: Set<ClassId>,
       override val bindingType: FirTypeKey,
     ) : Contribution, BindingContribution
 
@@ -740,7 +733,6 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
       override val declaration: FirClass,
       @Poko.Skip override val annotation: FirAnnotation,
       override val scope: ClassId,
-      override val replaces: Set<ClassId>,
       override val bindingType: FirTypeKey,
       val mapKey: MetroFirAnnotation,
     ) : Contribution, BindingContribution
