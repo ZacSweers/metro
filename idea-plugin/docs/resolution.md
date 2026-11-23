@@ -81,9 +81,7 @@ Queries accept a generation as current when all three checks pass:
 - `classifiedSemanticClock` matches ingress's `semanticClock`.
 - Its `IndexInputs` match the current project trackers.
 
-In manual mode, the browser shows a stale-data notice while classification is pending or
-`latestSemanticRevision` is ahead of `graphBrowserRefreshRevision`. Compiler-setting changes that only
-affect generated output can update `IndexInputs` while keeping the same indexes and generation token.
+In manual mode, the active browser marks data stale while classification is pending. It also marks a retained presentation stale if its revision lags behind `latestSemanticRevision` or its `IndexInputs` differ from the project trackers. Compiler settings that affect only generated output can update `IndexInputs` without changing the indexes or generation token.
 
 ### An edit arrives during a build
 
@@ -266,12 +264,7 @@ Editor inspections read completed, current results. They perform no binding reso
 sealing. The optional pinned-graph service debounces index changes, cancels superseded work, and
 submits quiet validation requests through the same service as explicit actions.
 
-The IDE and compiler use their own types, caches, and diagnostic reporting. Both call
-`MutableBindingGraph.seal()` and the validation rules in `metro-common`. They also share the lazy
-lookup order: registered bindings, multibindings, optional declarations, then implicit injection.
-The IDE keeps its binding categories and assisted-request checks alongside its selection adapter.
-Contribution rules such as `computeMergePlan` also live in `metro-common`. Request scheduling,
-captured module visibility, navigation pointers, and editor updates live in `idea-plugin`.
+The IDE and compiler call `MutableBindingGraph.seal()` and share validation and contribution rules in `metro-common`. [Lookup](../../metro-common/src/main/kotlin/dev/zacsweers/metro/compiler/graph/BindingSelection.kt) tries registered bindings, multibindings, optional declarations, derived bindings, then implicit injection. It stops at the first match. The derived stage selects the most specific generic binding for the requested key. The IDE handles its own assisted-request checks, module visibility and editor updates.
 
 Binding explanation snapshots, decision codes, and plain-text rendering live in
 `metro-common`'s `graph.explanation` package. The IDE captures those snapshots beside its navigation

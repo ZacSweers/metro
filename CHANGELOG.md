@@ -12,6 +12,7 @@ Changelog
 - **[IDEA]** Look up binding data once per file when drawing inlay hints.
 - **[IDEA]** Avoid taking a second snapshot of the same Kotlin type when indexing a plain binding request or a map request.
 - **[IDEA]** Store one copy of the encoded type for each unqualified binding key.
+- **[IDEA]** Stop copying the full batch of pending file edits each time another edit arrives.
 
 ### Fixes
 

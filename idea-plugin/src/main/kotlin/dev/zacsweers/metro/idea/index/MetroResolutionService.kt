@@ -394,7 +394,7 @@ private constructor(
     for (event in drained.events) {
       when (event) {
         is ResolutionCoordinatorEvent.Psi -> {
-          mergePendingPsiChanges(event.changes)
+          pendingPsiChanges.mergeInPlace(event.changes)
           requestDemandedAutomaticBuilds()
         }
         ResolutionCoordinatorEvent.ProjectInputs -> {
@@ -597,18 +597,6 @@ private constructor(
     }
   }
 
-  private fun mergePendingPsiChanges(added: PendingPsiChanges) {
-    val files = pendingPsiChanges.files.toMutableMap()
-    for ((file, change) in added.files) {
-      files[file] = files[file]?.merge(change) ?: change
-    }
-    pendingPsiChanges =
-      PendingPsiChanges(
-        files = files,
-        directories = pendingPsiChanges.directories + added.directories,
-      )
-  }
-
   private fun mergePendingBuild(event: ResolutionCoordinatorEvent.Build) {
     demandedModules += event.module
     val existing = pendingBuilds[event.module]
@@ -683,10 +671,10 @@ private constructor(
         classifyAndApplyPsiChanges(batch, trace)
       }
     } catch (_: ProcessCanceledException) {
-      mergePendingPsiChanges(batch)
+      pendingPsiChanges.mergeInPlace(batch)
       yield()
     } catch (exception: CancellationException) {
-      mergePendingPsiChanges(batch)
+      pendingPsiChanges.mergeInPlace(batch)
       throw exception
     }
   }
@@ -775,13 +763,6 @@ private constructor(
       discardAutomaticPendingBuilds()
       automaticRefreshTimer?.cancel()
       automaticRefreshTimer = null
-      updatePublishedResolution { publication ->
-        val presentationRevision = publication.presentation.semanticRevision
-        val refreshRevision =
-          if (presentationRevision == ResolutionGeneration.EMPTY_REVISION) semanticRevision
-          else presentationRevision
-        publication.copy(graphBrowserRefreshRevision = refreshRevision)
-      }
     }
 
     if (resolveFromLibrariesChanged) {
@@ -1343,9 +1324,6 @@ private constructor(
         latestSemanticRevision = candidate.semanticRevision,
         trackedSourceFiles = candidate.source?.shardOrder?.toSet().orEmpty(),
         knownIrrelevantFiles = knownIrrelevantFiles.toSet(),
-        graphBrowserRefreshRevision =
-          if (manualRequest != null) candidate.semanticRevision
-          else previous.graphBrowserRefreshRevision,
         staleNotificationSent = !publishPresentation && previous.staleNotificationSent,
       )
     }
@@ -1587,19 +1565,11 @@ private constructor(
         requestedIndex
       }
     if (index !== BindingIndex.EMPTY) {
-      val indexIsCurrent = isCurrent(index)
       val previous = publishedResolution.getAndUpdate { publication ->
         if (publication.isDisposed || publication.graphBrowserActivated) {
           publication
         } else {
-          val refreshRevision =
-            if (indexIsCurrent && publication.current.contains(index))
-              publication.latestSemanticRevision
-            else publication.graphBrowserRefreshRevision
-          publication.copy(
-            graphBrowserActivated = true,
-            graphBrowserRefreshRevision = refreshRevision,
-          )
+          publication.copy(graphBrowserActivated = true)
         }
       }
       if (!previous.isDisposed && !previous.graphBrowserActivated) {
@@ -3019,7 +2989,8 @@ private fun mergeResolutionCoordinatorEvents(
   return when (added) {
     is ResolutionCoordinatorEvent.Psi -> {
       val previous = existing as ResolutionCoordinatorEvent.Psi
-      ResolutionCoordinatorEvent.Psi(previous.changes.mergeInPlace(added.changes))
+      previous.changes.mergeInPlace(added.changes)
+      previous
     }
     is ResolutionCoordinatorEvent.Build -> {
       val previous = existing as ResolutionCoordinatorEvent.Build
@@ -3099,12 +3070,11 @@ private class ResolutionGeneration(
   }
 
   companion object {
-    const val EMPTY_REVISION = -1L
     val EMPTY =
       ResolutionGeneration(
         token = IndexGenerationToken.EMPTY,
         inputs = IndexInputs(roots = -1L, compilerSettings = -1L),
-        semanticRevision = EMPTY_REVISION,
+        semanticRevision = -1L,
         source = null,
         indexesByKey = emptyMap(),
         keysByModule = emptyMap(),
@@ -3112,9 +3082,7 @@ private class ResolutionGeneration(
   }
 }
 
-/**
- * Complete reader state. Disposal is terminal and browser revisions track the frozen presentation.
- */
+/** Complete reader state. Disposal is terminal. */
 private data class PublishedResolution(
   val current: ResolutionGeneration,
   val presentation: ResolutionGeneration,
@@ -3124,7 +3092,6 @@ private data class PublishedResolution(
   val trackedSourceFiles: Set<VirtualFile> = emptySet(),
   val knownIrrelevantFiles: Set<VirtualFile> = emptySet(),
   val graphBrowserActivated: Boolean = false,
-  val graphBrowserRefreshRevision: Long = 0L,
   val staleNotificationSent: Boolean = false,
   val isDisposed: Boolean = false,
 ) {
@@ -3169,12 +3136,13 @@ private class PendingPsiChanges(
   val isEmpty: Boolean
     get() = files.isEmpty() && directories.isEmpty()
 
-  fun mergeInPlace(added: PendingPsiChanges): PendingPsiChanges {
+  /** Ingress owns each batch until drain transfers it to the coordinator. */
+  fun mergeInPlace(added: PendingPsiChanges) {
     for ((file, change) in added.files) {
       files[file] = files[file]?.merge(change) ?: change
     }
+
     directories += added.directories
-    return this
   }
 }
 
