@@ -198,8 +198,8 @@ private constructor(
     )
   /** Combines requests by module while retaining every caller waiting for the result. */
   private val pendingBuilds = linkedMapOf<Module, PendingIndexBuild>()
-  /** Retains requested modules for later automatic rebuilds. */
-  private val demandedModules = linkedSetOf<Module>()
+  /** Cache readers retain demand for future builds without waking the coordinator. */
+  private val demandedModules = ConcurrentHashMap.newKeySet<Module>()
   private var pendingPsiChanges = PendingPsiChanges()
   @Volatile private var psiClassificationObserver: (() -> Unit)? = null
   @Volatile private var resolutionCandidatePreparedObserver: (() -> Unit)? = null
@@ -403,7 +403,6 @@ private constructor(
         }
         ResolutionCoordinatorEvent.AutomaticRefreshReady -> automaticRefreshTimer = null
         ResolutionCoordinatorEvent.Settings -> settingsPending = true
-        is ResolutionCoordinatorEvent.PresentationDemand -> demandedModules += event.module
         is ResolutionCoordinatorEvent.Build -> mergePendingBuild(event)
         is ResolutionCoordinatorEvent.ManualRefresh -> {
           pendingManualRefresh = event.request
@@ -568,9 +567,21 @@ private constructor(
 
   /** Retains demand through the delay so a stale UI notification never needs to start a build. */
   private fun requestDemandedAutomaticBuilds() {
-    if (!automaticallyRefreshGraphData) return
+    if (!automaticallyRefreshGraphData || demandedModules.isEmpty()) {
+      return
+    }
+
+    val states = project.service<MetroIdeProjectService>()
     for (module in demandedModules) {
-      if (module.isDisposed || module in pendingBuilds) continue
+      if (module.isDisposed || module in pendingBuilds) {
+        continue
+      }
+
+      // A module can disable Metro after the first request. Keep its demand for reenablement.
+      if (states.currentStateOrNull(module)?.isEnabled == false) {
+        continue
+      }
+
       pendingBuilds[module] = PendingIndexBuild(module, IndexBuildIntent.AUTOMATIC, mutableListOf())
     }
   }
@@ -1352,17 +1363,27 @@ private constructor(
     }
   }
 
-  private fun resolutionTargets(modules: Set<Module>?): List<ResolutionSnapshotTarget> {
+  /** Keep target order stable when concurrent readers register demand in different orders. */
+  private fun resolutionTargets(allModules: Boolean): List<ResolutionSnapshotTarget> {
     demandedModules.removeIf(Module::isDisposed)
     val resolveFromLibraries = MetroSettings.getInstance(project).state.resolveFromLibraries
     val projectStateService = project.service<MetroIdeProjectService>()
-    val selectedModules = modules ?: ModuleManager.getInstance(project).modules.toSet()
     val modulesByKey = linkedMapOf<SnapshotKey, MutableList<Module>>()
-    for (module in selectedModules) {
+    for (module in ModuleManager.getInstance(project).modules) {
       ProgressManager.checkCanceled()
-      if (module.isDisposed) continue
+      if (!allModules && module !in demandedModules) {
+        continue
+      }
+
+      if (module.isDisposed) {
+        continue
+      }
+
       val state = projectStateService.state(module)
-      if (!state.isEnabled) continue
+      if (!state.isEnabled) {
+        continue
+      }
+
       val key = SnapshotKey(snapshotBuilder.fingerprintFor(state), resolveFromLibraries)
       modulesByKey.getOrPut(key) { mutableListOf() } += module
     }
@@ -1431,8 +1452,29 @@ private constructor(
     val file = element as? KtFile ?: element.containingFile as? KtFile
     val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return BindingIndex.EMPTY
     if (file != null) enrollRequestedFile(file)
-    ingress.submit { ResolutionCoordinatorEvent.PresentationDemand(module) }
+    retainDemand(module)
     return index(module, automaticPresentationRequestMode())
+  }
+
+  /** A reader of a shared index still needs updates if its module's options later diverge. */
+  private fun retainDemand(module: Module) {
+    if (module in demandedModules || module.isDisposed) {
+      return
+    }
+
+    if (isDisposed || project.isDisposed) {
+      return
+    }
+
+    val state = project.service<MetroIdeProjectService>().currentStateOrNull(module)
+    // Automatic cache misses register demand with the build after settings finish warming.
+    if (state == null && automaticallyRefreshGraphData) {
+      return
+    }
+
+    if (state?.isEnabled != false) {
+      demandedModules.add(module)
+    }
   }
 
   /** Returns a cached presentation bundle or schedules its background construction. */
@@ -1533,6 +1575,7 @@ private constructor(
    * in a read action use [retryCancelledIndexBuild] to release the read lock before waiting.
    */
   internal fun currentIndex(module: Module): BindingIndex {
+    retainDemand(module)
     return index(module, currentRequestMode())
   }
 
@@ -1543,14 +1586,16 @@ private constructor(
    */
   internal fun indexForToolWindow(module: Module): BindingIndex {
     if (isDisposed || project.isDisposed || module.isDisposed) return BindingIndex.EMPTY
+    val active = isGraphBrowserActivated
     val requestMode =
-      if (!isGraphBrowserActivated) {
-        if (automaticallyRefreshGraphData) IndexRequestMode.CACHE_ONLY
-        else IndexRequestMode.STALE_CACHE_ONLY
-      } else {
+      if (active) {
+        retainDemand(module)
         automaticPresentationRequestMode()
+      } else if (automaticallyRefreshGraphData) {
+        IndexRequestMode.CACHE_ONLY
+      } else {
+        IndexRequestMode.STALE_CACHE_ONLY
       }
-    ingress.submit { ResolutionCoordinatorEvent.PresentationDemand(module) }
     val requestedIndex = index(module, requestMode)
     val moduleState = project.service<MetroIdeProjectService>().currentStateOrNull(module)
     // Unknown options can finish warming while the browser shows its previous data.
@@ -1565,6 +1610,10 @@ private constructor(
         requestedIndex
       }
     if (index !== BindingIndex.EMPTY) {
+      if (!active) {
+        retainDemand(module)
+      }
+
       val previous = publishedResolution.getAndUpdate { publication ->
         if (publication.isDisposed || publication.graphBrowserActivated) {
           publication
@@ -1663,6 +1712,9 @@ private constructor(
     automaticRefreshWindow = window
     ingress.submit { ResolutionCoordinatorEvent.AutomaticRefreshReady }
   }
+
+  /** Counts accepted requests even when ingress coalesces them before the next drain. */
+  @TestOnly internal fun acceptedEventCount(): Long = ingress.snapshot().eventClock
 
   @TestOnly
   internal fun wakeAutomaticRefreshForTest() {
@@ -2039,7 +2091,7 @@ private constructor(
               throw ResolutionCandidateSupersededException()
             }
             val inputs = currentInputs()
-            val targets = resolutionTargets(if (manualRequest != null) null else demandedModules)
+            val targets = resolutionTargets(allModules = manualRequest != null)
             val compilerSettingsChanged =
               previous != null && previous.inputs.compilerSettings != inputs.compilerSettings
             val fingerprintChanged =
@@ -2736,6 +2788,7 @@ private constructor(
     notificationScope.cancel()
     declarationAnchorSignatures.clear()
     requestedFilesAwaitingClassification.clear()
+    demandedModules.clear()
     indexBuildProgress.value = null
   }
 
@@ -2893,10 +2946,6 @@ private sealed interface ResolutionCoordinatorEvent {
     override val coalescingKey: Any = ResolutionIngressEventKey.Settings
   }
 
-  data class PresentationDemand(val module: Module) : ResolutionCoordinatorEvent {
-    override val coalescingKey: Any = ResolutionIngressEventKey.PresentationDemand(module)
-  }
-
   class Build(
     val module: Module,
     var intent: IndexBuildIntent,
@@ -2963,8 +3012,6 @@ private sealed interface ResolutionIngressEventKey {
   data object Settings : ResolutionIngressEventKey
 
   data object ManualRefresh : ResolutionIngressEventKey
-
-  data class PresentationDemand(val module: Module) : ResolutionIngressEventKey
 
   data class Build(val module: Module) : ResolutionIngressEventKey
 

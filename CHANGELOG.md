@@ -9,6 +9,8 @@ Changelog
 - **[Compiler]** Stop copying and re-sorting each binding's dependencies when ordering the graph.
 - **[FIR]** Skip formatting class and function names for FIR trace events when compiler tracing is disabled.
 - **[IR]** Compare shared bindings only once when compiling graph extensions. This cut compile time from 43.5 s to 3.2 s on a 58-class test graph.
+- **[IDEA]** Opening a second module with the same Metro options now reuses the existing graph index.
+- **[IDEA]** Reading cached gutter icons and inlay hints no longer queues extra work for the index.
 - **[IDEA]** Look up binding data once per file when drawing inlay hints.
 - **[IDEA]** Avoid taking a second snapshot of the same Kotlin type when indexing a plain binding request or a map request.
 - **[IDEA]** Store one copy of the encoded type for each unqualified binding key.
@@ -32,6 +34,8 @@ Changelog
 - **[IR]** Fix a `NoSuchMethodError` when `createGraph()` tried to call a suspend function synchronously to get an extension receiver (e.g. `@Provides suspend fun next(): Int` for `@Provides fun Int.twice(): Long`).
 - **[IR]** Fix a compiler crash when two `@IntoSet` or `@IntoMap` functions have names with the same hash code, such as `provideAa` and `provideBB`.
 - **[IDEA-plugin]** Discard a file snapshot if its worker is canceled while reading it for the IDE index.
+- **[IDEA]** After a lookup in the inactive graph browser, unrelated edits no longer trigger an index build.
+- **[IDEA]** Selecting a module with Metro disabled no longer triggers index rebuilds in other modules on unrelated edits.
 - **[IDEA]** The graph browser now finds graphs annotated through a Kotlin `typealias`. Changing the alias updates the index without an edit to the graph.
 - **[IDEA]** Fix false suspend errors in child graphs when a parent's generic binding recursively requests larger types.
 - **[IDEA]** **Go to Metro Binding** on a provider's extension receiver now jumps to the receiver's binding. It used to jump back to the provider itself.

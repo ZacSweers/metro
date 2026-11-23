@@ -164,9 +164,8 @@ internal class ResolutionSnapshotBuilder(
     classDependencies.include(summary.sourceClasses.dependencies)
     val source = rawSource.withAddedClassBindings(summary.sourceClasses.addedBindings)
     val buildersByKey = linkedMapOf<SnapshotKey, BindingIndexBuilder>()
-    val keysByModule = linkedMapOf<Module, SnapshotKey>()
     val declarationSignatureFiles = finalizedSource.shardOrder.toSet()
-    for ((key, modules) in targets) {
+    for ((key, _) in targets) {
       currentCoroutineContext().ensureActive()
       checkCurrent()
       val library =
@@ -215,10 +214,18 @@ internal class ResolutionSnapshotBuilder(
           }
         }
       buildersByKey[key] = indexBuilder
-      for (module in modules) {
-        keysByModule[module] = key
+    }
+
+    // All targets share the project library setting. Map equivalent modules without requesting
+    // builds for fingerprints that no reader needs.
+    val keysByFingerprint = buildersByKey.keys.associateBy { it.fingerprint }
+    val keysByModule = buildMap {
+      for ((module, fingerprint) in finalizedSource.moduleFingerprints) {
+        val key = keysByFingerprint[fingerprint] ?: continue
+        put(module, key)
       }
     }
+
     currentCoroutineContext().ensureActive()
     checkCurrent()
     val dependencies = classDependencies.build()

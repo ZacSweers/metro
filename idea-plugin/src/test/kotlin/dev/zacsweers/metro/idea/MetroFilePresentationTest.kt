@@ -311,6 +311,19 @@ class MetroFilePresentationTest : BasePlatformTestCase() {
     }
   }
 
+  fun testWarmPresentationBundleReadsDoNotQueueWork() {
+    val file = myFixture.configureMetroFile("@Inject class Target")
+    val service = project.service<MetroResolutionService>()
+    service.awaitIndex(file)
+    val bundle = file.awaitMetroPresentation()
+    val target = file.declarationsIncludingNested().klass("Target")
+    awaitCoordinator(service)
+
+    val before = service.acceptedEventCount()
+    repeat(8) { assertSame(bundle, service.presentationBundle(target)) }
+    assertEquals(before, service.acceptedEventCount())
+  }
+
   fun testRepeatedPresentationRequestsReuseCurrentAnchors() {
     val file = myFixture.configureMetroFile("@Inject class Target")
     val service = project.service<MetroResolutionService>()
