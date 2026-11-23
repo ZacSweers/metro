@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795218971737,
+  "lastUpdate": 1795411057251,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -28448,6 +28448,62 @@ window.BENCHMARK_DATA = {
             "value": 12868.138,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -0.53%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "d7050fec~1",
+          "message": "[before] Fix binding and injection bugs and speed up graph ",
+          "timestamp": "2026-11-22T23:22:32-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/d7050fecf20a38f792f188a5136924d0c24cb519"
+        },
+        "date": 1795411057251,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 14382.867999999999,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "d7050fecf20a38f792f188a5136924d0c24cb519",
+          "message": "[after] Fix binding and injection bugs and speed up graph ",
+          "timestamp": "2026-11-22T23:22:32-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/d7050fecf20a38f792f188a5136924d0c24cb519"
+        },
+        "date": 1795411057252,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 15064.470000000001,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +4.74%"
           }
         ]
       }
