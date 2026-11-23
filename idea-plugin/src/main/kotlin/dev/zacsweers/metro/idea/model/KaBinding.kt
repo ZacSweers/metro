@@ -93,12 +93,13 @@ internal sealed interface KaBinding :
   override val dependencies: List<KaContextualTypeKey>
     get() = emptyList()
 
-  /**
-   * A stable render of an `@IntoMap` contribution's map key annotation, such as `@StringKey("a")`.
-   * Duplicate map key detection groups by this value.
-   */
-  val mapKeyValue: String?
+  /** The resolved key of an `@IntoMap` contribution. */
+  val mapKey: KaMapKey?
     get() = null
+
+  /** The original annotation used for declaration matching and priority selection. */
+  val mapKeyValue: String?
+    get() = mapKey?.annotationRender
 
   /**
    * Type parameters of a generic `@Provides` or `@Binds` declaration. Its [typeKey] mentions them,
@@ -183,7 +184,7 @@ internal sealed interface KaBinding :
     override val scope: KaAnnotationSnapshot? = null,
     override val implementationName: String? = null,
     override val multibindingContribution: MultibindingContribution? = null,
-    override val mapKeyValue: String? = null,
+    override val mapKey: KaMapKey? = null,
     override val originClassId: ClassId? = null,
     override val containerId: ClassId? = null,
     override val ownerGraphId: GraphDeclarationId? = null,
@@ -217,7 +218,7 @@ internal sealed interface KaBinding :
     override val scope: KaAnnotationSnapshot? = null,
     override val implementationName: String? = null,
     override val multibindingContribution: MultibindingContribution? = null,
-    override val mapKeyValue: String? = null,
+    override val mapKey: KaMapKey? = null,
     override val originClassId: ClassId? = null,
     override val containerId: ClassId? = null,
     override val ownerGraphId: GraphDeclarationId? = null,
@@ -344,7 +345,7 @@ internal sealed interface KaBinding :
     val isParentScoped: Boolean = false,
     /** Collection information survives parent delegation for duplicate map-key checks. */
     override val multibindingContribution: MultibindingContribution? = null,
-    override val mapKeyValue: String? = null,
+    override val mapKey: KaMapKey? = null,
   ) : KaBinding {
     override val dependencies: List<KaContextualTypeKey> = listOf(ownerKey.canonicalContextKey())
 

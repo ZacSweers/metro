@@ -18,6 +18,7 @@ import dev.zacsweers.metro.idea.model.KaAnnotationSnapshot
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaContextualTypeKey
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
+import dev.zacsweers.metro.idea.model.KaMapKey
 import dev.zacsweers.metro.idea.model.KaTypeKey
 import dev.zacsweers.metro.idea.model.MultibindingContribution
 import org.jetbrains.kotlin.name.ClassId
@@ -69,8 +70,8 @@ internal class BindingData(
   val isAssisted: Boolean = false,
   /** See [KaBinding.memberInjectionOwnerIds]. */
   val memberInjectionOwnerIds: Set<ClassId> = emptySet(),
-  /** See [KaBinding.mapKeyValue]. */
-  val mapKeyValue: String? = null,
+  /** See [KaBinding.mapKey]. */
+  val mapKey: KaMapKey? = null,
   /** See [KaBinding.Alias.isClassContribution]. */
   val isClassContribution: Boolean = false,
   /** See [KaBinding.Multibinding.allowEmpty]. */
@@ -84,6 +85,9 @@ internal class BindingData(
 ) {
   val multibindingId: String?
     get() = multibindingContribution?.bindingId
+
+  val mapKeyValue: String?
+    get() = mapKey?.annotationRender
 
   /** All dependencies used for graph traversal. */
   val dependencies: List<KaContextualTypeKey> =

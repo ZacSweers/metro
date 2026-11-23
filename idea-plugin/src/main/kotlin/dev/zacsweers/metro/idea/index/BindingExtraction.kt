@@ -27,6 +27,7 @@ import dev.zacsweers.metro.idea.model.KaAnnotationSnapshot
 import dev.zacsweers.metro.idea.model.KaAnnotationValueSnapshot
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaContextualTypeKey
+import dev.zacsweers.metro.idea.model.KaMapKey
 import dev.zacsweers.metro.idea.model.KaTypeKey
 import dev.zacsweers.metro.idea.model.MultibindingContribution
 import dev.zacsweers.metro.idea.qualifierAnnotation
@@ -166,12 +167,6 @@ internal fun KaNamedClassSymbol.isInjectableKind(): Boolean {
   return classKind == KaClassKind.CLASS &&
     (modality == KaSymbolModality.FINAL || modality == KaSymbolModality.OPEN)
 }
-
-/**
- * The map key of an `@IntoMap` contribution. [keyType] identifies the multibinding and
- * [annotationRender] carries the key value for duplicate detection.
- */
-internal class MapKeyInfo(val keyType: TypeIdentity, val annotationRender: String?)
 
 /** A callable parameter paired with its use-site-substituted type. */
 internal class CallableParameterView(val symbol: KaCallableSymbol, val returnType: KaType)
@@ -319,7 +314,7 @@ internal fun KaSession.mapKeyInfo(
   annotated: KaAnnotated,
   options: MetroOptions,
   implicitClassId: ClassId? = null,
-): MapKeyInfo? {
+): KaMapKey? {
   for ((index, annotation) in annotated.annotations.withIndex()) {
     checkCanceledEvery(index)
     val classId = annotation.classId ?: continue
@@ -339,12 +334,11 @@ internal fun KaSession.mapKeyInfo(
       } else {
         annotationClass.defaultType
       }
-    return MapKeyInfo(
+    val snapshot = toKaAnnotationSnapshot(annotation) ?: continue
+    return KaMapKey(
       keyType = typeIdentity(keyType),
-      annotationRender =
-        toKaAnnotationSnapshot(annotation)
-          ?.resolveImplicitClassKey(mapKeyMeta, implicitClassId)
-          ?.render(short = false),
+      annotation = snapshot.resolveImplicitClassKey(mapKeyMeta, implicitClassId),
+      unwrapValue = unwrapValue,
     )
   }
   return null
@@ -496,7 +490,7 @@ internal fun CallableBindingView.bindingData(
             implementationName,
             consumedKey,
             multibindingContribution = contribution,
-            mapKeyValue = mapKeyInfo?.annotationRender,
+            mapKey = mapKeyInfo,
             isGraphPrivate = isGraphPrivate,
             genericSignature =
               genericBindingSignature(symbol, elementKey, contribution?.bindingId, options),
@@ -575,7 +569,7 @@ internal fun CallableBindingView.bindingData(
             multibindingContribution = contribution,
             dependencies = dependencies,
             isSuspend = (symbol as? KaNamedFunctionSymbol)?.isSuspend == true,
-            mapKeyValue = mapKeyInfo?.annotationRender,
+            mapKey = mapKeyInfo,
             isGraphPrivate = isGraphPrivate,
             genericSignature =
               genericBindingSignature(symbol, elementKey, contribution?.bindingId, options),
@@ -860,7 +854,7 @@ private fun KtClassOrObject.classBindingData(
               priorityFromAnvilRank = priority.fromAnvilRank,
               dependencies = providerDependencies,
               memberInjectionOwnerIds = memberInjectionOwnerIds,
-              mapKeyValue = mapKeyInfo.annotationRender,
+              mapKey = mapKeyInfo,
               isClassContribution = true,
             )
         }

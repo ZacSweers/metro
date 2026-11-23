@@ -194,3 +194,11 @@ public fun duplicateMapKeysDiagnostic(
     notes = extraNotes,
   )
 }
+
+/** Explains how distinct map key annotations can emit the same key. */
+public fun unwrappedMapKeysNote(mapKeys: List<String>): Note {
+  return Note.note(
+    "These bindings use ${mapKeys.joinToString()} with unwrapValue = true. " +
+      "Metro uses the value inside each annotation as the map key, and those values are equal.",
+  )
+}

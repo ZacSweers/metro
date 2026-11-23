@@ -414,7 +414,7 @@ internal class KaBindingLookup(
         accessorIsSuspend = parentTransitiveSuspend(binding),
         isParentScoped = true,
         multibindingContribution = binding.multibindingContribution,
-        mapKeyValue = binding.mapKeyValue,
+        mapKey = binding.mapKey,
       )
     }
   }
@@ -562,7 +562,7 @@ private fun KaBinding.withElementKey(elementKey: KaTypeKey): KaBinding {
         scope = scope,
         implementationName = implementationName,
         multibindingContribution = multibindingContribution,
-        mapKeyValue = mapKeyValue,
+        mapKey = mapKey,
         originClassId = originClassId,
         containerId = containerId,
         ownerGraphId = ownerGraphId,
@@ -595,7 +595,7 @@ private fun KaBinding.Alias.copy(
     scope = scope,
     implementationName = implementationName,
     multibindingContribution = multibindingContribution,
-    mapKeyValue = mapKeyValue,
+    mapKey = mapKey,
     originClassId = originClassId,
     containerId = containerId,
     ownerGraphId = ownerGraphId,

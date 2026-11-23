@@ -48,6 +48,7 @@ import dev.zacsweers.metro.compiler.graph.partitionBySCCs
 import dev.zacsweers.metro.compiler.graph.putGraphRoot
 import dev.zacsweers.metro.compiler.graph.toText
 import dev.zacsweers.metro.compiler.graph.toTraceSection
+import dev.zacsweers.metro.compiler.graph.unwrappedMapKeysNote
 import dev.zacsweers.metro.compiler.graph.withEntry
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrBoundTypeResolver
@@ -2067,12 +2068,7 @@ internal class IrBindingGraph(
               emittedMapKey.render(short = false)
             }
             .distinct()
-        add(
-          Note.note(
-            "These bindings use ${mapKeys.joinToString()} with unwrapValue = true. " +
-              "Metro uses the value inside each annotation as the map key, and those values are equal.",
-          ),
-        )
+        add(unwrappedMapKeysNote(mapKeys))
       }
     }
 

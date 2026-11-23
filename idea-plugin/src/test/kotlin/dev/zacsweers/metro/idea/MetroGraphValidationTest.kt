@@ -1124,6 +1124,48 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     assertTrue(diagnostic.stack.isNotEmpty())
   }
 
+  fun testDifferentMapKeyAnnotationsWithEqualUnwrappedValuesAreDuplicates() {
+    val result =
+      validate(
+        """
+        @MapKey annotation class RouteKey(val path: String = "same")
+
+        @DependencyGraph interface AppGraph {
+          val values: Map<String, Int>
+          @Provides @IntoMap @StringKey("same") fun first(): Int = 1
+          @Provides @IntoMap @RouteKey fun second(): Int = 2
+        }
+        """,
+      )
+
+    val diagnostic = result.diagnostics.single()
+    assertEquals(MetroDiagnosticId.DUPLICATE_MAP_KEYS, diagnostic.id)
+    val rendered = diagnostic.render()
+    assertTrue(rendered, "StringKey" in rendered)
+    assertTrue(rendered, "RouteKey" in rendered)
+    assertTrue(
+      rendered,
+      diagnostic.diagnostic.notes.any { "unwrapValue = true" in it.text.toString() },
+    )
+  }
+
+  fun testWrappedMapKeysCompareAllAnnotationArguments() {
+    val result =
+      validate(
+        """
+        @MapKey(unwrapValue = false) annotation class RouteKey(val path: String, val version: Int)
+
+        @DependencyGraph interface AppGraph {
+          val values: Map<RouteKey, Int>
+          @Provides @IntoMap @RouteKey("same", 1) fun first(): Int = 1
+          @Provides @IntoMap @RouteKey("same", 2) fun second(): Int = 2
+        }
+        """,
+      )
+
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+  }
+
   fun testMapPriorityPreventsDuplicateMapKeyDiagnostic() {
     project.setMetroOptions("custom-into-map" to "test/PrioritizedMapContribution")
 
