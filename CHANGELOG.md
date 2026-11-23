@@ -38,6 +38,7 @@ Changelog
 - **[IDEA]** Selecting a module with Metro disabled no longer triggers index rebuilds in other modules on unrelated edits.
 - **[IDEA]** The graph browser now finds graphs annotated through a Kotlin `typealias`. Changing the alias updates the index without an edit to the graph.
 - **[IDEA]** Fix false suspend errors in child graphs when a parent's generic binding recursively requests larger types.
+- **[IDEA]** A matching generic provider in a dynamic graph's container now overrides a static provider. An exact provider in the dynamic container still wins.
 - **[IDEA]** **Go to Metro Binding** on a provider's extension receiver now jumps to the receiver's binding. It used to jump back to the provider itself.
 - **[IDEA]** Pinning a graph no longer hides a generic provider's consumers from **Find Usages** or the gutter.
 - **[IDEA]** **Select in Metro** now finds the generic provider in the graph browser when it supplies a concrete type.
