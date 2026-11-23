@@ -409,6 +409,28 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     assertTrue(rendered, "MissingThing is requested at test.AppGraph.missing" in rendered)
   }
 
+  fun testTransitiveMissingBindingTraceReachesGraphAccessor() {
+    val result =
+      validate(
+        """
+        interface Missing
+        @Inject class Target(val missing: Missing)
+        @Inject class Outer(val target: Target)
+
+        @DependencyGraph interface AppGraph {
+          val entryPoint: Outer
+        }
+        """,
+      )
+
+    val diagnostic = result.diagnostics.single()
+    assertEquals(MetroDiagnosticId.MISSING_BINDING, diagnostic.id)
+    val rendered = diagnostic.render()
+    assertTrue(rendered, "Missing is injected at" in rendered)
+    assertTrue(rendered, "Target is injected at" in rendered)
+    assertTrue(rendered, "Outer is requested at test.AppGraph.entryPoint" in rendered)
+  }
+
   fun testOptionalAbsenceIsNotAnError() {
     val result =
       validate(
