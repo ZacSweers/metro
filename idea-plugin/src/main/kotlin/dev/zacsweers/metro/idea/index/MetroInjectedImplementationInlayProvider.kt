@@ -42,16 +42,20 @@ class MetroInjectedImplementationInlayProvider : InlayHintsProvider {
 
   override fun createCollector(file: PsiFile, editor: Editor): InlayHintsCollector? {
     val ktFile = file as? KtFile ?: return null
-    if (!MetroSettings.getInstance(ktFile.project).state.enableBindingResolution) return null
-    return Collector
+    if (!MetroSettings.getInstance(ktFile.project).state.enableBindingResolution) {
+      return null
+    }
+
+    val bundle =
+      ktFile.project.service<MetroResolutionService>().presentationBundle(ktFile) ?: return null
+    return Collector(bundle)
   }
 
-  private object Collector : SharedBypassCollector {
+  /** All inlays in a file pass use the same published binding data. */
+  private class Collector(private val bundle: FilePresentationBundle) : SharedBypassCollector {
     override fun collectFromElement(element: PsiElement, sink: InlayTreeSink) {
       if (element !is KtParameter && element !is KtProperty && element !is KtNamedFunction) return
       element as KtElement
-      val bundle =
-        element.project.service<MetroResolutionService>().presentationBundle(element) ?: return
       val presentation = bundle.declaration(element) ?: return
       // Only implicitly assisted parameters get the inlay; explicit @Assisted already reads as
       // assisted in source.
