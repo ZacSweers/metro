@@ -369,6 +369,31 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
     assertSame(otherContext.path, pinService.pinnedPath)
   }
 
+  fun testEditorNavigationDistinguishesReceiverFromProviderName() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+      @Inject class Service
+      @DependencyGraph interface AppGraph {
+        val text: String
+        @Provides fun Service.provideText(): String = toString()
+      }
+      """,
+      )
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val declarations = file.declarationsIncludingNested()
+    val provider = declarations.function("provideText")
+
+    val receiverTargets =
+      metroEditorTargets(index, file, provider.receiverTypeReference!!.textOffset, null)
+    assertEquals(
+      declarations.klass("Service"),
+      receiverTargets.navigation.single().bindings.single().pointer.element,
+    )
+    val nameTargets = metroEditorTargets(index, file, provider.textOffset, null)
+    assertEquals(provider, nameTargets.navigation.single().bindings.single().pointer.element)
+  }
+
   fun testEditorBindingChoicesKeepConcreteExtensionPaths() {
     val file =
       myFixture.configureMetroFile(
