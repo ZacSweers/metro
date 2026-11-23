@@ -1603,7 +1603,6 @@ private constructor(
     fieldInitKey: IrTypeKey?,
   ): List<IrExpression?> =
     with(scope) {
-      // TODO clean all this up
       val params = function.parameters()
       var paramsToMap = callOrderedParams(targetParams, binding)
 

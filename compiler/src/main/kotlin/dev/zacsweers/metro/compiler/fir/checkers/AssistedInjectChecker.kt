@@ -89,7 +89,6 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
     }
   }
 
-  // TODO validate the assisted injection here too?
   context(context: CheckerContext, reporter: DiagnosticReporter, compatContext: CompatContext)
   private fun checkAssistedFactory(
     declaration: FirClass,

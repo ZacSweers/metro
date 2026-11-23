@@ -25,6 +25,17 @@ import kotlin.test.assertTrue
 
 class MapProviderFactoryTest {
   @Test
+  fun eagerMapPreservesLazyEntryValues() {
+    var calls = 0
+    val factory = MapProviderFactory.builder<String, Int>(1).put("key", provider { ++calls }).build()
+
+    assertTrue(factory.isInitialized())
+    assertSame(factory(), factory.value)
+    assertEquals(0, calls)
+    assertEquals(1, factory.value.getValue("key")())
+  }
+
+  @Test
   fun iterationOrder() {
     val p1: Provider<Int> = incrementingIntegerProvider(10)
     val p2: Provider<Int> = incrementingIntegerProvider(20)

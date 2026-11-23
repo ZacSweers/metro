@@ -819,8 +819,6 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override fun toString() = renderDescriptionDiagnostic(short = true, underlineTypeKey = false)
   }
 
-  // TODO sets
-  //  unscoped always initializes inline? Dagger sometimes generates private getters
   @Poko
   class Multibinding(
     override val contextualTypeKey: IrContextualTypeKey,

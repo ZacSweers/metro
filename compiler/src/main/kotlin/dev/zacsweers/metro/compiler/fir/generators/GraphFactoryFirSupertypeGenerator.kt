@@ -78,8 +78,6 @@ internal class GraphFactoryFirSupertypeGenerator(
     }
     return declaration.symbol.isCompanion &&
       declaration.getContainingClassSymbol()?.isDependencyGraph(session) == true
-    // TODO why does the above work but not the predicate matcher?
-    //  session.predicateBasedProvider.matches(dependencyGraphCompanionPredicate, declaration)
   }
 
   override fun computeAdditionalSupertypes(

@@ -2303,7 +2303,6 @@ internal fun typeRemapperFor(substitutionMap: Map<IrTypeParameterSymbol, IrType>
                     else -> arg
                   }
                 }
-              // TODO impl use
               type.buildSimpleType { arguments = newArguments }
             }
           }

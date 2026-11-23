@@ -55,7 +55,6 @@ constructor(private val project: Project, objects: ObjectFactory) {
    */
   fun configureCommonKmpTargets(
     jsModuleName: String,
-    includeAndroid: Boolean = false, // TODO
     isComposeTarget: Boolean = false,
     requiresAndroidXDeps: Boolean = false,
   ) {

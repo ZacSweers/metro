@@ -1,6 +1,4 @@
 // REPORTS_DESTINATION: metro/reports
-// MAX_COMPILER_VERSION: 2.3.20
-// TODO eventually enable this on 2.4.0+ again
 // Similar to https://github.com/ZacSweers/metro/issues/1303
 /**
  * Covers the case where debug report file names exceed the file name limit when we have a deeply nested graph, e.g.

@@ -63,7 +63,7 @@ internal class BindingMirrorClassFirGenerator(
     register(session.predicates.defaultBindingAnnotationPredicate)
   }
 
-  // TODO probably not needed?
+  // The constructor callbacks use this set to recognize mirrors created by this extension.
   private val mirrorClassesToGenerate = mutableSetOf<ClassId>()
 
   override fun getCallableNamesForClass(

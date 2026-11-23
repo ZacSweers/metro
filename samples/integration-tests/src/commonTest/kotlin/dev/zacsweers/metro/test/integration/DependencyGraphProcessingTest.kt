@@ -723,16 +723,13 @@ class DependencyGraphProcessingTest {
     assertEquals(mapOf(Seasoning.SPICY to 1, Seasoning.REGULAR to 2), graph.seasoningAmounts)
     assertEquals(mapOf(1 to 1, 2 to 2), graph.ints)
     assertEquals(mapOf("1" to 1, "2" to 2), graph.strings)
-    // TODO Wasm annotation classes don't implement equals correctly
-    if (!isWasm()) {
-      assertEquals(
-        mapOf(
-          MultibindingGraphWithMultipleOtherMapKeyTypes.WrappedSeasoningKey(Seasoning.SPICY) to 1,
-          MultibindingGraphWithMultipleOtherMapKeyTypes.WrappedSeasoningKey(Seasoning.REGULAR) to 2,
-        ),
-        graph.wrappedSeasoningAmounts,
-      )
-    }
+    assertEquals(
+      mapOf(
+        MultibindingGraphWithMultipleOtherMapKeyTypes.WrappedSeasoningKey(Seasoning.SPICY) to 1,
+        MultibindingGraphWithMultipleOtherMapKeyTypes.WrappedSeasoningKey(Seasoning.REGULAR) to 2,
+      ),
+      graph.wrappedSeasoningAmounts,
+    )
   }
 
   @DependencyGraph
@@ -843,31 +840,25 @@ class DependencyGraphProcessingTest {
     }
   }
 
-  // TODO this needs more work to support
-  //  @Test
-  //  fun `optional dependencies - provider - default values with complex functions with back
-  // refs`() {
-  //    val graph = createGraph<OptionalDependenciesProviderWithFunctionBackReferences>()
-  //    assertEquals("7", graph.message)
-  //  }
-  //
-  //  @Graph
-  //  interface OptionalDependenciesProviderWithFunctionBackReferences {
-  //    val message: String
-  //
-  //    @Provides private fun provideInt(): Int = 3
-  //
-  //    @Provides
-  //    private fun provideMessage(
-  //      int: Int = 2,
-  //      long: Long = 4,
-  //      input: CharSequence = run {
-  //        (int + long).toString()
-  //      }
-  //    ): String {
-  //      return input.toString()
-  //    }
-  //  }
+  @Test
+  fun `optional dependencies - provider - default values with function back references`() {
+    val graph = createGraph<OptionalDependenciesProviderWithFunctionBackReferences>()
+    assertEquals("7", graph.message)
+  }
+
+  @DependencyGraph
+  interface OptionalDependenciesProviderWithFunctionBackReferences {
+    val message: String
+
+    @Provides private fun provideInt(): Int = 3
+
+    @Provides
+    private fun provideMessage(
+      int: Int = 2,
+      long: Long = 4,
+      input: CharSequence = run { (int + long).toString() },
+    ): String = input.toString()
+  }
 
   @Test
   fun `optional dependencies - provider - default values from private references`() {

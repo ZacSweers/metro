@@ -694,7 +694,6 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
           status {
             isOperator = true
             isSuspend = function.isSuspend
-            // TODO others?
           }
 
           for (param in function.valueParameterSymbols) {
