@@ -394,6 +394,31 @@ class MetroDerivedBindingResolutionTest : BasePlatformTestCase() {
     )
   }
 
+  fun testCollectionReverseUsagesIncludeOnlyRequestsThatUseTheGenericProvider() {
+    val fixture =
+      configure(
+        """
+        @DependencyGraph interface AppGraph {
+          @Provides fun <T> fallbackSet(): Set<T> = emptySet()
+          @Provides fun <T> fallbackMap(): Map<String, T> = emptyMap()
+          @Provides @IntoSet fun string(): String = "a"
+          val ints: Set<Int>
+          val strings: Set<String>
+          val byName: Map<String, Int>
+        }
+        """,
+      )
+    val declarations = fixture.file.declarationsIncludingNested()
+
+    for ((consumerName, providerName) in
+      listOf("ints" to "fallbackSet", "byName" to "fallbackMap")) {
+      val consumer = declarations.property(consumerName)
+      val provider = declarations.function(providerName)
+      assertEquals(provider, fixture.index.metroUsageRelations(consumer, null).single().declaration)
+      assertEquals(consumer, fixture.index.metroUsageRelations(provider, null).single().declaration)
+    }
+  }
+
   fun testPinnedReverseUsagesResolveToTheGenericDeclaration() {
     val fixture =
       configure(
