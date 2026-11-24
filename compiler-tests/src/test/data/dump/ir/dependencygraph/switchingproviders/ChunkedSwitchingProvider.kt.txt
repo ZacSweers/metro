@@ -239,10 +239,16 @@ interface AppGraph {
   @MetroImplMarker
   class Impl : AppGraph {
     private class SwitchingProvider<T : Any?> : Provider<T> {
+      private val graph: Impl
+        field = graph
+
+      private val id: Int
+        field = id
+
       constructor(graph: Impl, id: Int) /* primary */ {
         super/*Any*/()
-        <this>.#graph = graph
-        <this>.#id = id
+        /* <init>() */
+
       }
 
       override fun invoke(): T {
@@ -289,10 +295,6 @@ interface AppGraph {
           }
         }
       }
-
-      private val graph: Impl
-
-      private val id: Int
 
     }
 

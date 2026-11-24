@@ -410,10 +410,16 @@ interface AppGraph {
   class Impl : AppGraph {
     private class Shard1 {
       private class SwitchingProvider<T : Any?> : Provider<T> {
+        private val graph: Shard1
+          field = graph
+
+        private val id: Int
+          field = id
+
         constructor(graph: Shard1, id: Int) /* primary */ {
           super/*Any*/()
-          <this>.#graph = graph
-          <this>.#id = id
+          /* <init>() */
+
         }
 
         override fun invoke(): T {
@@ -426,10 +432,6 @@ interface AppGraph {
             }
           }
         }
-
-        private val graph: Shard1
-
-        private val id: Int
 
       }
 
@@ -447,10 +449,16 @@ interface AppGraph {
 
     private class Shard2 {
       private class SwitchingProvider<T : Any?> : Provider<T> {
+        private val graph: Shard2
+          field = graph
+
+        private val id: Int
+          field = id
+
         constructor(graph: Shard2, id: Int) /* primary */ {
           super/*Any*/()
-          <this>.#graph = graph
-          <this>.#id = id
+          /* <init>() */
+
         }
 
         override fun invoke(): T {
@@ -462,10 +470,6 @@ interface AppGraph {
             }
           }
         }
-
-        private val graph: Shard2
-
-        private val id: Int
 
       }
 
