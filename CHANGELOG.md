@@ -8,7 +8,6 @@ Changelog
 
 - **[core]** Stop copying and re-sorting each binding's dependencies when ordering the graph.
 - **[core]** Store one copy of the encoded type for each unqualified binding key.
-- **[Compiler]** Use UUIDv7 IDs in compiler trace filenames to avoid collisions between compilations in the same second.
 - **[FIR]** Skip formatting class and function names for FIR trace events when compiler tracing is disabled.
 - **[IR]** Compare shared bindings only once when compiling graph extensions. This cut compile time from 43.5 s to 3.2 s on a 58-class test graph.
 - **[IDEA]** The IDE's Plugins dialog and JetBrains Marketplace now list IDEA and core changes and credit contributors.
