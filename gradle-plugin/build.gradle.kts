@@ -255,6 +255,9 @@ tasks.withType<Test>().configureEach {
 }
 
 tasks.named<Test>("functionalTest") {
+  // The fixtures load the compiler from the repository as a Kotlin compiler plugin.
+  dependsOn(":compiler:installForFunctionalTest")
+
   // The fixtures resolve native and web artifacts outside the test JVM classpath.
   val repository = rootProject.fileTree(rootProject.layout.buildDirectory.dir("functionalTestRepo"))
   if (!project.version.toString().endsWith("-SNAPSHOT", ignoreCase = true)) {
