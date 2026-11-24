@@ -146,8 +146,6 @@ internal data class ValidationResult(
   val graphExtensionGenerator: IrGraphExtensionGenerator,
   /** Child graph validation results to generate after this graph. */
   val childValidationResults: List<ValidationResult>,
-  /** Context keys this graph uses from parent (reported back for extraKeeps). */
-  val usedParentContextKeys: Set<IrContextualTypeKey>,
   val hasErrors: Boolean,
 )
 
@@ -540,7 +538,6 @@ internal class DependencyGraphTransformer(
 
     val childGraphs = mutableListOf<PreparedGraph>()
     var finishChildren: (List<ValidationResult>) -> Unit = {}
-    var usedParentContextKeys: Set<IrContextualTypeKey> = emptySet()
     var hasErrors = false
 
     // Before validating/sealing the parent graph, analyze contributed child graphs to
@@ -732,14 +729,7 @@ internal class DependencyGraphTransformer(
         }
 
         // Pop the parent graph after all contributed graphs are processed
-        usedParentContextKeys = localParentContext.popParentGraph()
-
-        // Write diagnostic for parent keys used in child graphs
-        if (usedParentContextKeys.isNotEmpty()) {
-          writeDiagnostic("parent-keys-used-all", { "${node.sourceGraph.name}.txt" }) {
-            usedParentContextKeys.sortedBy { it.typeKey }.joinToString(separator = "\n")
-          }
-        }
+        localParentContext.popParentGraph()
       }
     }
 
@@ -828,7 +818,6 @@ internal class DependencyGraphTransformer(
             sealResult = sealResult,
             graphExtensionGenerator = graphExtensionGenerator,
             childValidationResults = childValidationResults,
-            usedParentContextKeys = usedParentContextKeys,
             hasErrors = hasErrors,
           )
 

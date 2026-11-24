@@ -186,9 +186,6 @@ abstract class BaseIncrementalCompilationTest(
     val metadata
       get() = readFile("graph-metadata/$implFqName.kt")
 
-    val parentUsedKeysAll
-      get() = readFile("parent-keys-used-all/$implFqName")
-
     fun parentKeysUsedBy(extension: String) =
       readFileLines("parent-keys-used/$implFqName-by-$extension.txt")
 
