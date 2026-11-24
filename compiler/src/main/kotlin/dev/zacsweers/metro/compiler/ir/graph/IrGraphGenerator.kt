@@ -87,7 +87,6 @@ import org.jetbrains.kotlin.ir.builders.irDelegatingConstructorCall
 import org.jetbrains.kotlin.ir.builders.irExprBody
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetObject
-import org.jetbrains.kotlin.ir.builders.irInt
 import org.jetbrains.kotlin.ir.builders.irNull
 import org.jetbrains.kotlin.ir.builders.irSetField
 import org.jetbrains.kotlin.ir.builders.irString
@@ -1669,17 +1668,9 @@ internal class IrGraphGenerator(
         val switchingProvider = switchingProviders.forBinding(isSuspendBinding)
         val initExpression: PropertyInitializer =
           if (switchingId != null && switchingProvider != null) {
-            val switchingProviderConstructor = switchingProvider.constructor
             { thisReceiver: IrValueParameter, _: IrTypeKey ->
-              irCallConstructor(
-                  switchingProviderConstructor.symbol,
-                  listOf(contextKey.typeKey.type),
-                )
-                .apply {
-                  type = switchingProvider.irClass.typeWith(contextKey.typeKey.type)
-                  arguments[0] = irGet(thisReceiver) // graph/shard reference
-                  arguments[1] = irInt(switchingProvider.localId(switchingId))
-                }
+              switchingProvider
+                .construct(this, thisReceiver, contextKey.typeKey.type, switchingId)
                 .applyScoping()
             }
           } else {
@@ -2124,12 +2115,7 @@ internal class IrGraphGenerator(
       val switchingProvider = switchingProviders.forBinding(isSuspendBinding)
       val providerExpr =
         if (switchingId != null && switchingProvider != null) {
-          irCallConstructor(switchingProvider.constructor.symbol, listOf(binding.typeKey.type))
-            .apply {
-              type = switchingProvider.irClass.typeWith(binding.typeKey.type)
-              arguments[0] = irGet(thisReceiver)
-              arguments[1] = irInt(switchingProvider.localId(switchingId))
-            }
+          switchingProvider.construct(this, thisReceiver, binding.typeKey.type, switchingId)
         } else {
           val accessType =
             if (isSuspendBinding) {
