@@ -16,8 +16,12 @@ import org.jetbrains.kotlin.ir.builders.declarations.buildClass
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.IrTypeProjection
+import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.types.defaultType
+import org.jetbrains.kotlin.ir.types.makeNotNull
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.addFakeOverrides
@@ -26,9 +30,11 @@ import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.nonDispatchParameters
+import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.SpecialNames
+import org.jetbrains.kotlin.types.Variance
 
 context(context: IrMetroContext)
 internal fun IrClass.getOrCreateMetadataVisibleHiddenNestedClass(
@@ -108,9 +114,13 @@ internal fun IrClass.getOrCreateGraphImplClassShell(): IrClass {
       modality = Modality.FINAL
     }
     .apply {
-      typeParameters = copyTypeParametersFrom(parentClass)
+      val factorySupertype = parentClass.graphFactorySupertype(creatorFunction)
+      if (factorySupertype == null) {
+        typeParameters = copyTypeParametersFrom(parentClass)
+      }
       createThisReceiverParameter()
-      superTypes += parentClass.symbol.typeWith(typeParameters.map { it.defaultType })
+      superTypes +=
+        factorySupertype ?: parentClass.symbol.typeWith(typeParameters.map { it.defaultType })
       addDeprecatedHiddenAnnotation()
       addMetroImplMarkerAnnotation()
       parentClass.addChild(this)
@@ -140,6 +150,24 @@ internal fun IrClass.getOrCreateGraphImplClassShell(): IrClass {
           }
       }
     }
+}
+
+/** Mirrors the FIR graph header when the sole factory fixes all graph type arguments. */
+private fun IrClass.graphFactorySupertype(creator: IrSimpleFunction?): IrType? {
+  if (typeParameters.isEmpty() || creator == null) {
+    return null
+  }
+  if (creator.typeParameters.isNotEmpty() || creator.parentAsClass.typeParameters.isNotEmpty()) {
+    return null
+  }
+  val returnType = creator.returnType as? IrSimpleType ?: return null
+  if (returnType.classOrNull != symbol) {
+    return null
+  }
+  if (!returnType.arguments.all { it is IrTypeProjection && it.variance == Variance.INVARIANT }) {
+    return null
+  }
+  return returnType.makeNotNull()
 }
 
 @IgnorableReturnValue

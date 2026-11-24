@@ -29,6 +29,7 @@ Changelog
 - **[FIR/IR]** Fix a bug where a provider returning `Map<K, V>?` could supply `null` to a non-null `Map<K, V>` accessor.
 - **[FIR/IR]** Fix a JVM compiler crash (`Function has no body`) when a class has overloaded `@Inject` methods such as `accept(Int)` and `accept(String)`.
 - **[FIR/IR]** Fix a compiler crash when resolving bindings with star projections such as `Map<String, *>` and `Lazy<*>`.
+- **[FIR/IR]** Fix a compiler crash when a graph factory returns a specialized type such as `AppGraph<String>`.
 - **[IR]** Record `@Inject` methods in declaration order in library metadata. Sorting them by name could swap two `@Named` arguments of the same type when another module injected the class.
 - **[IR]** Fix a `ClassCastException` in generated factories that passed an `@Provides` method's extension receiver or context parameter in the argument slot for the graph.
 - **[IR]** Fix `@set:Inject` writing directly to the backing field and skipping the custom setter.
@@ -36,6 +37,7 @@ Changelog
 - **[IR]** Fix a `ClassCastException` when injecting a provided `Map<Class<*>, V>` with `enableKClassToClassInterop` enabled. Metro tried to convert keys that were already Java classes.
 - **[IR]** Fix a `NoSuchMethodError` when `createGraph()` tried to call a suspend function synchronously to get an extension receiver (e.g. `@Provides suspend fun next(): Int` for `@Provides fun Int.twice(): Long`).
 - **[IR]** Fix a compiler crash when two `@IntoSet` or `@IntoMap` functions have names with the same hash code, such as `provideAa` and `provideBB`.
+- **[IR]** Fix single-entry set multibindings that allowed mutation on non-JVM targets.
 - **[IDEA]** Discard a file snapshot if its worker is canceled while reading it for the IDE index.
 - **[IDEA]** After a lookup in the inactive graph browser, unrelated edits no longer trigger an index build.
 - **[IDEA]** Selecting a module with Metro disabled no longer triggers index rebuilds in other modules on unrelated edits.

@@ -311,7 +311,7 @@ internal class SyntheticGraphGenerator(
           isFakeOverride = true
         }
         .apply {
-          // TODO generics?
+          // TODO support parent implementations with free type parameters in static children.
           // For extension graphs, the parent graph is passed as an explicit constructor parameter
           // (not as a dispatch receiver since we're using static nested classes)
           if (parentGraph != null) {
