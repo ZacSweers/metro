@@ -415,14 +415,6 @@ internal class ParentContext(
     val declaresSameBinding: (IrBinding) -> Boolean,
     val createsFreshInstances: (IrTypeKey) -> Boolean,
     val deltaProvided: MutableSet<IrTypeKey> = mutableSetOf(),
-    /** Tracks which contextual keys were used (preserving instance vs provider distinction) */
-    val usedContextKeys: MutableSet<IrContextualTypeKey> = mutableSetOf(),
-    /**
-     * Context keys that were requested from this level via mark() but ended up being introduced to
-     * a parent level (because the scope matched a parent). These need to be reported when this
-     * level pops so the parent graph knows to generate Provider properties for them.
-     */
-    val parentLevelRequests: MutableSet<IrContextualTypeKey> = mutableSetOf(),
   )
 
   // Stack of parent graphs (root at 0, top is last)
@@ -469,10 +461,10 @@ internal class ParentContext(
     )
 
   /**
-   * Marks a key as used and returns a token for later property resolution.
+   * Returns a token for later property resolution.
    *
-   * During the validation phase, this method tracks which keys are used from parent graphs without
-   * creating actual properties. Properties are created during the generation phase by the parent's
+   * During the validation phase, this method resolves keys from parent graphs without creating
+   * actual properties. Properties are created during the generation phase by the parent's
    * [BindingPropertyCollector], which determines the correct property kinds (FIELD vs GETTER).
    *
    * @param key The typekey to mark
@@ -510,12 +502,6 @@ internal class ParentContext(
     // Prefer the nearest provider (deepest level that introduced this key)
     keyIntroStack[key]?.lastOrNull()?.let { providerIdx ->
       val providerLevel = levels[providerIdx]
-
-      // Track this context key as used at the matched provider level
-      if (mode == ParentContextLookupMode.MARK_USED) {
-        providerLevel.usedContextKeys.add(contextKey)
-      }
-
       return Token(
         contextKey = contextKey,
         ownerGraphKey = providerLevel.node.typeKey,
@@ -526,22 +512,10 @@ internal class ParentContext(
 
     // Not found but is scoped. Treat as constructor-injected with matching scope.
     if (scope != null) {
-      val currentLevelIdx = levels.lastIndex
       for (i in levels.lastIndex downTo 0) {
         val level = levels[i]
         if (scope in level.node.scopes) {
           introduceAtLevel(i, key)
-
-          if (mode == ParentContextLookupMode.MARK_USED) {
-            // Track this context key as used at the level that owns the scope
-            level.usedContextKeys.add(contextKey)
-
-            // If this key was introduced to a parent level (not the current level),
-            // track it so it gets reported when this level pops
-            if (i < currentLevelIdx) {
-              levels[currentLevelIdx].parentLevelRequests.add(contextKey)
-            }
-          }
 
           return Token(
             contextKey = contextKey,
@@ -561,10 +535,6 @@ internal class ParentContext(
           ParentContextLookupMode.TOKEN_ONLY -> parent.findToken(key)
         }
       token?.let {
-        // Track this context key at the current level so it gets reported upward
-        if (mode == ParentContextLookupMode.MARK_USED && levels.isNotEmpty()) {
-          levels.last().usedContextKeys.add(contextKey)
-        }
         return token
       }
     }
@@ -593,7 +563,7 @@ internal class ParentContext(
     }
   }
 
-  fun popParentGraph(): Set<IrContextualTypeKey> {
+  fun popParentGraph() {
     check(levels.isNotEmpty()) { "No parent graph to pop" }
     val idx = levels.lastIndex
     val removed = levels.removeLast()
@@ -612,12 +582,6 @@ internal class ParentContext(
       }
       // If non-empty, key remains available due to an earlier level
     }
-
-    // Return both...
-    // 1. Context keys used from this level
-    // 2. Context keys that this level requested but were introduced to parent levels
-    //    (these have the correct isWrappedInProvider info for the parent to use)
-    return removed.usedContextKeys + removed.parentLevelRequests
   }
 
   override val currentParentGraph: IrClass
@@ -651,10 +615,6 @@ internal class ParentContext(
       addAll(pending)
       if (!ancestorKeys.isNullOrEmpty()) addAll(ancestorKeys)
     }
-  }
-
-  fun usedContextKeys(): Set<IrContextualTypeKey> {
-    return levels.lastOrNull()?.usedContextKeys ?: emptySet()
   }
 
   /**
