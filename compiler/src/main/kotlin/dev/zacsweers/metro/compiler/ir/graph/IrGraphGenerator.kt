@@ -766,12 +766,7 @@ internal class IrGraphGenerator(
   }
 
   /**
-   * Builds the ancestor graph properties map for shard expression context.
-   *
-   * Maps ancestor graph type key -> list of properties to chain through to access it. The key must
-   * match GraphNode.typeKey construction:
-   * - For synthetic graphs (extensions, dynamic): uses the impl type key
-   * - For non-synthetic graphs: uses the interface type key (via sourceGraphIfMetroGraph)
+   * Indexes each captured ancestor by the key used by binding lookup.
    *
    * @param parentGraphInstanceProperty The property storing the parent graph instance, or null for
    *   root graphs
@@ -786,17 +781,8 @@ internal class IrGraphGenerator(
     val parentImplClass = parentImplType.rawTypeOrNull()
 
     return buildMap {
-      if (parentImplClass != null) {
-        // Use the same key construction as GraphNode.typeKey:
-        // - Synthetic graphs use the impl
-        // - Non-synthetic graphs use sourceGraphIfMetroGraph (the interface)
-        val keyClass =
-          if (parentImplClass.origin.isSyntheticGeneratedGraph) {
-            parentImplClass
-          } else {
-            parentImplClass.sourceGraphIfMetroGraph
-          }
-        put(IrTypeKey(keyClass.typeWith()), listOf(parentGraphInstanceProperty))
+      node.parentGraph?.let { parent ->
+        put(parent.typeKey, listOf(parentGraphInstanceProperty))
       }
 
       // For chained extensions, copy parent's ancestor chains with our property prepended.

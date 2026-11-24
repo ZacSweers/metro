@@ -34,6 +34,7 @@ import dev.zacsweers.metro.compiler.ir.originContextOrNull
 import dev.zacsweers.metro.compiler.ir.originOrNull
 import dev.zacsweers.metro.compiler.ir.overriddenSymbolsSequence
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
+import dev.zacsweers.metro.compiler.ir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
@@ -50,6 +51,7 @@ import dev.zacsweers.metro.compiler.tracing.trace
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.types.starProjectedType
 import org.jetbrains.kotlin.ir.types.typeWithArguments
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.kotlinFqName
@@ -654,12 +656,14 @@ internal class BindingGraphGenerator(
               accessor.key.typeKey !in node.dynamicTypeKeys
 
           if (shouldAddBinding) {
+            val parent = node.metroGraphOrFail
             val binding =
               IrBinding.GraphExtensionFactory(
                 typeKey = accessor.key.typeKey,
                 extensionTypeKey = key,
-                parent = node.metroGraph!!,
-                parentKey = IrTypeKey(node.metroGraph!!),
+                parent = parent,
+                parentKey =
+                  IrTypeKey(parent.symbol.starProjectedType, parent.qualifierAnnotation()),
                 accessor = accessor.accessor.ir,
               )
             putBinding(binding.typeKey, false, binding)
