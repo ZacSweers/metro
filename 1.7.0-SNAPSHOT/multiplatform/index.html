@@ -2172,7 +2172,7 @@
 </ul>
 </li>
 </ul>
-<p>When mixing contributions between common and platform-specific source sets, you must define your final <code>@DependencyGraph</code> in the platform-specific code. This is because a graph defined in commonMain wouldn’t have full visibility of contributions from platform-specific types. A good pattern for this is to define your canonical graph in commonMain <em>without</em> a <code>@DependencyGraph</code> annotation and then a <code>{Platform}{Graph}</code> type in the platform source set that extends it and does have the <code>@DependencyGraph</code>. Metro automatically exposes bindings of the base graph type on the graph for any injections that need it.</p>
+<p>If you combine common and platform-specific contributions, the final <code>@DependencyGraph</code> must be defined in the platform source set. A graph in <code>commonMain</code> cannot see platform-specific contributions. Define an unannotated graph interface in <code>commonMain</code>, then extend it with an annotated <code>{Platform}{Graph}</code> in each platform source set. Metro also exposes a binding for the base graph type.</p>
 <div class="highlight"><pre><span></span><code><span class="c1">// In commonMain</span>
 <span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">httpClient</span><span class="p">:</span><span class="w"> </span><span class="n">HttpClient</span>
@@ -2212,7 +2212,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="August 11, 2026 20:51:14 UTC">August 11, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 24, 2026 06:32:14 UTC">November 24, 2026</span>
   </span>
 
     

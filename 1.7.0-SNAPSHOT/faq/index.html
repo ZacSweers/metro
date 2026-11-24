@@ -2346,10 +2346,10 @@
 <h3 id="compiler-plugins-are-not-a-stable-api-is-metro-safe-to-use"><strong>Compiler plugins are not a stable API, is Metro safe to use?</strong><a class="headerlink" href="#compiler-plugins-are-not-a-stable-api-is-metro-safe-to-use" title="Permanent link">&para;</a></h3>
 <p>Yes!</p>
 <p>While it&rsquo;s true that compiler plugins often require strict version alignment, Metro is explicitly architected to avoid this with a robust built-in compatibility system.</p>
-<p>Metro maintains forward compatibility on a best-effort basis (typically at least <code>N+.2</code> minor versions, often more) rather than locking you to a specific patch version. This allows a single version of Metro to support a broad range of Kotlin releases and IDE plugin versions simultaneously.</p>
+<p>Metro maintains forward compatibility on a best-effort basis (typically <code>N+.2</code> tooling releases, often more) rather than locking you to a specific patch version. This allows a single version of Metro to support a broad range of Kotlin releases and IDE plugin versions simultaneously.</p>
 <div class="admonition tip">
 <p class="admonition-title">Example</p>
-<p>The current release of Metro (<code>0.10.1</code> at the time of writing) supports Kotlin <code>2.2.20</code> all the way through <code>2.3.20-Beta1</code> (and will support <code>2.3.20</code> final).</p>
+<p>Metro <code>0.10.1</code>, for example, supported Kotlin <code>2.2.20</code> all the way through <code>2.3.20-Beta1</code> and targeted <code>2.3.20</code> final.</p>
 <p>That&rsquo;s five Kotlin versions (<code>2.2.20</code>, <code>2.2.21</code>, <code>2.3.0</code>, <code>2.3.10</code>, and <code>2.3.20</code>) plus various intermediate versions bundled in the Kotlin IDE plugin.</p>
 </div>
 <p>You can upgrade your Kotlin version (including across minor updates) or use different IDE versions without needing to wait for a matching Metro release. See the <a href="../compatibility/">compatibility docs</a> for the full support matrix.</p>
@@ -2451,6 +2451,7 @@
 <p>When migrating, an asynchronous <code>@Produces</code> method usually becomes a suspending <code>@Provides</code> function. Intermediate <code>@Produces</code> methods that only carried the production chain can often become ordinary providers or constructor-injected types. Code that relied on Dagger to schedule independent producers concurrently must preserve that concurrency explicitly. See Metro&rsquo;s <a href="../coroutines/">coroutines documentation</a> for the full behavior.</p>
 <h3 id="will-metro-add-support-for-hilt-features-or-hilt-interop"><strong>Will Metro add support for Hilt features or Hilt interop?</strong><a class="headerlink" href="#will-metro-add-support-for-hilt-features-or-hilt-interop" title="Permanent link">&para;</a></h3>
 <p>Metro is largely inspired by Dagger and Anvil, but not Hilt. Hilt works in different ways and has different goals. Hilt is largely focused around supporting android components and relies heavily on subcomponents to achieve this.</p>
+<p>As for <a href="../interop/#hilt">Hilt interop</a>, yes! With <code>includeHilt()</code>, you can merge Hilt’s <code>@InstallIn</code> modules and entry points into your Metro graphs. Metro doesn’t generate Hilt’s component hierarchy.</p>
 <p>Some features overlap but just work differently in Metro:</p>
 <ul>
 <li>Instead of <code>@UninstallModules</code> and <code>@TestInstallIn</code>, Metro graphs can exclude aggregations and contributed bindings can replace other bindings.</li>
@@ -2499,7 +2500,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="July 21, 2026 20:10:24 UTC">July 21, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 24, 2026 06:32:14 UTC">November 24, 2026</span>
   </span>
 
     

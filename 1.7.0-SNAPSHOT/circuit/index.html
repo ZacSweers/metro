@@ -2295,18 +2295,17 @@
 <li><code>SubPresenterFactory</code> and <code>SubUiFactory</code> implementations for <code>@SubCircuitInject</code></li>
 <li><code>CircuitSerializerRegistration</code> implementations for <code>@CircuitSerializable</code> with Circuit 0.36.0 or newer</li>
 </ul>
-<p>Generation runs inside Metro&rsquo;s compiler plugin instead of Circuit&rsquo;s KSP code generator.</p>
+<p>Metro generates these types in the compiler plugin.</p>
 <h2 id="setup">Setup<a class="headerlink" href="#setup" title="Permanent link">&para;</a></h2>
 <p>Enable Circuit codegen in your Gradle build:</p>
 <div class="highlight"><pre><span></span><code><span class="n">metro</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="n">enableCircuitCodegen</span><span class="p">.</span><span class="na">set</span><span class="p">(</span><span class="kc">true</span><span class="p">)</span>
 <span class="p">}</span>
 </code></pre></div>
-<p>This requires the relevant Circuit runtime libraries on your classpath. The <code>circuit-runtime-presenter</code> and <code>circuit-runtime-ui</code> artifacts are optional — you can use presenter-only or UI-only modules. To generate SubCircuit factories, add <code>com.slack.circuit:circuitx-subcircuit:&lt;version&gt;</code>. Enabling this option also adds the <code>circuit-codegen-annotations</code> artifact to your implementation classpath.</p>
+<p>Add the Circuit runtime libraries needed by your module. <code>circuit-runtime-presenter</code> and <code>circuit-runtime-ui</code> are optional, so modules can support only presenters or only UIs. SubCircuit factories require <code>com.slack.circuit:circuitx-subcircuit:&lt;version&gt;</code>. The Metro option adds <code>circuit-codegen-annotations</code> to the implementation classpath.</p>
 <p>Serialization registration requires Circuit 0.36.0 or newer, the kotlinx-serialization compiler plugin, and an explicit dependency on <code>com.slack.circuit:circuit-serialization:&lt;version&gt;</code>. Metro does not add this optional runtime automatically.</p>
-<p>Use <strong>either</strong> Metro&rsquo;s native code generator or Circuit&rsquo;s KSP code generator for a declaration but <strong>NOT</strong> both. Running both for the same <code>@CircuitInject</code>, <code>@SubCircuitInject</code>, or <code>@CircuitSerializable</code> declarations attempts to generate the same types twice.</p>
-<p>This is only compatible with Kotlin 2.3.20+ as it requires support for generating top-level declarations in FIR.</p>
-<p>This will likely eventually move to a separate artifact.</p>
+<p>Choose one generator for each declaration: Metro or Circuit’s KSP generator. Running both on the same <code>@CircuitInject</code>, <code>@SubCircuitInject</code>, or <code>@CircuitSerializable</code> declaration generates duplicate types.</p>
+<p>Circuit generation requires Kotlin 2.3.20 or later for top-level FIR declarations.</p>
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
 <h3 id="class-based-presenters-and-uis">Class-based Presenters and UIs<a class="headerlink" href="#class-based-presenters-and-uis" title="Permanent link">&para;</a></h3>
 <p>Annotate your <code>Presenter</code> or <code>Ui</code> implementation with <code>@CircuitInject</code>:</p>
@@ -2522,7 +2521,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="August 5, 2026 22:44:27 UTC">August 5, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 24, 2026 06:32:14 UTC">November 24, 2026</span>
   </span>
 
     

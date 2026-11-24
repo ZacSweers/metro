@@ -2088,7 +2088,7 @@
 <li>On-demand graph validation with compiler-aligned diagnostics.</li>
 <li>Unused-declaration suppression for declarations only Metro-generated code calls.</li>
 </ul>
-<p>The compiler and plugin reuse graph population, sorting, cycle detection, diagnostic models, and graph-level suspend binding validation from <code>metro-common</code>. IR and Analysis API adapters only extract frontend-specific metadata, select source anchors, and render shared witness paths. Differential tests compare IDEA results to checked-in compiler reports. The plugin never reads those reports in production because they do not exist when compilation fails, which is precisely when validation matters.</p>
+<p>The compiler and IDE plugin share graph population, sorting, cycle detection, diagnostic models, and suspend validation through <code>metro-common</code>. IR and Analysis API adapters extract frontend metadata, select source anchors, and render shared witness paths. Differential tests compare IDE results with checked-in compiler reports. Production validation does not read those reports, which may be absent after a failed compilation.</p>
 <p>Sharing must not slow down the compiler. Compiler contribution merging and FIR bound-type checks<br />
 keep their existing in-place paths where a generic IDE-friendly representation would allocate or<br />
 scan more than the original compiler implementation.</p>
@@ -2161,7 +2161,8 @@ Unrelated shards and dependency state are reused. Changes to otherwise untracked
 constants, including directory moves, conservatively rebuild all source shards. Project roots and<br />
 compiler settings are checked once per queued batch. Directory changes add newly relevant files as a<br />
 batch.</p>
-<p>The current generation serves validation, Find Usages, and debug export. Find Usages reads cached current data and never requests a build. The presentation generation serves editor decorations and the graph browser. Automatic refresh advances both. Manual refresh mode retains the presentation generation while explicit operations can build current data. <strong>Refresh</strong> or reenabling automatic refresh brings editor presentation up to date, including after an explicit query refreshed current data in manual mode. A generation records the inputs it used, so a late worker cannot publish over newer work.</p>
+<p>The current generation serves validation, Find Usages, and debug export. Find Usages reads cached data without requesting a build. The presentation generation serves editor decorations and the graph browser.</p>
+<p>Automatic refresh advances both generations. In manual mode, explicit operations can rebuild current data while presentation stays unchanged. <strong>Refresh</strong> or reenabling automatic refresh updates presentation to the current data. Each generation records its inputs, so a late worker cannot overwrite newer work.</p>
 <p>Analysis API work runs in cancellable background smart reads. Graph query results and lookup tables<br />
 are built from captured data outside read actions where possible. Explicit callers wait for a missing<br />
 generation outside their read action, then retry against the published result. Presentation requests<br />
@@ -2431,7 +2432,7 @@ against a local IDE install (see <code>idea-plugin/README.md</code>).</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="October 15, 2026 03:46:42 UTC">October 15, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 24, 2026 06:32:14 UTC">November 24, 2026</span>
   </span>
 
     

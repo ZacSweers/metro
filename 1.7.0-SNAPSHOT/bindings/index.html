@@ -2145,8 +2145,8 @@
 
 <h1 id="bindings">Bindings<a class="headerlink" href="#bindings" title="Permanent link">&para;</a></h1>
 <h2 id="qualifiers">Qualifiers<a class="headerlink" href="#qualifiers" title="Permanent link">&para;</a></h2>
-<p>Like Dagger and KI, Metro supports <em>qualifier annotations</em> to allow disambiguation of types. These are applied at injection and provision sites. A qualifier annotation is any annotation annotated with <code>@Qualifier</code>. For convenience, there is an included <code>@Named</code> qualifier available in Metro’s runtime that can be used too.</p>
-<p>A “type key” in Metro is composed of a concrete type and (if any) qualifier annotation attached to it.</p>
+<p>A qualifier distinguishes bindings of the same type. Define a qualifier with an annotation marked <code>@Qualifier</code>, or use Metro’s <code>@Named</code>. Apply it at both the provision and injection sites.</p>
+<p>A binding key consists of a concrete type and its qualifier, if any.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@DependencyGraph</span>
 <span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">int</span><span class="p">:</span><span class="w"> </span><span class="kt">Int</span>
@@ -2161,16 +2161,15 @@
 <span class="p">}</span>
 </code></pre></div>
 <h2 id="binds">@Binds<a class="headerlink" href="#binds" title="Permanent link">&para;</a></h2>
-<p>In many cases, a developer may have an implementation type on the graph that they want to expose as just its supertype.</p>
-<p>Like Dagger, Metro supports this with <code>@Binds</code>.</p>
+<p>Use <code>@Binds</code> to expose an implementation as a supertype.</p>
 <div class="admonition tip">
 <p class="admonition-title">For multi-module projects</p>
-<p>If you&rsquo;re working across multiple modules and want bindings to be automatically discovered, see <a href="../aggregation/#contributesbinding"><code>@ContributesBinding</code></a> for a more powerful approach that supports aggregation.</p>
+<p>Use <a href="../aggregation/#contributesbinding"><code>@ContributesBinding</code></a> to discover bindings across modules.</p>
 </div>
-<p>For these cases, an abstract provider can be specified with the following conditions.</p>
+<p>An abstract <code>@Binds</code> property must meet these conditions:</p>
 <ul>
-<li>It must be abstract</li>
-<li>It must define one extension receiver that is a subtype of its provided type</li>
+<li>It must be abstract.</li>
+<li>Its extension receiver must be a subtype of the provided type.</li>
 </ul>
 <div class="highlight"><pre><span></span><code><span class="nd">@DependencyGraph</span>
 <span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">{</span>
@@ -2186,7 +2185,7 @@
 <span class="nd">@Inject</span>
 <span class="kd">class</span><span class="w"> </span><span class="nc">MessageImpl</span><span class="p">(</span><span class="kd">val</span><span class="w"> </span><span class="nv">text</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">)</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">Message</span>
 </code></pre></div>
-<p>If you want to limit access to these from your API, you can make these declarations <code>private</code> and just return <code>this</code>. Note it’s still important to annotate them with <code>@Binds</code> so that the Metro compiler understands its intent! Otherwise, it’s an error to <em>implement</em> these declarations.</p>
+<p>Want to keep the alias out of your public API? Make the property <code>private</code> and give it a getter that returns <code>this</code>. You still need <code>@Binds</code> so Metro knows it’s an alias.</p>
 <p><code>@Binds</code> declarations can also declare multibinding annotations.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@DependencyGraph</span>
 <span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">{</span>
@@ -2195,11 +2194,11 @@
 <span class="w">  </span><span class="nd">@Binds</span><span class="w"> </span><span class="nd">@IntoSet</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">MessageImpl</span><span class="p">.</span><span class="na">bind</span><span class="p">:</span><span class="w"> </span><span class="n">Message</span>
 <span class="p">}</span>
 </code></pre></div>
-<p><code>@Binds</code> declarations may also be declared in <a href="../dependency-graphs/#binding-containers">binding Containers</a>.</p>
+<p><code>@Binds</code> declarations can also appear in <a href="../dependency-graphs/#binding-containers">binding containers</a>.</p>
 <p><code>@Binds</code> functions can declare type parameters when <a href="../derived-bindings/#generic-binds">derived bindings</a> are enabled.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>In theory, you can implement a provider with a getter that replicates this (similar to how kotlin-inject uses <code>@get:Provider</code> + <code>this</code>), but this will be an error in FIR because Metro can generate more efficient code at compile-time if you use <code>@Binds</code>. This is because Metro can avoid calling the function entirely and just use this information at compile-time to optimize the generated code.</p>
+<p>kotlin-inject can express an alias with a provider getter that returns <code>this</code>. Metro reports the FIR warning <code>PROVIDES_COULD_BE_BINDS</code> for a <code>@Provides</code> extension whose body returns <code>this</code>. Use <code>@Binds</code> so Metro can resolve the alias at compile time and eliminate the runtime call. A <code>@Binds</code> extension with a body must return <code>this</code>; any other body is an error.</p>
 </div>
 <h3 id="parameter-less-binds">Parameter-less <code>@Binds</code><a class="headerlink" href="#parameter-less-binds" title="Permanent link">&para;</a></h3>
 <p><code>@Binds</code> can also declare a constructor-injected class as an explicit binding for itself.</p>
@@ -2233,7 +2232,7 @@
 <p>The target must be a non-generic constructor-injected class and the <code>@Binds</code> declaration cannot have parameters, a receiver, qualifiers, scopes, or multibinding annotations. If <code>generateContributionProviders</code> hides the implementation binding, bind the contributed type instead or annotate the implementation with <code>@ExposeImplBinding</code>.</p>
 <p>This matches Dagger 2.60+&rsquo;s behavior: <a href="https://dagger.dev/dev-guide/#parameterless-binds">https://dagger.dev/dev-guide/#parameterless-binds</a></p>
 <h2 id="multibindings">Multibindings<a class="headerlink" href="#multibindings" title="Permanent link">&para;</a></h2>
-<p>Like Dagger and KI, Metro supports <code>Set</code> and <code>Map</code> multibindings. Multibindings are collections of bindings of a common type. Multibindings are implicitly declared by the existence of providers annotated with <code>@IntoSet</code>, <code>@IntoMap</code>, or <code>@ElementsIntoSet</code>.</p>
+<p>Set and map multibindings collect bindings of a common type. Metro creates them implicitly from <code>@IntoSet</code>, <code>@IntoMap</code>, and <code>@ElementsIntoSet</code> contributions.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@DependencyGraph</span>
 <span class="kd">interface</span><span class="w"> </span><span class="nc">SetMultibinding</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="c1">// contains a set of [1, 2, 3, 4]</span>
@@ -2256,7 +2255,7 @@
 <span class="kd">fun</span><span class="w"> </span><span class="nf">userIds</span><span class="p">(</span><span class="n">ids</span><span class="p">:</span><span class="w"> </span><span class="n">UserIds</span><span class="p">):</span><span class="w"> </span><span class="n">Set</span><span class="o">&lt;</span><span class="kt">Long</span><span class="o">&gt;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ids</span><span class="p">.</span><span class="na">toSet</span><span class="p">()</span>
 </code></pre></div>
 <p>You can also return <code>ids</code> directly with a declared return type of <code>Collection&lt;Long&gt;</code> to avoid copying it.</p>
-<p>Map multibindings use <code>@IntoMap</code> and require a <em>map key</em> annotation. Map keys are any annotation annotated with <code>@MapKey</code>. Metro’s runtime includes a number of common ones like <code>@ClassKey</code> and <code>@StringKey</code>.</p>
+<p>Map contributions use <code>@IntoMap</code> and a key annotation marked <code>@MapKey</code>. Metro includes common keys such as <code>@ClassKey</code> and <code>@StringKey</code>.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@DependencyGraph</span>
 <span class="kd">interface</span><span class="w"> </span><span class="nc">MapMultibinding</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="c1">// contains a map of {1:1, 2:2}</span>
@@ -2275,9 +2274,9 @@
 </code></pre></div>
 <div class="admonition idea">
 <p class="admonition-title">Idea</p>
-<p>In Metro, class-based map keys like <code>@ClassKey</code> do not require you to explicitly specify a value if used on a class or <code>@Binds</code> declaration as they can be inferred by the compiler.</p>
+<p>Metro infers class-based map key values, such as <code>@ClassKey</code>, on classes and <code>@Binds</code> declarations.</p>
 </div>
-<p>Alternatively, they can be declared with an <code>@Multibinds</code>-annotated accessor property/function in a component. This member will be implemented by the Metro compiler and is useful for scenarios where the multibinding may be empty.</p>
+<p>Declare a multibinding explicitly with an <code>@Multibinds</code> accessor property or function. Metro implements the accessor. Use this when the collection may be empty.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@DependencyGraph</span>
 <span class="kd">interface</span><span class="w"> </span><span class="nc">MapMultibinding</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nd">@Multibinds</span><span class="p">(</span><span class="n">allowEmpty</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span><span class="p">)</span>
@@ -2292,14 +2291,14 @@
 <span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">ints</span><span class="p">:</span><span class="w"> </span><span class="n">Map</span><span class="o">&lt;</span><span class="kt">Int</span><span class="p">,</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="kt">Int</span><span class="o">&gt;</span>
 <span class="p">}</span>
 </code></pre></div>
-<p>Unlike Dagger, empty multibindings in Metro are a compile error by default. Empty multibindings are allowed but must be opted into via <code>@Multibinds(allowEmpty = true)</code>.</p>
+<p>Unlike Dagger, Metro reports an empty multibinding as a compile error by default. Allow one explicitly with <code>@Multibinds(allowEmpty = true)</code>.</p>
 <details class="note">
 <summary>Implementation Notes</summary>
-<p>Metro takes inspiration from Guice in handling these in the binding graph. Since they cannot be added directly to the graph as-is (otherwise they would cause duplicate binding errors), a synthetic <code>@MultibindingElement</code> <em>qualifier</em> annotation is generated for them at compile-time to disambiguate them. These are user-invisible but allows them to participate directly in graph validation like any other dependency. Metro then just adds these bindings as dependencies to <code>Binding.Multibinding</code> types.</p>
+<p>Following Guice’s approach, Metro gives each contribution a synthetic, user-invisible <code>@MultibindingElement</code> qualifier to prevent duplicate binding keys. Contributions then participate in graph validation as dependencies of <code>Binding.Multibinding</code>.</p>
 </details>
 <h2 id="optional-bindings">Optional Bindings<a class="headerlink" href="#optional-bindings" title="Permanent link">&para;</a></h2>
-<p>Metro supports optional bindings by leaning on Kotlin’s native support for default parameter values. These are checked at injection sites and are allowed to be missing from the dependency graph when performing a lookup at validation/code-gen time.</p>
-<p>The below example would, since there is no <code>Int</code> binding provided, provide a message of <code>Count: -1</code>.</p>
+<p>A parameter with a default value can be absent from the graph. Metro uses the default expression when it cannot resolve the parameter’s binding.</p>
+<p>This example returns <code>Count: -1</code> when the graph has no <code>Int</code> binding:</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@DependencyGraph</span>
 <span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">message</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span>
@@ -2307,14 +2306,14 @@
 <span class="w">  </span><span class="nd">@Provides</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideMessage</span><span class="p">(</span><span class="n">count</span><span class="p">:</span><span class="w"> </span><span class="kt">Int</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">-</span><span class="m">1</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"Count: </span><span class="si">$</span><span class="n">count</span><span class="s">"</span>
 <span class="p">}</span>
 </code></pre></div>
-<p>To expose accessors for optional bindings, use <code>@OptionalBinding</code> on the accessor. Note that the accessor <em>must</em> declare a default body that Metro will use if the binding is absent.</p>
+<p>Annotate an optional accessor with <code>@OptionalBinding</code> and provide a default body. Metro uses that body if the binding is absent.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@DependencyGraph</span>
 <span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nd">@OptionalBinding</span>
 <span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">count</span><span class="p">:</span><span class="w"> </span><span class="kt">Int?</span><span class="w"> </span><span class="k">get</span><span class="p">()</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">null</span>
 <span class="p">}</span>
 </code></pre></div>
-<p>There are a couple of optional configuration for Metro&rsquo;s optional binding support that can be configured via the <code>optionalBindingBehavior</code> Gradle DSL:</p>
+<p>Set <code>optionalBindingBehavior</code> in the Gradle DSL to configure optional bindings:</p>
 <ul>
 <li><code>DISABLED</code> - Disallows optional bindings entirely.</li>
 <li><code>REQUIRE_OPTIONAL_BINDING</code> - Requires optional binding <em>parameters</em> to also be annotated with <code>@OptionalBinding</code>. This may be preferable for consistency with accessors and/or explicitness.</li>
@@ -2323,9 +2322,9 @@
 <p>Dagger supports a similar feature via <code>@BindsOptionalOf</code>, but requires a separate declaration of this optional binding to the graph and works via <code>Optional&lt;T&gt;</code> types.</p>
 <p>KI supports the same feature.</p>
 <h2 id="nullability">Nullability<a class="headerlink" href="#nullability" title="Permanent link">&para;</a></h2>
-<p>As nullability is a first-class concept in Kotlin, Metro supports it too. Bindings in Metro graphs may be nullable, but it&rsquo;s important to understand how Metro treats them!</p>
-<p>In short, Metro will treat nullable types as different type keys than their non-nullable analogues. That is to say, <code>String</code> and <code>String?</code> are treated as distinct types in Metro.</p>
-<p>Furthermore, a <code>String</code> binding cannot satisfy a <code>String?</code> automatically. You <em>may</em> however <code>@Binds</code> a <code>String</code> to a <code>String?</code> and Metro will treat it as a valid binding.</p>
+<p>Metro treats nullable and non-nullable bindings as distinct keys.</p>
+<p>For example, <code>String</code> and <code>String?</code> are separate binding keys.</p>
+<p>A <code>String</code> binding does not automatically satisfy <code>String?</code>. Use <code>@Binds</code> to declare the conversion:</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@DependencyGraph</span><span class="p">(</span><span class="kt">Unit</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
 <span class="kd">interface</span><span class="w"> </span><span class="nc">ExampleGraph</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">int</span><span class="p">:</span><span class="w"> </span><span class="kt">Int</span>
@@ -2338,7 +2337,7 @@
 <span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">Int</span><span class="p">.</span><span class="na">bindAsNullable</span><span class="p">:</span><span class="w"> </span><span class="kt">Int?</span>
 <span class="p">}</span>
 </code></pre></div>
-<p>This pattern can be combined with optional bindings to allow for easy conditional injection, for example with optional bindings across different source sets:<br />
+<p>Combine nullable and optional bindings for conditional injection, such as a binding supplied by an optional source set:<br />
 <div class="highlight"><pre><span></span><code><span class="c1">// in src/main</span>
 <span class="nd">@Inject</span>
 <span class="kd">class</span><span class="w"> </span><span class="nc">ExampleUseCase</span><span class="p">(</span>
@@ -2354,7 +2353,7 @@
 <span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">optionalRepository</span><span class="p">:</span><span class="w"> </span><span class="n">OptionalRepository?</span><span class="w"> </span><span class="k">get</span><span class="p">()</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">null</span>
 <span class="p">}</span>
 </code></pre></div></p>
-<p>then in the optionally included module:<br />
+<p>In the optional module:<br />
 <div class="highlight"><pre><span></span><code><span class="c1">// Dependency of the src/debug source set</span>
 <span class="nd">@Inject</span>
 <span class="nd">@ContributesBinding</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span><span class="w"> </span><span class="c1">// Standard binding</span>
@@ -2365,16 +2364,13 @@
 </code></pre></div></p>
 <details class="note">
 <summary>Implementation Notes</summary>
-<p>While kotlin-inject can support this by simply invoking functions with omitted arguments, Metro has to support this in generated factories.</p>
-<p>To accomplish this, Metro will slightly modify how generated provider/constructor injection factory classes look compared to Dagger. Since we are working in IR, we can copy the default value expressions from the source function/constructor to the factory’s newInstance and create() functions. This in turn allows calling generated graphs to simply omit absent binding arguments from their creation calls. This is a tried and tested pattern used by other first party plugins, namely kotlinx-serialization.</p>
-<p>There are a few cases that need to be handled here:</p>
+<p>kotlin-inject can call a function with an argument omitted. Metro supports missing arguments in its generated provider and constructor factories.</p>
+<p>In IR, Metro copies default expressions from the source provider or constructor into the factory’s <code>newInstance</code> and <code>create()</code> functions. Generated graphs can then omit arguments for missing bindings. kotlinx-serialization uses a similar compiler-plugin pattern.</p>
+<p>Metro handles these cases:</p>
 <ul>
-<li>Expressions may reference previous parameters or instance members. To support this, we’ll transform them in IR to point at new parameters in those functions.</li>
-<li>Expressions may reference private instance members. To support this, Metro factories are generated as nested classes within the source class or graph.<ul>
-<li>This does depart from how dagger factories work, but if we ever wanted to have some sort of interop for that we could always generate bridging factory classes in the places dagger expects later.</li>
-</ul>
-</li>
-<li>Parameters in <code>create()</code> need to be wrapped in <code>Provider</code> calls. This means that for cases where they back-reference other parameters, those will need to be transformed into <code>invoke()</code> calls on those providers too.</li>
+<li>References to earlier parameters or instance members are remapped to the generated function’s parameters.</li>
+<li>Factories are nested in the source class or graph so expressions can access private members. Dagger expects its factories outside the source class. If we need that layout, we could generate bridge classes there.</li>
+<li>In <code>create()</code>, parameters are wrapped in <code>Provider</code> values. References to earlier parameters must be transformed into <code>invoke()</code> calls on those providers.</li>
 </ul>
 </details>
 
@@ -2399,7 +2395,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 23, 2026 04:22:32 UTC">November 23, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 24, 2026 06:32:14 UTC">November 24, 2026</span>
   </span>
 
     

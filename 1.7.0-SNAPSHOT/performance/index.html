@@ -2524,7 +2524,7 @@
 
 
 <h1 id="performance">Performance<a class="headerlink" href="#performance" title="Permanent link">&para;</a></h1>
-<p>Metro strives to be a performant solution with minimal overhead at build-time and generating fast, efficient code at runtime.</p>
+<p>Metro aims to minimize build overhead and generate fast runtime code. This page covers its benchmarks, compiler options, and tracing tools.</p>
 <h2 id="benchmarks">Benchmarks<a class="headerlink" href="#benchmarks" title="Permanent link">&para;</a></h2>
 <p>The <a href="https://github.com/ZacSweers/metro/tree/main/benchmark">benchmark project</a> generates a deterministic multi-module workload for every framework. Its README documents the workload, generator, and runner commands.</p>
 <p>Every ratio below compares frameworks within one run. The dated tabs preserve older measurements, but absolute values across tabs are not controlled comparisons because the tools, host environments, and Android versions changed.</p>
@@ -2538,14 +2538,14 @@
 </ul>
 <div class="admonition note">
 <p class="admonition-title">Koin caveats</p>
-<p>The Koin benchmarks deserve a couple notes because the work is not exactly like-for-like:</p>
+<p>The Koin workload differs in two ways:</p>
 <ul>
 <li>Koin&rsquo;s compiler plugin does less work. It aggregates definitions, generates module and factory wiring, and checks for missing dependencies and cycles, but leaves final graph resolution to runtime. Metro, Dagger, and kotlin-inject resolve and validate graphs from their roots and generate static implementations at compile time.</li>
 <li>Koin&rsquo;s runtime does more work as a result. The graph work deferred during compilation happens during startup.</li>
 </ul>
 </div>
 <h3 id="build-performance">Build Performance<a class="headerlink" href="#build-performance" title="Permanent link">&para;</a></h3>
-<p>Metro&rsquo;s compiler plugin is designed to be <em>fast</em>. Running as a compiler plugin allows it to:</p>
+<p>Metro runs in the Kotlin compiler, which lets it:</p>
 <ul>
 <li>Avoid generating new sources that need to be compiled.</li>
 <li>Avoid running KSP or KAPT.</li>
@@ -3039,10 +3039,10 @@
 </code></pre></div>
 <p>This will output one or more Perfetto trace files after the compilation that you can then load into <a href="https://ui.perfetto.dev">https://ui.perfetto.dev</a>.</p>
 <p>Filenames follow the pattern <code>&lt;id&gt;-&lt;phase&gt;-&lt;moduleName&gt;.perfetto-trace</code>, where <code>&lt;id&gt;</code> is a <code>yyMMdd-HHmmss</code> timestamp shared across every file produced by the same compilation, <code>&lt;phase&gt;</code> is <code>fir</code> or <code>ir</code>, and <code>&lt;moduleName&gt;</code> identifies the FIR session or IR module fragment. KMP source-set hierarchies and multi-fragment IR each produce their own files. Load whichever file corresponds to the phase you want to inspect.</p>
-<p>Note that these traces probably do require a bit of familiarity with the Metro compiler internals.</p>
+<p>Interpreting these traces requires familiarity with Metro compiler internals.</p>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
-<p>Note that file option inputs like <code>traceDestination</code> are <em>not</em> tracked as inputs to the kotlin compilation, so you should run your target kotlin compilation task with <code>--rerun</code> (not <code>--rerun-tasks</code>!) to ensure it it&rsquo;s not cached.</p>
+<p>The Kotlin compilation task does not track <code>traceDestination</code> as an input. Run the target compilation task with <code>--rerun</code> after changing it. Use <code>--rerun</code> instead of <code>--rerun-tasks</code> to rerun only that task.</p>
 </div>
 <h3 id="runtime-tracing">Runtime tracing<a class="headerlink" href="#runtime-tracing" title="Permanent link">&para;</a></h3>
 <p>Metro can also emit traces from generated graph code. For example, this is useful when you want to see which bindings are created or invoked during app startup or another measured runtime path.</p>
@@ -3157,7 +3157,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="October 10, 2026 04:24:53 UTC">October 10, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 24, 2026 06:32:14 UTC">November 24, 2026</span>
   </span>
 
     

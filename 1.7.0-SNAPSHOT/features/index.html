@@ -2243,28 +2243,28 @@
 
 <h1 id="features">Features<a class="headerlink" href="#features" title="Permanent link">&para;</a></h1>
 <h2 id="familiar-semantics">Familiar semantics<a class="headerlink" href="#familiar-semantics" title="Permanent link">&para;</a></h2>
-<p>Metro builds on top of established patterns from existing DI frameworks with familiar semantics like constructor injection, providers, multibindings, scopes, assisted injection, and intrinsics like Provider/Lazy.</p>
+<p>Metro uses familiar DI semantics from Dagger and kotlin-inject, including constructor injection, providers, multibindings, scopes, assisted injection, and <code>Lazy</code>.</p>
 <h2 id="compile-time-validation">Compile-time validation<a class="headerlink" href="#compile-time-validation" title="Permanent link">&para;</a></h2>
-<p>Like Dagger and KI, Metro validates your dependency graph at compile-time.</p>
+<p>Metro validates dependency graphs at compile time.</p>
 <h2 id="compile-time-firir-code-gen">Compile-time FIR+IR code gen<a class="headerlink" href="#compile-time-firir-code-gen" title="Permanent link">&para;</a></h2>
-<p>Metro is implemented entirely as a Kotlin compiler plugin, primarily using FIR for error reporting and both FIR and IR for code gen. This affords significant build performance and wins compared to Dagger and KAPT/KSP in two ways:</p>
+<p>Metro runs entirely as a Kotlin compiler plugin. It reports most declaration errors in FIR and generates code in FIR and IR. This avoids work required by source generators such as KAPT and KSP:</p>
 <ul>
-<li>It avoids extra Kotlin compiler (frontend) invocations to analyze sources and generate new sources.</li>
-<li>It generates new code to FIR/IR directly, allowing it to be lowered directly into target platforms</li>
+<li>It avoids extra Kotlin frontend invocations for source analysis and generation.</li>
+<li>It generates declarations directly in FIR and IR, which Kotlin lowers to each target platform.</li>
 </ul>
-<p>FIR/IR generation allows Metro to generate code directly into existing classes, which in turn allows it to do certain things that source-generation cannot. This includes:</p>
+<p>Generating directly in FIR and IR also lets Metro add code to existing classes. Source generators cannot do this directly. Metro uses it for:</p>
 <ul>
 <li>Private <code>@Provides</code> declarations.</li>
 <li>Injection of private member properties and functions.</li>
-<li>Copying + reuse of default value expressions for optional dependencies, even if they reference private APIs within the source class.</li>
+<li>Default parameter expressions for optional dependencies, including expressions that reference private APIs.</li>
 </ul>
 <h2 id="dagger-esque-code-gen-and-runtime">Dagger-esque code gen and runtime<a class="headerlink" href="#dagger-esque-code-gen-and-runtime" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Metro’s generated code is similar to Dagger: lean, limited duplication, and practical.</li>
-<li>Metro’s runtime is similar to Dagger. This includes patterns like <code>DoubleCheck</code>, heavy use of factories, and an assumption that this is going to run in a large/modularized codebase.</li>
+<li>Generated code uses factories and limits duplication, following Dagger’s approach.</li>
+<li>The runtime uses patterns such as <code>DoubleCheck</code> and is designed for large, modular codebases.</li>
 </ul>
 <h2 id="kotlin-inject-esque-api">Kotlin-Inject-esque API<a class="headerlink" href="#kotlin-inject-esque-api" title="Permanent link">&para;</a></h2>
-<p>Metro’s user-facing API is similar to kotlin-inject: focused on simplicity and leaning into kotlin-language features.</p>
+<p>Metro’s public API draws from kotlin-inject and uses Kotlin language features:</p>
 <ul>
 <li>Top-level function injection</li>
 <li>Providers live in graph interfaces or supertypes</li>
@@ -2274,13 +2274,13 @@
 <h2 id="coroutines-support">Coroutines Support<a class="headerlink" href="#coroutines-support" title="Permanent link">&para;</a></h2>
 <p>Metro supports suspend bindings and graph accessors, deferred initialization, scoping, and lazy initialization. Coroutines support is experimental and disabled by default. See <a href="../coroutines/">Coroutines Support</a> for details.</p>
 <h2 id="anvil-esque-aggregation">Anvil-esque aggregation<a class="headerlink" href="#anvil-esque-aggregation" title="Permanent link">&para;</a></h2>
-<p>Like Anvil, Metro supports contributing types via aggregation with annotations like <code>@ContributesTo</code>, <code>@ContributesBinding</code>, etc.</p>
+<p>Metro supports Anvil-style aggregation with <code>@ContributesTo</code> and <code>@ContributesBinding</code>.</p>
 <h2 id="multiplatform">Multiplatform<a class="headerlink" href="#multiplatform" title="Permanent link">&para;</a></h2>
-<p>Metro is multiplatform and supports most major Kotlin multiplatform targets.</p>
+<p>Metro supports most major Kotlin Multiplatform targets. See <a href="../multiplatform/">Multiplatform</a>.</p>
 <h2 id="ide-integration">IDE Integration<a class="headerlink" href="#ide-integration" title="Permanent link">&para;</a></h2>
-<p>Most errors are reported in FIR, which should (eventually) be visible in the K2 IDE plugin as well.</p>
+<p>The K2 IDE plugin can display FIR diagnostics when third-party compiler plugin support is enabled. See <a href="../installation/#ide-support">IDE Support</a>.</p>
 <h2 id="helpful-diagnostics">Helpful diagnostics<a class="headerlink" href="#helpful-diagnostics" title="Permanent link">&para;</a></h2>
-<p>Metro tries its best to give detailed-yet-readable error messages and diagnostics, with stable diagnostic IDs, <code>help:</code> suggestions, and links to the <a href="../diagnostics/">Diagnostics Reference</a>. An optional rich console mode adds color, Unicode structure, and highlighted source snippets in terminals. See <a href="../validation-and-error-reporting/">Validation &amp; Error Reporting</a>.</p>
+<p>Metro diagnostics include stable IDs, <code>help:</code> suggestions, and links to the <a href="../diagnostics/">Diagnostics Reference</a>. Rich console mode adds color, Unicode structure, and highlighted source snippets. See <a href="../validation-and-error-reporting/">Validation &amp; Error Reporting</a>.</p>
 <div class="highlight"><pre><span></span><code>e: ExampleGraph.kt:8:3 
 [Metro/MissingBinding] No binding found for Int
 
@@ -2296,14 +2296,14 @@
         visible to ExampleGraph
   docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
 </code></pre></div>
-<p>For more thorough debugging, Metro also has controls to enable debug logging controls and write graph reports to an output directory (configurable via the Gradle extension).</p>
+<p>For debugging, enable compiler logging or write graph reports to a directory configured in the Gradle extension.</p>
 <h2 id="advanced-interop">Advanced interop<a class="headerlink" href="#advanced-interop" title="Permanent link">&para;</a></h2>
-<p>Metro has advanced interop with existing DI tools.</p>
+<p>Metro can reuse declarations and generated code from existing DI frameworks:</p>
 <ul>
-<li>Metro supports component-level interop with Dagger and kotlin-inject. This means that Metro graphs can depend on Dagger and kotlin-inject components via <code>@Includes</code> dependencies.</li>
-<li>Metro supports defining user-defined alternatives for common annotations in addition to its first-party options. This allows easier introduction to codebases using annotations from existing DI frameworks.</li>
-<li>If Dagger interop is enabled, Metro can generate code that both interops with Dagger/Javax/Jakarta&rsquo;s types directly as well as reuse Dagger/Anvil&rsquo;s generated factories.</li>
-<li>If Anvil interop is enabled, Metro&rsquo;s compiler can interpret Anvil&rsquo;s <code>@ContributesMultibinding</code> and <code>boundType</code> APIs.</li>
+<li>Graphs can depend on Dagger and kotlin-inject components through <code>@Includes</code>.</li>
+<li>Custom annotation mappings let you keep annotations from another DI framework.</li>
+<li>Dagger interop supports Dagger, Javax, and Jakarta runtime types and can reuse Dagger or Anvil factories.</li>
+<li>Anvil interop recognizes <code>@ContributesMultibinding</code> and <code>boundType</code>.</li>
 </ul>
 
 
@@ -2327,7 +2327,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="August 18, 2026 13:31:08 UTC">August 18, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 24, 2026 06:32:14 UTC">November 24, 2026</span>
   </span>
 
     

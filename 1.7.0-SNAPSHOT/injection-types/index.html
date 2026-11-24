@@ -2300,9 +2300,9 @@
 
 
 <h1 id="injection-types">Injection Types<a class="headerlink" href="#injection-types" title="Permanent link">&para;</a></h1>
-<p>Metro supports multiple common injection types.</p>
+<p>Metro supports constructor, assisted, member, and top-level function injection.</p>
 <h2 id="constructor-injection">Constructor Injection<a class="headerlink" href="#constructor-injection" title="Permanent link">&para;</a></h2>
-<p>Most types should use constructor injection if possible. For this case, you can annotate either a class itself (if it has exactly one, primary constructor) or exactly one specific constructor.</p>
+<p>Prefer constructor injection. Put <code>@Inject</code> on the class to use its primary constructor. To select a constructor explicitly, put <code>@Inject</code> on that constructor alone.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@Inject</span>
 <span class="kd">class</span><span class="w"> </span><span class="nc">ClassInjected</span>
 
@@ -2310,13 +2310,13 @@
 <span class="w">  </span><span class="nd">@Inject</span><span class="w"> </span><span class="k">constructor</span><span class="p">(</span><span class="n">value</span><span class="p">:</span><span class="w"> </span><span class="kt">Int</span><span class="p">)</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="k">this</span><span class="p">(</span><span class="n">value</span><span class="p">.</span><span class="na">toString</span><span class="p">())</span>
 <span class="p">}</span>
 </code></pre></div>
-<p>Constructor-injected classes can be instantiated+managed entirely by Metro and encourages immutability.</p>
+<p>Metro constructs and manages constructor-injected classes. Constructor injection also supports immutable properties.</p>
 <div class="admonition tip">
 <p class="admonition-title">Binding implementations to interfaces</p>
 <p>To bind your injected class to an interface it implements, see <a href="../bindings/#binds"><code>@Binds</code></a> for explicit bindings or <a href="../aggregation/#contributesbinding"><code>@ContributesBinding</code></a> for automatic multi-module aggregation.</p>
 </div>
 <h2 id="assisted-injection">Assisted Injection<a class="headerlink" href="#assisted-injection" title="Permanent link">&para;</a></h2>
-<p>For types that require dynamic dependencies at instantiation, assisted injection can be used to supply these inputs. In this case - an injected constructor (or class with one constructor) must be annotated with <code>@AssistedInject</code>, assisted parameters annotated with <code>@Assisted</code>, and a factory interface or abstract class with one single abstract function that accepts these assisted parameters and returns the target class.</p>
+<p>Use assisted injection when callers must supply some constructor arguments. Mark the class or constructor with <code>@AssistedInject</code> and each caller-supplied parameter with <code>@Assisted</code>. Declare an <code>@AssistedFactory</code> interface or abstract class with one abstract function that accepts those parameters and returns the injected type.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@AssistedInject</span>
 <span class="kd">class</span><span class="w"> </span><span class="nc">HttpClient</span><span class="p">(</span>
 <span class="w">  </span><span class="nd">@Assisted</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">timeout</span><span class="p">:</span><span class="w"> </span><span class="n">Duration</span><span class="p">,</span>
@@ -2334,7 +2334,7 @@
 <span class="w">  </span><span class="kd">private</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">httpClient</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">httpClientFactory</span><span class="p">.</span><span class="na">create</span><span class="p">(</span><span class="m">30.</span><span class="n">seconds</span><span class="p">)</span>
 <span class="p">}</span>
 </code></pre></div>
-<p>Metro matches assisted parameters between the constructor and factory by their parameter names, so you can add multiple assisted parameters of the same type and Metro will match them.</p>
+<p>Metro matches assisted constructor and factory parameters by name, including parameters with the same type.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@AssistedInject</span>
 <span class="kd">class</span><span class="w"> </span><span class="nc">HttpClient</span><span class="p">(</span>
 <span class="w">  </span><span class="nd">@Assisted</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">connectTimeout</span><span class="p">:</span><span class="w"> </span><span class="n">Duration</span><span class="p">,</span>
@@ -2352,10 +2352,10 @@
 </code></pre></div>
 <div class="admonition note">
 <p class="admonition-title">Difference from Dagger</p>
-<p>Unlike Dagger, Metro uses parameter names as implicit identifiers rather than requiring explicit <code>@Assisted("identifier")</code> values. This is because parameter names are a first-class citizen in Kotlin&rsquo;s API. Dagger&rsquo;s <code>@Assisted</code> annotations&rsquo; identifiers <em>are</em> supported for interop purposes.</p>
+<p>Metro uses parameter names as assisted identifiers. It also supports explicit Dagger <code>@Assisted("identifier")</code> values through interop.</p>
 </div>
 <h3 id="automatic-assisted-factory-generation">Automatic Assisted Factory Generation<a class="headerlink" href="#automatic-assisted-factory-generation" title="Permanent link">&para;</a></h3>
-<p>Metro supports automatic generation of assisted factories via opt-in compiler option. If enabled, Metro will automatically generate a default factory as a nested class within the injected type.</p>
+<p>Assisted factory generation is opt-in and disabled by default. Enable it to generate a default nested <code>Factory</code> class in the injected type.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@AssistedInject</span>
 <span class="kd">class</span><span class="w"> </span><span class="nc">HttpClient</span><span class="p">(</span>
 <span class="w">  </span><span class="nd">@Assisted</span><span class="w"> </span><span class="n">timeoutDuration</span><span class="p">:</span><span class="w"> </span><span class="n">Duration</span><span class="p">,</span>
@@ -2368,20 +2368,20 @@
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
-<p>If a nested class called <code>Factory</code> is already present, Metro will do nothing.</p>
+<p>If the type already has a nested <code>Factory</code> class, Metro does not generate one.</p>
 <h3 id="why-opt-in">Why opt-in?<a class="headerlink" href="#why-opt-in" title="Permanent link">&para;</a></h3>
-<p>The main reason this is behind an opt-in option at the moment is because compiler plugin IDE support requires some rudimentary configuration to work. See <a href="../installation/#ide-support">the docs for how to enable IDE support</a>.</p>
-<p>Because of this, it&rsquo;s likely better for now to just hand-write the equivalent class that Metro generates. If you still wish to proceed with using this, it can be enabled via the Gradle DSL.</p>
+<p>The feature is opt-in because the IDE needs <a href="../installation/#ide-support">third-party FIR plugin support</a> to see generated declarations.</p>
+<p>Until IDE support is configured, I recommend writing the equivalent factory yourself. To enable generation, use the Gradle DSL:</p>
 <div class="highlight"><pre><span></span><code>metro {
   generateAssistedFactories.set(true)
 }
 </code></pre></div>
 <h2 id="member-injection">Member Injection<a class="headerlink" href="#member-injection" title="Permanent link">&para;</a></h2>
-<p>Metro supports <em>member injection</em> to inject mutable properties or functions post-construction or into existing class instances.</p>
-<p>This can be useful for classes that cannot be constructor-injected, for example Android Activity classes (on older SDK versions) as well as constructor-injected classes that perhaps don’t want or need to expose certain types directly in their constructors.</p>
+<p>Member injection fills mutable properties or calls injected functions after construction, including on existing instances.</p>
+<p>Use it for types Metro cannot construct, such as Android activities on older SDKs, or for dependencies you don’t want to expose through a constructor.</p>
 <div class="admonition tip">
 <p class="admonition-title">Tip</p>
-<p>Unlike Dagger and kotlin-inject, injected members in Metro can be <code>private</code>.</p>
+<p>Unlike Dagger and kotlin-inject, Metro can inject <code>private</code> members.</p>
 </div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -2399,7 +2399,7 @@
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
-<p>Like Dagger, these classes can be injected via multiple avenues.</p>
+<p>Metro can inject members in three ways:</p>
 <h3 id="1-in-constructor-injected-types-inject-annotated-members-are-injected-automatically">1. In constructor-injected types, <code>@Inject</code>-annotated members are injected <em>automatically</em>.<a class="headerlink" href="#1-in-constructor-injected-types-inject-annotated-members-are-injected-automatically" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1">// Injection with constructor injection</span>
 <span class="nd">@Inject</span>
@@ -2412,7 +2412,7 @@
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
-<p>In these cases, Metro will automatically inject these members automatically and immediately after instantiation during constructor injection.</p>
+<p>Metro injects these members immediately after constructing the instance.</p>
 <h3 id="2-exposing-a-fun-injecttarget-profileactivity-function-on-the-graph">2. Exposing a <code>fun inject(target: ProfileActivity)</code> function on the graph<a class="headerlink" href="#2-exposing-a-fun-injecttarget-profileactivity-function-on-the-graph" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1">// Graph inject() functions</span>
 <span class="nd">@DependencyGraph</span>
@@ -2426,7 +2426,7 @@
 <span class="kd">val</span><span class="w"> </span><span class="nv">graph</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">createGraph</span><span class="o">&lt;</span><span class="n">AppGraph</span><span class="o">&gt;</span><span class="p">()</span>
 <span class="n">graph</span><span class="p">.</span><span class="na">inject</span><span class="p">(</span><span class="n">profileActivity</span><span class="p">)</span>
 </code></pre></div>
-<p>With this option, you can call <code>graph.inject(target)</code> on the instance with members you wish to inject.</p>
+<p>Call <code>graph.inject(target)</code> to inject members into an existing instance.</p>
 <h3 id="3-requesting-a-membersinjector-instance-from-the-dependency-graph">3. Requesting a <code>MembersInjector</code> instance from the dependency graph.<a class="headerlink" href="#3-requesting-a-membersinjector-instance-from-the-dependency-graph" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1">// Injection with MembersInjector</span>
 <span class="nd">@Inject</span>
@@ -2438,26 +2438,26 @@
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
-<p>Like Dagger, option #3 is accomplished via <code>MembersInjector</code> interface at runtime and in code gen. This should be reserved for advanced use cases.</p>
+<p>The third option uses the <code>MembersInjector</code> runtime interface and generated injector classes. Reserve it for advanced use cases.</p>
 <details class="note">
 <summary>Implementation Notes</summary>
 <ul>
 <li>Property accessors don’t use <code>get</code>/<code>set</code> names in <code>inject{name}()</code> function names.</li>
 <li>MembersInjector classes are generated as nested classes, allowing private member access.<ul>
-<li>This includes parent classes’ private members (!!)</li>
+<li>This even includes private members of parent classes!</li>
 </ul>
 </li>
-<li>optional dependencies are not supported for injected member functions currently, but may be possible in the future.</li>
+<li>Injected member functions do not support optional dependencies.</li>
 </ul>
 </details>
 <h2 id="top-level-function-injection">Top-level Function Injection<a class="headerlink" href="#top-level-function-injection" title="Permanent link">&para;</a></h2>
-<p>Like KI, Metro supports top-level function injection (behind an opt-in compiler option). The primary use case for this is composable functions and standalone applications that run from <code>main</code> functions.</p>
+<p>Top-level function injection is opt-in. Use it for composable functions or standalone applications with a <code>main</code> function.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@Inject</span>
 <span class="kd">fun</span><span class="w"> </span><span class="nf">App</span><span class="p">(</span><span class="n">message</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="c1">// ...</span>
 <span class="p">}</span>
 </code></pre></div>
-<p>To do this, Metro’s FIR plugin will generate a concrete type that acts as a bridge for this function.</p>
+<p>Metro generates a concrete wrapper type in FIR:</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@Inject</span>
 <span class="kd">class</span><span class="w"> </span><span class="nc">App</span><span class="p">(</span>
 <span class="w">  </span><span class="kd">private</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">message</span><span class="p">:</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="kt">String</span>
@@ -2467,8 +2467,8 @@
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
-<p>Because it’s generated in FIR, this type will be user-visible in the IDE and can then be referenced in a graph.</p>
-<p><em>Note that this feature requires enabling third party FIR plugins in the IDE to fully work. It will compile without it, but generated wrapper classes will be red/missing in the IDE.</em></p>
+<p>The generated type is available to the IDE when third-party FIR plugins are enabled and can be referenced from a graph.</p>
+<p><em>Compilation works without IDE plugin support, but the IDE will show generated wrapper classes as unresolved.</em></p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>The generated class uses the same name as the function, capitalized as a class name.</p>
@@ -2491,7 +2491,7 @@
 <span class="c1">// Run the app</span>
 <span class="n">app</span><span class="p">()</span>
 </code></pre></div>
-<p>To add assisted parameters, use <code>@Assisted</code> on the parameters in the function description. These will be propagated accordingly.</p>
+<p>Mark function parameters with <code>@Assisted</code> to pass them through to the wrapper.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@Inject</span>
 <span class="kd">fun</span><span class="w"> </span><span class="nf">App</span><span class="p">(</span><span class="nd">@Assisted</span><span class="w"> </span><span class="n">message</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="c1">// ...</span>
@@ -2512,7 +2512,7 @@
 <span class="c1">// Run the app</span>
 <span class="n">app</span><span class="p">(</span><span class="s">"Hello, world!"</span><span class="p">)</span>
 </code></pre></div>
-<p>This is particularly useful for Compose, and <code>@Composable</code> functions will be copied over accordingly.</p>
+<p>For <code>@Composable</code> functions, Metro also marks the generated wrapper function <code>@Composable</code>.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@Inject</span>
 <span class="nd">@Composable</span>
 <span class="kd">fun</span><span class="w"> </span><span class="nf">App</span><span class="p">(</span><span class="nd">@Assisted</span><span class="w"> </span><span class="n">message</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
@@ -2536,7 +2536,7 @@
 <span class="w">  </span><span class="n">App</span><span class="p">(</span><span class="s">"Hello, world!"</span><span class="p">)</span>
 <span class="p">}</span>
 </code></pre></div>
-<p>Similarly, if the injected function is a <code>suspend</code> function, the <code>suspend</code> keyword will be ported to the generated <code>invoke()</code> function too.</p>
+<p>For a <code>suspend</code> function, the generated <code>invoke()</code> function is also <code>suspend</code>.</p>
 <h3 id="context-parameters">Context parameters<a class="headerlink" href="#context-parameters" title="Permanent link">&para;</a></h3>
 <p>Top-level injected functions also support context parameters. Both regular and context parameters may be assisted.</p>
 <p>Any assisted context parameters will be carried as context parameters to the generated class&rsquo;s <code>invoke()</code> function.</p>
@@ -2568,13 +2568,13 @@
 </div>
 </div>
 <h3 id="why-opt-in_1">Why opt-in?<a class="headerlink" href="#why-opt-in_1" title="Permanent link">&para;</a></h3>
-<p>There are three reasons this is behind an opt-in option at the moment.</p>
+<p>Top-level function injection is opt-in for three reasons:</p>
 <ol>
 <li>It makes incremental builds recompile more files. See <a href="../performance/#incremental-compilation">incremental compilation</a>.</li>
 <li>IDE support requires enabling a custom registry flag. See <a href="../installation/#ide-support">the docs for how to enable IDE support</a>.</li>
 <li>Before Kotlin 2.3.20, generating top-level declarations in FIR isn&rsquo;t compatible with incremental compilation or with non-JVM targets. Kotlin/JS gained incremental compilation support for generated top-level declarations in Kotlin 2.3.21 and Kotlin 2.4.0-Beta2. See <a href="https://youtrack.jetbrains.com/issue/KT-82395">KT-82395</a>.</li>
 </ol>
-<p>You can enable it via the Gradle DSL.</p>
+<p>Enable it in the Gradle DSL:</p>
 <div class="highlight"><pre><span></span><code><span class="n">metro</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="n">enableTopLevelFunctionInjection</span><span class="p">.</span><span class="na">set</span><span class="p">(</span><span class="kc">true</span><span class="p">)</span>
 <span class="p">}</span>
@@ -2582,7 +2582,7 @@
 <details class="note">
 <summary>Implementation Notes</summary>
 <ul>
-<li>This is fairly different from kotlin-inject’s typealias approach. This is necessary because Metro doesn’t use higher order function types or typealiases as qualifiers.</li>
+<li>kotlin-inject uses typealiases for top-level function injection. Metro generates a wrapper class because it does not treat typealiases as qualifiers or use assisted function types as implicit factories.</li>
 <li>Since the compose-compiler&rsquo;s IR transformer may run <em>before</em> Metro&rsquo;s, we check for this during implementation body generation and look up the transformed target composable function as needed.</li>
 </ul>
 </details>
@@ -2616,7 +2616,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="September 27, 2026 22:53:21 UTC">September 27, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 24, 2026 06:32:14 UTC">November 24, 2026</span>
   </span>
 
     

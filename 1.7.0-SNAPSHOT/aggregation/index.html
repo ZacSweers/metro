@@ -2310,11 +2310,11 @@
 
 
 <h1 id="aggregation-aka-anvil">Aggregation (aka &lsquo;Anvil&rsquo;)<a class="headerlink" href="#aggregation-aka-anvil" title="Permanent link">&para;</a></h1>
-<p>Metro supports Anvil-style aggregation in graphs via <code>@ContributesTo</code> and <code>@ContributesBinding</code> annotations. As aggregation is a first-class citizen of Metro’s API, there is no <code>@MergeComponent</code> annotation like in Anvil. Instead, <code>@DependencyGraph</code> defines which contribution scope it supports directly.</p>
+<p>Metro supports Anvil-style aggregation through <code>@ContributesTo</code> and <code>@ContributesBinding</code>. Aggregation is built into <code>@DependencyGraph</code>, which declares its contribution scope directly. Metro does not need Anvil’s separate <code>@MergeComponent</code> annotation.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@DependencyGraph</span><span class="p">(</span><span class="n">scope</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
 <span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span>
 </code></pre></div>
-<p>When a graph declares a <code>scope</code>, all contributions to that scope are aggregated into the final graph implementation in code gen.</p>
+<p>Metro merges all visible, eligible contributions for the declared <code>scope</code> into the generated graph.</p>
 <p>If a graph supports multiple scopes, use <code>additionalScopes</code>.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@DependencyGraph</span><span class="p">(</span>
 <span class="w">  </span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">,</span>
@@ -2322,7 +2322,7 @@
 <span class="p">)</span>
 <span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span>
 </code></pre></div>
-<p>Similar to <a href="https://github.com/amzn/kotlin-inject-anvil">kotlin-inject-anvil</a>, <code>@DependencyGraph</code> supports excluding contributions by class. This is useful for cases like tests, where you may want to contribute a test/fake implementation that supersedes the “real” graph.</p>
+<p>Like <a href="https://github.com/amzn/kotlin-inject-anvil">kotlin-inject-anvil</a>, Metro can exclude contributions by class. Use <code>DependencyGraph.excludes</code> to omit a production contribution when a test supplies a fake.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@DependencyGraph</span><span class="p">(</span>
 <span class="w">  </span><span class="n">scope</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">,</span>
 <span class="w">  </span><span class="n">excludes</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[</span><span class="n">RealNetworkProviders</span><span class="o">::</span><span class="n">class</span><span class="o">]</span>
@@ -2365,7 +2365,7 @@
 <p>Each check writes its report to <code>build/reports/metro/&lt;target&gt;/&lt;compilation&gt;/hidden-dependencies.txt</code> and fails if it finds hidden contributions. An empty file means the check passed. A blank target is omitted. Successful checks can be reused from Gradle&rsquo;s build cache.</p>
 <p>The check currently covers JVM and Android artifacts, including JVM targets in KMP projects. Other KMP platforms are outside its current scope. A finding means a dependency advertises contribution hints. The compiler remains responsible for scope and Kotlin visibility rules. Dependencies without hints can still be needed for types referenced by bindings.</p>
 <h2 id="contributesto">@ContributesTo<a class="headerlink" href="#contributesto" title="Permanent link">&para;</a></h2>
-<p>This annotation is used to contribute graph interfaces to the target scope to be merged in at graph-processing time to the final merged graph class as another supertype.</p>
+<p><code>@ContributesTo</code> adds an interface as a supertype of graphs with the target scope.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@ContributesTo</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
 <span class="kd">interface</span><span class="w"> </span><span class="nc">NetworkProviders</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nd">@Provides</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideHttpClient</span><span class="p">():</span><span class="w"> </span><span class="n">HttpClient</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">HttpClient</span><span class="p">()</span>
@@ -2378,7 +2378,7 @@
 <span class="w">  </span><span class="nd">@Provides</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideHttpClient</span><span class="p">():</span><span class="w"> </span><span class="n">HttpClient</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">HttpClient</span><span class="p">()</span>
 <span class="p">}</span>
 </code></pre></div>
-<p>Similar to <a href="https://github.com/amzn/kotlin-inject-anvil">kotlin-inject-anvil</a>, <code>@ContributesBinding</code> (as well as the other <code>@Contributes*</code> annotations) supports replacing other contributions by class. This is useful for cases like tests, where you may want to contribute a test/fake implementation that supersedes the “real” graph.</p>
+<p>Use <code>replaces</code> on a <code>@Contributes*</code> annotation to replace another contribution by class, such as a production implementation in tests. This follows kotlin-inject-anvil’s replacement pattern.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@DependencyGraph</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
 <span class="kd">interface</span><span class="w"> </span><span class="nc">TestAppGraph</span>
 
@@ -2388,19 +2388,19 @@
 <span class="p">}</span>
 </code></pre></div>
 <h2 id="contributesbinding">@ContributesBinding<a class="headerlink" href="#contributesbinding" title="Permanent link">&para;</a></h2>
-<p>This annotation is used to contribute injected classes to a target scope as a given bound type.</p>
-<p>The below example will contribute the <code>CacheImpl</code> class as a <code>Cache</code> type to <code>AppScope</code>.</p>
+<p><code>@ContributesBinding</code> binds an injected class to a type in the target scope.</p>
+<p>This example contributes <code>CacheImpl</code> as <code>Cache</code> in <code>AppScope</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@ContributesBinding</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
 <span class="nd">@Inject</span>
 <span class="kd">class</span><span class="w"> </span><span class="nc">CacheImpl</span><span class="p">(...)</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">Cache</span>
 </code></pre></div>
-<p>For simple cases where there is a single supertype, that type is implicitly used as the bound type. If your bound type is qualified, for the implicit case you can put the qualifier on the class.</p>
+<p>If the class has one supertype, Metro infers it as the bound type. Put a qualifier on the class to qualify that inferred binding.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@Named</span><span class="p">(</span><span class="s">"cache"</span><span class="p">)</span>
 <span class="nd">@ContributesBinding</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
 <span class="nd">@Inject</span>
 <span class="kd">class</span><span class="w"> </span><span class="nc">CacheImpl</span><span class="p">(...)</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">Cache</span>
 </code></pre></div>
-<p>For classes with multiple supertypes or advanced cases where you want to bind an ancestor type, you can explicitly define this via <code>binding</code> parameter.</p>
+<p>For multiple supertypes or an ancestor type, specify the <code>binding</code> argument:</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@Named</span><span class="p">(</span><span class="s">"cache"</span><span class="p">)</span>
 <span class="nd">@ContributesBinding</span><span class="p">(</span>
 <span class="w">  </span><span class="n">scope</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">,</span>
@@ -2411,10 +2411,10 @@
 </code></pre></div>
 <div class="admonition tip">
 <p class="admonition-title">Tip</p>
-<p>Whoa, is that a function call in an annotation argument? Nope! <code>binding</code> is just a decapitalized class in this case, intentionally designed for readability. It&rsquo;s an adjective in this context and the functional syntax better conveys that.</p>
+<p>Wait, is that a function call in an annotation argument? Nope! <code>binding</code> is an annotation class. I gave it a lowercase name so <code>binding&lt;T&gt;()</code> reads naturally.</p>
 </div>
-<p>Note that the bound type is defined as the type argument to <code>@ContributesBinding</code>. This allows for the bound type to be generic and is validated in FIR.</p>
-<p>Qualifier annotations can also be specified on the <code>binding</code> type parameter and will take precedence over any qualifiers on the class itself.</p>
+<p>The bound type is a type argument of <code>binding</code>. It can be generic and is validated in FIR.</p>
+<p>A qualifier on the <code>binding</code> type argument takes precedence over a qualifier on the class.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@ContributesBinding</span><span class="p">(</span>
 <span class="w">  </span><span class="n">scope</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">,</span>
 <span class="w">  </span><span class="n">binding</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">binding</span><span class="o">&lt;</span><span class="nd">@Named</span><span class="p">(</span><span class="s">"cache"</span><span class="p">)</span><span class="w"> </span><span class="n">Cache</span><span class="o">&gt;</span><span class="p">()</span>
@@ -2436,7 +2436,7 @@
 </code></pre></div>
 <div class="admonition tip">
 <p class="admonition-title">Tip</p>
-<p>Contributions may be <code>object</code> classes. In this event, Metro will automatically provide the object instance in its binding.</p>
+<p>An <code>object</code> contribution supplies the object instance as its binding.</p>
 </div>
 <h3 id="contribution-priority">Contribution priority<a class="headerlink" href="#contribution-priority" title="Permanent link">&para;</a></h3>
 <p><code>@ContributesBinding</code> supports a <code>priority</code> argument for choosing between contributions to the same qualified bound type without directly referencing another implementation. The highest-priority contribution is used:</p>
@@ -2449,13 +2449,12 @@
 <p>In this example, <code>PreferredCache</code> supplies the <code>Cache</code> binding. Priorities default to <code>Int.MIN_VALUE</code>, so any explicitly specified higher value takes precedence. Contributions with equal priorities remain duplicate bindings and produce the usual error.</p>
 <p>Priority only suppresses the individual conflicting binding. Other bindings or set/map contributions from the same implementation remain available. Explicit <code>excludes</code> and <code>replaces</code> are applied first and still exclude or replace whole contributing classes.</p>
 <h3 id="implicitly-injected-contributesbinding-types">Implicitly-injected <code>@ContributesBinding</code> types<a class="headerlink" href="#implicitly-injected-contributesbinding-types" title="Permanent link">&para;</a></h3>
-<p>Unlike Anvil, Metro does not require <code>@Inject</code> on <code>@Contributes*</code> annotated types. The <code>@Contributes*</code> annotation itself is sufficient to indicate that the type should be injected.</p>
+<p>Metro treats <code>@ContributesBinding</code>, <code>@ContributesIntoSet</code>, and <code>@ContributesIntoMap</code> types as injected by default.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@ContributesBinding</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
 <span class="c1">// @Inject // &lt;-- now implicit!</span>
 <span class="kd">class</span><span class="w"> </span><span class="nc">TacoImpl</span><span class="p">(...)</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">Taco</span>
 </code></pre></div>
-<p>You can still use <code>@Inject</code> on classes to be explicit, and if you have multiple constructors you must use <code>@Inject</code> on the constructor you want to be used.</p>
-<p><em>The only exception to this is <code>@ContributesTo</code>, which isn&rsquo;t applicable to injected types.</em></p>
+<p>You can still add <code>@Inject</code> explicitly. If the class has multiple constructors, you must annotate exactly one constructor with <code>@Inject</code>. <code>@ContributesTo</code> does not imply injection. It contributes graph supertypes and binding containers.</p>
 <p>This behavior can be disabled via the <code>contributesAsInject</code> Gradle DSL option if you prefer to require explicit <code>@Inject</code> annotations.</p>
 <h2 id="contributesintosetcontributesintomap">@ContributesIntoSet/@ContributesIntoMap<a class="headerlink" href="#contributesintosetcontributesintomap" title="Permanent link">&para;</a></h2>
 <p>To contribute into a multibinding, use the <code>@ContributesIntoSet</code> or <code>@ContributesIntoMap</code> annotations as needed.</p>
@@ -2463,7 +2462,7 @@
 <span class="nd">@Inject</span>
 <span class="kd">class</span><span class="w"> </span><span class="nc">CacheImpl</span><span class="p">(...)</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">Cache</span>
 </code></pre></div>
-<p>Same rules around qualifiers and <code>binding()</code> apply in this scenario</p>
+<p>The same qualifier and <code>binding()</code> rules apply.</p>
 <p>To contribute into a Map multibinding, the map key annotation must be specified on the class or <code>binding</code> type argument.</p>
 <div class="highlight"><pre><span></span><code><span class="c1">// Will be contributed into a Map multibinding with @StringKey("Networking")</span>
 <span class="nd">@ContributesIntoMap</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
@@ -2532,7 +2531,7 @@
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
-<p>Like <code>@ContributesBinding</code>, enabling the <code>contributesAsInject</code> Gradle DSL option will treat all <code>@ContributesIntoSet</code>/<code>@ContributesIntoMap</code>-annotated types as <code>@Inject</code> by default.</p>
+<p><code>contributesAsInject</code> is enabled by default. When enabled, it treats <code>@ContributesIntoSet</code> and <code>@ContributesIntoMap</code> types as implicitly injected. Disable it to require explicit <code>@Inject</code> annotations.</p>
 <h2 id="contributing-binding-containers">Contributing Binding Containers<a class="headerlink" href="#contributing-binding-containers" title="Permanent link">&para;</a></h2>
 <p>Binding containers (see <a href="../dependency-graphs/#binding-containers">Binding Containers</a>) can also be contributed to scopes via <code>@ContributesTo</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@ContributesTo</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
@@ -2590,7 +2589,7 @@
 <span class="p">}</span>
 </code></pre></div>
 <h2 id="defaultbinding"><code>@DefaultBinding</code><a class="headerlink" href="#defaultbinding" title="Permanent link">&para;</a></h2>
-<p>The <code>@DefaultBinding</code> annotation allows for setting a default binding on <em>supertypes</em> of contributed classes. This is useful for common base classes with generics that would otherwise require repetitive (or error-prone) explicit <code>binding&lt;T&gt;()</code> declarations in subtypes.</p>
+<p>Use <code>@DefaultBinding</code> on a supertype to set the default bound type for contributed subclasses. This avoids repeating generic <code>binding&lt;T&gt;()</code> declarations.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@DefaultBinding</span><span class="o">&lt;</span><span class="n">BaseFactory</span><span class="o">&lt;*&gt;&gt;</span>
 <span class="kd">interface</span><span class="w"> </span><span class="nc">BaseFactory</span><span class="o">&lt;</span><span class="n">T</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">BaseFactory</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;&gt;</span>
 
@@ -2599,7 +2598,7 @@
 <span class="kd">class</span><span class="w"> </span><span class="nc">HomeFactory</span><span class="p">(...)</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">BaseFactory</span><span class="o">&lt;</span><span class="n">HomeFactory</span><span class="o">&gt;</span>
 </code></pre></div>
 <h2 id="generatecontributionproviders"><code>generateContributionProviders</code><a class="headerlink" href="#generatecontributionproviders" title="Permanent link">&para;</a></h2>
-<p>If you enable the new <code>generateContributionProviders</code> feature, Metro will instead generate top-level <code>@Provides</code> declarations that mirror the injected class&rsquo;s inputs but only return its <em>bound type</em>. This means the annotated class can remain <code>internal</code>, which both helps encapsulation and incremental compilation.</p>
+<p>Enable <code>generateContributionProviders</code> to generate top-level <code>@Provides</code> declarations with the injected class’s inputs and bound return type. This lets the implementation remain <code>internal</code>, keeps implementation details encapsulated, and can reduce downstream ABI changes during incremental compilation.</p>
 <div class="highlight"><pre><span></span><code><span class="kd">interface</span><span class="w"> </span><span class="nc">Base</span>
 
 <span class="nd">@ContributesBinding</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
@@ -2616,9 +2615,9 @@
 <p>Contribution priorities are also honored for generated providers, including contributions from <code>internal</code> implementations in upstream modules.</p>
 <p>Generic contributions are supported when <a href="../derived-bindings/#generic-binding-contributions">derived bindings</a> are enabled.</p>
 <h2 id="implementation-notes">Implementation notes<a class="headerlink" href="#implementation-notes" title="Permanent link">&para;</a></h2>
-<p>This leans on Kotlin’s ability to put generic type parameters on annotations. That in turn allows for both generic bound types and to contribute map bindings to multiple map keys.</p>
-<p>Because it’s a first-party feature, there’s no need for intermediary “merged” components like kotlin-inject-anvil and anvil-ksp do.</p>
-<p>Generated contributing interfaces are generated to the <code>metro.hints</code> package and located during graph supertype generation in FIR downstream. Any contributed bindings are implemented as <code>@Binds</code> (± IntoSet/IntoMap/etc) annotated properties.</p>
+<p>Kotlin annotations can have generic type parameters. Metro uses them for generic bound types and multiple map-key contributions.</p>
+<p>Metro merges contributions directly into graphs. kotlin-inject-anvil and anvil-ksp use intermediate merged components.</p>
+<p>Metro generates contribution hints in <code>metro.hints</code> and discovers them during downstream FIR graph generation. Contributed bindings become <code>@Binds</code> properties with any required multibinding annotations.</p>
 
 
 
@@ -2641,7 +2640,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 14, 2026 08:11:22 UTC">November 14, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 24, 2026 06:32:14 UTC">November 24, 2026</span>
   </span>
 
     

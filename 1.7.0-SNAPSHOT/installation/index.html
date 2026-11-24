@@ -2245,15 +2245,15 @@
 
 <h1 id="installation">Installation<a class="headerlink" href="#installation" title="Permanent link">&para;</a></h1>
 <h2 id="build-systems">Build Systems<a class="headerlink" href="#build-systems" title="Permanent link">&para;</a></h2>
-<p>Metro is primarily applied via its companion <strong>Gradle</strong> plugin.</p>
-<p>If applying in other build systems, apply it however that build system conventionally applies Kotlin compiler plugins.</p>
+<p>Apply Metro with its <strong>Gradle</strong> plugin.</p>
+<p>For other build systems, configure Metro as a Kotlin compiler plugin.</p>
 <h3 id="gradle">Gradle<a class="headerlink" href="#gradle" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="n">plugins</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="n">kotlin</span><span class="p">(</span><span class="s">"multiplatform"</span><span class="p">)</span><span class="w"> </span><span class="c1">// or jvm, android, etc</span>
 <span class="w">  </span><span class="n">id</span><span class="p">(</span><span class="s">"dev.zacsweers.metro"</span><span class="p">)</span>
 <span class="p">}</span>
 </code></pre></div>
-<p>…and that’s it! This will add metro’s runtime dependencies and do all the necessary compiler plugin wiring.</p>
+<p>And that’s it! The plugin adds Metro’s runtime dependencies and configures the compiler plugin.</p>
 <h3 id="bazel"><a href="https://github.com/bazelbuild/rules_kotlin?tab=readme-ov-file#kotlin-compiler-plugins">Bazel</a><a class="headerlink" href="#bazel" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="n">load</span><span class="p">(</span><span class="s2">"@rules_kotlin//kotlin:core.bzl"</span><span class="p">,</span> <span class="s2">"kt_compiler_plugin"</span><span class="p">)</span>
 <span class="n">load</span><span class="p">(</span><span class="s2">"@rules_kotlin//kotlin:jvm.bzl"</span><span class="p">,</span> <span class="s2">"kt_jvm_library"</span><span class="p">)</span>
@@ -2285,7 +2285,7 @@
 <span class="p">)</span>
 </code></pre></div>
 <h3 id="kotlin-toolchain"><a href="https://kotlin-toolchain.org/">Kotlin Toolchain</a><a class="headerlink" href="#kotlin-toolchain" title="Permanent link">&para;</a></h3>
-<p>Using the <a href="https://kotlin-toolchain.org/latest/user-guide/advanced/kotlin-compiler-plugins/">compiler plugin</a> support in Kotlin Toolchain (formerly known as Amper).</p>
+<p>Configure Metro through <a href="https://kotlin-toolchain.org/latest/user-guide/advanced/kotlin-compiler-plugins/">Kotlin Toolchain’s compiler plugin support</a> (formerly Amper):</p>
 <div class="highlight"><pre><span></span><code><span class="nt">dependencies</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">$libs.metro.runtime</span>
 
@@ -2363,14 +2363,14 @@
 <h3 id="libraries">Libraries<a class="headerlink" href="#libraries" title="Permanent link">&para;</a></h3>
 <p>If other projects use your graphs or call Metro&rsquo;s generated helpers, set <code>companion-mode</code> explicitly. The mode decides which APIs your library publishes. To migrate a published library, start with <code>compatibility</code>. Existing calls like <code>AppGraph.Companion.build(...)</code> keep working, and so does code that uses a graph&rsquo;s companion object as its factory. Projects that call companion-block members also need companion blocks enabled.</p>
 <h2 id="ide-support">IDE Support<a class="headerlink" href="#ide-support" title="Permanent link">&para;</a></h2>
-<p>The K2 Kotlin IntelliJ plugin supports running third party FIR plugins in the IDE, but this feature is hidden behind a flag. Some Metro features can take advantage of this, namely diagnostic reporting directly in the IDE and some opt-in features to see generated declarations. </p>
-<p>To enable it, do the following:</p>
+<p>The K2 Kotlin IntelliJ plugin can run third-party FIR plugins behind a registry flag. Enable this to see Metro diagnostics and opt-in generated declarations in the IDE.</p>
+<p>To enable it:</p>
 <ol>
 <li>Enable K2 Mode for the Kotlin IntelliJ plugin.</li>
-<li>Open the Registry</li>
+<li>Open the Registry.</li>
 <li>Set the <code>kotlin.k2.only.bundled.compiler.plugins.enabled</code> entry to <code>false</code>.</li>
 </ol>
-<p>Note that support is unstable and subject to change.</p>
+<p>IDE support is unstable and may change.</p>
 <h2 id="manual-dependency-management">Manual dependency management<a class="headerlink" href="#manual-dependency-management" title="Permanent link">&para;</a></h2>
 <p>The Metro Gradle plugin normally adds the dependencies needed by each Metro-enabled compilation. To manage them yourself, disable automatic dependency management in the Metro DSL:</p>
 <div class="highlight"><pre><span></span><code><span class="n">metro</span><span class="w"> </span><span class="p">{</span>
@@ -2417,16 +2417,16 @@
 </table>
 <p>Use the same version for Metro&rsquo;s compiler and runtime artifacts unless you are intentionally using the compiler version override described below.</p>
 <h2 id="advanced-usage-decoupling-compiler-and-gradle-plugin-versions">Advanced Usage: Decoupling compiler and Gradle plugin versions<a class="headerlink" href="#advanced-usage-decoupling-compiler-and-gradle-plugin-versions" title="Permanent link">&para;</a></h2>
-<p>99.9% of the time, you want all the Metro artifacts to use the same version. However, if you work in an extremely large Gradle repository, you may want to <em>decouple</em> the Metro Gradle updates from the rest of Metro. Changing the Gradle buildscript classpath can often invalidate large parts of your build cache, which in turn can be undesirable in many situations.</p>
-<p>If you know the right Gradle APIs, you can do this yourself through dependency substitutions. Knowing the right Gradle APIs to do some advanced dependency substitution isn&rsquo;t a fate I wish on anyone though, so there <em>is</em> a shortcut available within Metro directly.</p>
-<p>To update <em>just</em> the Metro compiler version, you can override the version the Metro plugin tells KGP to use by specifying the <code>metro.compilerVersionOverride</code> <strong>system property</strong>.</p>
+<p>Use the same version for all Metro artifacts by default. In a large Gradle repository, updating the Gradle plugin changes the buildscript classpath and can invalidate build caches. You can update the compiler separately to avoid that cost.</p>
+<p>You can do this yourself with Gradle dependency substitutions. Figuring out the right Gradle APIs isn’t a fate I wish on anyone, though, so Metro has a shortcut.</p>
+<p>Set the <code>metro.compilerVersionOverride</code> <strong>system property</strong> to override the compiler version passed to the Kotlin Gradle plugin:</p>
 <div class="highlight"><pre><span></span><code><span class="na">systemProp.metro.compilerVersionOverride</span><span class="o">=</span><span class="s">&lt;metro compiler version&gt;</span>
 </code></pre></div>
-<p>Or via command line with <code>-D</code></p>
+<p>Or pass it on the command line with <code>-D</code>:</p>
 <div class="highlight"><pre><span></span><code>./gradlew<span class="w"> </span>:your:compileKotlin<span class="w"> </span>-Dmetro.compilerVersionOverride<span class="o">=</span>&lt;metro<span class="w"> </span>compiler<span class="w"> </span>version&gt;
 </code></pre></div>
 <p>Unfortunately, this can only be done via system property at the moment.</p>
-<p>Note that this will require you to keep track of Gradle plugin changes that may require updating it to match Metro compiler changes. These are documented in changelogs, but you are ultimately on the hook for making sure you&rsquo;re using compatible versions. The Gradle plugin generally only changes when there is a new Metro compiler option that requires a corresponding DSL option.</p>
+<p>Check the changelog for Gradle plugin changes required by the compiler version. You are responsible for keeping the versions compatible. Gradle plugin updates usually add DSL options for new compiler options.</p>
 
 
 
@@ -2449,7 +2449,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 11, 2026 18:34:32 UTC">November 11, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 24, 2026 06:32:14 UTC">November 24, 2026</span>
   </span>
 
     

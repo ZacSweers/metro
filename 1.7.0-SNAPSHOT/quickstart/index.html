@@ -2322,15 +2322,15 @@
 
 
 <h1 id="quick-start">Quick Start<a class="headerlink" href="#quick-start" title="Permanent link">&para;</a></h1>
-<p>This guide covers installation and the most common patterns in Metro to get you up and running quickly.</p>
+<p>This guide shows how to install Metro, create a graph, and bind implementations to interfaces.</p>
 <h2 id="installation">Installation<a class="headerlink" href="#installation" title="Permanent link">&para;</a></h2>
-<p>Metro is primarily applied via its companion Gradle plugin.</p>
+<p>Apply the Metro Gradle plugin:</p>
 <div class="highlight"><pre><span></span><code><span class="n">plugins</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="n">kotlin</span><span class="p">(</span><span class="s">"multiplatform"</span><span class="p">)</span><span class="w"> </span><span class="c1">// or jvm, android, etc</span>
 <span class="w">  </span><span class="n">id</span><span class="p">(</span><span class="s">"dev.zacsweers.metro"</span><span class="p">)</span><span class="w"> </span><span class="n">version</span><span class="w"> </span><span class="s">"1.6.0"</span>
 <span class="p">}</span>
 </code></pre></div>
-<p>…and that&rsquo;s it! This will add Metro&rsquo;s runtime dependencies and do all the necessary compiler plugin wiring.</p>
+<p>And that’s it! The plugin adds the runtime dependencies and configures the compiler plugin.</p>
 <p>See <a href="../installation/">Installation</a> for other build systems (like Bazel) and IDE support options.</p>
 <h2 id="basic-setup">Basic Setup<a class="headerlink" href="#basic-setup" title="Permanent link">&para;</a></h2>
 <h3 id="1-define-your-dependency-graph">1. Define your dependency graph<a class="headerlink" href="#1-define-your-dependency-graph" title="Permanent link">&para;</a></h3>
@@ -2354,7 +2354,7 @@
 <span class="kd">val</span><span class="w"> </span><span class="nv">repository</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">appGraph</span><span class="p">.</span><span class="na">repository</span>
 </code></pre></div>
 <h2 id="the-apiimpl-pattern">The Api/Impl Pattern<a class="headerlink" href="#the-apiimpl-pattern" title="Permanent link">&para;</a></h2>
-<p>One of the most common patterns in dependency injection is binding an implementation to its interface. Metro offers two approaches depending on your needs.</p>
+<p>Use <code>@Binds</code> for an explicit interface binding. Use <code>@ContributesBinding</code> to discover the binding across modules.</p>
 <h3 id="without-aggregation-explicit-binding">Without aggregation (explicit binding)<a class="headerlink" href="#without-aggregation-explicit-binding" title="Permanent link">&para;</a></h3>
 <p>Use <code>@Binds</code> to explicitly bind an implementation to its interface within a graph:</p>
 <div class="highlight"><pre><span></span><code><span class="kd">interface</span><span class="w"> </span><span class="nc">Repository</span><span class="w"> </span><span class="p">{</span>
@@ -2375,7 +2375,7 @@
 <span class="p">}</span>
 </code></pre></div>
 <h3 id="with-aggregation-recommended-for-multi-module-projects">With aggregation (recommended for multi-module projects)<a class="headerlink" href="#with-aggregation-recommended-for-multi-module-projects" title="Permanent link">&para;</a></h3>
-<p>Using <code>@ContributesBinding</code> automatically binds your implementation to its interface and contributes it to any graph with the matching scope:</p>
+<p><code>@ContributesBinding</code> binds an implementation to its interface and contributes it to graphs with the matching scope:</p>
 <div class="highlight"><pre><span></span><code><span class="kd">interface</span><span class="w"> </span><span class="nc">Repository</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="kd">fun</span><span class="w"> </span><span class="nf">getData</span><span class="p">():</span><span class="w"> </span><span class="n">Data</span>
 <span class="p">}</span>
@@ -2399,7 +2399,7 @@
 </div>
 <h2 id="common-patterns">Common Patterns<a class="headerlink" href="#common-patterns" title="Permanent link">&para;</a></h2>
 <h3 id="providing-third-party-classes">Providing third-party classes<a class="headerlink" href="#providing-third-party-classes" title="Permanent link">&para;</a></h3>
-<p>For types you don&rsquo;t control (e.g. third party code), use <code>@Provides</code> in a contributed binding container:</p>
+<p>Use <code>@Provides</code> in a contributed binding container for types you don’t control:</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@ContributesTo</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
 <span class="nd">@BindingContainer</span>
 <span class="kd">object</span><span class="w"> </span><span class="nc">NetworkBindings</span><span class="w"> </span><span class="p">{</span>
@@ -2414,7 +2414,7 @@
 <span class="w">      </span><span class="p">.</span><span class="na">build</span><span class="p">()</span>
 <span class="p">}</span>
 </code></pre></div>
-<p>A contributed <code>@BindingContainer</code> is the lightest-weight form: its <code>@Provides</code> declarations are pulled into the graph without exposing them as accessors on the graph type. See <a href="../dependency-graphs/#binding-containers">Binding Containers</a> for more, including replacing or excluding them in tests.</p>
+<p>A contributed <code>@BindingContainer</code> is the lightest way to add providers without exposing them as graph accessors. See <a href="../dependency-graphs/#binding-containers">Binding Containers</a> for details, including replacing or excluding containers in tests.</p>
 <div class="admonition tip">
 <p class="admonition-title">Tip</p>
 <p>A contributed <code>interface</code> with <code>@Provides</code> works too, and is useful when you want subtypes to override non-provider members of the interface. <code>@Provides</code> declarations themselves cannot be overridden — see <a href="../provides/">Provides</a>.</p>
@@ -2451,8 +2451,8 @@
 <h2 id="next-steps">Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="../dependency-graphs/">Dependency Graphs</a> – Graph structure, factories, and extensions</li>
-<li><a href="../aggregation/">Aggregation</a> – Deep dive into <code>@ContributesBinding</code>, <code>@ContributesTo</code>, and more</li>
-<li><a href="../scopes/">Scopes</a> – Understanding scoping and lifecycle</li>
+<li><a href="../aggregation/">Aggregation</a> – <code>@ContributesBinding</code> and <code>@ContributesTo</code></li>
+<li><a href="../scopes/">Scopes</a> – Instance lifetime and caching</li>
 <li><a href="../bindings/">Bindings</a> – Qualifiers, multibindings, and optional bindings</li>
 <li><a href="../injection-types/">Injection Types</a> – Constructor, assisted, and member injection</li>
 </ul>
@@ -2478,7 +2478,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 16, 2026 15:41:54 UTC">November 16, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 24, 2026 06:32:14 UTC">November 24, 2026</span>
   </span>
 
     

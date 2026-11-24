@@ -1955,16 +1955,16 @@
 <div class="tabbed-block">
 <ul>
 <li><code>@Binds</code> and <code>@Provides</code> declarations can be added directly within graphs and their supertypes.<ul>
-<li><code>@BindingContainer</code> is the Metro equivalent of a Dagger <code>@Module</code> but it should rarely be used.</li>
+<li><code>@BindingContainer</code> is similar to a Dagger <code>@Module</code>. Prefer declaring providers directly in graphs or their supertypes when practical.</li>
 <li><code>@BindingContainer</code> cannot declare graph extensions in the way <code>@Module</code> can declare subcomponents. Use contributed graph extensions.</li>
 <li>Concrete <code>@BindingContainer</code> classes must be effectively final. Kotlin classes are final by default; Dagger <code>@Module</code> classes used through interop may still be non-final.</li>
 </ul>
 </li>
-<li>There is no Producers support.</li>
-<li>There is no Hilt support, though some features are similar in the same way that Anvil’s features are similar.</li>
+<li>Metro supports <a href="../coroutines/">suspend providers</a> and does not implement Dagger Producers.</li>
+<li>Metro supports <a href="../interop/#hilt">Hilt module and entry point interop</a>. It does not generate Hilt’s Android component tree.</li>
 <li>There is no <code>@Reusable</code>.</li>
 <li>There is no <code>@LazyClassKey</code>.</li>
-<li>There is no <code>@BindsOptionalOf</code>. Instead, Metro supports default <a href="../bindings/#optional-bindings">optional bindings</a>.<ul>
+<li>When migrating <code>@BindsOptionalOf</code>, use a default value for an optional parameter or <code>@OptionalBinding</code> for an <a href="../bindings/#optional-bindings">optional accessor</a>.<ul>
 <li>Metro does support <a href="../interop/">interop</a> with Dagger&rsquo;s <code>@BindsOptionalOf</code> annotation.</li>
 </ul>
 </li>
@@ -1974,24 +1974,24 @@
 <li>Metro does not process Java code.</li>
 <li><code>@Multibinds</code> declarations are implemented in Metro graphs to return the declared multibinding.</li>
 <li>Empty multibindings are an error by default in Metro. To allow a multibinding to be empty, it must be declared with <code>@Multibinds(allowEmpty = true)</code>.</li>
-<li>Metro graph classes may not directly extend other graph classes. You should use <a href="../dependency-graphs/#graph-extensions">graph extensions</a> instead in Metro.</li>
+<li>Metro graph classes cannot directly extend other graph classes. Use <a href="../dependency-graphs/#graph-extensions">graph extensions</a>.</li>
 <li>Dagger technically allows this, but only accessors and injectors cross these boundaries.</li>
 <li>Metro prohibits scopes on <code>@Binds</code> declarations. Either use <code>@Provides</code> or move the scope to the source class type.</li>
-<li>Metro does not require generic BindingContainers (i.e. Dagger Modules) to be abstract.</li>
+<li>Generic binding containers can be concrete.</li>
 </ul>
 </div>
 <div class="tabbed-block">
 <ul>
-<li>typealiases are not treated as implicit qualifiers.</li>
-<li>Dependency graph classes cannot have primary constructors, their parameters must be defined as <code>@Provides</code> or graph parameters on a <code>@DependencyGraph.Factory</code> function like Dagger.</li>
-<li>Higher order functions cannot be used. Instead, use <code>Provider</code> and declared <code>@AssistedFactory</code>-annotated types.</li>
-<li>No need for use-site targets for most annotations.</li>
-<li>No need for <code>@get:Provides Impl.bind: Type get() = this</code> to achieve type bindings. See the docs on <code>@Binds</code>.</li>
+<li>Typealiases are not implicit qualifiers.</li>
+<li>Graph classes cannot have primary constructors. Supply inputs as <code>@Provides</code> or <code>@Includes</code> parameters on a <code>@DependencyGraph.Factory</code> function.</li>
+<li>Metro supports <code>() -&gt; T</code> providers by default. Use <code>@AssistedFactory</code> for assisted parameters.</li>
+<li>Most annotations do not need use-site targets.</li>
+<li>Use <a href="../bindings/#binds"><code>@Binds</code></a> for alias bindings such as <code>@get:Provides Impl.bind: Type get() = this</code> in kotlin-inject.</li>
 <li>Metro can inject private properties and functions.</li>
 <li>Metro does not support detached graph extensions the way kotlin-inject does. Instead, use <a href="../dependency-graphs/#graph-extensions">graph extensions</a>.</li>
 <li>Metro does not process Java code.</li>
 <li>Metro does not support assisted parameters in <code>@Provides</code> functions.</li>
-<li>Metro map multibindings use static <a href="../bindings/#multibindings">map keys</a> rather than aggregating via <code>Pair</code> contributions. More details on why can be found <a href="https://github.com/ZacSweers/metro/discussions/770#discussioncomment-13852087">here</a>.</li>
+<li>Metro uses static <a href="../bindings/#multibindings">map keys</a>; kotlin-inject contributions return a <code>Pair</code> of key and value. See the <a href="https://github.com/ZacSweers/metro/discussions/770#discussioncomment-13852087">design discussion</a>.</li>
 </ul>
 </div>
 <div class="tabbed-block">
@@ -2001,11 +2001,11 @@
 </ul>
 </li>
 <li>There is no <code>ignoreQualifier</code> in Metro&rsquo;s <code>@Contributes*</code> annotations.<ul>
-<li>Note that if Anvil interop is enabled, <em>its</em> <code>ignoreQualifier</code> properties are supported in interop.</li>
+<li>Anvil interop supports Anvil’s <code>ignoreQualifier</code> properties.</li>
 </ul>
 </li>
-<li><code>@ContributesBinding</code> uses a <code>binding</code> API to support generic bound types. See the <a href="../aggregation/">aggregation docs</a> for more info.<ul>
-<li>Note that if Anvil interop is enabled, <em>its</em> <code>boundType</code> properties are supported in interop.</li>
+<li><code>@ContributesBinding</code> uses <code>binding</code> for generic bound types. See <a href="../aggregation/">Aggregation</a>.<ul>
+<li>Anvil interop supports Anvil’s <code>boundType</code> properties.</li>
 </ul>
 </li>
 </ul>
@@ -2013,8 +2013,8 @@
 <div class="tabbed-block">
 <ul>
 <li>There is no need for <code>@CreateComponent</code> or <code>expect fun createComponent()</code> functions.</li>
-<li><code>@ContributesBinding</code> uses a <code>binding</code> API to support generic bound types. See the <a href="../aggregation/">aggregation docs</a> for more info.<ul>
-<li>Note that if Anvil interop is enabled, <em>its</em> <code>boundType</code> properties are supported in interop.</li>
+<li><code>@ContributesBinding</code> uses <code>binding</code> for generic bound types. See <a href="../aggregation/">Aggregation</a>.<ul>
+<li>Anvil interop supports Anvil’s <code>boundType</code> properties.</li>
 </ul>
 </li>
 </ul>
@@ -2043,7 +2043,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="August 22, 2026 20:13:29 UTC">August 22, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 24, 2026 06:32:14 UTC">November 24, 2026</span>
   </span>
 
     

@@ -2056,11 +2056,11 @@
 
 
 <h1 id="generating-metro-code">Generating Metro Code<a class="headerlink" href="#generating-metro-code" title="Permanent link">&para;</a></h1>
-<p>Java annotation processing and KSP both support multiple rounds of processing, allowing custom processors to generate new code with injection annotations that can be processed in later rounds. Anvil supported custom <code>CodeGenerator</code> implementations in K1 and anvil-ksp and kotlin-inject-anvil support specifying custom contributing annotations to allow them to intelligently defer processing to later rounds.</p>
-<p>Since Metro is implemented as a compiler plugin, asking users to write compiler plugins to interact with it would be a bit unwieldy. However, KSP processors that generate metro-annotated code work out of the box with it since they run before Metro&rsquo;s plugin does.</p>
-<p>If you have an existing KSP processor for a different framework, you could leverage it + custom annotations interop support described above to make them work out of the box with Metro.</p>
+<p>Java annotation processors and KSP processors can generate annotated code in one round for processing in a later round. Anvil supported custom K1 <code>CodeGenerator</code> implementations. anvil-ksp and kotlin-inject-anvil also support custom contribution annotations to defer processing.</p>
+<p>KSP runs before Metro’s compiler plugin, so a KSP processor can generate Metro-annotated code for Metro to process.</p>
+<p>To reuse a KSP processor written for another framework, configure <a href="../interop/#annotations">custom annotation interop</a> for its generated annotations.</p>
 <h2 id="origin-annotations">Origin Annotations<a class="headerlink" href="#origin-annotations" title="Permanent link">&para;</a></h2>
-<p>When code generators create Metro-annotated types, they can use the <code>@Origin</code> annotation to link the generated type back to its source. This is particularly useful for contribution merging - when a source type is excluded or replaced in a <code>@DependencyGraph</code>, any generated types with <code>@Origin</code> pointing to it will also be excluded or replaced automatically.</p>
+<p>Use <code>@Origin</code> to link a generated Metro type to its source. When a graph excludes or replaces the source contribution, Metro also excludes or replaces generated contributions that point to it.</p>
 <div class="highlight"><pre><span></span><code><span class="c1">// Source type</span>
 <span class="nd">@GenerateSomething</span>
 <span class="kd">class</span><span class="w"> </span><span class="nc">UserRepository</span>
@@ -2070,7 +2070,7 @@
 <span class="nd">@Origin</span><span class="p">(</span><span class="n">UserRepository</span><span class="o">::</span><span class="n">class</span><span class="p">)</span><span class="w">  </span><span class="c1">// Links back to the source</span>
 <span class="kd">class</span><span class="w"> </span><span class="nc">UserRepository_Impl</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">UserRepository</span>
 </code></pre></div>
-<p>Now if <code>UserRepository</code> is excluded in a graph:</p>
+<p>If a graph excludes <code>UserRepository</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@DependencyGraph</span><span class="p">(</span>
 <span class="w">  </span><span class="n">scope</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">,</span>
 <span class="w">  </span><span class="n">excludes</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[</span><span class="n">UserRepository</span><span class="o">::</span><span class="n">class</span><span class="o">]</span><span class="w">  </span><span class="c1">// This also excludes UserRepository_Impl</span>
@@ -2086,7 +2086,7 @@
 <span class="p">}</span>
 </code></pre></div>
 <p>The annotation must have a <code>KClass</code> parameter at index <code>0</code>.</p>
-<p>If using Anvil interop, kotlin-inject-anvil&rsquo;s <code>@Origin</code> annotation is automatically recognized.</p>
+<p>Anvil interop automatically recognizes kotlin-inject-anvil’s <code>@Origin</code>.</p>
 <div class="highlight"><pre><span></span><code><span class="n">metro</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="n">interop</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="n">includeAnvil</span><span class="p">(</span><span class="n">includeKotlinInjectAnvil</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span><span class="p">)</span>
@@ -2115,7 +2115,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="August 12, 2026 20:22:15 UTC">August 12, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 24, 2026 06:32:14 UTC">November 24, 2026</span>
   </span>
 
     

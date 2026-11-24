@@ -2088,9 +2088,9 @@
 
 
 <h1 id="metro-intrinsics">Metro Intrinsics<a class="headerlink" href="#metro-intrinsics" title="Permanent link">&para;</a></h1>
-<p>Like Dagger, Metro supports injection of bindings wrapped in intrinsic types. Namely — <em>provider</em> functions (i.e. <code>() -&gt; T</code>) and <code>Lazy</code>. These are useful for deferring creation/initialization of dependencies. They only need to be requested at the injection site; Metro’s code gen will generate all the necessary stitching to satisfy that request.</p>
+<p>Request <code>() -&gt; T</code> or <code>Lazy&lt;T&gt;</code> at an injection site to defer creating a dependency. Metro generates the wrapper.</p>
 <h2 id="functions-t">Functions (<code>() -&gt; T</code>)<a class="headerlink" href="#functions-t" title="Permanent link">&para;</a></h2>
-<p>Metro supports using Kotlin&rsquo;s <code>() -&gt; T</code> function type as a provider. This is the <strong>preferred form</strong> for expressing providers: it requires no Metro-specific import, plays naturally with Kotlin idioms, and is just as efficient as the legacy <code>Provider&lt;T&gt;</code> type from JSR-330-esque patterns. Each invocation returns a new instance (or the cached instance if the underlying binding is scoped).</p>
+<p>Use <code>() -&gt; T</code> for providers. It requires no Metro import and has the same efficiency as <code>Provider&lt;T&gt;</code>. Each call creates an unscoped instance or returns the cached scoped instance.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@Inject</span>
 <span class="kd">class</span><span class="w"> </span><span class="nc">HttpClient</span><span class="p">(</span><span class="kd">val</span><span class="w"> </span><span class="nv">cacheProvider</span><span class="p">:</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">Cache</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="kd">fun</span><span class="w"> </span><span class="nf">createCache</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
@@ -2104,10 +2104,10 @@
 <span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">cacheProvider</span><span class="p">:</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">Cache</span>
 <span class="p">}</span>
 </code></pre></div>
-<p>Provider functions can be freely mixed with <code>Lazy&lt;T&gt;</code>, and also work with multibindings (e.g., <code>() -&gt; Set&lt;T&gt;</code>, <code>Map&lt;K, () -&gt; V&gt;</code>) and nested intrinsics like <code>() -&gt; Lazy&lt;T&gt;</code>.</p>
+<p>Providers can be combined with <code>Lazy&lt;T&gt;</code>, multibindings such as <code>() -&gt; Set&lt;T&gt;</code> and <code>Map&lt;K, () -&gt; V&gt;</code>, and nested wrappers such as <code>() -&gt; Lazy&lt;T&gt;</code>.</p>
 <div class="admonition warning">
 <p class="admonition-title">Caveat</p>
-<p>Enabling this feature effectively prevents using bare function types as regular bindings in your graph. If you rely on injecting <code>() -&gt; T</code> as a <em>value</em> rather than a provider, you may need to migrate those bindings to a more strongly typed wrapper.</p>
+<p>With function providers enabled, Metro interprets <code>() -&gt; T</code> as a provider request. Use a named wrapper type for a callback that must be injected as a value.</p>
 </div>
 <div class="admonition note">
 <p class="admonition-title">Kotlin/JS</p>
@@ -2128,13 +2128,13 @@
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
-<p>Note that <code>Lazy</code> is different from <em>scoping</em> in that it is confined to the scope of the <em>injected type</em>, rather than the component instance itself. There is functionally no difference between injecting a provider or <code>Lazy</code> of a <em>scoped</em> binding. A <code>Lazy</code> of a scoped binding can still be useful to defer initialization. The underlying implementation in Metro’s <code>DoubleCheck</code> prevents double memoization in this case.</p>
+<p>Each injected <code>Lazy</code> caches its own value. A scoped binding is cached by the graph, so both providers and lazy wrappers return the graph’s scoped instance. <code>Lazy</code> can still defer its initialization. <code>DoubleCheck</code> avoids double memoization.</p>
 <div class="admonition note">
 <p class="admonition-title">Why doesn’t <code>Provider</code> just use a property like <code>Lazy</code>?</p>
-<p>A property is appropriate for <code>Lazy</code> because it fits the definition of being a <em>computed</em> value that is idempotent for repeat calls. Metro opts to make its <code>Provider</code> use an <code>invoke()</code> function because it does not abide by that contract.</p>
+<p>A <code>Lazy</code> property returns the same cached value on repeat access. A provider uses <code>invoke()</code> because each call may create a new value.</p>
 </div>
 <h2 id="providert-legacy-form"><code>Provider&lt;T&gt;</code> (legacy form)<a class="headerlink" href="#providert-legacy-form" title="Permanent link">&para;</a></h2>
-<p>Before the function-syntax form was introduced, Metro used an explicit <code>Provider&lt;T&gt;</code> interface (mirroring javax/jakarta’s <code>Provider</code>). This form is still fully supported and continues to work — it’s simply no longer the recommended style for new code.</p>
+<p>Metro also supports <code>Provider&lt;T&gt;</code>, an explicit interface similar to Javax and Jakarta providers. Prefer <code>() -&gt; T</code> for new code.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@Inject</span>
 <span class="kd">class</span><span class="w"> </span><span class="nc">HttpClient</span><span class="p">(</span><span class="kd">val</span><span class="w"> </span><span class="nv">cacheProvider</span><span class="p">:</span><span class="w"> </span><span class="n">Provider</span><span class="o">&lt;</span><span class="n">Cache</span><span class="o">&gt;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="kd">fun</span><span class="w"> </span><span class="nf">createCache</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
@@ -2148,7 +2148,7 @@
 <li><code>WARN</code> — emit a warning (the default)</li>
 <li><code>ERROR</code> — fail the compilation</li>
 </ul>
-<p><code>Provider&lt;T&gt;</code> and <code>() -&gt; T</code> are fully interchangeable within a graph — they resolve to the same underlying binding — so you can migrate incrementally.</p>
+<p><code>Provider&lt;T&gt;</code> and <code>() -&gt; T</code> resolve to the same binding, so you can migrate incrementally.</p>
 <h2 id="nested-providers-and-lazy-values">Nested providers and lazy values<a class="headerlink" href="#nested-providers-and-lazy-values" title="Permanent link">&para;</a></h2>
 <p>Provider and lazy wrappers can be nested to any depth. For example, Metro supports <code>() -&gt; Lazy&lt;T&gt;</code>, <code>Provider&lt;Lazy&lt;T&gt;&gt;</code>, <code>Lazy&lt;() -&gt; T&gt;</code>, and <code>Lazy&lt;Provider&lt;T&gt;&gt;</code>. Each wrapper keeps its normal behavior: a provider call returns its immediate inner value, while a <code>Lazy</code> caches its immediate inner value. Suspending provider and lazy wrappers follow the same recursive model; see <a href="../coroutines/">Coroutines Support</a>.</p>
 
@@ -2173,7 +2173,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="July 21, 2026 20:10:24 UTC">July 21, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 24, 2026 06:32:14 UTC">November 24, 2026</span>
   </span>
 
     

@@ -3032,7 +3032,7 @@
 
 
 <h1 id="dependency-graphs">Dependency Graphs<a class="headerlink" href="#dependency-graphs" title="Permanent link">&para;</a></h1>
-<p>The primary entry points in Metro are <em>dependency graphs</em>. These are interfaces annotated with <code>@DependencyGraph</code> and created with <code>@DependencyGraph.Factory</code> interfaces. Graphs expose types from the object graph via accessor properties or functions.</p>
+<p>A dependency graph is Metro’s entry point to an object graph. Declare an interface or abstract class with <code>@DependencyGraph</code>. Its accessor properties and functions expose bindings. Use a <code>@DependencyGraph.Factory</code> when the graph needs runtime inputs.</p>
 <div class="admonition tip">
 <p class="admonition-title">Tip</p>
 <p>These are synonymous with <em>components</em> and <code>@Component</code>/<code>@Component.Factory</code> in Dagger and kotlin-inject.</p>
@@ -3041,7 +3041,7 @@
 <p class="admonition-title">Tip</p>
 <p>“Accessors” in Metro are synonymous with Dagger’s <a href="https://dagger.dev/api/latest/dagger/Component.html#provision-methods">provision methods</a>.</p>
 </div>
-<p>Accessors and member injections act as roots, from which the dependency graph is resolved. Dependencies can be provided via conventional <code>@Provides</code> functions in graphs or their supertypes, constructor-injected classes, or accessed from graph dependencies.</p>
+<p>Metro resolves dependencies from accessor and member injection roots. Bindings come from <code>@Provides</code> declarations in the graph or its supertypes, injected constructors, and included graph dependencies.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@DependencyGraph</span>
 <span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">message</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span>
@@ -3050,15 +3050,15 @@
 <span class="w">  </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideMessage</span><span class="p">():</span><span class="w"> </span><span class="kt">String</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"Hello, world!"</span>
 <span class="p">}</span>
 </code></pre></div>
-<p><em>Note the <code>@Provides</code> function must define an explicit return type.</em></p>
-<p>Simple graphs like this can be created via the <code>createGraph()</code> intrinsic.</p>
+<p><em>A <code>@Provides</code> function must declare its return type.</em></p>
+<p>Create a graph without runtime inputs with <code>createGraph()</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="kd">val</span><span class="w"> </span><span class="nv">graph</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">createGraph</span><span class="o">&lt;</span><span class="n">AppGraph</span><span class="o">&gt;</span><span class="p">()</span>
 </code></pre></div>
-<p>Graphs are relatively cheap and should be used freely.</p>
+<p>Graphs are relatively cheap to create, so use separate graphs when their ownership or lifetime calls for one.</p>
 <h2 id="inputs">Inputs<a class="headerlink" href="#inputs" title="Permanent link">&para;</a></h2>
-<p>Runtime inputs can be provided via a <code>@DependencyGraph.Factory</code> interface that returns the target graph. These parameters must be annotated with either <code>@Provides</code> or <code>@Includes</code>.</p>
+<p>Declare a <code>@DependencyGraph.Factory</code> that returns the graph to supply runtime inputs. Every factory input must be annotated with <code>@Provides</code> or <code>@Includes</code>.</p>
 <h3 id="provides">Provides<a class="headerlink" href="#provides" title="Permanent link">&para;</a></h3>
-<p>The simplest input is an instance parameter annotated with <code>@Provides</code>. This provides this instance as an available binding on the graph.</p>
+<p>A parameter annotated with <code>@Provides</code> becomes an instance binding in the graph.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@DependencyGraph</span>
 <span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">message</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span>
@@ -3075,8 +3075,8 @@
 <p>This is analogous to Dagger&rsquo;s <code>@BindsInstance</code>.</p>
 </div>
 <h3 id="includes">Includes<a class="headerlink" href="#includes" title="Permanent link">&para;</a></h3>
-<p><code>@Includes</code>-annotated parameters are treated as containers of available bindings. Metro will treat <em>accessors</em> of these types as usable dependencies.</p>
-<p>They are commonly other graph types whose&rsquo; dependencies you want to consume via explicit API.</p>
+<p>Metro reads the public accessors of an <code>@Includes</code> parameter as available bindings.</p>
+<p>Use this to consume another graph through its public API.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@DependencyGraph</span>
 <span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">message</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span>
@@ -3093,7 +3093,7 @@
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
-<p><code>@Includes</code> instance dependencies do not <em>need</em> to be other graphs though! They can be any regular class type. They <em>cannot</em> be enums or annotation classes.</p>
+<p>Your <code>@Includes</code> input doesn’t have to be another graph! You can pass an ordinary class. Enums and annotation classes aren’t supported.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@DependencyGraph</span>
 <span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">message</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span>
@@ -3112,7 +3112,7 @@
 <p class="admonition-title">Warning</p>
 <p>Includes parameters cannot be injected from the graph.</p>
 </div>
-<p><a href="#binding-containers">Binding Containers</a> are a special type of <code>@Includes</code> type, see more in its section below.</p>
+<p>See <a href="#binding-containers">Binding Containers</a> for a special kind of included dependency.</p>
 <h3 id="creating-factories">Creating factories<a class="headerlink" href="#creating-factories" title="Permanent link">&para;</a></h3>
 <p>Graph factories can be created with the <code>createGraphFactory()</code> intrinsic.</p>
 <div class="highlight"><pre><span></span><code><span class="kd">val</span><span class="w"> </span><span class="nv">messageGraph</span><span class="w"> </span><span class="o">=</span>
@@ -3121,12 +3121,12 @@
 </code></pre></div>
 <h2 id="scoping">Scoping<a class="headerlink" href="#scoping" title="Permanent link">&para;</a></h2>
 <p><em>See <a href="../scopes/">Scopes</a> for more details on scopes!</em></p>
-<p>Graphs may declare a <code>scope</code> (and optionally <code>additionalScopes</code> if there are more). Each of these declared scopes act as an implicit <code>@SingleIn</code> representation of that scope for <a href="../aggregation/">aggregation</a>.</p>
+<p>A graph declares its aggregation scope with <code>scope</code> and can add more with <code>additionalScopes</code>. Each declared scope acts as an implicit <code>@SingleIn</code> for <a href="../aggregation/">aggregation</a>.</p>
 <p>For example:<br />
 <div class="highlight"><pre><span></span><code><span class="nd">@DependencyGraph</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
 <span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span>
 </code></pre></div></p>
-<p>Is functionally equivalent to writing the below.</p>
+<p>This is equivalent to:</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@SingleIn</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
 <span class="nd">@DependencyGraph</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
 <span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span>
@@ -3190,7 +3190,7 @@
 <li>It must re-declare the callback&rsquo;s annotation and the qualifiers on its own parameters.</li>
 </ul>
 <h3 id="callback-parameters">Callback parameters<a class="headerlink" href="#callback-parameters" title="Permanent link">&para;</a></h3>
-<p>Callback parameters use normal dependency resolution and get the same compile-time validation as graph accessors. This allows you to easily consume and use dependencies in your callback functions.</p>
+<p>Metro resolves callback parameters like graph accessors and validates them at compile time.</p>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
 <p>Close callbacks have two traps! Metro warns about both. Suppress either warning when you intend that behavior.</p>
@@ -3206,7 +3206,7 @@
 <div class="admonition note">
 <p class="admonition-title">Post-close graph usage</p>
 <p>A closed graph still serves dependency requests. A request after close can create a binding for the first time, so stop using a graph before you close it.</p>
-<p>Closing also doesn&rsquo;t clear cached instances. A closed graph and its providers keep them in memory until you allow it to be GC&rsquo;d naturally.</p>
+<p>Closing does not clear cached instances. The graph and its providers retain them until they can be garbage-collected.</p>
 <p>Creating a graph extension through a closed graph <strong>fails</strong>, even with a factory obtained earlier.</p>
 </div>
 <h4 id="graph-extensions">Graph extensions<a class="headerlink" href="#graph-extensions" title="Permanent link">&para;</a></h4>
@@ -3222,7 +3222,7 @@
 <p class="admonition-title">Warning</p>
 <p>A <code>CloseableGraph</code> keeps a reference to each closeable extension it creates until the extension or the parent graph closes. Close extensions when you&rsquo;re done with them so they can be garbage collected.</p>
 </div>
-<p>An extension joins its parent&rsquo;s cleanup once its init callbacks succeed. If the parent closes while those callbacks run, creating the extension fails and Metro closes the extension first. The exception is an extension with a suspend <code>close()</code> that a non-suspend function creates, which stays open. A graph that receives another graph as an <code>@Includes</code> input <em>doesn&rsquo;t</em> close it as there&rsquo;s no parent/child relationship there. Sibling extensions close in no particular order when they are closed by their parents.</p>
+<p>An extension joins its parent’s cleanup after its init callbacks succeed. If the parent closes during initialization, creation fails and Metro closes the extension first. If a non-suspend factory creates an extension with a suspend <code>close()</code>, creation still fails in this race, but the extension stays open. An <code>@Includes</code> graph is owned separately and is not closed by the consuming graph. Parents close sibling extensions in no particular order.</p>
 <p>A <code>CloseableGraph</code> can&rsquo;t own a <code>SuspendCloseableGraph</code> extension, but a <code>SuspendCloseableGraph</code> can own both kinds.</p>
 <p>A graph that isn&rsquo;t closeable can create closeable extensions too. It doesn&rsquo;t track them, so close each one yourself. No graph above it can be closeable, because closing that graph couldn&rsquo;t reach the extension.</p>
 <h3 id="suspend-callbacks">Suspend callbacks<a class="headerlink" href="#suspend-callbacks" title="Permanent link">&para;</a></h3>
@@ -3256,7 +3256,7 @@
 <h3 id="tracing">Tracing<a class="headerlink" href="#tracing" title="Permanent link">&para;</a></h3>
 <p>With <a href="../performance/#runtime-tracing">runtime tracing</a> enabled, Metro records how long the init callbacks and close take, with a span for each callback. The graph doesn&rsquo;t own its tracer, so closing the graph leaves the tracer open.</p>
 <h2 id="graph-extensions_1">Graph Extensions<a class="headerlink" href="#graph-extensions_1" title="Permanent link">&para;</a></h2>
-<p>Dependency graphs can be extended via <em>graph extensions</em>. As the name implies, graph extensions <em>extend</em> a parent graph they are declared for and contain a superset of bindings that includes both the parent graph(s) as well as their own. These are similar in functionality to Dagger&rsquo;s <em>Subcomponents</em>.</p>
+<p>A graph extension inherits its parent’s bindings and adds its own. It is similar to a Dagger subcomponent.</p>
 <p>Graph extensions must be either an interface or an abstract class and are annotated with <code>@GraphExtension</code>. They are created via <code>@GraphExtension.Factory</code> types.</p>
 <p>Metro&rsquo;s compiler plugin will build, validate, and implement this graph at compile-time <em>when the parent graph is generated</em>. This means that graph extensions are not available until the parent graph is generated.</p>
 <p>Graph extensions can be chained and implicitly inherit their parents&rsquo; scopes.</p>
@@ -3340,7 +3340,7 @@
 <span class="p">}</span>
 </code></pre></div>
 <h3 id="graph-private-bindings">Graph-private Bindings<a class="headerlink" href="#graph-private-bindings" title="Permanent link">&para;</a></h3>
-<p>By default, all bindings in a graph are implicitly available to its graph extensions. <code>@GraphPrivate</code> allows marking <code>@Provides</code>, <code>@Binds</code>, or <code>@Multibinds</code> declarations as <em>private</em> to the graph they are provided in. This means:</p>
+<p>Graph extensions inherit all eligible parent bindings by default. Mark <code>@Provides</code>, <code>@Binds</code>, or <code>@Multibinds</code> declarations with <code>@GraphPrivate</code> to keep them in the declaring graph:</p>
 <ul>
 <li>Private <code>@Provides</code> and <code>@Binds</code> bindings <strong>may not</strong> be exposed directly via an accessor.</li>
 <li>The binding <strong>will not</strong> be visible to extensions of this graph.</li>
@@ -3509,7 +3509,7 @@
 <h3 id="aggregation">Aggregation<a class="headerlink" href="#aggregation" title="Permanent link">&para;</a></h3>
 <p>See <a href="#scoping">DependencyGraph</a>&rsquo;s section on aggregation.</p>
 <h3 id="contributed-graph-extensions">Contributed Graph Extensions<a class="headerlink" href="#contributed-graph-extensions" title="Permanent link">&para;</a></h3>
-<p>Graph extensions may be <em>contributed</em> to a parent graph and its contribution merging will be deferred until the parent graph is generated.</p>
+<p>Contribute a graph extension to defer merging until Metro generates its parent graph.</p>
 <h4 id="the-problem">The Problem<a class="headerlink" href="#the-problem" title="Permanent link">&para;</a></h4>
 <p>Imagine this module dependency tree:</p>
 <div class="highlight"><pre><span></span><code>        :app
@@ -3520,7 +3520,7 @@
 <p><code>:app</code> defines the main dependency graph with <code>@DependencyGraph</code>. The <code>:login</code> module defines a graph extension for authenticated user flows, and <code>:user-data</code> provides some core functionality like <code>UserRepository</code>.</p>
 <p>If <code>:login</code> defines its own graph directly with <code>@DependencyGraph</code>, it won&rsquo;t see contributions from <code>:user-data</code> <em>unless</em> <code>:login</code> depends on it directly.</p>
 <h4 id="the-solution">The Solution<a class="headerlink" href="#the-solution" title="Permanent link">&para;</a></h4>
-<p>Instead, <code>:login</code> can use <code>@GraphExtension(LoggedInScope::class)</code> + <code>@ContributesTo</code> on its associated factory to say: &ldquo;I want to contribute a new graph extension <em>to</em> a future <code>AppScope</code> parent graph.&rdquo;</p>
+<p>In <code>:login</code>, annotate <code>LoggedInGraph</code> with <code>@GraphExtension(LoggedInScope::class)</code>. Use <code>@ContributesTo(AppScope::class)</code> on its factory to contribute the extension to the future parent graph.</p>
 <p>The graph extension will then be generated in <code>:app</code>, which already depends on both <code>:login</code> and <code>:user-data</code>. Now <code>UserRepository</code> can be injected in <code>LoggedInGraph</code>.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@GraphExtension</span><span class="p">(</span><span class="n">LoggedInScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
 <span class="kd">interface</span><span class="w"> </span><span class="nc">LoggedInGraph</span><span class="w"> </span><span class="p">{</span>
@@ -3538,7 +3538,7 @@
 <div class="highlight"><pre><span></span><code><span class="nd">@DependencyGraph</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
 <span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span>
 </code></pre></div>
-<p>The generated code will modify <code>AppGraph</code> to implement <code>LoggedInGraph.Factory</code> and implement <code>createLoggedInGraph()</code> using a generated final <code>LoggedInGraphImpl</code> class that includes all contributed bindings, including <code>UserRepository</code> from <code>:user-data</code>.</p>
+<p>Metro makes <code>AppGraph</code> implement <code>LoggedInGraph.Factory</code>. Its generated <code>createLoggedInGraph()</code> returns a generated final <code>LoggedInGraphImpl</code>. That implementation includes the matching contributions visible to <code>:app</code>, including <code>UserRepository</code> from <code>:user-data</code>.</p>
 <div class="highlight"><pre><span></span><code><span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span>
 <span class="c1">// modifications generated during compile-time</span>
 <span class="w">  </span><span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">LoggedInGraph</span><span class="p">.</span><span class="na">Factory</span><span class="w"> </span><span class="p">{</span>
@@ -3592,14 +3592,14 @@
 </div>
 <p>Contributed graphs may also be chained.</p>
 <h2 id="binding-containers">Binding Containers<a class="headerlink" href="#binding-containers" title="Permanent link">&para;</a></h2>
-<p>Binding containers are classes, objects, or interfaces annotated with <code>@BindingContainer</code> that contain binding declarations (<code>@Provides</code> or <code>@Binds</code>) but are not themselves complete dependency graphs. They&rsquo;re analogous to Dagger&rsquo;s <code>@Module</code> annotation and can be used in cases where defining bindings in an (extended) interface is unwieldy or not helpful.</p>
-<p>Unlike graphs and other <code>@Includes</code> types, their public accessors are <em>not</em> read. Only <code>@Binds</code> and <code>@Provides</code> declarations are read.</p>
+<p>A <code>@BindingContainer</code> class, object, or interface groups <code>@Provides</code> and <code>@Binds</code> declarations. It is a reusable partial graph, similar to a Dagger <code>@Module</code>. Use one when placing bindings in a graph supertype is unwieldy.</p>
+<p>Metro reads only <code>@Binds</code> and <code>@Provides</code> declarations from binding containers. For other <code>@Includes</code> inputs, Metro reads public accessors as bindings.</p>
 <div class="admonition tip">
 <p class="admonition-title">Tip</p>
-<p>Binding containers can be seen as partial graphs and are intended to be reusable, composable units that are <em>included</em> in a complete graph.</p>
+<p>Include a binding container in a graph to reuse a group of declarations.</p>
 </div>
 <h3 id="including-via-includes-parameters">Including via <code>@Includes</code> Parameters<a class="headerlink" href="#including-via-includes-parameters" title="Permanent link">&para;</a></h3>
-<p>The most flexible way to include binding containers is via <code>@Includes</code>-annotated parameters on graph factories.</p>
+<p>Pass a binding container instance through an <code>@Includes</code> factory parameter:</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@BindingContainer</span>
 <span class="kd">class</span><span class="w"> </span><span class="nc">NetworkBindings</span><span class="p">(</span><span class="kd">private</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">baseUrl</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nd">@Provides</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideHttpClient</span><span class="p">():</span><span class="w"> </span><span class="n">HttpClient</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">HttpClient</span><span class="p">(</span><span class="n">baseUrl</span><span class="p">)</span>
@@ -3615,7 +3615,7 @@
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
-<p>This allows you to bring any instance to the graph with its own internal logic.</p>
+<p>This lets the caller construct and configure the container.</p>
 <h3 id="including-via-dependencygraphbindingcontainers">Including via <code>@DependencyGraph.bindingContainers</code><a class="headerlink" href="#including-via-dependencygraphbindingcontainers" title="Permanent link">&para;</a></h3>
 <p>For simple binding containers, you can declare them directly in the graph annotation:</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@BindingContainer</span>
@@ -3651,7 +3651,7 @@
 <span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">httpClient</span><span class="p">:</span><span class="w"> </span><span class="n">HttpClient</span>
 <span class="p">}</span>
 </code></pre></div>
-<p>The transitive closure of all included binding containers will be included in the final consuming graph.</p>
+<p>The graph includes all binding containers reached transitively through <code>includes</code>.</p>
 <h3 id="contributing-binding-containers">Contributing Binding Containers<a class="headerlink" href="#contributing-binding-containers" title="Permanent link">&para;</a></h3>
 <p>Binding containers can be contributed to scopes via <code>@ContributesTo</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@ContributesTo</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
@@ -3682,13 +3682,13 @@
 <h3 id="notes">Notes<a class="headerlink" href="#notes" title="Permanent link">&para;</a></h3>
 <ul>
 <li>Companion objects, annotation classes, and enum classes/entries cannot be annotated with <code>@BindingContainer</code>.</li>
-<li>Provides within a binding container&rsquo;s companion object are automatically included.</li>
-<li>Enclosing classes of <code>@Binds</code> or <code>@Provides</code> providers don&rsquo;t need to be annotated with <code>@BindingContainer</code> for Metro to process them - the annotation is primarily for reference to <code>@DependencyGraph.Factory</code> and the ability to use <code>includes</code>.</li>
+<li><code>@Provides</code> declarations in a container’s companion object are included automatically.</li>
+<li>A class with <code>@Binds</code> or <code>@Provides</code> declarations does not need <code>@BindingContainer</code> for those declarations to be processed. The annotation lets a graph reference the class as a container and use its <code>includes</code> parameter.</li>
 <li>Binding containers may also be <a href="../aggregation/#contributing-binding-containers">contributed</a>.</li>
 <li>See <a href="https://github.com/ZacSweers/metro/issues/172">#172</a> for more details.</li>
 </ul>
 <h2 id="dynamic-graphs">Dynamic Graphs<a class="headerlink" href="#dynamic-graphs" title="Permanent link">&para;</a></h2>
-<p>Dynamic graphs are a powerful feature of the Metro compiler that allow for dynamically replacing bindings in a given graph. To use them, you can pass in a vararg set of <em>binding containers</em> to the <code>createDynamicGraph()</code> and <code>createDynamicGraphFactory()</code> intrinsics.</p>
+<p>Dynamic graphs replace bindings when you create a graph. Pass one or more binding container instances to <code>createDynamicGraph()</code> or <code>createDynamicGraphFactory()</code>.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@DependencyGraph</span>
 <span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">message</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span>
@@ -3710,47 +3710,49 @@
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
-<p>The compiler will dynamically generate a hidden graph impl <em>within the enclosing class or file</em> that is unique to the combination of input [containers] and target type [T].</p>
+<p>Metro generates a private graph implementation in the enclosing class or file for that combination of containers and target graph type.</p>
 <p><strong>Constraints</strong></p>
 <ul>
 <li>All containers must be instances (or objects) of <em>binding containers</em>.</li>
 <li>It&rsquo;s an error to pass no containers.</li>
-<li>All containers must be non-local, canonical classes. i.e., they must be something with a name!</li>
+<li>Each container class must be non-local and have a canonical name.</li>
 <li>This overload may be called in a member function body, top-level function body, or property initializer.</li>
-<li>The target [T] graph <em>must</em> be annotated with <code>@DependencyGraph</code> and must be a valid graph on its own.</li>
+<li>The target graph type must have <code>@DependencyGraph</code> and be valid without the replacements.</li>
 </ul>
 <details class="note">
 <summary>Implementation Notes</summary>
 <ul>
 <li>The bulk of this implementation is in <code>IrDynamicGraphGenerator</code>.</li>
-<li>The generated graph impl is a private nested (static) class of the enclosing class or file.</li>
-<li>This doesn&rsquo;t swap bindings in a real graph or use a real graph at all, instead tracking available dynamic bindings and preferring them when constructing a graph in <code>BindingGraphGenerator</code>.</li>
+<li>The generated implementation is a private nested static class of the enclosing class or file.</li>
+<li><code>BindingGraphGenerator</code> tracks dynamic bindings and prefers them while constructing a new graph implementation. It does not modify an existing graph instance.</li>
 </ul>
 </details>
 <h2 id="general-implementation-notes">General Implementation Notes<a class="headerlink" href="#general-implementation-notes" title="Permanent link">&para;</a></h2>
-<p>Dependency graph code gen is designed to largely match how Dagger components are generated.</p>
+<p>Metro generates dependency graphs using patterns similar to Dagger components.</p>
 <ul>
-<li>Internal graph validation uses <a href="https://en.wikipedia.org/wiki/Tarjan%27s_strongly_connected_components_algorithm">Tarjan&rsquo;s algorithm</a> + <a href="https://en.wikipedia.org/wiki/Topological_sorting">topological sort</a> implementation.</li>
-<li>This runs in O(V+E) time</li>
-<li>The returned ordered list of bindings can be used to determine provider field generation order.</li>
-<li>Any binding whose order depends on one later in the returned order implicitly requires use of <code>DelegateFactory</code>.</li>
-<li>Dependencies are traversed from public accessors and <code>inject()</code> functions.</li>
-<li>Metro generates Provider Factory classes for each provider. These should be generated at the same time that the provider is compiled so that their factory classes. This is for two primary purposes:<ul>
-<li>They can be reused to avoid code duplication</li>
-<li>Metro can copy default values for provider values over to the generated factory to support optional dependencies. Since default values may refer to private references, we must generate these factories as nested classes.</li>
+<li>Graph validation uses <a href="https://en.wikipedia.org/wiki/Tarjan%27s_strongly_connected_components_algorithm">Tarjan’s algorithm</a> and a <a href="https://en.wikipedia.org/wiki/Topological_sorting">topological sort</a>.<ul>
+<li>The traversal runs in O(V+E) time.</li>
+<li>The ordered bindings determine provider field initialization order.</li>
+<li>A binding that depends on a later binding in the order needs a <code>DelegateFactory</code>.</li>
 </ul>
 </li>
-<li>Metro generates a graph <em>impl</em> class that holds all aggregated bindings and manages scoping.</li>
+<li>Dependencies are traversed from public accessors and <code>inject()</code> functions.</li>
+<li>Metro generates a factory when it compiles each provider:<ul>
+<li>Factories can be reused to avoid duplicate code.</li>
+<li>Factories copy default expressions to support optional dependencies. They are nested in the source class so those expressions can reference private members.</li>
+</ul>
+</li>
+<li>A generated graph implementation holds aggregated bindings and manages scoping.</li>
 <li>Scoped bindings are stored in provider fields backed by <code>DoubleCheck</code>.</li>
-<li>Reused unscoped providers instances are stored in reusable fields.</li>
+<li>Reused unscoped providers are stored in fields.</li>
 <li><code>@Provides</code> factory parameters are stored in a field backed by <code>InstanceFactory</code>.</li>
 <li>Multibindings create new collection instances every time.</li>
 <li>Multibinding providers are not accessible as standalone bindings.</li>
-<li>Graph extensions are implemented via a combination of things<ul>
+<li>Graph extensions use metadata and generated accessors:<ul>
 <li>Custom <code>MetroMetadata</code> is generated and serialized into Kotlin&rsquo;s <code>Metadata</code> annotations.</li>
-<li>Extendable parent graphs opt-in to generating this metadata. They write information about their available provider and instance fields, binds callable IDs, parent graphs, and provides callable IDs.</li>
+<li>Extendable parent graphs record provider and instance fields, binding callable IDs, parent graphs, and provider callable IDs.</li>
 <li>Extendable parent graphs generate <code>_metroAccessor</code>-suffixed <code>internal</code> functions that expose instance fields and provider fields.</li>
-<li>Child graphs read this metadata and look up the relevant callable symbols, then incorporating these when building its own binding graph.</li>
+<li>Child graphs read the metadata, resolve the callable symbols, and add them to their binding graphs.</li>
 </ul>
 </li>
 </ul>
@@ -3881,9 +3883,9 @@
 </table>
 </div>
 <h4 id="switching-providers">Switching Providers<a class="headerlink" href="#switching-providers" title="Permanent link">&para;</a></h4>
-<p>Switching providers are an optimization in graph generation that defers class loading. This can reduce graph initialization time by deferring bindings&rsquo; class init until it&rsquo;s actually requested.</p>
+<p>Switching providers defer binding class initialization until the binding is requested. This can reduce graph initialization time.</p>
 <p>This is analogous to Dagger&rsquo;s <code>fastInit</code> option.</p>
-<p>You should really <em>only</em> use this if you&rsquo;ve benchmarked it and measured a meaningful difference, as it comes with the same tradeoffs (always holding a graph instance ref, etc.)</p>
+<p>I’d <em>only</em> enable switching providers if you’ve benchmarked them and the difference is worth it. Each switching provider holds a reference to the graph for as long as the provider lives.</p>
 <p>Switching providers also support <a href="../coroutines/">suspend providers</a>.</p>
 <div class="highlight"><pre><span></span><code><span class="c1">// The graph</span>
 <span class="nd">@DependencyGraph</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
@@ -3954,7 +3956,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 11, 2026 06:24:32 UTC">November 11, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 24, 2026 06:32:14 UTC">November 24, 2026</span>
   </span>
 
     
