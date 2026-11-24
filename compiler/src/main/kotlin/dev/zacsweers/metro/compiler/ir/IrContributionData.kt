@@ -6,9 +6,10 @@ import androidx.collection.MutableScatterMap
 import androidx.collection.MutableScatterSet
 import androidx.collection.ScatterSet
 import androidx.collection.mutableScatterSetOf
-import dev.zacsweers.metro.ContributesBinding
+import dev.zacsweers.metro.ContributesIntoSet
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
+import dev.zacsweers.metro.binding
 import dev.zacsweers.metro.compiler.PLUGIN_ID
 import dev.zacsweers.metro.compiler.api.ir.MetroIrContributionExtension
 import dev.zacsweers.metro.compiler.expectAsOrNull
@@ -49,7 +50,7 @@ private data class ScopeLookupKey(val scope: Scope, val caller: ClassId?)
 
 @Inject
 @SingleIn(IrScope::class)
-@ContributesBinding(IrScope::class)
+@ContributesIntoSet(IrScope::class, binding<Lockable>())
 internal class IrContributionData(
   private val metroContext: IrMetroContext,
   private val metroDeclarations: MetroDeclarations,
