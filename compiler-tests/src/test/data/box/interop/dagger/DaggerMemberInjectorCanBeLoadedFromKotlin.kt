@@ -1,5 +1,5 @@
 // MODULE: lib
-// ENABLE_ANVIL_KSP
+// ENABLE_DAGGER_KSP
 // DISABLE_METRO
 
 // FILE: Dependency.java
@@ -56,9 +56,8 @@ fun box(): String {
 
   graph.inject(example)
   assertNotNull(example.dependency)
-  // TODO anvil (and anvil-ksp) don't support setter injection
-//  assertNotNull(example.setterDep)
-//  assertNotNull(example.setterDep2)
-//  assertEquals("Hello", example.setterDep3)
+  assertNotNull(example.setterDep)
+  assertNotNull(example.setterDep2)
+  assertEquals("Hello", example.setterDep3)
   return "OK"
 }

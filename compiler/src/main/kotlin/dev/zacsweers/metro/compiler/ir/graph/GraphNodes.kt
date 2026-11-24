@@ -1201,16 +1201,18 @@ internal class GraphNodes(
               // Can only be an accessor, binds, or graph extension
               val getter = declaration.getter!!
 
-              val rawType = getter.returnType.rawType()
-              val isGraphExtensionFactory =
-                rawType.isAnnotatedWithAny(metroSymbols.classIds.graphExtensionFactoryAnnotations)
-              var isGraphExtension = isGraphExtensionFactory
+              // A type parameter can be a binding key, but can't name an extension factory.
+              val rawType = getter.returnType.rawTypeOrNull()
+              val extensionFactory = rawType?.takeIf {
+                it.isAnnotatedWithAny(metroSymbols.classIds.graphExtensionFactoryAnnotations)
+              }
+              var isGraphExtension = extensionFactory != null
               var hasDefaultImplementation = false
               var isOptionalBinding = annotations.isOptionalBinding
               var qualifierMismatchData: Triple<IrAnnotation?, IrAnnotation?, IrProperty>? = null
 
               // Single pass through overridden symbols
-              if (!isGraphExtensionFactory) {
+              if (extensionFactory == null) {
                 for (overridden in declaration.overriddenSymbolsSequence()) {
                   if (canDeferToDefaultImpl) {
                     if (
@@ -1281,12 +1283,12 @@ internal class GraphNodes(
               val contextKey =
                 IrContextualTypeKey.from(getter, hasDefaultOverride = isOptionalBinding)
               if (isGraphExtension) {
-                if (isGraphExtensionFactory) {
+                if (extensionFactory != null) {
                   // For factories, add them to accessors so they participate in the binding graph
                   accessors += GraphAccessor(contextKey, metroFunction, false)
 
                   // Also track it as a graph extension for metadata purposes
-                  val samMethod = rawType.singleAbstractFunction()
+                  val samMethod = extensionFactory.singleAbstractFunction()
                   val graphExtensionType = samMethod.returnType
                   val graphExtensionTypeKey = IrTypeKey(graphExtensionType)
                   if (graphExtensionTypeKey != sourceGraphTypeKey) {
@@ -1307,7 +1309,7 @@ internal class GraphNodes(
                     metroFunction.ir.overriddenSymbolsSequence().any {
                       it.owner.parentClassOrNull?.classId in graphExtensionSupertypes
                     }
-                  val functionParent = rawType.parentClassOrNull
+                  val functionParent = rawType?.parentClassOrNull
                   val finalContextKey =
                     if (
                       functionParent != null &&

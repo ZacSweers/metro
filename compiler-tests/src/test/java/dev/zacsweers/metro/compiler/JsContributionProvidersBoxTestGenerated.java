@@ -1795,6 +1795,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     }
 
     @Test
+    @TestMetadata("GenericGraphParent.kt")
+    public void testGenericGraphParent() {
+      run("GenericGraphParent.kt");
+    }
+
+    @Test
     @TestMetadata("InferParentScopedBindingForExtension.kt")
     public void testInferParentScopedBindingForExtension() {
       run("InferParentScopedBindingForExtension.kt");

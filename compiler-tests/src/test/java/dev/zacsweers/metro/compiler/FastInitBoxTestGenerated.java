@@ -2141,6 +2141,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("GenericGraphParent.kt")
+    public void testGenericGraphParent() {
+      run("GenericGraphParent.kt");
+    }
+
+    @Test
     @TestMetadata("InferParentScopedBindingForExtension.kt")
     public void testInferParentScopedBindingForExtension() {
       run("InferParentScopedBindingForExtension.kt");

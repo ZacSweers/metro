@@ -879,7 +879,7 @@ private constructor(
 
           checkAccessorRunsInit(extensionImpl, binding.accessor)
           val ctor = extensionImpl.primaryConstructor!!
-          irCallConstructor(ctor.symbol, node.sourceGraph.typeParameters.map { it.defaultType })
+          irCallConstructor(ctor.symbol, emptyList())
             .apply {
               // If this function has parameters, they're factory instance params and need to be
               // passed on

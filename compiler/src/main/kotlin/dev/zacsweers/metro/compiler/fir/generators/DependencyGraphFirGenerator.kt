@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
 import dev.zacsweers.metro.compiler.fir.buildSimpleAnnotation
 import dev.zacsweers.metro.compiler.fir.buildStaticAnnotations
+import dev.zacsweers.metro.compiler.fir.caching
 import dev.zacsweers.metro.compiler.fir.constructType
 import dev.zacsweers.metro.compiler.fir.copyTypeParametersFrom
 import dev.zacsweers.metro.compiler.fir.expandedClassId
@@ -52,22 +53,32 @@ import org.jetbrains.kotlin.fir.plugin.createCompanionObject
 import org.jetbrains.kotlin.fir.plugin.createConstructor
 import org.jetbrains.kotlin.fir.plugin.createDefaultPrivateConstructor
 import org.jetbrains.kotlin.fir.plugin.createNestedClass
+import org.jetbrains.kotlin.fir.resolve.fullyExpandedType
 import org.jetbrains.kotlin.fir.resolve.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.resolve.providers.firProvider
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.resolve.toRegularClassSymbol
 import org.jetbrains.kotlin.fir.scopes.impl.toConeType
+import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
+import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
+import org.jetbrains.kotlin.fir.types.ConeErrorType
+import org.jetbrains.kotlin.fir.types.ConeKotlinType
+import org.jetbrains.kotlin.fir.types.FirTypeProjectionWithVariance
 import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.types.FirUserTypeRef
+import org.jetbrains.kotlin.fir.types.builder.buildTypeProjectionWithVariance
+import org.jetbrains.kotlin.fir.types.builder.buildUserTypeRef
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
 import org.jetbrains.kotlin.fir.types.constructType
+import org.jetbrains.kotlin.fir.types.impl.FirQualifierPartImpl
+import org.jetbrains.kotlin.fir.types.impl.FirTypeArgumentListImpl
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
@@ -210,6 +221,8 @@ internal class DependencyGraphFirGenerator(session: FirSession, compatContext: C
     private val PLACEHOLDER_SAM_FUNCTION = $$$"$$PLACEHOLDER_FOR_SAM".asName()
   }
 
+  private val typeResolverFactory by lazy { MetroFirTypeResolver.Factory(session).caching() }
+
   private val graphImpls = mutableSetOf<ClassId>()
   private val factoryImpls = mutableSetOf<ClassId>()
   // Block creators reserve these names for every name lookup, so walk each factory's hierarchy
@@ -321,8 +334,13 @@ internal class DependencyGraphFirGenerator(session: FirSession, compatContext: C
           in graphImpls -> {
             log("Generating graph class")
             createNestedClass(owner, name, Keys.GraphImplClassDeclaration) {
-                superType(owner::constructType)
-                copyTypeParametersFrom(owner, session)
+                val factorySupertype = graphFactorySupertype(owner)
+                if (factorySupertype == null) {
+                  superType(owner::constructType)
+                  copyTypeParametersFrom(owner, session)
+                } else {
+                  superType(factorySupertype)
+                }
               }
               .apply {
                 markAsDeprecatedHidden(session)
@@ -355,6 +373,71 @@ internal class DependencyGraphFirGenerator(session: FirSession, compatContext: C
         }
       }
     }
+  }
+
+  /** A concrete factory fixes the graph's type arguments before its accessors are generated. */
+  private fun graphFactorySupertype(owner: FirClassSymbol<*>): ConeKotlinType? {
+    if (owner.typeParameterSymbols.isEmpty()) {
+      return null
+    }
+    val factory = graphObject(owner)?.findDeclaredCreator(session, ::log)?.classSymbol
+    if (factory == null || factory.typeParameterSymbols.isNotEmpty()) {
+      return null
+    }
+    // Use the common FIR function type because Kotlin 2.3.0 uses a different named subtype.
+    val sam: FirFunctionSymbol<*> = factory.findSamFunction(session) ?: return null
+    if (sam.typeParameterSymbols.isNotEmpty()) {
+      return null
+    }
+    // Nested headers can be requested before Kotlin has resolved the factory signature.
+    @OptIn(SymbolInternals::class) val returnTypeRef = sam.fir.returnTypeRef
+    val type =
+      returnTypeRef.coneTypeOrNull
+        ?: typeResolverFactory.create(factory)?.resolveFactoryType(returnTypeRef)
+        ?: return null
+    val returnType = type.fullyExpandedType(session)
+    val arguments = returnType.typeArguments
+    if (returnType.classId != owner.classId || arguments.size != owner.typeParameterSymbols.size) {
+      return null
+    }
+    if (!arguments.all { it is ConeKotlinType }) {
+      return null
+    }
+    return owner.constructType(arguments.mapToArray { it })
+  }
+
+  /** Resolves arguments before the enclosing type without changing the factory's FIR. */
+  private fun MetroFirTypeResolver.resolveFactoryType(typeRef: FirTypeRef): ConeKotlinType? {
+    typeRef.coneTypeOrNull?.let {
+      return it
+    }
+    val userType = typeRef as? FirUserTypeRef ?: return null
+    val typeSource = userType.source ?: return null
+    val parts =
+      userType.qualifier.map { part ->
+        val arguments = FirTypeArgumentListImpl(part.typeArgumentList.source)
+        for (argument in part.typeArgumentList.typeArguments) {
+          if (argument is FirTypeProjectionWithVariance) {
+            val resolved = resolveFactoryType(argument.typeRef) ?: return null
+            arguments.typeArguments += buildTypeProjectionWithVariance {
+              source = argument.source
+              variance = argument.variance
+              this.typeRef = resolved.toFirResolvedTypeRef()
+            }
+          } else {
+            arguments.typeArguments += argument
+          }
+        }
+        FirQualifierPartImpl(part.source, part.name, arguments)
+      }
+
+    val copy = buildUserTypeRef {
+      source = typeSource
+      isMarkedNullable = userType.isMarkedNullable
+      annotations += userType.annotations
+      qualifier += parts
+    }
+    return resolveType(copy).takeUnless { it is ConeErrorType }
   }
 
   override fun getCallableNamesForClass(
@@ -609,7 +692,7 @@ internal class DependencyGraphFirGenerator(session: FirSession, compatContext: C
         try {
           createDefaultPrivateConstructor(context.owner, Keys.Default)
         } catch (e: IllegalArgumentException) {
-          // TODO why does this happen in the IDE?
+          // Include the generated object's ID in constructor failures.
           throw RuntimeException(
             "Could not create private constructor for object ${context.owner.classId}",
             e,
@@ -892,18 +975,22 @@ internal class DependencyGraphFirGenerator(session: FirSession, compatContext: C
 
   @JvmInline
   value class GraphObject(val classSymbol: FirClassSymbol<*>) {
+    /** Looks up a factory without causing FIR to generate more nested classes. */
     @OptIn(DirectDeclarationsAccess::class)
+    fun findDeclaredCreator(session: FirSession, log: (String) -> Unit): Creator? {
+      return classSymbol.declarationSymbols
+        .filterIsInstance<FirClassSymbol<*>>()
+        .onEach {
+          log(
+            "Declaration factory candidate ${it.name}. Annotations are ${it.resolvedCompilerAnnotationsWithClassIds.joinToRender()}",
+          )
+        }
+        .find { it.isGraphFactory(session) }
+        ?.let(::Creator)
+    }
+
     fun findCreator(session: FirSession, context: String, log: (String) -> Unit): Creator? {
-      val creator =
-        classSymbol.declarationSymbols
-          .filterIsInstance<FirClassSymbol<*>>()
-          .onEach {
-            log(
-              "Declaration factory candidate ${it.name}. Annotations are ${it.resolvedCompilerAnnotationsWithClassIds.joinToRender()}",
-            )
-          }
-          .find { it.isGraphFactory(session) }
-          ?.let(::Creator)
+      val creator = findDeclaredCreator(session, log)
       if (creator != null) {
         log("Creator found from $context? $creator.")
         return creator
