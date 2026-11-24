@@ -4,7 +4,7 @@ Internal notes for Metro's constant provider inlining implementation.
 
 ## Goal
 
-Some `@Provides` declarations are just constants:
+Metro can inline constant `@Provides` declarations:
 
 - primitive literals
 - string literals
@@ -14,7 +14,7 @@ Some `@Provides` declarations are just constants:
 - class literals
 - `const val` reads
 
-For these, generated graph accessors can return the value directly instead of going through the generated `*MetroFactory` class. This reduces generated graph work and avoids unnecessary provider factory allocation for values that the Kotlin compiler has already made constant or singleton-like.
+Generated graph accessors return these values directly. This avoids allocating or calling a `*MetroFactory` for constants and singletons.
 
 The feature is enabled by default through `enable-provider-inlining`. It can be disabled as an incubating kill switch.
 

@@ -7,24 +7,22 @@ hide:
 
 # Introduction
 
-Metro is a compile-time dependency injection framework that draws heavy inspiration from [Dagger](https://github.com/google/dagger), [Anvil](https://github.com/square/anvil), and [Kotlin-Inject](https://github.com/evant/kotlin-inject). It seeks to unify their best features under one, cohesive solution while adding a few new features and implemented as a compiler plugin.
+Metro is a compile-time dependency injection framework for Kotlin. Its compiler plugin combines patterns from [Dagger](https://github.com/google/dagger), [Anvil](https://github.com/square/anvil), and [kotlin-inject](https://github.com/evant/kotlin-inject).
 
 ### Why another DI framework?
 
-It’s felt for some time like the Kotlin community has been waiting for a library at the intersection of these different tools and features. Different tools exist for parts of these, but there’s not yet been a unified solution that checks all these boxes, leaves behind some of these tools’ limitations, and embraces newer features that native compiler plugins offer.
-
-In short, Metro stands on the shoulders of giants. It doesn’t try to reinvent the wheel, it does try to make those wheels work better together.
+For a while I felt like we had all the pieces for a Kotlin DI library, just spread across a few different tools. I wanted Dagger’s graph validation and Anvil’s aggregation with an API that felt as natural in Kotlin as kotlin-inject. Building Metro as a Kotlin compiler plugin also lets it add code to existing classes. For example, a generated factory can use a default argument that references a private member.
 
 !!! note
-    _I’m aware of the [XKCD comic](https://xkcd.com/927/) 🙂, I think Metro offers a compelling feature set with interop hooks that make it easy to integrate with an existing codebase._
+    _I know the [XKCD comic](https://xkcd.com/927/) 🙂. Metro's interop hooks are there so you can introduce it into an existing codebase and migrate a piece at a time._
 
 ## Getting Started
 
-Check out the [Quick Start](quickstart.md) guide to get up and running with Metro, including installation and common patterns like the api/impl binding pattern.
+Start with the [Quick Start](quickstart.md) guide for installation and common patterns, including binding an implementation to its interface.
 
 ## Installation
 
-Apply the gradle plugin.
+Apply the Gradle plugin:
 
 ```kotlin
 plugins {
@@ -32,9 +30,9 @@ plugins {
 }
 ```
 
-And that's it! The default configuration will add the multiplatform `runtime` artifact (which has annotations you can use) and wire it all automatically.
+And that’s it! The plugin adds the multiplatform `runtime` artifact, which contains Metro’s annotations, and configures the compiler plugin.
 
-You can configure custom behaviors with APIs on the `metro` DSL extension.
+Use the `metro` DSL to configure Metro:
 
 ```kotlin
 metro {
@@ -53,13 +51,13 @@ Snapshots of the development version are available in [Sonatype's `snapshots` re
 
 ## Supported platforms
 
-The compiler plugin itself supports all multiplatform project types. The first-party annotations artifact is also multiplatform and supports all common JVM, JS, and native targets.
+The compiler plugin supports Kotlin Multiplatform projects. The runtime annotations support common JVM, JS, and Native targets.
 
-Contribution hint generation is _not_ currently supported on native or Wasm targets until Kotlin `2.3.20-Beta1` or later. They do work within the same compilation though.
+On Native and Wasm, contribution hints across compilations require Kotlin `2.3.20-Beta1` or later. Contributions within the same compilation also work on earlier versions.
 
 ## Caveats
 
-- Kotlin compiler plugins are not a stable API! Compiled outputs from this plugin _should_ be stable, but usage in newer versions of kotlinc are not guaranteed to be stable. That said, Metro will strive to make matching releases available quickly and test against Kotlin prereleases eagerly.
+- Kotlin compiler plugin APIs are unstable. Generated outputs should remain stable, but a newer Kotlin compiler may require a Metro update. Metro tests Kotlin prereleases and aims to support new releases promptly.
 
 ## Acknowledgements
 

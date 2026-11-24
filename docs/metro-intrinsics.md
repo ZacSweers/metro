@@ -1,10 +1,10 @@
 # Metro Intrinsics
 
-Like Dagger, Metro supports injection of bindings wrapped in intrinsic types. Namely — _provider_ functions (i.e. `() -> T`) and `Lazy`. These are useful for deferring creation/initialization of dependencies. They only need to be requested at the injection site; Metro’s code gen will generate all the necessary stitching to satisfy that request.
+Request `() -> T` or `Lazy<T>` at an injection site to defer creating a dependency. Metro generates the wrapper.
 
 ## Functions (`() -> T`)
 
-Metro supports using Kotlin's `() -> T` function type as a provider. This is the **preferred form** for expressing providers: it requires no Metro-specific import, plays naturally with Kotlin idioms, and is just as efficient as the legacy `Provider<T>` type from JSR-330-esque patterns. Each invocation returns a new instance (or the cached instance if the underlying binding is scoped).
+Use `() -> T` for providers. It requires no Metro import and has the same efficiency as `Provider<T>`. Each call creates an unscoped instance or returns the cached scoped instance.
 
 ```kotlin
 @Inject
@@ -24,10 +24,10 @@ interface AppGraph {
 }
 ```
 
-Provider functions can be freely mixed with `Lazy<T>`, and also work with multibindings (e.g., `() -> Set<T>`, `Map<K, () -> V>`) and nested intrinsics like `() -> Lazy<T>`.
+Providers can be combined with `Lazy<T>`, multibindings such as `() -> Set<T>` and `Map<K, () -> V>`, and nested wrappers such as `() -> Lazy<T>`.
 
 !!! warning "Caveat"
-    Enabling this feature effectively prevents using bare function types as regular bindings in your graph. If you rely on injecting `() -> T` as a _value_ rather than a provider, you may need to migrate those bindings to a more strongly typed wrapper.
+    With function providers enabled, Metro interprets `() -> T` as a provider request. Use a named wrapper type for a callback that must be injected as a value.
 
 !!! note "Kotlin/JS"
     On Kotlin/JS, the legacy `Provider<T>` type does not implement `() -> T` due to JS runtime limitations. Metro handles this transparently by wrapping/unwrapping at the call site, similar to other provider interop scenarios.
@@ -51,14 +51,14 @@ class HttpClient(val cacheProvider: Lazy<Cache>) {
 }
 ```
 
-Note that `Lazy` is different from *scoping* in that it is confined to the scope of the *injected type*, rather than the component instance itself. There is functionally no difference between injecting a provider or `Lazy` of a *scoped* binding. A `Lazy` of a scoped binding can still be useful to defer initialization. The underlying implementation in Metro’s `DoubleCheck` prevents double memoization in this case.
+Each injected `Lazy` caches its own value. A scoped binding is cached by the graph, so both providers and lazy wrappers return the graph’s scoped instance. `Lazy` can still defer its initialization. `DoubleCheck` avoids double memoization.
 
 !!! note "Why doesn’t `Provider` just use a property like `Lazy`?"
-    A property is appropriate for `Lazy` because it fits the definition of being a *computed* value that is idempotent for repeat calls. Metro opts to make its `Provider` use an `invoke()` function because it does not abide by that contract.
+    A `Lazy` property returns the same cached value on repeat access. A provider uses `invoke()` because each call may create a new value.
 
 ## `Provider<T>` (legacy form)
 
-Before the function-syntax form was introduced, Metro used an explicit `Provider<T>` interface (mirroring javax/jakarta’s `Provider`). This form is still fully supported and continues to work — it’s simply no longer the recommended style for new code.
+Metro also supports `Provider<T>`, an explicit interface similar to Javax and Jakarta providers. Prefer `() -> T` for new code.
 
 ```kotlin
 @Inject
@@ -75,7 +75,7 @@ When the function provider feature is enabled (the default), Metro emits a diagn
 - `WARN` — emit a warning (the default)
 - `ERROR` — fail the compilation
 
-`Provider<T>` and `() -> T` are fully interchangeable within a graph — they resolve to the same underlying binding — so you can migrate incrementally.
+`Provider<T>` and `() -> T` resolve to the same binding, so you can migrate incrementally.
 
 ## Nested providers and lazy values
 

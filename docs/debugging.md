@@ -1,8 +1,8 @@
 # Debugging
 
-One major downside to generating IR directly is that developers cannot step into generated source code with the debugger. This is an accepted trade-off with Metro (or any other compiler plugin).
+Metro generates IR directly, so a debugger cannot step into generated source files.
 
-Metro does offer a `debug` option in its plugin options/Gradle extension that will print verbose Kotlin pseudocode for all generated IR classes. This can be further tuned to print just certain classes.
+Enable `debug` in the compiler options or Gradle extension to print verbose Kotlin pseudocode for all generated IR classes. You can filter the output to specific classes.
 
 ```kotlin
 metro {
@@ -10,14 +10,14 @@ metro {
 }
 ```
 
-In the future, we could possibly explore including information in IR to synthesize call stack information similar to coroutines, but will save that for if/when it’s asked for.
+We could explore adding call stack information in IR, much like coroutines do. If that would help you debug Metro, let me know!
 
 ## Reports
 
-Similar to Compose, Metro supports a `reportsDestination` property in its Gradle DSL and can output various graph reports to this destination if specified. This is very much a WIP, feedback is welcome!
+Set `reportsDestination` in the Gradle DSL to choose where Metro writes graph reports. This is still a work in progress. Feedback is welcome!
 
 !!! warning
-    You should _not_ leave this enabled by default as it can be quite verbose and potentially expensive. The Kotlin Gradle Plugin does _not_ include file inputs like `reportsDestination` as task inputs, so you may need to recompile with `--rerun` to force recompilation after adding this flag.
+    Enable reports only when needed. They can produce large output and add compilation cost. The Kotlin Gradle plugin does not track `reportsDestination` as a task input. Use `--rerun` on the compilation task after changing it.
 
 ```kotlin
 metro {
@@ -27,7 +27,7 @@ metro {
 
 ### Unmatched Exclusions and Replacements
 
-When `reportsDestination` is configured, Metro will report any unmatched exclusions or replacements during contribution merging. This can help identify cases where a graph excludes or replaces a class that isn't actually present in the merged contributions.
+When you set `reportsDestination`, Metro lists exclusions and replacements that did not match a merged contribution.
 
 Reports are written to files like:
 
@@ -36,7 +36,7 @@ Reports are written to files like:
 - `merging-unmatched-exclusions-ir/<scope>.txt`
 - `merging-unmatched-replacements-ir/<scope>.txt`
 
-`<graph>` and `<scope>` here may be a path like `<graph1>/<graph2>/<graph3>.txt` when graph extensions or embedded classes are used.
+For nested graphs or classes, `<graph>` and `<scope>` can contain path segments, such as `<graph1>/<graph2>/<graph3>.txt`.
 
 ## Graph Analysis & Visualization
 
@@ -44,8 +44,8 @@ The interactive graph viewer lets you browse bindings, follow dependencies from 
 
 ## Decompiled Bytecode
 
-Compiled java class files of Metro-generated types are fairly friendly to the IntelliJ "decompile to Java" action. Simply open the class file in the IDE (usually seen as a Kotlin bytecode class) then run the "decompile to Java" action.
+Open a generated JVM class file in IntelliJ. The IDE usually displays it as a Kotlin bytecode class. Run **Decompile to Java** to inspect the generated code.
 
-For JVM projects they are under `build/classes`.
+For JVM projects, class files are under `build/classes`.
 
-For Android projects, it's `build/intermediates/built_in_kotlinc` or `build/tmp/kotlin-classes` (legacy, pre AGP 9).
+For Android projects, look under `build/intermediates/built_in_kotlinc` or, before AGP 9, `build/tmp/kotlin-classes`.

@@ -1,14 +1,14 @@
 # Generating Metro Code
 
-Java annotation processing and KSP both support multiple rounds of processing, allowing custom processors to generate new code with injection annotations that can be processed in later rounds. Anvil supported custom `CodeGenerator` implementations in K1 and anvil-ksp and kotlin-inject-anvil support specifying custom contributing annotations to allow them to intelligently defer processing to later rounds.
+Java annotation processors and KSP processors can generate annotated code in one round for processing in a later round. Anvil supported custom K1 `CodeGenerator` implementations. anvil-ksp and kotlin-inject-anvil also support custom contribution annotations to defer processing.
 
-Since Metro is implemented as a compiler plugin, asking users to write compiler plugins to interact with it would be a bit unwieldy. However, KSP processors that generate metro-annotated code work out of the box with it since they run before Metro's plugin does.
+KSP runs before Metro’s compiler plugin, so a KSP processor can generate Metro-annotated code for Metro to process.
 
-If you have an existing KSP processor for a different framework, you could leverage it + custom annotations interop support described above to make them work out of the box with Metro.
+To reuse a KSP processor written for another framework, configure [custom annotation interop](interop.md#annotations) for its generated annotations.
 
 ## Origin Annotations
 
-When code generators create Metro-annotated types, they can use the `@Origin` annotation to link the generated type back to its source. This is particularly useful for contribution merging - when a source type is excluded or replaced in a `@DependencyGraph`, any generated types with `@Origin` pointing to it will also be excluded or replaced automatically.
+Use `@Origin` to link a generated Metro type to its source. When a graph excludes or replaces the source contribution, Metro also excludes or replaces generated contributions that point to it.
 
 ```kotlin
 // Source type
@@ -21,7 +21,7 @@ class UserRepository
 class UserRepository_Impl : UserRepository
 ```
 
-Now if `UserRepository` is excluded in a graph:
+If a graph excludes `UserRepository`:
 
 ```kotlin
 @DependencyGraph(
@@ -45,8 +45,7 @@ metro {
 
 The annotation must have a `KClass` parameter at index `0`.
 
-If using Anvil interop, kotlin-inject-anvil's `@Origin` annotation is automatically recognized.
-
+Anvil interop automatically recognizes kotlin-inject-anvil’s `@Origin`.
 
 ```kotlin
 metro {

@@ -1,10 +1,10 @@
 # Quick Start
 
-This guide covers installation and the most common patterns in Metro to get you up and running quickly.
+This guide shows how to install Metro, create a graph, and bind implementations to interfaces.
 
 ## Installation
 
-Metro is primarily applied via its companion Gradle plugin.
+Apply the Metro Gradle plugin:
 
 ```kotlin
 plugins {
@@ -13,7 +13,7 @@ plugins {
 }
 ```
 
-…and that's it! This will add Metro's runtime dependencies and do all the necessary compiler plugin wiring.
+And that’s it! The plugin adds the runtime dependencies and configures the compiler plugin.
 
 See [Installation](installation.md) for other build systems (like Bazel) and IDE support options.
 
@@ -53,7 +53,7 @@ val repository = appGraph.repository
 
 ## The Api/Impl Pattern
 
-One of the most common patterns in dependency injection is binding an implementation to its interface. Metro offers two approaches depending on your needs.
+Use `@Binds` for an explicit interface binding. Use `@ContributesBinding` to discover the binding across modules.
 
 ### Without aggregation (explicit binding)
 
@@ -80,7 +80,7 @@ interface AppGraph {
 
 ### With aggregation (recommended for multi-module projects)
 
-Using `@ContributesBinding` automatically binds your implementation to its interface and contributes it to any graph with the matching scope:
+`@ContributesBinding` binds an implementation to its interface and contributes it to graphs with the matching scope:
 
 ```kotlin
 interface Repository {
@@ -108,7 +108,7 @@ interface AppGraph {
 
 ### Providing third-party classes
 
-For types you don't control (e.g. third party code), use `@Provides` in a contributed binding container:
+Use `@Provides` in a contributed binding container for types you don’t control:
 
 ```kotlin
 @ContributesTo(AppScope::class)
@@ -126,7 +126,7 @@ object NetworkBindings {
 }
 ```
 
-A contributed `@BindingContainer` is the lightest-weight form: its `@Provides` declarations are pulled into the graph without exposing them as accessors on the graph type. See [Binding Containers](dependency-graphs.md#binding-containers) for more, including replacing or excluding them in tests.
+A contributed `@BindingContainer` is the lightest way to add providers without exposing them as graph accessors. See [Binding Containers](dependency-graphs.md#binding-containers) for details, including replacing or excluding containers in tests.
 
 !!! tip
     A contributed `interface` with `@Provides` works too, and is useful when you want subtypes to override non-provider members of the interface. `@Provides` declarations themselves cannot be overridden — see [Provides](provides.md).
@@ -172,7 +172,7 @@ For more on dynamic graphs, see [Dynamic Graphs](dependency-graphs.md#dynamic-gr
 ## Next Steps
 
 - [Dependency Graphs](dependency-graphs.md) – Graph structure, factories, and extensions
-- [Aggregation](aggregation.md) – Deep dive into `@ContributesBinding`, `@ContributesTo`, and more
-- [Scopes](scopes.md) – Understanding scoping and lifecycle
+- [Aggregation](aggregation.md) – `@ContributesBinding` and `@ContributesTo`
+- [Scopes](scopes.md) – Instance lifetime and caching
 - [Bindings](bindings.md) – Qualifiers, multibindings, and optional bindings
 - [Injection Types](injection-types.md) – Constructor, assisted, and member injection

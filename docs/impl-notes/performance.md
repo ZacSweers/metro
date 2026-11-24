@@ -1,6 +1,6 @@
 # Performance Implementation Notes
 
-Notes on compiler performance, generated code, and (scaling) large graphs. The [user-facing performance guide](../performance.md) covers benchmarks and configuration.
+Notes on compiler performance, generated code, and large graphs. The [user-facing performance guide](../performance.md) covers benchmarks and configuration.
 
 ## Performance model
 

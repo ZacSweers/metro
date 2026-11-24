@@ -9,7 +9,7 @@ Give Metro users compiler-grade insight in the editor without running the compil
 - On-demand graph validation with compiler-aligned diagnostics.
 - Unused-declaration suppression for declarations only Metro-generated code calls.
 
-The compiler and plugin reuse graph population, sorting, cycle detection, diagnostic models, and graph-level suspend binding validation from `metro-common`. IR and Analysis API adapters only extract frontend-specific metadata, select source anchors, and render shared witness paths. Differential tests compare IDEA results to checked-in compiler reports. The plugin never reads those reports in production because they do not exist when compilation fails, which is precisely when validation matters.
+The compiler and IDE plugin share graph population, sorting, cycle detection, diagnostic models, and suspend validation through `metro-common`. IR and Analysis API adapters extract frontend metadata, select source anchors, and render shared witness paths. Differential tests compare IDE results with checked-in compiler reports. Production validation does not read those reports, which may be absent after a failed compilation.
 
 Sharing must not slow down the compiler. Compiler contribution merging and FIR bound-type checks
 keep their existing in-place paths where a generic IDE-friendly representation would allocate or
@@ -99,7 +99,9 @@ constants, including directory moves, conservatively rebuild all source shards. 
 compiler settings are checked once per queued batch. Directory changes add newly relevant files as a
 batch.
 
-The current generation serves validation, Find Usages, and debug export. Find Usages reads cached current data and never requests a build. The presentation generation serves editor decorations and the graph browser. Automatic refresh advances both. Manual refresh mode retains the presentation generation while explicit operations can build current data. **Refresh** or reenabling automatic refresh brings editor presentation up to date, including after an explicit query refreshed current data in manual mode. A generation records the inputs it used, so a late worker cannot publish over newer work.
+The current generation serves validation, Find Usages, and debug export. Find Usages reads cached data without requesting a build. The presentation generation serves editor decorations and the graph browser.
+
+Automatic refresh advances both generations. In manual mode, explicit operations can rebuild current data while presentation stays unchanged. **Refresh** or reenabling automatic refresh updates presentation to the current data. Each generation records its inputs, so a late worker cannot overwrite newer work.
 
 Analysis API work runs in cancellable background smart reads. Graph query results and lookup tables
 are built from captured data outside read actions where possible. Explicit callers wait for a missing

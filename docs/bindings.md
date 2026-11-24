@@ -2,9 +2,9 @@
 
 ## Qualifiers
 
-Like Dagger and KI, Metro supports *qualifier annotations* to allow disambiguation of types. These are applied at injection and provision sites. A qualifier annotation is any annotation annotated with `@Qualifier`. For convenience, there is an included `@Named` qualifier available in Metro’s runtime that can be used too.
+A qualifier distinguishes bindings of the same type. Define a qualifier with an annotation marked `@Qualifier`, or use Metro’s `@Named`. Apply it at both the provision and injection sites.
 
-A “type key” in Metro is composed of a concrete type and (if any) qualifier annotation attached to it.
+A binding key consists of a concrete type and its qualifier, if any.
 
 ```kotlin
 @DependencyGraph
@@ -23,17 +23,15 @@ interface AppGraph {
 
 ## @Binds
 
-In many cases, a developer may have an implementation type on the graph that they want to expose as just its supertype.
-
-Like Dagger, Metro supports this with `@Binds`.
+Use `@Binds` to expose an implementation as a supertype.
 
 !!! tip "For multi-module projects"
-    If you're working across multiple modules and want bindings to be automatically discovered, see [`@ContributesBinding`](aggregation.md#contributesbinding) for a more powerful approach that supports aggregation.
+    Use [`@ContributesBinding`](aggregation.md#contributesbinding) to discover bindings across modules.
 
-For these cases, an abstract provider can be specified with the following conditions.
+An abstract `@Binds` property must meet these conditions:
 
-* It must be abstract
-* It must define one extension receiver that is a subtype of its provided type
+* It must be abstract.
+* Its extension receiver must be a subtype of the provided type.
 
 ```kotlin
 @DependencyGraph
@@ -51,7 +49,7 @@ interface AppGraph {
 class MessageImpl(val text: String) : Message
 ```
 
-If you want to limit access to these from your API, you can make these declarations `private` and just return `this`. Note it’s still important to annotate them with `@Binds` so that the Metro compiler understands its intent! Otherwise, it’s an error to *implement* these declarations.
+Want to keep the alias out of your public API? Make the property `private` and give it a getter that returns `this`. You still need `@Binds` so Metro knows it’s an alias.
 
 `@Binds` declarations can also declare multibinding annotations.
 
@@ -64,12 +62,12 @@ interface AppGraph {
 }
 ```
 
-`@Binds` declarations may also be declared in [binding Containers](dependency-graphs.md#binding-containers).
+`@Binds` declarations can also appear in [binding containers](dependency-graphs.md#binding-containers).
 
 `@Binds` functions can declare type parameters when [derived bindings](derived-bindings.md#generic-binds) are enabled.
 
 !!! note
-    In theory, you can implement a provider with a getter that replicates this (similar to how kotlin-inject uses `@get:Provider` + `this`), but this will be an error in FIR because Metro can generate more efficient code at compile-time if you use `@Binds`. This is because Metro can avoid calling the function entirely and just use this information at compile-time to optimize the generated code.
+    kotlin-inject can express an alias with a provider getter that returns `this`. Metro reports the FIR warning `PROVIDES_COULD_BE_BINDS` for a `@Provides` extension whose body returns `this`. Use `@Binds` so Metro can resolve the alias at compile time and eliminate the runtime call. A `@Binds` extension with a body must return `this`; any other body is an error.
 
 ### Parameter-less `@Binds`
 
@@ -113,7 +111,7 @@ This matches Dagger 2.60+'s behavior: https://dagger.dev/dev-guide/#parameterles
 
 ## Multibindings
 
-Like Dagger and KI, Metro supports `Set` and `Map` multibindings. Multibindings are collections of bindings of a common type. Multibindings are implicitly declared by the existence of providers annotated with `@IntoSet`, `@IntoMap`, or `@ElementsIntoSet`.
+Set and map multibindings collect bindings of a common type. Metro creates them implicitly from `@IntoSet`, `@IntoMap`, and `@ElementsIntoSet` contributions.
 
 ```kotlin
 @DependencyGraph
@@ -143,7 +141,7 @@ fun userIds(ids: UserIds): Set<Long> = ids.toSet()
 
 You can also return `ids` directly with a declared return type of `Collection<Long>` to avoid copying it.
 
-Map multibindings use `@IntoMap` and require a *map key* annotation. Map keys are any annotation annotated with `@MapKey`. Metro’s runtime includes a number of common ones like `@ClassKey` and `@StringKey`.
+Map contributions use `@IntoMap` and a key annotation marked `@MapKey`. Metro includes common keys such as `@ClassKey` and `@StringKey`.
 
 ```kotlin
 @DependencyGraph
@@ -164,9 +162,9 @@ interface MapMultibinding {
 ```
 
 !!! idea
-    In Metro, class-based map keys like `@ClassKey` do not require you to explicitly specify a value if used on a class or `@Binds` declaration as they can be inferred by the compiler.
+    Metro infers class-based map key values, such as `@ClassKey`, on classes and `@Binds` declarations.
 
-Alternatively, they can be declared with an `@Multibinds`-annotated accessor property/function in a component. This member will be implemented by the Metro compiler and is useful for scenarios where the multibinding may be empty.
+Declare a multibinding explicitly with an `@Multibinds` accessor property or function. Metro implements the accessor. Use this when the collection may be empty.
 
 ```kotlin
 @DependencyGraph
@@ -188,17 +186,17 @@ interface MapMultibinding {
 }
 ```
 
-Unlike Dagger, empty multibindings in Metro are a compile error by default. Empty multibindings are allowed but must be opted into via `@Multibinds(allowEmpty = true)`.
+Unlike Dagger, Metro reports an empty multibinding as a compile error by default. Allow one explicitly with `@Multibinds(allowEmpty = true)`.
 
 ??? note "Implementation Notes"
 
-    Metro takes inspiration from Guice in handling these in the binding graph. Since they cannot be added directly to the graph as-is (otherwise they would cause duplicate binding errors), a synthetic `@MultibindingElement` _qualifier_ annotation is generated for them at compile-time to disambiguate them. These are user-invisible but allows them to participate directly in graph validation like any other dependency. Metro then just adds these bindings as dependencies to `Binding.Multibinding` types.
+    Following Guice’s approach, Metro gives each contribution a synthetic, user-invisible `@MultibindingElement` qualifier to prevent duplicate binding keys. Contributions then participate in graph validation as dependencies of `Binding.Multibinding`.
 
 ## Optional Bindings
 
-Metro supports optional bindings by leaning on Kotlin’s native support for default parameter values. These are checked at injection sites and are allowed to be missing from the dependency graph when performing a lookup at validation/code-gen time.
+A parameter with a default value can be absent from the graph. Metro uses the default expression when it cannot resolve the parameter’s binding.
 
-The below example would, since there is no `Int` binding provided, provide a message of `Count: -1`.
+This example returns `Count: -1` when the graph has no `Int` binding:
 
 ```kotlin
 @DependencyGraph
@@ -209,7 +207,7 @@ interface AppGraph {
 }
 ```
 
-To expose accessors for optional bindings, use `@OptionalBinding` on the accessor. Note that the accessor _must_ declare a default body that Metro will use if the binding is absent.
+Annotate an optional accessor with `@OptionalBinding` and provide a default body. Metro uses that body if the binding is absent.
 
 ```kotlin
 @DependencyGraph
@@ -219,7 +217,7 @@ interface AppGraph {
 }
 ```
 
-There are a couple of optional configuration for Metro's optional binding support that can be configured via the `optionalBindingBehavior` Gradle DSL:
+Set `optionalBindingBehavior` in the Gradle DSL to configure optional bindings:
 
 - `DISABLED` - Disallows optional bindings entirely.
 - `REQUIRE_OPTIONAL_BINDING` - Requires optional binding _parameters_ to also be annotated with `@OptionalBinding`. This may be preferable for consistency with accessors and/or explicitness.
@@ -231,11 +229,11 @@ KI supports the same feature.
 
 ## Nullability
 
-As nullability is a first-class concept in Kotlin, Metro supports it too. Bindings in Metro graphs may be nullable, but it's important to understand how Metro treats them!
+Metro treats nullable and non-nullable bindings as distinct keys.
 
-In short, Metro will treat nullable types as different type keys than their non-nullable analogues. That is to say, `String` and `String?` are treated as distinct types in Metro.
+For example, `String` and `String?` are separate binding keys.
 
-Furthermore, a `String` binding cannot satisfy a `String?` automatically. You _may_ however `@Binds` a `String` to a `String?` and Metro will treat it as a valid binding.
+A `String` binding does not automatically satisfy `String?`. Use `@Binds` to declare the conversion:
 
 ```kotlin
 @DependencyGraph(Unit::class)
@@ -251,7 +249,7 @@ interface ExampleGraph {
 }
 ```
 
-This pattern can be combined with optional bindings to allow for easy conditional injection, for example with optional bindings across different source sets:
+Combine nullable and optional bindings for conditional injection, such as a binding supplied by an optional source set:
 ```kotlin
 // in src/main
 @Inject
@@ -269,7 +267,7 @@ interface OptionalRepositoryProvider {
 }
 ```
 
-then in the optionally included module:
+In the optional module:
 ```kotlin
 // Dependency of the src/debug source set
 @Inject
@@ -282,13 +280,12 @@ class OptionalRepositoryImpl : OptionalRepository
 
 ??? note "Implementation Notes"
 
-    While kotlin-inject can support this by simply invoking functions with omitted arguments, Metro has to support this in generated factories.
+    kotlin-inject can call a function with an argument omitted. Metro supports missing arguments in its generated provider and constructor factories.
     
-    To accomplish this, Metro will slightly modify how generated provider/constructor injection factory classes look compared to Dagger. Since we are working in IR, we can copy the default value expressions from the source function/constructor to the factory’s newInstance and create() functions. This in turn allows calling generated graphs to simply omit absent binding arguments from their creation calls. This is a tried and tested pattern used by other first party plugins, namely kotlinx-serialization.
+    In IR, Metro copies default expressions from the source provider or constructor into the factory’s `newInstance` and `create()` functions. Generated graphs can then omit arguments for missing bindings. kotlinx-serialization uses a similar compiler-plugin pattern.
     
-    There are a few cases that need to be handled here:
+    Metro handles these cases:
     
-    * Expressions may reference previous parameters or instance members. To support this, we’ll transform them in IR to point at new parameters in those functions.
-    * Expressions may reference private instance members. To support this, Metro factories are generated as nested classes within the source class or graph.
-        * This does depart from how dagger factories work, but if we ever wanted to have some sort of interop for that we could always generate bridging factory classes in the places dagger expects later.
-    * Parameters in `create()` need to be wrapped in `Provider` calls. This means that for cases where they back-reference other parameters, those will need to be transformed into `invoke()` calls on those providers too.
+    * References to earlier parameters or instance members are remapped to the generated function’s parameters.
+    * Factories are nested in the source class or graph so expressions can access private members. Dagger expects its factories outside the source class. If we need that layout, we could generate bridge classes there.
+    * In `create()`, parameters are wrapped in `Provider` values. References to earlier parameters must be transformed into `invoke()` calls on those providers.

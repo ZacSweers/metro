@@ -11,7 +11,7 @@ Runtime tracing records two kinds of work:
 - graph entry-point instants, such as accessors, graph extension creators, and member-injection functions
 - binding-realization spans, such as constructor injection, `@Provides`, multibindings, and provider invocation
 
-The implementation currently targets JVM and Android JVM code (what androix.trace targets). The helper runtime lives in the JVM-only `metro-trace` artifact.
+Runtime tracing targets JVM and Android JVM, the platforms supported by AndroidX Tracing. Its helper runtime is in the JVM-only `metro-trace` artifact.
 
 ## Graph Input Contract
 

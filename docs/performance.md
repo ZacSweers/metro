@@ -1,6 +1,6 @@
 # Performance
 
-Metro strives to be a performant solution with minimal overhead at build-time and generating fast, efficient code at runtime.
+Metro aims to minimize build overhead and generate fast runtime code. This page covers its benchmarks, compiler options, and tracing tools.
 
 ## Benchmarks
 
@@ -17,14 +17,14 @@ Every ratio below compares frameworks within one run. The dated tabs preserve ol
 - `Koin`: Koin's compiler plugin and runtime container.
 
 !!! note "Koin caveats"
-    The Koin benchmarks deserve a couple notes because the work is not exactly like-for-like:
+    The Koin workload differs in two ways:
 
     - Koin's compiler plugin does less work. It aggregates definitions, generates module and factory wiring, and checks for missing dependencies and cycles, but leaves final graph resolution to runtime. Metro, Dagger, and kotlin-inject resolve and validate graphs from their roots and generate static implementations at compile time.
     - Koin's runtime does more work as a result. The graph work deferred during compilation happens during startup.
 
 ### Build Performance
 
-Metro's compiler plugin is designed to be _fast_. Running as a compiler plugin allows it to:
+Metro runs in the Kotlin compiler, which lets it:
 
 - Avoid generating new sources that need to be compiled.
 - Avoid running KSP or KAPT.
@@ -375,11 +375,11 @@ This will output one or more Perfetto trace files after the compilation that you
 
 Filenames follow the pattern `<id>-<phase>-<moduleName>.perfetto-trace`, where `<id>` is a `yyMMdd-HHmmss` timestamp shared across every file produced by the same compilation, `<phase>` is `fir` or `ir`, and `<moduleName>` identifies the FIR session or IR module fragment. KMP source-set hierarchies and multi-fragment IR each produce their own files. Load whichever file corresponds to the phase you want to inspect.
 
-Note that these traces probably do require a bit of familiarity with the Metro compiler internals.
+Interpreting these traces requires familiarity with Metro compiler internals.
 
 !!! warning
 
-    Note that file option inputs like `traceDestination` are _not_ tracked as inputs to the kotlin compilation, so you should run your target kotlin compilation task with `--rerun` (not `--rerun-tasks`!) to ensure it it's not cached.
+    The Kotlin compilation task does not track `traceDestination` as an input. Run the target compilation task with `--rerun` after changing it. Use `--rerun` instead of `--rerun-tasks` to rerun only that task.
 
 ### Runtime tracing
 
