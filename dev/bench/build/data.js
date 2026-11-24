@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795562515134,
+  "lastUpdate": 1795563221690,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -28784,6 +28784,62 @@ window.BENCHMARK_DATA = {
             "value": 20165.763,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +1.30%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "6ff05dd9~1",
+          "message": "[before] Fix scoped providers in generic graphs (#3180)",
+          "timestamp": "2026-11-24T22:31:48Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/6ff05dd9fe2d8f35e8778fb3ee2403b452ae3463"
+        },
+        "date": 1795563221690,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 22475.477,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "6ff05dd9fe2d8f35e8778fb3ee2403b452ae3463",
+          "message": "[after] Fix scoped providers in generic graphs (#3180)",
+          "timestamp": "2026-11-24T22:31:48Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/6ff05dd9fe2d8f35e8778fb3ee2403b452ae3463"
+        },
+        "date": 1795563221691,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 20814.489999999998,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -7.39%"
           }
         ]
       }
