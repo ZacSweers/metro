@@ -118,7 +118,7 @@ anvil-kspCompiler = { module = "dev.zacsweers.anvil:compiler", version.ref = "an
 assertk = { module = "com.willowtreeapps.assertk:assertk", version = "0.28.1" }
 
 clikt = "com.github.ajalt.clikt:clikt:5.2.1"
-commonmark = "org.commonmark:commonmark:0.32.0"
+commonmark = "org.commonmark:commonmark:0.33.0"
 
 circuit-codegen = { module = "com.slack.circuit:circuit-codegen", version.ref = "circuit" }
 circuit-foundation = { module = "com.slack.circuit:circuit-foundation", version.ref = "circuit" }
