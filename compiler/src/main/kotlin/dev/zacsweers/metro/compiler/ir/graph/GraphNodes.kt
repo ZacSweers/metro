@@ -1502,7 +1502,18 @@ internal class GraphNodes(
         }
 
       trace("Process transitive containers") {
-        for (container in allMergedContainers) {
+        for (resolvedContainer in allMergedContainers) {
+          val declaration = resolvedContainer.ir
+          // The factory's dispatch receiver must match the implemented graph type.
+          // Use the same type arguments when calling the factory creator.
+          val container =
+            if (declaration == graphDeclaration && declaration.typeParameters.isNotEmpty()) {
+              val supertype = supertypes.first { it.classOrNull == declaration.symbol }
+              resolvedContainer.withTypeSubstitution(declaration.deepRemapperFor(supertype))
+            } else {
+              resolvedContainer
+            }
+
           val isDynamicContainer = container.ir in dynamicBindingContainers
           for ((_, factory) in container.providerFactories) {
             if (factory.annotations.isGraphPrivate) {

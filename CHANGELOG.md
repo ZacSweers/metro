@@ -35,6 +35,7 @@ Changelog
 - **[IR]** Fix `@set:Inject` writing directly to the backing field and skipping the custom setter.
 - **[IR]** If a graph already exposed a provided `Map<String, String>`, Metro could reuse it for a `Map<String, () -> String>` accessor. Metro now reports a missing binding for the second accessor.
 - **[IR]** Fix a `ClassCastException` when injecting a provided `Map<Class<*>, V>` with `enableKClassToClassInterop` enabled. Metro tried to convert keys that were already Java classes.
+- **[IR]** Fix a compiler crash when a generic dependency graph declares a scoped provider.
 - **[IR]** Fix a `NoSuchMethodError` when `createGraph()` tried to call a suspend function synchronously to get an extension receiver (e.g. `@Provides suspend fun next(): Int` for `@Provides fun Int.twice(): Long`).
 - **[IR]** Fix a compiler crash when two `@IntoSet` or `@IntoMap` functions have names with the same hash code, such as `provideAa` and `provideBB`.
 - **[IR]** Fix single-entry set multibindings that allowed mutation on non-JVM targets.

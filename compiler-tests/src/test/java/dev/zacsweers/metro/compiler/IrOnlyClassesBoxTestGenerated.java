@@ -2427,6 +2427,12 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
     }
 
     @Test
+    @TestMetadata("GenericScopedProvider.kt")
+    public void testGenericScopedProvider() {
+      run("GenericScopedProvider.kt");
+    }
+
+    @Test
     @TestMetadata("GraphFactoriesSupportGenericProviders.kt")
     public void testGraphFactoriesSupportGenericProviders() {
       run("GraphFactoriesSupportGenericProviders.kt");

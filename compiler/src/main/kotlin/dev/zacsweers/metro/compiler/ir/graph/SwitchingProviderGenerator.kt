@@ -22,6 +22,7 @@ import dev.zacsweers.metro.compiler.ir.irTemporaryVariable
 import dev.zacsweers.metro.compiler.ir.replaceValueReads
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
+import dev.zacsweers.metro.compiler.ir.typeRemapperFor
 import dev.zacsweers.metro.compiler.ir.withIrBuilder
 import dev.zacsweers.metro.compiler.newName
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -36,6 +37,7 @@ import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.builders.declarations.buildClass
 import org.jetbrains.kotlin.ir.builders.irBlock
 import org.jetbrains.kotlin.ir.builders.irBranch
+import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.builders.irConcat
 import org.jetbrains.kotlin.ir.builders.irElseBranch
 import org.jetbrains.kotlin.ir.builders.irEquals
@@ -54,12 +56,17 @@ import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrBranch
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.addArgument
+import org.jetbrains.kotlin.ir.types.IrSimpleType
+import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.defaultType
+import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.copyTo
+import org.jetbrains.kotlin.ir.util.copyTypeParametersFrom
 import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
 import org.jetbrains.kotlin.ir.util.defaultType
+import org.jetbrains.kotlin.ir.util.remapTypes
 import org.jetbrains.kotlin.name.Name
 
 /**
@@ -124,12 +131,27 @@ internal class SwitchingProviderGenerator(
    *   on. Dense IDs keep each `when` compact when a shard only holds some of the graph's bindings.
    */
   data class SwitchingProvider(
-    val irClass: IrClass,
-    val constructor: IrConstructor,
+    private val irClass: IrClass,
+    private val constructor: IrConstructor,
     private val localIds: Map<Int, Int>,
   ) {
-    fun localId(switchingId: Int): Int =
-      localIds[switchingId] ?: error("No switching provider ID for $switchingId")
+    /** Supplies the graph type arguments before the provider's result type. */
+    fun construct(
+      builder: IrBuilderWithScope,
+      graphReceiver: IrValueParameter,
+      resultType: IrType,
+      switchingId: Int,
+    ): IrExpression =
+      with(builder) {
+        val graphType = graphReceiver.type as IrSimpleType
+        val typeArguments = graphType.arguments.map { it.typeOrFail } + resultType
+        val localId = localIds[switchingId] ?: error("No switching provider ID for $switchingId")
+        irCallConstructor(constructor.symbol, typeArguments).apply {
+          type = irClass.typeWith(typeArguments)
+          arguments[0] = irGet(graphReceiver)
+          arguments[1] = irInt(localId)
+        }
+      }
   }
 
   /** The bindings this class dispatches, renumbered from zero in graph-wide ID order. */
@@ -152,8 +174,17 @@ internal class SwitchingProviderGenerator(
         .apply {
           graphOrShardClass.addChild(this)
         }
-    // Add type parameter T
-    val typeParam = switchingClass.addTypeParameter("T", irBuiltIns.anyNType)
+    val graphTypeParameters = switchingClass.copyTypeParametersFrom(graphOrShardClass)
+    val resultTypeName =
+      if (graphTypeParameters.isEmpty()) {
+        "T"
+      } else {
+        val names = NameAllocator(mode = NameAllocator.Mode.COUNT)
+        graphTypeParameters.forEach { names.reserveName(it.name.asString()) }
+        names.newName("T")
+      }
+
+    val typeParam = switchingClass.addTypeParameter(resultTypeName, irBuiltIns.anyNType)
     switchingClass.createThisReceiverParameter()
 
     // Implement Provider<T> or SuspendProvider<T>.
@@ -167,6 +198,12 @@ internal class SwitchingProviderGenerator(
 
     // Implement invoke(): T or suspend invoke(): T.
     switchingClass.addInvokeFunction(typeParam, graphProperty, idProperty)
+
+    // The nested class owns its type parameters. Rebind the graph reference and invoke bodies.
+    if (graphTypeParameters.isNotEmpty()) {
+      val remapper = typeRemapperFor(graphTypeParameters.map { it.defaultType }, graphOrShardClass)
+      switchingClass.remapTypes(remapper)
+    }
 
     val localIds =
       switchingBindings
