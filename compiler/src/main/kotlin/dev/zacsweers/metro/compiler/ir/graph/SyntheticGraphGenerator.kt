@@ -77,6 +77,7 @@ import org.jetbrains.kotlin.ir.interpreter.hasAnnotation
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.defaultType
+import org.jetbrains.kotlin.ir.types.starProjectedType
 import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.addFakeOverrides
 import org.jetbrains.kotlin.ir.util.classIdOrFail
@@ -173,7 +174,7 @@ internal class SyntheticGraphGenerator(
           if (hasParentGraph) {
             addValueParameter(
               name = parentGraph.parentGraphParamName,
-              type = parentGraph.defaultType,
+              type = parentGraph.symbol.starProjectedType,
             )
           }
           storedParams.forEach { param -> addValueParameter(param.name, param.type) }
@@ -311,13 +312,11 @@ internal class SyntheticGraphGenerator(
           isFakeOverride = true
         }
         .apply {
-          // TODO support parent implementations with free type parameters in static children.
-          // For extension graphs, the parent graph is passed as an explicit constructor parameter
-          // (not as a dispatch receiver since we're using static nested classes)
+          // Static children capture the parent instance without referencing its type parameters.
           if (parentGraph != null) {
             addValueParameter(
               parentGraph.parentGraphParamName.decapitalizeUS(),
-              parentGraph.defaultType,
+              parentGraph.symbol.starProjectedType,
               Origins.ParentGraphParam,
             )
           }

@@ -44,7 +44,6 @@ import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
 import dev.zacsweers.metro.compiler.ir.MultibindsCallable
 import dev.zacsweers.metro.compiler.ir.ProviderFactory
 import dev.zacsweers.metro.compiler.ir.allCallableMembers
-import dev.zacsweers.metro.compiler.ir.allSupertypesSequence
 import dev.zacsweers.metro.compiler.ir.annotationClass
 import dev.zacsweers.metro.compiler.ir.annotationsCompat
 import dev.zacsweers.metro.compiler.ir.annotationsIn
@@ -81,6 +80,7 @@ import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.scopeAnnotations
 import dev.zacsweers.metro.compiler.ir.singleAbstractFunction
 import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
+import dev.zacsweers.metro.compiler.ir.supertypes
 import dev.zacsweers.metro.compiler.ir.trackClassLookup
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainer
 import dev.zacsweers.metro.compiler.ir.usesKlib
@@ -111,6 +111,7 @@ import org.jetbrains.kotlin.ir.types.classFqName
 import org.jetbrains.kotlin.ir.types.classOrFail
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.types.isUnit
+import org.jetbrains.kotlin.ir.types.starProjectedType
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classId
@@ -171,7 +172,7 @@ internal class GraphNodes(
     val node =
       trace("Build GraphNode") {
         // Split Builder construction from .build(). The constructor does non-trivial work
-        // (materialises `supertypes = allSupertypesSequence(...).toList()` and other props),
+        // (materializes supertypes and other properties),
         // so tracing it separately keeps that cost visible.
         val builder =
           trace("Construct GraphNodes.Builder") {
@@ -225,7 +226,15 @@ internal class GraphNodes(
     private val graphExtensions = mutableMapOf<IrTypeKey, MutableList<GraphExtensionAccessor>>()
     private val injectors = mutableListOf<InjectorFunction>()
     private val includedGraphNodes = mutableMapOf<IrTypeKey, GraphNode>()
-    private val graphTypeKey = IrTypeKey(graphDeclaration.typeWith())
+    // A static child uses a star projection to refer to an unspecialized parent.
+    private val graphTypeKey =
+      IrTypeKey(
+        if (metroGraph?.typeParameters?.isNotEmpty() == true) {
+          graphDeclaration.symbol.starProjectedType
+        } else {
+          graphDeclaration.typeWith()
+        },
+      )
     private val sourceGraphTypeKey = IrTypeKey(graphDeclaration.sourceGraphIfMetroGraph.typeWith())
     private val graphContextKey = IrContextualTypeKey.create(graphTypeKey)
     private val bindingContainers = mutableSetOf<BindingContainer>()
@@ -241,8 +250,16 @@ internal class GraphNodes(
         ?: graphDeclaration.annotationsIn(metroSymbols.dependencyGraphAnnotations).singleOrNull()
     private val aggregationScopes = mutableSetOf<ClassId>()
     private val isGraph = dependencyGraphAnno != null
-    private val supertypes =
-      (metroGraph ?: graphDeclaration).allSupertypesSequence(excludeSelf = false).toList()
+    private val supertypes = buildList {
+      val implementation = metroGraph ?: graphDeclaration
+      add(implementation.symbol.starProjectedType)
+      addAll(implementation.supertypes())
+
+      // Inherited providers use the source graph's dispatch receiver type.
+      if (implementation.typeParameters.isNotEmpty() && graphDeclaration != implementation) {
+        add(graphDeclaration.defaultType)
+      }
+    }
 
     private var hasGraphExtensions = false
     private var hasErrors = false
