@@ -441,8 +441,6 @@ internal fun IrType.asContextualTypeKey(
       qualifierAnnotation,
     )
 
-  // TODO do we need to transform contextkey for multibindings here?
-
   return IrContextualTypeKey(
     typeKey = typeKey,
     wrappedType = wrappedType,

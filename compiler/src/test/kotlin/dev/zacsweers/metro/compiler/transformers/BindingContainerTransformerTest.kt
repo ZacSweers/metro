@@ -3,11 +3,9 @@
 package dev.zacsweers.metro.compiler.transformers
 
 import com.google.common.truth.Truth.assertThat
-import com.tschuchort.compiletesting.SourceFile
 import dev.zacsweers.metro.compiler.ExampleGraph
 import dev.zacsweers.metro.compiler.MetroCompilerTest
 import dev.zacsweers.metro.compiler.MetroOptions
-import dev.zacsweers.metro.compiler.assertDiagnostics
 import dev.zacsweers.metro.compiler.companionObjectClass
 import dev.zacsweers.metro.compiler.createGraphWithNoArgs
 import dev.zacsweers.metro.compiler.generatedImpl
@@ -330,64 +328,6 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
     // The receiver follows the graph instance
     val providedValue = providesFactoryClass.provideValueAs<Int>("provideValue", graph, "Hello")
     assertThat(providedValue).isEqualTo(5)
-  }
-
-  // TODO move to compiler-tests when reporting sourceless diagnostics work
-  @Test
-  fun `dagger interop module with subcomponents will warn`() {
-    val firstCompilation =
-      compile(
-        SourceFile.java(
-          "SomeSubcomponent.java",
-          """
-          import dagger.Subcomponent;
-
-          @Subcomponent
-          public interface SomeSubcomponent {
-            @Subcomponent.Factory
-            interface Factory {
-              SomeSubcomponent create();
-            }
-          }
-          """
-            .trimIndent(),
-        ),
-        SourceFile.java(
-          "ExampleModule.java",
-          """
-          import dagger.Provides;
-          import dagger.Module;
-
-          @Module(subcomponents = SomeSubcomponent.class)
-          public class ExampleModule {
-            public ExampleModule() {
-
-            }
-          }
-          """
-            .trimIndent(),
-        ),
-      )
-
-    compile(
-      source(
-        """
-        @DependencyGraph(bindingContainers = [ExampleModule::class])
-        interface ExampleGraph
-        """
-          .trimIndent(),
-      ),
-      previousCompilationResult = firstCompilation,
-      options =
-        metroOptions.withDaggerInterop().toBuilder().unusedGraphInputsSeverity(NONE).build(),
-    ) {
-      assertDiagnostics(
-        """
-        w: Included Dagger module 'ExampleModule' declares a `subcomponents` parameter but this will be ignored by Metro in interop.
-        """
-          .trimIndent(),
-      )
-    }
   }
 
   private fun MetroOptions.withDaggerInterop(): MetroOptions {

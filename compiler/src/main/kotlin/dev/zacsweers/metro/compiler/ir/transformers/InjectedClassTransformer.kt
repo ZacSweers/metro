@@ -221,8 +221,6 @@ internal class InjectedClassTransformer(
               producerCompanionMode,
             )
           // If it's from another module, we're done!
-          // TODO this doesn't work as expected in KMP, where things compiled in common are seen
-          //  as external but no factory is found?
           generatedFactories[injectedClassId] = Optional.of(wrapper)
           wrapper
         }

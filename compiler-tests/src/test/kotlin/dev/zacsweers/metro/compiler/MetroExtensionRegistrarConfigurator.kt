@@ -95,8 +95,8 @@ fun TestConfigurationBuilder.configurePlugin(
   configureHiltAnnotations()
   configureCircuit()
   configureKsp()
-  useAdditionalService { MetroMessageCollectorErrors() }
-  useAfterAnalysisCheckers(::MetroReportsChecker, ::MetroMessageCollectorErrorsChecker)
+  useAdditionalService { MetroMessageCollector() }
+  useAfterAnalysisCheckers(::MetroReportsChecker, ::MetroMessageCollectorChecker)
 }
 
 class MetroExtensionRegistrarConfigurator(
@@ -423,7 +423,7 @@ class MetroExtensionRegistrarConfigurator(
     IrGenerationExtension.registerExtension(
       MetroIrGenerationExtension(
         messageCollector =
-          testServices.metroMessageCollectorErrors.wrap(
+          testServices.metroMessageCollector.wrap(
             module,
             with(compatContext) { configuration.messageCollectorCompat() },
           ),

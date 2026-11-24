@@ -171,8 +171,6 @@ dependencies {
   functionalTestImplementation(project(":metro-common"))
   functionalTestImplementation(libs.testkit.support)
   functionalTestImplementation(libs.testkit.truth)
-  // TODO really only here for extensions tests
-  functionalTestRuntimeOnly(project(":compiler"))
   functionalTestRuntimeOnly(project(":runtime"))
   functionalTestRuntimeOnly(project(":runtime-coroutines"))
   functionalTestRuntimeOnly(project(":interop-dagger"))
