@@ -8,9 +8,11 @@ import androidx.tracing.wire.TraceSink
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.ir.MetroIrPipeline
 import java.io.Closeable
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
 import kotlin.coroutines.EmptyCoroutineContext
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 import okio.buffer
 import okio.sink
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
@@ -33,7 +35,7 @@ import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 public class TraceContext(private val options: MetroOptions) : Closeable {
 
   /** Stable, lexicographically sortable identifier for this compilation's trace files. */
-  public val id: String = generateTraceId()
+  public val id: String by lazy(::generateTraceId)
 
   private val firDrivers = mutableListOf<AbstractTraceDriver>()
   private var firClosed = false
@@ -72,17 +74,12 @@ public class TraceContext(private val options: MetroOptions) : Closeable {
   }
 
   private companion object {
-    val ID_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("yyMMdd-HHmmss")
     // Chars that are reserved on Windows or behave as path separators. Everything else (letters,
     // digits, dashes, underscores, dots, plus any other non-control unicode) is fine.
     val UNSAFE_FILENAME_CHARS = Regex("""[<>:"/\\|?*]""")
 
-    /**
-     * Single point to swap the ID generator. TODO replace with `Uuid.generateV7NonMonotonicAt(...)`
-     * (KT stdlib) once we can rely on that API — gives us lexicographically sortable, time-prefixed
-     * IDs without manual formatting.
-     */
-    fun generateTraceId(): String = LocalDateTime.now().format(ID_FORMAT)
+    @OptIn(ExperimentalTime::class, ExperimentalUuidApi::class)
+    fun generateTraceId(): String = Uuid.generateV7NonMonotonicAt(Clock.System.now()).toString()
 
     fun String.sanitize(): String =
       removePrefix("<").removeSuffix(">").replace(UNSAFE_FILENAME_CHARS, "_").ifBlank { "unknown" }

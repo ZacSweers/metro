@@ -8,9 +8,10 @@ import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
-import dev.zacsweers.metro.compiler.ir.buildBlockBody
 import dev.zacsweers.metro.compiler.ir.canonicalize
 import dev.zacsweers.metro.compiler.ir.countValueReads
+import dev.zacsweers.metro.compiler.ir.createIrBuilder
+import dev.zacsweers.metro.compiler.ir.generateDefaultConstructorBody
 import dev.zacsweers.metro.compiler.ir.graph.expressions.BindingExpressionGenerator
 import dev.zacsweers.metro.compiler.ir.graph.expressions.GraphExpressionGenerator
 import dev.zacsweers.metro.compiler.ir.graph.sharding.ShardExpressionContext
@@ -36,13 +37,12 @@ import org.jetbrains.kotlin.ir.builders.declarations.buildClass
 import org.jetbrains.kotlin.ir.builders.irBlock
 import org.jetbrains.kotlin.ir.builders.irBranch
 import org.jetbrains.kotlin.ir.builders.irConcat
-import org.jetbrains.kotlin.ir.builders.irDelegatingConstructorCall
 import org.jetbrains.kotlin.ir.builders.irElseBranch
 import org.jetbrains.kotlin.ir.builders.irEquals
+import org.jetbrains.kotlin.ir.builders.irExprBody
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irImplicitCast
 import org.jetbrains.kotlin.ir.builders.irInt
-import org.jetbrains.kotlin.ir.builders.irSetField
 import org.jetbrains.kotlin.ir.builders.irString
 import org.jetbrains.kotlin.ir.builders.irWhen
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -60,7 +60,6 @@ import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
 import org.jetbrains.kotlin.ir.util.defaultType
-import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.name.Name
 
 /**
@@ -183,7 +182,6 @@ internal class SwitchingProviderGenerator(
    * @return Triple of (constructor, graphProperty, idProperty)
    */
   private fun IrClass.addConstructorAndFields(): Triple<IrConstructor, IrProperty, IrProperty> {
-    // TODO switch to direct initializers? For some reason when I try, the fields are not set
     val graphProperty = addProperty {
       name = Name.identifier(Symbols.StringNames.GRAPH)
       visibility = DescriptorVisibilities.PRIVATE
@@ -210,22 +208,15 @@ internal class SwitchingProviderGenerator(
           type = irBuiltIns.intType
         }
 
-        val switchingThisReceiver = this@addConstructorAndFields.thisReceiverOrFail
-
-        buildBlockBody {
-          // Call super constructor (Any)
-          +irDelegatingConstructorCall(irBuiltIns.anyClass.owner.primaryConstructor!!)
-
-          // Initialize graph field
-          +irSetField(
-            irGet(switchingThisReceiver),
-            graphProperty.backingField!!,
-            irGet(graphParam),
-          )
-
-          // Initialize id field
-          +irSetField(irGet(switchingThisReceiver), idProperty.backingField!!, irGet(idParam))
+        graphProperty.backingField!!.apply {
+          initializer = createIrBuilder(symbol).run { irExprBody(irGet(graphParam)) }
         }
+        idProperty.backingField!!.apply {
+          initializer = createIrBuilder(symbol).run { irExprBody(irGet(idParam)) }
+        }
+
+        // The instance initializer call runs both field initializers.
+        body = generateDefaultConstructorBody()
       }
 
     return Triple(constructor, graphProperty, idProperty)

@@ -1680,7 +1680,8 @@ internal class GraphNodes(
 
       // TODO only if annotated @BindingContainer?
       if (isGraph) {
-        // TODO is this duplicating info we already have in the proto?
+        // The graph proto lists only its own factories, so load inherited factories from each
+        // container.
         for (type in supertypes) {
           val declaration = type.classOrNull?.owner ?: continue
           // Skip the metrograph, it won't have custom nested factories

@@ -41,14 +41,15 @@ internal fun TestServices.reportDirectory(module: TestModule): File {
  *
  * [MetroDirectives.CHECK_TRACES] checks that [MetroDirectives.TRACE_DESTINATION] (default
  * [DEFAULT_TRACES_DIR]) contains both FIR and IR traces. Their names follow
- * `<id>-(fir|ir)-<moduleName>.perfetto-trace` and share the compilation ID.
+ * `<uuid>-(fir|ir)-<moduleName>.perfetto-trace` and share the compilation ID.
  */
 class MetroReportsChecker(testServices: TestServices) :
   MetroAfterAnalysisCheckerCompat(testServices) {
   companion object {
     const val DEFAULT_REPORTS_DIR = "metro/reports"
     const val DEFAULT_TRACES_DIR = "metro/traces"
-    private val TRACE_FILENAME_PATTERN = Regex("""^(\d{6}-\d{6})-(fir|ir)-(.+)\.perfetto-trace$""")
+    private val TRACE_FILENAME_PATTERN =
+      Regex("""^([0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})-(fir|ir)-(.+)\.perfetto-trace$""")
     private val REPORT_JSON = Json {
       prettyPrint = true
       @OptIn(ExperimentalSerializationApi::class)
@@ -168,7 +169,7 @@ class MetroReportsChecker(testServices: TestServices) :
       val match =
         TRACE_FILENAME_PATTERN.matchEntire(file.name)
           ?: testServices.assertions.fail {
-            "Trace filename does not match `<id>-(fir|ir)-<moduleName>.perfetto-trace`: ${file.name}"
+            "Trace filename does not match `<uuid>-(fir|ir)-<moduleName>.perfetto-trace`: ${file.name}"
           }
       Triple(match.groupValues[1], match.groupValues[2], match.groupValues[3])
     }

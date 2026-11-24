@@ -32,10 +32,16 @@ interface AlphaRootGraphForNameLengthChecks {
       field = SwitchingProvider<DependencyTargetForConvertedProviderNameLength>(graph = <this>, id = 0)
 
     private class SwitchingProvider<T : Any?> : Provider<T> {
+      private val graph: Impl
+        field = graph
+
+      private val id: Int
+        field = id
+
       constructor(graph: Impl, id: Int) /* primary */ {
         super/*Any*/()
-        <this>.#graph = graph
-        <this>.#id = id
+        /* <init>() */
+
       }
 
       override fun invoke(): T {
@@ -47,10 +53,6 @@ interface AlphaRootGraphForNameLengthChecks {
           }
         }
       }
-
-      private val graph: Impl
-
-      private val id: Int
 
     }
 

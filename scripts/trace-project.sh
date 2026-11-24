@@ -10,7 +10,7 @@
 #      -Pmetro.traceDestination=metro/trace and --rerun so the compile is
 #      fresh and the plugin writes traces under build/metro/trace/<variant>/.
 #   4. Locates the freshest .perfetto-trace produced during the run, extracts
-#      its `<yyMMdd-HHmmss>` id prefix, and finds every sibling file sharing
+#      its compilation ID, and finds every sibling file sharing
 #      that id. Metro emits one file per FIR session and one per IR fragment.
 #   5. Copies all matching files into tmp/traces/ (gitignored). Filenames
 #      preserve phase + module info (e.g. `__ir--app-scaffold.perfetto-trace`).
@@ -187,7 +187,7 @@ popd > /dev/null
 
 # -- Locate the freshest trace produced ------------------------------------
 # Metro now emits one trace file per FIR session and one per IR fragment, all
-# sharing a `<yyMMdd-HHmmss>` id prefix in the basename:
+# sharing a compilation ID in the basename:
 #   <id>-fir-<moduleName>.perfetto-trace
 #   <id>-ir-<moduleName>.perfetto-trace
 # The target dir lives at <projectOrSubmodule>/build/metro/trace/<variant>/
@@ -218,10 +218,9 @@ fi
 
 SRC_DIR=$(dirname "$FRESHEST")
 SRC_BASENAME=$(basename "$FRESHEST")
-# Pull the `<yyMMdd-HHmmss>` id prefix out of the basename. Falls back to the
-# whole basename if the format doesn't match (e.g. older traces with a
-# different naming scheme), in which case we just copy that one file.
-ID_PREFIX=$(echo "$SRC_BASENAME" | sed -E 's/^([0-9]{6}-[0-9]{6})-.*/\1/')
+# Read the UUID or legacy timestamp prefix. An unknown prefix copies only the freshest trace.
+UUID_PATTERN='[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}'
+ID_PREFIX=$(echo "$SRC_BASENAME" | sed -E "s/^($UUID_PATTERN|[0-9]{6}-[0-9]{6})-.*/\\1/")
 if [[ "$ID_PREFIX" == "$SRC_BASENAME" ]]; then
   echo "==> Warning: filename '$SRC_BASENAME' doesn't match <id>-<phase>-<module>.perfetto-trace; copying just the freshest" >&2
   SIBLINGS=("$FRESHEST")

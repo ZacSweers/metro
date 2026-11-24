@@ -3034,6 +3034,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       public void testUnprocessedUpstreamMemberInjection() {
         run("UnprocessedUpstreamMemberInjection.kt");
       }
+
+      @Test
+      @TestMetadata("WarningInExternalModule.kt")
+      public void testWarningInExternalModule() {
+        run("WarningInExternalModule.kt");
+      }
     }
   }
 
