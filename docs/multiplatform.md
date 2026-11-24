@@ -39,7 +39,7 @@ Metro's runtime and generated code support the platforms listed below.
 - **Windows**:
     - `mingwX64`
 
-When mixing contributions between common and platform-specific source sets, you must define your final `@DependencyGraph` in the platform-specific code. This is because a graph defined in commonMain wouldn’t have full visibility of contributions from platform-specific types. A good pattern for this is to define your canonical graph in commonMain *without* a `@DependencyGraph` annotation and then a `{Platform}{Graph}` type in the platform source set that extends it and does have the `@DependencyGraph`. Metro automatically exposes bindings of the base graph type on the graph for any injections that need it.
+If you combine common and platform-specific contributions, the final `@DependencyGraph` must be defined in the platform source set. A graph in `commonMain` cannot see platform-specific contributions. Define an unannotated graph interface in `commonMain`, then extend it with an annotated `{Platform}{Graph}` in each platform source set. Metro also exposes a binding for the base graph type.
 
 ```kotlin
 // In commonMain

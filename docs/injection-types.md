@@ -1,10 +1,10 @@
 # Injection Types
 
-Metro supports multiple common injection types.
+Metro supports constructor, assisted, member, and top-level function injection.
 
 ## Constructor Injection
 
-Most types should use constructor injection if possible. For this case, you can annotate either a class itself (if it has exactly one, primary constructor) or exactly one specific constructor.
+Prefer constructor injection. Put `@Inject` on the class to use its primary constructor. To select a constructor explicitly, put `@Inject` on that constructor alone.
 
 ```kotlin
 @Inject
@@ -15,14 +15,14 @@ class SpecificConstructorInjection(val text: String) {
 }
 ```
 
-Constructor-injected classes can be instantiated+managed entirely by Metro and encourages immutability.
+Metro constructs and manages constructor-injected classes. Constructor injection also supports immutable properties.
 
 !!! tip "Binding implementations to interfaces"
     To bind your injected class to an interface it implements, see [`@Binds`](bindings.md#binds) for explicit bindings or [`@ContributesBinding`](aggregation.md#contributesbinding) for automatic multi-module aggregation.
 
 ## Assisted Injection
 
-For types that require dynamic dependencies at instantiation, assisted injection can be used to supply these inputs. In this case - an injected constructor (or class with one constructor) must be annotated with `@AssistedInject`, assisted parameters annotated with `@Assisted`, and a factory interface or abstract class with one single abstract function that accepts these assisted parameters and returns the target class.
+Use assisted injection when callers must supply some constructor arguments. Mark the class or constructor with `@AssistedInject` and each caller-supplied parameter with `@Assisted`. Declare an `@AssistedFactory` interface or abstract class with one abstract function that accepts those parameters and returns the injected type.
 
 ```kotlin
 @AssistedInject
@@ -46,7 +46,7 @@ class ApiClient(httpClientFactory: HttpClient.Factory) {
 }
 ```
 
-Metro matches assisted parameters between the constructor and factory by their parameter names, so you can add multiple assisted parameters of the same type and Metro will match them.
+Metro matches assisted constructor and factory parameters by name, including parameters with the same type.
 
 ```kotlin
 @AssistedInject
@@ -66,11 +66,11 @@ class HttpClient(
 ```
 
 !!! note "Difference from Dagger"
-    Unlike Dagger, Metro uses parameter names as implicit identifiers rather than requiring explicit `@Assisted("identifier")` values. This is because parameter names are a first-class citizen in Kotlin's API. Dagger's `@Assisted` annotations' identifiers _are_ supported for interop purposes.
+    Metro uses parameter names as assisted identifiers. It also supports explicit Dagger `@Assisted("identifier")` values through interop.
 
 ### Automatic Assisted Factory Generation
 
-Metro supports automatic generation of assisted factories via opt-in compiler option. If enabled, Metro will automatically generate a default factory as a nested class within the injected type.
+Assisted factory generation is opt-in and disabled by default. Enable it to generate a default nested `Factory` class in the injected type.
 
 ```kotlin
 @AssistedInject
@@ -86,13 +86,13 @@ class HttpClient(
 }
 ```
 
-If a nested class called `Factory` is already present, Metro will do nothing.
+If the type already has a nested `Factory` class, Metro does not generate one.
 
 ### Why opt-in?
 
-The main reason this is behind an opt-in option at the moment is because compiler plugin IDE support requires some rudimentary configuration to work. See [the docs for how to enable IDE support](installation.md#ide-support).
+The feature is opt-in because the IDE needs [third-party FIR plugin support](installation.md#ide-support) to see generated declarations.
 
-Because of this, it's likely better for now to just hand-write the equivalent class that Metro generates. If you still wish to proceed with using this, it can be enabled via the Gradle DSL.
+Until IDE support is configured, I recommend writing the equivalent factory yourself. To enable generation, use the Gradle DSL:
 
 ```
 metro {
@@ -102,12 +102,12 @@ metro {
 
 ## Member Injection
 
-Metro supports *member injection* to inject mutable properties or functions post-construction or into existing class instances.
+Member injection fills mutable properties or calls injected functions after construction, including on existing instances.
 
-This can be useful for classes that cannot be constructor-injected, for example Android Activity classes (on older SDK versions) as well as constructor-injected classes that perhaps don’t want or need to expose certain types directly in their constructors.
+Use it for types Metro cannot construct, such as Android activities on older SDKs, or for dependencies you don’t want to expose through a constructor.
 
 !!! tip
-    Unlike Dagger and kotlin-inject, injected members in Metro can be `private`.
+    Unlike Dagger and kotlin-inject, Metro can inject `private` members.
 
 !!! note
     Member function injection does not (currently) support default values.
@@ -126,7 +126,7 @@ class ProfileActivity : Activity() {
 }
 ```
 
-Like Dagger, these classes can be injected via multiple avenues.
+Metro can inject members in three ways:
 
 ### 1. In constructor-injected types, `@Inject`-annotated members are injected *automatically*.
 
@@ -143,7 +143,7 @@ class ProfileInjector(
 }
 ```
 
-In these cases, Metro will automatically inject these members automatically and immediately after instantiation during constructor injection.
+Metro injects these members immediately after constructing the instance.
 
 ### 2. Exposing a `fun inject(target: ProfileActivity)` function on the graph
 
@@ -161,7 +161,7 @@ val graph = createGraph<AppGraph>()
 graph.inject(profileActivity)
 ```
 
-With this option, you can call `graph.inject(target)` on the instance with members you wish to inject.
+Call `graph.inject(target)` to inject members into an existing instance.
 
 ### 3. Requesting a `MembersInjector` instance from the dependency graph.
 
@@ -177,18 +177,18 @@ class ProfileInjector(
 }
 ```
 
-Like Dagger, option #3 is accomplished via `MembersInjector` interface at runtime and in code gen. This should be reserved for advanced use cases.
+The third option uses the `MembersInjector` runtime interface and generated injector classes. Reserve it for advanced use cases.
 
 ??? note "Implementation Notes"
 
     * Property accessors don’t use `get`/`set` names in `inject{name}()` function names.
     * MembersInjector classes are generated as nested classes, allowing private member access.
-        * This includes parent classes’ private members (!!)
-    * optional dependencies are not supported for injected member functions currently, but may be possible in the future.
+        * This even includes private members of parent classes!
+    * Injected member functions do not support optional dependencies.
 
 ## Top-level Function Injection
 
-Like KI, Metro supports top-level function injection (behind an opt-in compiler option). The primary use case for this is composable functions and standalone applications that run from `main` functions.
+Top-level function injection is opt-in. Use it for composable functions or standalone applications with a `main` function.
 
 ```kotlin
 @Inject
@@ -197,7 +197,7 @@ fun App(message: String) {
 }
 ```
 
-To do this, Metro’s FIR plugin will generate a concrete type that acts as a bridge for this function.
+Metro generates a concrete wrapper type in FIR:
 
 ```kotlin
 @Inject
@@ -210,9 +210,9 @@ class App(
 }
 ```
 
-Because it’s generated in FIR, this type will be user-visible in the IDE and can then be referenced in a graph.
+The generated type is available to the IDE when third-party FIR plugins are enabled and can be referenced from a graph.
 
-*Note that this feature requires enabling third party FIR plugins in the IDE to fully work. It will compile without it, but generated wrapper classes will be red/missing in the IDE.*
+*Compilation works without IDE plugin support, but the IDE will show generated wrapper classes as unresolved.*
 
 !!! note
     The generated class uses the same name as the function, capitalized as a class name.
@@ -237,7 +237,7 @@ val app = createGraphFactory<AppGraph.Factory>()
 app()
 ```
 
-To add assisted parameters, use `@Assisted` on the parameters in the function description. These will be propagated accordingly.
+Mark function parameters with `@Assisted` to pass them through to the wrapper.
 
 ```kotlin
 @Inject
@@ -261,7 +261,7 @@ val app = createGraph<AppGraph>()
 app("Hello, world!")
 ```
 
-This is particularly useful for Compose, and `@Composable` functions will be copied over accordingly.
+For `@Composable` functions, Metro also marks the generated wrapper function `@Composable`.
 
 ```kotlin
 @Inject
@@ -288,7 +288,7 @@ setContent {
 }
 ```
 
-Similarly, if the injected function is a `suspend` function, the `suspend` keyword will be ported to the generated `invoke()` function too.
+For a `suspend` function, the generated `invoke()` function is also `suspend`.
 
 ### Context parameters
 
@@ -325,13 +325,13 @@ Any assisted context parameters will be carried as context parameters to the gen
 
 ### Why opt-in?
 
-There are three reasons this is behind an opt-in option at the moment.
+Top-level function injection is opt-in for three reasons:
 
 1. It makes incremental builds recompile more files. See [incremental compilation](performance.md#incremental-compilation).
 2. IDE support requires enabling a custom registry flag. See [the docs for how to enable IDE support](installation.md#ide-support).
 3. Before Kotlin 2.3.20, generating top-level declarations in FIR isn't compatible with incremental compilation or with non-JVM targets. Kotlin/JS gained incremental compilation support for generated top-level declarations in Kotlin 2.3.21 and Kotlin 2.4.0-Beta2. See [KT-82395](https://youtrack.jetbrains.com/issue/KT-82395).
 
-You can enable it via the Gradle DSL.
+Enable it in the Gradle DSL:
 
 ```kotlin
 metro {
@@ -341,7 +341,7 @@ metro {
 
 ??? note "Implementation Notes"
 
-    - This is fairly different from kotlin-inject’s typealias approach. This is necessary because Metro doesn’t use higher order function types or typealiases as qualifiers.
+    - kotlin-inject uses typealiases for top-level function injection. Metro generates a wrapper class because it does not treat typealiases as qualifiers or use assisted function types as implicit factories.
     - Since the compose-compiler's IR transformer may run _before_ Metro's, we check for this during implementation body generation and look up the transformed target composable function as needed.
 
 ### Custom function injection annotations

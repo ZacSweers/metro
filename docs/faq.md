@@ -8,11 +8,11 @@ Yes!
 
 While it's true that compiler plugins often require strict version alignment, Metro is explicitly architected to avoid this with a robust built-in compatibility system.
 
-Metro maintains forward compatibility on a best-effort basis (typically at least `N+.2` minor versions, often more) rather than locking you to a specific patch version. This allows a single version of Metro to support a broad range of Kotlin releases and IDE plugin versions simultaneously.
+Metro maintains forward compatibility on a best-effort basis (typically `N+.2` tooling releases, often more) rather than locking you to a specific patch version. This allows a single version of Metro to support a broad range of Kotlin releases and IDE plugin versions simultaneously.
 
 !!! tip "Example"
 
-    The current release of Metro (`0.10.1` at the time of writing) supports Kotlin `2.2.20` all the way through `2.3.20-Beta1` (and will support `2.3.20` final).
+    Metro `0.10.1`, for example, supported Kotlin `2.2.20` all the way through `2.3.20-Beta1` and targeted `2.3.20` final.
     
     That's five Kotlin versions (`2.2.20`, `2.2.21`, `2.3.0`, `2.3.10`, and `2.3.20`) plus various intermediate versions bundled in the Kotlin IDE plugin.
 
@@ -155,6 +155,8 @@ When migrating, an asynchronous `@Produces` method usually becomes a suspending 
 ### **Will Metro add support for Hilt features or Hilt interop?**
 
 Metro is largely inspired by Dagger and Anvil, but not Hilt. Hilt works in different ways and has different goals. Hilt is largely focused around supporting android components and relies heavily on subcomponents to achieve this.
+
+As for [Hilt interop](interop.md#hilt), yes! With `includeHilt()`, you can merge Hilt’s `@InstallIn` modules and entry points into your Metro graphs. Metro doesn’t generate Hilt’s component hierarchy.
 
 Some features overlap but just work differently in Metro:
 

@@ -4,7 +4,7 @@ These notes describe the current compiler and runtime design. Metro's coroutine 
 
 ## Model
 
-Metro's suspend-provider bindings are gated by the `enable-suspend-providers` compiler option. The Gradle plugin exposes it as `metro.enableSuspendProviders`. It is disabled by default. Within Metro's binding model, the gate applies to every suspend binding, every suspend graph accessor, and every request using a suspend provider wrapper, including unscoped forms that only need the core `runtime` artifact. Separately, source code that names the public coroutine APIs must opt in to `ExperimentalMetroCoroutinesApi`.
+Suspend providers require the `enable-suspend-providers` compiler option, exposed as `metro.enableSuspendProviders` in Gradle. It is disabled by default. The option is required for every suspend binding, every suspend accessor, and every suspend wrapper request, including unscoped forms that need only `runtime`. Source code that names the public coroutine APIs also needs `ExperimentalMetroCoroutinesApi` opt-in.
 
 The feature gate and runtime dependency are separate. When automatic runtime dependencies are enabled, the Gradle plugin adds `runtime-coroutines` whenever this option is enabled; it does not inspect source signatures to decide whether to add it.
 
@@ -12,7 +12,7 @@ The core `runtime` artifact defines `SuspendProvider` and `SuspendLazy`. It also
 
 `runtime-coroutines` contains `suspendLazy`, `SuspendProvider.memoize()`, `memoizeAsLazy()`, and `SuspendDoubleCheck`. Metro uses `SuspendDoubleCheck` for scoped suspend bindings and generated memoizing `SuspendLazy` wrappers. This artifact has an implementation dependency on kotlinx-coroutines on every platform, but no kotlinx-coroutines type appears in Metro's public API.
 
-Whether a binding requires a suspend context is determined separately for each graph. A binding requires one when its provider is a `suspend fun`, or when one of its eager dependencies requires one. Provider and lazy requests stop propagation because the consumer receives a handle instead of the value. Graph validation separately rejects a wrapper stack when the wrapper closest to the underlying value is synchronous. The same class can therefore require suspension in one graph but not another.
+Metro determines suspend requirements per graph. A binding requires a suspend context if its provider is a `suspend fun` or an eager dependency requires a suspend context. Provider and lazy requests stop propagation because the consumer receives a handle. Validation rejects wrapper stacks whose innermost wrapper is synchronous when the value requires suspension. The same class can have different suspend requirements in different graphs.
 
 `SuspendBindingAnalysis` starts with directly suspend bindings and follows reverse dependency edges to mark their eager consumers. It caches resolved bindings and their edges, including one stable witness path from every transitively suspend key to a direct suspend source. A child graph may query a parent before that parent has finished collecting bindings, so missing lookups are retried after the graph changes. Final validation stores the completed result for code generation.
 
@@ -97,7 +97,7 @@ An included graph accessor is also a source of wrappers. A non-suspend accessor 
 
 A deferred request for an entire collection, such as `suspend () -> Set<T>`, generates the ordinary provider form and adapts it with `SyncSuspendProvider`. This only works for synchronous set contributions; it does not enable suspend set contributions.
 
-Graph validation records whether generated graph code needs `runtime-coroutines`: either for a scoped suspend binding or to materialize a memoizing `SuspendLazy` anywhere in a requested wrapper stack. If the artifact is missing, Metro reports a located `MISSING_RUNTIME_COROUTINES` diagnostic on the graph before code generation begins. Source factory generation reports the same diagnostic on injected declarations and provider parameters that require `SuspendLazy`, including modules that contain no graph. The diagnostic can appear alongside other graph validation errors.
+Graph validation records when generated code needs `runtime-coroutines`: for a scoped suspend binding or a memoizing `SuspendLazy` at any wrapper depth. If the artifact is missing, Metro reports `MISSING_RUNTIME_COROUTINES` at the graph before code generation. Source factory generation reports it on injected declarations and provider parameters that require `SuspendLazy`, even in modules without a graph. Other validation errors can appear alongside it.
 
 ### JS function types
 
@@ -117,7 +117,7 @@ Each initialization attempt adds a linked marker to its coroutine context. Struc
 
 These markers do not coordinate separate initialization chains. Two independently launched coroutines can deadlock if each initializes one cache and then requests the other. Static graph validation catches cycles visible in the dependency graph. Dynamic provider and lazy calls must avoid acquiring caches in opposite orders.
 
-`suspendLazy(SYNCHRONIZED)` uses `SuspendDoubleCheck`. `PUBLICATION` may run several initializers at once and publishes one result. JVM and Native use compare-and-set. JS and Wasm run on one thread, but initializers can overlap at suspension points, so the implementation checks again after an initializer returns before publishing. `NONE` caches the result when calls do not overlap but does not coordinate concurrent callers. A failed or cancelled attempt does not publish a value in any mode.
+`suspendLazy(SYNCHRONIZED)` uses `SuspendDoubleCheck`. `PUBLICATION` can run several initializers concurrently and publishes one result. JVM and Native use compare-and-set. On JS and Wasm, initializers can overlap at suspension points on a single thread. After initialization, `PUBLICATION` checks whether another initializer has already published a value. `NONE` caches the result when calls do not overlap. It does not coordinate concurrent callers. Failed or cancelled attempts never publish a value.
 
 ## Tracing
 
@@ -161,4 +161,4 @@ Provider-valued sets, including `Set<suspend () -> T>`, are unsupported in the s
 
 ### Multiplatform test coverage
 
-Multiplatform suspend box fixtures use the compiler test framework's `runBlocking` helper. It starts a coroutine and expects it to finish before the helper returns, so it only supports calls that complete synchronously. This avoids the awkward event-loop behavior of trying to block a JS box test. `ENABLE_SUSPEND_PROVIDERS` adds `runtime-coroutines` and the kotlinx-coroutines classpath to a fixture unless it also uses `WITHOUT_RUNTIME_COROUTINES`. Tests for real suspension, scheduling, cancellation, and contention live in the runtime modules and use kotlinx-coroutines directly.
+Multiplatform box fixtures use the compiler test framework’s `runBlocking` helper. It requires synchronous completion, which avoids blocking the JS event loop. `ENABLE_SUSPEND_PROVIDERS` adds `runtime-coroutines` and kotlinx-coroutines unless the fixture uses `WITHOUT_RUNTIME_COROUTINES`. Runtime module tests use kotlinx-coroutines directly to cover real suspension, scheduling, cancellation, and contention.

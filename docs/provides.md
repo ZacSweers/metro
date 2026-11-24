@@ -1,6 +1,6 @@
 # `@Provides`
 
-Providers can be defined in graphs or supertypes that graphs extend. Defining them in supertypes allows for them to be reused across multiple graphs and organize providers into logic groups. This is similar to how modules in Dagger work.
+Declare providers in a graph or its supertypes. Use a supertype to group providers and share them across graphs, similar to a Dagger module.
 
 ```kotlin
 interface NetworkProviders {
@@ -12,25 +12,25 @@ interface NetworkProviders {
 interface AppGraph : NetworkProviders
 ```
 
-Provider _functions_ can be `private` but, as of `0.10.0`, are no longer _automatically_ transformed to be private by the Metro compiler. Prior to `0.10.0`, they were. However, this resulted in less efficient generated code so it was disabled. See the CHANGELOG for more details.
+Provider functions can be `private`. Before Metro `0.10.0`, the compiler made them private automatically. That transformation was removed because it produced less efficient code. See the changelog.
 
-Provider _properties_ cannot be private yet due to [KT-76257](https://youtrack.jetbrains.com/issue/KT-76257/), but may be supported in the future.
+Provider properties cannot be private because of [KT-76257](https://youtrack.jetbrains.com/issue/KT-76257/).
 
-Providers may also be declared in [binding Containers](dependency-graphs.md#binding-containers).
+Providers can also be declared in [binding containers](dependency-graphs.md#binding-containers).
 
 Provider functions can declare type parameters when [derived bindings](derived-bindings.md) are enabled.
 
 !!! tip
-    It’s recommended to *not* call providers from each other.
+    Avoid calling providers from other providers.
 
 #### Overrides
 
-It is an error to override providers declarations. While it can be enticing for testing reasons to try to replicate Dagger 1’s *module overrides*, it quickly becomes difficult to reason about in code gen.
+Overriding a provider is a compile error. It’s tempting to bring back Dagger 1’s _module overrides_ for tests, but things get tricky when we generate the graph.
 
-* What if you override with sub/supertypes?
-* What if your override’s implementation needs different dependencies?
+* What if the override returns a subtype or supertype?
+* What if it needs different dependencies?
 
-To the testing end, it is recommended to instead leverage the `DependencyGraph.excludes` + `ContributesTo.replaces` APIs in merging.
+For tests, I’d use `DependencyGraph.excludes` and `ContributesTo.replaces` during contribution merging.
 
 ```kotlin
 // Don't do this pattern!
@@ -48,7 +48,7 @@ interface TestAppGraph : NetworkProviders {
 
 #### Companion Providers
 
-Providers can alternatively be implemented in `companion object`s for staticization.
+Declare providers in a `companion object` to generate static calls.
 
 ```kotlin
 interface MessageGraph {
@@ -62,4 +62,4 @@ interface MessageGraph {
 
 ??? note "Implementation Notes"
 
-    private interface functions are not usually visible to downstream compilations in IR. To work around this, Metro will use a [new API in Kotlin 2.1.20](https://github.com/JetBrains/kotlin/blob/b2bceb12ef57664c4f9b168157c3a097a81a6e5f/compiler/ir/backend.common/src/org/jetbrains/kotlin/backend/common/extensions/IrGeneratedDeclarationsRegistrar.kt#L26) to add custom metadata to the parent class to denote these private providers’ existence and where to find them.
+    Private interface functions are usually invisible to downstream compilations in IR. Metro uses a [Kotlin 2.1.20 API](https://github.com/JetBrains/kotlin/blob/b2bceb12ef57664c4f9b168157c3a097a81a6e5f/compiler/ir/backend.common/src/org/jetbrains/kotlin/backend/common/extensions/IrGeneratedDeclarationsRegistrar.kt#L26) to record their locations in metadata on the parent class.

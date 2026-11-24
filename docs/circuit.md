@@ -8,7 +8,7 @@ When enabled, Metro generates and contributes:
 - `SubPresenterFactory` and `SubUiFactory` implementations for `@SubCircuitInject`
 - `CircuitSerializerRegistration` implementations for `@CircuitSerializable` with Circuit 0.36.0 or newer
 
-Generation runs inside Metro's compiler plugin instead of Circuit's KSP code generator.
+Metro generates these types in the compiler plugin.
 
 ## Setup
 
@@ -20,15 +20,13 @@ metro {
 }
 ```
 
-This requires the relevant Circuit runtime libraries on your classpath. The `circuit-runtime-presenter` and `circuit-runtime-ui` artifacts are optional — you can use presenter-only or UI-only modules. To generate SubCircuit factories, add `com.slack.circuit:circuitx-subcircuit:<version>`. Enabling this option also adds the `circuit-codegen-annotations` artifact to your implementation classpath.
+Add the Circuit runtime libraries needed by your module. `circuit-runtime-presenter` and `circuit-runtime-ui` are optional, so modules can support only presenters or only UIs. SubCircuit factories require `com.slack.circuit:circuitx-subcircuit:<version>`. The Metro option adds `circuit-codegen-annotations` to the implementation classpath.
 
 Serialization registration requires Circuit 0.36.0 or newer, the kotlinx-serialization compiler plugin, and an explicit dependency on `com.slack.circuit:circuit-serialization:<version>`. Metro does not add this optional runtime automatically.
 
-Use **either** Metro's native code generator or Circuit's KSP code generator for a declaration but **NOT** both. Running both for the same `@CircuitInject`, `@SubCircuitInject`, or `@CircuitSerializable` declarations attempts to generate the same types twice.
+Choose one generator for each declaration: Metro or Circuit’s KSP generator. Running both on the same `@CircuitInject`, `@SubCircuitInject`, or `@CircuitSerializable` declaration generates duplicate types.
 
-This is only compatible with Kotlin 2.3.20+ as it requires support for generating top-level declarations in FIR.
-
-This will likely eventually move to a separate artifact.
+Circuit generation requires Kotlin 2.3.20 or later for top-level FIR declarations.
 
 ## Usage
 

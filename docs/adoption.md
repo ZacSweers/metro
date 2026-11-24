@@ -1,37 +1,35 @@
 Adoption Strategies
 ===================
 
-If adopting Metro into an existing codebase, you can use a few different strategies.
+Choose a migration strategy based on how much existing code you want to change.
 
-1. First, add the Metro Gradle plugin and runtime deps. The plugin id is `dev.zacsweers.metro`, runtime is `dev.zacsweers.metro:runtime`. The Gradle Plugin _should_ add the runtime automatically, but it's there just in case!
-2. Apply the Gradle plugin to your relevant project(s).
+1. Add the `dev.zacsweers.metro` Gradle plugin to your build. It adds `dev.zacsweers.metro:runtime` automatically by default.
+2. Apply the plugin to each project that uses Metro.
 
 === "From Dagger"
 
     ### Precursor steps
 
     !!! tip "Compiler options you should enable in Dagger"
-        Dagger has some compiler options you should enable and get working first to make it easier to move to Metro.
+        Enable these Dagger compiler options before migrating:
 
         - [useBindingGraphFix](https://dagger.dev/dev-guide/compiler-options#useBindingGraphFix) 
-            - The issue it fixes is something that Metro catches as well.
+            - Metro also detects the graph issue this option fixes.
         - [ignoreProvisionKeyWildcards](https://dagger.dev/dev-guide/compiler-options#ignore-provision-key-wildcards)
 
     !!! warning "K2 Migration"
-        If you are migrating from square/anvil, you likely are also going to have to migrate to Kotlin K2 as a part of this. If you want to split that effort up, you can consider migrating to [anvil-ksp](https://github.com/zacsweers/anvil) first. This would move fully over to KSP and K2 first, then you can resume here.
+        If square/anvil keeps your project on K1, you may also need to migrate to K2. You can first migrate to [anvil-ksp](https://github.com/zacsweers/anvil) to finish the KSP/K2 migration separately, then move to Metro.
 
     ### Option 1: Interop at the component/graph level
 
-    This option is good if you only want to use Metro for _new_ code. Metro graphs can depend on Dagger components (as `@Includes` parameters) and vice versa. [Here](https://github.com/ZacSweers/metro/tree/main/samples/interop/dependencies-dagger) is an example project that does this.
-
-    This option is also good if you just want to do a simple, isolated introduction of Metro in one part of your codebase, such as a smaller modularized feature or library.
+    Use this approach to introduce Metro in new code or an isolated feature. Metro graphs can depend on Dagger components through `@Includes`, and Dagger components can depend on Metro graphs. See the [example project](https://github.com/ZacSweers/metro/tree/main/samples/interop/dependencies-dagger).
 
     ### Option 2: Migrate existing usages + reuse your existing annotations
 
-    If you want the least amount of splash as possible, you can tell Metro to reuse your annotations from Dagger/Anvil. [Here](https://github.com/ZacSweers/metro/blob/main/samples/interop/customAnnotations-dagger/build.gradle.kts#L22-L27) is an example for enabling that in Gradle.
+    You can switch to the Metro compiler and keep your Dagger and Anvil annotations. Enable annotation interop as shown in the [Gradle example](https://github.com/ZacSweers/metro/blob/main/samples/interop/customAnnotations-dagger/build.gradle.kts#L22-L27).
 
-    1. Remove the dagger-compiler/anvil plugin (but keep their runtime deps).
-    2. Enable interop with the Metro gradle plugin
+    1. Remove the Dagger compiler and Anvil plugin. Keep their runtime dependencies.
+    2. Enable interop in the Metro Gradle plugin:
 
     ```kotlin
     metro {
@@ -69,45 +67,43 @@ If adopting Metro into an existing codebase, you can use a few different strateg
 
     Metro does not consume Hilt's generated component tree from `@HiltAndroidApp`; it merges the Hilt declarations into Metro graphs directly. See [Hilt interop](interop.md#hilt) for the full mapping and current limitations.
 
-    Most things will Just Work™, but you will still possibly need to do some manual migrations.
+    Most things should Just Work™, but check these cases as you migrate.
 
-    - If you use `KClass` and `Class` interchangeably in your graph, Metro distinguishes between these by default. You can temporarily enable interop via `enableKClassToClassMapKeyInterop` (with some runtime overhead caveats, see the docs), or you'll need to move fully over to `KClass`.
-    - If you use `@MergeComponent` with `@Component`, it'll be easier if you just migrate those interfaces to `@DependencyGraph` since they're combined in there now.
-      - Not necessary if coming from anvil-ksp.
-    - Migrate `@BindsInstance` to `@Provides`. Metro consolidated these to just one annotation.
-    - Update references to generated `Dagger*Component` calls to use metro's `createGraph`/`createGraphFactory` APIs.
+    - Metro distinguishes `KClass` and `Class` map keys by default. Migrate to `KClass`, or temporarily enable [`enableKClassToClassMapKeyInterop`](interop.md#classkclass-map-key-interop), which can add runtime overhead.
+    - Consider replacing paired `@MergeComponent` and `@Component` annotations with `@DependencyGraph`.
+        - This step is unnecessary when migrating from anvil-ksp.
+    - Replace `@BindsInstance` with `@Provides`.
+    - Replace generated `Dagger*Component` calls with Metro’s `createGraph` or `createGraphFactory` APIs.
 
-    You can also remove any `@JvmSuppressWildcard` annotations, these are ignored in Metro.
+    Metro ignores `@JvmSuppressWildcards`. You can remove it if nothing else needs it.
 
     ### Option 3: Full migration
 
-    - Remove the Dagger and anvil runtimes.
-    - Replace all Dagger/anvil annotations with Metro equivalents.
-    - Update references to generated `Dagger*Component` calls to use metro's `createGraph`/`createGraphFactory` APIs.
+    - Remove the Dagger and Anvil runtimes.
+    - Replace Dagger and Anvil annotations with Metro equivalents.
+    - Replace generated `Dagger*Component` calls with `createGraph` or `createGraphFactory`.
     - Migrate from javax/jakarta `Provider` and `dagger.Lazy` APIs to the function-syntax `() -> T` provider form (or Metro's `Provider<T>`) and the stdlib's `Lazy` APIs. See [Migrating `Provider<T>` to function syntax](#migrating-providert-to-function-syntax) below.
 
 === "From kotlin-inject"
 
     !!! warning "Keep `enableFunctionProviders` enabled"
-        kotlin-inject's idiomatic way to request a provider is `() -> T`, so any non-trivial kotlin-inject codebase has these all over the graph. Metro's `enableFunctionProviders` option (on by default) is what makes Metro resolve `() -> T` as a provider of `T`, which is exactly the semantics kotlin-inject users expect. Disabling it will break almost every migrated class, so leave it at its default during and after the migration.
+        Leave `enableFunctionProviders` enabled. It is on by default and makes Metro resolve kotlin-inject’s `() -> T` provider requests as providers of `T`. Disabling it breaks those requests.
 
     ### Precursor steps
 
-    1. Remove the kotlin-inject(-anvil) dependencies (but keep their runtime deps if you use option 1 below!).
+    1. Remove the kotlin-inject and kotlin-inject-anvil processors. Keep their runtimes if you choose option 1.
     2. Migrate to `@AssistedFactory` if you haven't already.
 
     ### Option 1: Interop at the component/graph level
 
-    This option is good if you only want to use Metro for _new_ code. Metro graphs can depend on kotlin-inject components (as `@Includes` parameters) and vice versa. [Here](https://github.com/ZacSweers/metro/tree/main/samples/interop/dependencies-kotlinInject) is an example project that does this.
-
-    This option is also good if you want to do a simple, isolated introduction of Metro in one part of your codebase, such as a smaller modularized feature or library.
+    Use this approach for new code or an isolated feature. Metro graphs can depend on kotlin-inject components through `@Includes`, and kotlin-inject components can depend on Metro graphs. See the [example project](https://github.com/ZacSweers/metro/tree/main/samples/interop/dependencies-kotlinInject).
 
     ### Option 2: Migrate existing usages + reuse your existing annotations
 
-    If you want the least amount of splash as possible, you can tell Metro to reuse your annotations from kotlin-inject/kotlin-inject-anvil. [Here](https://github.com/ZacSweers/metro/blob/main/samples/interop/customAnnotations-kotlinInject/build.gradle.kts#L22-L27) is an example for enabling that in Gradle.
+    Enable annotation interop to keep kotlin-inject and kotlin-inject-anvil annotations. See the [Gradle example](https://github.com/ZacSweers/metro/blob/main/samples/interop/customAnnotations-kotlinInject/build.gradle.kts#L22-L27).
 
-    1. Remove the kotlin-inject and kotlin-inject-anvil KSP processors (but keep their runtime deps).
-    2. Enable interop with the Metro Gradle plugin
+    1. Remove the kotlin-inject and kotlin-inject-anvil KSP processors. Keep their runtime dependencies.
+    2. Enable interop in the Metro Gradle plugin:
 
     ```kotlin
     metro {
@@ -118,24 +114,24 @@ If adopting Metro into an existing codebase, you can use a few different strateg
     }
     ```
 
-    You will still possibly need to do some manual migrations, namely providers.
+    You may still need to migrate a few things by hand. Here’s what to check.
 
-    - Any map multibindings need to migrate to use [map keys](bindings.md#multibindings).
-    - Any higher order function injection is directly compatible with Metro's function-syntax providers (`() -> T`), which are enabled by default. See [Migrating `Provider<T>` to function syntax](#migrating-providert-to-function-syntax) below for details.
-    - Any higher order _assisted_ function injection will need to switch to using `@AssistedFactory`-annotated factories.
-    - If you use `@MergeComponent` + `@Component`, it'll be easier if you just migrate those interfaces to `@DependencyGraph` since they're combined in there now.
-    - If you use `@Component` parameters for graph extensions, you'll have to switch to [Graph extensions](dependency-graphs.md#graph-extensions). This will primarily entail annotating the parameter with `@Nested` and marking the parent graph as extendable.
-    - Update calls to generated `SomeComponent::class.create(...)` functions to use metro's `createGraph`/`createGraphFactory` APIs.
+    - Migrate map multibindings to [map keys](bindings.md#multibindings).
+    - Keep `() -> T` provider requests. Metro supports them by default. See [Migrating `Provider<T>` to function syntax](#migrating-providert-to-function-syntax).
+    - Replace assisted function injection with `@AssistedFactory` factories.
+    - Consider replacing paired `@MergeComponent` and `@Component` annotations with `@DependencyGraph`.
+    - Migrate `@Component` parameters to [graph extensions](dependency-graphs.md#graph-extensions). Annotate the parameter with `@Nested` and mark the parent graph as extendable.
+    - Replace generated `SomeComponent::class.create(...)` calls with `createGraph` or `createGraphFactory`.
 
     ### Option 3: Full migration
 
-    - Any map multibindings need to migrate to use [map keys](bindings.md#multibindings).
-    - Any higher order function injection is directly compatible with Metro's function-syntax providers (`() -> T`), which are enabled by default.
-    - Any higher order _assisted_ function injection will need to switch to using `@AssistedFactory`-annotated factories.
+    - Migrate map multibindings to [map keys](bindings.md#multibindings).
+    - Keep `() -> T` provider requests. Metro supports them by default.
+    - Replace assisted function injection with `@AssistedFactory` factories.
     - Remove the kotlin-inject and kotlin-inject-anvil runtimes.
     - Replace all kotlin-inject/kotlin-inject-anvil annotations with Metro equivalents.
-    - If you use `@Component` parameters for graph extensions, you'll have to switch to [Graph extensions](dependency-graphs.md#graph-extensions). This will primarily entail annotating the parameter with `@Nested` and marking the parent graph as extendable.
-    - Update calls to generated `SomeComponent::class.create(...)` functions to use metro's `createGraph`/`createGraphFactory` APIs.
+    - Migrate `@Component` parameters to [graph extensions](dependency-graphs.md#graph-extensions). Annotate the parameter with `@Nested` and mark the parent graph as extendable.
+    - Replace generated `SomeComponent::class.create(...)` calls with `createGraph` or `createGraphFactory`.
 
 ## Migrating `Provider<T>` to function syntax
 
@@ -144,7 +140,7 @@ Metro supports two equivalent provider forms:
 - **Function syntax** (preferred, default): `() -> T`
 - **Desugared**: `Provider<T>`
 
-The function-syntax form is enabled by default (`enableFunctionProviders = true`) and is the recommended way to declare provider dependencies going forward. The desugared `Provider<T>` form still works and remains useful for some interop scenarios, but Metro will surface a compiler diagnostic when it encounters it so you can incrementally migrate.
+Metro recommends `() -> T` and enables it by default through `enableFunctionProviders`. `Provider<T>` remains supported for interop. Metro reports a configurable diagnostic when it encounters that form.
 
 ### Controlling the diagnostic severity
 
@@ -173,13 +169,13 @@ val metroProvider: Provider<Foo>
 
 ### Automated migration
 
-For large codebases, a helper script is available at [`scripts/migrate-metro-provider.sh`](https://github.com/ZacSweers/metro/blob/main/scripts/migrate-metro-provider.sh) that mechanically rewrites `Provider<T>` → `() -> T` across all `.kt` files in a directory:
+Run [`scripts/migrate-metro-provider.sh`](https://github.com/ZacSweers/metro/blob/main/scripts/migrate-metro-provider.sh) to rewrite `Provider<T>` to `() -> T` in Kotlin files under a directory:
 
 ```bash
 scripts/migrate-metro-provider.sh path/to/your/code
 ```
 
-What it does:
+The script:
 
 - Only touches files that import `dev.zacsweers.metro.Provider` (explicit or via a `dev.zacsweers.metro.*` wildcard).
 - Skips files that also import a non-Metro `Provider` (`javax.inject`, `jakarta.inject`, `com.google.inject`, `dagger.internal`) to avoid ambiguity.
@@ -187,13 +183,13 @@ What it does:
 - Preserves `Provider<*>` (since `() -> *` is not valid Kotlin) and `Provider { ... }` factory calls.
 - Drops the now-unused `dev.zacsweers.metro.Provider` import when no `Provider` identifier remains.
 
-Review the diff afterwards — the script is deliberately conservative about what it rewrites, but manual spot-checking is always recommended.
+The script deliberately skips ambiguous cases. Review the resulting diff for cases that need manual migration.
 
 ### If you previously used function types as binding keys
 
-With `enableFunctionProviders` enabled (the default), any `() -> T` (i.e., `Function0<T>`) on the graph is interpreted as a provider of `T`. If your existing code uses a bare function type as the binding *itself* — e.g., a navigation callback or a side-effecting action injected as `() -> Unit` — Metro will now resolve it as "provide me a `Unit`" instead of "provide me this particular function".
+When `enableFunctionProviders` is enabled (the default), Metro interprets `() -> T` (`Function0<T>`) as a provider of `T`. If you inject a callback such as `() -> Unit` as a value, Metro will instead try to resolve a `Unit` binding.
 
-The fix is to give that function a concrete type so its binding key is distinct from the generic function shape. A `fun interface` extending the original function type is the lightest-weight option and keeps SAM conversion at call sites:
+Give the callback a named type so it has a distinct binding key. A `fun interface` extending the function type keeps SAM conversion at call sites:
 
 ```kotlin
 // Before: ambiguous under function-syntax providers
@@ -211,6 +207,6 @@ fun interface OnBackPressed : () -> Unit
 @Provides fun provideOnBackPressed(): OnBackPressed = OnBackPressed { /* ... */ }
 ```
 
-Qualifiers (`@Named`, custom `@Qualifier`s) do *not* disambiguate here — the provider semantics apply to `() -> T` regardless of qualifier — so a named type is required.
+Qualifiers do not change provider semantics for `() -> T`. A named type is required even if the callback has `@Named` or another `@Qualifier`.
 
-If you prefer to keep raw function types as bindings (and give up the function-syntax provider form for the whole project), set `enableFunctionProviders = false` in the Gradle `metro { }` block. That's the escape hatch, but be aware it's a project-wide decision and the `desugaredProviderSeverity` diagnostic will be forced to `NONE` since there is no alternative form to migrate to.
+To use raw function types as bindings throughout a project, set `enableFunctionProviders = false` in the `metro` DSL. This disables function-syntax providers and forces `desugaredProviderSeverity` to `NONE`.

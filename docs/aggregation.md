@@ -1,13 +1,13 @@
 # Aggregation (aka 'Anvil')
 
-Metro supports Anvil-style aggregation in graphs via `@ContributesTo` and `@ContributesBinding` annotations. As aggregation is a first-class citizen of Metro’s API, there is no `@MergeComponent` annotation like in Anvil. Instead, `@DependencyGraph` defines which contribution scope it supports directly.
+Metro supports Anvil-style aggregation through `@ContributesTo` and `@ContributesBinding`. Aggregation is built into `@DependencyGraph`, which declares its contribution scope directly. Metro does not need Anvil’s separate `@MergeComponent` annotation.
 
 ```kotlin
 @DependencyGraph(scope = AppScope::class)
 interface AppGraph
 ```
 
-When a graph declares a `scope`, all contributions to that scope are aggregated into the final graph implementation in code gen.
+Metro merges all visible, eligible contributions for the declared `scope` into the generated graph.
 
 If a graph supports multiple scopes, use `additionalScopes`.
 
@@ -19,7 +19,7 @@ If a graph supports multiple scopes, use `additionalScopes`.
 interface AppGraph
 ```
 
-Similar to [kotlin-inject-anvil](https://github.com/amzn/kotlin-inject-anvil), `@DependencyGraph` supports excluding contributions by class. This is useful for cases like tests, where you may want to contribute a test/fake implementation that supersedes the “real” graph.
+Like [kotlin-inject-anvil](https://github.com/amzn/kotlin-inject-anvil), Metro can exclude contributions by class. Use `DependencyGraph.excludes` to omit a production contribution when a test supplies a fake.
 
 ```kotlin
 @DependencyGraph(
@@ -81,7 +81,7 @@ The check currently covers JVM and Android artifacts, including JVM targets in K
 
 ## @ContributesTo
 
-This annotation is used to contribute graph interfaces to the target scope to be merged in at graph-processing time to the final merged graph class as another supertype.
+`@ContributesTo` adds an interface as a supertype of graphs with the target scope.
 
 ```kotlin
 @ContributesTo(AppScope::class)
@@ -100,7 +100,7 @@ interface NetworkProviders {
 }
 ```
 
-Similar to [kotlin-inject-anvil](https://github.com/amzn/kotlin-inject-anvil), `@ContributesBinding` (as well as the other `@Contributes*` annotations) supports replacing other contributions by class. This is useful for cases like tests, where you may want to contribute a test/fake implementation that supersedes the “real” graph.
+Use `replaces` on a `@Contributes*` annotation to replace another contribution by class, such as a production implementation in tests. This follows kotlin-inject-anvil’s replacement pattern.
 
 ```kotlin
 @DependencyGraph(AppScope::class)
@@ -114,9 +114,9 @@ interface TestNetworkProviders {
 
 ## @ContributesBinding
 
-This annotation is used to contribute injected classes to a target scope as a given bound type.
+`@ContributesBinding` binds an injected class to a type in the target scope.
 
-The below example will contribute the `CacheImpl` class as a `Cache` type to `AppScope`.
+This example contributes `CacheImpl` as `Cache` in `AppScope`:
 
 ```kotlin
 @ContributesBinding(AppScope::class)
@@ -124,7 +124,7 @@ The below example will contribute the `CacheImpl` class as a `Cache` type to `Ap
 class CacheImpl(...) : Cache
 ```
 
-For simple cases where there is a single supertype, that type is implicitly used as the bound type. If your bound type is qualified, for the implicit case you can put the qualifier on the class.
+If the class has one supertype, Metro infers it as the bound type. Put a qualifier on the class to qualify that inferred binding.
 
 ```kotlin
 @Named("cache")
@@ -133,7 +133,7 @@ For simple cases where there is a single supertype, that type is implicitly used
 class CacheImpl(...) : Cache
 ```
 
-For classes with multiple supertypes or advanced cases where you want to bind an ancestor type, you can explicitly define this via `binding` parameter.
+For multiple supertypes or an ancestor type, specify the `binding` argument:
 
 ```kotlin
 @Named("cache")
@@ -146,11 +146,11 @@ class CacheImpl(...) : Cache, AnotherType
 ```
 
 !!! tip
-    Whoa, is that a function call in an annotation argument? Nope! `binding` is just a decapitalized class in this case, intentionally designed for readability. It's an adjective in this context and the functional syntax better conveys that.
+    Wait, is that a function call in an annotation argument? Nope! `binding` is an annotation class. I gave it a lowercase name so `binding<T>()` reads naturally.
 
-Note that the bound type is defined as the type argument to `@ContributesBinding`. This allows for the bound type to be generic and is validated in FIR.
+The bound type is a type argument of `binding`. It can be generic and is validated in FIR.
 
-Qualifier annotations can also be specified on the `binding` type parameter and will take precedence over any qualifiers on the class itself.
+A qualifier on the `binding` type argument takes precedence over a qualifier on the class.
 
 ```kotlin
 @ContributesBinding(
@@ -177,7 +177,7 @@ class CacheImpl(...) : Cache, AnotherType
 ```
 
 !!! tip
-    Contributions may be `object` classes. In this event, Metro will automatically provide the object instance in its binding.
+    An `object` contribution supplies the object instance as its binding.
 
 ### Contribution priority
 
@@ -197,7 +197,7 @@ Priority only suppresses the individual conflicting binding. Other bindings or s
 
 ### Implicitly-injected `@ContributesBinding` types
 
-Unlike Anvil, Metro does not require `@Inject` on `@Contributes*` annotated types. The `@Contributes*` annotation itself is sufficient to indicate that the type should be injected.
+Metro treats `@ContributesBinding`, `@ContributesIntoSet`, and `@ContributesIntoMap` types as injected by default.
 
 ```kotlin
 @ContributesBinding(AppScope::class)
@@ -205,9 +205,7 @@ Unlike Anvil, Metro does not require `@Inject` on `@Contributes*` annotated type
 class TacoImpl(...) : Taco
 ```
 
-You can still use `@Inject` on classes to be explicit, and if you have multiple constructors you must use `@Inject` on the constructor you want to be used.
-
-_The only exception to this is `@ContributesTo`, which isn't applicable to injected types._
+You can still add `@Inject` explicitly. If the class has multiple constructors, you must annotate exactly one constructor with `@Inject`. `@ContributesTo` does not imply injection. It contributes graph supertypes and binding containers.
 
 This behavior can be disabled via the `contributesAsInject` Gradle DSL option if you prefer to require explicit `@Inject` annotations.
 
@@ -221,7 +219,7 @@ To contribute into a multibinding, use the `@ContributesIntoSet` or `@Contribute
 class CacheImpl(...) : Cache
 ```
 
-Same rules around qualifiers and `binding()` apply in this scenario
+The same qualifier and `binding()` rules apply.
 
 To contribute into a Map multibinding, the map key annotation must be specified on the class or `binding` type argument.
 
@@ -303,7 +301,7 @@ class CompositeCacheAlternate(private val caches: Map<String, () -> Cache>) {
 }
 ```
 
-Like `@ContributesBinding`, enabling the `contributesAsInject` Gradle DSL option will treat all `@ContributesIntoSet`/`@ContributesIntoMap`-annotated types as `@Inject` by default.
+`contributesAsInject` is enabled by default. When enabled, it treats `@ContributesIntoSet` and `@ContributesIntoMap` types as implicitly injected. Disable it to require explicit `@Inject` annotations.
 
 ## Contributing Binding Containers
 
@@ -379,7 +377,7 @@ interface TestAppGraph {
 
 ## `@DefaultBinding`
 
-The `@DefaultBinding` annotation allows for setting a default binding on _supertypes_ of contributed classes. This is useful for common base classes with generics that would otherwise require repetitive (or error-prone) explicit `binding<T>()` declarations in subtypes.
+Use `@DefaultBinding` on a supertype to set the default bound type for contributed subclasses. This avoids repeating generic `binding<T>()` declarations.
 
 ```kotlin
 @DefaultBinding<BaseFactory<*>>
@@ -392,7 +390,7 @@ class HomeFactory(...) : BaseFactory<HomeFactory>
 
 ## `generateContributionProviders`
 
-If you enable the new `generateContributionProviders` feature, Metro will instead generate top-level `@Provides` declarations that mirror the injected class's inputs but only return its _bound type_. This means the annotated class can remain `internal`, which both helps encapsulation and incremental compilation.
+Enable `generateContributionProviders` to generate top-level `@Provides` declarations with the injected class’s inputs and bound return type. This lets the implementation remain `internal`, keeps implementation details encapsulated, and can reduce downstream ABI changes during incremental compilation.
 
 ```kotlin
 interface Base
@@ -416,8 +414,8 @@ Generic contributions are supported when [derived bindings](derived-bindings.md#
 
 ## Implementation notes
 
-This leans on Kotlin’s ability to put generic type parameters on annotations. That in turn allows for both generic bound types and to contribute map bindings to multiple map keys.
+Kotlin annotations can have generic type parameters. Metro uses them for generic bound types and multiple map-key contributions.
 
-Because it’s a first-party feature, there’s no need for intermediary “merged” components like kotlin-inject-anvil and anvil-ksp do.
+Metro merges contributions directly into graphs. kotlin-inject-anvil and anvil-ksp use intermediate merged components.
 
-Generated contributing interfaces are generated to the `metro.hints` package and located during graph supertype generation in FIR downstream. Any contributed bindings are implemented as `@Binds` (± IntoSet/IntoMap/etc) annotated properties.
+Metro generates contribution hints in `metro.hints` and discovers them during downstream FIR graph generation. Contributed bindings become `@Binds` properties with any required multibinding annotations.

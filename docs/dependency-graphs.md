@@ -1,6 +1,6 @@
 # Dependency Graphs
 
-The primary entry points in Metro are *dependency graphs*. These are interfaces annotated with `@DependencyGraph` and created with `@DependencyGraph.Factory` interfaces. Graphs expose types from the object graph via accessor properties or functions.
+A dependency graph is Metro’s entry point to an object graph. Declare an interface or abstract class with `@DependencyGraph`. Its accessor properties and functions expose bindings. Use a `@DependencyGraph.Factory` when the graph needs runtime inputs.
 
 !!! tip
     These are synonymous with *components* and `@Component`/`@Component.Factory` in Dagger and kotlin-inject.
@@ -8,7 +8,7 @@ The primary entry points in Metro are *dependency graphs*. These are interfaces 
 !!! tip
     “Accessors” in Metro are synonymous with Dagger’s [provision methods](https://dagger.dev/api/latest/dagger/Component.html#provision-methods).
 
-Accessors and member injections act as roots, from which the dependency graph is resolved. Dependencies can be provided via conventional `@Provides` functions in graphs or their supertypes, constructor-injected classes, or accessed from graph dependencies.
+Metro resolves dependencies from accessor and member injection roots. Bindings come from `@Provides` declarations in the graph or its supertypes, injected constructors, and included graph dependencies.
 
 ```kotlin
 @DependencyGraph
@@ -20,23 +20,23 @@ interface AppGraph {
 }
 ```
 
-*Note the `@Provides` function must define an explicit return type.*
+*A `@Provides` function must declare its return type.*
 
-Simple graphs like this can be created via the `createGraph()` intrinsic.
+Create a graph without runtime inputs with `createGraph()`:
 
 ```kotlin
 val graph = createGraph<AppGraph>()
 ```
 
-Graphs are relatively cheap and should be used freely.
+Graphs are relatively cheap to create, so use separate graphs when their ownership or lifetime calls for one.
 
 ## Inputs
 
-Runtime inputs can be provided via a `@DependencyGraph.Factory` interface that returns the target graph. These parameters must be annotated with either `@Provides` or `@Includes`.
+Declare a `@DependencyGraph.Factory` that returns the graph to supply runtime inputs. Every factory input must be annotated with `@Provides` or `@Includes`.
 
 ### Provides
 
-The simplest input is an instance parameter annotated with `@Provides`. This provides this instance as an available binding on the graph.
+A parameter annotated with `@Provides` becomes an instance binding in the graph.
 
 ```kotlin
 @DependencyGraph
@@ -57,9 +57,9 @@ Provided parameters may be any type.
 
 ### Includes
 
-`@Includes`-annotated parameters are treated as containers of available bindings. Metro will treat _accessors_ of these types as usable dependencies.
+Metro reads the public accessors of an `@Includes` parameter as available bindings.
 
-They are commonly other graph types whose' dependencies you want to consume via explicit API.
+Use this to consume another graph through its public API.
 
 ```kotlin
 @DependencyGraph
@@ -79,7 +79,7 @@ interface AppGraph {
 }
 ```
 
-`@Includes` instance dependencies do not _need_ to be other graphs though! They can be any regular class type. They _cannot_ be enums or annotation classes.
+Your `@Includes` input doesn’t have to be another graph! You can pass an ordinary class. Enums and annotation classes aren’t supported.
 
 ```kotlin
 @DependencyGraph
@@ -100,7 +100,7 @@ interface AppGraph {
 !!! warning
     Includes parameters cannot be injected from the graph.
 
-[Binding Containers](#binding-containers) are a special type of `@Includes` type, see more in its section below.
+See [Binding Containers](#binding-containers) for a special kind of included dependency.
 
 ### Creating factories
 
@@ -116,7 +116,7 @@ val messageGraph =
 
 _See [Scopes](scopes.md) for more details on scopes!_
 
-Graphs may declare a `scope` (and optionally `additionalScopes` if there are more). Each of these declared scopes act as an implicit `@SingleIn` representation of that scope for [aggregation](aggregation.md).
+A graph declares its aggregation scope with `scope` and can add more with `additionalScopes`. Each declared scope acts as an implicit `@SingleIn` for [aggregation](aggregation.md).
 
 For example:
 ```kotlin
@@ -124,7 +124,7 @@ For example:
 interface AppGraph
 ```
 
-Is functionally equivalent to writing the below.
+This is equivalent to:
 
 ```kotlin
 @SingleIn(AppScope::class)
@@ -205,7 +205,7 @@ interface AnalyticsLifecycle {
 
 ### Callback parameters
 
-Callback parameters use normal dependency resolution and get the same compile-time validation as graph accessors. This allows you to easily consume and use dependencies in your callback functions.
+Metro resolves callback parameters like graph accessors and validates them at compile time.
 
 !!! warning
 
@@ -226,7 +226,7 @@ The first call to `close()` marks the graph closed and runs any `@OnGraphClose` 
 
     A closed graph still serves dependency requests. A request after close can create a binding for the first time, so stop using a graph before you close it.
     
-    Closing also doesn't clear cached instances. A closed graph and its providers keep them in memory until you allow it to be GC'd naturally.
+    Closing does not clear cached instances. The graph and its providers retain them until they can be garbage-collected.
 
     Creating a graph extension through a closed graph **fails**, even with a factory obtained earlier.
 
@@ -247,7 +247,7 @@ appGraph.close() // Closes second, then runs appGraph's close callbacks. `first`
 
     A `CloseableGraph` keeps a reference to each closeable extension it creates until the extension or the parent graph closes. Close extensions when you're done with them so they can be garbage collected.
 
-An extension joins its parent's cleanup once its init callbacks succeed. If the parent closes while those callbacks run, creating the extension fails and Metro closes the extension first. The exception is an extension with a suspend `close()` that a non-suspend function creates, which stays open. A graph that receives another graph as an `@Includes` input *doesn't* close it as there's no parent/child relationship there. Sibling extensions close in no particular order when they are closed by their parents.
+An extension joins its parent’s cleanup after its init callbacks succeed. If the parent closes during initialization, creation fails and Metro closes the extension first. If a non-suspend factory creates an extension with a suspend `close()`, creation still fails in this race, but the extension stays open. An `@Includes` graph is owned separately and is not closed by the consuming graph. Parents close sibling extensions in no particular order.
 
 A `CloseableGraph` can't own a `SuspendCloseableGraph` extension, but a `SuspendCloseableGraph` can own both kinds.
 
@@ -296,7 +296,7 @@ With [runtime tracing](performance.md#runtime-tracing) enabled, Metro records ho
 
 ## Graph Extensions
 
-Dependency graphs can be extended via _graph extensions_. As the name implies, graph extensions _extend_ a parent graph they are declared for and contain a superset of bindings that includes both the parent graph(s) as well as their own. These are similar in functionality to Dagger's _Subcomponents_.
+A graph extension inherits its parent’s bindings and adds its own. It is similar to a Dagger subcomponent.
 
 Graph extensions must be either an interface or an abstract class and are annotated with `@GraphExtension`. They are created via `@GraphExtension.Factory` types.
 
@@ -404,7 +404,7 @@ interface AppGraph {
 
 ### Graph-private Bindings
 
-By default, all bindings in a graph are implicitly available to its graph extensions. `@GraphPrivate` allows marking `@Provides`, `@Binds`, or `@Multibinds` declarations as _private_ to the graph they are provided in. This means:
+Graph extensions inherit all eligible parent bindings by default. Mark `@Provides`, `@Binds`, or `@Multibinds` declarations with `@GraphPrivate` to keep them in the declaring graph:
 
 - Private `@Provides` and `@Binds` bindings **may not** be exposed directly via an accessor.
 - The binding **will not** be visible to extensions of this graph.
@@ -592,7 +592,7 @@ See [DependencyGraph](#scoping)'s section on aggregation.
 
 ### Contributed Graph Extensions
 
-Graph extensions may be _contributed_ to a parent graph and its contribution merging will be deferred until the parent graph is generated.
+Contribute a graph extension to defer merging until Metro generates its parent graph.
 
 #### The Problem
 
@@ -611,7 +611,7 @@ If `:login` defines its own graph directly with `@DependencyGraph`, it won't see
 
 #### The Solution
 
-Instead, `:login` can use `@GraphExtension(LoggedInScope::class)` + `@ContributesTo` on its associated factory to say: "I want to contribute a new graph extension _to_ a future `AppScope` parent graph."
+In `:login`, annotate `LoggedInGraph` with `@GraphExtension(LoggedInScope::class)`. Use `@ContributesTo(AppScope::class)` on its factory to contribute the extension to the future parent graph.
 
 The graph extension will then be generated in `:app`, which already depends on both `:login` and `:user-data`. Now `UserRepository` can be injected in `LoggedInGraph`.
 
@@ -636,7 +636,7 @@ In the `:app` module:
 interface AppGraph
 ```
 
-The generated code will modify `AppGraph` to implement `LoggedInGraph.Factory` and implement `createLoggedInGraph()` using a generated final `LoggedInGraphImpl` class that includes all contributed bindings, including `UserRepository` from `:user-data`.
+Metro makes `AppGraph` implement `LoggedInGraph.Factory`. Its generated `createLoggedInGraph()` returns a generated final `LoggedInGraphImpl`. That implementation includes the matching contributions visible to `:app`, including `UserRepository` from `:user-data`.
 
 ```kotlin
 interface AppGraph
@@ -707,16 +707,16 @@ Contributed graphs may also be chained.
 
 ## Binding Containers
 
-Binding containers are classes, objects, or interfaces annotated with `@BindingContainer` that contain binding declarations (`@Provides` or `@Binds`) but are not themselves complete dependency graphs. They're analogous to Dagger's `@Module` annotation and can be used in cases where defining bindings in an (extended) interface is unwieldy or not helpful.
+A `@BindingContainer` class, object, or interface groups `@Provides` and `@Binds` declarations. It is a reusable partial graph, similar to a Dagger `@Module`. Use one when placing bindings in a graph supertype is unwieldy.
 
-Unlike graphs and other `@Includes` types, their public accessors are _not_ read. Only `@Binds` and `@Provides` declarations are read.
+Metro reads only `@Binds` and `@Provides` declarations from binding containers. For other `@Includes` inputs, Metro reads public accessors as bindings.
 
 !!! tip
-    Binding containers can be seen as partial graphs and are intended to be reusable, composable units that are _included_ in a complete graph.
+    Include a binding container in a graph to reuse a group of declarations.
 
 ### Including via `@Includes` Parameters
 
-The most flexible way to include binding containers is via `@Includes`-annotated parameters on graph factories.
+Pass a binding container instance through an `@Includes` factory parameter:
 
 ```kotlin
 @BindingContainer
@@ -735,7 +735,7 @@ interface AppGraph {
 }
 ```
 
-This allows you to bring any instance to the graph with its own internal logic.
+This lets the caller construct and configure the container.
 
 ### Including via `@DependencyGraph.bindingContainers`
 
@@ -780,7 +780,7 @@ interface AppGraph {
 }
 ```
 
-The transitive closure of all included binding containers will be included in the final consuming graph.
+The graph includes all binding containers reached transitively through `includes`.
 
 ### Contributing Binding Containers
 
@@ -822,14 +822,14 @@ interface AppGraph {
 ### Notes
 
 - Companion objects, annotation classes, and enum classes/entries cannot be annotated with `@BindingContainer`.
-- Provides within a binding container's companion object are automatically included.
-- Enclosing classes of `@Binds` or `@Provides` providers don't need to be annotated with `@BindingContainer` for Metro to process them - the annotation is primarily for reference to `@DependencyGraph.Factory` and the ability to use `includes`.
+- `@Provides` declarations in a container’s companion object are included automatically.
+- A class with `@Binds` or `@Provides` declarations does not need `@BindingContainer` for those declarations to be processed. The annotation lets a graph reference the class as a container and use its `includes` parameter.
 - Binding containers may also be [contributed](aggregation.md#contributing-binding-containers).
 - See [#172](https://github.com/ZacSweers/metro/issues/172) for more details.
 
 ## Dynamic Graphs
 
-Dynamic graphs are a powerful feature of the Metro compiler that allow for dynamically replacing bindings in a given graph. To use them, you can pass in a vararg set of _binding containers_ to the `createDynamicGraph()` and `createDynamicGraphFactory()` intrinsics.
+Dynamic graphs replace bindings when you create a graph. Pass one or more binding container instances to `createDynamicGraph()` or `createDynamicGraphFactory()`.
 
 ```kotlin
 @DependencyGraph
@@ -854,45 +854,45 @@ class AppTest {
 }
 ```
 
-The compiler will dynamically generate a hidden graph impl _within the enclosing class or file_ that is unique to the combination of input [containers] and target type [T].
+Metro generates a private graph implementation in the enclosing class or file for that combination of containers and target graph type.
 
 **Constraints**
 
 - All containers must be instances (or objects) of _binding containers_.
 - It's an error to pass no containers.
-- All containers must be non-local, canonical classes. i.e., they must be something with a name!
+- Each container class must be non-local and have a canonical name.
 - This overload may be called in a member function body, top-level function body, or property initializer.
-- The target [T] graph _must_ be annotated with `@DependencyGraph` and must be a valid graph on its own.
+- The target graph type must have `@DependencyGraph` and be valid without the replacements.
 
 ??? note "Implementation Notes"
 
     - The bulk of this implementation is in `IrDynamicGraphGenerator`.
-    - The generated graph impl is a private nested (static) class of the enclosing class or file.
-    - This doesn't swap bindings in a real graph or use a real graph at all, instead tracking available dynamic bindings and preferring them when constructing a graph in `BindingGraphGenerator`.
+    - The generated implementation is a private nested static class of the enclosing class or file.
+    - `BindingGraphGenerator` tracks dynamic bindings and prefers them while constructing a new graph implementation. It does not modify an existing graph instance.
 
 ## General Implementation Notes
 
-Dependency graph code gen is designed to largely match how Dagger components are generated.
+Metro generates dependency graphs using patterns similar to Dagger components.
 
-* Internal graph validation uses [Tarjan's algorithm](https://en.wikipedia.org/wiki/Tarjan%27s_strongly_connected_components_algorithm) + [topological sort](https://en.wikipedia.org/wiki/Topological_sorting) implementation.
-  * This runs in O(V+E) time
-  * The returned ordered list of bindings can be used to determine provider field generation order.
-  * Any binding whose order depends on one later in the returned order implicitly requires use of `DelegateFactory`.
+* Graph validation uses [Tarjan’s algorithm](https://en.wikipedia.org/wiki/Tarjan%27s_strongly_connected_components_algorithm) and a [topological sort](https://en.wikipedia.org/wiki/Topological_sorting).
+    * The traversal runs in O(V+E) time.
+    * The ordered bindings determine provider field initialization order.
+    * A binding that depends on a later binding in the order needs a `DelegateFactory`.
 * Dependencies are traversed from public accessors and `inject()` functions.
-* Metro generates Provider Factory classes for each provider. These should be generated at the same time that the provider is compiled so that their factory classes. This is for two primary purposes:
-    * They can be reused to avoid code duplication
-    * Metro can copy default values for provider values over to the generated factory to support optional dependencies. Since default values may refer to private references, we must generate these factories as nested classes.
-* Metro generates a graph *impl* class that holds all aggregated bindings and manages scoping.
+* Metro generates a factory when it compiles each provider:
+    * Factories can be reused to avoid duplicate code.
+    * Factories copy default expressions to support optional dependencies. They are nested in the source class so those expressions can reference private members.
+* A generated graph implementation holds aggregated bindings and manages scoping.
 * Scoped bindings are stored in provider fields backed by `DoubleCheck`.
-* Reused unscoped providers instances are stored in reusable fields.
+* Reused unscoped providers are stored in fields.
 * `@Provides` factory parameters are stored in a field backed by `InstanceFactory`.
 * Multibindings create new collection instances every time.
 * Multibinding providers are not accessible as standalone bindings.
-* Graph extensions are implemented via a combination of things
+* Graph extensions use metadata and generated accessors:
     * Custom `MetroMetadata` is generated and serialized into Kotlin's `Metadata` annotations.
-    * Extendable parent graphs opt-in to generating this metadata. They write information about their available provider and instance fields, binds callable IDs, parent graphs, and provides callable IDs.
+    * Extendable parent graphs record provider and instance fields, binding callable IDs, parent graphs, and provider callable IDs.
     * Extendable parent graphs generate `_metroAccessor`-suffixed `internal` functions that expose instance fields and provider fields.
-    * Child graphs read this metadata and look up the relevant callable symbols, then incorporating these when building its own binding graph.
+    * Child graphs read the metadata, resolve the callable symbols, and add them to their binding graphs.
 
 ### Optimizations
 
@@ -1009,11 +1009,11 @@ Sharding respects required binding initialization order and keeps strongly conne
 
 #### Switching Providers
 
-Switching providers are an optimization in graph generation that defers class loading. This can reduce graph initialization time by deferring bindings' class init until it's actually requested.
+Switching providers defer binding class initialization until the binding is requested. This can reduce graph initialization time.
 
 This is analogous to Dagger's `fastInit` option.
 
-You should really _only_ use this if you've benchmarked it and measured a meaningful difference, as it comes with the same tradeoffs (always holding a graph instance ref, etc.)
+I’d _only_ enable switching providers if you’ve benchmarked them and the difference is worth it. Each switching provider holds a reference to the graph for as long as the provider lives.
 
 Switching providers also support [suspend providers](coroutines.md).
 

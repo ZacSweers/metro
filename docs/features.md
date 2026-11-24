@@ -2,33 +2,33 @@
 
 ## Familiar semantics
 
-Metro builds on top of established patterns from existing DI frameworks with familiar semantics like constructor injection, providers, multibindings, scopes, assisted injection, and intrinsics like Provider/Lazy.
+Metro uses familiar DI semantics from Dagger and kotlin-inject, including constructor injection, providers, multibindings, scopes, assisted injection, and `Lazy`.
 
 ## Compile-time validation
 
-Like Dagger and KI, Metro validates your dependency graph at compile-time.
+Metro validates dependency graphs at compile time.
 
 ## Compile-time FIR+IR code gen
 
-Metro is implemented entirely as a Kotlin compiler plugin, primarily using FIR for error reporting and both FIR and IR for code gen. This affords significant build performance and wins compared to Dagger and KAPT/KSP in two ways:
+Metro runs entirely as a Kotlin compiler plugin. It reports most declaration errors in FIR and generates code in FIR and IR. This avoids work required by source generators such as KAPT and KSP:
 
-* It avoids extra Kotlin compiler (frontend) invocations to analyze sources and generate new sources.
-* It generates new code to FIR/IR directly, allowing it to be lowered directly into target platforms
+* It avoids extra Kotlin frontend invocations for source analysis and generation.
+* It generates declarations directly in FIR and IR, which Kotlin lowers to each target platform.
 
-FIR/IR generation allows Metro to generate code directly into existing classes, which in turn allows it to do certain things that source-generation cannot. This includes:
+Generating directly in FIR and IR also lets Metro add code to existing classes. Source generators cannot do this directly. Metro uses it for:
 
 * Private `@Provides` declarations.
 * Injection of private member properties and functions.
-* Copying + reuse of default value expressions for optional dependencies, even if they reference private APIs within the source class.
+* Default parameter expressions for optional dependencies, including expressions that reference private APIs.
 
 ## Dagger-esque code gen and runtime
 
-* Metro’s generated code is similar to Dagger: lean, limited duplication, and practical.
-* Metro’s runtime is similar to Dagger. This includes patterns like `DoubleCheck`, heavy use of factories, and an assumption that this is going to run in a large/modularized codebase.
+* Generated code uses factories and limits duplication, following Dagger’s approach.
+* The runtime uses patterns such as `DoubleCheck` and is designed for large, modular codebases.
 
 ## Kotlin-Inject-esque API
 
-Metro’s user-facing API is similar to kotlin-inject: focused on simplicity and leaning into kotlin-language features.
+Metro’s public API draws from kotlin-inject and uses Kotlin language features:
 
 * Top-level function injection
 * Providers live in graph interfaces or supertypes
@@ -41,19 +41,19 @@ Metro supports suspend bindings and graph accessors, deferred initialization, sc
 
 ## Anvil-esque aggregation
 
-Like Anvil, Metro supports contributing types via aggregation with annotations like `@ContributesTo`, `@ContributesBinding`, etc.
+Metro supports Anvil-style aggregation with `@ContributesTo` and `@ContributesBinding`.
 
 ## Multiplatform
 
-Metro is multiplatform and supports most major Kotlin multiplatform targets.
+Metro supports most major Kotlin Multiplatform targets. See [Multiplatform](multiplatform.md).
 
 ## IDE Integration
 
-Most errors are reported in FIR, which should (eventually) be visible in the K2 IDE plugin as well.
+The K2 IDE plugin can display FIR diagnostics when third-party compiler plugin support is enabled. See [IDE Support](installation.md#ide-support).
 
 ## Helpful diagnostics
 
-Metro tries its best to give detailed-yet-readable error messages and diagnostics, with stable diagnostic IDs, `help:` suggestions, and links to the [Diagnostics Reference](diagnostics.md). An optional rich console mode adds color, Unicode structure, and highlighted source snippets in terminals. See [Validation & Error Reporting](validation-and-error-reporting.md).
+Metro diagnostics include stable IDs, `help:` suggestions, and links to the [Diagnostics Reference](diagnostics.md). Rich console mode adds color, Unicode structure, and highlighted source snippets. See [Validation & Error Reporting](validation-and-error-reporting.md).
 
 ```
 e: ExampleGraph.kt:8:3 
@@ -72,13 +72,13 @@ e: ExampleGraph.kt:8:3
   docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
 ```
 
-For more thorough debugging, Metro also has controls to enable debug logging controls and write graph reports to an output directory (configurable via the Gradle extension).
+For debugging, enable compiler logging or write graph reports to a directory configured in the Gradle extension.
 
 ## Advanced interop
 
-Metro has advanced interop with existing DI tools.
+Metro can reuse declarations and generated code from existing DI frameworks:
 
-* Metro supports component-level interop with Dagger and kotlin-inject. This means that Metro graphs can depend on Dagger and kotlin-inject components via `@Includes` dependencies.
-* Metro supports defining user-defined alternatives for common annotations in addition to its first-party options. This allows easier introduction to codebases using annotations from existing DI frameworks.
-* If Dagger interop is enabled, Metro can generate code that both interops with Dagger/Javax/Jakarta's types directly as well as reuse Dagger/Anvil's generated factories.
-* If Anvil interop is enabled, Metro's compiler can interpret Anvil's `@ContributesMultibinding` and `boundType` APIs.
+* Graphs can depend on Dagger and kotlin-inject components through `@Includes`.
+* Custom annotation mappings let you keep annotations from another DI framework.
+* Dagger interop supports Dagger, Javax, and Jakarta runtime types and can reuse Dagger or Anvil factories.
+* Anvil interop recognizes `@ContributesMultibinding` and `boundType`.

@@ -1,10 +1,10 @@
 # Kotlin Compiler Compatibility
 
-The Kotlin compiler plugin API is not a stable API, so not every version of Metro will work with every version of the Kotlin compiler.
+Kotlin compiler plugin APIs are unstable. Each Metro release supports a specific range of Kotlin compiler versions.
 
-Starting with Metro `0.6.9`, Metro tries to support forward compatibility on a best-effort basis. Usually, it's `N+.2` (so a Metro version built against Kotlin `2.3.0` will try to support up to `2.3.20`.
+Since Metro `0.6.9`, forward compatibility has been best effort. Metro usually targets the next two Kotlin tooling releases (`N+.2`). For example, a Metro release built against Kotlin `2.3.0` targets support through `2.3.20`. Some releases support a wider range.
 
-Pre-release versions are normally only tested during their development cycle. After their stable release, Metro should continue to work with them but they will no longer be tested against. Their last tested release is indicated by putting the version in brackets like `[0.9.1]`.
+Metro normally tests prereleases during their development cycle. After the stable release, those prereleases may still work but are no longer tested. Brackets mark the last tested Metro release, such as `[0.9.1]`.
 
 | Kotlin version  | Metro versions (inclusive) | Notes                                                                    |
 |-----------------|----------------------------|--------------------------------------------------------------------------|
@@ -62,7 +62,7 @@ Pre-release versions are normally only tested during their development cycle. Af
 
 [1]: Metro versions 0.6.9–0.9.0 had a [version comparison bug](https://github.com/ZacSweers/metro/issues/1544) that caused them to incorrectly select a compat module for Kotlin 2.2.20 when running on the Kotlin 2.3.0 final release. This was fixed in 0.9.1.
 
-Some releases may introduce prohibitively difficult breaking changes that require companion release, so check Metro's open PRs for one targeting that Kotlin version for details. There is a tested versions table at the bottom of this page that is updated with each Metro release.
+Some Kotlin releases introduce breaking changes that require a Metro update. Check open Metro PRs for that Kotlin version. The tested versions table below is updated with each Metro release.
 
 ## Annotation Defaults in KLIB Dependencies
 
@@ -74,19 +74,19 @@ Kotlin `2.3.0` and `2.3.10` also serialize omitted array arguments as empty arra
 
 ## IDE Support
 
-IDEs have their own compatibility story with Kotlin versions. The Kotlin IDE plugin embeds Kotlin versions built from source, so Metro's IDE support selects the nearest compatible version and tries to support the latest stable IntelliJ and Android Studio releases + the next IntelliJ EAP release.
+The Kotlin IDE plugin bundles its own compiler version. Metro selects the nearest compatible implementation and aims to support stable IntelliJ and Android Studio releases, plus the next IntelliJ EAP.
 
 !!! note "IntelliJ's unusual Kotlin tags"
 
-    IntelliJ sometimes publishes releases that do not use published Kotlin repo tags. For example, usually it uses a `2.3.20-dev-1234` version that exists on GitHub and is published to the Kotlin dev maven repo. However, sometimes it uses something like a `2.3.20-ij253-45` that (at the time of writing) doesn't appear to correspond to any public tag.
-    
-    While these do have artifacts in a known maven repository, it's unclear what git sha in the Kotlin repo these are from and thus unclear where they are in the _order_ of dev builds. For now, Metro handles this by selecting the highest available `-dev-***` build for this base version (i.e. `2.3.20`), before then falling back to the other types (stable, beta, etc.)
+    IntelliJ sometimes bundles Kotlin versions without a public repository tag, such as `2.3.20-ij253-45`. Regular dev versions, such as `2.3.20-dev-1234`, have a public tag and Maven artifact.
+
+    The IDE artifacts are available in a known Maven repository, but their source commit and position among dev builds can be unclear. Metro first selects the highest available `-dev-***` compatibility implementation for the base version, such as `2.3.20`. It then falls back to other release types, such as stable and beta.
 
     Please star this issue: https://youtrack.jetbrains.com/issue/KTIJ-37076
 
 !!! note "Android Studio's custom versions"
 
-    Android Studio uses a custom version of the Kotlin compiler that does not necessarily correspond to any real published Kotlin version. For example, Android Studio Otter 2 (at the time of writing) declares `2.2.255-dev-255`, which isn't a real version. Android Studio Panda canaries declare `2.3.255-dev-255`. Similar to the mystery `ij` tags for IntelliJ versions above, metro best-effort supports this by just picking the nearest available compat context that is lower that Studio's declared version.
+    Android Studio can report a Kotlin compiler version that has no matching public release. For example, Otter 2 reported `2.2.255-dev-255`, and Panda canaries reported `2.3.255-dev-255`. Metro makes a best-effort selection of the nearest lower compatibility context.
 
     Please star this issue: https://issuetracker.google.com/issues/474940910
 

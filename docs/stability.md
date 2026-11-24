@@ -1,45 +1,45 @@
 # Stability
 
-Metro is **stable, optimized, and well-tested**. Dozens of companies are using it in production, including a number of large engineering shops.
+Metro is stable and well tested. Dozens of companies use it in production, including large engineering organizations. See [Performance](performance.md) for build and runtime benchmarks.
 
-Metro's **runtime** and **Gradle plugin** APIs are stable and abide by semantic versioning. APIs marked as experimental are not covered by this guarantee and may change or be removed.
+Metro’s runtime and Gradle plugin APIs are stable and follow semantic versioning. Experimental APIs are outside that guarantee and can change or be removed.
 
 ## What about compiler plugin stability?
 
-Metro's compiler plugin will always follow a (generously wide) moving window of supported Kotlin compiler versions. See the [compatibility docs](compatibility.md).
+Metro supports a moving window of Kotlin compiler versions. See [Kotlin Compiler Compatibility](compatibility.md).
 
 ## Generated Code Stability
 
-A second layer of stability to consider is the compatibility of Metro-generated code with different versions of the runtime.
+Generated code also depends on the Metro runtime version it was compiled against.
 
 !!! note "Example"
-    If you compile a library against one version of Metro and then use it in another project that depends on a different version of Metro's runtime.
+    A library compiled with one Metro version may be used by a project with a different Metro runtime version.
 
-As is typical of most code generation tools, Metro does _not_ guarantee generated code will be compatible with different versions of the runtime other than the one it was compiled against. This is usually not an issue, but some larger teams working in multi-repo environments will want to be mindful of this.
+Metro does not guarantee that generated code will work with a different runtime version from the one used to compile it. This is usually not a problem within one repository, but teams sharing compiled libraries across repositories should check runtime versions.
 
-Metro may support this in the future, If you have reasonable use cases or suggestions of how you'd expect such support to work, please raise a discussion about it on the repo's discussions section.
+If you need this, I’d love to hear how you’d expect it to work. Please [start a discussion](https://github.com/ZacSweers/metro/discussions) and tell us which runtime versions you need to use together.
 
 ## Language Evolution
 
-Generally speaking, Metro adopts new language features as they become available in Kotlin and where they make sense.
+Metro adopts Kotlin language features when they fit the project.
 
-- In the event of a new _runtime_ feature, Metro would only support that version of Kotlin or later starting in that release. Users still on older versions Kotlin would need to update Kotlin first before updating to that Metro version.
-
-!!! note "Example"
-    If Metro started using the stdlib's `AutoCloseable` interface in its runtime, that Metro version would only support Kotlin `2.0.0` or later (the version of Kotlin that introduced `AutoCloseable`.)
-
-- In the event of a new _compiler_ feature, Metro will support that on a best-effort basis but not necessarily impose that version of kotlin.
+- If the runtime adopts a new Kotlin feature, that Metro release requires the Kotlin version that introduced it or later. Upgrade Kotlin before upgrading Metro.
 
 !!! note "Example"
-    Metro's compiler _supports_ context parameters in Kotlin `2.2.20` but context parameters were not yet stable in that version of Kotlin.
+    If Metro’s runtime used the standard library’s `AutoCloseable`, that release would require Kotlin `2.0.0` or later.
+
+- Compiler features are supported on a best-effort basis. Supporting a feature does not necessarily raise the minimum Kotlin version.
+
+!!! note "Example"
+    Metro supports context parameters on Kotlin `2.2.20`, where they were still experimental.
 
 ## Feature Tiers
 
-Metro has a few different focus areas. Their prioritization is best described as a tier system.
+Metro prioritizes features in three tiers.
 
 ### Tier 1
 
-_These are core metro features that are well-tested and well-supported._
+_Core features receive regular testing and support._
 
 - Graph validation
 - Compiler code gen
@@ -50,11 +50,11 @@ _These are core metro features that are well-tested and well-supported._
 - Incremental compilation
 - IDE support for stable IntelliJ/Android Studio versions.
 - Multiplatform support (runtime and compiler)
-- Compiler compat (simultaneous support for different kotlin versions)
+- Compatibility with multiple Kotlin compiler versions
 
 ### Tier 2
 
-_These are generally debugging-only tools and not as well tested._
+_Debugging tools receive less testing._
 
 - Reporting (i.e. `reportsDestination`)
 - Graph analysis _Gradle_ APIs (visualization, JSON reporting, etc.)

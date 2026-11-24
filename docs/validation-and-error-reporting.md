@@ -1,8 +1,8 @@
 # Validation & Error Reporting
 
-Common programmer/usage errors are implemented in FIR. This should allow errors to appear directly in the IDE, offering the best and fastest feedback loop for developers writing their code.
+Metro reports declaration errors in FIR, so the IDE can display them when compiler plugin support is enabled.
 
-Dependency graph validation is performed at the per-graph level in the compiler IR backend. Each graph diagnostic is a structured report: a headline tagged with a stable diagnostic ID, a compact dependency chain, a binding trace, and trailing `help:` (actionable fix), `note:` (context), and `docs:` (reference link) annotations. See the [Diagnostics Reference](diagnostics.md) for a generated index of the diagnostic IDs.
+Metro validates each dependency graph in IR. Each diagnostic has a stable ID, a dependency chain, a binding trace, and annotations for the fix (`help:`), context (`note:`), and reference (`docs:`). See the [Diagnostics Reference](diagnostics.md) for the generated index.
 
 A missing binding looks like this:
 
@@ -21,9 +21,9 @@ AppGraph.kt:13:3: error:
   docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
 ```
 
-When a near-miss exists (same type with a different qualifier, nullability, sub/supertype, or a multibinding of the type), a `similar bindings:` section lists it with its location.
+If a similar binding exists, the `similar bindings:` section lists its location. Matches can differ by qualifier, nullability, subtype, supertype, or multibinding.
 
-Dependency cycles are drawn as a closed loop, with `~~>` marking `@Binds` alias edges, and suggest the fix:
+A dependency cycle appears as a closed loop. `~~>` marks `@Binds` alias edges, and the diagnostic suggests a fix:
 
 ```
 ExampleGraph.kt:7:11: error: 
@@ -45,7 +45,7 @@ ExampleGraph.kt:7:11: error:
   docs: https://zacsweers.github.io/metro/latest/diagnostics/#dependencycycle
 ```
 
-Output wraps to a fixed 100-column budget. Identifiers are never truncated, so type names stay grep-able.
+Output wraps at 100 columns, except that identifiers are never truncated. You can search logs for complete type names.
 
 ## Render modes
 
@@ -58,10 +58,10 @@ metro {
 ```
 
 - `PLAIN` — the layout above: ASCII structure, no ANSI codes. Safe for any log consumer.
-- `RICH` — the same layout with Unicode glyphs (`╭─▶ Double → String → Int ─╮`), ANSI color/styling, and source snippets: real source lines with the relevant spans highlighted and marked with `⌃`/`⌄` pointers, e.g. the injection site of a missing binding or each conflicting declaration of a duplicate binding.
-- `AUTO` (default) — resolved at configuration time. Non-empty `NO_COLOR`, `--console=plain`, and IDE-invoked builds (whose build output windows don't render ANSI) get `PLAIN`; other builds, including CI builds, get `RICH`.
+- `RICH` — the same layout with Unicode structure (`╭─▶ Double → String → Int ─╮`), ANSI styling, and real source snippets. Highlighted spans and `⌃`/`⌄` markers identify the injection site for a missing binding or each conflicting declaration for a duplicate binding.
+- `AUTO` (default) — selects `PLAIN` at configuration time for a non-empty `NO_COLOR`, `--console=plain`, or an IDE-invoked build. Other builds, including CI, use `RICH`.
 
-The mode can also be set via the `diagnosticsRenderMode` Gradle property or the `metro.diagnosticsRenderMode` system property (which the compiler reads directly and wins over everything). Because rendering is presentation-only, the resolved mode is excluded from compilation task inputs — switching between IDE and CLI never invalidates compilation or splits build caches.
+You can also set the `diagnosticsRenderMode` Gradle property or the `metro.diagnosticsRenderMode` system property. The compiler reads the system property directly, and it takes precedence. Render mode is excluded from compilation task inputs, so switching modes does not invalidate compilation or split build caches.
 
 ## Changing diagnostic severity
 
@@ -77,4 +77,4 @@ The available levels are `error`, `warning`, `disabled`, `ide-warning`, and `ide
 
 Only diagnostics reported in FIR are supported for now. Metro reports an error if the name is unknown or the diagnostic is reported in IR.
 
-Note that binding graph resolution currently only happens in the compiler IR backend, but maybe someday we can move this to FIR to get errors in the IDE.
+The compiler plugin resolves graphs in IR, so its graph diagnostics do not appear through third-party FIR plugin support in the IDE. Maybe someday we can move that work to FIR, too.
