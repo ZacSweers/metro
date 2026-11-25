@@ -119,11 +119,6 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
     file.appendText("$rendered\n")
   }
 
-  fun logVerbose(message: String) {
-    @Suppress("DEPRECATION")
-    metroMessageCollector.report(CompilerMessageSeverity.STRONG_WARNING, "$LOG_PREFIX $message")
-  }
-
   fun logLookup(
     filePath: String,
     position: Position,

@@ -283,7 +283,6 @@ internal class IrGraphShardGenerator(
       graphParam = null, // Not needed for graph-as-shard
       graphProperty = null, // Not needed for graph-as-shard
       isGraphAsShard = true,
-      nameAllocator = propertyNameAllocator, // Use the graph's allocator for graph-as-shard
       classNameAllocator = classNameAllocator, // Use the graph's allocator for graph-as-shard
     )
   }
@@ -378,7 +377,6 @@ internal class IrGraphShardGenerator(
         graphParam = null,
         graphProperty = null,
         isGraphAsShard = false,
-        nameAllocator = shardNameAllocator,
         // Each shard gets its own class name allocator for nested classes (e.g., SwitchingProvider)
         classNameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT),
       )
