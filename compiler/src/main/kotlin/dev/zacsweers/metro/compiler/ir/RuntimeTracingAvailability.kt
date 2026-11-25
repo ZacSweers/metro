@@ -4,7 +4,6 @@ package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
-import dev.zacsweers.metro.compiler.memoize
 
 /**
  * Caches runtime-tracing availability for this IR compilation.
@@ -15,7 +14,7 @@ import dev.zacsweers.metro.compiler.memoize
 @Inject
 @SingleIn(IrScope::class)
 internal class RuntimeTracingAvailability(context: IrMetroContext) {
-  val unavailableReason: String? by memoize {
+  val unavailableReason: String? by irLazy {
     when {
       !context.options.enableRuntimeTracing -> "Runtime tracing is not enabled."
       !context.platform.supportsTracing() ->

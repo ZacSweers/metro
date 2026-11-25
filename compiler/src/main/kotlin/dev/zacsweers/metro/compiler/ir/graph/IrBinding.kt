@@ -31,6 +31,7 @@ import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.createMapBindingId
 import dev.zacsweers.metro.compiler.ir.findAnnotations
 import dev.zacsweers.metro.compiler.ir.implements
+import dev.zacsweers.metro.compiler.ir.irLazy
 import dev.zacsweers.metro.compiler.ir.originClassOrNull
 import dev.zacsweers.metro.compiler.ir.originOrNull
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
@@ -45,7 +46,6 @@ import dev.zacsweers.metro.compiler.ir.toDiagnosticSpan
 import dev.zacsweers.metro.compiler.ir.toNameDiagnosticSpan
 import dev.zacsweers.metro.compiler.ir.toTypeDiagnosticSpan
 import dev.zacsweers.metro.compiler.ir.toUnknownLocationContext
-import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.TreeSet
@@ -180,7 +180,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
       get() =
         classFactory.isAssistedInject || parameters.nonDispatchParameters.any { it.isAssisted }
 
-    override val dependencies: List<IrContextualTypeKey> by memoize {
+    override val dependencies: List<IrContextualTypeKey> by irLazy {
       parameters.nonDispatchParameters.filterNot { it.isAssisted }.map { it.contextualTypeKey } +
         injectedMembers
     }
@@ -196,7 +196,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val reportableDeclaration: IrDeclarationWithName
       get() = type
 
-    override val diagnosticNotes: List<Note> by memoize {
+    override val diagnosticNotes: List<Note> by irLazy {
       explicitBinding?.let { binding ->
         val location =
           binding.function.renderSourceLocation(short = true)
@@ -306,7 +306,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
       }
     }
 
-    override val dependencies: List<IrContextualTypeKey> by memoize {
+    override val dependencies: List<IrContextualTypeKey> by irLazy {
       parameters.allParameters.map { it.contextualTypeKey }
     }
 
@@ -332,7 +332,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
       get() = providerFactory.callableId.callableName.asString()
 
     /** The `@Origin` annotation on the provider container, if present. */
-    private val originAnnotation: IrConstructorCall? by memoize {
+    private val originAnnotation: IrConstructorCall? by irLazy {
       providerFactory.function.parentClassOrNull
         ?.findAnnotations(Symbols.ClassIds.metroOrigin)
         ?.firstOrNull()
@@ -343,13 +343,13 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
      * on the provider container. Returns null if not a contribution provider or origin can't be
      * resolved (e.g., internal visibility across modules).
      */
-    val originClass: IrClass? by memoize { originAnnotation?.originClassOrNull() }
+    val originClass: IrClass? by irLazy { originAnnotation?.originClassOrNull() }
 
     /**
      * The origin ClassId, available even when [originClass] can't be resolved (e.g., internal
      * visibility). Used as fallback for diagnostic messages.
      */
-    val originClassId: ClassId? by memoize { originAnnotation?.originOrNull() }
+    val originClassId: ClassId? by irLazy { originAnnotation?.originOrNull() }
 
     override val reportableDeclaration: IrDeclarationWithName
       get() =
@@ -358,7 +358,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
           ?: providerFactory.function
 
     /** Says which generic provider derived this binding, if one did. */
-    override val diagnosticNotes: List<Note> by memoize { derivedBindingNotes() }
+    override val diagnosticNotes: List<Note> by irLazy { derivedBindingNotes() }
 
     override val diagnosticTypeName: String
       get() {
@@ -496,20 +496,20 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     }
 
     override val scope: IrAnnotation? = null
-    override val dependencies: List<IrContextualTypeKey> by memoize {
+    override val dependencies: List<IrContextualTypeKey> by irLazy {
       listOf(kotlinClassMap ?: IrContextualTypeKey.create(aliasedType))
     }
-    override val nameHint: String by memoize {
+    override val nameHint: String by irLazy {
       ir?.name?.asString() ?: typeKey.type.rawType().name.asString()
     }
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
 
-    override val reportableDeclaration: IrDeclarationWithName? by memoize {
+    override val reportableDeclaration: IrDeclarationWithName? by irLazy {
       bindsCallable?.resolveSourceDeclaration()?.first
     }
 
     /** Says which generic binds function derived this binding, if one did. */
-    override val diagnosticNotes: List<Note> by memoize { derivedBindingNotes() }
+    override val diagnosticNotes: List<Note> by irLazy { derivedBindingNotes() }
 
     override fun renderLocationDiagnostic(
       short: Boolean,
@@ -764,11 +764,11 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     fun canPassThrough(contextKey: IrContextualTypeKey): Boolean =
       getter?.isSuspend == false && contextualTypeKey == contextKey
 
-    override val dependencies: List<IrContextualTypeKey> by memoize {
+    override val dependencies: List<IrContextualTypeKey> by irLazy {
       listOf(IrContextualTypeKey(ownerKey))
     }
     override val scope: IrAnnotation? = null
-    override val nameHint: String by memoize {
+    override val nameHint: String by irLazy {
       buildString {
         append(graph.name)
         if (token != null) {
@@ -787,7 +787,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     }
     override val parameters: Parameters = Parameters.empty()
 
-    override val reportableDeclaration: IrDeclarationWithName? by memoize {
+    override val reportableDeclaration: IrDeclarationWithName? by irLazy {
       getter?.propertyIfAccessorCompat?.expectAs<IrDeclarationWithName>()
     }
 
@@ -839,7 +839,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     private var dependenciesFinalized = false
 
     /** Dependencies are in the order the generated collection visits its contributors. */
-    override val dependencies: List<IrContextualTypeKey> by memoize {
+    override val dependencies: List<IrContextualTypeKey> by irLazy {
       dependenciesFinalized = true
       val sources = sourceBindings.mapTo(ArrayList(sourceBindings.size)) { IrContextualTypeKey(it) }
 
@@ -864,7 +864,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
 
     fun isEmpty() = sourceBindings.isEmpty()
 
-    override val nameHint: String by memoize {
+    override val nameHint: String by irLazy {
       buildString {
         if (isMap) {
           append("mapOf")
@@ -1027,7 +1027,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     // object instantiation
     override val isImplicitlyDeferrable: Boolean = true
 
-    override val dependencies: List<IrContextualTypeKey> by memoize {
+    override val dependencies: List<IrContextualTypeKey> by irLazy {
       // Note: supertypeMembersInjectorKeys are NOT included here because they're handled
       // specially by BindingPropertyCollector (only processed if they exist in the graph).
       parameters.nonDispatchParameters
@@ -1039,7 +1039,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
 
     override val scope: IrAnnotation? = null
 
-    override val nameHint: String by memoize { "${targetClassId.shortClassName}MembersInjector" }
+    override val nameHint: String by irLazy { "${targetClassId.shortClassName}MembersInjector" }
 
     /**
      * Returns the [Parameter] for the given [typeKey], or null if not found. This is used to trace
@@ -1102,7 +1102,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     // Use shouldBeScoped to check if this binding needs to be scoped
     override val scope: IrAnnotation? = null
 
-    override val nameHint: String by memoize { typeKey.type.rawType().name.asString() }
+    override val nameHint: String by irLazy { typeKey.type.rawType().name.asString() }
 
     override fun renderDescriptionDiagnostic(short: Boolean, underlineTypeKey: Boolean) =
       buildString {
@@ -1137,7 +1137,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
     override val parameters: Parameters = Parameters.empty()
     override val scope: IrAnnotation? = null
-    override val nameHint: String by memoize { "${typeKey.type.rawType().name.asString()}Factory" }
+    override val nameHint: String by irLazy { "${typeKey.type.rawType().name.asString()}Factory" }
 
     override fun renderDescriptionDiagnostic(short: Boolean, underlineTypeKey: Boolean) =
       buildString {
@@ -1175,12 +1175,12 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     val allowsAbsent: Boolean,
     val wrapperKey: String,
   ) : IrBinding {
-    override val dependencies: List<IrContextualTypeKey> by memoize { listOf(wrappedContextKey) }
+    override val dependencies: List<IrContextualTypeKey> by irLazy { listOf(wrappedContextKey) }
     override val reportableDeclaration: IrDeclarationWithName = declaration
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
     override val parameters: Parameters = Parameters.empty()
     override val scope: IrAnnotation? = null
-    override val nameHint: String by memoize {
+    override val nameHint: String by irLazy {
       "$wrapperKey${wrappedType.rawType().name.asString()}"
     }
 

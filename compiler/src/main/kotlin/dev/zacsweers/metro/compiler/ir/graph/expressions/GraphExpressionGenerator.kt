@@ -29,6 +29,7 @@ import dev.zacsweers.metro.compiler.ir.graph.irInitializedGraph
 import dev.zacsweers.metro.compiler.ir.graph.sharding.ShardExpressionContext
 import dev.zacsweers.metro.compiler.ir.irGetProperty
 import dev.zacsweers.metro.compiler.ir.irInvoke
+import dev.zacsweers.metro.compiler.ir.irLazy
 import dev.zacsweers.metro.compiler.ir.lookupClass
 import dev.zacsweers.metro.compiler.ir.metroFunctionOf
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
@@ -41,7 +42,6 @@ import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.toIrType
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.metro.compiler.letIf
-import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.TraceScope
@@ -151,7 +151,7 @@ private constructor(
   }
 
   private val wrappedTypeGenerators = listOf(IrOptionalExpressionGenerator).associateBy { it.key }
-  private val multibindingExpressionGenerator by memoize { MultibindingExpressionGenerator(this) }
+  private val multibindingExpressionGenerator by irLazy { MultibindingExpressionGenerator(this) }
 
   /** Resolves the existing graph binding for AndroidX's tracer input. */
   context(scope: IrBuilderWithScope)

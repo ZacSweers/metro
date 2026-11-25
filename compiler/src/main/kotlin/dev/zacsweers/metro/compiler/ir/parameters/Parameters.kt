@@ -12,9 +12,9 @@ import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
 import dev.zacsweers.metro.compiler.ir.NOOP_TYPE_REMAPPER
 import dev.zacsweers.metro.compiler.ir.contextParameters
 import dev.zacsweers.metro.compiler.ir.extensionReceiverParameterCompat
+import dev.zacsweers.metro.compiler.ir.irLazy
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
-import dev.zacsweers.metro.compiler.memoize
 import org.jetbrains.kotlin.descriptors.isObject
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrFunction
@@ -56,7 +56,7 @@ internal class Parameters(
   /**
    * Uses Kotlin's IR order: context parameters, the extension receiver, then regular parameters.
    */
-  val nonDispatchParameters: List<Parameter> by memoize {
+  val nonDispatchParameters: List<Parameter> by irLazy {
     buildList {
       addAll(contextParameters)
       extensionReceiverParameter?.let(::add)
@@ -67,7 +67,7 @@ internal class Parameters(
   val extensionOrFirstParameter: Parameter?
     get() = extensionReceiverParameter ?: nonDispatchParameters.firstOrNull()
 
-  val allParameters: List<Parameter> by memoize {
+  val allParameters: List<Parameter> by irLazy {
     buildList {
       dispatchReceiverParameter?.let(::add)
       addAll(nonDispatchParameters)
@@ -92,7 +92,7 @@ internal class Parameters(
     )
   }
 
-  val parametersMap by memoize { allParameters.associateBy { it.name } }
+  val parametersMap by irLazy { allParameters.associateBy { it.name } }
 
   operator fun get(name: Name): Parameter? = parametersMap[name]
 
@@ -128,7 +128,7 @@ internal class Parameters(
     )
   }
 
-  private val cachedToString by memoize {
+  private val cachedToString by irLazy {
     buildString {
       if (ir is IrConstructor || regularParameters.firstOrNull()?.isMember == true) {
         append("@Inject ")

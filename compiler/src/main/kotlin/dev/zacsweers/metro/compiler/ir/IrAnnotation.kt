@@ -4,7 +4,6 @@ package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.appendIterableWith
 import dev.zacsweers.metro.compiler.graph.identity.AnnotationIdentity
-import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.expressions.IrClassReference
@@ -24,9 +23,9 @@ import org.jetbrains.kotlin.platform.jvm.isJvm
  */
 internal class IrAnnotation
 private constructor(val ir: IrConstructorCall, context: IrMetroContext) : Comparable<IrAnnotation> {
-  val identity: AnnotationIdentity by memoize { ir.annotationIdentity(context.platform.isJvm()) }
-  private val cachedHashKey by memoize { identity.hashCode() }
-  private val cachedToString by memoize { render(short = true) }
+  val identity: AnnotationIdentity by irLazy { ir.annotationIdentity(context.platform.isJvm()) }
+  private val cachedHashKey by irLazy { identity.hashCode() }
+  private val cachedToString by irLazy { render(short = true) }
 
   override fun equals(other: Any?): Boolean {
     if (this === other) {

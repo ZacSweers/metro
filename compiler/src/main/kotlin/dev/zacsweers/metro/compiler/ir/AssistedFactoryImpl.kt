@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
-import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -48,7 +47,7 @@ internal sealed interface AssistedFactoryImpl {
   /** Dagger implementation of AssistedFactoryHandler */
   class Dagger(daggerImplClass: IrClass) : AssistedFactoryImpl {
     // For Dagger, we need to call the static create method directly
-    private val createFunction by memoize {
+    private val createFunction by irLazy {
       daggerImplClass.requireStaticIshDeclarationContainer().simpleFunctions().first {
         it.isStaticIsh &&
           (it.name == Symbols.Names.create || it.name == Symbols.Names.createFactoryProvider)

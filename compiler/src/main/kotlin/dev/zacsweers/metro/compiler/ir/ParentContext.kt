@@ -5,7 +5,6 @@ package dev.zacsweers.metro.compiler.ir
 import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.ir.graph.BindingPropertyCollector
 import dev.zacsweers.metro.compiler.ir.graph.IrBinding
-import dev.zacsweers.metro.compiler.memoize
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrProperty
@@ -366,7 +365,7 @@ internal class ParentContext(
     val isSuspendProviderProperty: Boolean = false,
   ) {
 
-    private val ancestorPropertiesChain by memoize {
+    private val ancestorPropertiesChain by irLazy {
       // Build the full chain of properties to traverse
       buildList {
         shardGraphProperty?.let(::add)

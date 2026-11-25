@@ -10,10 +10,10 @@ import dev.zacsweers.metro.compiler.ir.BindsCallable
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.ProviderFactory
+import dev.zacsweers.metro.compiler.ir.irLazy
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.typeIdentity
 import dev.zacsweers.metro.compiler.ir.typeRemapperFor
-import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrTypeParameter
@@ -74,20 +74,20 @@ internal sealed class GenericBindingCandidate {
    * graph extends a generic interface that declares providers. Those keys keep mentioning the
    * container's type parameters, so ordinary providers there don't resolve either.
    */
-  private val hasUnsubstitutedContainerTypeParameters: Boolean by memoize {
+  private val hasUnsubstitutedContainerTypeParameters: Boolean by irLazy {
     val containerTypeParameters = function.parentClassOrNull?.typeParameters.orEmpty()
     containerTypeRemapper == null && containerTypeParameters.isNotEmpty()
   }
 
   /** The identity of [patternKey]'s type, which matching and specificity compare. */
-  val patternIdentity: TypeIdentity by memoize { patternKey.identity.type }
+  val patternIdentity: TypeIdentity by irLazy { patternKey.identity.type }
 
   /**
    * The non-null identity of each of [functionTypeParameters], in the same order. Pattern
    * occurrences of a type parameter differ only in nullability, so lookups compare the non-null
    * form.
    */
-  private val variableIdentities: List<TypeIdentity.TypeParameter> by memoize {
+  private val variableIdentities: List<TypeIdentity.TypeParameter> by irLazy {
     functionTypeParameters.map { typeParameter ->
       val identity = typeParameter.defaultType.typeIdentity()
       identity as? TypeIdentity.TypeParameter
@@ -97,7 +97,7 @@ internal sealed class GenericBindingCandidate {
     }
   }
 
-  private val variableIdentitySet: Set<TypeIdentity.TypeParameter> by memoize {
+  private val variableIdentitySet: Set<TypeIdentity.TypeParameter> by irLazy {
     variableIdentities.toSet()
   }
 

@@ -6,7 +6,6 @@ import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.graph.BaseTypeKey
 import dev.zacsweers.metro.compiler.graph.compareTypeKeys
 import dev.zacsweers.metro.compiler.graph.identity.TypeKeyIdentity
-import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.expressions.IrConst
@@ -26,9 +25,9 @@ private constructor(
   val originalType: IrType,
 ) : BaseTypeKey<IrType, IrAnnotation, IrTypeKey> {
 
-  val classId by memoize { type.rawTypeOrNull()?.classId }
+  val classId by irLazy { type.rawTypeOrNull()?.classId }
 
-  override val identity: TypeKeyIdentity by memoize {
+  override val identity: TypeKeyIdentity by irLazy {
     TypeKeyIdentity(type.typeIdentity(), qualifier?.identity)
   }
 
@@ -42,10 +41,10 @@ private constructor(
    * If this type key has a `@MultibindingElement` qualifier, returns the `bindingId` that
    * identifies which multibinding (Set or Map) this contribution belongs to.
    */
-  val multibindingBindingId: String? by memoize {
-    val qualifierIr = qualifier?.ir ?: return@memoize null
+  val multibindingBindingId: String? by irLazy {
+    val qualifierIr = qualifier?.ir ?: return@irLazy null
     if (qualifierIr.annotationClass.classId != Symbols.ClassIds.MultibindingElement) {
-      return@memoize null
+      return@irLazy null
     }
     @Suppress("UNCHECKED_CAST") (qualifierIr.arguments[0] as? IrConst)?.value?.expectAs<String>()
   }
@@ -54,10 +53,10 @@ private constructor(
    * If this type key has a `@MultibindingElement` qualifier, returns the `elementId` that
    * disambiguates this element from other elements in the multibinding.
    */
-  val multibindingBindingElementId: String? by memoize {
-    val qualifierIr = qualifier?.ir ?: return@memoize null
+  val multibindingBindingElementId: String? by irLazy {
+    val qualifierIr = qualifier?.ir ?: return@irLazy null
     if (qualifierIr.annotationClass.classId != Symbols.ClassIds.MultibindingElement) {
-      return@memoize null
+      return@irLazy null
     }
     @Suppress("UNCHECKED_CAST") (qualifierIr.arguments[1] as? IrConst)?.value?.expectAs<String>()
   }

@@ -39,6 +39,7 @@ import dev.zacsweers.metro.compiler.ir.deepRemapperFor
 import dev.zacsweers.metro.compiler.ir.graph.expressions.IrOptionalExpressionGenerator
 import dev.zacsweers.metro.compiler.ir.graph.expressions.optionalType
 import dev.zacsweers.metro.compiler.ir.graph.reporting.BindingDecisionCapture
+import dev.zacsweers.metro.compiler.ir.irLazy
 import dev.zacsweers.metro.compiler.ir.kotlinClassMapKey
 import dev.zacsweers.metro.compiler.ir.mapKeyType
 import dev.zacsweers.metro.compiler.ir.padForConsole
@@ -55,7 +56,6 @@ import dev.zacsweers.metro.compiler.ir.trackClassLookup
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.ir.wrapInProvider
 import dev.zacsweers.metro.compiler.mapToSet
-import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -387,7 +387,7 @@ internal class BindingLookup(
   }
 
   fun addLazyParentKey(typeKey: IrTypeKey, bindingFactory: () -> IrBinding) {
-    lazyParentKeys[typeKey] = memoize(bindingFactory)
+    lazyParentKeys[typeKey] = irLazy(bindingFactory)
   }
 
   /**
@@ -1547,11 +1547,11 @@ internal class BindingLookup(
       }
 
       val bindings = mutableSetOf<IrBinding>()
-      val remapper by memoize { irClass.cachedDeepRemapperFor(key.type) }
+      val remapper by irLazy { irClass.cachedDeepRemapperFor(key.type) }
 
       // Compute all member injector bindings (needed for injectedMembers field)
       // Only add new bindings (not in currentBindings) to the graph to avoid duplicates
-      val membersInjectBindings = memoize {
+      val membersInjectBindings = irLazy {
         irClass.computeMembersInjectorBindings(remapper).also { allBindings ->
           bindings += allBindings.filterNot { it.typeKey in currentBindings }
         }
