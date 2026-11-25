@@ -9,21 +9,11 @@ public const val REPORT_METRO_MESSAGE: String =
   "This is possibly a bug in the Metro compiler, please report it with details and/or a reproducer to https://github.com/zacsweers/metro."
 
 /**
- * Thread-safety mode used by [memoize]. Defaults to [LazyThreadSafetyMode.PUBLICATION] so callers
- * remain safe under the compiler's parallel transformation pool. The compiler registrar swaps this
- * to [LazyThreadSafetyMode.NONE] for single-threaded CLI compilations, removing the per-access
- * CAS/volatile cost from memoized properties on the hot compile path.
- *
- * Mutable global state, one copy per classloader. The CLI compiler ships its own copy inside the
- * shaded compiler jar. The IDEA plugin bundles another copy, and the registrar never touches that
- * one. The IDE also loads the compiler jar and runs its registrar, so FIR extensions there use the
- * compiler jar's copy. Only swap to an unsynchronized mode when everything in the owning
- * classloader is single-threaded.
+ * Creates a [LazyThreadSafetyMode.PUBLICATION] lazy. FIR code and the IDE can read these values
+ * from several threads.
  */
-@Volatile
-public var memoizeThreadSafetyMode: LazyThreadSafetyMode = LazyThreadSafetyMode.PUBLICATION
-
-public fun <T> memoize(initializer: () -> T): Lazy<T> = lazy(memoizeThreadSafetyMode, initializer)
+public fun <T> memoize(initializer: () -> T): Lazy<T> =
+  lazy(LazyThreadSafetyMode.PUBLICATION, initializer)
 
 public fun String.suffixIfNot(suffix: String): String =
   if (this.endsWith(suffix)) this else "$this$suffix"
