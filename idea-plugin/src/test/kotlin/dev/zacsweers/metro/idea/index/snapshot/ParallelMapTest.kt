@@ -1,6 +1,6 @@
 // Copyright (C) 2026 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
-package dev.zacsweers.metro.compiler
+package dev.zacsweers.metro.idea.index.snapshot
 
 import java.util.concurrent.Callable
 import java.util.concurrent.ConcurrentHashMap
@@ -39,20 +39,19 @@ class ParallelMapTest {
   fun `one worker reads and accepts on the caller`() = runBlocking {
     val caller = Thread.currentThread()
     val events = mutableListOf<String>()
-    val _ =
-      listOf(1, 2, 3)
-        .parallelMap(
-          parallelism = 1,
-          read = { item ->
-            assertSame(caller, Thread.currentThread())
-            events += "read $item"
-            item * 2
-          },
-          accept = { item, result ->
-            assertSame(caller, Thread.currentThread())
-            events += "accept $item=$result"
-          },
-        )
+    listOf(1, 2, 3)
+      .parallelMap(
+        parallelism = 1,
+        read = { item ->
+          assertSame(caller, Thread.currentThread())
+          events += "read $item"
+          item * 2
+        },
+        accept = { item, result ->
+          assertSame(caller, Thread.currentThread())
+          events += "accept $item=$result"
+        },
+      )
     assertEquals(
       listOf("read 1", "accept 1=2", "read 2", "accept 2=4", "read 3", "accept 3=6"),
       events,
@@ -83,17 +82,16 @@ class ParallelMapTest {
     val accepted = mutableListOf<Int>()
     val scan = launch {
       val job = coroutineContext.job
-      val _ =
-        listOf(1, 2)
-          .parallelMap(
-            parallelism = 1,
-            read = { item ->
-              reads += item
-              job.cancel()
-              item
-            },
-            accept = { item, _ -> accepted += item },
-          )
+      listOf(1, 2)
+        .parallelMap(
+          parallelism = 1,
+          read = { item ->
+            reads += item
+            job.cancel()
+            item
+          },
+          accept = { item, _ -> accepted += item },
+        )
     }
     scan.join()
     assertTrue(scan.isCancelled)
@@ -107,19 +105,18 @@ class ParallelMapTest {
     val accepted = mutableListOf<Int>()
     val scan = launch {
       val job = coroutineContext.job
-      val _ =
-        listOf(1, 2)
-          .parallelMap(
-            parallelism = 1,
-            read = { item ->
-              reads += item
-              item
-            },
-            accept = { item, _ ->
-              accepted += item
-              job.cancel()
-            },
-          )
+      listOf(1, 2)
+        .parallelMap(
+          parallelism = 1,
+          read = { item ->
+            reads += item
+            item
+          },
+          accept = { item, _ ->
+            accepted += item
+            job.cancel()
+          },
+        )
     }
     scan.join()
     assertTrue(scan.isCancelled)
@@ -134,21 +131,20 @@ class ParallelMapTest {
       val readThreads = ConcurrentHashMap.newKeySet<Thread>()
       val rendezvous = CyclicBarrier(2)
       val accepted = mutableListOf<Pair<Int, Int>>()
-      val _ =
-        listOf(1, 2)
-          .parallelMap(
-            parallelism = 2,
-            read = { item ->
-              readThreads += Thread.currentThread()
-              // Both reads must block here at the same time, which needs two threads.
-              rendezvous.await(5, TimeUnit.SECONDS)
-              item * 2
-            },
-            accept = { item, result ->
-              assertSame(caller, Thread.currentThread())
-              accepted += item to result
-            },
-          )
+      listOf(1, 2)
+        .parallelMap(
+          parallelism = 2,
+          read = { item ->
+            readThreads += Thread.currentThread()
+            // Both reads must block here at the same time, which needs two threads.
+            rendezvous.await(5, TimeUnit.SECONDS)
+            item * 2
+          },
+          accept = { item, result ->
+            assertSame(caller, Thread.currentThread())
+            accepted += item to result
+          },
+        )
       assertFalse(readThreads.contains(caller))
       assertEquals(2, readThreads.size)
       assertEquals(listOf(1 to 2, 2 to 4), accepted)
@@ -160,19 +156,18 @@ class ParallelMapTest {
     withTimeout(10_000.milliseconds) {
       val caller = Thread.currentThread()
       val accepted = mutableListOf<Pair<Int, Int>>()
-      val _ =
-        listOf(42)
-          .parallelMap(
-            parallelism = 8,
-            read = { item ->
-              assertNotSame(caller, Thread.currentThread())
-              item * 2
-            },
-            accept = { item, result ->
-              assertSame(caller, Thread.currentThread())
-              accepted += item to result
-            },
-          )
+      listOf(42)
+        .parallelMap(
+          parallelism = 8,
+          read = { item ->
+            assertNotSame(caller, Thread.currentThread())
+            item * 2
+          },
+          accept = { item, result ->
+            assertSame(caller, Thread.currentThread())
+            accepted += item to result
+          },
+        )
       assertEquals(listOf(42 to 84), accepted)
     }
   }
@@ -183,20 +178,19 @@ class ParallelMapTest {
       val started = AtomicInteger()
       val allStarted = CompletableDeferred<Unit>()
       val accepted = mutableListOf<Pair<Int, Int>>()
-      val _ =
-        listOf(1, 2, 3)
-          .parallelMap(
-            parallelism = 8,
-            read = { item ->
-              if (started.incrementAndGet() == 3) {
-                allStarted.complete(Unit)
-              }
-              // Every read waits for the others, so fewer than three workers would hang here.
-              allStarted.await()
-              item * 2
-            },
-            accept = { item, result -> accepted += item to result },
-          )
+      listOf(1, 2, 3)
+        .parallelMap(
+          parallelism = 8,
+          read = { item ->
+            if (started.incrementAndGet() == 3) {
+              allStarted.complete(Unit)
+            }
+            // Every read waits for the others, so fewer than three workers would hang here.
+            allStarted.await()
+            item * 2
+          },
+          accept = { item, result -> accepted += item to result },
+        )
       assertEquals(listOf(1 to 2, 2 to 4, 3 to 6), accepted)
     }
   }
@@ -206,13 +200,12 @@ class ParallelMapTest {
     withTimeout(10_000.milliseconds) {
       val reads = AtomicInteger()
       val accepted = mutableListOf<Pair<String, Int>>()
-      val _ =
-        listOf("a", "a", "b")
-          .parallelMap(
-            parallelism = 2,
-            read = { reads.incrementAndGet() },
-            accept = { item, result -> accepted += item to result },
-          )
+      listOf("a", "a", "b")
+        .parallelMap(
+          parallelism = 2,
+          read = { reads.incrementAndGet() },
+          accept = { item, result -> accepted += item to result },
+        )
       assertEquals(listOf("a", "a", "b"), accepted.map { it.first })
       assertEquals(listOf(1, 2, 3), accepted.map { it.second }.sorted())
     }
@@ -222,13 +215,12 @@ class ParallelMapTest {
   fun `rejects non-positive parallelism`() = runBlocking {
     for (parallelism in listOf(0, -1)) {
       try {
-        val _ =
-          listOf(1)
-            .parallelMap(
-              parallelism,
-              read = { fail("No read expected") },
-              accept = { _, _ -> fail("No accept expected") },
-            )
+        listOf(1)
+          .parallelMap(
+            parallelism,
+            read = { fail("No read expected") },
+            accept = { _, _ -> fail("No accept expected") },
+          )
         fail("Expected $parallelism to be rejected")
       } catch (expected: IllegalArgumentException) {
         assertTrue(expected.message!!.contains(parallelism.toString()))
@@ -267,14 +259,13 @@ class ParallelMapTest {
   @Test
   fun `rejects a context with a Job`() = runBlocking {
     try {
-      val _ =
-        listOf(1)
-          .parallelMap(
-            parallelism = 2,
-            context = Job(),
-            read = { fail("No read expected") },
-            accept = { _, _ -> fail("No accept expected") },
-          )
+      listOf(1)
+        .parallelMap(
+          parallelism = 2,
+          context = Job(),
+          read = { fail("No read expected") },
+          accept = { _, _ -> fail("No accept expected") },
+        )
       fail("Expected the Job to be rejected")
     } catch (expected: IllegalArgumentException) {
       assertEquals("context must not contain a Job", expected.message)
@@ -381,24 +372,23 @@ class ParallelMapTest {
       val otherStopped = CompletableDeferred<Unit>()
       val failure = IllegalStateException("Read failed")
       try {
-        val _ =
-          listOf(0, 1)
-            .parallelMap(
-              parallelism = 2,
-              read = { item ->
-                if (item == 0) {
-                  otherStarted.await()
-                  throw failure
-                }
-                try {
-                  otherStarted.complete(Unit)
-                  awaitCancellation()
-                } finally {
-                  otherStopped.complete(Unit)
-                }
-              },
-              accept = { _, _ -> fail("A failed read cannot be accepted") },
-            )
+        listOf(0, 1)
+          .parallelMap(
+            parallelism = 2,
+            read = { item ->
+              if (item == 0) {
+                otherStarted.await()
+                throw failure
+              }
+              try {
+                otherStarted.complete(Unit)
+                awaitCancellation()
+              } finally {
+                otherStopped.complete(Unit)
+              }
+            },
+            accept = { _, _ -> fail("A failed read cannot be accepted") },
+          )
         fail("Expected read failure")
       } catch (actual: IllegalStateException) {
         assertOriginalFailure(failure, actual)
@@ -414,17 +404,16 @@ class ParallelMapTest {
       val first = IllegalStateException("first")
       val second = IllegalArgumentException("second")
       try {
-        val _ =
-          listOf(0, 1).parallelMap(parallelism = 2) { item ->
-            // Block instead of suspending so neither throw can turn into a cancellation.
-            bothStarted.countDown()
-            bothStarted.await(5, TimeUnit.SECONDS)
-            if (item == 0) {
-              throw first
-            } else {
-              throw second
-            }
+        listOf(0, 1).parallelMap(parallelism = 2) { item ->
+          // Block instead of suspending so neither throw can turn into a cancellation.
+          bothStarted.countDown()
+          bothStarted.await(5, TimeUnit.SECONDS)
+          if (item == 0) {
+            throw first
+          } else {
+            throw second
           }
+        }
         fail("Expected both reads to fail")
       } catch (actual: RuntimeException) {
         val chain = generateSequence<Throwable>(actual) { it.cause }.toList()
@@ -450,24 +439,23 @@ class ParallelMapTest {
       val otherStopped = CompletableDeferred<Unit>()
       val cancellation = CancellationException("Read superseded")
       try {
-        val _ =
-          listOf(0, 1)
-            .parallelMap(
-              parallelism = 2,
-              read = { item ->
-                if (item == 0) {
-                  otherStarted.await()
-                  throw cancellation
-                }
-                try {
-                  otherStarted.complete(Unit)
-                  awaitCancellation()
-                } finally {
-                  otherStopped.complete(Unit)
-                }
-              },
-              accept = { _, _ -> fail("A canceled read cannot be accepted") },
-            )
+        listOf(0, 1)
+          .parallelMap(
+            parallelism = 2,
+            read = { item ->
+              if (item == 0) {
+                otherStarted.await()
+                throw cancellation
+              }
+              try {
+                otherStarted.complete(Unit)
+                awaitCancellation()
+              } finally {
+                otherStopped.complete(Unit)
+              }
+            },
+            accept = { _, _ -> fail("A canceled read cannot be accepted") },
+          )
         fail("Expected read cancellation")
       } catch (actual: CancellationException) {
         assertOriginalFailure(cancellation, actual)
@@ -485,38 +473,37 @@ class ParallelMapTest {
       val failure = IllegalStateException("Read failed")
       val accepted = mutableListOf<Int>()
       try {
-        val _ =
-          listOf(0, 1, 2, 3)
-            .parallelMap(
-              parallelism = 2,
-              read = { item ->
-                when (item) {
-                  2 -> {
-                    secondAccepted.await()
-                    // The last read has to be running before this fails, or it never starts.
-                    lastStarted.await()
-                    throw failure
+        listOf(0, 1, 2, 3)
+          .parallelMap(
+            parallelism = 2,
+            read = { item ->
+              when (item) {
+                2 -> {
+                  secondAccepted.await()
+                  // The last read has to be running before this fails, or it never starts.
+                  lastStarted.await()
+                  throw failure
+                }
+
+                3 ->
+                  try {
+                    lastStarted.complete(Unit)
+                    awaitCancellation()
+                  } finally {
+                    lastStopped.complete(Unit)
                   }
 
-                  3 ->
-                    try {
-                      lastStarted.complete(Unit)
-                      awaitCancellation()
-                    } finally {
-                      lastStopped.complete(Unit)
-                    }
-
-                  else -> {}
-                }
-                item
-              },
-              accept = { item, _ ->
-                accepted += item
-                if (item == 1) {
-                  secondAccepted.complete(Unit)
-                }
-              },
-            )
+                else -> {}
+              }
+              item
+            },
+            accept = { item, _ ->
+              accepted += item
+              if (item == 1) {
+                secondAccepted.complete(Unit)
+              }
+            },
+          )
         fail("Expected read failure")
       } catch (actual: IllegalStateException) {
         assertOriginalFailure(failure, actual)
@@ -535,39 +522,38 @@ class ParallelMapTest {
       val cancellation = CancellationException("Read superseded")
       val accepted = mutableListOf<Int>()
       try {
-        val _ =
-          listOf(0, 1, 2, 3)
-            .parallelMap(
-              parallelism = 2,
-              read = { item ->
-                when (item) {
-                  // Item 1 is sent before its worker takes another item, so it's already in the
-                  // results channel when item 2 fails.
-                  1 -> firstAccepted.await()
-                  2 -> {
-                    lastStarted.await()
-                    throw cancellation
+        listOf(0, 1, 2, 3)
+          .parallelMap(
+            parallelism = 2,
+            read = { item ->
+              when (item) {
+                // Item 1 is sent before its worker takes another item, so it's already in the
+                // results channel when item 2 fails.
+                1 -> firstAccepted.await()
+                2 -> {
+                  lastStarted.await()
+                  throw cancellation
+                }
+
+                3 ->
+                  try {
+                    lastStarted.complete(Unit)
+                    awaitCancellation()
+                  } finally {
+                    lastStopped.complete(Unit)
                   }
 
-                  3 ->
-                    try {
-                      lastStarted.complete(Unit)
-                      awaitCancellation()
-                    } finally {
-                      lastStopped.complete(Unit)
-                    }
-
-                  else -> {}
-                }
-                item
-              },
-              accept = { item, _ ->
-                accepted += item
-                if (item == 0) {
-                  firstAccepted.complete(Unit)
-                }
-              },
-            )
+                else -> {}
+              }
+              item
+            },
+            accept = { item, _ ->
+              accepted += item
+              if (item == 0) {
+                firstAccepted.complete(Unit)
+              }
+            },
+          )
         fail("Expected read cancellation")
       } catch (actual: CancellationException) {
         assertOriginalFailure(cancellation, actual)
@@ -584,27 +570,26 @@ class ParallelMapTest {
       val accepted = mutableListOf<Int>()
       val scan = launch {
         val job = coroutineContext.job
-        val _ =
-          listOf(0, 1, 2)
-            .parallelMap(
-              parallelism = 2,
-              read = { item ->
-                when (item) {
-                  // The worker that read item 1 sent it before moving on to item 2.
-                  0 -> thirdReadStarted.await()
-                  2 -> {
-                    thirdReadStarted.complete(Unit)
-                    awaitCancellation()
-                  }
-                  else -> {}
+        listOf(0, 1, 2)
+          .parallelMap(
+            parallelism = 2,
+            read = { item ->
+              when (item) {
+                // The worker that read item 1 sent it before moving on to item 2.
+                0 -> thirdReadStarted.await()
+                2 -> {
+                  thirdReadStarted.complete(Unit)
+                  awaitCancellation()
                 }
-                item
-              },
-              accept = { item, _ ->
-                accepted += item
-                job.cancel()
-              },
-            )
+                else -> {}
+              }
+              item
+            },
+            accept = { item, _ ->
+              accepted += item
+              job.cancel()
+            },
+          )
       }
       scan.join()
       assertTrue(scan.isCancelled)
@@ -620,29 +605,28 @@ class ParallelMapTest {
       val reads = ConcurrentHashMap.newKeySet<Int>()
       val scan = launch {
         val job = coroutineContext.job
-        val _ =
-          listOf(0, 1, 2)
-            .parallelMap(
-              parallelism = 2,
-              read = { item ->
-                reads += item
-                when (item) {
-                  0 -> {
-                    secondReadStarted.await()
-                    job.cancel()
-                    firstReadReturned.complete(Unit)
-                  }
-                  // Hold the other worker so item 2 stays queued until after the cancel.
-                  1 -> {
-                    secondReadStarted.complete(Unit)
-                    withContext(NonCancellable) { firstReadReturned.await() }
-                  }
-                  else -> {}
+        listOf(0, 1, 2)
+          .parallelMap(
+            parallelism = 2,
+            read = { item ->
+              reads += item
+              when (item) {
+                0 -> {
+                  secondReadStarted.await()
+                  job.cancel()
+                  firstReadReturned.complete(Unit)
                 }
-                item
-              },
-              accept = { _, _ -> fail("A canceled scan cannot accept") },
-            )
+                // Hold the other worker so item 2 stays queued until after the cancel.
+                1 -> {
+                  secondReadStarted.complete(Unit)
+                  withContext(NonCancellable) { firstReadReturned.await() }
+                }
+                else -> {}
+              }
+              item
+            },
+            accept = { _, _ -> fail("A canceled scan cannot accept") },
+          )
       }
       scan.join()
       assertTrue(scan.isCancelled)
@@ -657,25 +641,24 @@ class ParallelMapTest {
       val otherStopped = CompletableDeferred<Unit>()
       val failure = IllegalStateException("Conflicting result")
       try {
-        val _ =
-          listOf(0, 1)
-            .parallelMap(
-              parallelism = 2,
-              read = { item ->
-                if (item == 0) {
-                  otherStarted.await()
-                  item
-                } else {
-                  try {
-                    otherStarted.complete(Unit)
-                    awaitCancellation()
-                  } finally {
-                    otherStopped.complete(Unit)
-                  }
+        listOf(0, 1)
+          .parallelMap(
+            parallelism = 2,
+            read = { item ->
+              if (item == 0) {
+                otherStarted.await()
+                item
+              } else {
+                try {
+                  otherStarted.complete(Unit)
+                  awaitCancellation()
+                } finally {
+                  otherStopped.complete(Unit)
                 }
-              },
-              accept = { _, _ -> throw failure },
-            )
+              }
+            },
+            accept = { _, _ -> throw failure },
+          )
         fail("Expected collector failure")
       } catch (actual: IllegalStateException) {
         assertOriginalFailure(failure, actual)
@@ -692,27 +675,26 @@ class ParallelMapTest {
       val releaseCleanup = CompletableDeferred<Unit>()
       val active = AtomicInteger()
       val scan = launch {
-        val _ =
-          (0..9)
-            .toList()
-            .parallelMap(
-              parallelism = 2,
-              read = {
-                if (active.incrementAndGet() == 2) {
-                  bothStarted.complete(Unit)
+        (0..9)
+          .toList()
+          .parallelMap(
+            parallelism = 2,
+            read = {
+              if (active.incrementAndGet() == 2) {
+                bothStarted.complete(Unit)
+              }
+              try {
+                awaitCancellation()
+              } finally {
+                withContext(NonCancellable) {
+                  cleanupStarted.complete(Unit)
+                  releaseCleanup.await()
+                  active.decrementAndGet()
                 }
-                try {
-                  awaitCancellation()
-                } finally {
-                  withContext(NonCancellable) {
-                    cleanupStarted.complete(Unit)
-                    releaseCleanup.await()
-                    active.decrementAndGet()
-                  }
-                }
-              },
-              accept = { _, _ -> fail("A canceled scan cannot accept pending reads") },
-            )
+              }
+            },
+            accept = { _, _ -> fail("A canceled scan cannot accept pending reads") },
+          )
       }
       try {
         bothStarted.await()
@@ -731,13 +713,12 @@ class ParallelMapTest {
   fun `indexed callbacks receive each item's index`() = runBlocking {
     for (parallelism in listOf(1, 2)) {
       val accepted = mutableListOf<Triple<Int, String, String>>()
-      val _ =
-        listOf("a", "b", "c")
-          .parallelMapIndexed(
-            parallelism,
-            read = { index, item -> "$index:$item" },
-            accept = { index, item, result -> accepted += Triple(index, item, result) },
-          )
+      listOf("a", "b", "c")
+        .parallelMapIndexed(
+          parallelism,
+          read = { index, item -> "$index:$item" },
+          accept = { index, item, result -> accepted += Triple(index, item, result) },
+        )
       assertEquals(
         listOf(Triple(0, "a", "0:a"), Triple(1, "b", "1:b"), Triple(2, "c", "2:c")),
         accepted,
