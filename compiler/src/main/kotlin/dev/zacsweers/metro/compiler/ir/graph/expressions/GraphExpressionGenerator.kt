@@ -267,809 +267,915 @@ private constructor(
       }
 
       return when (binding) {
-        is ConstructorInjected -> {
-          val classFactory = binding.classFactory
-          val isAssistedInject = binding.isAssisted
-          // Optimization: Skip factory instantiation when possible
-          val canBypassFactory = accessType == AccessType.INSTANCE && binding.canBypassFactory()
+        is ConstructorInjected ->
+          generateConstructorInjectedCode(
+            binding,
+            contextualTypeKey,
+            accessType,
+            fieldInitKey,
+            bindingKind,
+          )
+        is CustomWrapper ->
+          generateCustomWrapperCode(binding, contextualTypeKey, fieldInitKey, bindingKind)
+        is ObjectClass -> generateObjectClassCode(binding, contextualTypeKey, bindingKind)
+        is Alias -> generateAliasCode(binding, contextualTypeKey, accessType, fieldInitKey)
+        is Provided ->
+          generateProvidedCode(binding, contextualTypeKey, accessType, fieldInitKey, bindingKind)
+        is AssistedFactory ->
+          generateAssistedFactoryCode(binding, contextualTypeKey, fieldInitKey, bindingKind)
+        is Multibinding ->
+          generateMultibindingCode(binding, contextualTypeKey, accessType, fieldInitKey)
+        is MembersInjected ->
+          generateMembersInjectedCode(binding, contextualTypeKey, fieldInitKey, bindingKind)
+        is Absent -> generateAbsentCode(binding)
+        is BoundInstance ->
+          generateBoundInstanceCode(binding, contextualTypeKey, accessType, bindingKind)
+        is GraphExtension -> generateGraphExtensionCode(binding, contextualTypeKey, bindingKind)
+        is GraphExtensionFactory ->
+          generateGraphExtensionFactoryCode(binding, contextualTypeKey, bindingKind)
+        is GraphDependency ->
+          generateGraphDependencyCode(binding, contextualTypeKey, accessType, bindingKind)
+      }
+    }
 
-          if (
-            accessType == AccessType.SUSPEND_PROVIDER &&
-              !isAssistedInject &&
-              bindingGraph.isTransitivelySuspend(binding.typeKey)
-          ) {
-            // Transitively-suspend constructor-injected binding requested as a
-            // SuspendProvider<T>. Its per-class factory is a plain Factory<T> and can't hold
-            // SuspendProvider deps, so generate an IR-only nested SuspendFactory in the graph.
-            return generateNestedSuspendFactoryCall(binding, contextualTypeKey, fieldInitKey)
-          }
+  context(scope: IrBuilderWithScope)
+  private fun generateConstructorInjectedCode(
+    binding: IrBinding.ConstructorInjected,
+    contextualTypeKey: IrContextualTypeKey,
+    accessType: AccessType,
+    fieldInitKey: IrTypeKey?,
+    bindingKind: String,
+  ): IrExpression =
+    with(scope) {
+      val classFactory = binding.classFactory
+      val isAssistedInject = binding.isAssisted
+      // Optimization: Skip factory instantiation when possible
+      val canBypassFactory = accessType == AccessType.INSTANCE && binding.canBypassFactory()
 
-          if (canBypassFactory) {
-            if (classFactory.supportsDirectInvocation(node.metroGraphOrFail)) {
-              codegenStats?.run { classConstructorDirectInvocations++ }
-              // Call constructor directly
-              val targetConstructor = classFactory.targetConstructor!!
-              val targetType = binding.typeKey.type
-              val typeArguments =
-                targetType.expectAsOrNull<IrSimpleType>()?.arguments.orEmpty().map {
-                  it.typeOrFail
-                }
-              val directExpr =
-                irCallConstructor(
-                    targetConstructor.symbol,
-                    typeArguments,
-                  )
-                  .apply {
-                    type = targetType
-                    val args =
-                      generateBindingArguments(
-                        targetParams = classFactory.targetFunctionParameters,
-                        function = targetConstructor,
-                        binding = binding,
-                        fieldInitKey = fieldInitKey,
-                      )
-                    for ((i, arg) in args.withIndex()) {
-                      if (arg == null) continue
-                      arguments[i] = arg
-                    }
-                  }
-              maybeTraceDirectExpression(
-                  directExpr,
-                  contextualTypeKey,
-                  bindingKind,
-                  isSuspend = bindingGraph.isTransitivelySuspend(binding.typeKey),
-                )
-                .toTargetType(
-                  actual = AccessType.INSTANCE,
-                  contextualTypeKey = contextualTypeKey,
-                  bindingKind = bindingKind,
-                )
-            } else {
-              codegenStats?.run { classConstructorNewInstanceCalls++ }
-              // Constructor isn't public - call newInstance() on the factory object instead
-              // Example_Factory.newInstance(...)
-              val directExpr =
-                classFactory.invokeNewInstanceExpression(
-                  binding.typeKey,
-                  Symbols.Names.newInstance,
-                ) { newInstanceFunction, parameters ->
+      if (
+        accessType == AccessType.SUSPEND_PROVIDER &&
+          !isAssistedInject &&
+          bindingGraph.isTransitivelySuspend(binding.typeKey)
+      ) {
+        // Transitively-suspend constructor-injected binding requested as a
+        // SuspendProvider<T>. Its per-class factory is a plain Factory<T> and can't hold
+        // SuspendProvider deps, so generate an IR-only nested SuspendFactory in the graph.
+        return generateNestedSuspendFactoryCall(binding, contextualTypeKey, fieldInitKey)
+      }
+
+      if (canBypassFactory) {
+        if (classFactory.supportsDirectInvocation(node.metroGraphOrFail)) {
+          codegenStats?.run { classConstructorDirectInvocations++ }
+          // Call constructor directly
+          val targetConstructor = classFactory.targetConstructor!!
+          val targetType = binding.typeKey.type
+          val typeArguments =
+            targetType.expectAsOrNull<IrSimpleType>()?.arguments.orEmpty().map {
+              it.typeOrFail
+            }
+          val directExpr =
+            irCallConstructor(
+                targetConstructor.symbol,
+                typeArguments,
+              )
+              .apply {
+                type = targetType
+                val args =
                   generateBindingArguments(
-                    targetParams = parameters,
-                    function = newInstanceFunction,
-                    binding = binding,
-                    fieldInitKey = null,
-                  )
-                }
-              maybeTraceDirectExpression(
-                  directExpr,
-                  contextualTypeKey,
-                  bindingKind,
-                  isSuspend = bindingGraph.isTransitivelySuspend(binding.typeKey),
-                )
-                .toTargetType(
-                  actual = AccessType.INSTANCE,
-                  contextualTypeKey = contextualTypeKey,
-                  bindingKind = bindingKind,
-                )
-            }
-          } else {
-            // Example_Factory.create(...)
-            classFactory
-              .invokeCreateExpression(binding.typeKey) { createFunction, parameters ->
-                generateBindingArguments(
-                  targetParams = parameters,
-                  function = createFunction,
-                  binding = binding,
-                  fieldInitKey = null,
-                )
-              }
-              .let { factoryInstance ->
-                if (isAssistedInject) {
-                  return@let factoryInstance
-                }
-
-                val providerType =
-                  binding.typeKey.type.wrapTypeInProvider(metroSymbols.metroProvider)
-                factoryInstance.toTargetType(
-                  actual = AccessType.PROVIDER,
-                  contextualTypeKey = contextualTypeKey,
-                  bindingKind = bindingKind,
-                  providerType = providerType,
-                )
-              }
-          }
-        }
-
-        is CustomWrapper -> {
-          val generator =
-            wrappedTypeGenerators[binding.wrapperKey]
-              ?: reportCompilerBug("No generator found for wrapper key: ${binding.wrapperKey}")
-
-          val delegateBinding = bindingGraph.findBinding(binding.wrappedContextKey.typeKey)
-          val isAbsentInGraph = delegateBinding == null
-          val wrappedInstance =
-            if (!isAbsentInGraph) {
-              generateBindingCode(
-                delegateBinding,
-                binding.wrappedContextKey,
-                accessType = AccessType.INSTANCE,
-                fieldInitKey = fieldInitKey,
-              )
-            } else if (binding.allowsAbsent) {
-              null
-            } else {
-              reportCompilerBug("No delegate binding for wrapped type ${binding.typeKey}!")
-            }
-          generator
-            .generate(binding, wrappedInstance)
-            .toTargetType(
-              actual = AccessType.INSTANCE,
-              contextualTypeKey = contextualTypeKey,
-              // A present value must be computed on each call, so it needs a lambda. An absent one
-              // is a constant that an InstanceFactory can hold.
-              useInstanceFactory = wrappedInstance == null,
-              bindingKind = bindingKind,
-            )
-        }
-
-        is ObjectClass -> {
-          irGetObject(binding.type.symbol)
-            .toTargetType(
-              actual = AccessType.INSTANCE,
-              contextualTypeKey = contextualTypeKey,
-              bindingKind = bindingKind,
-            )
-        }
-
-        is Alias -> {
-          // TODO cache the aliases (or retrieve from binding property collector?)
-          // For binds functions, just use the backing type
-          val aliasedBinding = binding.aliasedBinding(bindingGraph)
-          check(aliasedBinding != binding) { "Aliased binding aliases itself" }
-          if (binding.kotlinClassMap == null) {
-            generateBindingCode(
-              aliasedBinding,
-              contextualTypeKey = contextualTypeKey.withIrTypeKey(aliasedBinding.typeKey),
-              accessType = accessType,
-              fieldInitKey = fieldInitKey,
-            )
-          } else {
-            val requested = contextualTypeKey.canonicalize()
-            val sourceKey = requested.classMapSource(binding.aliasedType)
-            val source =
-              generateBindingCode(aliasedBinding, sourceKey, AccessType.INSTANCE, fieldInitKey)
-            convertKClassMapToClassMap(source, requested)
-              .toTargetType(
-                contextualTypeKey = contextualTypeKey,
-                actual = AccessType.INSTANCE,
-                requested = accessType,
-                useInstanceFactory = false,
-              )
-          }
-        }
-
-        is Provided -> {
-          val providerFactory =
-            metroDeclarations.lookupProviderFactory(binding)
-              ?: reportCompilerBug(
-                "No factory found for Provided binding ${binding.typeKey}. This is likely a bug in the Metro compiler, please report it to the issue tracker.",
-              )
-
-          if (options.enableProviderInlining) {
-            val inlinedValue = providerFactory.inlinedValue
-            if (inlinedValue != null) {
-              // Object, enum, and class-literal values remain inlineable for direct instance
-              // access. Provider access uses the generated factory so evaluating the provider is
-              // what resolves the class reference.
-              val canInlineAccess =
-                accessType == AccessType.INSTANCE || inlinedValue.canInlineProviderAccess
-              if (canInlineAccess) {
-                // Materialization can fail if the value references a class that isn't resolvable
-                // in this compilation (e.g. an object from an implementation dependency of the
-                // providing module). In that case, fall through to the standard factory paths
-                // below.
-                val materialized = inlinedValue.materialize(binding.typeKey.type)
-                if (materialized != null) {
-                  codegenStats?.run { providerInlines++ }
-                  return materialized.toTargetType(
-                    actual = AccessType.INSTANCE,
-                    contextualTypeKey = contextualTypeKey,
-                    bindingKind = bindingKind,
-                  )
-                }
-                codegenStats?.run { providerInlineUnavailableValue++ }
-              } else {
-                codegenStats?.run { providerInlineDeferredAccess++ }
-              }
-            }
-          }
-
-          // Optimization: Skip factory instantiation when we don't need a provider instance.
-          // This applies when accessType is INSTANCE and the providerFactory supports direct
-          // invocation.
-          val requestsInstance = accessType == AccessType.INSTANCE
-
-          // Suspend bindings requested as a SuspendProvider also bypass the factory. Their factory
-          // implements SuspendFactory<T>. The graph calls the provider directly and wraps that
-          // call in a SuspendProvider lambda.
-          val requestsSuspendProvider = accessType == AccessType.SUSPEND_PROVIDER
-          val callsSuspendProviderDirectly = binding.isSuspend && requestsSuspendProvider
-
-          // Reified providers have no usable factory, so the graph calls them directly for every
-          // access type. Provider access wraps that call in a lambda.
-          val isReifiedProvider =
-            providerFactory is ProviderFactory.Metro && providerFactory.isReified
-
-          // Non-suspend @Provides that transitively depends on suspend bindings. Its factory is a
-          // plain Factory<T> whose ctor can't hold SuspendProvider deps.
-          val isTransitivelySuspend = bindingGraph.isTransitivelySuspend(binding.typeKey)
-          val needsNestedSuspendFactory =
-            requestsSuspendProvider && !binding.isSuspend && isTransitivelySuspend
-
-          val alwaysCallsDirectly = callsSuspendProviderDirectly || isReifiedProvider
-          val canBypassFactory = requestsInstance || alwaysCallsDirectly
-
-          // A reified provider requested as a provider holds its dependency providers in temporary
-          // variables, so the wrapping lambda doesn't capture the graph.
-          val wrapsReifiedCallInProvider = isReifiedProvider && accessType == AccessType.PROVIDER
-          if (wrapsReifiedCallInProvider) {
-            val heldCall =
-              generateReifiedProviderWithHeldDependencies(
-                binding = binding,
-                providerFactory = providerFactory,
-                contextualTypeKey = contextualTypeKey,
-                fieldInitKey = fieldInitKey,
-                bindingKind = bindingKind,
-              )
-            if (heldCall != null) {
-              return heldCall
-            }
-          }
-
-          // A suspend provider requested as a SuspendProvider holds its dependency providers in
-          // temporary variables, so the wrapping lambda doesn't capture the graph.
-          val wrapsSuspendCallInProvider = callsSuspendProviderDirectly && canBypassFactory
-          if (wrapsSuspendCallInProvider) {
-            val heldCall =
-              generateSuspendProviderWithHeldDependencies(
-                binding = binding,
-                providerFactory = providerFactory,
-                contextualTypeKey = contextualTypeKey,
-                fieldInitKey = fieldInitKey,
-                bindingKind = bindingKind,
-              )
-            if (heldCall != null) {
-              return heldCall
-            }
-          }
-
-          if (needsNestedSuspendFactory) {
-            // Generate an IR-only nested SuspendFactory in the graph instead. It calls the
-            // provider directly, so this works for reified providers too.
-            return generateNestedSuspendFactoryCall(binding, contextualTypeKey, fieldInitKey)
-          } else if (canBypassFactory) {
-            val providerFunction = providerFactory.function
-
-            // Use binding.parameters instead of providerFactory.parameters because the binding
-            // may have type-substituted parameters (e.g., for generic binding containers included
-            // with concrete type args), while the providerFactory from the transformer cache
-            // still has unsubstituted type parameters.
-            val targetParams = binding.parameters
-
-            // If we need a dispatch receiver but couldn't get one, fall back to factory
-            if (providerFactory.supportsDirectInvocation(node.metroGraphOrFail)) {
-              codegenStats?.run { providerDirectInvocations++ }
-
-              // Call the provider function directly
-              val realFunction =
-                providerFactory.realDeclaration?.expectAsOrNull<IrFunction>() ?: providerFunction
-
-              val args =
-                generateBindingArguments(
-                  targetParams = targetParams,
-                  function = realFunction,
-                  binding = binding,
-                  fieldInitKey = fieldInitKey,
-                )
-
-              val directExpr: IrExpression =
-                irInvoke(
-                  callee = realFunction.symbol,
-                  args = args,
-                  typeHint = binding.typeKey.type,
-                  typeArgs = providerFactory.directCallTypeArguments(realFunction),
-                )
-
-              directExpr
-                .letIf(accessType == AccessType.INSTANCE) {
-                  maybeTraceDirectExpression(
-                    it,
-                    contextualTypeKey,
-                    bindingKind,
-                    isSuspend = isTransitivelySuspend,
-                  )
-                }
-                .toTargetType(
-                  actual = AccessType.INSTANCE,
-                  contextualTypeKey = contextualTypeKey,
-                  // Each provider call must run the provider again.
-                  useInstanceFactory = false,
-                  bindingKind = bindingKind,
-                )
-            } else {
-              codegenStats?.run { providerNewInstanceCalls++ }
-
-              // Function isn't public - call factory's static newInstance() method instead
-              val directExpr =
-                providerFactory.invokeNewInstanceExpression(
-                  binding.typeKey,
-                  providerFactory.newInstanceName,
-                ) { newInstanceFunction, params ->
-                  generateBindingArguments(
-                    targetParams = params,
-                    function = newInstanceFunction,
+                    targetParams = classFactory.targetFunctionParameters,
+                    function = targetConstructor,
                     binding = binding,
                     fieldInitKey = fieldInitKey,
                   )
+                for ((i, arg) in args.withIndex()) {
+                  if (arg == null) continue
+                  arguments[i] = arg
                 }
-
-              directExpr
-                .letIf(accessType == AccessType.INSTANCE) {
-                  maybeTraceDirectExpression(
-                    it,
-                    contextualTypeKey,
-                    bindingKind,
-                    isSuspend = isTransitivelySuspend,
-                  )
-                }
-                .toTargetType(
-                  actual = AccessType.INSTANCE,
-                  contextualTypeKey = contextualTypeKey,
-                  // Each provider call must run the provider again.
-                  useInstanceFactory = false,
-                  bindingKind = bindingKind,
-                )
-            }
-          } else {
-            // Invoke its factory's create() function
-            val factoryProvider =
-              providerFactory.invokeCreateExpression(binding.typeKey) { createFunction, params ->
-                generateBindingArguments(
-                  targetParams = params,
-                  function = createFunction,
-                  binding = binding,
-                  fieldInitKey = fieldInitKey,
-                )
               }
-
-            if (providerFactory is ProviderFactory.Metro) {
-              val providerType = binding.typeKey.type.wrapTypeInProvider(metroSymbols.metroProvider)
-              factoryProvider.toTargetType(
-                actual = AccessType.PROVIDER,
-                contextualTypeKey = contextualTypeKey,
-                bindingKind = bindingKind,
-                providerType = providerType,
+          maybeTraceDirectExpression(
+              directExpr,
+              contextualTypeKey,
+              bindingKind,
+              isSuspend = bindingGraph.isTransitivelySuspend(binding.typeKey),
+            )
+            .toTargetType(
+              actual = AccessType.INSTANCE,
+              contextualTypeKey = contextualTypeKey,
+              bindingKind = bindingKind,
+            )
+        } else {
+          codegenStats?.run { classConstructorNewInstanceCalls++ }
+          // Constructor isn't public - call newInstance() on the factory object instead
+          // Example_Factory.newInstance(...)
+          val directExpr =
+            classFactory.invokeNewInstanceExpression(
+              binding.typeKey,
+              Symbols.Names.newInstance,
+            ) { newInstanceFunction, parameters ->
+              generateBindingArguments(
+                targetParams = parameters,
+                function = newInstanceFunction,
+                binding = binding,
+                fieldInitKey = null,
               )
-            } else {
-              factoryProvider.toTargetType(
-                actual = AccessType.PROVIDER,
+            }
+          maybeTraceDirectExpression(
+              directExpr,
+              contextualTypeKey,
+              bindingKind,
+              isSuspend = bindingGraph.isTransitivelySuspend(binding.typeKey),
+            )
+            .toTargetType(
+              actual = AccessType.INSTANCE,
+              contextualTypeKey = contextualTypeKey,
+              bindingKind = bindingKind,
+            )
+        }
+      } else {
+        // Example_Factory.create(...)
+        classFactory
+          .invokeCreateExpression(binding.typeKey) { createFunction, parameters ->
+            generateBindingArguments(
+              targetParams = parameters,
+              function = createFunction,
+              binding = binding,
+              fieldInitKey = null,
+            )
+          }
+          .let { factoryInstance ->
+            if (isAssistedInject) {
+              return@let factoryInstance
+            }
+
+            val providerType = binding.typeKey.type.wrapTypeInProvider(metroSymbols.metroProvider)
+            factoryInstance.toTargetType(
+              actual = AccessType.PROVIDER,
+              contextualTypeKey = contextualTypeKey,
+              bindingKind = bindingKind,
+              providerType = providerType,
+            )
+          }
+      }
+    }
+
+  context(scope: IrBuilderWithScope)
+  private fun generateCustomWrapperCode(
+    binding: IrBinding.CustomWrapper,
+    contextualTypeKey: IrContextualTypeKey,
+    fieldInitKey: IrTypeKey?,
+    bindingKind: String,
+  ): IrExpression =
+    with(scope) {
+      val generator =
+        wrappedTypeGenerators[binding.wrapperKey]
+          ?: reportCompilerBug("No generator found for wrapper key: ${binding.wrapperKey}")
+
+      val delegateBinding = bindingGraph.findBinding(binding.wrappedContextKey.typeKey)
+      val isAbsentInGraph = delegateBinding == null
+      val wrappedInstance =
+        if (!isAbsentInGraph) {
+          generateBindingCode(
+            delegateBinding,
+            binding.wrappedContextKey,
+            accessType = AccessType.INSTANCE,
+            fieldInitKey = fieldInitKey,
+          )
+        } else if (binding.allowsAbsent) {
+          null
+        } else {
+          reportCompilerBug("No delegate binding for wrapped type ${binding.typeKey}!")
+        }
+      generator
+        .generate(binding, wrappedInstance)
+        .toTargetType(
+          actual = AccessType.INSTANCE,
+          contextualTypeKey = contextualTypeKey,
+          // A present value must be computed on each call, so it needs a lambda. An absent one
+          // is a constant that an InstanceFactory can hold.
+          useInstanceFactory = wrappedInstance == null,
+          bindingKind = bindingKind,
+        )
+    }
+
+  context(scope: IrBuilderWithScope)
+  private fun generateObjectClassCode(
+    binding: IrBinding.ObjectClass,
+    contextualTypeKey: IrContextualTypeKey,
+    bindingKind: String,
+  ): IrExpression =
+    with(scope) {
+      irGetObject(binding.type.symbol)
+        .toTargetType(
+          actual = AccessType.INSTANCE,
+          contextualTypeKey = contextualTypeKey,
+          bindingKind = bindingKind,
+        )
+    }
+
+  context(scope: IrBuilderWithScope)
+  private fun generateAliasCode(
+    binding: IrBinding.Alias,
+    contextualTypeKey: IrContextualTypeKey,
+    accessType: AccessType,
+    fieldInitKey: IrTypeKey?,
+  ): IrExpression =
+    with(scope) {
+      // TODO cache the aliases (or retrieve from binding property collector?)
+      // For binds functions, just use the backing type
+      val aliasedBinding = binding.aliasedBinding(bindingGraph)
+      check(aliasedBinding != binding) { "Aliased binding aliases itself" }
+      if (binding.kotlinClassMap == null) {
+        generateBindingCode(
+          aliasedBinding,
+          contextualTypeKey = contextualTypeKey.withIrTypeKey(aliasedBinding.typeKey),
+          accessType = accessType,
+          fieldInitKey = fieldInitKey,
+        )
+      } else {
+        val requested = contextualTypeKey.canonicalize()
+        val sourceKey = requested.classMapSource(binding.aliasedType)
+        val source =
+          generateBindingCode(aliasedBinding, sourceKey, AccessType.INSTANCE, fieldInitKey)
+        convertKClassMapToClassMap(source, requested)
+          .toTargetType(
+            contextualTypeKey = contextualTypeKey,
+            actual = AccessType.INSTANCE,
+            requested = accessType,
+            useInstanceFactory = false,
+          )
+      }
+    }
+
+  context(scope: IrBuilderWithScope)
+  private fun generateProvidedCode(
+    binding: IrBinding.Provided,
+    contextualTypeKey: IrContextualTypeKey,
+    accessType: AccessType,
+    fieldInitKey: IrTypeKey?,
+    bindingKind: String,
+  ): IrExpression =
+    with(scope) {
+      val providerFactory =
+        metroDeclarations.lookupProviderFactory(binding)
+          ?: reportCompilerBug(
+            "No factory found for Provided binding ${binding.typeKey}. This is likely a bug in the Metro compiler, please report it to the issue tracker.",
+          )
+
+      if (options.enableProviderInlining) {
+        val inlinedValue = providerFactory.inlinedValue
+        if (inlinedValue != null) {
+          // Object, enum, and class-literal values remain inlineable for direct instance
+          // access. Provider access uses the generated factory so evaluating the provider is
+          // what resolves the class reference.
+          val canInlineAccess =
+            accessType == AccessType.INSTANCE || inlinedValue.canInlineProviderAccess
+          if (canInlineAccess) {
+            // Materialization can fail if the value references a class that isn't resolvable
+            // in this compilation (e.g. an object from an implementation dependency of the
+            // providing module). In that case, fall through to the standard factory paths
+            // below.
+            val materialized = inlinedValue.materialize(binding.typeKey.type)
+            if (materialized != null) {
+              codegenStats?.run { providerInlines++ }
+              return materialized.toTargetType(
+                actual = AccessType.INSTANCE,
                 contextualTypeKey = contextualTypeKey,
                 bindingKind = bindingKind,
               )
             }
+            codegenStats?.run { providerInlineUnavailableValue++ }
+          } else {
+            codegenStats?.run { providerInlineDeferredAccess++ }
           }
         }
+      }
 
-        is AssistedFactory -> {
-          // The target binding is stored directly on the Assisted binding (not in the graph)
-          val targetBinding = binding.targetBinding
+      // Optimization: Skip factory instantiation when we don't need a provider instance.
+      // This applies when accessType is INSTANCE and the providerFactory supports direct
+      // invocation.
+      val requestsInstance = accessType == AccessType.INSTANCE
 
-          val targetConsumesSuspend =
-            targetBinding.parameters.nonDispatchParameters.any { param ->
-              !param.isAssisted && bindingGraph.dependencyRequiresSuspend(param.contextualTypeKey)
-            }
-          if (targetConsumesSuspend) {
-            // The shared per-class Impl delegates to the target's plain Factory<T>, which can't
-            // hold suspend deps. Generate an IR-only nested impl that holds the deps directly and
-            // awaits them in its suspend SAM override. Validation guarantees the SAM is suspend.
-            return generateNestedAssistedImplCall(binding, contextualTypeKey, fieldInitKey)
-          }
+      // Suspend bindings requested as a SuspendProvider also bypass the factory. Their factory
+      // implements SuspendFactory<T>. The graph calls the provider directly and wraps that
+      // call in a SuspendProvider lambda.
+      val requestsSuspendProvider = accessType == AccessType.SUSPEND_PROVIDER
+      val callsSuspendProviderDirectly = binding.isSuspend && requestsSuspendProvider
 
-          // Example9_Factory_Impl.create(example9Provider);
-          val factoryImpl = metroDeclarations.findAssistedFactoryImpl(binding.type)
+      // Reified providers have no usable factory, so the graph calls them directly for every
+      // access type. Provider access wraps that call in a lambda.
+      val isReifiedProvider = providerFactory is ProviderFactory.Metro && providerFactory.isReified
 
-          // Assisted-inject factories don't implement Provider.
-          // The target binding is not an independent graph binding — it's an implementation
-          // detail of the factory. In shard contexts, all properties are FIELD-backed and
-          // eagerly initialized, but the shared target property is always appended at the
-          // end of the init order. Accessing it from a factory's field init would hit an
-          // uninitialized property (same-shard) or require cross-shard graph access (which
-          // creates circular shard init dependencies). Generate inline in shard contexts.
-          // In non-shard contexts, factory properties are getter-backed (lazily evaluated),
-          // so the shared target property is safely initialized by access time.
-          val effectiveFieldInitKey =
-            if (shardContext != null) {
-              targetBinding.typeKey
-            } else {
-              fieldInitKey
-            }
-          val delegateFactory =
-            generateBindingCode(
-              targetBinding,
-              contextualTypeKey = targetBinding.contextualTypeKey,
-              accessType = AccessType.INSTANCE,
-              fieldInitKey = effectiveFieldInitKey,
+      // Non-suspend @Provides that transitively depends on suspend bindings. Its factory is a
+      // plain Factory<T> whose ctor can't hold SuspendProvider deps.
+      val isTransitivelySuspend = bindingGraph.isTransitivelySuspend(binding.typeKey)
+      val needsNestedSuspendFactory =
+        requestsSuspendProvider && !binding.isSuspend && isTransitivelySuspend
+
+      val alwaysCallsDirectly = callsSuspendProviderDirectly || isReifiedProvider
+      val canBypassFactory = requestsInstance || alwaysCallsDirectly
+
+      // A reified provider requested as a provider holds its dependency providers in temporary
+      // variables, so the wrapping lambda doesn't capture the graph.
+      val wrapsReifiedCallInProvider = isReifiedProvider && accessType == AccessType.PROVIDER
+      if (wrapsReifiedCallInProvider) {
+        val heldCall =
+          generateReifiedProviderWithHeldDependencies(
+            binding = binding,
+            providerFactory = providerFactory,
+            contextualTypeKey = contextualTypeKey,
+            fieldInitKey = fieldInitKey,
+            bindingKind = bindingKind,
+          )
+        if (heldCall != null) {
+          return heldCall
+        }
+      }
+
+      // A suspend provider requested as a SuspendProvider holds its dependency providers in
+      // temporary variables, so the wrapping lambda doesn't capture the graph.
+      val wrapsSuspendCallInProvider = callsSuspendProviderDirectly && canBypassFactory
+      if (wrapsSuspendCallInProvider) {
+        val heldCall =
+          generateSuspendProviderWithHeldDependencies(
+            binding = binding,
+            providerFactory = providerFactory,
+            contextualTypeKey = contextualTypeKey,
+            fieldInitKey = fieldInitKey,
+            bindingKind = bindingKind,
+          )
+        if (heldCall != null) {
+          return heldCall
+        }
+      }
+
+      if (needsNestedSuspendFactory) {
+        // Generate an IR-only nested SuspendFactory in the graph instead. It calls the
+        // provider directly, so this works for reified providers too.
+        return generateNestedSuspendFactoryCall(binding, contextualTypeKey, fieldInitKey)
+      } else if (canBypassFactory) {
+        val providerFunction = providerFactory.function
+
+        // Use binding.parameters instead of providerFactory.parameters because the binding
+        // may have type-substituted parameters (e.g., for generic binding containers included
+        // with concrete type args), while the providerFactory from the transformer cache
+        // still has unsubstituted type parameters.
+        val targetParams = binding.parameters
+
+        // If we need a dispatch receiver but couldn't get one, fall back to factory
+        if (providerFactory.supportsDirectInvocation(node.metroGraphOrFail)) {
+          codegenStats?.run { providerDirectInvocations++ }
+
+          // Call the provider function directly
+          val realFunction =
+            providerFactory.realDeclaration?.expectAsOrNull<IrFunction>() ?: providerFunction
+
+          val args =
+            generateBindingArguments(
+              targetParams = targetParams,
+              function = realFunction,
+              binding = binding,
+              fieldInitKey = fieldInitKey,
             )
 
-          val factoryProvider =
-            with(factoryImpl) { invokeCreate(delegateFactory, binding.typeKey.type) }
+          val directExpr: IrExpression =
+            irInvoke(
+              callee = realFunction.symbol,
+              args = args,
+              typeHint = binding.typeKey.type,
+              typeArgs = providerFactory.directCallTypeArguments(realFunction),
+            )
 
+          directExpr
+            .letIf(accessType == AccessType.INSTANCE) {
+              maybeTraceDirectExpression(
+                it,
+                contextualTypeKey,
+                bindingKind,
+                isSuspend = isTransitivelySuspend,
+              )
+            }
+            .toTargetType(
+              actual = AccessType.INSTANCE,
+              contextualTypeKey = contextualTypeKey,
+              // Each provider call must run the provider again.
+              useInstanceFactory = false,
+              bindingKind = bindingKind,
+            )
+        } else {
+          codegenStats?.run { providerNewInstanceCalls++ }
+
+          // Function isn't public - call factory's static newInstance() method instead
+          val directExpr =
+            providerFactory.invokeNewInstanceExpression(
+              binding.typeKey,
+              providerFactory.newInstanceName,
+            ) { newInstanceFunction, params ->
+              generateBindingArguments(
+                targetParams = params,
+                function = newInstanceFunction,
+                binding = binding,
+                fieldInitKey = fieldInitKey,
+              )
+            }
+
+          directExpr
+            .letIf(accessType == AccessType.INSTANCE) {
+              maybeTraceDirectExpression(
+                it,
+                contextualTypeKey,
+                bindingKind,
+                isSuspend = isTransitivelySuspend,
+              )
+            }
+            .toTargetType(
+              actual = AccessType.INSTANCE,
+              contextualTypeKey = contextualTypeKey,
+              // Each provider call must run the provider again.
+              useInstanceFactory = false,
+              bindingKind = bindingKind,
+            )
+        }
+      } else {
+        // Invoke its factory's create() function
+        val factoryProvider =
+          providerFactory.invokeCreateExpression(binding.typeKey) { createFunction, params ->
+            generateBindingArguments(
+              targetParams = params,
+              function = createFunction,
+              binding = binding,
+              fieldInitKey = fieldInitKey,
+            )
+          }
+
+        if (providerFactory is ProviderFactory.Metro) {
+          val providerType = binding.typeKey.type.wrapTypeInProvider(metroSymbols.metroProvider)
+          factoryProvider.toTargetType(
+            actual = AccessType.PROVIDER,
+            contextualTypeKey = contextualTypeKey,
+            bindingKind = bindingKind,
+            providerType = providerType,
+          )
+        } else {
           factoryProvider.toTargetType(
             actual = AccessType.PROVIDER,
             contextualTypeKey = contextualTypeKey,
             bindingKind = bindingKind,
           )
         }
+      }
+    }
 
-        is Multibinding -> {
-          multibindingExpressionGenerator.generateBindingCode(
-            binding,
-            contextualTypeKey,
-            accessType,
-            fieldInitKey,
+  context(scope: IrBuilderWithScope)
+  private fun generateAssistedFactoryCode(
+    binding: IrBinding.AssistedFactory,
+    contextualTypeKey: IrContextualTypeKey,
+    fieldInitKey: IrTypeKey?,
+    bindingKind: String,
+  ): IrExpression =
+    with(scope) {
+      // The target binding is stored directly on the Assisted binding (not in the graph)
+      val targetBinding = binding.targetBinding
+
+      val targetConsumesSuspend =
+        targetBinding.parameters.nonDispatchParameters.any { param ->
+          !param.isAssisted && bindingGraph.dependencyRequiresSuspend(param.contextualTypeKey)
+        }
+      if (targetConsumesSuspend) {
+        // The shared per-class Impl delegates to the target's plain Factory<T>, which can't
+        // hold suspend deps. Generate an IR-only nested impl that holds the deps directly and
+        // awaits them in its suspend SAM override. Validation guarantees the SAM is suspend.
+        return generateNestedAssistedImplCall(binding, contextualTypeKey, fieldInitKey)
+      }
+
+      // Example9_Factory_Impl.create(example9Provider);
+      val factoryImpl = metroDeclarations.findAssistedFactoryImpl(binding.type)
+
+      // Assisted-inject factories don't implement Provider.
+      // The target binding is not an independent graph binding — it's an implementation
+      // detail of the factory. In shard contexts, all properties are FIELD-backed and
+      // eagerly initialized, but the shared target property is always appended at the
+      // end of the init order. Accessing it from a factory's field init would hit an
+      // uninitialized property (same-shard) or require cross-shard graph access (which
+      // creates circular shard init dependencies). Generate inline in shard contexts.
+      // In non-shard contexts, factory properties are getter-backed (lazily evaluated),
+      // so the shared target property is safely initialized by access time.
+      val effectiveFieldInitKey =
+        if (shardContext != null) {
+          targetBinding.typeKey
+        } else {
+          fieldInitKey
+        }
+      val delegateFactory =
+        generateBindingCode(
+          targetBinding,
+          contextualTypeKey = targetBinding.contextualTypeKey,
+          accessType = AccessType.INSTANCE,
+          fieldInitKey = effectiveFieldInitKey,
+        )
+
+      val factoryProvider =
+        with(factoryImpl) { invokeCreate(delegateFactory, binding.typeKey.type) }
+
+      factoryProvider.toTargetType(
+        actual = AccessType.PROVIDER,
+        contextualTypeKey = contextualTypeKey,
+        bindingKind = bindingKind,
+      )
+    }
+
+  context(scope: IrBuilderWithScope)
+  private fun generateMultibindingCode(
+    binding: IrBinding.Multibinding,
+    contextualTypeKey: IrContextualTypeKey,
+    accessType: AccessType,
+    fieldInitKey: IrTypeKey?,
+  ): IrExpression =
+    with(scope) {
+      multibindingExpressionGenerator.generateBindingCode(
+        binding,
+        contextualTypeKey,
+        accessType,
+        fieldInitKey,
+      )
+    }
+
+  context(scope: IrBuilderWithScope)
+  private fun generateMembersInjectedCode(
+    binding: IrBinding.MembersInjected,
+    contextualTypeKey: IrContextualTypeKey,
+    fieldInitKey: IrTypeKey?,
+    bindingKind: String,
+  ): IrExpression =
+    with(scope) {
+      val injectedClass = node.metroGraphOrFail.lookupClass(binding.targetClassId)!!.owner
+      val injectedType =
+        binding.typeKey.type.expectAsOrNull<IrSimpleType>()?.arguments?.firstOrNull()?.typeOrFail
+          ?: injectedClass.defaultType
+      val targetTypeKey = IrContextualTypeKey(IrTypeKey(injectedType, binding.typeKey.qualifier))
+
+      // When looking for an injector, try the current class.
+      // If the current class doesn't have one but the parent does have injections, traverse up
+      // until we hit the first injector that does work and use that
+      val injectorHelperOwner =
+        generateSequence(injectedClass) { clazz ->
+            clazz.superClass?.takeIf { it.hasAnnotation(Symbols.ClassIds.HasMemberInjections) }
+          }
+          .firstNotNullOfOrNull { clazz ->
+            metroDeclarations.findInjector(clazz)?.helperOwner
+          }
+
+      if (injectorHelperOwner == null) {
+        // Return a noop
+        val membersInjector =
+          irInvoke(
+            dispatchReceiver = irGetObject(metroSymbols.metroMembersInjectors),
+            callee = metroSymbols.metroMembersInjectorsNoOp,
+            typeArgs = listOf(injectedType),
           )
-        }
-
-        is MembersInjected -> {
-          val injectedClass = node.metroGraphOrFail.lookupClass(binding.targetClassId)!!.owner
-          val injectedType =
-            binding.typeKey.type
-              .expectAsOrNull<IrSimpleType>()
-              ?.arguments
-              ?.firstOrNull()
-              ?.typeOrFail ?: injectedClass.defaultType
-          val targetTypeKey =
-            IrContextualTypeKey(IrTypeKey(injectedType, binding.typeKey.qualifier))
-
-          // When looking for an injector, try the current class.
-          // If the current class doesn't have one but the parent does have injections, traverse up
-          // until we hit the first injector that does work and use that
-          val injectorHelperOwner =
-            generateSequence(injectedClass) { clazz ->
-                clazz.superClass?.takeIf { it.hasAnnotation(Symbols.ClassIds.HasMemberInjections) }
-              }
-              .firstNotNullOfOrNull { clazz ->
-                metroDeclarations.findInjector(clazz)?.helperOwner
-              }
-
-          if (injectorHelperOwner == null) {
-            // Return a noop
-            val membersInjector =
-              irInvoke(
-                dispatchReceiver = irGetObject(metroSymbols.metroMembersInjectors),
-                callee = metroSymbols.metroMembersInjectorsNoOp,
-                typeArgs = listOf(injectedType),
-              )
-            expressionDecorator
-              .decorateMembersInjectorExpression(
-                membersInjector,
-                targetTypeKey = targetTypeKey,
-              )
-              .toTargetType(
-                actual = AccessType.INSTANCE,
-                contextualTypeKey = contextualTypeKey,
-                bindingKind = bindingKind,
-              )
-          } else {
-            val createFunction =
-              injectorHelperOwner.requireSimpleFunction(Symbols.StringNames.CREATE)
-            val args =
-              generateBindingArguments(
-                targetParams = binding.parameters,
-                function = createFunction.owner,
-                binding = binding,
-                fieldInitKey = fieldInitKey,
-              )
-
-            // InjectableClass_MembersInjector.create(stringValueProvider,
-            // exampleComponentProvider)
-            val typeArguments =
-              injectedType.expectAsOrNull<IrSimpleType>()?.arguments.orEmpty().map {
-                it.typeOrFail
-              }
-            val membersInjector =
-              irInvoke(
-                callee = createFunction,
-                typeHint = metroSymbols.metroMembersInjector.typeWith(injectedType),
-                typeArgs = typeArguments,
-                args = args,
-              )
-            expressionDecorator
-              .decorateMembersInjectorExpression(
-                membersInjector,
-                targetTypeKey = targetTypeKey,
-              )
-              .toTargetType(
-                actual = AccessType.INSTANCE,
-                contextualTypeKey = contextualTypeKey,
-                bindingKind = bindingKind,
-              )
-          }
-        }
-
-        is Absent -> {
-          // Should never happen, this should be checked before function/constructor injections.
-          reportCompilerBug("Unable to generate code for unexpected Absent binding: $binding")
-        }
-
-        is BoundInstance -> {
-          // BoundInstance represents either:
-          // 1. Self-binding (token == null): graph provides itself via thisReceiver
-          // 2. Parent/ancestor graph binding (token != null): accessed via property chain
-          // TODO sealed subtypes for self-bindings
-          val instanceExpr =
-            if (
-              binding.token != null &&
-                binding.token.contextKey.typeKey == binding.token.ownerGraphKey
-            ) {
-              // An ancestor graph itself. Its instance is the end of the ancestor chain.
-              ancestorGraphAccess(binding.token.ownerGraphKey)
-            } else if (binding.token != null) {
-              val parentContextKey = binding.contextualTypeKey
-              // Check if the property is in the local context
-              // If found locally, use simple property access; otherwise use resolveToken
-              // to build the full property access chain through ancestors
-              val localProperty = bindingPropertyContext.get(parentContextKey)
-              if (localProperty != null) {
-                generatePropertyAccess(
-                  localProperty.property,
-                  localProperty.shardProperty,
-                  localProperty.shardIndex,
-                )
-              } else {
-                // Use resolveToken to build the property access chain through ancestors
-                val propertyAccess = resolveToken(binding.token)
-                propertyAccess.accessProperty(tokenAccessBase())
-              }
-            } else if (binding.typeKey == node.typeKey) {
-              // Self-binding. The graph provides itself.
-              graphInstanceAccess()
-            } else {
-              // Check if the property is in the local context (e.g., @Includes graph input
-              // parameters that are stored as fields)
-              val localProperty = bindingPropertyContext.get(binding.contextualTypeKey)
-              if (localProperty != null) {
-                generatePropertyAccess(
-                  localProperty.property,
-                  localProperty.shardProperty,
-                  localProperty.shardIndex,
-                )
-              } else {
-                graphInstanceAccess()
-              }
-            }
-          when (accessType) {
-            INSTANCE -> instanceExpr
-            PROVIDER,
-            SUSPEND_PROVIDER -> {
-              instanceExpr.toTargetType(
-                actual = AccessType.INSTANCE,
-                contextualTypeKey = contextualTypeKey,
-                bindingKind = bindingKind,
-              )
-            }
-          }
-        }
-
-        is GraphExtension -> {
-          // Generate graph extension instance
-          val extensionImpl =
-            graphExtensionGenerator.getOrBuildGraphExtensionImpl(
-              binding.typeKey,
-              node.sourceGraph,
-              // The reportableDeclaration should be the accessor function
-              metroFunctionOf(binding.reportableDeclaration as IrSimpleFunction),
-            )
-
-          if (options.enableGraphImplClassAsReturnType) {
-            // This is probably not the right spot to change the return type, but the IrClass
-            // implementation is not exposed otherwise.
-            binding.accessor.returnType = extensionImpl.defaultType
-          }
-
-          checkAccessorRunsInit(extensionImpl, binding.accessor)
-          val ctor = extensionImpl.primaryConstructor!!
-          irCallConstructor(ctor.symbol, emptyList())
-            .apply {
-              // If this function has parameters, they're factory instance params and need to be
-              // passed on
-              val functionParams = binding.accessor.regularParameters
-
-              // First param is always the parent graph (extension graphs are static nested classes)
-              arguments[0] = irGet(thisReceiver)
-              for (i in 0 until functionParams.size) {
-                arguments[i + 1] = irGet(functionParams[i])
-              }
-            }
-            .let { irInitializedGraph(extensionImpl, it, binding.accessor.isSuspend) }
-            .toTargetType(
-              actual = AccessType.INSTANCE,
-              contextualTypeKey = contextualTypeKey,
-              bindingKind = bindingKind,
-            )
-        }
-
-        is GraphExtensionFactory -> {
-          // Get the pre-generated extension implementation that should contain the factory
-          val extensionImpl =
-            graphExtensionGenerator.getOrBuildGraphExtensionImpl(
-              binding.extensionTypeKey,
-              node.sourceGraph,
-              metroFunctionOf(binding.reportableDeclaration as IrSimpleFunction),
-            )
-
-          // Get the factory implementation that was generated alongside the extension
-          val factoryImpl =
-            extensionImpl.generatedGraphExtensionData?.factoryImpl
-              ?: reportCompilerBug(
-                "Expected factory implementation to be generated for graph extension factory binding",
-              )
-
-          val constructor = factoryImpl.primaryConstructor!!
-          val parameters = constructor.parameters()
-          irCallConstructor(
-              constructor.symbol,
-              binding.accessor.typeParameters.map { it.defaultType },
-            )
-            .apply {
-              // Pass the parent graph instance
-              val graphBinding =
-                bindingGraph.requireBinding(parameters.regularParameters.single().typeKey)
-              arguments[0] =
-                generateBindingCode(
-                  graphBinding,
-                  graphBinding.contextualTypeKey,
-                  accessType = AccessType.INSTANCE,
-                )
-            }
-            .toTargetType(
-              contextualTypeKey = contextualTypeKey,
-              actual = AccessType.INSTANCE,
-              bindingKind = bindingKind,
-            )
-        }
-
-        is GraphDependency -> {
-          // Resolve the parent token and check whether its property returns a provider or a scalar.
-          // Wrap included accessor calls in a provider function when a provider is requested.
-          if (binding.token != null) {
-            val bindingProperty = resolveTokenBindingProperty(binding.token)
-            // A getter the token's owner reuses from its ancestor builds a new value on each read.
-            val isReusedByOwner = bindingProperty.ownerGraphKey != binding.token.ownerGraphKey
-            // So does the getter behind a published @Binds alias. A stored instance stays as is.
-            val requestedKey = binding.token.contextKey.typeKey
-            val isAliasTarget = bindingProperty.storedKey.typeKey != requestedKey
-            val isAliasTargetGetter = isAliasTarget && bindingProperty.property.backingField == null
-            val buildsNewValue = isReusedByOwner || isAliasTargetGetter
-            val deferGetter = bindingProperty.isIncludedAccessor || buildsNewValue
-            return withBindingPropertyAccess(bindingProperty, accessType, deferGetter) {
-              propertyAccess ->
-              propertyAccess.toTargetType(
-                contextualTypeKey = contextualTypeKey,
-                actual = AccessType.of(bindingProperty.storedKey),
-                requested = accessType,
-                useInstanceFactory = !deferGetter,
-                allowPropertyGetter = !deferGetter,
-                bindingKind = bindingKind,
-              )
-            }
-          }
-
-          val ownerKey = binding.ownerKey
-          val (bindingGetter, actual) =
-            if (binding.getter != null) {
-              val graphInstanceBindingProperty =
-                bindingPropertyContext.get(IrContextualTypeKey(ownerKey))
-                  ?: reportCompilerBug(
-                    "No matching included type instance found for type $ownerKey while processing ${node.typeKey}",
-                  )
-
-              val getterContextKey = IrContextualTypeKey.from(binding.getter)
-
-              val graphInstanceAccess =
-                generatePropertyAccess(
-                  graphInstanceBindingProperty.property,
-                  graphInstanceBindingProperty.shardProperty,
-                  graphInstanceBindingProperty.shardIndex,
-                )
-
-              val invokeGetter =
-                irInvoke(
-                  dispatchReceiver = graphInstanceAccess,
-                  callee = binding.getter.symbol,
-                  typeHint = getterContextKey.toIrType(),
-                )
-
-              if (binding.canPassThrough(contextualTypeKey)) {
-                return invokeGetter
-              }
-
-              // An instance request reads the value straight out of the accessor's wrapper.
-              if (accessType == AccessType.INSTANCE) {
-                return unwrapGraphDependencySource(invokeGetter, getterContextKey)
-              }
-
-              val sourceWrapper = getterContextKey.wrappedType
-              val targetWrapper = contextualTypeKey.wrappedType
-              val sourceIsDirectProvider =
-                sourceWrapper is WrappedType.Provider ||
-                  sourceWrapper is WrappedType.SuspendProvider
-              val targetIsDirectProvider =
-                targetWrapper is WrappedType.Provider ||
-                  targetWrapper is WrappedType.SuspendProvider
-              val wrappersUseSameProviderType =
-                sourceWrapper.usesSuspendProvider() == targetWrapper.usesSuspendProvider()
-              val wrappersHaveSameValue =
-                sourceWrapper.immediateInnerType()?.isScalarLeaf() == true &&
-                  targetWrapper.immediateInnerType()?.isScalarLeaf() == true
-              if (
-                sourceIsDirectProvider &&
-                  targetIsDirectProvider &&
-                  wrappersUseSameProviderType &&
-                  wrappersHaveSameValue
-              ) {
-                return convertGraphDependencyProvider(
-                  invokeGetter,
-                  sourceWrapper,
-                  contextualTypeKey,
-                )
-              }
-
-              val sourceRequiresSuspend =
-                binding.getter.isSuspend || getterContextKey.wrappedType.requiresSuspendToUnwrap()
-              // The lambda holds the included instance in a temporary variable so it doesn't
-              // capture the graph.
-              val heldGetterProvider = scope.irBlock {
-                val includedInstance =
-                  createAndAddTemporaryVariable(
-                    generatePropertyAccess(
-                      graphInstanceBindingProperty.property,
-                      graphInstanceBindingProperty.shardProperty,
-                      graphInstanceBindingProperty.shardIndex,
-                    ),
-                    nameHint = "includedInstance",
-                  )
-                val heldGetter =
-                  irInvoke(
-                    dispatchReceiver = irGet(includedInstance),
-                    callee = binding.getter.symbol,
-                    typeHint = getterContextKey.toIrType(),
-                  )
-                if (sourceRequiresSuspend) {
-                  +wrapInSuspendProviderFunction(binding.typeKey.type) {
-                    unwrapGraphDependencySource(heldGetter, getterContextKey)
-                  }
-                } else {
-                  +wrapInProviderFunction(binding.typeKey.type) {
-                    unwrapGraphDependencySource(heldGetter, getterContextKey)
-                  }
-                }
-              }
-              if (sourceRequiresSuspend) {
-                heldGetterProvider to AccessType.SUSPEND_PROVIDER
-              } else {
-                heldGetterProvider to AccessType.PROVIDER
-              }
-            } else {
-              reportCompilerBug("Unknown graph dependency type")
-            }
-          bindingGetter.toTargetType(
+        expressionDecorator
+          .decorateMembersInjectorExpression(
+            membersInjector,
+            targetTypeKey = targetTypeKey,
+          )
+          .toTargetType(
+            actual = AccessType.INSTANCE,
             contextualTypeKey = contextualTypeKey,
-            actual = actual,
+            bindingKind = bindingKind,
+          )
+      } else {
+        val createFunction = injectorHelperOwner.requireSimpleFunction(Symbols.StringNames.CREATE)
+        val args =
+          generateBindingArguments(
+            targetParams = binding.parameters,
+            function = createFunction.owner,
+            binding = binding,
+            fieldInitKey = fieldInitKey,
+          )
+
+        // InjectableClass_MembersInjector.create(stringValueProvider,
+        // exampleComponentProvider)
+        val typeArguments =
+          injectedType.expectAsOrNull<IrSimpleType>()?.arguments.orEmpty().map {
+            it.typeOrFail
+          }
+        val membersInjector =
+          irInvoke(
+            callee = createFunction,
+            typeHint = metroSymbols.metroMembersInjector.typeWith(injectedType),
+            typeArgs = typeArguments,
+            args = args,
+          )
+        expressionDecorator
+          .decorateMembersInjectorExpression(
+            membersInjector,
+            targetTypeKey = targetTypeKey,
+          )
+          .toTargetType(
+            actual = AccessType.INSTANCE,
+            contextualTypeKey = contextualTypeKey,
+            bindingKind = bindingKind,
+          )
+      }
+    }
+
+  context(scope: IrBuilderWithScope)
+  private fun generateAbsentCode(
+    binding: IrBinding.Absent,
+  ): IrExpression =
+    with(scope) {
+      // Should never happen, this should be checked before function/constructor injections.
+      reportCompilerBug("Unable to generate code for unexpected Absent binding: $binding")
+    }
+
+  context(scope: IrBuilderWithScope)
+  private fun generateBoundInstanceCode(
+    binding: IrBinding.BoundInstance,
+    contextualTypeKey: IrContextualTypeKey,
+    accessType: AccessType,
+    bindingKind: String,
+  ): IrExpression =
+    with(scope) {
+      // BoundInstance represents either:
+      // 1. Self-binding (token == null): graph provides itself via thisReceiver
+      // 2. Parent/ancestor graph binding (token != null): accessed via property chain
+      // TODO sealed subtypes for self-bindings
+      val instanceExpr =
+        if (
+          binding.token != null && binding.token.contextKey.typeKey == binding.token.ownerGraphKey
+        ) {
+          // An ancestor graph itself. Its instance is the end of the ancestor chain.
+          ancestorGraphAccess(binding.token.ownerGraphKey)
+        } else if (binding.token != null) {
+          val parentContextKey = binding.contextualTypeKey
+          // Check if the property is in the local context
+          // If found locally, use simple property access; otherwise use resolveToken
+          // to build the full property access chain through ancestors
+          val localProperty = bindingPropertyContext.get(parentContextKey)
+          if (localProperty != null) {
+            generatePropertyAccess(
+              localProperty.property,
+              localProperty.shardProperty,
+              localProperty.shardIndex,
+            )
+          } else {
+            // Use resolveToken to build the property access chain through ancestors
+            val propertyAccess = resolveToken(binding.token)
+            propertyAccess.accessProperty(tokenAccessBase())
+          }
+        } else if (binding.typeKey == node.typeKey) {
+          // Self-binding. The graph provides itself.
+          graphInstanceAccess()
+        } else {
+          // Check if the property is in the local context (e.g., @Includes graph input
+          // parameters that are stored as fields)
+          val localProperty = bindingPropertyContext.get(binding.contextualTypeKey)
+          if (localProperty != null) {
+            generatePropertyAccess(
+              localProperty.property,
+              localProperty.shardProperty,
+              localProperty.shardIndex,
+            )
+          } else {
+            graphInstanceAccess()
+          }
+        }
+      when (accessType) {
+        INSTANCE -> instanceExpr
+        PROVIDER,
+        SUSPEND_PROVIDER -> {
+          instanceExpr.toTargetType(
+            actual = AccessType.INSTANCE,
+            contextualTypeKey = contextualTypeKey,
             bindingKind = bindingKind,
           )
         }
       }
+    }
+
+  context(scope: IrBuilderWithScope)
+  private fun generateGraphExtensionCode(
+    binding: IrBinding.GraphExtension,
+    contextualTypeKey: IrContextualTypeKey,
+    bindingKind: String,
+  ): IrExpression =
+    with(scope) {
+      // Generate graph extension instance
+      val extensionImpl =
+        graphExtensionGenerator.getOrBuildGraphExtensionImpl(
+          binding.typeKey,
+          node.sourceGraph,
+          // The reportableDeclaration should be the accessor function
+          metroFunctionOf(binding.reportableDeclaration as IrSimpleFunction),
+        )
+
+      if (options.enableGraphImplClassAsReturnType) {
+        // This is probably not the right spot to change the return type, but the IrClass
+        // implementation is not exposed otherwise.
+        binding.accessor.returnType = extensionImpl.defaultType
+      }
+
+      checkAccessorRunsInit(extensionImpl, binding.accessor)
+      val ctor = extensionImpl.primaryConstructor!!
+      irCallConstructor(ctor.symbol, emptyList())
+        .apply {
+          // If this function has parameters, they're factory instance params and need to be
+          // passed on
+          val functionParams = binding.accessor.regularParameters
+
+          // First param is always the parent graph (extension graphs are static nested classes)
+          arguments[0] = irGet(thisReceiver)
+          for (i in 0 until functionParams.size) {
+            arguments[i + 1] = irGet(functionParams[i])
+          }
+        }
+        .let { irInitializedGraph(extensionImpl, it, binding.accessor.isSuspend) }
+        .toTargetType(
+          actual = AccessType.INSTANCE,
+          contextualTypeKey = contextualTypeKey,
+          bindingKind = bindingKind,
+        )
+    }
+
+  context(scope: IrBuilderWithScope)
+  private fun generateGraphExtensionFactoryCode(
+    binding: IrBinding.GraphExtensionFactory,
+    contextualTypeKey: IrContextualTypeKey,
+    bindingKind: String,
+  ): IrExpression =
+    with(scope) {
+      // Get the pre-generated extension implementation that should contain the factory
+      val extensionImpl =
+        graphExtensionGenerator.getOrBuildGraphExtensionImpl(
+          binding.extensionTypeKey,
+          node.sourceGraph,
+          metroFunctionOf(binding.reportableDeclaration as IrSimpleFunction),
+        )
+
+      // Get the factory implementation that was generated alongside the extension
+      val factoryImpl =
+        extensionImpl.generatedGraphExtensionData?.factoryImpl
+          ?: reportCompilerBug(
+            "Expected factory implementation to be generated for graph extension factory binding",
+          )
+
+      val constructor = factoryImpl.primaryConstructor!!
+      val parameters = constructor.parameters()
+      irCallConstructor(
+          constructor.symbol,
+          binding.accessor.typeParameters.map { it.defaultType },
+        )
+        .apply {
+          // Pass the parent graph instance
+          val graphBinding =
+            bindingGraph.requireBinding(parameters.regularParameters.single().typeKey)
+          arguments[0] =
+            generateBindingCode(
+              graphBinding,
+              graphBinding.contextualTypeKey,
+              accessType = AccessType.INSTANCE,
+            )
+        }
+        .toTargetType(
+          contextualTypeKey = contextualTypeKey,
+          actual = AccessType.INSTANCE,
+          bindingKind = bindingKind,
+        )
+    }
+
+  context(scope: IrBuilderWithScope)
+  private fun generateGraphDependencyCode(
+    binding: IrBinding.GraphDependency,
+    contextualTypeKey: IrContextualTypeKey,
+    accessType: AccessType,
+    bindingKind: String,
+  ): IrExpression =
+    with(scope) {
+      // Resolve the parent token and check whether its property returns a provider or a scalar.
+      // Wrap included accessor calls in a provider function when a provider is requested.
+      if (binding.token != null) {
+        val bindingProperty = resolveTokenBindingProperty(binding.token)
+        // A getter the token's owner reuses from its ancestor builds a new value on each read.
+        val isReusedByOwner = bindingProperty.ownerGraphKey != binding.token.ownerGraphKey
+        // So does the getter behind a published @Binds alias. A stored instance stays as is.
+        val requestedKey = binding.token.contextKey.typeKey
+        val isAliasTarget = bindingProperty.storedKey.typeKey != requestedKey
+        val isAliasTargetGetter = isAliasTarget && bindingProperty.property.backingField == null
+        val buildsNewValue = isReusedByOwner || isAliasTargetGetter
+        val deferGetter = bindingProperty.isIncludedAccessor || buildsNewValue
+        return withBindingPropertyAccess(bindingProperty, accessType, deferGetter) { propertyAccess
+          ->
+          propertyAccess.toTargetType(
+            contextualTypeKey = contextualTypeKey,
+            actual = AccessType.of(bindingProperty.storedKey),
+            requested = accessType,
+            useInstanceFactory = !deferGetter,
+            allowPropertyGetter = !deferGetter,
+            bindingKind = bindingKind,
+          )
+        }
+      }
+
+      val ownerKey = binding.ownerKey
+      val (bindingGetter, actual) =
+        if (binding.getter != null) {
+          val graphInstanceBindingProperty =
+            bindingPropertyContext.get(IrContextualTypeKey(ownerKey))
+              ?: reportCompilerBug(
+                "No matching included type instance found for type $ownerKey while processing ${node.typeKey}",
+              )
+
+          val getterContextKey = IrContextualTypeKey.from(binding.getter)
+
+          val graphInstanceAccess =
+            generatePropertyAccess(
+              graphInstanceBindingProperty.property,
+              graphInstanceBindingProperty.shardProperty,
+              graphInstanceBindingProperty.shardIndex,
+            )
+
+          val invokeGetter =
+            irInvoke(
+              dispatchReceiver = graphInstanceAccess,
+              callee = binding.getter.symbol,
+              typeHint = getterContextKey.toIrType(),
+            )
+
+          if (binding.canPassThrough(contextualTypeKey)) {
+            return invokeGetter
+          }
+
+          // An instance request reads the value straight out of the accessor's wrapper.
+          if (accessType == AccessType.INSTANCE) {
+            return unwrapGraphDependencySource(invokeGetter, getterContextKey)
+          }
+
+          val sourceWrapper = getterContextKey.wrappedType
+          val targetWrapper = contextualTypeKey.wrappedType
+          val sourceIsDirectProvider =
+            sourceWrapper is WrappedType.Provider || sourceWrapper is WrappedType.SuspendProvider
+          val targetIsDirectProvider =
+            targetWrapper is WrappedType.Provider || targetWrapper is WrappedType.SuspendProvider
+          val wrappersUseSameProviderType =
+            sourceWrapper.usesSuspendProvider() == targetWrapper.usesSuspendProvider()
+          val wrappersHaveSameValue =
+            sourceWrapper.immediateInnerType()?.isScalarLeaf() == true &&
+              targetWrapper.immediateInnerType()?.isScalarLeaf() == true
+          if (
+            sourceIsDirectProvider &&
+              targetIsDirectProvider &&
+              wrappersUseSameProviderType &&
+              wrappersHaveSameValue
+          ) {
+            return convertGraphDependencyProvider(
+              invokeGetter,
+              sourceWrapper,
+              contextualTypeKey,
+            )
+          }
+
+          val sourceRequiresSuspend =
+            binding.getter.isSuspend || getterContextKey.wrappedType.requiresSuspendToUnwrap()
+          // The lambda holds the included instance in a temporary variable so it doesn't
+          // capture the graph.
+          val heldGetterProvider = scope.irBlock {
+            val includedInstance =
+              createAndAddTemporaryVariable(
+                generatePropertyAccess(
+                  graphInstanceBindingProperty.property,
+                  graphInstanceBindingProperty.shardProperty,
+                  graphInstanceBindingProperty.shardIndex,
+                ),
+                nameHint = "includedInstance",
+              )
+            val heldGetter =
+              irInvoke(
+                dispatchReceiver = irGet(includedInstance),
+                callee = binding.getter.symbol,
+                typeHint = getterContextKey.toIrType(),
+              )
+            if (sourceRequiresSuspend) {
+              +wrapInSuspendProviderFunction(binding.typeKey.type) {
+                unwrapGraphDependencySource(heldGetter, getterContextKey)
+              }
+            } else {
+              +wrapInProviderFunction(binding.typeKey.type) {
+                unwrapGraphDependencySource(heldGetter, getterContextKey)
+              }
+            }
+          }
+          if (sourceRequiresSuspend) {
+            heldGetterProvider to AccessType.SUSPEND_PROVIDER
+          } else {
+            heldGetterProvider to AccessType.PROVIDER
+          }
+        } else {
+          reportCompilerBug("Unknown graph dependency type")
+        }
+      bindingGetter.toTargetType(
+        contextualTypeKey = contextualTypeKey,
+        actual = actual,
+        bindingKind = bindingKind,
+      )
     }
 
   /** Flattens an included graph accessor's wrapper value to its canonical bound value. */
