@@ -41,7 +41,6 @@ import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.declarations.IrVariable
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.impl.IrClassReferenceImpl
-import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
@@ -808,48 +807,13 @@ internal class MultibindingExpressionGenerator(
           // JS function-valued maps use the same factories and then toFunctionMapIfNeeded().
           val factory =
             when {
-              valueIsProviderLazy ->
-                MapFactorySymbols(
-                  singleton = valueProviderSymbols.mapProviderLazyFactorySingletonFunction,
-                  builderFunction = valueProviderSymbols.mapProviderLazyFactoryBuilderFunction,
-                  builderType = valueProviderSymbols.mapProviderLazyFactoryBuilder,
-                  put = valueProviderSymbols.mapProviderLazyFactoryBuilderPutFunction,
-                  build = valueProviderSymbols.mapProviderLazyFactoryBuilderBuildFunction,
-                )
-              valueIsWrappedInProvider ->
-                MapFactorySymbols(
-                  singleton = valueProviderSymbols.mapProviderFactorySingletonFunction,
-                  builderFunction = valueProviderSymbols.mapProviderFactoryBuilderFunction,
-                  builderType = valueProviderSymbols.mapProviderFactoryBuilder,
-                  put = valueProviderSymbols.mapProviderFactoryBuilderPutFunction,
-                  build = valueProviderSymbols.mapProviderFactoryBuilderBuildFunction,
-                )
-              valueIsWrappedInLazy ->
-                MapFactorySymbols(
-                  singleton = valueProviderSymbols.mapLazyFactorySingletonFunction,
-                  builderFunction = valueProviderSymbols.mapLazyFactoryBuilderFunction,
-                  builderType = valueProviderSymbols.mapLazyFactoryBuilder,
-                  put = valueProviderSymbols.mapLazyFactoryBuilderPutFunction,
-                  build = valueProviderSymbols.mapLazyFactoryBuilderBuildFunction,
-                )
-              valueIsWrappedInSuspendProvider ->
-                MapFactorySymbols(
-                  singleton = valueProviderSymbols.mapSuspendProviderFactorySingletonFunction,
-                  builderFunction = valueProviderSymbols.mapSuspendProviderFactoryBuilderFunction,
-                  builderType = valueProviderSymbols.mapSuspendProviderFactoryBuilder,
-                  put = valueProviderSymbols.mapSuspendProviderFactoryBuilderPutFunction,
-                  build = valueProviderSymbols.mapSuspendProviderFactoryBuilderBuildFunction,
-                )
-              else ->
-                MapFactorySymbols(
-                  singleton = valueProviderSymbols.mapFactorySingletonFunction,
-                  builderFunction = valueProviderSymbols.mapFactoryBuilderFunction,
-                  builderType = valueProviderSymbols.mapFactoryBuilder,
-                  put = valueProviderSymbols.mapFactoryBuilderPutFunction,
-                  build = valueProviderSymbols.mapFactoryBuilderBuildFunction,
-                )
+              valueIsProviderLazy -> valueProviderSymbols.mapProviderLazyFactory
+              valueIsWrappedInProvider -> valueProviderSymbols.mapProviderFactory
+              valueIsWrappedInLazy -> valueProviderSymbols.mapLazyFactory
+              valueIsWrappedInSuspendProvider -> valueProviderSymbols.mapSuspendProviderFactory
+              else -> valueProviderSymbols.mapFactory
             }
-          val singletonFunction = factory.singleton
+          val singletonFunction = factory.singletonFunction
 
           // Single entry: emit `XxxFactory.singleton(key, provider)` to skip the Builder
           // allocation. Falls back to the builder path when the framework runtime doesn't expose
@@ -899,10 +863,10 @@ internal class MultibindingExpressionGenerator(
             )
           }
           val builderFunction = factory.builderFunction
-          val builderType = factory.builderType
-          val putFunction = factory.put
+          val builderType = factory.builderClass
+          val putFunction = factory.builderPutFunction
           // .build()
-          val buildFunction = factory.build
+          val buildFunction = factory.builderBuildFunction
 
           val resultType =
             valueProviderSymbols.canonicalProviderType.typeWithArguments(
@@ -1026,9 +990,9 @@ internal class MultibindingExpressionGenerator(
         when {
           valueIsProviderLazy ->
             EmptyMapFactorySymbols(
-              empty = valueFrameworkSymbols.mapProviderLazyFactoryEmptyFunction,
-              builder = valueFrameworkSymbols.mapProviderLazyFactoryBuilderFunction,
-              build = valueFrameworkSymbols.mapProviderLazyFactoryBuilderBuildFunction,
+              empty = valueFrameworkSymbols.mapProviderLazyFactory.emptyFunction,
+              builder = valueFrameworkSymbols.mapProviderLazyFactory.builderFunction,
+              build = valueFrameworkSymbols.mapProviderLazyFactory.builderBuildFunction,
             )
           useMapFunctionFactory ->
             EmptyMapFactorySymbols(
@@ -1038,27 +1002,27 @@ internal class MultibindingExpressionGenerator(
             )
           valueIsWrappedInProvider ->
             EmptyMapFactorySymbols(
-              empty = valueFrameworkSymbols.mapProviderFactoryEmptyFunction,
-              builder = valueFrameworkSymbols.mapProviderFactoryBuilderFunction,
-              build = valueFrameworkSymbols.mapProviderFactoryBuilderBuildFunction,
+              empty = valueFrameworkSymbols.mapProviderFactory.emptyFunction,
+              builder = valueFrameworkSymbols.mapProviderFactory.builderFunction,
+              build = valueFrameworkSymbols.mapProviderFactory.builderBuildFunction,
             )
           valueIsWrappedInLazy ->
             EmptyMapFactorySymbols(
-              empty = valueFrameworkSymbols.mapLazyFactoryEmptyFunction,
-              builder = valueFrameworkSymbols.mapLazyFactoryBuilderFunction,
-              build = valueFrameworkSymbols.mapLazyFactoryBuilderBuildFunction,
+              empty = valueFrameworkSymbols.mapLazyFactory.emptyFunction,
+              builder = valueFrameworkSymbols.mapLazyFactory.builderFunction,
+              build = valueFrameworkSymbols.mapLazyFactory.builderBuildFunction,
             )
           valueIsWrappedInSuspendProvider ->
             EmptyMapFactorySymbols(
-              empty = valueFrameworkSymbols.mapSuspendProviderFactoryEmptyFunction,
-              builder = valueFrameworkSymbols.mapSuspendProviderFactoryBuilderFunction,
-              build = valueFrameworkSymbols.mapSuspendProviderFactoryBuilderBuildFunction,
+              empty = valueFrameworkSymbols.mapSuspendProviderFactory.emptyFunction,
+              builder = valueFrameworkSymbols.mapSuspendProviderFactory.builderFunction,
+              build = valueFrameworkSymbols.mapSuspendProviderFactory.builderBuildFunction,
             )
           else ->
             EmptyMapFactorySymbols(
-              empty = valueFrameworkSymbols.mapFactoryEmptyFunction,
-              builder = valueFrameworkSymbols.mapFactoryBuilderFunction,
-              build = valueFrameworkSymbols.mapFactoryBuilderBuildFunction,
+              empty = valueFrameworkSymbols.mapFactory.emptyFunction,
+              builder = valueFrameworkSymbols.mapFactory.builderFunction,
+              build = valueFrameworkSymbols.mapFactory.builderBuildFunction,
             )
         }
 
@@ -1116,19 +1080,6 @@ internal class MultibindingExpressionGenerator(
   /** True when generated expressions should flow through decorator hooks before being returned. */
   private val GraphBindingExpressionDecorator.decoratesExpressions: Boolean
     get() = this !== GraphBindingExpressionDecorator.None
-
-  /**
-   * Symbols for one `Map*Factory` shape when the map has entries. [singleton] is null when the
-   * framework runtime doesn't expose a `singleton()` helper, like Dagger interop. Callers then use
-   * the builder path.
-   */
-  private data class MapFactorySymbols(
-    val singleton: IrSimpleFunctionSymbol?,
-    val builderFunction: IrSimpleFunctionSymbol,
-    val builderType: IrClassSymbol,
-    val put: IrSimpleFunctionSymbol,
-    val build: IrSimpleFunctionSymbol,
-  )
 
   /**
    * Function symbols needed to materialize an empty `Map*Factory`. [empty] is null when the
