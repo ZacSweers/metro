@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.copyParameters
 import dev.zacsweers.metro.compiler.fir.findAssistedInjectConstructors
 import dev.zacsweers.metro.compiler.fir.generateMemberFunction
+import dev.zacsweers.metro.compiler.fir.hasOrigin
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
@@ -17,6 +18,8 @@ import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.fir.FirSession
+import org.jetbrains.kotlin.fir.caches.FirCache
+import org.jetbrains.kotlin.fir.caches.firCachesFactory
 import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
 import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.origin
@@ -28,6 +31,7 @@ import org.jetbrains.kotlin.fir.extensions.MemberGenerationContext
 import org.jetbrains.kotlin.fir.extensions.NestedClassGenerationContext
 import org.jetbrains.kotlin.fir.plugin.createNestedClass
 import org.jetbrains.kotlin.fir.resolve.defaultType
+import org.jetbrains.kotlin.fir.resolve.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
@@ -55,23 +59,58 @@ internal class AssistedFactoryFirGenerator(session: FirSession, compatContext: C
     )
   }
 
-  private val assistedInjectClasses = mutableMapOf<FirClassLikeSymbol<*>, FirInjectConstructor>()
-  private val assistedFactoriesToClasses =
-    mutableMapOf<FirClassLikeSymbol<*>, FirClassLikeSymbol<*>>()
-  private val createIdsToFactories = mutableMapOf<CallableId, FirClassSymbol<*>>()
+  /**
+   * Maps a class to the assisted-inject constructor that its generated `Factory` uses. The value is
+   * null when the class gets no generated factory.
+   *
+   * Only [getNestedClassifiersNames] computes values. Later callbacks use `getValueIfComputed`, so
+   * they never resolve anything about the owner class themselves.
+   */
+  private val assistedInjectClasses: FirCache<FirClassSymbol<*>, FirInjectConstructor?, Unit> =
+    session.firCachesFactory.createCache { classSymbol, _ ->
+      computeAssistedInjectClass(classSymbol)
+    }
+
+  /**
+   * Returns the owner class and its assisted-inject constructor if [classSymbol] is a `Factory`
+   * that this generator made, or null otherwise.
+   *
+   * The name and origin checks come first, so the containing class is only looked up for our own
+   * generated class. FIR asks for a generated class's members only after it called
+   * [getNestedClassifiersNames] on the owner, so the cache value is already there.
+   */
+  private fun generatedFactoryTarget(
+    classSymbol: FirClassSymbol<*>,
+  ): Pair<FirClassSymbol<*>, FirInjectConstructor>? {
+    if (classSymbol.name != Symbols.Names.FactoryClass) {
+      return null
+    }
+
+    if (!classSymbol.hasOrigin(Keys.Default)) {
+      return null
+    }
+
+    val targetClass = classSymbol.getContainingClassSymbol() as? FirClassSymbol<*>
+    if (targetClass == null) {
+      return null
+    }
+
+    val constructor = assistedInjectClasses.getValueIfComputed(targetClass)
+    if (constructor == null) {
+      return null
+    }
+
+    return targetClass to constructor
+  }
 
   // Called for generating callables
   override fun getCallableNamesForClass(
     classSymbol: FirClassSymbol<*>,
     context: MemberGenerationContext,
   ): Set<Name> {
-    assistedFactoriesToClasses[classSymbol]?.let { targetClass ->
-      assistedInjectClasses[targetClass]?.let {
-        // Need to generate a SAM create() for this
-        val id = CallableId(classSymbol.classId, Symbols.Names.create)
-        createIdsToFactories[id] = classSymbol
-        return setOf(id.callableName)
-      }
+    if (generatedFactoryTarget(classSymbol) != null) {
+      // Need to generate a SAM create() for this
+      return setOf(Symbols.Names.create)
     }
 
     return super.getCallableNamesForClass(classSymbol, context)
@@ -82,27 +121,31 @@ internal class AssistedFactoryFirGenerator(session: FirSession, compatContext: C
     context: MemberGenerationContext?,
   ): List<FirNamedFunctionSymbol> {
     val owner = context?.owner ?: return emptyList()
-    createIdsToFactories[callableId]?.let { factoryClass ->
-      assistedFactoriesToClasses[factoryClass]?.let { targetClass ->
-        assistedInjectClasses[targetClass]?.let { constructor ->
-          // Generate a create() function
 
-          // Collect assisted params, we need to potentially port their assisted annotations if they
-          // have custom identifiers
-          val assistedParams =
-            constructor.constructor?.valueParameterSymbols.orEmpty().mapNotNull { param ->
-              if (!param.isAnnotatedWithAny(session, session.classIds.assistedAnnotations)) {
-                return@mapNotNull null
-              }
-              MetroFirValueParameter(session, param)
-            }
-          val createFunction =
-            generateCreateFunction(owner, assistedParams, targetClass, callableId)
-          return listOf(createFunction.symbol as FirNamedFunctionSymbol)
-        }
-      }
+    if (callableId.callableName != Symbols.Names.create) {
+      return super.generateFunctions(callableId, context)
     }
-    return super.generateFunctions(callableId, context)
+
+    val target = generatedFactoryTarget(owner)
+    if (target == null) {
+      return super.generateFunctions(callableId, context)
+    }
+
+    val (targetClass, constructor) = target
+
+    // Generate a create() function
+
+    // Collect assisted params, we need to potentially port their assisted annotations if they
+    // have custom identifiers
+    val assistedParams =
+      constructor.constructor?.valueParameterSymbols.orEmpty().mapNotNull { param ->
+        if (!param.isAnnotatedWithAny(session, session.classIds.assistedAnnotations)) {
+          return@mapNotNull null
+        }
+        MetroFirValueParameter(session, param)
+      }
+    val createFunction = generateCreateFunction(owner, assistedParams, targetClass, callableId)
+    return listOf(createFunction.symbol as FirNamedFunctionSymbol)
   }
 
   private fun FirDeclarationGenerationExtension.generateCreateFunction(
@@ -136,25 +179,36 @@ internal class AssistedFactoryFirGenerator(session: FirSession, compatContext: C
     classSymbol: FirClassSymbol<*>,
     context: NestedClassGenerationContext,
   ): Set<Name> {
-    val constructor = classSymbol.findAssistedInjectConstructors(session).firstOrNull()
-
-    if (constructor != null) {
-      // Check if there is already a nested factory. If there is, do nothing.
-      val existingFactory =
-        @OptIn(DirectDeclarationsAccess::class)
-        classSymbol.declarationSymbols.filterIsInstance<FirClassSymbol<*>>().singleOrNull {
-          // TODO also check for factory annotation? Not sure what else we'd do anyway though
-          it.name == Symbols.Names.FactoryClass
-        }
-      if (existingFactory != null) {
-        return emptySet()
-      }
-
-      assistedInjectClasses[classSymbol] = constructor
+    if (assistedInjectClasses.getValue(classSymbol, Unit) != null) {
       // We want to generate an assisted factory
       return setOf(Symbols.Names.FactoryClass)
     }
+
     return super.getNestedClassifiersNames(classSymbol, context)
+  }
+
+  /**
+   * Returns the first assisted-inject constructor of [classSymbol], or null if it has none or
+   * already declares a nested `Factory`.
+   */
+  private fun computeAssistedInjectClass(classSymbol: FirClassSymbol<*>): FirInjectConstructor? {
+    val constructor = classSymbol.findAssistedInjectConstructors(session).firstOrNull()
+    if (constructor == null) {
+      return null
+    }
+
+    // Check if there is already a nested factory. If there is, do nothing.
+    val existingFactory =
+      @OptIn(DirectDeclarationsAccess::class)
+      classSymbol.declarationSymbols.filterIsInstance<FirClassSymbol<*>>().singleOrNull {
+        // TODO also check for factory annotation? Not sure what else we'd do anyway though
+        it.name == Symbols.Names.FactoryClass
+      }
+    if (existingFactory != null) {
+      return null
+    }
+
+    return constructor
   }
 
   // Called for generating nested class declarations
@@ -185,6 +239,5 @@ internal class AssistedFactoryFirGenerator(session: FirSession, compatContext: C
         )
       }
       .symbol
-      .also { assistedFactoriesToClasses[it] = owner }
   }
 }
