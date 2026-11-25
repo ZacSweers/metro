@@ -21,6 +21,7 @@ import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.graph.LifecycleDiagnosticMessages
 import dev.zacsweers.metro.compiler.graph.LocationDiagnostic
+import dev.zacsweers.metro.compiler.graph.analyzePreparedGraph
 import dev.zacsweers.metro.compiler.graph.toText
 import dev.zacsweers.metro.compiler.ir.DiagnosticBatcher
 import dev.zacsweers.metro.compiler.ir.IrBindingContainerResolver
@@ -167,7 +168,7 @@ private class GraphUnit(
 ) {
   var hasErrors = false
 
-  /** Set by prepare. Only the completed binding graph's analysis runs on a worker. */
+  /** Set by prepare. Only its primitive analysis input goes to a worker. */
   lateinit var seal: IrBindingGraph.PreparedSeal
 
   /** Set by prepare. These are this graph's [children] results in the same order. */
@@ -943,17 +944,21 @@ internal class DependencyGraphTransformer(
         prepareGraph(unit, unit.children.map(results::getValue))
       }
 
-      // Only the seals go to the pool.
-      val seals = level.map { it.seal }
-      val analyses =
+      // Only primitive inputs go to the pool. Seals, units, and keys stay on this thread.
+      val inputs = level.map { it.seal.analysisInput }
+      // This transformer is the ambient trace scope, so workers get a copy without it.
+      val workerTraceScope = TraceScope(tracer, category)
+      val outputs =
         if (forkJoinPool != null) {
-          seals.parallelMap(forkJoinPool) { it.analyze() }
+          inputs.parallelMap(forkJoinPool) { input ->
+            with(workerTraceScope) { analyzePreparedGraph(input) }
+          }
         } else {
-          seals.map { it.analyze() }
+          inputs.map { analyzePreparedGraph(it) }
         }
 
       for ((index, unit) in level.withIndex()) {
-        results[unit] = finishGraph(unit, unit.seal.finish(analyses[index]))
+        results[unit] = finishGraph(unit, unit.seal.finish(outputs[index]))
       }
     }
     return results.getValue(root)

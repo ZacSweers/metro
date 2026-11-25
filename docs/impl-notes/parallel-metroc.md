@@ -1,6 +1,6 @@
 # Parallel Metro Compiler
 
-Metro can analyze several dependency graphs in parallel during its IR pass. Compiler lookups, binding resolution, and code generation stay on the main compiler thread. Workers analyze graph data prepared by that thread.
+Metro can analyze several dependency graphs in parallel during its IR pass. Compiler lookups, binding resolution, and code generation stay on the main compiler thread. Workers analyze primitive graph data prepared by that thread.
 
 The main compiler thread is the thread running `MetroIrPipeline` for the current IR fragment.
 
@@ -98,17 +98,17 @@ Preparation builds sorted adjacency and selects the roots used by analysis. Thes
 
 Preparation captures the dependency facts needed for cycle analysis. Reading a binding's dependencies can trigger compiler-backed lazy work. Workers must receive those facts fully prepared.
 
+Preparation then assigns each key an integer id in sorted key order. The seal's `AnalysisInput` stores the adjacency, deferrable edges, and roots as ids.
+
 ### Analyze
 
-[`PreparedGraphSeal.analyze`](../../metro-common/src/main/kotlin/dev/zacsweers/metro/compiler/graph/PreparedGraphSeal.kt) computes reachability, topological order, and cycle paths. It selects the bindings that need deferred initialization. A hard cycle is recorded for later reporting.
+[`analyzePreparedGraph`](../../metro-common/src/main/kotlin/dev/zacsweers/metro/compiler/graph/PreparedGraphSeal.kt) computes reachability, topological order, and cycle paths. It selects the bindings that need deferred initialization. A hard cycle is recorded for later reporting.
 
-This phase reads the prepared adjacency and deferral information. Its traversal stacks, indexes, and result collections belong to that analysis call. Workers also emit trace spans and run cancellation checks.
-
-The keys are still [`IrTypeKey`](../../compiler/src/main/kotlin/dev/zacsweers/metro/compiler/ir/IrTypeKey.kt) objects. They cache their hash and render string in compact fields. Workers can compute the same value more than once before seeing a cached result. These computations are safe to repeat because they only read prepared declarations. Rendering builds a local string. Qualifier identity uses the shared `memoize` helper and is reached during normal binding-map lookups.
+Workers receive only the `AnalysisInput` and return an `AnalysisOutput`. Both hold only ids and bit sets. The worker's trace scope holds only the tracer. A worker can't reach a key or other compiler object. Ties break by id, which matches sorted key order. Workers also emit trace spans.
 
 ### Finish
 
-`PreparedGraphSeal.finish` runs cycle callbacks and reports any hard cycle on the main compiler thread. It validates reachable bindings and assigns binding indices.
+`PreparedGraphSeal.finish` maps the output's ids back to keys on the main compiler thread. It runs cycle callbacks and reports any hard cycle. It validates reachable bindings and assigns binding indices.
 
 `IrBindingGraph` then finishes its IR-specific validation and reporting. It computes generation data such as shard assignments. It also releases the graph's binding lookup state.
 
@@ -191,9 +191,9 @@ val analysis = prepared.analyze()
 val topology = prepared.finish(analysis)
 ```
 
-The IR adapter owns compiler-specific preparation and finishing. Key hashing and comparison must support concurrent reads during analysis.
+The IR adapter owns compiler-specific preparation and finishing. The compiler sends each seal's `analysisInput` to `analyzePreparedGraph` on a worker and passes the output to `finish`.
 
-Adding work to `analyze()` requires checking every value and callback it touches. A read can populate a lazy cache. A collection can contain a compiler-backed object. New work must use prepared values or analysis-local state. Trace and cancellation callbacks must remain safe on workers.
+New analysis work must use `AnalysisInput` values or analysis-local state. Keep `AnalysisInput` and `AnalysisOutput` free of keys and compiler objects. Trace and cancellation callbacks must remain safe on workers.
 
 Parallel work is limited by the width of each tree level. A chain of extensions has one graph per level and gets no parallel analysis from this scheduler. A wide level can use more workers. Binding resolution, IR validation, and generation stay on the main compiler thread.
 

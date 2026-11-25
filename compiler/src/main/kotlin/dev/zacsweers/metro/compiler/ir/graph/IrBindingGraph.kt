@@ -23,13 +23,14 @@ import dev.zacsweers.metro.compiler.filterToSet
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.getValue
+import dev.zacsweers.metro.compiler.graph.AnalysisInput
+import dev.zacsweers.metro.compiler.graph.AnalysisOutput
 import dev.zacsweers.metro.compiler.graph.AssistedBindingKind
 import dev.zacsweers.metro.compiler.graph.BindingGraphValidator
 import dev.zacsweers.metro.compiler.graph.DerivedBindingDiagnosticMessages
 import dev.zacsweers.metro.compiler.graph.DiagnosticRoutes
 import dev.zacsweers.metro.compiler.graph.ErrorReporter
 import dev.zacsweers.metro.compiler.graph.GraphAdjacency
-import dev.zacsweers.metro.compiler.graph.GraphAnalysis
 import dev.zacsweers.metro.compiler.graph.GraphLifecyclePhase
 import dev.zacsweers.metro.compiler.graph.GraphTopology
 import dev.zacsweers.metro.compiler.graph.GraphValidationIssue
@@ -778,17 +779,18 @@ internal class IrBindingGraph(
     val factory: KtDiagnosticFactory1<String> = MetroDiagnostics.METRO_ERROR,
   )
 
-  /** Runs graph analysis on prepared inputs. Finish runs on the main compiler thread. */
+  /** A prepared graph. Workers receive only [analysisInput]. Finish runs on the main thread. */
   class PreparedSeal(
     private val graph: PreparedGraphSeal<IrTypeKey>,
     private val finishGraph: (GraphTopology<IrTypeKey>) -> BindingGraphResult,
   ) {
-    context(traceScope: TraceScope)
-    fun analyze(): GraphAnalysis<IrTypeKey> = graph.analyze()
+    /** Primitive graph data with no compiler objects. Analyze it with [analyzePreparedGraph]. */
+    val analysisInput: AnalysisInput
+      get() = graph.analysisInput
 
+    /** Maps the [AnalysisOutput] for [analysisInput] back to keys and finishes the graph. */
     context(traceScope: TraceScope)
-    fun finish(analysis: GraphAnalysis<IrTypeKey>): BindingGraphResult =
-      finishGraph(graph.finish(analysis))
+    fun finish(output: AnalysisOutput): BindingGraphResult = finishGraph(graph.finish(output))
   }
 
   /** Resolves bindings and captures the callbacks that must run on the main compiler thread. */
