@@ -141,10 +141,23 @@ internal class ContributionsFirGenerator(
       supportsAnnotationArgumentInvalidation,
     )
 
-  /** Lazily resolves binding contributions for a holder. */
-  private fun ContributionsHolder.bindingContributions(): Set<Contribution.BindingContribution> {
-    val contributions = findContributions(contributingClassSymbol) ?: return emptySet()
-    return contributions.filterIsInstance<Contribution.BindingContribution>().toSet()
+  /** Resolves the scope the same way for a contribution container and its provider functions. */
+  private fun FirAnnotation.contributionScope(resolver: MetroFirTypeResolver?): ClassId? =
+    if (resolver == null) {
+      resolvedScopeClassId(session)
+    } else {
+      resolvedScopeClassId(session, resolver)
+    }
+
+  /** Selects the bindings for one container in declaration order. */
+  private fun ContributionsHolder.bindingContributions(
+    scopeClassId: ClassId,
+  ): List<Contribution.BindingContribution> {
+    val contributions = findContributions(contributingClassSymbol) ?: return emptyList()
+    val resolver = typeResolverFactory.create(contributingClassSymbol)
+    return contributions.filterIsInstance<Contribution.BindingContribution>().filter {
+      it.annotation.contributionScope(resolver) == scopeClassId
+    }
   }
 
   /** Whether a contributing class is scoped (has a scope annotation like @SingleIn). */
@@ -176,11 +189,9 @@ internal class ContributionsFirGenerator(
       maxBytes = maxGeneratedClassNameLength,
     )
 
-  /** Whether we need a synthetic scoped provider for this holder's contributions. */
-  private fun needsSyntheticScopedProvider(holderInfo: ContributionsHolder): Boolean {
-    return holderInfo.contributingClassSymbol.isScoped() &&
-      holderInfo.bindingContributions().size > 1
-  }
+  /** Bindings for a scoped class share an instance within the same container. */
+  private fun List<Contribution.BindingContribution>.needsSyntheticScopedProvider(): Boolean =
+    size > 1 && first().annotatedType.isScoped()
 
   private val typeResolverFactory by lazy { MetroFirTypeResolver.Factory(session) }
 
@@ -220,10 +231,7 @@ internal class ContributionsFirGenerator(
         )
       buildMap {
         for (annotation in annotations) {
-          val scope =
-            if (resolver == null) annotation.resolvedScopeClassId(session)
-            else annotation.resolvedScopeClassId(session, resolver)
-          if (scope == null) continue
+          val scope = annotation.contributionScope(resolver) ?: continue
           val classId =
             MetroContributions.containerObjectClassId(
               contributingClassId,
@@ -278,12 +286,7 @@ internal class ContributionsFirGenerator(
         // Resolve aliases for identity while preserving existing source contribution marker names.
         for (annotation in contributionAnnotations) {
           val scopeArgument = annotation.scopeArgument(session) ?: continue
-          val scopeClassId =
-            if (typeResolver != null) {
-              annotation.resolvedScopeClassId(session, typeResolver)
-            } else {
-              annotation.resolvedScopeClassId(session)
-            }
+          val scopeClassId = annotation.contributionScope(typeResolver)
           val nestedContributionName =
             sourceContributionName(
               contributingClassSymbol.classId,
@@ -441,10 +444,11 @@ internal class ContributionsFirGenerator(
       val holderClassId = classSymbol.classId.outerClassId ?: return emptySet()
       val holderInfo = getHolder(holderClassId) ?: return emptySet()
       val scopeClassId = holderInfo.scopeForContainer(classSymbol.classId) ?: return emptySet()
+      val contributions = holderInfo.bindingContributions(scopeClassId)
       return buildSet {
         add(SpecialNames.INIT)
         // Add synthetic scoped provider function if needed
-        if (needsSyntheticScopedProvider(holderInfo)) {
+        if (contributions.needsSyntheticScopedProvider()) {
           add(
             syntheticScopedFunctionName(
               holderInfo.contributingClassSymbol,
@@ -453,7 +457,7 @@ internal class ContributionsFirGenerator(
             ),
           )
         }
-        for (contribution in holderInfo.bindingContributions()) {
+        for (contribution in contributions) {
           add(
             providesFunctionName(
               contribution,
@@ -507,7 +511,8 @@ internal class ContributionsFirGenerator(
     val scopeClassId = holderInfo.scopeForContainer(context.owner.classId) ?: return emptyList()
 
     val contributingClassSymbol = holderInfo.contributingClassSymbol
-    val useSyntheticScoped = needsSyntheticScopedProvider(holderInfo)
+    val contributions = holderInfo.bindingContributions(scopeClassId)
+    val useSyntheticScoped = contributions.needsSyntheticScopedProvider()
 
     // Check if this is the synthetic scoped provider function
     if (
@@ -515,11 +520,11 @@ internal class ContributionsFirGenerator(
         callableId.callableName ==
           syntheticScopedFunctionName(contributingClassSymbol, context.owner.classId, scopeClassId)
     ) {
-      return listOf(generateSyntheticScopedFunction(context, holderInfo, callableId))
+      return listOf(generateSyntheticScopedFunction(context, contributions.first(), callableId))
     }
 
     val matchingContribution =
-      holderInfo.bindingContributions().find {
+      contributions.find {
         providesFunctionName(it, contributingClassSymbol, context.owner.classId, scopeClassId) ==
           callableId.callableName
       } ?: return emptyList()
@@ -543,7 +548,7 @@ internal class ContributionsFirGenerator(
             val param =
               buildSimpleValueParameter(
                   name = Symbols.Names.instance,
-                  type = syntheticScopedType(holderInfo).toFirResolvedTypeRef(),
+                  type = syntheticScopedType(contributions.first()).toFirResolvedTypeRef(),
                   containingFunctionSymbol = this.symbol,
                 )
                 .apply {
@@ -731,20 +736,15 @@ internal class ContributionsFirGenerator(
   }
 
   /**
-   * Returns the key type of the synthetic scoped provider. Non-generic classes use `Any?`. Generic
-   * classes use the first bound type. It carries every class type parameter, which FIR checks, so
-   * Metro can infer the scoped instance's type arguments from it. It also keeps an internal
-   * implementation class out of the public signature.
+   * A synthetic scoped provider uses `Any?` for a non-generic class. For a generic class it uses
+   * the first bound type in the container's scope. FIR checks that this type carries every class
+   * type parameter. Metro can then infer the type arguments without exposing an internal class in
+   * the public signature.
    */
-  private fun syntheticScopedType(holderInfo: ContributionsHolder): ConeKotlinType {
-    val contributingClassSymbol = holderInfo.contributingClassSymbol
+  private fun syntheticScopedType(contribution: Contribution.BindingContribution): ConeKotlinType {
+    val contributingClassSymbol = contribution.annotatedType
     if (contributingClassSymbol.typeParameterSymbols.isEmpty()) {
       return session.builtinTypes.nullableAnyType.coneType
-    }
-
-    val contribution = holderInfo.bindingContributions().firstOrNull()
-    if (contribution == null) {
-      reportCompilerBug("No binding contribution for ${contributingClassSymbol.classId}")
     }
 
     val boundType = resolveBoundTypeRef(contributingClassSymbol, contribution.annotation).first
@@ -758,10 +758,10 @@ internal class ContributionsFirGenerator(
   /** Generates the qualified provider that shares scoped instances between contributions. */
   private fun generateSyntheticScopedFunction(
     context: MemberGenerationContext,
-    holderInfo: ContributionsHolder,
+    contribution: Contribution.BindingContribution,
     callableId: CallableId,
   ): FirNamedFunctionSymbol {
-    val contributingClassSymbol = holderInfo.contributingClassSymbol
+    val contributingClassSymbol = contribution.annotatedType
     val qualifierName = syntheticScopedQualifierName(contributingClassSymbol.classId)
 
     // Get the @Inject constructor parameters
@@ -777,7 +777,7 @@ internal class ContributionsFirGenerator(
       generateContributionFunction(
         contributingClassSymbol = contributingClassSymbol,
         owner = context.owner,
-        returnType = syntheticScopedType(holderInfo),
+        returnType = syntheticScopedType(contribution),
         callableId = callableId,
       ) {
         copyParameters(
@@ -1151,13 +1151,7 @@ internal class ContributionsFirGenerator(
       // scope to collect replaces from all of them.
       val typeResolver = typeResolverFactory.create(contributingSymbol)
       val matchingAnnotations = contributionAnnotations.filter { annotation ->
-        val scopeClassId =
-          if (typeResolver != null) {
-            annotation.resolvedScopeClassId(session, typeResolver)
-          } else {
-            annotation.resolvedScopeClassId(session)
-          }
-        scopeClassId == containerScope
+        annotation.contributionScope(typeResolver) == containerScope
       }
       if (matchingAnnotations.isEmpty()) return null
       val scopeArg = matchingAnnotations.firstNotNullOfOrNull { it.scopeArgument(session) }

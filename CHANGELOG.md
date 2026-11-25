@@ -23,6 +23,7 @@ Changelog
 - **[core]** Generated set and map entries now have the same graph keys in the IDE and compiler reports, including entries from libraries.
 - **[core]** Set and map entries declared as properties now use the property name in both the IDE and compiler reports.
 - **[Compiler]** Preserve unrelated files when clearing old reports from `reportsDestination`.
+- **[FIR]** Limit generated contribution providers to bindings declared for their scope. Previously when a class contributed bindings to multiple scopes, FIR exposed all of them in each scope. Each container now generates providers only for its own bindings.
 - **[FIR]** Report abstract properties on `@AssistedFactory` and `@DependencyGraph.Factory` at compile time. Reading one on an assisted factory could throw `AbstractMethodError`.
 - **[FIR]** `@ElementsIntoSet` could put lists in a `Set<String>` when a provider returned `Batch<String>` and `Batch<T>` implemented `List<List<T>>`. Metro now reports a compile error. Declare `Set<List<String>>` and return `batch.toSet()`.
 - **[FIR/IR]** Fix `@get:` site targets for `@OptionalBinding`.
