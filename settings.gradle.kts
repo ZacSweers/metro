@@ -2,37 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 pluginManagement {
   includeBuild("build-logic")
-  val kotlinRepoUrl = providers.gradleProperty("kotlin_repo_url").orNull
-  repositories {
-    if (kotlinRepoUrl != null) {
-      maven(kotlinRepoUrl)
-    }
-    mavenCentral()
-    google()
-    gradlePluginPortal()
-    maven("https://redirector.kotlinlang.org/maven/bootstrap")
-    maven("https://redirector.kotlinlang.org/maven/dev/")
-    // Publications used by IJ
-    // https://kotlinlang.slack.com/archives/C7L3JB43G/p1757001642402909
-    maven("https://redirector.kotlinlang.org/maven/intellij-dependencies/")
+  providers.gradleProperty("kotlin_repo_url").orNull?.let {
+    extra["metro.repositories.firstMavenRepository"] = uri(it)
   }
+  apply(from = "gradle/repositories.gradle.kts")
+  val metroSettingsRepositories: Action<Settings> by extra
+  metroSettingsRepositories.execute(settings)
   plugins { id("com.gradle.develocity") version "4.6.1" }
-}
-
-dependencyResolutionManagement {
-  val kotlinRepoUrl = providers.gradleProperty("kotlin_repo_url").orNull
-  repositories {
-    if (kotlinRepoUrl != null) {
-      maven(kotlinRepoUrl)
-    }
-    mavenCentral()
-    google()
-    maven("https://redirector.kotlinlang.org/maven/bootstrap")
-    maven("https://redirector.kotlinlang.org/maven/dev/")
-    // Publications used by IJ
-    // https://kotlinlang.slack.com/archives/C7L3JB43G/p1757001642402909
-    maven("https://redirector.kotlinlang.org/maven/intellij-dependencies/")
-  }
 }
 
 plugins { id("com.gradle.develocity") }

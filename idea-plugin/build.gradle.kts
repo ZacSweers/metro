@@ -11,7 +11,10 @@ import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask
 import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 
 buildscript {
-  repositories { mavenCentral() }
+  project.apply(from = "../gradle/repositories.gradle.kts")
+  val metroMavenCentralRepositories: Action<RepositoryHandler> by project.extra
+  repositories(metroMavenCentralRepositories)
+
   dependencies { classpath(libs.commonmark) }
 }
 
@@ -204,9 +207,12 @@ kotlin {
 
 java { toolchain { languageVersion.set(libs.versions.ideaJvmTarget.map(JavaLanguageVersion::of)) } }
 
+val metroMavenCentralRepositories: Action<RepositoryHandler> by extra
+val metroGoogleRepository: Action<RepositoryHandler> by extra
+
 repositories {
-  mavenCentral()
-  google()
+  metroMavenCentralRepositories.execute(this)
+  metroGoogleRepository.execute(this)
   intellijPlatform { defaultRepositories() }
 }
 

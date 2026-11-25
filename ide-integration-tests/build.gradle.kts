@@ -11,8 +11,12 @@ plugins {
 
 metroProject { jvmTarget.set("21") }
 
+apply(from = "../gradle/repositories.gradle.kts")
+
+val metroMavenCentralRepositories: Action<RepositoryHandler> by extra
+
 repositories {
-  mavenCentral()
+  metroMavenCentralRepositories.execute(this)
   intellijPlatform { defaultRepositories() }
 }
 
@@ -103,6 +107,7 @@ tasks.test {
     .files(
       layout.projectDirectory.file("../gradle.properties"),
       layout.projectDirectory.file("../gradle/libs.versions.toml"),
+      layout.projectDirectory.file("../gradle/repositories.gradle.kts"),
     )
     .withPropertyName("testProjectSharedConfiguration")
     .withPathSensitivity(PathSensitivity.RELATIVE)

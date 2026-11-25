@@ -2,17 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 pluginManagement {
   includeBuild("../build-logic")
-  repositories {
-    mavenCentral()
-    google()
-    gradlePluginPortal()
-    mavenLocal() // For local testing
-    maven("https://redirector.kotlinlang.org/maven/bootstrap")
-    maven("https://redirector.kotlinlang.org/maven/dev/")
-    // Publications used by IJ
-    // https://kotlinlang.slack.com/archives/C7L3JB43G/p1757001642402909
-    maven("https://redirector.kotlinlang.org/maven/intellij-dependencies/")
-  }
+  extra["metro.repositories.mavenLocal"] = true // For local testing
+  apply(from = "../gradle/repositories.gradle.kts")
+  val metroSettingsRepositories: Action<Settings> by extra
+  metroSettingsRepositories.execute(settings)
   plugins { id("com.gradle.develocity") version "4.6.1" }
 }
 
@@ -26,16 +19,6 @@ dependencyResolutionManagement {
         version("metro", metroVersion)
       }
     }
-  }
-  repositories {
-    mavenCentral()
-    google()
-    mavenLocal() // For local testing
-    maven("https://redirector.kotlinlang.org/maven/bootstrap")
-    maven("https://redirector.kotlinlang.org/maven/dev/")
-    // Publications used by IJ
-    // https://kotlinlang.slack.com/archives/C7L3JB43G/p1757001642402909
-    maven("https://redirector.kotlinlang.org/maven/intellij-dependencies/")
   }
 }
 
