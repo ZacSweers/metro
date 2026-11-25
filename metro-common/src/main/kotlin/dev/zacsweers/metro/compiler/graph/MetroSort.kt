@@ -15,6 +15,7 @@ import java.util.BitSet
 import java.util.PriorityQueue
 import java.util.SortedMap
 import java.util.SortedSet
+import java.util.TreeMap
 
 /**
  * @param sortedKeys Topologically sorted list of keys.
@@ -913,6 +914,8 @@ private fun findComponents(input: AnalysisInput, ensureActive: () -> Unit): Comp
  * that owns the keys.
  */
 internal class IndexedAdjacency<V>(
+  /** The map these ids came from. Its entry order is id order. Never modify it. */
+  val source: SortedMap<V, SortedSet<V>>,
   /** Keys by id. */
   val vertices: List<V>,
   /** Each key's edges, in the order [targets] stores them. */
@@ -959,7 +962,7 @@ internal fun <V> SortedMap<V, SortedSet<V>>.indexed(
     }
   }
   rowStarts[n] = next
-  return IndexedAdjacency(vertices, rows, idOf, rowStarts, targets)
+  return IndexedAdjacency(this, vertices, rows, idOf, rowStarts, targets)
 }
 
 /** Returns sorted ids for [roots], skipping keys outside the graph. Null selects every vertex. */
@@ -1054,7 +1057,7 @@ private fun <V : Comparable<V>> IndexedAdjacency<V>.reachableAdjacency(
     reachable.set(id)
   }
 
-  val reachableForward = sortedMapOf<V, SortedSet<V>>()
+  val reachableForward = reachableRows(reachable, members.size, ensureActive)
   val reachableReverse = HashMap<V, MutableSet<V>>(vertexCount)
   for (id in 0 until vertexCount) {
     ensureActive()
@@ -1063,17 +1066,55 @@ private fun <V : Comparable<V>> IndexedAdjacency<V>.reachableAdjacency(
       continue
     }
 
-    // Include empty rows so callers that index into the result (e.g. `forward[v]`) see every leaf.
     val vertex = vertices[id]
-    val edges = rows[id]
-    reachableForward[vertex] = edges
-    for (dependency in edges) {
+    for (dependency in rows[id]) {
       ensureActive()
       // Mirror the edge into the reverse adjacency so consumers can walk dependents.
       reachableReverse.getAndAdd(dependency, vertex)
     }
   }
   return GraphAdjacency(reachableForward, reachableReverse)
+}
+
+/**
+ * Returns the rows of the [reachable] vertices by key. Empty rows are included so callers that
+ * index into the result (like `forward[v]`) see every leaf.
+ *
+ * Inserting a row compares keys. That's expensive for compiler keys. When at least half of the
+ * vertices are reachable, this copies [IndexedAdjacency.source] and removes the other entries
+ * through its iterator. Both steps are linear and compare no keys.
+ */
+private fun <V : Comparable<V>> IndexedAdjacency<V>.reachableRows(
+  reachable: BitSet,
+  reachableCount: Int,
+  ensureActive: () -> Unit,
+): SortedMap<V, SortedSet<V>> {
+  val isMostlyReachable = reachableCount >= vertexCount - reachableCount
+  if (!isMostlyReachable) {
+    // A copy would visit every entry to keep a few.
+    val forward = sortedMapOf<V, SortedSet<V>>()
+    var id = reachable.nextSetBit(0)
+    while (id >= 0) {
+      ensureActive()
+      forward[vertices[id]] = rows[id]
+      id = reachable.nextSetBit(id + 1)
+    }
+    return forward
+  }
+
+  val forward = TreeMap(source)
+  val entries = forward.entries.iterator()
+  var id = 0
+  while (entries.hasNext()) {
+    ensureActive()
+    entries.next()
+    // The copy's entry order is id order.
+    if (!reachable.get(id)) {
+      entries.remove()
+    }
+    id++
+  }
+  return forward
 }
 
 /** Maps [output] back to keys. [output] must come from this adjacency's analysis input. */
