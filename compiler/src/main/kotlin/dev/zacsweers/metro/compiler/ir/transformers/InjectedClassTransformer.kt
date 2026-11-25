@@ -61,7 +61,6 @@ import dev.zacsweers.metro.compiler.proto.SignatureCarrier
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.Optional
-import java.util.concurrent.ConcurrentHashMap
 import kotlin.jvm.optionals.getOrNull
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.ir.builders.declarations.addConstructor
@@ -104,8 +103,7 @@ internal class InjectedClassTransformer(
   private val membersInjectorTransformer: MembersInjectorTransformer,
 ) : IrMetroContext by context, Lockable by Lockable() {
 
-  // Thread-safe for concurrent access during parallel graph validation.
-  private val generatedFactories = ConcurrentHashMap<ClassId, Optional<ClassFactory>>()
+  private val generatedFactories = mutableMapOf<ClassId, Optional<ClassFactory>>()
 
   fun visitClass(declaration: IrClass): Boolean {
     val injectableConstructor =

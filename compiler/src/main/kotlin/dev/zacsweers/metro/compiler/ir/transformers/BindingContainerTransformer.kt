@@ -102,7 +102,6 @@ import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.trace
 import java.util.EnumSet
 import java.util.Optional
-import java.util.concurrent.ConcurrentHashMap
 import kotlin.jvm.optionals.getOrNull
 import org.jetbrains.kotlin.backend.jvm.ir.getJvmNameFromAnnotation
 import org.jetbrains.kotlin.descriptors.ClassKind
@@ -176,17 +175,14 @@ internal class BindingContainerTransformer(
   traceScope: TraceScope,
 ) : IrMetroContext by context, TraceScope by traceScope, Lockable by Lockable() {
 
-  // Thread-safe for concurrent access during parallel graph validation.
-  private val references = ConcurrentHashMap<CallableId, CallableReference>()
-  private val generatedFactories = ConcurrentHashMap<CallableId, ProviderFactory>()
+  private val references = mutableMapOf<CallableId, CallableReference>()
+  private val generatedFactories = mutableMapOf<CallableId, ProviderFactory>()
 
   /**
    * A cache of binding container fqnames to a [BindingContainer] representation of them. If the key
    * is present but the value is an empty optional, it means this is just not a binding container.
-   *
-   * Thread-safe for concurrent access during parallel graph validation.
    */
-  private val cache = ConcurrentHashMap<FqName, Optional<BindingContainer>>()
+  private val cache = mutableMapOf<FqName, Optional<BindingContainer>>()
 
   @IgnorableReturnValue
   fun findContainer(
@@ -332,7 +328,7 @@ internal class BindingContainerTransformer(
       cache.putIfAbsent(declarationFqName, Optional.empty())
       null
     } else {
-      // putIfAbsent avoids overwriting if a concurrent caller already populated the slot.
+      // putIfAbsent keeps an entry that is already stored for this name.
       val existing = cache.putIfAbsent(declarationFqName, Optional.of(container))
       generatedFactories.putAll(providerFactories)
       existing?.getOrNull() ?: container
@@ -1337,7 +1333,7 @@ internal class BindingContainerTransformer(
         bindsMirror = bindsMirror,
       )
 
-    // Cache the results (putIfAbsent so a concurrent caller doesn't lose their entry).
+    // Cache the results (putIfAbsent keeps an entry that is already stored for this name).
     val existing = cache.putIfAbsent(declarationFqName, Optional.of(container))
     generatedFactories.putAll(providerFactories)
 

@@ -61,7 +61,7 @@ This matters most for cascading graph extension trees. A parent graph and its ch
 
 Primitive-value collections such as `MutableObjectIntMap` also avoid boxing integer indexes. Shard lookup and strongly connected component analysis use the same approach for graph and shard IDs.
 
-Scatter collections do not provide sorted iteration or safe concurrent mutation. Keep deterministic ordering in the sorted graph structures, and use concurrent collections for caches that parallel graph validation can mutate.
+Scatter collections do not provide sorted iteration or safe concurrent mutation. Keep deterministic ordering in the sorted graph structures.
 
 Temporary analysis state does not need this. Ordinary `HashMap`, `HashSet`, etc. are fine when their contents are released after a short analysis pass.
 
@@ -230,13 +230,13 @@ Cache keys must preserve:
 
 A cache keyed only by the underlying type can incorrectly merge provider and scalar requests.
 
-Some caches are concurrent because sibling graphs can be validated in parallel. Other IR caches are intentionally thread-unsafe. Do not assume a cache is bounded or thread-safe without checking its implementation.
+IR caches are intentionally thread-unsafe. Do not assume a cache is bounded or thread-safe without checking its implementation.
 
 Completed graphs release lookup state that is no longer needed. Avoid retaining graph analysis structures after sealing or code generation has finished.
 
 ### Parallel graph validation
 
-`parallel-threads` defaults to `0`, which keeps validation sequential. When enabled, sibling graph extensions can be validated on a `ForkJoinPool`.
+`parallel-threads` defaults to `0`, which keeps validation sequential. When enabled, sibling graph extensions can be analyzed on a `ForkJoinPool`. Workers receive only primitive graph data.
 
 The parent graph is represented by an immutable snapshot. Each child records its own used keys, and results are merged in a stable order after validation.
 
@@ -250,7 +250,7 @@ merge(first)
 merge(second)
 ```
 
-(The example shows the ownership model rather than the exact scheduling code. Child validation can overlap, but graph declaration creation and result merging must not race.)
+(The example shows the ownership model rather than the exact scheduling code. Child analysis can overlap. Graph declaration creation and result merging stay on the thread that runs the pipeline.)
 
 Parallel processing is extremely experimental as the underlying compiler doesn't really support it. Metro's support tries to gate information gathering first and then only parallelize graph processing.
 

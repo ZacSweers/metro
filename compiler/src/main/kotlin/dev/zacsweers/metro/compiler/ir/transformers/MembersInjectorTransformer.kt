@@ -70,7 +70,6 @@ import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.trace
 import java.util.Optional
-import java.util.concurrent.ConcurrentHashMap
 import kotlin.jvm.optionals.getOrNull
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
@@ -118,9 +117,8 @@ import org.jetbrains.kotlin.name.ClassId
 internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: TraceScope) :
   IrMetroContext by context, TraceScope by traceScope, Lockable by Lockable() {
 
-  // Thread-safe for concurrent access during parallel graph validation.
-  private val generatedInjectors = ConcurrentHashMap<ClassId, Optional<MemberInjectClass>>()
-  private val injectorParamsByClass = ConcurrentHashMap<ClassId, List<Parameters>>()
+  private val generatedInjectors = mutableMapOf<ClassId, Optional<MemberInjectClass>>()
+  private val injectorParamsByClass = mutableMapOf<ClassId, List<Parameters>>()
 
   fun visitClass(declaration: IrClass): Boolean {
     return getOrGenerateInjector(declaration) != null

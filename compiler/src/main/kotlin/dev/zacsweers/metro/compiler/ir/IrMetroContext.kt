@@ -66,7 +66,7 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
   /**
    * Flushes any buffered IC tracking (lookups + expect/actual links) to the underlying trackers.
    * No-op unless [MetroOptions.bufferedIcTracking] is on. Call once after IR/graph validation
-   * completes, when no parallel work is in flight.
+   * completes.
    */
   fun flushIcTracking()
 
@@ -187,7 +187,7 @@ internal class IrMetroContextImpl(
   override val lookupTracker: LookupTracker? = rawLookupTracker?.let { raw ->
     val recording = if (options.reportsEnabled) RecordingLookupTracker(this, raw) else raw
     if (options.bufferedIcTracking) {
-      BufferingLookupTracker(recording, parallel = options.parallelThreads > 0)
+      BufferingLookupTracker(recording)
     } else {
       recording
     }
@@ -201,7 +201,7 @@ internal class IrMetroContextImpl(
         rawExpectActualTracker
       }
     if (options.bufferedIcTracking) {
-      BufferingExpectActualTracker(recording, parallel = options.parallelThreads > 0)
+      BufferingExpectActualTracker(recording)
     } else {
       recording
     }

@@ -7,7 +7,6 @@ import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.compiler.ir.IrScope
 import java.io.File
 import java.util.Optional
-import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Caches source files for source-frame rendering.
@@ -18,7 +17,7 @@ import java.util.concurrent.ConcurrentHashMap
 @Inject
 @SingleIn(IrScope::class)
 internal class SourceFileCache {
-  private val cache = ConcurrentHashMap<String, Optional<List<String>>>()
+  private val cache = mutableMapOf<String, Optional<List<String>>>()
 
   fun linesFor(path: String): List<String>? =
     cache

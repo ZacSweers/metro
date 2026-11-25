@@ -185,40 +185,19 @@ internal fun trackLookup(
   }
 }
 
-/**
- * Whether IC writes go straight to the trackers (and their report-file logging) and therefore need
- * a lock under parallelism. Buffered tracking (`enableBufferedIcTracking`) writes to a thread-safe
- * log that is flushed serially after IR, so it never needs a lock here.
- */
-context(context: IrMetroContext)
-internal fun icWritesNeedLock(): Boolean =
-  !context.options.bufferedIcTracking && context.options.parallelThreads > 0
-
 context(context: IrMetroContext)
 internal inline fun withLookupTracker(body: LookupTracker.() -> Unit) {
-  context.lookupTracker?.let { tracker ->
-    if (icWritesNeedLock()) {
-      synchronized(tracker) { tracker.body() }
-    } else {
-      tracker.body()
-    }
-  }
+  context.lookupTracker?.body()
 }
 
 context(context: IrMetroContext)
 internal inline fun withExpectActualTracker(body: ExpectActualTracker.() -> Unit) {
-  val tracker = context.expectActualTracker
-  if (icWritesNeedLock()) {
-    synchronized(tracker) { tracker.body() }
-  } else {
-    tracker.body()
-  }
+  context.expectActualTracker.body()
 }
 
 /**
  * Run [body] with a [BindsTrackerScope] that has resolved [callingDeclaration]'s file path once for
- * a tight loop of lookups. When IC writes are unbuffered under parallelism, the lookup tracker lock
- * is also acquired once instead of per-call.
+ * a tight loop of lookups.
  */
 context(context: IrMetroContext)
 internal inline fun batchTrackForCallingDeclaration(
