@@ -94,7 +94,6 @@ import dev.zacsweers.metro.compiler.safePathString
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.trace
-import java.util.concurrent.ConcurrentHashMap
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactory1
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
@@ -587,7 +586,7 @@ internal class IrBindingGraph(
    * graphs resolve keys in this graph while they're analyzed. Those reads happen when a graph is
    * prepared or finished, and both steps run on the main compiler thread.
    */
-  private val aliasTargetKeys = ConcurrentHashMap<IrTypeKey, IrTypeKey>()
+  private val aliasTargetKeys = mutableMapOf<IrTypeKey, IrTypeKey>()
 
   /**
    * Returns the binding at the end of [key]'s `@Binds` alias chain. That's [key]'s own binding when
