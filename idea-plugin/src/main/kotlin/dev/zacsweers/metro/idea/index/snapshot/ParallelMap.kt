@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.idea.index.snapshot
 
 import kotlin.coroutines.CoroutineContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -107,11 +108,11 @@ internal suspend fun <T, R> List<T>.parallelMapIndexed(
             ensureActive()
             completed.send(IndexedValue(index, result))
           }
-        } catch (failure: Throwable) {
-          // A read can cancel itself independently of the pool's parent. Wake the collector so that
-          // it also cancels and joins the remaining workers in that case.
-          completed.close(failure)
-          throw failure
+        } catch (cancellation: CancellationException) {
+          // Only a worker's cancellation needs to wake the collector. The scope aggregates
+          // failures.
+          completed.close(cancellation)
+          throw cancellation
         }
       }
     }

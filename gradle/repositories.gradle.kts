@@ -3,10 +3,12 @@
 
 import java.net.URI
 
+val metroMavenCentralMirrorUrl = "https://maven-central.storage-download.googleapis.com/maven2/"
+
 val metroMavenCentralMirror =
   Action<RepositoryHandler> {
     // Prefer the mirror to avoid Maven Central rate limits and outages.
-    maven("https://maven-central.storage-download.googleapis.com/maven2/")
+    maven(metroMavenCentralMirrorUrl)
   }
 
 val metroMavenCentralRepositories =
@@ -27,6 +29,8 @@ val metroGoogleRepository =
       }
     }
   }
+
+extra["metroMavenCentralMirrorUrl"] = metroMavenCentralMirrorUrl
 
 extra["metroMavenCentralRepositories"] = metroMavenCentralRepositories
 

@@ -254,7 +254,13 @@ tasks.withType<Test>().configureEach {
   testOmitRedundantMirrors?.let { systemProperty("metro.testOmitRedundantMirrors", it) }
 }
 
+apply(from = "../gradle/repositories.gradle.kts")
+
+val metroMavenCentralMirrorUrl: String by extra
+
 tasks.named<Test>("functionalTest") {
+  systemProperty("metro.mavenCentralMirrorUrl", metroMavenCentralMirrorUrl)
+
   // The fixtures load the compiler from the repository as a Kotlin compiler plugin.
   dependsOn(":compiler:installForFunctionalTest")
 

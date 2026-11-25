@@ -255,7 +255,10 @@ abstract class MetroProject(
     Repositories(
       mutableListOf<Repository>().apply {
         getTestCompilerRepositoryUrl()?.let { add(Repository.ofMaven(it)) }
-        addAll(defaults)
+        // TestKit puts the fixture publication repository first in both default lists.
+        add(defaults.first())
+        add(Repository.ofMaven(System.getProperty("metro.mavenCentralMirrorUrl")))
+        addAll(defaults.drop(1))
         add(Repository.ofMaven("https://packages.jetbrains.team/maven/p/kt/bootstrap"))
         add(Repository.ofMaven("https://packages.jetbrains.team/maven/p/kt/dev/"))
         add(Repository.ofMaven("https://packages.jetbrains.team/maven/p/ij/intellij-dependencies/"))

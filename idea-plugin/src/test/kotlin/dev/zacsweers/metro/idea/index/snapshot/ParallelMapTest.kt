@@ -20,6 +20,8 @@ import kotlin.test.fail
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.asCoroutineDispatcher
@@ -407,7 +409,7 @@ class ParallelMapTest {
         listOf(0, 1).parallelMap(parallelism = 2) { item ->
           // Block instead of suspending so neither throw can turn into a cancellation.
           bothStarted.countDown()
-          bothStarted.await(5, TimeUnit.SECONDS)
+          assertTrue(bothStarted.await(5, TimeUnit.SECONDS), "Both reads must start")
           if (item == 0) {
             throw first
           } else {
@@ -429,6 +431,45 @@ class ParallelMapTest {
           "Expected the sibling failure as suppressed",
         )
       }
+    }
+  }
+
+  @Test
+  fun `a suspended collector preserves a sibling cleanup failure`() = runBlocking {
+    withTimeout(10_000.milliseconds) {
+      val failRead = CompletableDeferred<Unit>()
+      val siblingStarted = CompletableDeferred<Unit>()
+      val readFailure = IllegalStateException("Read failed")
+      val cleanupFailure = IllegalArgumentException("Cleanup failed")
+      // The collector suspends before either read can fail and can resume inline on the worker.
+      val scan =
+        async(Dispatchers.Unconfined, start = CoroutineStart.UNDISPATCHED) {
+          assertFailsWith<IllegalStateException> {
+            listOf(0, 1).parallelMap(parallelism = 2) { item ->
+              if (item == 0) {
+                siblingStarted.await()
+                failRead.await()
+                throw readFailure
+              }
+
+              try {
+                siblingStarted.complete(Unit)
+                awaitCancellation()
+              } finally {
+                throw cleanupFailure
+              }
+            }
+          }
+        }
+
+      failRead.complete(Unit)
+      val actual = scan.await()
+      assertOriginalFailure(readFailure, actual)
+      val causes = generateSequence<Throwable>(actual) { it.cause }
+      assertTrue(
+        causes.any { cleanupFailure in it.suppressed },
+        "Expected the cleanup failure as suppressed",
+      )
     }
   }
 
