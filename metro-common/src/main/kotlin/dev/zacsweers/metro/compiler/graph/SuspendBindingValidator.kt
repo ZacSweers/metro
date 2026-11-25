@@ -25,7 +25,6 @@ public class SuspendBindingValidator<
   private val bindingIsScoped: (Binding) -> Boolean,
   private val multibindingIsSet: (Binding) -> Boolean,
   private val bindingIsReachable: (Binding) -> Boolean = { true },
-  private val hasAdditionalSuspendLazyUse: (Binding) -> Boolean = { false },
   private val analyze:
     (Iterable<TypeKey>) -> SuspendBindingAnalysisResult<TypeKey, ContextualTypeKey>,
   private val rules: SuspendBindingRules<Type, TypeKey, ContextualTypeKey, Binding>,
@@ -508,8 +507,7 @@ public class SuspendBindingValidator<
         scopedSuspendKeys?.add(binding.typeKey)
       }
       val requestsSuspendLazy =
-        hasAdditionalSuspendLazyUse(binding) ||
-          binding.contextualTypeKey.wrappedType.containsSuspendLazy() ||
+        binding.contextualTypeKey.wrappedType.containsSuspendLazy() ||
           binding.dependencies.any { it.wrappedType.containsSuspendLazy() }
       if (requestsSuspendLazy) {
         requiresSuspendLazyRuntime = true

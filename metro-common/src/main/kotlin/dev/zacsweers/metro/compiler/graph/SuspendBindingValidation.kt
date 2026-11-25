@@ -59,7 +59,6 @@ public data class SuspendBindingMetadata<ContextualTypeKey>(
   val isScoped: Boolean = false,
   val hasAdditionalSuspendWrapperUse: Boolean = false,
   val inspectDependencySuspendWrappers: Boolean = true,
-  val hasAdditionalSuspendLazyUse: Boolean = false,
   val multibinding: SuspendMultibindingMetadata? = null,
   val memberInjections: List<SuspendMemberInjectionMetadata<ContextualTypeKey>> = emptyList(),
   val assistedFactory: SuspendAssistedFactoryMetadata<ContextualTypeKey>? = null,
