@@ -257,9 +257,11 @@ tasks.withType<Test>().configureEach {
 apply(from = "../gradle/repositories.gradle.kts")
 
 val metroMavenCentralMirrorUrl: String by extra
+val metroGradlePluginPortalMirrorUrl: String by extra
 
 tasks.named<Test>("functionalTest") {
   systemProperty("metro.mavenCentralMirrorUrl", metroMavenCentralMirrorUrl)
+  systemProperty("metro.gradlePluginPortalMirrorUrl", metroGradlePluginPortalMirrorUrl)
 
   // The fixtures load the compiler from the repository as a Kotlin compiler plugin.
   dependsOn(":compiler:installForFunctionalTest")

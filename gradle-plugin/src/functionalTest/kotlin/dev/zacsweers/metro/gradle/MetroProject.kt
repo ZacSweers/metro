@@ -258,7 +258,14 @@ abstract class MetroProject(
         // TestKit puts the fixture publication repository first in both default lists.
         add(defaults.first())
         add(Repository.ofMaven(System.getProperty("metro.mavenCentralMirrorUrl")))
-        addAll(defaults.drop(1))
+
+        for (repository in defaults.drop(1)) {
+          if (repository == Repository.GRADLE_PLUGIN_PORTAL) {
+            add(Repository.ofMaven(System.getProperty("metro.gradlePluginPortalMirrorUrl")))
+          }
+          add(repository)
+        }
+
         add(Repository.ofMaven("https://packages.jetbrains.team/maven/p/kt/bootstrap"))
         add(Repository.ofMaven("https://packages.jetbrains.team/maven/p/kt/dev/"))
         add(Repository.ofMaven("https://packages.jetbrains.team/maven/p/ij/intellij-dependencies/"))
