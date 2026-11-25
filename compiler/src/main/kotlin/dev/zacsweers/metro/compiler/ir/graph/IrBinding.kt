@@ -1028,12 +1028,11 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val isImplicitlyDeferrable: Boolean = true
 
     override val dependencies: List<IrContextualTypeKey> by irLazy {
-      // Note: supertypeMembersInjectorKeys are NOT included here because they're handled
-      // specially by BindingPropertyCollector (only processed if they exist in the graph).
       parameters.nonDispatchParameters
         // Instance parameters are implicitly assisted in this scenario and marked as such in FIR
         .filterNot { it.isAssisted }
         .map { it.contextualTypeKey }
+        // Keep ancestor injectors reachable when the graph requests only this injector.
         .plus(supertypeMembersInjectorKeys)
     }
 

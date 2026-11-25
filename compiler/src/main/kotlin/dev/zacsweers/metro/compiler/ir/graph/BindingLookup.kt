@@ -1027,11 +1027,9 @@ internal class BindingLookup(
     // Finally, fall back to the class-based lookup, which caches its result.
     val classBindings: Set<IrBinding> =
       lookupClassBinding(contextKey, currentBindings, stack)
-        // Drop ancestor member injectors the graph already has, since several injected subclasses
-        // can return the same ones.
-        .filterNotTo(mutableSetOf()) {
-          it is IrBinding.MembersInjected && it.typeKey in currentBindings
-        }
+        // A member injector can't satisfy a request for the class. Constructors and injectors
+        // already list the other injectors they need as dependencies.
+        .filterTo(mutableSetOf()) { it.typeKey == key }
 
     if (parentContext == null) {
       decisionCapture?.selected(contextKey, stack, classBindings)
