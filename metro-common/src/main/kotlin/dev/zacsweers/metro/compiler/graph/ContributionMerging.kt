@@ -5,7 +5,7 @@ package dev.zacsweers.metro.compiler.graph
 import org.jetbrains.kotlin.name.ClassId
 
 /**
- * The exclude/replace algebra shared by graph aggregation in the compiler and the IDE.
+ * The exclude/replace algebra used by graph aggregation in the IDE.
  *
  * A contribution is removed from a graph when:
  * - its own class (or the `@Origin` class it stands in for) is explicitly excluded, or
