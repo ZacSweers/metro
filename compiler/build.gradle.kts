@@ -9,10 +9,10 @@ import dev.zacsweers.metro.gradle.RequiresIdeSupport
 // which avoids the circular task dependency (compileKotlin → shadowJar → compileKotlin) that
 // occurs when Gradle substitutes dev.zacsweers.metro:compiler with project(:compiler).
 buildscript {
-  repositories {
-    maven("https://maven-central.storage-download.googleapis.com/maven2/")
-    mavenCentral()
-  }
+  project.apply(from = "../gradle/repositories.gradle.kts")
+  val metroMavenCentralRepositories: Action<RepositoryHandler> by project.extra
+  repositories(metroMavenCentralRepositories)
+
   val bootstrapVersion =
     extra.properties["METRO_BOOTSTRAP_VERSION"]?.toString()
       ?: error("METRO_BOOTSTRAP_VERSION not set in gradle.properties")

@@ -2,26 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 pluginManagement {
   includeBuild("../build-logic")
-  repositories {
-    maven("https://maven-central.storage-download.googleapis.com/maven2/")
-    mavenCentral()
-    google()
-    gradlePluginPortal()
-    maven("https://redirector.kotlinlang.org/maven/bootstrap")
-    maven("https://redirector.kotlinlang.org/maven/dev/")
-    maven("https://redirector.kotlinlang.org/maven/intellij-dependencies/")
-  }
+  apply(from = "../gradle/repositories.gradle.kts")
+  val metroSettingsRepositories: Action<Settings> by extra
+  metroSettingsRepositories.execute(settings)
 }
 
 dependencyResolutionManagement {
   versionCatalogs { maybeCreate("libs").apply { from(files("../gradle/libs.versions.toml")) } }
   repositories {
-    maven("https://maven-central.storage-download.googleapis.com/maven2/")
-    mavenCentral()
-    google()
-    maven("https://redirector.kotlinlang.org/maven/bootstrap")
-    maven("https://redirector.kotlinlang.org/maven/dev/")
-    maven("https://redirector.kotlinlang.org/maven/intellij-dependencies/")
     // IDE Starter artifacts
     maven("https://www.jetbrains.com/intellij-repository/releases")
     maven("https://www.jetbrains.com/intellij-repository/snapshots")

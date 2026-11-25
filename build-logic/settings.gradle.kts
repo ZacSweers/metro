@@ -1,12 +1,13 @@
 // Copyright (C) 2026 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
+pluginManagement {
+  extra["metro.repositories.buildLogic"] = true
+  apply(from = "../gradle/repositories.gradle.kts")
+  val metroSettingsRepositories: Action<Settings> by extra
+  metroSettingsRepositories.execute(settings)
+}
+
 dependencyResolutionManagement {
-  repositories {
-    maven("https://maven-central.storage-download.googleapis.com/maven2/")
-    mavenCentral()
-    google()
-    gradlePluginPortal()
-  }
   versionCatalogs { maybeCreate("libs").apply { from(files("../gradle/libs.versions.toml")) } }
 }
 
