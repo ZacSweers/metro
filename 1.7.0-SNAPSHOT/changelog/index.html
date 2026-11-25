@@ -9069,6 +9069,7 @@
 <li><strong>[core]</strong> Generated set and map entries now have the same graph keys in the IDE and compiler reports, including entries from libraries.</li>
 <li><strong>[core]</strong> Set and map entries declared as properties now use the property name in both the IDE and compiler reports.</li>
 <li><strong>[Compiler]</strong> Preserve unrelated files when clearing old reports from <code>reportsDestination</code>.</li>
+<li><strong>[FIR]</strong> Limit generated contribution providers to bindings declared for their scope. Previously when a class contributed bindings to multiple scopes, FIR exposed all of them in each scope. Each container now generates providers only for its own bindings.</li>
 <li><strong>[FIR]</strong> Report abstract properties on <code>@AssistedFactory</code> and <code>@DependencyGraph.Factory</code> at compile time. Reading one on an assisted factory could throw <code>AbstractMethodError</code>.</li>
 <li><strong>[FIR]</strong> <code>@ElementsIntoSet</code> could put lists in a <code>Set&lt;String&gt;</code> when a provider returned <code>Batch&lt;String&gt;</code> and <code>Batch&lt;T&gt;</code> implemented <code>List&lt;List&lt;T&gt;&gt;</code>. Metro now reports a compile error. Declare <code>Set&lt;List&lt;String&gt;&gt;</code> and return <code>batch.toSet()</code>.</li>
 <li><strong>[FIR/IR]</strong> Fix <code>@get:</code> site targets for <code>@OptionalBinding</code>.</li>
@@ -11832,7 +11833,7 @@ Possible fixes:
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 25, 2026 22:13:33 UTC">November 25, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 25, 2026 22:57:03 UTC">November 25, 2026</span>
   </span>
 
     
