@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795581634403,
+  "lastUpdate": 1795584482265,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -29008,6 +29008,62 @@ window.BENCHMARK_DATA = {
             "value": 12825.216,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +1.06%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "9cd6967b~1",
+          "message": "[before] Split generateBindingCode into one function per bi",
+          "timestamp": "2026-11-24T23:24:35-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/9cd6967beac6d28af65161a1a442bbccd84740ac"
+        },
+        "date": 1795584482265,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 10536.488000000001,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "9cd6967beac6d28af65161a1a442bbccd84740ac",
+          "message": "[after] Split generateBindingCode into one function per bi",
+          "timestamp": "2026-11-24T23:24:35-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/9cd6967beac6d28af65161a1a442bbccd84740ac"
+        },
+        "date": 1795584482266,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 10262.927,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -2.60%"
           }
         ]
       }
