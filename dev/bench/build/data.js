@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795645392270,
+  "lastUpdate": 1795645492312,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -29288,6 +29288,62 @@ window.BENCHMARK_DATA = {
             "value": 14755.005,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +7.05%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "8af75f51~1",
+          "message": "[before] Use int collections in the cycle and deferral anal",
+          "timestamp": "2026-11-25T21:23:43Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/8af75f510bfe0b0411949184e503ddf175af9d3b"
+        },
+        "date": 1795645492312,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18074.795000000002,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "8af75f510bfe0b0411949184e503ddf175af9d3b",
+          "message": "[after] Use int collections in the cycle and deferral anal",
+          "timestamp": "2026-11-25T21:23:43Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/8af75f510bfe0b0411949184e503ddf175af9d3b"
+        },
+        "date": 1795645492313,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 17838.782,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -1.31%"
           }
         ]
       }
