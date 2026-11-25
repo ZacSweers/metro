@@ -3,6 +3,7 @@
 pluginManagement {
   includeBuild("../build-logic")
   repositories {
+    maven("https://maven-central.storage-download.googleapis.com/maven2/")
     mavenCentral()
     google()
     gradlePluginPortal()
@@ -28,6 +29,7 @@ dependencyResolutionManagement {
     }
   }
   repositories {
+    maven("https://maven-central.storage-download.googleapis.com/maven2/")
     mavenCentral()
     google()
     mavenLocal() // For local testing

@@ -3,6 +3,7 @@
 pluginManagement {
   includeBuild("../build-logic")
   repositories {
+    maven("https://maven-central.storage-download.googleapis.com/maven2/")
     mavenCentral()
     google()
     gradlePluginPortal()
@@ -18,6 +19,7 @@ pluginManagement {
 dependencyResolutionManagement {
   versionCatalogs { maybeCreate("libs").apply { from(files("../gradle/libs.versions.toml")) } }
   repositories {
+    maven("https://maven-central.storage-download.googleapis.com/maven2/")
     mavenCentral()
     google()
     maven("https://redirector.kotlinlang.org/maven/bootstrap")

@@ -12,6 +12,7 @@ plugins {
 metroProject { jvmTarget.set("21") }
 
 repositories {
+  maven("https://maven-central.storage-download.googleapis.com/maven2/")
   mavenCentral()
   intellijPlatform { defaultRepositories() }
 }

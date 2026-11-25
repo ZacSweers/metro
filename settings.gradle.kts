@@ -7,6 +7,7 @@ pluginManagement {
     if (kotlinRepoUrl != null) {
       maven(kotlinRepoUrl)
     }
+    maven("https://maven-central.storage-download.googleapis.com/maven2/")
     mavenCentral()
     google()
     gradlePluginPortal()
@@ -25,6 +26,7 @@ dependencyResolutionManagement {
     if (kotlinRepoUrl != null) {
       maven(kotlinRepoUrl)
     }
+    maven("https://maven-central.storage-download.googleapis.com/maven2/")
     mavenCentral()
     google()
     maven("https://redirector.kotlinlang.org/maven/bootstrap")

@@ -11,7 +11,10 @@ import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask
 import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 
 buildscript {
-  repositories { mavenCentral() }
+  repositories {
+    maven("https://maven-central.storage-download.googleapis.com/maven2/")
+    mavenCentral()
+  }
   dependencies { classpath(libs.commonmark) }
 }
 
@@ -205,6 +208,7 @@ kotlin {
 java { toolchain { languageVersion.set(libs.versions.ideaJvmTarget.map(JavaLanguageVersion::of)) } }
 
 repositories {
+  maven("https://maven-central.storage-download.googleapis.com/maven2/")
   mavenCentral()
   google()
   intellijPlatform { defaultRepositories() }

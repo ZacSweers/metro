@@ -8,6 +8,7 @@ pluginManagement {
       .substringAfter("=")
   repositories {
     maven(uri("../../build/functionalTestRepo"))
+    maven("https://maven-central.storage-download.googleapis.com/maven2/")
     mavenCentral()
     google()
     gradlePluginPortal()
@@ -21,6 +22,7 @@ dependencyResolutionManagement {
   versionCatalogs { maybeCreate("libs").apply { from(files("../../gradle/libs.versions.toml")) } }
   repositories {
     maven(uri("../../build/functionalTestRepo"))
+    maven("https://maven-central.storage-download.googleapis.com/maven2/")
     mavenCentral()
     google()
     maven("https://redirector.kotlinlang.org/maven/bootstrap")

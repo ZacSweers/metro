@@ -7,7 +7,7 @@ pluginManagement {
     if (kotlinRepoUrl != null) {
       maven(kotlinRepoUrl)
     }
-    mavenCentral()
+    maven("https://maven-central.storage-download.googleapis.com/maven2/")
     google()
     gradlePluginPortal()
     mavenLocal()
@@ -38,6 +38,7 @@ dependencyResolutionManagement {
     if (kotlinRepoUrl != null) {
       maven(kotlinRepoUrl)
     }
+    maven("https://maven-central.storage-download.googleapis.com/maven2/")
     mavenCentral()
     google()
     mavenLocal()
