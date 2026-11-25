@@ -5,8 +5,6 @@ package dev.zacsweers.metro.compiler.ir
 import androidx.collection.MutableScatterMap
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
-import dev.zacsweers.metro.compiler.ir.transformers.BindingContainer
-import dev.zacsweers.metro.compiler.ir.transformers.BindingContainerTransformer
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.trace
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -15,8 +13,10 @@ import org.jetbrains.kotlin.name.ClassId
 
 @Inject
 @SingleIn(IrScope::class)
-internal class IrBindingContainerResolver(private val transformer: BindingContainerTransformer) :
-  IrMetroContext by transformer {
+internal class IrBindingContainerResolver(
+  context: IrMetroContext,
+  private val metroDeclarations: MetroDeclarations,
+) : IrMetroContext by context {
 
   /**
    * Cache for transitive closure of all included binding containers. Maps [ClassId] ->
@@ -84,7 +84,7 @@ internal class IrBindingContainerResolver(private val transformer: BindingContai
         }
 
         // A missing root container produces an empty closure that can still be cached.
-        val container = transformer.findContainer(current) ?: continue
+        val container = metroDeclarations.findBindingContainer(current) ?: continue
         add(container)
 
         // The stack visits includes in declaration order without recursive calls.

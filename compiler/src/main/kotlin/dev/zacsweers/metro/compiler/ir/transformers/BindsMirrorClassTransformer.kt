@@ -10,11 +10,9 @@ import dev.zacsweers.metro.compiler.compat.propertyIfAccessorCompat
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.isAttachedExtensionMember
-import dev.zacsweers.metro.compiler.ir.BindsCallable
-import dev.zacsweers.metro.compiler.ir.BindsOptionalOfCallable
+import dev.zacsweers.metro.compiler.ir.BindsMirror
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
-import dev.zacsweers.metro.compiler.ir.MultibindsCallable
 import dev.zacsweers.metro.compiler.ir.ProviderTypeParameterOrder
 import dev.zacsweers.metro.compiler.ir.addAnnotationCompat
 import dev.zacsweers.metro.compiler.ir.buildAnnotation
@@ -54,7 +52,6 @@ import org.jetbrains.kotlin.ir.util.nonDispatchParameters
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.patchDeclarationParents
 import org.jetbrains.kotlin.ir.util.remapTypes
-import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.platform.jvm.isJvm
 
@@ -167,21 +164,6 @@ internal class BindsMirrorClassTransformer(context: IrMetroContext) : IrMetroCon
  */
 private fun IrSimpleFunction.canBeReadDirectly(): Boolean {
   return isEffectivelyPublic() && !isAttachedExtensionMember
-}
-
-internal data class BindsMirror(
-  val ir: IrClass,
-  /** Set of binds callables by their [CallableId]. */
-  val bindsCallables: Set<BindsCallable>,
-  /** Set of multibinds callables by their [BindsCallable]. */
-  val multibindsCallables: Set<MultibindsCallable>,
-  /**
-   * Interoped optional types from `@BindsOptionalOf`. Only present if Dagger interop is enabled.
-   */
-  val optionalKeys: Set<BindsOptionalOfCallable>,
-) {
-  fun isEmpty() =
-    bindsCallables.isEmpty() && multibindsCallables.isEmpty() && optionalKeys.isEmpty()
 }
 
 context(context: IrMetroContext)

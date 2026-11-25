@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.ir.transformers
 
 import dev.zacsweers.metro.compiler.ir.ClassFactory
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
+import dev.zacsweers.metro.compiler.ir.MemberInjectClass
 import dev.zacsweers.metro.compiler.ir.createMetroMetadata
 import dev.zacsweers.metro.compiler.ir.isBindingContainer
 import dev.zacsweers.metro.compiler.ir.metroMetadata
@@ -20,7 +21,7 @@ internal var IrClass.pendingInjectedClassMetadata: InjectedClassProto? by
 context(metroContext: IrMetroContext)
 internal fun IrClass.writeInjectedClassMetadata(
   classFactory: ClassFactory?,
-  memberInjectClass: MembersInjectorTransformer.MemberInjectClass?,
+  memberInjectClass: MemberInjectClass?,
 ) {
   val injectedClassMetadata =
     InjectedClassProto(

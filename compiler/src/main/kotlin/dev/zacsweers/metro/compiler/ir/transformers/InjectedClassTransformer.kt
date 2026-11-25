@@ -16,6 +16,7 @@ import dev.zacsweers.metro.compiler.ir.ClassFactory
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrScope
+import dev.zacsweers.metro.compiler.ir.MemberInjectClass
 import dev.zacsweers.metro.compiler.ir.addBackingFieldTo
 import dev.zacsweers.metro.compiler.ir.addHiddenFromObjCAnnotation
 import dev.zacsweers.metro.compiler.ir.addMetadataVisibleHiddenCompanionObject
@@ -535,7 +536,7 @@ internal class InjectedClassTransformer(
     thisReceiver: IrValueParameter,
     newInstanceFunction: IrSimpleFunction,
     constructorParameters: Parameters,
-    injectors: List<MembersInjectorTransformer.MemberInjectClass>,
+    injectors: List<MemberInjectClass>,
     nameToField: Map<Name, IrField>,
     providerFieldsByKey: Map<IrContextualTypeKey, IrField>,
     typeRemapper: TypeRemapper,

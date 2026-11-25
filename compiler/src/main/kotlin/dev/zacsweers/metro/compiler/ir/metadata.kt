@@ -10,7 +10,6 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.ir.graph.GraphNode
 import dev.zacsweers.metro.compiler.ir.graph.IrBinding
 import dev.zacsweers.metro.compiler.ir.graph.IrBindingGraph
-import dev.zacsweers.metro.compiler.ir.transformers.BindingContainer
 import dev.zacsweers.metro.compiler.proto.AssistedFactoryImplProto
 import dev.zacsweers.metro.compiler.proto.CompanionMode as CompanionModeProto
 import dev.zacsweers.metro.compiler.proto.DependencyGraphProto

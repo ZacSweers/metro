@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.ir.transformers
 
 import dev.zacsweers.metro.compiler.ir.BindsCallable
+import dev.zacsweers.metro.compiler.ir.BindsMirror
 import dev.zacsweers.metro.compiler.ir.BindsOptionalOfCallable
 import dev.zacsweers.metro.compiler.ir.IrCallableMetadata
 import dev.zacsweers.metro.compiler.ir.IrMetroContext

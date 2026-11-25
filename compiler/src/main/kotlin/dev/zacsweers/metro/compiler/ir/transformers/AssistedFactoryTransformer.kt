@@ -11,7 +11,7 @@ import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.generatedClass
-import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
+import dev.zacsweers.metro.compiler.ir.AssistedFactoryImpl
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.MemberNamer
@@ -19,7 +19,6 @@ import dev.zacsweers.metro.compiler.ir.addStaticAnnotations
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.createMetroMetadata
-import dev.zacsweers.metro.compiler.ir.dispatchReceiverFor
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.findInjectableConstructor
 import dev.zacsweers.metro.compiler.ir.generateDefaultConstructorBody
@@ -28,7 +27,6 @@ import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isExternalParent
-import dev.zacsweers.metro.compiler.ir.isStaticIsh
 import dev.zacsweers.metro.compiler.ir.lookupClass
 import dev.zacsweers.metro.compiler.ir.metroMetadata
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
@@ -38,7 +36,6 @@ import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.remapTypes
 import dev.zacsweers.metro.compiler.ir.reportCompat
-import dev.zacsweers.metro.compiler.ir.requireStaticIshDeclarationContainer
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.singleAbstractFunction
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
@@ -46,15 +43,12 @@ import dev.zacsweers.metro.compiler.ir.toCompanionMode
 import dev.zacsweers.metro.compiler.ir.toProto
 import dev.zacsweers.metro.compiler.ir.transformers.AssistedFactoryTransformer.AssistedFactoryFunction.Companion.toAssistedFactoryFunction
 import dev.zacsweers.metro.compiler.ir.typeRemapperFor
-import dev.zacsweers.metro.compiler.ir.wrapInProvider
-import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.proto.AssistedFactoryImplProto
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.Modality
-import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.declarations.addConstructor
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
 import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
@@ -64,7 +58,6 @@ import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
-import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.IrTypeParameterSymbol
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
@@ -85,7 +78,6 @@ import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.primaryConstructor
-import org.jetbrains.kotlin.ir.util.simpleFunctions
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.SpecialNames
@@ -560,65 +552,6 @@ internal class AssistedFactoryTransformer(
               )
             },
         )
-      }
-    }
-  }
-}
-
-/** Interface for assisted factory implementations (Metro or Dagger) */
-internal sealed interface AssistedFactoryImpl {
-  /** Invoke the create method with the given delegate factory provider */
-  context(context: IrMetroContext)
-  fun IrBuilderWithScope.invokeCreate(
-    delegateFactory: IrExpression,
-    factoryType: IrType,
-  ): IrExpression
-
-  /** Metro implementation of AssistedFactoryHandler */
-  class Metro(private val createFunction: IrSimpleFunction) : AssistedFactoryImpl {
-
-    context(context: IrMetroContext)
-    override fun IrBuilderWithScope.invokeCreate(
-      delegateFactory: IrExpression,
-      factoryType: IrType,
-    ): IrExpression {
-      val typeArguments =
-        (factoryType as? IrSimpleType)?.arguments.orEmpty().map { argument ->
-          (argument as IrTypeProjection).type
-        }
-      return irInvoke(
-        dispatchReceiver = dispatchReceiverFor(createFunction),
-        callee = createFunction.symbol,
-        args = listOf(delegateFactory),
-        typeHint = context.metroSymbols.metroProvider.typeWith(factoryType),
-        typeArgs = typeArguments,
-      )
-    }
-  }
-
-  /** Dagger implementation of AssistedFactoryHandler */
-  class Dagger(daggerImplClass: IrClass) : AssistedFactoryImpl {
-    // For Dagger, we need to call the static create method directly
-    private val createFunction by memoize {
-      daggerImplClass.requireStaticIshDeclarationContainer().simpleFunctions().first {
-        it.isStaticIsh &&
-          (it.name == Symbols.Names.create || it.name == Symbols.Names.createFactoryProvider)
-      }
-    }
-
-    context(context: IrMetroContext)
-    override fun IrBuilderWithScope.invokeCreate(
-      delegateFactory: IrExpression,
-      factoryType: IrType,
-    ): IrExpression {
-      return with(context.metroSymbols.providerTypeConverter) {
-        val targetType = IrContextualTypeKey.from(createFunction)
-        irInvoke(
-            callee = createFunction.symbol,
-            args = listOf(delegateFactory),
-            typeHint = createFunction.returnType,
-          )
-          .convertTo(targetType.wrapInProvider())
       }
     }
   }
