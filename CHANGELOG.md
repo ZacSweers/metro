@@ -58,6 +58,12 @@ Changelog
 - **[IDEA]** In projects without graphs, **Find Usages** no longer lists consumers in modules that can't see the provider.
 - **[IDEA]** In projects without graphs, **Find Usages** no longer reports consumers for generic providers when derived bindings are disabled.
 
+## Changes
+
+- Test Kotlin `2.5.0-RC2`.
+
+### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
+
 1.6.0
 -----
 
