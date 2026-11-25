@@ -6,13 +6,10 @@ import dev.zacsweers.metro.ContributesBinding
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.compiler.ir.graph.IrBinding
-import dev.zacsweers.metro.compiler.ir.transformers.AssistedFactoryImpl
 import dev.zacsweers.metro.compiler.ir.transformers.AssistedFactoryTransformer
-import dev.zacsweers.metro.compiler.ir.transformers.BindingContainer
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainerTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.InjectedClassTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
-import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer.MemberInjectClass
 import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor

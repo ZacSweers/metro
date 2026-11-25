@@ -7,6 +7,7 @@ import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.MemberInjectClass
 import dev.zacsweers.metro.compiler.ir.asCanonicalProviderKey
 import dev.zacsweers.metro.compiler.ir.buildBlockBody
 import dev.zacsweers.metro.compiler.ir.createAndAddTemporaryVariable
@@ -18,7 +19,6 @@ import dev.zacsweers.metro.compiler.ir.parametersAsProviderArguments
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
-import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.addMemberInjection
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.metro.compiler.ir.typeRemapperFor
@@ -252,14 +252,14 @@ internal class GraphSuspendFactoryGenerator(
    */
   fun getOrGenerateAssistedImpl(
     binding: IrBinding.AssistedFactory,
-    injectors: List<MembersInjectorTransformer.MemberInjectClass>,
+    injectors: List<MemberInjectClass>,
     buildTargetCall: IrBuilderWithScope.(args: List<IrExpression?>) -> IrExpression,
   ): NestedSuspendFactory =
     cache.getOrPut(binding.typeKey) { generateAssistedImpl(binding, injectors, buildTargetCall) }
 
   private fun generateAssistedImpl(
     binding: IrBinding.AssistedFactory,
-    injectors: List<MembersInjectorTransformer.MemberInjectClass>,
+    injectors: List<MemberInjectClass>,
     buildTargetCall: IrBuilderWithScope.(args: List<IrExpression?>) -> IrExpression,
   ): NestedSuspendFactory {
     val target = binding.targetBinding

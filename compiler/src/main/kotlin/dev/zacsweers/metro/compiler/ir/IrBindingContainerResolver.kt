@@ -5,7 +5,6 @@ package dev.zacsweers.metro.compiler.ir
 import androidx.collection.MutableScatterMap
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
-import dev.zacsweers.metro.compiler.ir.transformers.BindingContainer
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainerTransformer
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.trace

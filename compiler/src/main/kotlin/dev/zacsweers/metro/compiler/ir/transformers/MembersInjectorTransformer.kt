@@ -20,6 +20,7 @@ import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.MemberInjectClass
 import dev.zacsweers.metro.compiler.ir.addMetadataVisibleHiddenCompanionObject
 import dev.zacsweers.metro.compiler.ir.addStaticAnnotations
 import dev.zacsweers.metro.compiler.ir.allSupertypesSequence
@@ -47,7 +48,6 @@ import dev.zacsweers.metro.compiler.ir.overriddenSymbolsSequence
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.memberInjectParameters
-import dev.zacsweers.metro.compiler.ir.parameters.remapTypes
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInMembersInjector
 import dev.zacsweers.metro.compiler.ir.parametersAsProviderArguments
 import dev.zacsweers.metro.compiler.ir.qualifierAnnotation
@@ -64,7 +64,6 @@ import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.ir.typeRemapperFor
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.newName
-import dev.zacsweers.metro.compiler.proto.MemberInjectionsProto
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.DaggerSymbols
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -118,41 +117,6 @@ import org.jetbrains.kotlin.name.ClassId
 @ContributesIntoSet(IrScope::class, binding<Lockable>())
 internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: TraceScope) :
   IrMetroContext by context, TraceScope by traceScope, Lockable by Lockable() {
-
-  data class MemberInjectClass(
-    val sourceClass: IrClass,
-    /**
-     * The generated injector class. May be null if the [sourceClass] has no direct members to
-     * inject.
-     */
-    val injectorClass: IrClass?,
-    /** The class that declares [injectorClass]'s `create()` and `inject{Name}()` helpers. */
-    val helperOwner: IrClass?,
-    val typeKey: IrTypeKey,
-    val requiredParametersByClass: Map<ClassId, List<Parameters>>,
-    val declaredInjectFunctions: Map<IrSimpleFunction, Parameters>,
-    val isDagger: Boolean,
-  ) {
-    fun toProto(): MemberInjectionsProto {
-      return MemberInjectionsProto(
-        // Simple name is fine because it's always nested in the parent class
-        injector_class_name = injectorClass!!.name.asString(),
-        member_inject_functions = declaredInjectFunctions.keys.map { it.name.asString() },
-      )
-    }
-
-    fun mergedParameters(remapper: TypeRemapper): Parameters {
-      // `MembersInjector` -> origin class
-      val allParams = declaredInjectFunctions.map { (_, parameters) ->
-        parameters.remapTypes(remapper)
-      }
-      return when (allParams.size) {
-        0 -> Parameters.empty()
-        1 -> allParams.first()
-        else -> allParams.reduce { current, next -> current.mergeValueParametersWith(next) }
-      }
-    }
-  }
 
   // Thread-safe for concurrent access during parallel graph validation.
   private val generatedInjectors = ConcurrentHashMap<ClassId, Optional<MemberInjectClass>>()

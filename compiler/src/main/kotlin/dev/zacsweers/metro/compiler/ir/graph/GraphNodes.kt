@@ -30,6 +30,7 @@ import dev.zacsweers.metro.compiler.graph.LifecycleDiagnosticMessages
 import dev.zacsweers.metro.compiler.graph.SuspendDiagnosticMessages
 import dev.zacsweers.metro.compiler.graph.toTraceSection
 import dev.zacsweers.metro.compiler.graph.withEntry
+import dev.zacsweers.metro.compiler.ir.BindingContainer
 import dev.zacsweers.metro.compiler.ir.BindsCallable
 import dev.zacsweers.metro.compiler.ir.BindsOptionalOfCallable
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
@@ -82,7 +83,6 @@ import dev.zacsweers.metro.compiler.ir.singleAbstractFunction
 import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
 import dev.zacsweers.metro.compiler.ir.supertypes
 import dev.zacsweers.metro.compiler.ir.trackClassLookup
-import dev.zacsweers.metro.compiler.ir.transformers.BindingContainer
 import dev.zacsweers.metro.compiler.ir.usesKlib
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
 import dev.zacsweers.metro.compiler.isPlatformType
