@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
-import dev.zacsweers.metro.compiler.ir.cache.IrCache
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.backend.jvm.ir.isWithFlexibleNullability
+import org.jetbrains.kotlin.ir.IrBuiltIns
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrTypeParametersContainer
 import org.jetbrains.kotlin.ir.symbols.IrTypeParameterSymbol
@@ -143,48 +143,63 @@ private fun IrType.substitute(substitutions: Map<IrTypeParameterSymbol, IrType>)
   return remapper.remapType(this)
 }
 
-private const val CACHE_CLASS_SUPERTYPES = "ir-class-supertypes"
-/** Gets or computes a cached set of all transitive supertypes for a given class. */
-internal val IrMetroContext.classSupertypesCache: IrCache<IrClass, Set<IrType>, Unit>
-  get() {
-    return getOrCreateIrCache(CACHE_CLASS_SUPERTYPES) { factory ->
-      factory.createCache { irClass, _ ->
-        // Eagerly compute all transitive supertypes (excluding self and Any)
-        val supertypes = mutableSetOf<IrType>()
-        val visitedClasses = mutableSetOf<ClassId>()
+/**
+ * Caches the transitive supertypes of each class for one IR run. Reads and writes stay on the main
+ * compiler thread.
+ */
+internal class ClassSupertypeCache(private val irBuiltIns: IrBuiltIns) {
+  private val supertypes = mutableMapOf<IrClass, Set<IrType>>()
+  private val supertypeClassIds = mutableMapOf<IrClass, Set<ClassId>>()
 
-        fun collectSupertypes(currentClass: IrClass) {
-          for (superType in currentClass.superTypes) {
-            // Always exclude Any from the cache
-            if (superType == irBuiltIns.anyType) continue
-            val clazz = superType.classifierOrFail.owner as IrClass
-            if (visitedClasses.add(clazz.classIdOrFail)) {
-              supertypes += superType
-              val clazzSupertypes = classSupertypesCache.getValue(clazz, Unit)
-              supertypes.addAll(clazzSupertypes)
-            }
-          }
-        }
-
-        collectSupertypes(irClass)
-        supertypes
-      }
+  fun supertypes(irClass: IrClass): Set<IrType> {
+    val cached = supertypes[irClass]
+    if (cached != null) {
+      return cached
     }
+
+    // Store after computing. The computation reads this cache for each supertype.
+    val computed = computeSupertypes(irClass)
+    supertypes[irClass] = computed
+    return computed
   }
 
-private const val CACHE_CLASS_SUPERTYPE_CLASS_IDS = "ir-class-supertype-class-ids"
-/** Gets or computes a cached set of all transitive supertype ClassIds for a given class. */
-internal val IrMetroContext.classSupertypeClassIdsCache: IrCache<IrClass, Set<ClassId>, Unit>
-  get() {
-    return getOrCreateIrCache(CACHE_CLASS_SUPERTYPE_CLASS_IDS) { factory ->
-      factory.createCache { irClass, _ ->
-        // Derive ClassIds from the cached IrType supertypes
-        classSupertypesCache.getValue(irClass, Unit).mapNotNullTo(mutableSetOf()) {
-          it.rawTypeOrNull()?.classId
+  fun supertypeClassIds(irClass: IrClass): Set<ClassId> {
+    val cached = supertypeClassIds[irClass]
+    if (cached != null) {
+      return cached
+    }
+
+    // Derive ClassIds from the cached IrType supertypes
+    val computed = supertypes(irClass).mapNotNullTo(mutableSetOf()) { it.rawTypeOrNull()?.classId }
+    supertypeClassIds[irClass] = computed
+    return computed
+  }
+
+  private fun computeSupertypes(irClass: IrClass): Set<IrType> {
+    // Eagerly compute all transitive supertypes (excluding self and Any)
+    val result = mutableSetOf<IrType>()
+    val visitedClasses = mutableSetOf<ClassId>()
+
+    fun collectSupertypes(currentClass: IrClass) {
+      for (superType in currentClass.superTypes) {
+        // Always exclude Any from the cache
+        if (superType == irBuiltIns.anyType) {
+          continue
+        }
+
+        val clazz = superType.classifierOrFail.owner as IrClass
+        if (visitedClasses.add(clazz.classIdOrFail)) {
+          result += superType
+          val clazzSupertypes = supertypes(clazz)
+          result.addAll(clazzSupertypes)
         }
       }
     }
+
+    collectSupertypes(irClass)
+    return result
   }
+}
 
 /**
  * Returns the set of all supertypes of this [IrClass] (excluding self and Any). Uses the cached
@@ -192,7 +207,7 @@ internal val IrMetroContext.classSupertypeClassIdsCache: IrCache<IrClass, Set<Cl
  */
 context(context: IrMetroContext)
 internal fun IrClass.supertypes(): Set<IrType> {
-  return context.classSupertypesCache.getValue(this, Unit)
+  return context.classSupertypeCache.supertypes(this)
 }
 
 /**
@@ -201,7 +216,7 @@ internal fun IrClass.supertypes(): Set<IrType> {
  */
 context(context: IrMetroContext)
 internal fun IrClass.supertypeClassIds(): Set<ClassId> {
-  return context.classSupertypeClassIdsCache.getValue(this, Unit)
+  return context.classSupertypeCache.supertypeClassIds(this)
 }
 
 /** Checks if this [IrClass] implements or extends the given [classId]. */
