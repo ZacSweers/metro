@@ -850,6 +850,18 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
       }
 
       @Test
+      @TestMetadata("bindingsByScope.kt")
+      public void testBindingsByScope() {
+        run("bindingsByScope.kt");
+      }
+
+      @Test
+      @TestMetadata("bindingsByScopeAcrossModules.kt")
+      public void testBindingsByScopeAcrossModules() {
+        run("bindingsByScopeAcrossModules.kt");
+      }
+
+      @Test
       @TestMetadata("crossModuleMapPriority.kt")
       public void testCrossModuleMapPriority() {
         run("crossModuleMapPriority.kt");
