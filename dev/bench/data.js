@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795591722748,
+  "lastUpdate": 1795595548325,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -29176,6 +29176,62 @@ window.BENCHMARK_DATA = {
             "value": 0.2214137251875675,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: -1.34%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "89b5314a~1",
+          "message": "[before] Replace the mutable maps in AssistedFactoryFirGene",
+          "timestamp": "2026-11-25T07:29:02Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/89b5314a8f1f8f5b0cc92dbb2b7534c36b890052"
+        },
+        "date": 1795595548325,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.22791775460068164,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "89b5314a8f1f8f5b0cc92dbb2b7534c36b890052",
+          "message": "[after] Replace the mutable maps in AssistedFactoryFirGene",
+          "timestamp": "2026-11-25T07:29:02Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/89b5314a8f1f8f5b0cc92dbb2b7534c36b890052"
+        },
+        "date": 1795595548326,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.23137606160085838,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: +1.52%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }

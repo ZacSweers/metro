@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795591722920,
+  "lastUpdate": 1795595548458,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -29176,6 +29176,62 @@ window.BENCHMARK_DATA = {
             "value": 10777.914,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +1.51%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "89b5314a~1",
+          "message": "[before] Replace the mutable maps in AssistedFactoryFirGene",
+          "timestamp": "2026-11-25T07:29:02Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/89b5314a8f1f8f5b0cc92dbb2b7534c36b890052"
+        },
+        "date": 1795595548458,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18561.022,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "89b5314a8f1f8f5b0cc92dbb2b7534c36b890052",
+          "message": "[after] Replace the mutable maps in AssistedFactoryFirGene",
+          "timestamp": "2026-11-25T07:29:02Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/89b5314a8f1f8f5b0cc92dbb2b7534c36b890052"
+        },
+        "date": 1795595548459,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19073.604,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +2.76%"
           }
         ]
       }
