@@ -1990,7 +1990,7 @@ internal class IrGraphGenerator(
     collectedIsProviderType: Boolean,
   ): BindingMetadata {
     val key = binding.typeKey
-    var isProviderType = collectedIsProviderType
+    val isProviderType = collectedIsProviderType
     val isSuspendBinding = binding.isSuspendInGraph(collectedContextKey)
 
     val isProviderGetter = propertyType == PropertyKind.GETTER && isProviderType
@@ -2008,7 +2008,6 @@ internal class IrGraphGenerator(
     val kind: MemberNamer.Kind
     val irType =
       if (binding is IrBinding.ConstructorInjected && binding.isAssisted) {
-        isProviderType = false
         suffix = "Factory"
         kind = MemberNamer.Kind.FACTORY
         binding.classFactory.factoryClass.typeWith()
@@ -2038,29 +2037,23 @@ internal class IrGraphGenerator(
       }
 
     return BindingMetadata(
-      binding = binding,
       propertyKind = propertyType,
       contextKey = finalContextKey,
       irType = irType,
       nameHint = binding.nameHint.decapitalizeUS().suffixIfNot(suffix).asName(),
       kind = kind,
-      isProviderType = isProviderType,
       isScoped = binding.isScoped(),
-      isSuspend = isSuspendBinding,
     )
   }
 
   // Helper to compute binding metadata
   data class BindingMetadata(
-    val binding: IrBinding,
     val propertyKind: PropertyKind,
     val contextKey: IrContextualTypeKey,
     val irType: IrType,
     val nameHint: Name,
     val kind: MemberNamer.Kind,
-    val isProviderType: Boolean,
     val isScoped: Boolean,
-    val isSuspend: Boolean = false,
   )
 
   /**

@@ -1300,7 +1300,6 @@ internal fun IrType.normalizeToKClassIfJavaClass(): IrType {
 }
 
 /** Keeps the requested value wrappers on the Kotlin map used for class interop. */
-context(context: IrMetroContext)
 internal fun IrContextualTypeKey.classMapSource(sourceKey: IrTypeKey): IrContextualTypeKey {
   val map = wrappedType.scalarLeaf().withCanonicalType(sourceKey.type)
   return IrContextualTypeKey(sourceKey, map)
@@ -1408,7 +1407,7 @@ internal fun IrExpression.suspendDoubleCheckLazy(
   typeKey: IrTypeKey,
 ): IrExpression = suspendDoubleCheckLazy(symbols, typeKey.type)
 
-context(context: IrMetroContext, scope: IrBuilderWithScope)
+context(scope: IrBuilderWithScope)
 internal fun IrExpression.suspendDoubleCheckLazy(
   symbols: Symbols,
   valueType: IrType,
@@ -1434,7 +1433,7 @@ internal fun IrExpression.suspendDoubleCheckLazy(
     )
   }
 
-context(context: IrMetroContext, scope: IrBuilderWithScope)
+context(scope: IrBuilderWithScope)
 internal fun IrExpression.suspendDoubleCheck(symbols: Symbols, typeKey: IrTypeKey): IrExpression =
   with(scope) {
     val companionObject =
@@ -2255,7 +2254,6 @@ internal fun IrTypeParametersContainer.buildSubstitutionMapFor(
   }
 }
 
-context(context: IrMetroContext)
 internal fun IrTypeParametersContainer.typeRemapperFor(type: IrType): TypeRemapper {
   return if (this is IrClass) {
     deepRemapperFor(type)
@@ -2336,7 +2334,6 @@ internal fun typeRemapperFor(
  * Returns a (possibly new) [IrSimpleFunction] with any generic parameters and return type
  * substituted appropriately as they would be materialized in the [subtype].
  */
-context(context: IrMetroContext)
 internal fun IrSimpleFunction.asMemberOf(subtype: IrType): IrSimpleFunction {
   // Should be caught in FIR
   check(typeParameters.isEmpty()) { "Generic functions are not supported: ${dumpKotlinLike()}" }

@@ -22,7 +22,6 @@ import org.jetbrains.kotlin.backend.common.ScopeWithIr
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.declarations.IrClass
-import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrCall
@@ -59,35 +58,14 @@ internal class CoreTransformers(
   override val currentFileAccess: IrFile
     get() = currentFile
 
-  override val currentScriptAccess: ScopeWithIr?
-    get() = currentScript
-
   override val currentClassAccess: ScopeWithIr?
     get() = currentClass
 
   override val currentFunctionAccess: ScopeWithIr?
     get() = currentFunction
 
-  override val currentPropertyAccess: ScopeWithIr?
-    get() = currentProperty
-
-  override val currentAnonymousInitializerAccess: ScopeWithIr?
-    get() = currentAnonymousInitializer
-
-  override val currentValueParameterAccess: ScopeWithIr?
-    get() = currentValueParameter
-
   override val currentScopeAccess: ScopeWithIr?
     get() = currentScope
-
-  override val parentScopeAccess: ScopeWithIr?
-    get() = parentScope
-
-  override val allScopesAccess: MutableList<ScopeWithIr>
-    get() = allScopes
-
-  override val currentDeclarationParentAccess: IrDeclarationParent?
-    get() = currentDeclarationParent
 
   override fun visitCall(expression: IrCall): IrExpression {
     return with(this) { createGraphTransformer.visitCall(expression) }

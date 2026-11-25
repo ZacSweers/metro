@@ -19,9 +19,6 @@ import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnostic
 import dev.zacsweers.metro.compiler.diagnostics.render.DiagnosticRenderer
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAsOrNull
-import dev.zacsweers.metro.compiler.ir.cache.IrCache
-import dev.zacsweers.metro.compiler.ir.cache.IrCachesFactory
-import dev.zacsweers.metro.compiler.ir.cache.IrThreadUnsafeCachesFactory
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.io.File
 import java.nio.file.Path
@@ -87,16 +84,8 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
   val lookupFile: Path?
   val expectActualFile: Path?
 
-  /**
-   * Generic caching machinery. Add new caches as extension functions that encapsulate the [key] and
-   * types.
-   *
-   * @param key A unique string identifier for this cache
-   */
-  fun <K : Any, V : Any, C> getOrCreateIrCache(
-    key: Any,
-    createCache: (IrCachesFactory) -> IrCache<K, V, C>,
-  ): IrCache<K, V, C>
+  /** Backs [IrClass.supertypes] and [IrClass.supertypeClassIds]. */
+  val classSupertypeCache: ClassSupertypeCache
 
   fun onErrorReported()
 
@@ -117,11 +106,6 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
     @Suppress("DEPRECATION")
     metroMessageCollector.report(CompilerMessageSeverity.LOGGING, "$LOG_PREFIX $rendered")
     file.appendText("$rendered\n")
-  }
-
-  fun logVerbose(message: String) {
-    @Suppress("DEPRECATION")
-    metroMessageCollector.report(CompilerMessageSeverity.STRONG_WARNING, "$LOG_PREFIX $message")
   }
 
   fun logLookup(
@@ -243,16 +227,7 @@ internal class IrMetroContextImpl(
     }
   }
 
-  private val genericCaches: HashMap<Any, IrCache<*, *, *>> = HashMap()
-
-  override fun <K : Any, V : Any, C> getOrCreateIrCache(
-    key: Any,
-    createCache: (IrCachesFactory) -> IrCache<K, V, C>,
-  ): IrCache<K, V, C> {
-    @Suppress("UNCHECKED_CAST")
-    return genericCaches.getOrPut(key) { createCache(IrThreadUnsafeCachesFactory) }
-      as IrCache<K, V, C>
-  }
+  override val classSupertypeCache = ClassSupertypeCache(pluginContext.irBuiltIns)
 }
 
 /**
