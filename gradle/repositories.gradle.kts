@@ -4,6 +4,8 @@
 import java.net.URI
 
 val metroMavenCentralMirrorUrl = "https://maven-central.storage-download.googleapis.com/maven2/"
+val metroGradlePluginPortalMirrorUrl =
+  "https://cache-redirector.jetbrains.com/plugins.gradle.org/m2"
 
 val metroMavenCentralMirror =
   Action<RepositoryHandler> {
@@ -31,6 +33,8 @@ val metroGoogleRepository =
   }
 
 extra["metroMavenCentralMirrorUrl"] = metroMavenCentralMirrorUrl
+
+extra["metroGradlePluginPortalMirrorUrl"] = metroGradlePluginPortalMirrorUrl
 
 extra["metroMavenCentralRepositories"] = metroMavenCentralRepositories
 
@@ -79,7 +83,7 @@ extra["metroSettingsRepositories"] =
             includeModule("org.jetbrains.kotlinx", "kotlinx-benchmark-plugin")
           }
 
-        maven("https://cache-redirector.jetbrains.com/plugins.gradle.org/m2") {
+        maven(metroGradlePluginPortalMirrorUrl) {
           content(pluginPortalContent)
         }
         gradlePluginPortal().content(pluginPortalContent)
