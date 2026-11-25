@@ -4,32 +4,18 @@ package dev.zacsweers.metro.compiler.ir
 
 import java.io.File
 import java.io.Flushable
-import java.util.concurrent.ConcurrentHashMap
 import org.jetbrains.kotlin.incremental.components.ExpectActualTracker
 
 /**
  * Buffers [report]/[reportExpectOfLenientStub] calls into an internal log and replays them to
- * [delegate] on [flush]. Lets expect/actual IC links be collected during (possibly parallel) IR
- * processing and written through once afterward, so the [delegate] is never touched concurrently.
- * Entries are deduplicated.
+ * [delegate] on [flush]. Lets expect/actual IC links be collected during IR processing and written
+ * through once afterward. Entries are deduplicated.
  */
-internal class BufferingExpectActualTracker(
-  private val delegate: ExpectActualTracker,
-  parallel: Boolean,
-) : ExpectActualTracker by delegate, Flushable {
-  private val reports: MutableSet<Report> =
-    if (parallel) {
-      ConcurrentHashMap.newKeySet()
-    } else {
-      mutableSetOf()
-    }
+internal class BufferingExpectActualTracker(private val delegate: ExpectActualTracker) :
+  ExpectActualTracker by delegate, Flushable {
+  private val reports = mutableSetOf<Report>()
 
-  private val lenientStubs: MutableSet<File> =
-    if (parallel) {
-      ConcurrentHashMap.newKeySet()
-    } else {
-      mutableSetOf()
-    }
+  private val lenientStubs = mutableSetOf<File>()
 
   override fun report(expectedFile: File, actualFile: File) {
     reports.add(Report(expectedFile, actualFile))

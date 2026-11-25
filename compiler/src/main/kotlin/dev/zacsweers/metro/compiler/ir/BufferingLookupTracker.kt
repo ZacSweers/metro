@@ -3,25 +3,18 @@
 package dev.zacsweers.metro.compiler.ir
 
 import java.io.Flushable
-import java.util.concurrent.ConcurrentHashMap
 import org.jetbrains.kotlin.incremental.components.LookupTracker
 import org.jetbrains.kotlin.incremental.components.Position
 import org.jetbrains.kotlin.incremental.components.ScopeKind
 
 /**
  * Buffers [record] calls into an internal log and replays them to [delegate] on [flush]. Lets IC
- * lookups be collected during (possibly parallel) IR processing and written through once afterward,
- * so the [delegate] is never touched concurrently. Entries are deduplicated, which matches the
- * set-semantics of the underlying tracker.
+ * lookups be collected during IR processing and written through once afterward. Entries are
+ * deduplicated, which matches the set-semantics of the underlying tracker.
  */
-internal class BufferingLookupTracker(private val delegate: LookupTracker, parallel: Boolean) :
+internal class BufferingLookupTracker(private val delegate: LookupTracker) :
   LookupTracker by delegate, Flushable {
-  private val buffer: MutableSet<Entry> =
-    if (parallel) {
-      ConcurrentHashMap.newKeySet()
-    } else {
-      mutableSetOf()
-    }
+  private val buffer = mutableSetOf<Entry>()
 
   override fun record(
     filePath: String,
