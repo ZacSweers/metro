@@ -63,7 +63,7 @@ Each batch contains graphs at the same depth. Cousins can share a batch too. Eve
 
 Each child has a `UsedKeyCollector` for its parent requests. The parent merges those requests before populating its own graph. It also reserves the contextual keys needed by generated parent properties.
 
-`ParentContextSnapshot` captures available keys and their ownership. It retains ancestor readers and suspend-binding callbacks. Those callbacks can perform binding lookups. Snapshot access therefore stays on the main compiler thread.
+`ParentContext` captures available keys and their ownership. It retains ancestor readers and suspend-binding callbacks. Those callbacks can perform binding lookups. Access therefore stays on the main compiler thread.
 
 Parent suspend analysis can populate bindings before the parent's own preparation callback runs. Its cached answers track the parent's binding generation. Adding a binding invalidates answers that depended on the earlier graph state.
 

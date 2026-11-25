@@ -549,10 +549,10 @@ internal class DependencyGraphTransformer(
       // The binding graph above uses parentContextReader for parent lookups. Reusing that context
       // here would add this graph to its own parent lookup. Suspend analysis would then find the
       // binding in this graph again and repeat the same lookup forever.
-      val localParentContext = ParentContext(metroContext, parent = parentContextReader)
+      val parentKeys = linkedSetOf<IrTypeKey>()
 
       // This instance
-      localParentContext.add(node.typeKey)
+      parentKeys.add(node.typeKey)
 
       // @Provides
       node.providerFactories.values.flatten().forEach { providerFactory ->
@@ -566,7 +566,7 @@ internal class DependencyGraphTransformer(
         if (providerFactory.annotations.isScoped) {
           // skip @GraphPrivate bindings
           if (providerFactory.typeKey !in node.graphPrivateKeys) {
-            localParentContext.add(providerFactory.typeKey)
+            parentKeys.add(providerFactory.typeKey)
           }
         }
       }
@@ -576,7 +576,7 @@ internal class DependencyGraphTransformer(
         // skip @GraphPrivate bindings
         if (parameter.typeKey !in node.graphPrivateKeys) {
           // Make both provides and includes available
-          localParentContext.add(parameter.typeKey)
+          parentKeys.add(parameter.typeKey)
         }
       }
 
@@ -584,19 +584,19 @@ internal class DependencyGraphTransformer(
       for (bindingContainer in node.bindingContainers) {
         val typeKey = IrTypeKey(bindingContainer)
         if (typeKey !in node.graphPrivateKeys) {
-          localParentContext.add(typeKey)
+          parentKeys.add(typeKey)
         }
       }
 
       // Published @Binds keys: non-private @Binds whose source is @GraphPrivate are exposed to
       // child graphs as parent-resolved dependencies (the child can't inherit the @Binds alias
       // since it can't resolve the private source type).
-      localParentContext.addAll(node.publishedBindsKeys)
+      parentKeys.addAll(node.publishedBindsKeys)
 
       // Included graph dependencies. Only include the current level, transitively included ones
       // will already be in the parent context
       for (included in node.includedGraphNodes.values) {
-        localParentContext.addAll(included.publicAccessors)
+        parentKeys.addAll(included.publicAccessors)
       }
 
       // Two passes on graph extensions
@@ -608,26 +608,18 @@ internal class DependencyGraphTransformer(
         for (extensionAccessor in accessors) {
           if (extensionAccessor.isFactory) {
             // It's a factory returner instead
-            localParentContext.add(extensionAccessor.key.typeKey)
+            parentKeys.add(extensionAccessor.key.typeKey)
             continue
           }
 
           if (!extensionAccessor.isFactorySAM) {
-            localParentContext.add(typeKey)
+            parentKeys.add(typeKey)
             directExtensions.add(typeKey)
           }
         }
       }
 
       // Transform the contributed graphs
-      // Push the parent graph for all contributed graph processing
-      localParentContext.pushParentGraph(
-        node,
-        bindingGraph::isTransitivelySuspendForChild,
-        bindingGraph::declaresSameBindingAs,
-        bindingGraph::createsFreshInstancesForChild,
-      )
-
       // Build each extension's implementation class before preparing its graph node.
       // This adds nested classes to the parent graph's declarations list, which must not
       // happen concurrently with iteration over that list during graph node construction.
@@ -642,7 +634,29 @@ internal class DependencyGraphTransformer(
         }
 
       // Each child records its parent requests separately during graph preparation.
-      val snapshot = localParentContext.snapshot()
+      val ownership =
+        ParentContext.KeyOwnership(
+          ownerGraphKey = node.typeKey,
+          receiverParameter = node.metroGraphOrFail.thisReceiverOrFail,
+          isSuspend = bindingGraph::isTransitivelySuspendForChild,
+          createsFreshInstances = bindingGraph::createsFreshInstancesForChild,
+        )
+      val parentContext =
+        ParentContext(
+          metroContext = metroContext,
+          keyOwnership = parentKeys.associateWith { ownership },
+          levelScopes = listOf(ParentContext.LevelInfo(node.scopes.toSet(), ownership)),
+          currentParentGraph = node.metroGraphOrFail,
+          ancestorReader = parentContextReader,
+          graphPrivateKeys =
+            buildSet {
+              parentContextReader?.graphPrivateKeys()?.let(::addAll)
+              addAll(node.graphPrivateKeys)
+            },
+          parentGraphKey = node.typeKey,
+          declaresSameBinding = bindingGraph::declaresSameBindingAs,
+        )
+
       val collectors =
         node.graphExtensions.entries.map { (contributedGraphKey, _) ->
           val contributedGraph = prebuiltExtensionGraphs.getValue(contributedGraphKey)
@@ -655,7 +669,7 @@ internal class DependencyGraphTransformer(
                 contributedGraph,
                 contributedGraph.annotationsIn(metroSymbols.dependencyGraphAnnotations).single(),
                 contributedGraph,
-                snapshot.asReader(collector),
+                parentContext.asReader(collector),
                 diagnosticTag,
               )
             }
@@ -727,9 +741,6 @@ internal class DependencyGraphTransformer(
             bindingGraph.reserveSharedRead(key, consumers)
           }
         }
-
-        // Pop the parent graph after all contributed graphs are processed
-        localParentContext.popParentGraph()
       }
     }
 
