@@ -6,8 +6,6 @@ import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.api.fir.metroOriginData
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.reportCompilerBug
-import java.util.concurrent.locks.ReentrantLock
-import kotlin.concurrent.withLock
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity.ERROR
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity.FIXED_WARNING
@@ -29,8 +27,6 @@ import org.jetbrains.kotlin.ir.util.sourceElement
 /*
 Compat reporting functions until IrDiagnosticReporter supports source-less declarations
 */
-
-private val REPORT_LOCK = ReentrantLock()
 
 @OptIn(InternalDiagnosticFactoryMethod::class)
 internal fun <A : Any> IrMetroContext.reportCompat(
@@ -131,22 +127,6 @@ internal fun <A : Any> IrMetroContext.reportCompat(
   a: A,
   extraContext: StringBuilder.() -> Unit = {},
   includeDeclarationContext: Boolean = true,
-) {
-  if (options.parallelThreads > 0) {
-    REPORT_LOCK.withLock {
-      reportCompatImpl(irDeclaration, factory, a, extraContext, includeDeclarationContext)
-    }
-  } else {
-    reportCompatImpl(irDeclaration, factory, a, extraContext, includeDeclarationContext)
-  }
-}
-
-private fun <A : Any> IrMetroContext.reportCompatImpl(
-  irDeclaration: IrDeclaration?,
-  factory: KtDiagnosticFactory1<A>,
-  a: A,
-  extraContext: StringBuilder.() -> Unit,
-  includeDeclarationContext: Boolean,
 ) {
   // If the declaration has no source (e.g. a generated contribution provider or other
   // generated declaration carrying @Origin/MetroOriginData), redirect to the origin class
