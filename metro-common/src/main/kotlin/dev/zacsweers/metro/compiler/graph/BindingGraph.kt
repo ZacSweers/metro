@@ -21,8 +21,8 @@ import dev.zacsweers.metro.compiler.getValue
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.trace
-import java.util.SortedMap
-import java.util.SortedSet
+import java.util.Arrays
+import java.util.BitSet
 import java.util.TreeSet
 import org.jetbrains.kotlin.name.FqName
 
@@ -133,10 +133,10 @@ public open class MutableBindingGraph<
    * Resolves bindings and captures the graph data needed by worker analysis.
    *
    * This phase reports missing bindings and seals the graph against further additions. Binding
-   * getters and population callbacks run here on the calling thread. Key comparison and hashing
-   * must be ready for concurrent reads before [PreparedGraphSeal.analyze] starts.
+   * getters and population callbacks run here on the calling thread. It also assigns vertex ids and
+   * captures [PreparedGraphSeal.analysisInput], so analysis never reads a key.
    *
-   * Analysis runs [metroSort] to find a valid order and cycles that require deferred
+   * Analysis runs [analyzePreparedGraph] to find a valid order and cycles that require deferred
    * initialization. Types such as `Lazy` and `Provider` can break cycles through deferred
    * construction. The result records those types in [GraphTopology.deferredTypes] for code
    * generation.
@@ -268,18 +268,33 @@ public open class MutableBindingGraph<
       sortedRootKeys += key.typeKey
     }
 
+    // Ids and edge kinds are captured here so analysis never touches a key.
+    val indexed = trace("Assign vertex ids") { fullAdjacency.indexed(ensureActive) }
+    val implicitIds = idsOf(indexed, implicitlyDeferrableKeys, ensureActive)
+    val input =
+      AnalysisInput(
+        vertexCount = indexed.vertexCount,
+        rowStarts = indexed.rowStarts,
+        targets = indexed.targets,
+        deferredEdges = deferredEdgesOf(indexed, deferrableDependencies, implicitIds, ensureActive),
+        implicitlyDeferrable = implicitIds,
+        roots = indexed.rootIds(sortedRootKeys, ensureActive),
+      )
+    val keysOf: (IntArray) -> List<TypeKey> = indexed::keysOf
+    val topologyOf: (AnalysisOutput) -> GraphTopology<TypeKey> = { output ->
+      indexed.topologyOf(output, ensureActive)
+    }
+
     return object : PreparedGraphSeal<TypeKey>() {
+      override val analysisInput: AnalysisInput = input
+
       context(traceScope: TraceScope)
       override fun analyze(): GraphAnalysis<TypeKey> =
-        trace("Sort and validate") {
-          analyzeGraph(
-            sortedRootKeys,
-            fullAdjacency,
-            deferrableDependencies,
-            implicitlyDeferrableKeys,
-            ensureActive,
-          )
-        }
+        GraphAnalysis(analyzePreparedGraph(input, ensureActive), keysOf, topologyOf)
+
+      context(traceScope: TraceScope)
+      override fun finish(output: AnalysisOutput): GraphTopology<TypeKey> =
+        finish(GraphAnalysis(output, keysOf, topologyOf))
 
       context(traceScope: TraceScope)
       override fun finish(analysis: GraphAnalysis<TypeKey>): GraphTopology<TypeKey> {
@@ -293,7 +308,7 @@ public open class MutableBindingGraph<
         }
         val topo = checkNotNull(analysis.topology)
 
-        // Validate bindings using the reachable adjacency computed during topo sort.
+        // Validate bindings using the reachable adjacency from analysis.
         // This is more efficient as it only includes reachable bindings/edges.
         validateBindings(bindings, stack, roots, topo.adjacency)
 
@@ -467,49 +482,71 @@ public open class MutableBindingGraph<
     return missingBindings
   }
 
-  /** Computes graph order from captured edge kinds and records diagnostic work for finalization. */
-  context(traceScope: TraceScope)
-  private fun analyzeGraph(
-    sortedRootKeys: SortedSet<TypeKey>,
-    fullAdjacency: SortedMap<TypeKey, SortedSet<TypeKey>>,
+  /**
+   * Marks the edges that may break a cycle. An edge qualifies when its target is implicitly
+   * deferrable or every request for it from its source is deferrable.
+   */
+  private fun deferredEdgesOf(
+    indexed: IndexedAdjacency<TypeKey>,
     deferrableDependencies: Map<TypeKey, Set<TypeKey>>,
-    implicitlyDeferrableKeys: Set<TypeKey>,
+    implicitIds: BitSet,
     ensureActive: () -> Unit,
-  ): GraphAnalysis<TypeKey> {
-    // Adjacency supplies existing edges, and the snapshot stores only their explicit deferrals.
-    val isHardEdge: (TypeKey, TypeKey) -> Boolean = { from, to ->
-      ensureActive()
-      if (to in implicitlyDeferrableKeys) {
-        false
-      } else {
-        to !in deferrableDependencies[from].orEmpty()
+  ): BitSet {
+    val targets = indexed.targets
+    val deferredEdges = BitSet(targets.size)
+
+    if (!implicitIds.isEmpty) {
+      for (edge in targets.indices) {
+        ensureActive()
+        if (implicitIds.get(targets[edge])) {
+          deferredEdges.set(edge)
+        }
       }
     }
 
-    val sortedCycles = ArrayList<List<TypeKey>>()
-    var hardCycle: List<TypeKey>? = null
-    // Run topo sort. It gives back either a valid order or calls onCycle for errors.
-    val result =
-      try {
-        trace("Topo sort") {
-          metroSort(
-            fullAdjacency = fullAdjacency,
-            roots = sortedRootKeys,
-            isDeferrable = { from, to -> !isHardEdge(from, to) },
-            ensureActive = ensureActive,
-            onSortedCycle = { sortedCycles += it },
-            onCycle = { sccVertices ->
-              hardCycle = findHardCycle(sccVertices, fullAdjacency, isHardEdge, ensureActive)
-              throw HardCycleFound()
-            },
-            isImplicitlyDeferrable = implicitlyDeferrableKeys::contains,
-          )
-        }
-      } catch (_: HardCycleFound) {
-        null
+    for ((source, deferrableTargets) in deferrableDependencies) {
+      ensureActive()
+      // A source without a vertex has no edges to mark.
+      val sourceId = indexed.idOf.getOrDefault(source, -1)
+      if (sourceId == -1) {
+        continue
       }
 
-    return GraphAnalysis(result, hardCycle, sortedCycles)
+      val rowStart = indexed.rowStarts[sourceId]
+      val rowEnd = indexed.rowStarts[sourceId + 1]
+      for (target in deferrableTargets) {
+        ensureActive()
+        // Optional targets without a binding have no edge.
+        val targetId = indexed.idOf.getOrDefault(target, -1)
+        if (targetId == -1) {
+          continue
+        }
+
+        val edge = Arrays.binarySearch(targets, rowStart, rowEnd, targetId)
+        if (edge >= 0) {
+          deferredEdges.set(edge)
+        }
+      }
+    }
+
+    return deferredEdges
+  }
+
+  /** Marks the ids of [keys] that are in the graph. */
+  private fun idsOf(
+    indexed: IndexedAdjacency<TypeKey>,
+    keys: Set<TypeKey>,
+    ensureActive: () -> Unit,
+  ): BitSet {
+    val ids = BitSet(indexed.vertexCount)
+    for (key in keys) {
+      ensureActive()
+      val id = indexed.idOf.getOrDefault(key, -1)
+      if (id != -1) {
+        ids.set(id)
+      }
+    }
+    return ids
   }
 
   /** Rebuilds diagnostic entries after worker analysis has found a strict cycle. */
@@ -545,44 +582,6 @@ public open class MutableBindingGraph<
 
     val suspendCycleKey = findSuspendCycleKey(cyclePath, bindings)
     reportCycle(entriesInCycle, stack, suspendCycleKey)
-  }
-
-  /** Stops sorting so the preparing thread can report the captured cycle. */
-  private class HardCycleFound : RuntimeException(null, null, false, false)
-
-  /** Searches captured hard edges once and returns the cycle's keys in traversal order. */
-  private fun <V> findHardCycle(
-    vertices: List<V>,
-    fullAdjacency: Map<V, Set<V>>,
-    isHardEdge: (from: V, to: V) -> Boolean,
-    ensureActive: () -> Unit,
-  ): List<V> {
-    val sccNodes = HashSet<V>(vertices.size)
-    for (vertex in vertices) {
-      ensureActive()
-      sccNodes.add(vertex)
-    }
-
-    val hardAdjacency = HashMap<V, Set<V>>(vertices.size)
-    for (vertex in vertices) {
-      ensureActive()
-      // Keep the captured neighbor order so repeated analyses choose the same cycle.
-      val hardNeighbors = LinkedHashSet<V>()
-      for (neighbor in fullAdjacency[vertex].orEmpty()) {
-        ensureActive()
-        if (neighbor in sccNodes && isHardEdge(vertex, neighbor)) {
-          hardNeighbors.add(neighbor)
-        }
-      }
-      hardAdjacency[vertex] = hardNeighbors
-    }
-
-    val checker = ReusableCycleChecker(vertices, hardAdjacency, emptyMap(), ensureActive)
-    val cycle = checker.findCycleWith(emptySet())
-    if (cycle == null) {
-      reportCompilerBug("Found an unbreakable component, but couldn't find a hard cycle.")
-    }
-    return cycle
   }
 
   private fun reportCycle(

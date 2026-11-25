@@ -8,8 +8,10 @@ import androidx.collection.ObjectIntMap
 import androidx.collection.ScatterMap
 import dev.zacsweers.metro.compiler.calculateInitialCapacity
 import dev.zacsweers.metro.compiler.getAndAdd
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.trace
+import java.util.BitSet
 import java.util.PriorityQueue
 import java.util.SortedMap
 import java.util.SortedSet
@@ -43,8 +45,52 @@ public data class GraphAdjacency<T>(
 )
 
 /**
+ * A prepared graph for [analyze]. Vertex ids follow sorted key order. Nothing here can reference a
+ * compiler object, so any thread can analyze it.
+ *
+ * @property rowStarts Where each vertex's edges start in [targets]. Its size is `vertexCount + 1`.
+ * @property targets Edge targets. Each row is sorted.
+ * @property deferredEdges Edges that may break a cycle. Indexed like [targets].
+ * @property implicitlyDeferrable Vertices that are preferred when choosing deferrals.
+ * @property roots Sorted vertices to walk from.
+ */
+public class AnalysisInput(
+  public val vertexCount: Int,
+  public val rowStarts: IntArray,
+  public val targets: IntArray,
+  public val deferredEdges: BitSet,
+  public val implicitlyDeferrable: BitSet,
+  public val roots: IntArray,
+)
+
+/**
+ * The result of [analyze], indexed like its [AnalysisInput].
+ *
+ * @property order Reachable vertices with dependencies first. Empty when [hardCycle] is set.
+ * @property deferred Vertices whose deferrable edges were selected to break cycles.
+ * @property softCycles Each cycle that deferral broke, in [order]'s order.
+ * @property hardCycle One cycle of eager edges, or null when deferral breaks every cycle.
+ * @property hardComponent The component that contains [hardCycle].
+ * @property componentStarts Where each component starts in [componentMembers]. Components are in
+ *   Tarjan's finish order.
+ * @property componentMembers Reachable vertices grouped by component, in Tarjan's pop order.
+ */
+public class AnalysisOutput(
+  public val order: IntArray,
+  public val deferred: BitSet,
+  public val softCycles: List<IntArray>,
+  public val hardCycle: IntArray?,
+  public val hardComponent: IntArray?,
+  public val componentStarts: IntArray,
+  public val componentMembers: IntArray,
+)
+
+/**
  * Returns the reachable vertices in dependency order after deferring edges to break cycles.
  * [onCycle] reports cycles that remain after every deferrable edge is removed.
+ *
+ * This adapts key-based callers to [analyze]. Ids and callbacks run on the calling thread before
+ * analysis, and results are mapped back to keys afterward.
  *
  * Two-phase binding graph validation pipeline:
  * ```
@@ -98,16 +144,18 @@ public data class GraphAdjacency<T>(
  *   a DelegateFactory<B> and set its delegate once the provider for A is ready.
  * ```
  *
- * If a cycle has **no** deferrable edge, [onCycle] is invoked with the offending vertex list and
- * the caller decides how to surface it (typically a compilation error). If a cycle has deferrable
- * edges but no subset of deferring sources actually breaks it (rare, e.g., multiple interleaved
- * cycles), [onCycle] is also invoked.
+ * If a cycle has **no** deferrable edge, [onCycle] is invoked with the offending component's
+ * vertices and the caller decides how to surface it (typically a compilation error). If a cycle has
+ * deferrable edges but no subset of deferring sources actually breaks it (rare, e.g., multiple
+ * interleaved cycles), [onCycle] is also invoked. Only the first such component is reported. If
+ * [onCycle] returns, this throws [IllegalStateException].
  *
  * @param fullAdjacency outgoing‑edge map (every vertex key must be present)
- * @param isDeferrable predicate for "edge may break a cycle"
+ * @param isDeferrable predicate for "edge may break a cycle". Called once per edge.
  * @param onCycle called with the offending cycle if deferring edges cannot break it
  * @param roots optional set of source roots for computing reachability. If null, all keys will be
  *   kept.
+ * @param isImplicitlyDeferrable vertices to prefer when choosing deferrals. Called once per vertex.
  * @param ensureActive cancellation callback polled throughout sorting. Defaults to no checks.
  * @param onSortedCycle optional callback reporting (sorted) cycles.
  */
@@ -121,28 +169,62 @@ public fun <V : Comparable<V>> metroSort(
   ensureActive: () -> Unit = {},
   onSortedCycle: (List<V>) -> Unit = {},
 ): GraphTopology<V> {
-  val deferredTypes = HashSet<V>()
+  val indexed = fullAdjacency.indexed(ensureActive)
+  val input =
+    AnalysisInput(
+      vertexCount = indexed.vertexCount,
+      rowStarts = indexed.rowStarts,
+      targets = indexed.targets,
+      deferredEdges = indexed.deferredEdges(isDeferrable, ensureActive),
+      implicitlyDeferrable = indexed.matchingVertices(isImplicitlyDeferrable, ensureActive),
+      roots = indexed.rootIds(roots, ensureActive),
+    )
+  val output = analyze(input, ensureActive)
 
+  val hardComponent = output.hardComponent
+  if (hardComponent != null) {
+    onCycle(indexed.keysOf(hardComponent))
+    // An unbroken component can't be ordered.
+    error("Hard cycle remained inside SCC after removing selected soft edges")
+  }
+
+  for (cycle in output.softCycles) {
+    ensureActive()
+    onSortedCycle(indexed.keysOf(cycle))
+  }
+  return indexed.topologyOf(output, ensureActive)
+}
+
+/**
+ * Computes the components, deferrals, and order of a prepared graph. It reads only [input] and its
+ * own local state, and only calls [ensureActive] and trace callbacks.
+ *
+ * Tie-breaks compare vertex ids. Ids follow sorted key order, so results match a key-based sort.
+ *
+ * @see metroSort
+ */
+context(traceScope: TraceScope)
+public fun analyze(input: AnalysisInput, ensureActive: () -> Unit = {}): AnalysisOutput {
   // Collapse the graph into strongly‑connected components
-  // Also builds reachable adjacency (forward and reverse) in the same pass (avoiding separate
-  // filter)
-  val (components, componentOf, reachableAdjacency) =
-    trace("Compute SCCs") {
-      fullAdjacency.computeStronglyConnectedComponents(roots, ensureActive)
-    }
+  val components = trace("Compute SCCs") { findComponents(input, ensureActive) }
+
+  val deferred = BitSet(input.vertexCount)
+  var hardComponent: IntArray? = null
+  var hardCycle: IntArray? = null
 
   // Check for cycles
   trace("Check for cycles") {
-    for (component in components) {
+    for (componentId in 0 until components.count) {
       ensureActive()
-      val vertices = component.vertices
+      val start = components.starts[componentId]
+      val end = components.starts[componentId + 1]
 
-      if (vertices.size == 1) {
-        val vertex = vertices[0]
+      if (end - start == 1) {
+        val vertex = components.members[start]
         var isSelfLoop = false
-        for (target in fullAdjacency[vertex].orEmpty()) {
+        for (edge in input.rowStarts[vertex] until input.rowStarts[vertex + 1]) {
           ensureActive()
-          if (target == vertex) {
+          if (input.targets[edge] == vertex) {
             isSelfLoop = true
             break
           }
@@ -156,45 +238,46 @@ public fun <V : Comparable<V>> metroSort(
       // Look for cycles - find minimal set of nodes to defer
       val contributorsToCycle =
         findMinimalDeferralSet(
-          vertices = vertices,
-          fullAdjacency = reachableAdjacency.forward,
-          componentOf = componentOf,
-          componentId = component.id,
-          isDeferrable = isDeferrable,
-          isImplicitlyDeferrable = isImplicitlyDeferrable,
+          input = input,
+          components = components,
+          componentId = componentId,
           ensureActive = ensureActive,
         )
 
       if (contributorsToCycle.isEmpty()) {
         // no deferrable -> hard cycle
-        onCycle(vertices)
-      } else {
-        deferredTypes += contributorsToCycle
+        val vertices = components.members.copyOfRange(start, end)
+        hardComponent = vertices
+        hardCycle = findHardCycle(input, components, componentId, ensureActive)
+        break
+      }
+
+      for (vertex in contributorsToCycle) {
+        deferred.set(vertex)
       }
     }
   }
 
-  // Tarjan emits components in finish order, which in turn is the topological ordering we want
-  val sortedKeys =
-    trace("Expand components") {
-      expandComponents(
-        components = components,
-        forwardAdjacency = reachableAdjacency.forward,
-        deferredTypes = deferredTypes,
-        isDeferrable = isDeferrable,
-        onSortedCycle = onSortedCycle,
-        expectedSize = fullAdjacency.size,
-        ensureActive = ensureActive,
-      )
+  val softCycles = ArrayList<IntArray>()
+  val order =
+    if (hardCycle != null) {
+      EMPTY_INT_ARRAY
+    } else {
+      // Tarjan emits components in finish order, which in turn is the topological ordering we
+      // want
+      trace("Expand components") {
+        expandComponents(input, components, deferred, softCycles, ensureActive)
+      }
     }
 
-  return GraphTopology(
-    sortedKeys,
-    deferredTypes,
-    reachableAdjacency.forward.keys,
-    reachableAdjacency,
-    components,
-    componentOf,
+  return AnalysisOutput(
+    order = order,
+    deferred = deferred,
+    softCycles = softCycles,
+    hardCycle = hardCycle,
+    hardComponent = hardComponent,
+    componentStarts = components.starts,
+    componentMembers = components.members,
   )
 }
 
@@ -240,31 +323,33 @@ public fun <V : Comparable<V>> metroSort(
  *   Try {B}: mask B -> A, remaining edge is A -> B -> acyclic. Return {B}.
  * ```
  */
-private fun <V : Comparable<V>> findMinimalDeferralSet(
-  vertices: List<V>,
-  fullAdjacency: SortedMap<V, SortedSet<V>>,
-  componentOf: ObjectIntMap<V>,
+private fun findMinimalDeferralSet(
+  input: AnalysisInput,
+  components: Components,
   componentId: Int,
-  isDeferrable: (V, V) -> Boolean,
-  isImplicitlyDeferrable: (V) -> Boolean,
   ensureActive: () -> Unit,
-): Set<V> {
+): Set<Int> {
+  val vertices = components.verticesOf(componentId)
+
   // Build the SCC-internal adjacency and deferrable edges ONCE upfront
   // This avoids rebuilding these structures for each candidate test.
   // Each collection here is bounded by the SCC's vertex count, so size them up front.
   val cap = calculateInitialCapacity(vertices.size)
-  val sccAdjacency = HashMap<V, MutableSet<V>>(cap)
-  val deferrableEdgesFrom = HashMap<V, MutableSet<V>>(cap)
-  val potentialCandidates = HashSet<V>(cap)
+  val sccAdjacency = HashMap<Int, MutableSet<Int>>(cap)
+  val deferrableEdgesFrom = HashMap<Int, MutableSet<Int>>(cap)
+  val potentialCandidates = HashSet<Int>(cap)
 
   vertices.forEachCancellable(ensureActive) { from ->
+    val rowStart = input.rowStarts[from]
+    val rowEnd = input.rowStarts[from + 1]
     // Targets bounded by `from`'s outgoing degree.
-    val targets = LinkedHashSet<V>(calculateInitialCapacity(fullAdjacency[from]?.size ?: 0))
-    fullAdjacency[from].orEmpty().forEachCancellable(ensureActive) { to ->
+    val targets = LinkedHashSet<Int>(calculateInitialCapacity(rowEnd - rowStart))
+    (rowStart until rowEnd).forEachCancellable(ensureActive) { edge ->
+      val to = input.targets[edge]
       // Only consider edges that stay inside the SCC
-      if (componentOf[to] == componentId) {
+      if (components.componentOf[to] == componentId) {
         targets.add(to)
-        if (isDeferrable(from, to)) {
+        if (input.deferredEdges.get(edge)) {
           // Track deferrable edges and candidates
           deferrableEdgesFrom.getOrPut(from) { HashSet() }.add(to)
           potentialCandidates.add(from)
@@ -289,13 +374,15 @@ private fun <V : Comparable<V>> findMinimalDeferralSet(
   // A DeferralKind { WHOLE_NODE, EDGE, NONE } ordinal would express this more cleanly but isn't
   // worth the ripple through the rest of this logic.
   // Sort candidates once upfront instead of sorting in each loop.
-  val sortedCandidates = ArrayList<V>(potentialCandidates.size)
+  val sortedCandidates = ArrayList<Int>(potentialCandidates.size)
   potentialCandidates.forEachCancellable(ensureActive) { candidate ->
     sortedCandidates += candidate
   }
+  val implicitlyDeferrable = input.implicitlyDeferrable
   sortedCandidates.sortWith { left, right ->
     ensureActive()
-    val implicitPriority = (!isImplicitlyDeferrable(left)).compareTo(!isImplicitlyDeferrable(right))
+    val implicitPriority =
+      (!implicitlyDeferrable.get(left)).compareTo(!implicitlyDeferrable.get(right))
     if (implicitPriority != 0) {
       implicitPriority
     } else {
@@ -344,6 +431,38 @@ private fun <V : Comparable<V>> findMinimalDeferralSet(
   return potentialCandidates
 }
 
+/** Searches the component's eager edges once and returns a cycle's vertices in traversal order. */
+private fun findHardCycle(
+  input: AnalysisInput,
+  components: Components,
+  componentId: Int,
+  ensureActive: () -> Unit,
+): IntArray {
+  val vertices = components.verticesOf(componentId)
+  val hardAdjacency = HashMap<Int, Set<Int>>(calculateInitialCapacity(vertices.size))
+  for (vertex in vertices) {
+    ensureActive()
+    // Keep the row order so repeated analyses choose the same cycle.
+    val hardNeighbors = LinkedHashSet<Int>()
+    for (edge in input.rowStarts[vertex] until input.rowStarts[vertex + 1]) {
+      ensureActive()
+      val neighbor = input.targets[edge]
+      val isInComponent = components.componentOf[neighbor] == componentId
+      if (isInComponent && !input.deferredEdges.get(edge)) {
+        hardNeighbors.add(neighbor)
+      }
+    }
+    hardAdjacency[vertex] = hardNeighbors
+  }
+
+  val checker = ReusableCycleChecker(vertices, hardAdjacency, emptyMap(), ensureActive)
+  val cycle = checker.findCycleWith(emptySet())
+  if (cycle == null) {
+    reportCompilerBug("Found an unbreakable component, but couldn't find a hard cycle.")
+  }
+  return cycle.toIntArray()
+}
+
 /**
  * Expands the topologically sorted list of components back into a flat list of original vertices.
  *
@@ -352,8 +471,7 @@ private fun <V : Comparable<V>> findMinimalDeferralSet(
  *   append it directly.
  * - If the component has multiple vertices (i.e., it's a cycle), call [sortVerticesInSCC] to order
  *   the cycle's vertices internally, ignoring the deferrable edges from the chosen deferred
- *   sources. Notify the caller via [onSortedCycle] so they can record the cycle for diagnostics or
- *   codegen.
+ *   sources. Record the sorted cycle in [softCycles] for diagnostics or codegen.
  *
  * Visual:
  * ```
@@ -365,47 +483,35 @@ private fun <V : Comparable<V>> findMinimalDeferralSet(
  *   expanded:         [X, B, A, Y]
  * ```
  *
- * @param components vertices grouped by component ID (from [computeStronglyConnectedComponents]) in
- *   Tarjan's finish order (prereqs first).
- * @param forwardAdjacency the reachable forward adjacency, used by [sortVerticesInSCC] to walk
- *   intra-SCC dependencies.
- * @param deferredTypes the set of vertices the caller has elected to defer (sources of soft edges).
- * @param isDeferrable predicate matching [metroSort]'s parameter.
- * @param onSortedCycle invoked once per multi-vertex SCC with the sorted cycle vertices.
- * @param expectedSize total vertex count (used to pre-size the result list).
+ * @param components vertices grouped by component ID (from [findComponents]) in Tarjan's finish
+ *   order (prereqs first).
+ * @param deferred the vertices selected for deferral (sources of soft edges).
+ * @param softCycles receives each multi-vertex SCC's sorted vertices.
  */
-private fun <V : Comparable<V>> expandComponents(
-  components: List<Component<V>>,
-  forwardAdjacency: SortedMap<V, SortedSet<V>>,
-  deferredTypes: Set<V>,
-  isDeferrable: (V, V) -> Boolean,
-  onSortedCycle: (List<V>) -> Unit,
-  expectedSize: Int,
+private fun expandComponents(
+  input: AnalysisInput,
+  components: Components,
+  deferred: BitSet,
+  softCycles: MutableList<IntArray>,
   ensureActive: () -> Unit,
-): List<V> {
-  val sortedKeys = ArrayList<V>(expectedSize)
-  components.forEachCancellable(ensureActive) { component ->
-    if (component.vertices.size == 1) {
+): IntArray {
+  val order = IntArray(components.members.size)
+  var next = 0
+  (0 until components.count).forEachCancellable(ensureActive) { componentId ->
+    val start = components.starts[componentId]
+    val end = components.starts[componentId + 1]
+    if (end - start == 1) {
       // Single vertex (no cycle, or cycle-of-one from a self-loop). Emit it directly.
-      sortedKeys += component.vertices[0]
+      order[next++] = components.members[start]
     } else {
       // Multi-vertex SCC: sort the cycle internally, ignoring soft edges from deferred sources.
-      val deferredInScc = HashSet<V>()
-      component.vertices.forEachCancellable(ensureActive) { vertex ->
-        if (vertex in deferredTypes) deferredInScc += vertex
-      }
-      sortedKeys +=
-        sortVerticesInSCC(
-            component.vertices,
-            forwardAdjacency,
-            isDeferrable,
-            deferredInScc,
-            ensureActive,
-          )
-          .also { onSortedCycle(it) }
+      val sorted = sortVerticesInSCC(input, components, componentId, deferred, ensureActive)
+      softCycles += sorted
+      sorted.copyInto(order, destinationOffset = next)
+      next += sorted.size
     }
   }
-  return sortedKeys
+  return order
 }
 
 /**
@@ -413,11 +519,11 @@ private fun <V : Comparable<V>> expandComponents(
  * deferrable edges that will be cut at codegen time.
  *
  * Within an SCC we classify each edge as either **hard** (non-deferrable, or deferrable but the
- * source isn't in [deferredInScc]) or **soft** (deferrable + source is deferred). Soft edges are
- * the ones a `DelegateFactory` will paper over at runtime, so we pretend they don't exist when
+ * source isn't in [deferred]) or **soft** (deferrable + source is deferred). Soft edges are the
+ * ones a `DelegateFactory` will paper over at runtime, so we pretend they don't exist when
  * ordering. The remaining hard edges form a DAG inside the SCC, which we Kahn-sort.
  *
- * Example: `A <-> B` cycle, B -> A is deferrable, deferredInScc = {B}.
+ * Example: `A <-> B` cycle, B -> A is deferrable, B is deferred.
  *
  * ```
  *   Edges (inside SCC):
@@ -440,58 +546,52 @@ private fun <V : Comparable<V>> expandComponents(
  * @throws IllegalStateException if a hard cycle remains after removing soft edges (shouldn't happen
  *   — [findMinimalDeferralSet] is supposed to have proved acyclicity).
  */
-private fun <V : Comparable<V>> sortVerticesInSCC(
-  vertices: List<V>,
-  fullAdjacency: SortedMap<V, SortedSet<V>>,
-  isDeferrable: (V, V) -> Boolean,
-  deferredInScc: Set<V>,
+private fun sortVerticesInSCC(
+  input: AnalysisInput,
+  components: Components,
+  componentId: Int,
+  deferred: BitSet,
   ensureActive: () -> Unit,
-): List<V> {
-  if (vertices.size <= 1) return vertices
+): IntArray {
+  val vertices = components.verticesOf(componentId)
   val cap = calculateInitialCapacity(vertices.size)
-  val inScc = HashSet<V>(cap)
-  vertices.forEachCancellable(ensureActive) { vertex ->
-    inScc += vertex
-  }
 
-  // An edge is "soft" inside this SCC only if it's deferrable and the source is deferred
-  val isSoftEdge: (from: V, to: V) -> Boolean = { from, to ->
-    isDeferrable(from, to) && from in deferredInScc
-  }
-
-  // v -> hard prereqs (non-soft edges). Bounded by SCC size.
-  val hardDeps = HashMap<V, MutableSet<V>>(cap)
+  // v -> number of hard prereqs (non-soft edges). Bounded by SCC size.
+  val hardIn = HashMap<Int, Int>(cap)
   // prereq -> dependents (via hard edges). Bounded by SCC size.
-  val revHard = HashMap<V, MutableSet<V>>(cap)
+  val revHard = HashMap<Int, MutableList<Int>>(cap)
 
   for (v in vertices) {
     ensureActive()
-    for (dep in fullAdjacency[v].orEmpty()) {
+    var hardDependencies = 0
+    for (edge in input.rowStarts[v] until input.rowStarts[v + 1]) {
       ensureActive()
-      if (dep !in inScc) continue
-      if (isSoftEdge(v, dep)) {
+      val dep = input.targets[edge]
+      if (components.componentOf[dep] != componentId) {
+        continue
+      }
+
+      // An edge is "soft" inside this SCC only if it's deferrable and the source is deferred
+      val isSoftEdge = input.deferredEdges.get(edge) && deferred.get(v)
+      if (isSoftEdge) {
         // ignore only these edges when ordering
         continue
       }
-      hardDeps.getAndAdd(v, dep)
-      revHard.getAndAdd(dep, v)
+      hardDependencies++
+      revHard.getOrPut(dep, ::ArrayList).add(v)
     }
-  }
-
-  val hardIn = HashMap<V, Int>(cap)
-  vertices.forEachCancellable(ensureActive) { vertex ->
-    hardIn[vertex] = hardDeps[vertex]?.size ?: 0
+    hardIn[v] = hardDependencies
   }
 
   // Sort ready by:
-  // 1 - nodes that are in deferredInScc (i.e., emit DelegateFactory before its users)
+  // 1 - deferred nodes (i.e., emit DelegateFactory before its users)
   // 2 - more hard dependents (unlocks more)
   // 3 - natural order for determinism
   // The ready set holds at most every vertex in the SCC; size up front.
   val ready =
-    PriorityQueue<V>(vertices.size) { a, b ->
-      val aDef = a in deferredInScc
-      val bDef = b in deferredInScc
+    PriorityQueue<Int>(vertices.size) { a, b ->
+      val aDef = deferred.get(a)
+      val bDef = deferred.get(b)
       if (aDef != bDef) return@PriorityQueue if (aDef) -1 else 1
 
       val aFanOut = revHard[a]?.size ?: 0
@@ -506,11 +606,12 @@ private fun <V : Comparable<V>> sortVerticesInSCC(
     if (hardIn.getValue(vertex) == 0) ready += vertex
   }
 
-  val result = ArrayDeque<V>(vertices.size)
+  val result = IntArray(vertices.size)
+  var size = 0
   while (ready.isNotEmpty()) {
     ensureActive()
     val v = ready.remove()
-    result += v
+    result[size++] = v
     revHard[v].orEmpty().forEachCancellable(ensureActive) { depender ->
       val degree = hardIn.getValue(depender) - 1
       hardIn[depender] = degree
@@ -520,7 +621,7 @@ private fun <V : Comparable<V>> sortVerticesInSCC(
     }
   }
 
-  check(result.size == vertices.size) {
+  check(size == vertices.size) {
     "Hard cycle remained inside SCC after removing selected soft edges"
   }
   return result
@@ -531,12 +632,76 @@ public data class Component<V>(val id: Int, val vertices: MutableList<V> = mutab
 public data class TarjanResult<V : Comparable<V>>(
   val components: List<Component<V>>,
   val componentOf: ObjectIntMap<V>,
-  /**
-   * Adjacency (forward and reverse) filtered to only reachable vertices (built during SCC
-   * traversal).
-   */
+  /** Adjacency (forward and reverse) filtered to only reachable vertices. */
   val reachableAdjacency: GraphAdjacency<V>,
 )
+
+/**
+ * Computes the strongly connected components (SCCs) of a directed graph. See [findComponents] for
+ * the algorithm.
+ *
+ * Ids are assigned and results are mapped back to vertices on the calling thread.
+ *
+ * NOTE: The receiver adjacency (both keys and each value set) is assumed to be already sorted. This
+ * preserves determinism of the int-id mapping and of the per-vertex edge ordering, so a given input
+ * always produces the same output.
+ *
+ * @param roots Optional set of source roots to walk from. If null, every key in the receiver is
+ *   walked (the entire graph is reachable). If provided, only vertices reachable from these roots
+ *   are visited; the rest are filtered out of [TarjanResult.reachableAdjacency].
+ * @param ensureActive cancellation callback invoked during traversal and adjacency construction.
+ * @return The list of components (in reverse topological order), the vertex->component-id map, and
+ *   the reachable forward/reverse adjacency over visited vertices only. The forward map shares its
+ *   rows with the input. Treat those rows as read-only.
+ * @receiver A directed graph as `vertex -> outgoing edges`. Both the key set and each edge set must
+ *   be sorted.
+ */
+public fun <V : Comparable<V>> SortedMap<V, SortedSet<V>>.computeStronglyConnectedComponents(
+  roots: SortedSet<V>? = null,
+  ensureActive: () -> Unit = {},
+): TarjanResult<V> {
+  val indexed = indexed(ensureActive)
+  val input =
+    AnalysisInput(
+      vertexCount = indexed.vertexCount,
+      rowStarts = indexed.rowStarts,
+      targets = indexed.targets,
+      deferredEdges = BitSet(),
+      implicitlyDeferrable = BitSet(),
+      roots = indexed.rootIds(roots, ensureActive),
+    )
+  val components = findComponents(input, ensureActive)
+  val (keyComponents, componentOf) =
+    indexed.componentsOf(components.starts, components.members, ensureActive)
+  return TarjanResult(
+    keyComponents,
+    componentOf,
+    indexed.reachableAdjacency(components.members, ensureActive),
+  )
+}
+
+/** Components found by [findComponents], with membership in Tarjan's pop order. */
+private class Components(
+  /** Where each component starts in [members]. Its size is the component count plus one. */
+  val starts: IntArray,
+  val members: IntArray,
+  /** Each vertex's component, or [UNVISITED] for vertices no root reaches. */
+  val componentOf: IntArray,
+) {
+  val count: Int
+    get() = starts.size - 1
+
+  /** Boxes the component's members for the generic cycle checks. */
+  fun verticesOf(componentId: Int): List<Int> {
+    val start = starts[componentId]
+    val end = starts[componentId + 1]
+    val vertices = ArrayList<Int>(end - start)
+    for (index in start until end) {
+      vertices += members[index]
+    }
+    return vertices
+  }
+}
 
 /**
  * Computes the strongly connected components (SCCs) of a directed graph using Tarjan's algorithm.
@@ -620,78 +785,22 @@ public data class TarjanResult<V : Comparable<V>>(
  * levels) recursion overflows the JVM stack, so we run an explicit iterative DFS using the
  * `(callStack, edgeCursor)` pair where each frame holds `(v, current edge index)`.
  *
- * Vertices are mapped to dense int ids in sorted order. Adjacency, visited flags, and stacks become
+ * Vertices arrive as dense int ids in sorted key order. Adjacency, visited flags, and stacks are
  * primitive `IntArray` / `BooleanArray` / `MutableIntList`s. This is cheaper than per-edge
  * `IrTypeKey.compareTo` / `equals` work that Metro previously used, which then dominated the inner
  * loop.
  *
- * NOTE: The receiver adjacency (both keys and each value set) is assumed to be already sorted. This
- * preserves determinism of the int-id mapping and of the per-vertex edge ordering, so a given input
- * always produces the same output.
+ * Only vertices reachable from [AnalysisInput.roots] are visited. The rest keep [UNVISITED] in
+ * [Components.componentOf].
  *
- * @param roots Optional set of source roots to walk from. If null, every key in the receiver is
- *   walked (the entire graph is reachable). If provided, only vertices reachable from these roots
- *   are visited; the rest stay [UNVISITED] and are filtered out of
- *   [TarjanResult.reachableAdjacency].
- * @param ensureActive cancellation callback invoked during traversal and adjacency construction.
- * @return The list of components (in reverse topological order), the vertex->component-id map, and
- *   the reachable forward/reverse adjacency over visited vertices only. The forward map shares its
- *   rows with the input. Treat those rows as read-only.
- * @receiver A directed graph as `vertex -> outgoing edges`. Both the key set and each edge set must
- *   be sorted.
  * @see <a
  *   href="https://en.wikipedia.org/wiki/Tarjan%27s_strongly_connected_components_algorithm">Tarjan's
  *   algorithm</a>
  */
-public fun <V : Comparable<V>> SortedMap<V, SortedSet<V>>.computeStronglyConnectedComponents(
-  roots: SortedSet<V>? = null,
-  ensureActive: () -> Unit = {},
-): TarjanResult<V> {
-  // Map vertices to dense int ids in sorted order so adjacency lookups, visited bookkeeping, and
-  // the DFS stack can run on primitive arrays. This avoids per-edge string-keyed map lookups
-  // (IrTypeKey.compareTo / equals) inside the recursion.
-  val n = size
-  if (n == 0) {
-    return TarjanResult(
-      components = emptyList(),
-      componentOf = MutableObjectIntMap(),
-      reachableAdjacency = GraphAdjacency(sortedMapOf(), emptyMap()),
-    )
-  }
-
-  // Store as Array<Any?> to avoid array-class cast issues with generic V; we cast individual
-  // elements back to V on read.
-  val idToVertex = arrayOfNulls<Any>(n)
-  val vertexToId = MutableObjectIntMap<V>(n)
-  run {
-    for ((i, key) in keys.withIndex()) {
-      ensureActive()
-      idToVertex[i] = key
-      vertexToId[key] = i
-    }
-  }
-
-  val vertexAt: (id: Int) -> V = { id ->
-    @Suppress("UNCHECKED_CAST")
-    idToVertex[id] as V
-  }
-
-  // Build int-indexed adjacency. Each row is already sorted because the source SortedSet is
-  // sorted and ids preserve that order.
-  val adj = arrayOfNulls<IntArray>(n)
-  entries.forEachCancellable(ensureActive) { (vertex, edges) ->
-    val fromId = vertexToId[vertex]
-    if (edges.isEmpty()) {
-      adj[fromId] = EMPTY_INT_ARRAY
-    } else {
-      val arr = IntArray(edges.size)
-      var i = 0
-      edges.forEachCancellable(ensureActive) { e ->
-        arr[i++] = vertexToId[e]
-      }
-      adj[fromId] = arr
-    }
-  }
+private fun findComponents(input: AnalysisInput, ensureActive: () -> Unit): Components {
+  val n = input.vertexCount
+  val rowStarts = input.rowStarts
+  val targets = input.targets
 
   // Tarjan state, all primitive-backed.
   // indexOfId[v] is v's DFS discovery time (analogous to "v.index" in the classic algorithm).
@@ -705,13 +814,15 @@ public fun <V : Comparable<V>> SortedMap<V, SortedSet<V>>.computeStronglyConnect
   val dfsStack = MutableIntList(n)
 
   var nextIndex = 0
-  // Materialised SCC vertex lists (in int form) keyed by component id.
+  // SCC members in pop order. componentStarts marks where each component begins.
   // At most one component per vertex (degenerate case where every vertex is its own SCC).
-  val componentMembers = ArrayList<MutableIntList>(n)
+  val members = MutableIntList(n)
+  val componentStarts = MutableIntList(n + 1)
+  componentStarts.add(0)
 
   // Iterative Tarjan: a recursive `strongConnect(v)` would blow the JVM stack on deep dependency
   // chains, so we fold the recursion into an explicit (callStack, edgeCursor) pair where each
-  // frame is `(v, current edge index)`.
+  // frame is `(v, current edge index)`. Edge cursors index directly into `targets`.
   val callStack = MutableIntList(n)
   val edgeCursor = MutableIntList(n)
 
@@ -719,7 +830,7 @@ public fun <V : Comparable<V>> SortedMap<V, SortedSet<V>>.computeStronglyConnect
     if (indexOfId[start] != UNVISITED) return@visit
     // Set the depth index for `start` to the smallest unused index and push the first frame.
     callStack.add(start)
-    edgeCursor.add(0)
+    edgeCursor.add(rowStarts[start])
     indexOfId[start] = nextIndex
     lowLinkOfId[start] = nextIndex
     nextIndex++
@@ -730,12 +841,11 @@ public fun <V : Comparable<V>> SortedMap<V, SortedSet<V>>.computeStronglyConnect
       ensureActive()
       val top = callStack.size - 1
       val v = callStack[top]
-      val edges = adj[v]!!
       val cursor = edgeCursor[top]
 
-      if (cursor < edges.size) {
+      if (cursor < rowStarts[v + 1]) {
         edgeCursor[top] = cursor + 1
-        val w = edges[cursor]
+        val w = targets[cursor]
         if (indexOfId[w] == UNVISITED) {
           // Successor w has not yet been visited; "recurse" on it by pushing a new frame.
           indexOfId[w] = nextIndex
@@ -744,7 +854,7 @@ public fun <V : Comparable<V>> SortedMap<V, SortedSet<V>>.computeStronglyConnect
           dfsStack.add(w)
           onStack[w] = true
           callStack.add(w)
-          edgeCursor.add(0)
+          edgeCursor.add(rowStarts[w])
         } else if (onStack[w]) {
           // Successor w is on the SCC stack and hence in the current SCC. If w is not on the
           // stack, then (v, w) points to an SCC already finalised and must be ignored.
@@ -758,7 +868,6 @@ public fun <V : Comparable<V>> SortedMap<V, SortedSet<V>>.computeStronglyConnect
       // All edges of v processed. If v is an SCC root (lowlink == index), pop everything down to
       // and including v from the SCC stack and materialise it as a component.
       if (lowLinkOfId[v] == indexOfId[v]) {
-        val members = MutableIntList()
         while (true) {
           ensureActive()
           val popped = dfsStack.removeAt(dfsStack.size - 1)
@@ -766,7 +875,7 @@ public fun <V : Comparable<V>> SortedMap<V, SortedSet<V>>.computeStronglyConnect
           members.add(popped)
           if (popped == v) break
         }
-        componentMembers.add(members)
+        componentStarts.add(members.size)
       }
 
       callStack.removeAt(top)
@@ -782,50 +891,181 @@ public fun <V : Comparable<V>> SortedMap<V, SortedSet<V>>.computeStronglyConnect
     }
   }
 
-  if (roots != null) {
-    roots.forEachCancellable(ensureActive) { root ->
-      val rootId = vertexToId.getOrDefault(root, UNVISITED)
-      if (rootId != UNVISITED) visit(rootId)
-    }
-  } else {
-    (0 until n).forEachCancellable(ensureActive) { id ->
-      visit(id)
-    }
+  for (root in input.roots) {
+    ensureActive()
+    visit(root)
   }
 
-  // Materialise V-typed Component list and componentOf map.
-  val components = ArrayList<Component<V>>(componentMembers.size)
-  val componentOf = MutableObjectIntMap<V>(n)
-  for ((cid, members) in componentMembers.withIndex()) {
+  val memberArray = IntArray(members.size) { members[it] }
+  val startArray = IntArray(componentStarts.size) { componentStarts[it] }
+  val componentOf = IntArray(n) { UNVISITED }
+  for (componentId in 0 until startArray.size - 1) {
     ensureActive()
-    val component = Component<V>(cid)
-    (0 until members.size).forEachCancellable(ensureActive) { index ->
-      val id = members[index]
-      val vertex = vertexAt(id)
+    for (index in startArray[componentId] until startArray[componentId + 1]) {
+      componentOf[memberArray[index]] = componentId
+    }
+  }
+  return Components(startArray, memberArray, componentOf)
+}
+
+/**
+ * A sorted adjacency with vertex ids assigned in key order. Build and read it only on the thread
+ * that owns the keys.
+ */
+internal class IndexedAdjacency<V>(
+  /** Keys by id. */
+  val vertices: List<V>,
+  /** Each key's edges, in the order [targets] stores them. */
+  val rows: List<SortedSet<V>>,
+  val idOf: ObjectIntMap<V>,
+  val rowStarts: IntArray,
+  val targets: IntArray,
+) {
+  val vertexCount: Int
+    get() = vertices.size
+
+  fun keysOf(ids: IntArray): List<V> = ids.map { vertices[it] }
+}
+
+/**
+ * Assigns ids in sorted key order and stores each row's targets as ids. Throws
+ * [NoSuchElementException] if a target is not a key.
+ */
+internal fun <V> SortedMap<V, SortedSet<V>>.indexed(
+  ensureActive: () -> Unit,
+): IndexedAdjacency<V> {
+  val n = size
+  val vertices = ArrayList<V>(n)
+  val rows = ArrayList<SortedSet<V>>(n)
+  val idOf = MutableObjectIntMap<V>(n)
+  var edgeCount = 0
+  for ((vertex, edges) in this) {
+    ensureActive()
+    idOf[vertex] = vertices.size
+    vertices += vertex
+    rows += edges
+    edgeCount += edges.size
+  }
+
+  // Each row is already sorted because the source SortedSet is sorted and ids preserve that order.
+  val rowStarts = IntArray(n + 1)
+  val targets = IntArray(edgeCount)
+  var next = 0
+  for (id in 0 until n) {
+    ensureActive()
+    rowStarts[id] = next
+    rows[id].forEachCancellable(ensureActive) { target ->
+      targets[next++] = idOf[target]
+    }
+  }
+  rowStarts[n] = next
+  return IndexedAdjacency(vertices, rows, idOf, rowStarts, targets)
+}
+
+/** Returns sorted ids for [roots], skipping keys outside the graph. Null selects every vertex. */
+internal fun <V> IndexedAdjacency<V>.rootIds(
+  roots: SortedSet<V>?,
+  ensureActive: () -> Unit,
+): IntArray {
+  if (roots == null) {
+    return IntArray(vertexCount) { it }
+  }
+
+  val ids = MutableIntList(roots.size)
+  roots.forEachCancellable(ensureActive) { root ->
+    val id = idOf.getOrDefault(root, UNVISITED)
+    if (id != UNVISITED) {
+      ids.add(id)
+    }
+  }
+  return IntArray(ids.size) { ids[it] }
+}
+
+/** Marks each edge for which [isDeferrable] returns true. */
+private fun <V> IndexedAdjacency<V>.deferredEdges(
+  isDeferrable: (from: V, to: V) -> Boolean,
+  ensureActive: () -> Unit,
+): BitSet {
+  val deferredEdges = BitSet(targets.size)
+  for (id in 0 until vertexCount) {
+    ensureActive()
+    val from = vertices[id]
+    var edge = rowStarts[id]
+    rows[id].forEachCancellable(ensureActive) { to ->
+      if (isDeferrable(from, to)) {
+        deferredEdges.set(edge)
+      }
+      edge++
+    }
+  }
+  return deferredEdges
+}
+
+/** Marks each vertex for which [predicate] returns true. */
+private fun <V> IndexedAdjacency<V>.matchingVertices(
+  predicate: (V) -> Boolean,
+  ensureActive: () -> Unit,
+): BitSet {
+  val matches = BitSet(vertexCount)
+  for (id in 0 until vertexCount) {
+    ensureActive()
+    if (predicate(vertices[id])) {
+      matches.set(id)
+    }
+  }
+  return matches
+}
+
+/** Maps component membership back to keys. */
+private fun <V> IndexedAdjacency<V>.componentsOf(
+  starts: IntArray,
+  members: IntArray,
+  ensureActive: () -> Unit,
+): Pair<List<Component<V>>, ObjectIntMap<V>> {
+  val components = ArrayList<Component<V>>(starts.size - 1)
+  val componentOf = MutableObjectIntMap<V>(vertexCount)
+  for (componentId in 0 until starts.size - 1) {
+    ensureActive()
+    val component = Component<V>(componentId)
+    (starts[componentId] until starts[componentId + 1]).forEachCancellable(ensureActive) { index ->
+      val vertex = vertices[members[index]]
       component.vertices += vertex
-      componentOf[vertex] = cid
+      componentOf[vertex] = componentId
     }
     components += component
   }
+  return components to componentOf
+}
 
-  // ── Build the reachable adjacency in V-space ──
-  //
-  // The original receiver adjacency may include vertices that the DFS never reached (they sit
-  // outside the chosen `roots`). The contract here is to return a `SortedMap<V, SortedSet<V>>`
-  // covering ONLY the vertices the DFS touched.
-  //
-  // The DFS follows every outgoing edge, so each visited vertex's sorted row is already complete.
-  // Reusing it avoids copying and sorting dense rows (~6500 edges per vertex in benchmark graphs).
+/**
+ * Builds the reachable adjacency in key space.
+ *
+ * The full adjacency may include vertices that no root reaches. The result covers only the visited
+ * vertices. The DFS follows every outgoing edge, so each visited vertex's sorted row is already
+ * complete. Reusing it avoids copying and sorting dense rows (~6500 edges per vertex in benchmark
+ * graphs).
+ */
+private fun <V : Comparable<V>> IndexedAdjacency<V>.reachableAdjacency(
+  members: IntArray,
+  ensureActive: () -> Unit,
+): GraphAdjacency<V> {
+  val reachable = BitSet(vertexCount)
+  for (id in members) {
+    reachable.set(id)
+  }
+
   val reachableForward = sortedMapOf<V, SortedSet<V>>()
-  val reachableReverse = HashMap<V, MutableSet<V>>(n)
-  for ((vertex, edges) in this) {
+  val reachableReverse = HashMap<V, MutableSet<V>>(vertexCount)
+  for (id in 0 until vertexCount) {
     ensureActive()
     // Skip vertices the DFS never visited. They're not part of the reachable subgraph.
-    if (indexOfId[vertexToId[vertex]] == UNVISITED) {
+    if (!reachable.get(id)) {
       continue
     }
 
     // Include empty rows so callers that index into the result (e.g. `forward[v]`) see every leaf.
+    val vertex = vertices[id]
+    val edges = rows[id]
     reachableForward[vertex] = edges
     for (dependency in edges) {
       ensureActive()
@@ -833,8 +1073,41 @@ public fun <V : Comparable<V>> SortedMap<V, SortedSet<V>>.computeStronglyConnect
       reachableReverse.getAndAdd(dependency, vertex)
     }
   }
+  return GraphAdjacency(reachableForward, reachableReverse)
+}
 
-  return TarjanResult(components, componentOf, GraphAdjacency(reachableForward, reachableReverse))
+/** Maps [output] back to keys. [output] must come from this adjacency's analysis input. */
+internal fun <V : Comparable<V>> IndexedAdjacency<V>.topologyOf(
+  output: AnalysisOutput,
+  ensureActive: () -> Unit,
+): GraphTopology<V> {
+  val (components, componentOf) =
+    componentsOf(output.componentStarts, output.componentMembers, ensureActive)
+  val adjacency = reachableAdjacency(output.componentMembers, ensureActive)
+
+  val sortedKeys = ArrayList<V>(output.order.size)
+  for (id in output.order) {
+    ensureActive()
+    sortedKeys += vertices[id]
+  }
+
+  // Deferred keys follow id order, which is sorted key order.
+  val deferredTypes = LinkedHashSet<V>(calculateInitialCapacity(output.deferred.cardinality()))
+  var deferredId = output.deferred.nextSetBit(0)
+  while (deferredId >= 0) {
+    ensureActive()
+    deferredTypes += vertices[deferredId]
+    deferredId = output.deferred.nextSetBit(deferredId + 1)
+  }
+
+  return GraphTopology(
+    sortedKeys,
+    deferredTypes,
+    adjacency.forward.keys,
+    adjacency,
+    components,
+    componentOf,
+  )
 }
 
 private const val UNVISITED = -1
@@ -849,7 +1122,7 @@ public fun <T : Comparable<T>> buildFullAdjacency(
 ): SortedMap<T, SortedSet<T>> {
   /**
    * Sort our map keys and list values here for better performance later (avoiding needing to
-   * defensively sort in [computeStronglyConnectedComponents]).
+   * defensively sort before assigning vertex ids).
    */
   val adjacency = sortedMapOf<T, SortedSet<T>>()
 
