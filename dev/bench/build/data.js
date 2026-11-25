@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795584482265,
+  "lastUpdate": 1795586086476,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -29064,6 +29064,62 @@ window.BENCHMARK_DATA = {
             "value": 10262.927,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -2.60%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "fe1fb39c~1",
+          "message": "[before] Move declaration read models out of the transforme",
+          "timestamp": "2026-11-24T23:23:24-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/fe1fb39c2d24880f03f733559fd48bd36dc4772e"
+        },
+        "date": 1795586086476,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19794.386,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "fe1fb39c2d24880f03f733559fd48bd36dc4772e",
+          "message": "[after] Move declaration read models out of the transforme",
+          "timestamp": "2026-11-24T23:23:24-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/fe1fb39c2d24880f03f733559fd48bd36dc4772e"
+        },
+        "date": 1795586086477,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19238.601000000002,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -2.81%"
           }
         ]
       }
