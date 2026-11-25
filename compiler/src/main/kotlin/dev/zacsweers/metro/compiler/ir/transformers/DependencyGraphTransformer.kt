@@ -22,6 +22,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.graph.LifecycleDiagnosticMessages
 import dev.zacsweers.metro.compiler.graph.LocationDiagnostic
 import dev.zacsweers.metro.compiler.graph.toText
+import dev.zacsweers.metro.compiler.ir.DiagnosticBatcher
 import dev.zacsweers.metro.compiler.ir.IrBindingContainerResolver
 import dev.zacsweers.metro.compiler.ir.IrBoundTypeResolver
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
@@ -803,8 +804,7 @@ internal class DependencyGraphTransformer(
 
     // Validate that no accessor exposes a @GraphPrivate binding
     if (node.graphPrivateKeys.isNotEmpty()) {
-      // Batch by declaration to avoid kotlinc diagnostic deduplication
-      val privateBindingErrors = mutableMapOf<IrDeclaration, MutableList<String>>()
+      val privateBindingErrors = DiagnosticBatcher()
       for (accessor in node.accessors) {
         val annotations = accessor.metroFunction.annotations
         val accessorDeclaresGraphPrivateMultibinds =
@@ -819,19 +819,16 @@ internal class DependencyGraphTransformer(
           val sourceDeclaration: IrDeclaration =
             accessorIr.correspondingPropertySymbol?.owner?.resolveOverriddenTypeIfAny()
               ?: accessorIr.resolveOverriddenTypeIfAny()
-          privateBindingErrors.getOrPut(sourceDeclaration) { mutableListOf() } +=
-            "Cannot expose @GraphPrivate binding '${accessor.contextKey.typeKey.renderForDiagnostic(short = false)}' as a graph accessor. @GraphPrivate bindings are confined to the graph they are provided in."
-        }
-      }
-      if (privateBindingErrors.isNotEmpty()) {
-        for ((sourceDeclaration, messages) in privateBindingErrors) {
-          val combinedMessage = messages.joinToString(separator = "\n\n")
-          reportCompat(
-            irDeclarations = sequenceOf(sourceDeclaration, dependencyGraphDeclaration),
+          privateBindingErrors.add(
             factory = MetroDiagnostics.PRIVATE_BINDING_ERROR,
-            a = combinedMessage,
+            candidates = sequenceOf(sourceDeclaration, dependencyGraphDeclaration),
+            message =
+              "Cannot expose @GraphPrivate binding '${accessor.contextKey.typeKey.renderForDiagnostic(short = false)}' as a graph accessor. @GraphPrivate bindings are confined to the graph they are provided in.",
           )
         }
+      }
+      if (!privateBindingErrors.isEmpty) {
+        privateBindingErrors.flush()
         unit.hasErrors = true
       }
     }
@@ -854,17 +851,15 @@ internal class DependencyGraphTransformer(
 
     val preparedSeal =
       bindingGraph.prepareSeal(childGraphScopes) { errors ->
-        errors
-          .groupBy { it.factory to it.declaration }
-          .forEach { (key, grouped) ->
-            val (factory, declaration) = key
-            val combinedMessage = grouped.joinToString(separator = "\n\n") { it.message }
-            reportCompat(
-              irDeclarations = sequenceOf(declaration, dependencyGraphDeclaration),
-              factory = factory,
-              a = combinedMessage.padForConsole(),
-            )
-          }
+        val batcher = DiagnosticBatcher()
+        for (error in errors) {
+          batcher.add(
+            factory = error.factory,
+            candidates = sequenceOf(error.declaration, dependencyGraphDeclaration),
+            message = error.message,
+          )
+        }
+        batcher.flush()
       }
     unit.seal = preparedSeal
   }
@@ -981,7 +976,6 @@ internal class DependencyGraphTransformer(
 
     val unusedGraphInputs = unusedKeys.values.filterNotNull().sortedBy { it.typeKey }
 
-    // Group messages by target to avoid kotlinc diagnostic deduplication
     data class UnusedInputReport(
       val message: String,
       val irElement: IrElement?,
@@ -1060,7 +1054,7 @@ internal class DependencyGraphTransformer(
           notes = notes,
         )
       UnusedInputReport(
-        render(diagnostic).padForConsole(),
+        render(diagnostic),
         unusedBinding.irElement,
         unusedBinding.reportableDeclaration,
       )
@@ -1074,7 +1068,7 @@ internal class DependencyGraphTransformer(
         report.irElement!!,
         graphDeclaration.file,
         diagnosticFactory,
-        report.message,
+        report.message.padForConsole(),
       )
     }
 
@@ -1088,18 +1082,16 @@ internal class DependencyGraphTransformer(
           graphDeclaration
         }
 
-      // Group by reportable declaration to batch messages targeting same element
-      withoutElement
-        .groupBy { it.reportableDeclaration }
-        .forEach { (reportableDecl, grouped) ->
-          val combinedMessage = grouped.joinToString(separator = "\n\n") { it.message }
-          reportCompat(
-            irDeclarations = sequenceOf(reportableDecl, graphDeclarationSource),
-            factory = diagnosticFactory,
-            a = combinedMessage,
-            includeDeclarationContext = false,
-          )
-        }
+      val batcher = DiagnosticBatcher()
+      for (report in withoutElement) {
+        batcher.add(
+          factory = diagnosticFactory,
+          candidates = sequenceOf(report.reportableDeclaration, graphDeclarationSource),
+          message = report.message,
+          includeDeclarationContext = false,
+        )
+      }
+      batcher.flush()
     }
   }
 
