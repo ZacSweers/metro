@@ -9,7 +9,6 @@ import dev.zacsweers.metro.compiler.ir.graph.IrBinding
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parameters.remapTypes
-import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
@@ -84,7 +83,7 @@ internal class BindsCallable(
    * Caches the alias for this callable's concrete types. Remapped callables own separate aliases.
    * Parameterless binds use constructor bindings.
    */
-  val aliasBinding: IrBinding.Alias by memoize {
+  val aliasBinding: IrBinding.Alias by irLazy {
     IrBinding.Alias(
       typeKey = typeKey,
       aliasedType = checkNotNull(source) { "Parameterless binds use constructor bindings" },
@@ -129,7 +128,7 @@ internal class BindsCallable(
       source = source?.remapTypes(remapper),
       typeKey = typeKey.remapTypes(remapper),
       rawTarget = rawTarget.remapTypes(remapper),
-      parametersLazy = memoize { parametersLazy.value.remapTypes(remapper) },
+      parametersLazy = irLazy { parametersLazy.value.remapTypes(remapper) },
       containerTypeRemapper = remapper,
     )
   }
@@ -163,7 +162,7 @@ internal class BindsCallable(
       source = source?.remapTypes(functionRemapper),
       typeKey = typeKey.remapTypes(functionRemapper),
       rawTarget = rawTarget.remapTypes(functionRemapper),
-      parametersLazy = memoize { parametersLazy.value.remapTypes(functionRemapper) },
+      parametersLazy = irLazy { parametersLazy.value.remapTypes(functionRemapper) },
       functionTypeArguments = arguments,
       containerTypeRemapper = containerTypeRemapper,
     )
@@ -273,7 +272,7 @@ internal fun MetroSimpleFunction.toBindsCallable(
     source = source,
     typeKey = typeKey,
     rawTarget = rawTarget,
-    parametersLazy = memoize { callableMetadata.function.parameters() },
+    parametersLazy = irLazy { callableMetadata.function.parameters() },
   )
 }
 

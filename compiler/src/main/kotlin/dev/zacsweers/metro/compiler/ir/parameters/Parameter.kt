@@ -17,12 +17,12 @@ import dev.zacsweers.metro.compiler.ir.asCanonicalProviderKey
 import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.constArgumentOfTypeAt
 import dev.zacsweers.metro.compiler.ir.hasMetroDefault
+import dev.zacsweers.metro.compiler.ir.irLazy
 import dev.zacsweers.metro.compiler.ir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.remapType
 import dev.zacsweers.metro.compiler.letIf
-import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.singleOrNullUnlessMultiple
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -90,7 +90,7 @@ private constructor(
   val asProperty: IrProperty
     get() = ir as? IrProperty ?: reportCompilerBug("Not a property! Was $ir")
 
-  private val cachedToString by memoize {
+  private val cachedToString by irLazy {
     buildString {
       contextualTypeKey.typeKey.qualifier?.let {
         append(it)

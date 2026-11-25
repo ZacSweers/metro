@@ -67,6 +67,7 @@ import dev.zacsweers.metro.compiler.ir.hasErrorTypes
 import dev.zacsweers.metro.compiler.ir.hasStarArgument
 import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.injectedFunctionOrNull
+import dev.zacsweers.metro.compiler.ir.irLazy
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isImplicitClassKeySentinel
 import dev.zacsweers.metro.compiler.ir.locationOrNull
@@ -88,7 +89,6 @@ import dev.zacsweers.metro.compiler.ir.shouldUnwrapMapKeyValues
 import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
 import dev.zacsweers.metro.compiler.ir.toDiagnosticSpan
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
-import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.safePathString
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -899,7 +899,7 @@ internal class IrBindingGraph(
           it.multibindingBindingElementId != null
         }
         if (unusedMultibindingElements.isNotEmpty()) {
-          val allMultibindings by memoize {
+          val allMultibindings by irLazy {
             buildList {
               realGraph.bindings.forEachValue { b ->
                 if (b is IrBinding.Multibinding) {
@@ -1066,7 +1066,7 @@ internal class IrBindingGraph(
       }
     }
     // Get all registered multibindings for similarity checking
-    val allMultibindings by memoize {
+    val allMultibindings by irLazy {
       (graphMultibindings + bindingLookup.getAvailableMultibindings().values).distinctBy {
         it.typeKey
       }

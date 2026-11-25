@@ -28,7 +28,6 @@ import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.isGraphImpl
 import dev.zacsweers.metro.compiler.letIf
 import dev.zacsweers.metro.compiler.mapToSet
-import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.singleOrError
@@ -211,6 +210,13 @@ import org.jetbrains.kotlin.platform.isJs
 import org.jetbrains.kotlin.platform.isWasm
 import org.jetbrains.kotlin.platform.jvm.isJvm
 import org.jetbrains.kotlin.platform.konan.isNative
+
+/**
+ * Creates an unsynchronized lazy for IR state. IR state belongs to the thread that runs the
+ * pipeline, so it doesn't need locking.
+ */
+internal fun <T> irLazy(initializer: () -> T): Lazy<T> =
+  lazy(LazyThreadSafetyMode.NONE, initializer)
 
 /** Finds the line and column of [this] within its file. */
 internal fun IrDeclaration.location(): CompilerMessageSourceLocation {
@@ -2477,10 +2483,10 @@ internal fun checkSignatureCarrierParamMismatches(
 ): Boolean {
   if (!factoryClass.shouldCheckSignatureCarrierParamMismatches()) return false
 
-  val newInstanceFunction by memoize {
+  val newInstanceFunction by irLazy {
     helperOwner.requireStaticIshFunction(newInstanceFunctionName)
   }
-  val newInstanceFunctionParams by memoize { extractParams(newInstanceFunction) }
+  val newInstanceFunctionParams by irLazy { extractParams(newInstanceFunction) }
 
   val createFunction = helperOwner.requireStaticIshFunction(Symbols.StringNames.CREATE)
   val createFunctionParams = extractParams(createFunction)
@@ -2613,7 +2619,7 @@ internal fun IrClass.findInjectableConstructor(
   onlyUsePrimaryConstructor: Boolean,
   injectAnnotations: Set<ClassId>,
 ): IrConstructor? {
-  val isClassAnnotatedInject by memoize { isAnnotatedWithAny(injectAnnotations) }
+  val isClassAnnotatedInject by irLazy { isAnnotatedWithAny(injectAnnotations) }
   return if (onlyUsePrimaryConstructor && isClassAnnotatedInject) {
     primaryConstructor
   } else {

@@ -16,10 +16,10 @@ import dev.zacsweers.metro.compiler.ir.ClassFactory
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.graph.IrBindingStack.Entry
+import dev.zacsweers.metro.compiler.ir.irLazy
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.resolveOverriddenTypeIfAny
-import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.DaggerSymbols
 import dev.zacsweers.metro.compiler.withoutLineBreaks
@@ -442,7 +442,7 @@ internal val IrBindingStack.lastEntryOrGraph: IrDeclaration?
 
 internal class IrBindingStackImpl(override val graph: IrClass, private val logger: MetroLogger) :
   IrBindingStack {
-  override val graphFqName: FqName by memoize { graph.kotlinFqName }
+  override val graphFqName: FqName by irLazy { graph.kotlinFqName }
 
   // TODO Use one structure for the binding stack and its membership index.
   // An IntIntMap keyed by type-key hash would also need collision handling.

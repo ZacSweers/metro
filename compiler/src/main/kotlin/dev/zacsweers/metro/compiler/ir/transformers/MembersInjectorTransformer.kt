@@ -39,6 +39,7 @@ import dev.zacsweers.metro.compiler.ir.getOrCreateMetadataVisibleHiddenNestedCla
 import dev.zacsweers.metro.compiler.ir.hasStarArgument
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irInvoke
+import dev.zacsweers.metro.compiler.ir.irLazy
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.isStaticIsh
@@ -62,7 +63,6 @@ import dev.zacsweers.metro.compiler.ir.toCompanionMode
 import dev.zacsweers.metro.compiler.ir.trackClassLookup
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.ir.typeRemapperFor
-import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.newName
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.DaggerSymbols
@@ -205,8 +205,8 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
       )
     }
 
-    val lazyInjectedClassMetadata = memoize { declaration.metroMetadata?.injected_class }
-    val lazyClassMetadata = memoize { lazyInjectedClassMetadata.value?.member_injections }
+    val lazyInjectedClassMetadata = irLazy { declaration.metroMetadata?.injected_class }
+    val lazyClassMetadata = irLazy { lazyInjectedClassMetadata.value?.member_injections }
 
     // For external classes with no Metro metadata, the only option is Dagger (if enabled)
     if (isExternal) {
@@ -705,7 +705,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
 
     // Compute source member parameters for qualifier lookup
     // For Dagger, only include properties with setter injection (narrower scope)
-    val sourceMemberParametersMap = memoize {
+    val sourceMemberParametersMap = irLazy {
       computeSourceMemberParametersMap(nameAllocator, settersOnly = true)
     }
 

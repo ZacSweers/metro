@@ -9,7 +9,6 @@ import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parameters.remapTypes
 import dev.zacsweers.metro.compiler.ir.transformers.factoryHelperDeclarationContainer
-import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.proto.SignatureCarrier
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.runIf
@@ -55,9 +54,9 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
 
   /**
    * Owns the binding for this factory's parameter types within its compilation. Remapped factories
-   * get separate values, and memoize publishes completed bindings to parallel graph builders.
+   * get separate values.
    */
-  val providedBinding: IrBinding.Provided by memoize {
+  val providedBinding: IrBinding.Provided by irLazy {
     IrBinding.Provided(
       providerFactory = this,
       contextualTypeKey = IrContextualTypeKey(typeKey),
@@ -142,7 +141,7 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
      */
     val containerTypeRemapper: TypeRemapper? = null,
   ) : ProviderFactory() {
-    override val helperOwner: IrClass by memoize {
+    override val helperOwner: IrClass by irLazy {
       factoryClass.factoryHelperDeclarationContainer(companionMode)
     }
 
@@ -357,7 +356,7 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
     override val isDaggerFactory: Boolean = true
 
     // Dagger and Anvil record no helper owner, so this reads the factory's shape.
-    override val helperOwner: IrClass by memoize {
+    override val helperOwner: IrClass by irLazy {
       factoryClass.requireStaticIshDeclarationContainer()
     }
 
@@ -463,7 +462,7 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
             callableMetadata.isPropertyAccessor,
             callableMetadata.function,
           )
-      val lazyParams = memoize { callableMetadata.function.parameters() }
+      val lazyParams = irLazy { callableMetadata.function.parameters() }
       val computedInlinedValue =
         inlinedValue
           ?: if (computeInlinedValue && context.options.enableProviderInlining) {

@@ -33,6 +33,7 @@ import dev.zacsweers.metro.compiler.ir.findInjectableConstructor
 import dev.zacsweers.metro.compiler.ir.getOrCreateGraphImplClassShell
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irInvoke
+import dev.zacsweers.metro.compiler.ir.irLazy
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isBindingContainer
 import dev.zacsweers.metro.compiler.ir.isExternalParent
@@ -59,7 +60,6 @@ import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.metro.compiler.ir.typeRemapperFor
 import dev.zacsweers.metro.compiler.ir.usesContributionProviderPath
 import dev.zacsweers.metro.compiler.joinSimpleNames
-import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.reserveName
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -161,7 +161,7 @@ internal class ContributionIrTransformer(
 
     return trace("Visit ${declaration.name}") {
       trace("Transform ${declaration.name} bindings") {
-        val isBindingContainer by memoize { declaration.isBindingContainer() }
+        val isBindingContainer by irLazy { declaration.isBindingContainer() }
 
         // First, perform transformations
         if (declaration.origin == Origins.MetroContributionClassDeclaration) {
@@ -498,7 +498,7 @@ internal class ContributionIrTransformer(
       }
     }
 
-    val scopedInstanceType by memoize { syntheticScopedType(originClass, contributions) }
+    val scopedInstanceType by irLazy { syntheticScopedType(originClass, contributions) }
 
     if (useSyntheticScopedProvider && container.functions.none { it.name == scopedFunctionName }) {
       container
@@ -782,20 +782,20 @@ internal class ContributionIrTransformer(
         declaration.lookupClass(originClassId)?.owner ?: return
       }
 
-    val isAssistedFactory by memoize {
+    val isAssistedFactory by irLazy {
       originClass.isAnnotatedWithAny(metroSymbols.classIds.assistedFactoryAnnotations)
     }
 
-    val assistedFactoryTargetConstructor by memoize {
+    val assistedFactoryTargetConstructor by irLazy {
       if (isAssistedFactory) originClass.assistedFactoryTargetConstructor() else null
     }
 
     // Find the primary constructor of the origin class
-    val injectConstructor by memoize {
+    val injectConstructor by irLazy {
       originClass.findInjectableConstructor(onlyUsePrimaryConstructor = false)
     }
 
-    val memberInjectors by memoize {
+    val memberInjectors by irLazy {
       if (originClass.isObject || isAssistedFactory) {
         emptyList()
       } else {

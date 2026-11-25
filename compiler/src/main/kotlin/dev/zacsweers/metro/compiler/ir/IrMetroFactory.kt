@@ -8,7 +8,6 @@ import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parameters.remapTypes as remapParameterTypes
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.ir.transformers.factoryHelperDeclarationContainer
-import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.proto.SignatureCarrier
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.DaggerSymbols
@@ -328,16 +327,16 @@ internal sealed class ClassFactory : IrMetroFactory {
     override val function: IrSimpleFunction = targetFunctionParameters.ir!! as IrSimpleFunction
     override val isDaggerFactory: Boolean = false
 
-    override val helperOwner: IrClass by memoize {
+    override val helperOwner: IrClass by irLazy {
       factoryClass.factoryHelperDeclarationContainer(companionMode)
     }
 
-    override val isAssistedInject: Boolean by memoize {
+    override val isAssistedInject: Boolean by irLazy {
       // Check if the factory has the @AssistedMarker annotation
       factoryClass.hasAnnotation(Symbols.ClassIds.metroAssistedMarker)
     }
 
-    override val invokeFunctionSymbol: IrFunctionSymbol by memoize {
+    override val invokeFunctionSymbol: IrFunctionSymbol by irLazy {
       factoryClass.requireSimpleFunction(Symbols.StringNames.INVOKE)
     }
 
@@ -371,7 +370,7 @@ internal sealed class ClassFactory : IrMetroFactory {
     override val targetConstructor: IrConstructor,
     constructorParameters: Parameters,
   ) : ClassFactory() {
-    override val targetFunctionParameters: Parameters by memoize {
+    override val targetFunctionParameters: Parameters by irLazy {
       context(metroContext) {
         constructorParameters.withDaggerFactorySignature(factoryClass, Symbols.Names.newInstance)
       }
@@ -380,13 +379,13 @@ internal sealed class ClassFactory : IrMetroFactory {
     override val function: IrConstructor = targetConstructor
 
     // Dagger and Anvil record no helper owner, so this reads the factory's shape.
-    override val helperOwner: IrClass by memoize {
+    override val helperOwner: IrClass by irLazy {
       factoryClass.requireStaticIshDeclarationContainer()
     }
 
     override val createFunctionNames: Set<Name> =
       setOf(Symbols.Names.create, Symbols.Names.createFactoryProvider)
-    override val isAssistedInject: Boolean by memoize {
+    override val isAssistedInject: Boolean by irLazy {
       // Check if the constructor has an @AssistedInject annotation
       function.hasAnnotation(DaggerSymbols.ClassIds.DAGGER_ASSISTED_INJECT)
     }

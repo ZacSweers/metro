@@ -14,12 +14,12 @@ import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
 import dev.zacsweers.metro.compiler.ir.MultibindsCallable
 import dev.zacsweers.metro.compiler.ir.ProviderFactory
+import dev.zacsweers.metro.compiler.ir.irLazy
 import dev.zacsweers.metro.compiler.ir.metroGraphOrNull
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.mapToSet
-import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.ir.IrElement
@@ -68,31 +68,31 @@ internal sealed class GraphNode {
    * binding for the same key. Includes keys from `@Provides` (provider factories) and `@Binds`
    * (binds callables).
    */
-  open val directlyProvidedKeys: Set<IrTypeKey> by memoize {
+  open val directlyProvidedKeys: Set<IrTypeKey> by irLazy {
     buildSet {
       addAll(providerFactories.keys)
       addAll(bindsCallables.keys)
     }
   }
 
-  val publicAccessors: Set<IrTypeKey> by memoize { accessors.mapToSet { it.contextKey.typeKey } }
+  val publicAccessors: Set<IrTypeKey> by irLazy { accessors.mapToSet { it.contextKey.typeKey } }
 
-  val contextKey: IrContextualTypeKey by memoize { IrContextualTypeKey(typeKey) }
+  val contextKey: IrContextualTypeKey by irLazy { IrContextualTypeKey(typeKey) }
 
   // For quick lookups. Keep this lazy: some graph nodes have very large transitive supertype
   // fan-out and most nodes never need to materialize this set.
-  val supertypeClassIds: Set<ClassId> by memoize {
+  val supertypeClassIds: Set<ClassId> by irLazy {
     supertypes.mapNotNullToSet { it.classOrNull?.owner?.classId }
   }
 
-  val metroGraph: IrClass? by memoize { sourceGraph.metroGraphOrNull }
+  val metroGraph: IrClass? by irLazy { sourceGraph.metroGraphOrNull }
 
-  val metroGraphOrFail: IrClass by memoize {
+  val metroGraphOrFail: IrClass by irLazy {
     metroGraph ?: reportCompilerBug("No generated MetroGraph found: ${sourceGraph.kotlinFqName}")
   }
 
   /** [IrTypeKey] of the contributed graph extension, if any. */
-  val contributedGraphTypeKey: IrTypeKey? by memoize {
+  val contributedGraphTypeKey: IrTypeKey? by irLazy {
     if (sourceGraph.origin == Origins.GeneratedGraphExtension) {
       IrTypeKey(sourceGraph.superTypes.first())
     } else {
@@ -101,16 +101,16 @@ internal sealed class GraphNode {
   }
 
   /** [contributedGraphTypeKey] if not null, otherwise [GraphNode.typeKey]. */
-  val originalTypeKey: IrTypeKey by memoize { contributedGraphTypeKey ?: typeKey }
+  val originalTypeKey: IrTypeKey by irLazy { contributedGraphTypeKey ?: typeKey }
 
-  val reportableSourceGraphDeclaration: IrElement by memoize {
+  val reportableSourceGraphDeclaration: IrElement by irLazy {
     if (metroGraph?.origin == Origins.GeneratedDynamicGraph) {
       val source = metroGraph?.generatedDynamicGraphData?.sourceExpression
       if (source != null) {
-        return@memoize source
+        return@irLazy source
       }
     }
-    return@memoize generateSequence(sourceGraph) { it.graphParentOrOuterClass }
+    return@irLazy generateSequence(sourceGraph) { it.graphParentOrOuterClass }
       .firstOrNull {
         // Skip impl graphs
         it.sourceGraphIfMetroGraph == it && it.fileOrNull != null
@@ -120,11 +120,11 @@ internal sealed class GraphNode {
       )
   }
 
-  val allIncludedNodes: Set<GraphNode> by memoize {
+  val allIncludedNodes: Set<GraphNode> by irLazy {
     buildMap(::recurseIncludedNodes).values.toSet()
   }
 
-  val allParentGraphs: Map<IrTypeKey, GraphNode> by memoize { buildMap(::recurseParents) }
+  val allParentGraphs: Map<IrTypeKey, GraphNode> by irLazy { buildMap(::recurseParents) }
 
   private fun recurseIncludedNodes(builder: MutableMap<IrTypeKey, GraphNode>) {
     for ((key, includedNode) in includedGraphNodes) {
@@ -212,7 +212,7 @@ internal sealed class GraphNode {
   ) : GraphNode() {
     val hasExtensions = graphExtensions.isNotEmpty()
 
-    override val directlyProvidedKeys: Set<IrTypeKey> by memoize {
+    override val directlyProvidedKeys: Set<IrTypeKey> by irLazy {
       buildSet {
         addAll(providerFactories.keys)
         addAll(bindsCallables.keys)
@@ -231,9 +231,9 @@ internal sealed class GraphNode {
     abstract val parameters: Parameters
     abstract val bindingContainersParameterIndices: BitField
 
-    val parametersByTypeKey by memoize { parameters.regularParameters.associateBy { it.typeKey } }
+    val parametersByTypeKey by irLazy { parameters.regularParameters.associateBy { it.typeKey } }
 
-    val typeKey by memoize { IrTypeKey(type.typeWith()) }
+    val typeKey by irLazy { IrTypeKey(type.typeWith()) }
 
     data class Constructor(
       override val type: IrClass,

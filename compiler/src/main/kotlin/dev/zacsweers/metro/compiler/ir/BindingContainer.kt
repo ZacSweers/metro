@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
-import dev.zacsweers.metro.compiler.memoize
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.classIdOrFail
@@ -19,7 +18,7 @@ internal class BindingContainer(
   val providerFactories: Map<CallableId, ProviderFactory>,
   val bindsMirror: BindsMirror?,
 ) {
-  val typeKey by memoize { IrTypeKey(ir.defaultType) }
+  val typeKey by irLazy { IrTypeKey(ir.defaultType) }
 
   private val classId = ir.classIdOrFail
 
