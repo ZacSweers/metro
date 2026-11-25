@@ -316,7 +316,21 @@ internal fun IrType.rawTypeOrNull(): IrClass? {
   }
 }
 
-private val irAnnotationCompatContext: CompatContext by lazy { CompatContext.create() }
+private val defaultIrAnnotationCompatContext: CompatContext by lazy { CompatContext.create() }
+
+/**
+ * The [CompatContext] that the plugin registrar resolved. The registrar sets it before it registers
+ * the IR extensions, so each of them reads the same instance. It's process-wide. Nothing clears it
+ * because another compilation in the same process may still read it.
+ */
+@Volatile private var configuredIrAnnotationCompatContext: CompatContext? = null
+
+private val irAnnotationCompatContext: CompatContext
+  get() = configuredIrAnnotationCompatContext ?: defaultIrAnnotationCompatContext
+
+internal fun setIrAnnotationCompatContext(compatContext: CompatContext) {
+  configuredIrAnnotationCompatContext = compatContext
+}
 
 internal fun IrAnnotationContainer.annotationsCompat(): List<IrConstructorCall> {
   return with(irAnnotationCompatContext) { this@annotationsCompat.annotationsCompat() }

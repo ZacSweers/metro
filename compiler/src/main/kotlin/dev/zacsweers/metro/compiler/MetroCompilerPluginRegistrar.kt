@@ -13,6 +13,7 @@ import dev.zacsweers.metro.compiler.compat.CompilerVersionAliases
 import dev.zacsweers.metro.compiler.compat.KotlinToolingVersion
 import dev.zacsweers.metro.compiler.fir.MetroFirExtensionRegistrar
 import dev.zacsweers.metro.compiler.ir.MetroIrGenerationExtension
+import dev.zacsweers.metro.compiler.ir.setIrAnnotationCompatContext
 import dev.zacsweers.metro.compiler.tracing.TraceContext
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
@@ -191,6 +192,9 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
     }
 
     if (!isIde) {
+      // Circuit's IR extensions run before Metro's, so set this before any of them is registered.
+      setIrAnnotationCompatContext(compatContext)
+
       val lookupTracker = configuration[CommonConfigurationKeys.LOOKUP_TRACKER]
       val expectActualTracker: ExpectActualTracker =
         configuration[CommonConfigurationKeys.EXPECT_ACTUAL_TRACKER, ExpectActualTracker.DoNothing]

@@ -40,6 +40,7 @@ Changelog
 - **[IR]** Fix a compiler crash when two `@IntoSet` or `@IntoMap` functions have names with the same hash code, such as `provideAa` and `provideBB`.
 - **[IR]** Fix single-entry set multibindings that allowed mutation on non-JVM targets.
 - **[IR]** Fix a compiler crash when a graph extension calls an inherited provider on a generic parent graph.
+- **[IR]** Fix `compilerVersion` and `compilerVersionAliases` being ignored when Metro reads or creates annotations in IR.
 - **[IDEA]** Discard a file snapshot if its worker is canceled while reading it for the IDE index.
 - **[IDEA]** After a lookup in the inactive graph browser, unrelated edits no longer trigger an index build.
 - **[IDEA]** Selecting a module with Metro disabled no longer triggers index rebuilds in other modules on unrelated edits.
