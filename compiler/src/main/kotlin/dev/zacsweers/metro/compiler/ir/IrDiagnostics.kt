@@ -59,6 +59,62 @@ internal fun reportTarget(irDeclarations: Sequence<IrDeclaration?>): IrDeclarati
   return toReport
 }
 
+/**
+ * Joins diagnostic messages that land on the same element into one report.
+ *
+ * kotlinc keeps only the first diagnostic for one factory on one source element. It drops later
+ * reports with the same factory on that element. So messages are grouped by factory, by the
+ * declaration [reportTarget] picks from their candidates, and by `includeDeclarationContext`.
+ *
+ * [flush] reports one diagnostic per group, in the order each group got its first message. A
+ * group's messages are sorted so output is deterministic across Kotlin versions. They're joined
+ * with a blank line and padded once with [padForConsole].
+ *
+ * Each reporting site creates its own instance and flushes it where it reports.
+ */
+internal class DiagnosticBatcher {
+  private data class Group(
+    val factory: KtDiagnosticFactory1<String>,
+    val target: IrDeclaration,
+    val includeDeclarationContext: Boolean,
+  )
+
+  private val groups = LinkedHashMap<Group, MutableList<String>>()
+
+  /** True when no message was added since the last [flush]. */
+  val isEmpty: Boolean
+    get() = groups.isEmpty()
+
+  /**
+   * Adds an unpadded [message]. [candidates] are in priority order, and [reportTarget] picks the
+   * one it's reported on.
+   */
+  fun add(
+    factory: KtDiagnosticFactory1<String>,
+    candidates: Sequence<IrDeclaration?>,
+    message: String,
+    includeDeclarationContext: Boolean = true,
+  ) {
+    val group = Group(factory, reportTarget(candidates), includeDeclarationContext)
+    groups.getOrPut(group) { mutableListOf() } += message
+  }
+
+  /** Reports one diagnostic per group and clears the batch. */
+  context(context: IrMetroContext)
+  fun flush() {
+    for ((group, messages) in groups) {
+      val combinedMessage = messages.sorted().joinToString(separator = "\n\n")
+      context.reportCompat(
+        group.target,
+        group.factory,
+        combinedMessage.padForConsole(),
+        includeDeclarationContext = group.includeDeclarationContext,
+      )
+    }
+    groups.clear()
+  }
+}
+
 // AnalyzerWithCompilerReport removed this API in 2.3.20, so we copy it in
 private fun Severity.convertSeverity(): CompilerMessageSeverity =
   when (this) {

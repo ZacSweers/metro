@@ -50,6 +50,7 @@ import dev.zacsweers.metro.compiler.graph.toText
 import dev.zacsweers.metro.compiler.graph.toTraceSection
 import dev.zacsweers.metro.compiler.graph.unwrappedMapKeysNote
 import dev.zacsweers.metro.compiler.graph.withEntry
+import dev.zacsweers.metro.compiler.ir.DiagnosticBatcher
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrBoundTypeResolver
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
@@ -299,9 +300,8 @@ internal class IrBindingGraph(
   }
 
   /**
-   * Flushes collected diagnostics, grouping by (factory, declaration) to batch multiple messages
-   * targeting the same diagnostic slot into a single report. This avoids kotlinc's diagnostic
-   * deduplication which drops subsequent reports with the same factory on the same source element.
+   * Flushes collected diagnostics through a [DiagnosticBatcher], one report per factory and
+   * declaration.
    *
    * Structured diagnostics first run through [DiagnosticBatch] passes (type-name disambiguation,
    * trace dedup) before rendering with the context's configured console mode.
@@ -320,19 +320,15 @@ internal class IrBindingGraph(
           },
         )
 
-    pendingDiagnostics
-      .groupBy { it.factory to it.declaration }
-      .forEach { (key, diagnostics) ->
-        val (factory, declaration) = key
-        val rendered = diagnostics.map { pending ->
-          when (pending) {
-            is PendingDiagnostic.Structured -> renderedStructured.getValue(pending)
-          }
+    val batcher = DiagnosticBatcher()
+    for (pending in pendingDiagnostics) {
+      val rendered =
+        when (pending) {
+          is PendingDiagnostic.Structured -> renderedStructured.getValue(pending)
         }
-        // Stable sort so output is deterministic across kotlin versions
-        val combinedMessage = rendered.sorted().joinToString(separator = "\n\n")
-        metroContext.reportCompat(declaration, factory, combinedMessage.padForConsole())
-      }
+      batcher.add(pending.factory, sequenceOf(pending.declaration), rendered)
+    }
+    batcher.flush()
     pendingDiagnostics.clear()
   }
 
