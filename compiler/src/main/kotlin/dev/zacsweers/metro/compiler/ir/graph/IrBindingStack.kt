@@ -652,7 +652,12 @@ internal fun bindingStackEntryForDependency(
       Entry.contributedToMultibinding(callingBinding.contextualTypeKey, callingBinding.declaration)
     }
     is ObjectClass,
-    is BoundInstance -> TODO()
+    is BoundInstance -> {
+      // Leaf bindings have no dependencies and cannot be the source of a diagnostic edge.
+      reportCompilerBug(
+        "Dependency trace from leaf binding ${callingBinding.typeKey} to $targetKey",
+      )
+    }
     is GraphDependency -> {
       Entry.injectedAt(contextKey, callingBinding.getter, displayTypeKey = targetKey)
     }

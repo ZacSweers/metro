@@ -46,6 +46,11 @@ class InteropConfigurationTest {
                 includeDagger()
               }
             }
+
+            tasks.register<JavaExec>("runInterop") {
+              classpath = sourceSets.main.get().runtimeClasspath
+              mainClass.set("test.TestInteropKt")
+            }
             """
               .trimIndent(),
           )
@@ -54,8 +59,6 @@ class InteropConfigurationTest {
 
     val project = fixture.gradleProject
 
-    // Build should succeed with interop-dagger on classpath
-    build(project.rootDir, "compileKotlin")
-    // TODO invoke main()?
+    build(project.rootDir, "runInterop")
   }
 }

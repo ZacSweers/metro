@@ -11,7 +11,11 @@ plugins {
   id("dev.zacsweers.metro")
 }
 
-@OptIn(ExperimentalMetroGradleApi::class) metro { enableCircuitCodegen.set(true) }
+@OptIn(ExperimentalMetroGradleApi::class)
+metro {
+  enableCircuitCodegen.set(true)
+  enableTopLevelFunctionInjection.set(true)
+}
 
 kotlin {
   jvm {

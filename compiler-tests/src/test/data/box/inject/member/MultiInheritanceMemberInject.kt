@@ -19,6 +19,9 @@ interface TestGraph {
 }
 
 fun box(): String {
-  // TODO()
+  val child = Child()
+  createGraph<TestGraph>().inject(child)
+  assertIs<Foo>(child.foo)
+  assertIs<Bar>(child.bar)
   return "OK"
 }

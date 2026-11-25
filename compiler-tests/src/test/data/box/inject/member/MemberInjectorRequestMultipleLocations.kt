@@ -4,10 +4,13 @@ class Foo {
   @Inject lateinit var message: String
 }
 
+@Inject class FooHolder(val injector: MembersInjector<Foo>)
+
 @DependencyGraph
 interface AppGraph {
   // Trigger creation of the Foo binding
   val foo: Foo
+  val fooHolder: FooHolder
 
   // Trigger creation for the accessor
   val fooInjector: MembersInjector<Foo>
@@ -22,8 +25,9 @@ fun box(): String {
   val foo = Foo()
   injector.injectMembers(foo)
   assertEquals("message", foo.message)
+
+  val otherFoo = Foo()
+  graph.fooHolder.injector.injectMembers(otherFoo)
+  assertEquals("message", otherFoo.message)
   return "OK"
 }
-
-// TODO
-//  what if an injector is both exposed as an accesor and in the consuming class?

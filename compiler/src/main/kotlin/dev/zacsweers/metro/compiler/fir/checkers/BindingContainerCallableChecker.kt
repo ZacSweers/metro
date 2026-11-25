@@ -627,7 +627,6 @@ internal object BindingContainerCallableChecker :
               val receiverTypeKey =
                 FirTypeKey.from(session, declaration.receiverParameter!!, declaration)
 
-              // TODO add a test for isIntoMultibinding
               if (returnTypeKey == receiverTypeKey && !annotations.isIntoMultibinding) {
                 reporter.reportOn(
                   source,

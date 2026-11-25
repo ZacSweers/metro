@@ -147,7 +147,6 @@ internal class AssistedFactoryFirGenerator(session: FirSession, compatContext: C
           it.name == Symbols.Names.FactoryClass
         }
       if (existingFactory != null) {
-        // TODO test this case
         return emptySet()
       }
 

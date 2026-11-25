@@ -41,7 +41,6 @@ private constructor(
       presizedList(collectionProviderSize)
 
     public fun addProvider(individualProvider: Provider<T>): Builder<T> {
-      // TODO(ronshapiro): Store a List< extends Provider<T>> and avoid the cast to Provider<T>
       individualProviders.add(individualProvider)
       return this
     }
