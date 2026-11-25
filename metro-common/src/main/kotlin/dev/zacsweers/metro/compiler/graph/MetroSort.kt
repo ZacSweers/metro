@@ -12,7 +12,6 @@ import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.trace
 import java.util.BitSet
-import java.util.PriorityQueue
 import java.util.SortedMap
 import java.util.SortedSet
 import java.util.TreeMap
@@ -210,6 +209,9 @@ public fun analyze(input: AnalysisInput, ensureActive: () -> Unit = {}): Analysi
   val components = trace("Compute SCCs") { findComponents(input, ensureActive) }
 
   val deferred = BitSet(input.vertexCount)
+  // Maps a vertex id to its index inside the component being processed. Every cycle step rewrites
+  // the entries for its own component before reading them, so this is never cleared.
+  var localIndex = EMPTY_INT_ARRAY
   var hardComponent: IntArray? = null
   var hardCycle: IntArray? = null
 
@@ -236,12 +238,18 @@ public fun analyze(input: AnalysisInput, ensureActive: () -> Unit = {}): Analysi
         }
       }
 
+      // Allocate this for the first cycle because most graphs have none.
+      if (localIndex.isEmpty()) {
+        localIndex = IntArray(input.vertexCount)
+      }
+
       // Look for cycles - find minimal set of nodes to defer
       val contributorsToCycle =
         findMinimalDeferralSet(
           input = input,
           components = components,
           componentId = componentId,
+          localIndex = localIndex,
           ensureActive = ensureActive,
         )
 
@@ -249,7 +257,7 @@ public fun analyze(input: AnalysisInput, ensureActive: () -> Unit = {}): Analysi
         // no deferrable -> hard cycle
         val vertices = components.members.copyOfRange(start, end)
         hardComponent = vertices
-        hardCycle = findHardCycle(input, components, componentId, ensureActive)
+        hardCycle = findHardCycle(input, components, componentId, localIndex, ensureActive)
         break
       }
 
@@ -267,7 +275,7 @@ public fun analyze(input: AnalysisInput, ensureActive: () -> Unit = {}): Analysi
       // Tarjan emits components in finish order, which in turn is the topological ordering we
       // want
       trace("Expand components") {
-        expandComponents(input, components, deferred, softCycles, ensureActive)
+        expandComponents(input, components, deferred, softCycles, localIndex, ensureActive)
       }
     }
 
@@ -293,8 +301,7 @@ public fun analyze(input: AnalysisInput, ensureActive: () -> Unit = {}): Analysi
  *
  * 1. Walk the SCC and build:
  *     - `sccAdjacency`: edges that stay inside the SCC (cross-SCC edges can't contribute to its
- *       internal cycle).
- *     - `deferrableEdgesFrom`: for each vertex, the set of its outgoing deferrable edges.
+ *       internal cycle), with each deferrable edge marked. See [localAdjacencyOf].
  *     - `potentialCandidates`: every vertex that has at least one outgoing deferrable edge. Only
  *       these can break the cycle, since deferring a vertex with no deferrable outgoing edge is a
  *       no-op.
@@ -312,13 +319,12 @@ public fun analyze(input: AnalysisInput, ensureActive: () -> Unit = {}): Analysi
  * already marked as constructed-on-demand) come first, then natural order. This keeps generated
  * code more stable and prefers obvious-on-the-source choices over arbitrary picks.
  *
- * Cycle-checking is done via [ReusableCycleChecker], which masks the deferred edges during an
- * iterative DFS instead of materializing a new adjacency map for each candidate test.
+ * Cycle-checking is done via [IntCycleChecker], which masks the deferred edges during an iterative
+ * DFS instead of materializing a new adjacency map for each candidate test.
  *
  * Example: `A <-> B` with `B -> A` deferrable (`Provider<A>`):
  * ```
- *   sccAdjacency:        A -> B,  B -> A
- *   deferrableEdgesFrom: B -> {A}
+ *   sccAdjacency:        A -> B,  B -> A (deferrable)
  *   candidates:          {B}
  *
  *   Try {B}: mask B -> A, remaining edge is A -> B -> acyclic. Return {B}.
@@ -328,44 +334,41 @@ private fun findMinimalDeferralSet(
   input: AnalysisInput,
   components: Components,
   componentId: Int,
+  localIndex: IntArray,
   ensureActive: () -> Unit,
-): Set<Int> {
-  val vertices = components.verticesOf(componentId)
-
+): IntArray {
   // Build the SCC-internal adjacency and deferrable edges ONCE upfront
   // This avoids rebuilding these structures for each candidate test.
-  // Each collection here is bounded by the SCC's vertex count, so size them up front.
-  val cap = calculateInitialCapacity(vertices.size)
-  val sccAdjacency = HashMap<Int, MutableSet<Int>>(cap)
-  val deferrableEdgesFrom = HashMap<Int, MutableSet<Int>>(cap)
-  val potentialCandidates = HashSet<Int>(cap)
+  val sccAdjacency = components.localAdjacencyOf(input, componentId, localIndex, ensureActive)
+  val vertices = sccAdjacency.vertices
 
-  vertices.forEachCancellable(ensureActive) { from ->
-    val rowStart = input.rowStarts[from]
-    val rowEnd = input.rowStarts[from + 1]
-    // Targets bounded by `from`'s outgoing degree.
-    val targets = LinkedHashSet<Int>(calculateInitialCapacity(rowEnd - rowStart))
-    (rowStart until rowEnd).forEachCancellable(ensureActive) { edge ->
-      val to = input.targets[edge]
-      // Only consider edges that stay inside the SCC
-      if (components.componentOf[to] == componentId) {
-        targets.add(to)
-        if (input.deferredEdges.get(edge)) {
-          // Track deferrable edges and candidates
-          deferrableEdgesFrom.getOrPut(from) { HashSet() }.add(to)
-          potentialCandidates.add(from)
-        }
-      }
+  // Track candidates by vertex id so they can be sorted by id below.
+  val potentialCandidates = MutableIntList()
+  // The first deferrable edge at or after the current row's start, or -1 when none is left.
+  var nextDeferrable = sccAdjacency.deferrableEdges.nextSetBit(0)
+  for (local in vertices.indices) {
+    ensureActive()
+    val rowEnd = sccAdjacency.rowStarts[local + 1]
+    val hasDeferrableEdge = nextDeferrable in 0 until rowEnd
+    if (hasDeferrableEdge) {
+      potentialCandidates.add(vertices[local])
+      nextDeferrable = sccAdjacency.deferrableEdges.nextSetBit(rowEnd)
     }
-    sccAdjacency[from] = targets
   }
 
   if (potentialCandidates.isEmpty()) {
-    return emptySet()
+    return EMPTY_INT_ARRAY
   }
 
   // Create reusable cycle checker that can mask edges dynamically
-  val cycleChecker = ReusableCycleChecker(vertices, sccAdjacency, deferrableEdgesFrom, ensureActive)
+  val cycleChecker =
+    IntCycleChecker(
+      vertexCount = vertices.size,
+      rowStarts = sccAdjacency.rowStarts,
+      targets = sccAdjacency.targets,
+      deferrableEdges = sccAdjacency.deferrableEdges,
+      ensureActive = ensureActive,
+    )
 
   // Two flavors of "deferrable" inform candidate priority:
   // - implicit (whole-node, e.g., @AssistedFactory, user already marked it on-demand)
@@ -375,61 +378,83 @@ private fun findMinimalDeferralSet(
   // A DeferralKind { WHOLE_NODE, EDGE, NONE } ordinal would express this more cleanly but isn't
   // worth the ripple through the rest of this logic.
   // Sort candidates once upfront instead of sorting in each loop.
-  val sortedCandidates = ArrayList<Int>(potentialCandidates.size)
-  potentialCandidates.forEachCancellable(ensureActive) { candidate ->
-    sortedCandidates += candidate
-  }
+  // Sorting ids and then moving implicit ones to the front orders them by priority, then id.
+  val candidateIds = IntArray(potentialCandidates.size) { potentialCandidates[it] }
+  candidateIds.sort()
   val implicitlyDeferrable = input.implicitlyDeferrable
-  sortedCandidates.sortWith { left, right ->
+  // Candidates as local indices, in priority order.
+  val sortedCandidates = IntArray(candidateIds.size)
+  var nextCandidate = 0
+  for (candidate in candidateIds) {
     ensureActive()
-    val implicitPriority =
-      (!implicitlyDeferrable.get(left)).compareTo(!implicitlyDeferrable.get(right))
-    if (implicitPriority != 0) {
-      implicitPriority
-    } else {
-      left.compareTo(right)
+    if (implicitlyDeferrable.get(candidate)) {
+      sortedCandidates[nextCandidate++] = localIndex[candidate]
+    }
+  }
+  for (candidate in candidateIds) {
+    ensureActive()
+    if (!implicitlyDeferrable.get(candidate)) {
+      sortedCandidates[nextCandidate++] = localIndex[candidate]
     }
   }
 
-  val preferredDeferral = setOf(sortedCandidates.first())
-  if (cycleChecker.isAcyclicWith(preferredDeferral)) {
-    return preferredDeferral
+  // Holds one candidate at a time for the single-candidate checks.
+  val singleDeferral = BitSet(vertices.size)
+  singleDeferral.set(sortedCandidates[0])
+  if (cycleChecker.isAcyclicWith(singleDeferral)) {
+    return intArrayOf(vertices[sortedCandidates[0]])
   }
   if (sortedCandidates.size == 1) {
-    return emptySet()
+    return EMPTY_INT_ARRAY
+  }
+
+  val remainingCandidates = BitSet(vertices.size)
+  for (candidate in sortedCandidates) {
+    remainingCandidates.set(candidate)
   }
 
   // A cycle that survives every available deferral makes further candidate checks unnecessary.
-  if (!cycleChecker.isAcyclicWith(potentialCandidates)) {
-    return emptySet()
+  if (!cycleChecker.isAcyclicWith(remainingCandidates)) {
+    return EMPTY_INT_ARRAY
   }
 
   for (index in 1..sortedCandidates.lastIndex) {
     ensureActive()
-    val deferral = setOf(sortedCandidates[index])
-    if (cycleChecker.isAcyclicWith(deferral)) {
-      return deferral
+    singleDeferral.clear()
+    singleDeferral.set(sortedCandidates[index])
+    if (cycleChecker.isAcyclicWith(singleDeferral)) {
+      return intArrayOf(vertices[sortedCandidates[index]])
     }
   }
 
   // The full candidate set is already known to keep the graph acyclic.
   // Try removing less preferred bindings first.
+  var remainingCount = sortedCandidates.size
   for (index in sortedCandidates.lastIndex downTo 0) {
     ensureActive()
     // Every single candidate was already tested, so two remaining candidates are both necessary.
-    if (potentialCandidates.size == 2) {
+    if (remainingCount == 2) {
       break
     }
 
     val candidate = sortedCandidates[index]
-    potentialCandidates.remove(candidate)
-    if (!cycleChecker.isAcyclicAfterRestoringEdges(candidate, potentialCandidates)) {
+    remainingCandidates.clear(candidate)
+    if (cycleChecker.isAcyclicAfterRestoringEdges(candidate, remainingCandidates)) {
+      remainingCount--
+    } else {
       // This candidate is required to keep the remaining graph acyclic.
-      potentialCandidates.add(candidate)
+      remainingCandidates.set(candidate)
     }
   }
 
-  return potentialCandidates
+  val result = IntArray(remainingCount)
+  var next = 0
+  var local = remainingCandidates.nextSetBit(0)
+  while (local >= 0) {
+    result[next++] = vertices[local]
+    local = remainingCandidates.nextSetBit(local + 1)
+  }
+  return result
 }
 
 /** Searches the component's eager edges once and returns a cycle's vertices in traversal order. */
@@ -437,31 +462,88 @@ private fun findHardCycle(
   input: AnalysisInput,
   components: Components,
   componentId: Int,
+  localIndex: IntArray,
   ensureActive: () -> Unit,
 ): IntArray {
-  val vertices = components.verticesOf(componentId)
-  val hardAdjacency = HashMap<Int, Set<Int>>(calculateInitialCapacity(vertices.size))
-  for (vertex in vertices) {
-    ensureActive()
-    // Keep the row order so repeated analyses choose the same cycle.
-    val hardNeighbors = LinkedHashSet<Int>()
-    for (edge in input.rowStarts[vertex] until input.rowStarts[vertex + 1]) {
-      ensureActive()
-      val neighbor = input.targets[edge]
-      val isInComponent = components.componentOf[neighbor] == componentId
-      if (isInComponent && !input.deferredEdges.get(edge)) {
-        hardNeighbors.add(neighbor)
-      }
-    }
-    hardAdjacency[vertex] = hardNeighbors
-  }
+  val sccAdjacency = components.localAdjacencyOf(input, componentId, localIndex, ensureActive)
+  val vertices = sccAdjacency.vertices
+  val checker =
+    IntCycleChecker(
+      vertexCount = vertices.size,
+      rowStarts = sccAdjacency.rowStarts,
+      targets = sccAdjacency.targets,
+      deferrableEdges = sccAdjacency.deferrableEdges,
+      ensureActive = ensureActive,
+    )
 
-  val checker = ReusableCycleChecker(vertices, hardAdjacency, emptyMap(), ensureActive)
-  val cycle = checker.findCycleWith(emptySet())
+  // Deferring every vertex skips every deferrable edge, so only eager edges remain.
+  val allDeferred = BitSet(vertices.size)
+  allDeferred.set(0, vertices.size)
+  val cycle = checker.findCycleWith(allDeferred)
   if (cycle == null) {
     reportCompilerBug("Found an unbreakable component, but couldn't find a hard cycle.")
   }
-  return cycle.toIntArray()
+  return IntArray(cycle.size) { vertices[cycle[it]] }
+}
+
+/**
+ * The edges that stay inside one component. Local indices number the component's vertices in
+ * [Components] order.
+ *
+ * @property vertices Vertex ids by local index.
+ * @property rowStarts Where each local vertex's edges start in [targets]. Its size is
+ *   `vertices.size + 1`.
+ * @property targets Edge targets as local indices, in the input's row order.
+ * @property deferrableEdges The edges that may break a cycle. Indexed like [targets].
+ */
+private class LocalAdjacency(
+  val vertices: IntArray,
+  val rowStarts: IntArray,
+  val targets: IntArray,
+  val deferrableEdges: BitSet,
+)
+
+/** Builds [componentId]'s [LocalAdjacency] and writes its vertices' entries in [localIndex]. */
+private fun Components.localAdjacencyOf(
+  input: AnalysisInput,
+  componentId: Int,
+  localIndex: IntArray,
+  ensureActive: () -> Unit,
+): LocalAdjacency {
+  val vertices = members.copyOfRange(starts[componentId], starts[componentId + 1])
+  for (local in vertices.indices) {
+    localIndex[vertices[local]] = local
+  }
+
+  val rowStarts = IntArray(vertices.size + 1)
+  val targets = MutableIntList()
+  val deferrableEdges = BitSet()
+  for (local in vertices.indices) {
+    ensureActive()
+    rowStarts[local] = targets.size
+    val from = vertices[local]
+    // Keep the row order so repeated analyses choose the same cycle.
+    (input.rowStarts[from] until input.rowStarts[from + 1]).forEachCancellable(ensureActive) { edge
+      ->
+      val to = input.targets[edge]
+      // Only consider edges that stay inside the SCC. Checking this first keeps stale localIndex
+      // entries from other components unread.
+      if (componentOf[to] == componentId) {
+        if (input.deferredEdges.get(edge)) {
+          deferrableEdges.set(targets.size)
+        }
+        targets.add(localIndex[to])
+      }
+    }
+  }
+  rowStarts[vertices.size] = targets.size
+
+  return LocalAdjacency(
+    vertices = vertices,
+    rowStarts = rowStarts,
+    targets = IntArray(targets.size) { targets[it] },
+    deferrableEdges = deferrableEdges,
+  )
 }
 
 /**
@@ -488,12 +570,14 @@ private fun findHardCycle(
  *   order (prereqs first).
  * @param deferred the vertices selected for deferral (sources of soft edges).
  * @param softCycles receives each multi-vertex SCC's sorted vertices.
+ * @param localIndex scratch space for [sortVerticesInSCC].
  */
 private fun expandComponents(
   input: AnalysisInput,
   components: Components,
   deferred: BitSet,
   softCycles: MutableList<IntArray>,
+  localIndex: IntArray,
   ensureActive: () -> Unit,
 ): IntArray {
   val order = IntArray(components.members.size)
@@ -506,7 +590,8 @@ private fun expandComponents(
       order[next++] = components.members[start]
     } else {
       // Multi-vertex SCC: sort the cycle internally, ignoring soft edges from deferred sources.
-      val sorted = sortVerticesInSCC(input, components, componentId, deferred, ensureActive)
+      val sorted =
+        sortVerticesInSCC(input, components, componentId, deferred, localIndex, ensureActive)
       softCycles += sorted
       sorted.copyInto(order, destinationOffset = next)
       next += sorted.size
@@ -539,7 +624,7 @@ private fun expandComponents(
  *     Set its delegate to B's provider, which receives Provider<A>.
  * ```
  *
- * The PriorityQueue tie-breaks the "ready" set to keep emission stable and codegen-friendly:
+ * The ready queue tie-breaks the "ready" set to keep emission stable and codegen-friendly:
  * 1. Deferred nodes first (they emit a `DelegateFactory` that their dependents need to wrap).
  * 2. Then more hard dependents (popping high-fanout nodes earliest unblocks the most work).
  * 3. Then natural order for determinism.
@@ -552,59 +637,44 @@ private fun sortVerticesInSCC(
   components: Components,
   componentId: Int,
   deferred: BitSet,
+  localIndex: IntArray,
   ensureActive: () -> Unit,
 ): IntArray {
-  val vertices = components.verticesOf(componentId)
-  val cap = calculateInitialCapacity(vertices.size)
+  val sccAdjacency = components.localAdjacencyOf(input, componentId, localIndex, ensureActive)
+  val vertices = sccAdjacency.vertices
+  val isDeferred = BooleanArray(vertices.size) { deferred.get(vertices[it]) }
 
-  // v -> number of hard prereqs (non-soft edges). Bounded by SCC size.
-  val hardIn = HashMap<Int, Int>(cap)
-  // prereq -> dependents (via hard edges). Bounded by SCC size.
-  val revHard = HashMap<Int, MutableList<Int>>(cap)
+  // v -> number of hard prereqs (non-soft edges).
+  val hardIn = IntArray(vertices.size)
+  // prereq -> number of dependents (via hard edges).
+  val fanOut = IntArray(vertices.size)
+  forEachHardEdge(sccAdjacency, isDeferred, ensureActive) { v, dep ->
+    hardIn[v]++
+    fanOut[dep]++
+  }
 
-  for (v in vertices) {
-    ensureActive()
-    var hardDependencies = 0
-    for (edge in input.rowStarts[v] until input.rowStarts[v + 1]) {
-      ensureActive()
-      val dep = input.targets[edge]
-      if (components.componentOf[dep] != componentId) {
-        continue
-      }
-
-      // An edge is "soft" inside this SCC only if it's deferrable and the source is deferred
-      val isSoftEdge = input.deferredEdges.get(edge) && deferred.get(v)
-      if (isSoftEdge) {
-        // ignore only these edges when ordering
-        continue
-      }
-      hardDependencies++
-      revHard.getOrPut(dep, ::ArrayList).add(v)
-    }
-    hardIn[v] = hardDependencies
+  // prereq -> dependents (via hard edges), stored as rows in `dependents`.
+  val dependentStarts = IntArray(vertices.size + 1)
+  for (local in vertices.indices) {
+    dependentStarts[local + 1] = dependentStarts[local] + fanOut[local]
+  }
+  val dependents = IntArray(dependentStarts[vertices.size])
+  val nextDependent = dependentStarts.copyOf(vertices.size)
+  forEachHardEdge(sccAdjacency, isDeferred, ensureActive) { v, dep ->
+    dependents[nextDependent[dep]++] = v
   }
 
   // Sort ready by:
   // 1 - deferred nodes (i.e., emit DelegateFactory before its users)
   // 2 - more hard dependents (unlocks more)
   // 3 - natural order for determinism
-  // The ready set holds at most every vertex in the SCC; size up front.
-  val ready =
-    PriorityQueue<Int>(vertices.size) { a, b ->
-      val aDef = deferred.get(a)
-      val bDef = deferred.get(b)
-      if (aDef != bDef) return@PriorityQueue if (aDef) -1 else 1
-
-      val aFanOut = revHard[a]?.size ?: 0
-      val bFanOut = revHard[b]?.size ?: 0
-      if (aFanOut != bFanOut) return@PriorityQueue bFanOut - aFanOut
-
-      a.compareTo(b)
-    }
+  val ready = ReadyQueue(vertices, isDeferred, fanOut)
 
   // Seed with nodes that have no hard deps
-  vertices.forEachCancellable(ensureActive) { vertex ->
-    if (hardIn.getValue(vertex) == 0) ready += vertex
+  vertices.indices.forEachCancellable(ensureActive) { local ->
+    if (hardIn[local] == 0) {
+      ready.add(local)
+    }
   }
 
   val result = IntArray(vertices.size)
@@ -612,12 +682,12 @@ private fun sortVerticesInSCC(
   while (ready.isNotEmpty()) {
     ensureActive()
     val v = ready.remove()
-    result[size++] = v
-    revHard[v].orEmpty().forEachCancellable(ensureActive) { depender ->
-      val degree = hardIn.getValue(depender) - 1
-      hardIn[depender] = degree
-      if (degree == 0) {
-        ready += depender
+    result[size++] = vertices[v]
+    (dependentStarts[v] until dependentStarts[v + 1]).forEachCancellable(ensureActive) { index ->
+      val depender = dependents[index]
+      hardIn[depender]--
+      if (hardIn[depender] == 0) {
+        ready.add(depender)
       }
     }
   }
@@ -626,6 +696,104 @@ private fun sortVerticesInSCC(
     "Hard cycle remained inside SCC after removing selected soft edges"
   }
   return result
+}
+
+/** Calls [action] with the local source and target of each hard edge in [sccAdjacency]. */
+private inline fun forEachHardEdge(
+  sccAdjacency: LocalAdjacency,
+  isDeferred: BooleanArray,
+  ensureActive: () -> Unit,
+  action: (v: Int, dep: Int) -> Unit,
+) {
+  for (v in sccAdjacency.vertices.indices) {
+    ensureActive()
+    for (edge in sccAdjacency.rowStarts[v] until sccAdjacency.rowStarts[v + 1]) {
+      ensureActive()
+      // An edge is "soft" inside this SCC only if it's deferrable and the source is deferred
+      val isSoftEdge = sccAdjacency.deferrableEdges.get(edge) && isDeferred[v]
+      if (isSoftEdge) {
+        // ignore only these edges when ordering
+        continue
+      }
+      action(v, sccAdjacency.targets[edge])
+    }
+  }
+}
+
+/**
+ * A binary min-heap of local indices for [sortVerticesInSCC]. Deferred vertices come first, then
+ * vertices with more hard dependents, then lower vertex ids. This is a total order, so the pop
+ * order doesn't depend on insertion order.
+ */
+private class ReadyQueue(
+  private val vertices: IntArray,
+  private val isDeferred: BooleanArray,
+  private val fanOut: IntArray,
+) {
+  // The ready set holds at most every vertex in the SCC; size up front.
+  private val heap = IntArray(vertices.size)
+  private var size = 0
+
+  fun isNotEmpty(): Boolean = size > 0
+
+  fun add(local: Int) {
+    var child = size++
+    heap[child] = local
+    while (child > 0) {
+      val parent = (child - 1) / 2
+      if (!precedes(heap[child], heap[parent])) {
+        break
+      }
+      swap(child, parent)
+      child = parent
+    }
+  }
+
+  fun remove(): Int {
+    val first = heap[0]
+    size--
+    heap[0] = heap[size]
+
+    var parent = 0
+    while (true) {
+      val left = 2 * parent + 1
+      if (left >= size) {
+        break
+      }
+
+      val right = left + 1
+      val hasRight = right < size
+      val child =
+        if (hasRight && precedes(heap[right], heap[left])) {
+          right
+        } else {
+          left
+        }
+      if (!precedes(heap[child], heap[parent])) {
+        break
+      }
+      swap(child, parent)
+      parent = child
+    }
+
+    return first
+  }
+
+  private fun precedes(a: Int, b: Int): Boolean {
+    if (isDeferred[a] != isDeferred[b]) {
+      return isDeferred[a]
+    }
+    if (fanOut[a] != fanOut[b]) {
+      return fanOut[a] > fanOut[b]
+    }
+    return vertices[a] < vertices[b]
+  }
+
+  private fun swap(i: Int, j: Int) {
+    val value = heap[i]
+    heap[i] = heap[j]
+    heap[j] = value
+  }
 }
 
 public data class Component<V>(val id: Int, val vertices: MutableList<V> = mutableListOf())
@@ -691,17 +859,6 @@ private class Components(
 ) {
   val count: Int
     get() = starts.size - 1
-
-  /** Boxes the component's members for the generic cycle checks. */
-  fun verticesOf(componentId: Int): List<Int> {
-    val start = starts[componentId]
-    val end = starts[componentId + 1]
-    val vertices = ArrayList<Int>(end - start)
-    for (index in start until end) {
-      vertices += members[index]
-    }
-    return vertices
-  }
 }
 
 /**
