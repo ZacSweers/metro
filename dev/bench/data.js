@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795645492166,
+  "lastUpdate": 1795649897655,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -29344,6 +29344,62 @@ window.BENCHMARK_DATA = {
             "value": 0.17878957045697771,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: -0.59%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "76973477~1",
+          "message": "[before] Limit FIR contribution providers to their containe",
+          "timestamp": "2026-11-25T22:51:38Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/76973477720e68776a221588a0958e400f27e5c1"
+        },
+        "date": 1795649897655,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.17414485669650445,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "76973477720e68776a221588a0958e400f27e5c1",
+          "message": "[after] Limit FIR contribution providers to their containe",
+          "timestamp": "2026-11-25T22:51:38Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/76973477720e68776a221588a0958e400f27e5c1"
+        },
+        "date": 1795649897656,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.1765366260990797,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: +1.37%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }
