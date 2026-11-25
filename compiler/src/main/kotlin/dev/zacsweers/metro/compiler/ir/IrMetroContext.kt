@@ -66,7 +66,7 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
   /**
    * Flushes any buffered IC tracking (lookups + expect/actual links) to the underlying trackers.
    * No-op unless [MetroOptions.bufferedIcTracking] is on. Call once after IR/graph validation
-   * completes, when no parallel work is in flight.
+   * completes.
    */
   fun flushIcTracking()
 

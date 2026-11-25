@@ -154,7 +154,7 @@ Regular graph nodes can be reused by class ID. Generated extension nodes depend 
 
 External declaration lookup remains lazy. [`MetroDeclarations`](../../compiler/src/main/kotlin/dev/zacsweers/metro/compiler/ir/MetroDeclarations.kt) can load factories and members injectors from dependencies. Its lookup methods must stay on the main compiler thread.
 
-Existing tracing, diagnostic, and incremental-compilation infrastructure still has its own synchronization. The graph schedule doesn't require a context-wide cache lock.
+Tracing still has its own synchronization. The graph schedule doesn't require a context-wide cache lock.
 
 ## Generating code
 
@@ -193,7 +193,7 @@ val topology = prepared.finish(analysis)
 
 The IR adapter owns compiler-specific preparation and finishing. The compiler sends each seal's `analysisInput` to `analyzePreparedGraph` on a worker and passes the output to `finish`.
 
-New analysis work must use `AnalysisInput` values or analysis-local state. Keep `AnalysisInput` and `AnalysisOutput` free of keys and compiler objects. Trace and cancellation callbacks must remain safe on workers.
+Every IR object belongs to the thread that runs the pipeline. Trace and cancellation callbacks must remain safe on workers.
 
 Parallel work is limited by the width of each tree level. A chain of extensions has one graph per level and gets no parallel analysis from this scheduler. A wide level can use more workers. Binding resolution, IR validation, and generation stay on the main compiler thread.
 
