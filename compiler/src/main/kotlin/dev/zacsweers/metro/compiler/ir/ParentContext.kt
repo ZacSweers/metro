@@ -4,10 +4,8 @@ package dev.zacsweers.metro.compiler.ir
 
 import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.ir.graph.BindingPropertyCollector
-import dev.zacsweers.metro.compiler.ir.graph.GraphNode
 import dev.zacsweers.metro.compiler.ir.graph.IrBinding
 import dev.zacsweers.metro.compiler.memoize
-import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrProperty
@@ -42,8 +40,8 @@ private enum class ParentContextLookupMode {
 }
 
 /**
- * Common interface for reading from a parent context. Both [ParentContext] and
- * [ParentContextSnapshot] implement this, allowing code to work with either during validation.
+ * Common interface for reading from a parent context. [ParentContext.asReader] creates one for each
+ * child graph.
  */
 internal interface ParentContextReader {
   /** Checks if a key is available in the parent context. */
@@ -110,7 +108,7 @@ internal interface ParentContextReader {
  * Captures the parent's available keys for child graph preparation. Each child records requests in
  * its own [UsedKeyCollector]. Lookups stay on the main compiler thread.
  */
-internal class ParentContextSnapshot(
+internal class ParentContext(
   private val metroContext: IrMetroContext,
   /** Available keys mapped to their ownership info. */
   private val keyOwnership: Map<IrTypeKey, KeyOwnership>,
@@ -255,23 +253,22 @@ internal class ParentContextSnapshot(
   /** Creates a [ParentContextReader] backed by this snapshot and the given collector. */
   fun asReader(collector: UsedKeyCollector): ParentContextReader =
     object : ParentContextReader {
-      override fun contains(key: IrTypeKey) = key in this@ParentContextSnapshot
+      override fun contains(key: IrTypeKey) = key in this@ParentContext
 
-      override fun containsScope(scope: IrAnnotation) =
-        this@ParentContextSnapshot.containsScope(scope)
+      override fun containsScope(scope: IrAnnotation) = this@ParentContext.containsScope(scope)
 
-      override fun scopes() = this@ParentContextSnapshot.scopes()
+      override fun scopes() = this@ParentContext.scopes()
 
-      override fun availableKeys() = this@ParentContextSnapshot.availableKeys()
+      override fun availableKeys() = this@ParentContext.availableKeys()
 
-      override fun graphPrivateKeys() = this@ParentContextSnapshot.graphPrivateKeys()
+      override fun graphPrivateKeys() = this@ParentContext.graphPrivateKeys()
 
-      override val currentParentGraph = this@ParentContextSnapshot.currentParentGraph
+      override val currentParentGraph = this@ParentContext.currentParentGraph
 
-      override fun findToken(key: IrTypeKey) = this@ParentContextSnapshot.findToken(key)
+      override fun findToken(key: IrTypeKey) = this@ParentContext.findToken(key)
 
       override fun ownerCreatesFreshInstances(key: IrTypeKey) =
-        this@ParentContextSnapshot.ownerCreatesFreshInstances(key)
+        this@ParentContext.ownerCreatesFreshInstances(key)
 
       override fun sharedDepth(binding: IrBinding): Int {
         if (!declaresSameBinding(binding)) return 0
@@ -312,23 +309,13 @@ internal class ParentContextSnapshot(
         scope: IrAnnotation?,
         requiresProviderProperty: Boolean,
       ) =
-        this@ParentContextSnapshot.mark(
+        this@ParentContext.mark(
           key,
           scope,
           requiresProviderProperty,
           collector,
         )
     }
-}
-
-internal class ParentContext(
-  private val metroContext: IrMetroContext,
-  /**
-   * Delegates missing keys and scopes to the parent reader. This preserves access to ancestors
-   * outside the local level stack.
-   */
-  private val parent: ParentContextReader? = null,
-) : ParentContextReader {
 
   /**
    * Token returned by [mark] during validation phase. Contains enough information to resolve the
@@ -406,285 +393,6 @@ internal class ParentContext(
       return ancestorPropertiesChain.fold(baseReceiver) { receiver, prop ->
         scope.irGetProperty(receiver, prop)
       }
-    }
-  }
-
-  private data class Level(
-    val node: GraphNode,
-    val isSuspend: (IrTypeKey) -> Boolean,
-    val declaresSameBinding: (IrBinding) -> Boolean,
-    val createsFreshInstances: (IrTypeKey) -> Boolean,
-    val deltaProvided: MutableSet<IrTypeKey> = mutableSetOf(),
-  )
-
-  // Stack of parent graphs (root at 0, top is last)
-  private val levels = ArrayDeque<Level>()
-
-  // Fast membership of “currently available anywhere in stack”, not including pending
-  private val available = mutableSetOf<IrTypeKey>()
-
-  // For each key, the stack of level indices where it was introduced (nearest provider = last)
-  private val keyIntroStack = mutableMapOf<IrTypeKey, ArrayDeque<Int>>()
-
-  // All active scopes (union of level.node.scopes + ancestor scopes)
-  private val parentScopes = mutableSetOf<IrAnnotation>().apply { parent?.scopes()?.let(::addAll) }
-
-  // Keys collected before the next push
-  private val pending = mutableSetOf<IrTypeKey>()
-
-  // Graph-private keys from parent graphs (for hinting in missing binding messages)
-  private val _graphPrivateKeys = mutableSetOf<IrTypeKey>()
-
-  fun addGraphPrivateKeys(keys: Set<IrTypeKey>) {
-    _graphPrivateKeys.addAll(keys)
-  }
-
-  override fun graphPrivateKeys(): Set<IrTypeKey> = buildSet {
-    parent?.graphPrivateKeys()?.let(::addAll)
-    addAll(_graphPrivateKeys)
-  }
-
-  fun add(key: IrTypeKey) {
-    pending.add(key)
-  }
-
-  fun addAll(keys: Collection<IrTypeKey>) {
-    if (keys.isNotEmpty()) pending.addAll(keys)
-  }
-
-  override fun findToken(key: IrTypeKey): Token? =
-    resolve(
-      key = key,
-      scope = null,
-      requiresProviderProperty = false,
-      mode = ParentContextLookupMode.TOKEN_ONLY,
-    )
-
-  /**
-   * Returns a token for later property resolution.
-   *
-   * During the validation phase, this method resolves keys from parent graphs without creating
-   * actual properties. Properties are created during the generation phase by the parent's
-   * [BindingPropertyCollector], which determines the correct property kinds (FIELD vs GETTER).
-   *
-   * @param key The typekey to mark
-   * @param scope Optional scope annotation for scoped bindings. When provided, the key is
-   *   introduced at the appropriate parent level if not already present.
-   * @param requiresProviderProperty If true, marks this as Provider<T> access. If false, marks as
-   *   instance access. This info is captured in the returned token's contextKey.
-   */
-  override fun mark(
-    key: IrTypeKey,
-    scope: IrAnnotation?,
-    requiresProviderProperty: Boolean,
-  ): Token? =
-    resolve(
-      key = key,
-      scope = scope,
-      requiresProviderProperty = requiresProviderProperty,
-      mode = ParentContextLookupMode.MARK_USED,
-    )
-
-  private fun resolve(
-    key: IrTypeKey,
-    scope: IrAnnotation?,
-    requiresProviderProperty: Boolean,
-    mode: ParentContextLookupMode,
-  ): Token? {
-    // Create the contextual key based on what kind of access is needed
-    // Always must be a provider if scope is not null
-    val contextKey =
-      metroContext.createParentContextKey(
-        key,
-        isProvider = requiresProviderProperty || scope != null,
-      )
-
-    // Prefer the nearest provider (deepest level that introduced this key)
-    keyIntroStack[key]?.lastOrNull()?.let { providerIdx ->
-      val providerLevel = levels[providerIdx]
-      return Token(
-        contextKey = contextKey,
-        ownerGraphKey = providerLevel.node.typeKey,
-        receiverParameter = providerLevel.node.metroGraphOrFail.thisReceiverOrFail,
-        isSuspend = providerLevel.isSuspend(key),
-      )
-    }
-
-    // Not found but is scoped. Treat as constructor-injected with matching scope.
-    if (scope != null) {
-      for (i in levels.lastIndex downTo 0) {
-        val level = levels[i]
-        if (scope in level.node.scopes) {
-          introduceAtLevel(i, key)
-
-          return Token(
-            contextKey = contextKey,
-            ownerGraphKey = level.node.typeKey,
-            receiverParameter = level.node.metroGraphOrFail.thisReceiverOrFail,
-            isSuspend = level.isSuspend(key),
-          )
-        }
-      }
-    }
-
-    // Key not found locally, delegate to ancestor reader
-    parent?.let { parent ->
-      val token =
-        when (mode) {
-          ParentContextLookupMode.MARK_USED -> parent.mark(key, scope, requiresProviderProperty)
-          ParentContextLookupMode.TOKEN_ONLY -> parent.findToken(key)
-        }
-      token?.let {
-        return token
-      }
-    }
-
-    return null
-  }
-
-  fun pushParentGraph(
-    node: GraphNode,
-    isSuspend: (IrTypeKey) -> Boolean,
-    declaresSameBinding: (IrBinding) -> Boolean,
-    createsFreshInstances: (IrTypeKey) -> Boolean,
-  ) {
-    val idx = levels.size
-    val level = Level(node, isSuspend, declaresSameBinding, createsFreshInstances)
-    levels.addLast(level)
-    parentScopes.addAll(node.scopes)
-    _graphPrivateKeys.addAll(node.graphPrivateKeys)
-
-    if (pending.isNotEmpty()) {
-      // Introduce each pending key *at this level only*
-      for (k in pending) {
-        introduceAtLevel(idx, k)
-      }
-      pending.clear()
-    }
-  }
-
-  fun popParentGraph() {
-    check(levels.isNotEmpty()) { "No parent graph to pop" }
-    val idx = levels.lastIndex
-    val removed = levels.removeLast()
-
-    // Remove scope union
-    parentScopes.removeAll(removed.node.scopes)
-    _graphPrivateKeys.removeAll(removed.node.graphPrivateKeys)
-
-    // Roll back introductions made at this level
-    for (k in removed.deltaProvided) {
-      val stack = keyIntroStack[k]!!
-      check(stack.removeLast() == idx)
-      if (stack.isEmpty()) {
-        keyIntroStack.remove(k)
-        available.remove(k)
-      }
-      // If non-empty, key remains available due to an earlier level
-    }
-  }
-
-  override val currentParentGraph: IrClass
-    get() =
-      levels.lastOrNull()?.node?.metroGraphOrFail
-        ?: reportCompilerBug(
-          "No parent graph on stack - this should only be accessed when processing extensions",
-        )
-
-  override fun containsScope(scope: IrAnnotation): Boolean = scope in parentScopes
-
-  override fun scopes(): Set<IrAnnotation> = parentScopes
-
-  override operator fun contains(key: IrTypeKey): Boolean {
-    return key in pending || key in available || parent?.let { key in it } == true
-  }
-
-  override fun ownerCreatesFreshInstances(key: IrTypeKey): Boolean {
-    val levelIdx = keyIntroStack[key]?.lastOrNull()
-    if (levelIdx == null) {
-      return parent?.ownerCreatesFreshInstances(key) == true
-    }
-    return levels[levelIdx].createsFreshInstances(key)
-  }
-
-  override fun availableKeys(): Set<IrTypeKey> {
-    val ancestorKeys = parent?.availableKeys()
-    // Pending + all currently available + ancestor keys
-    return buildSet {
-      addAll(available)
-      addAll(pending)
-      if (!ancestorKeys.isNullOrEmpty()) addAll(ancestorKeys)
-    }
-  }
-
-  /**
-   * Captures available keys and their ownership for child graph preparation. The snapshot retains
-   * ancestor readers and suspend lookups owned by the main compiler thread.
-   */
-  fun snapshot(): ParentContextSnapshot {
-    val keyOwnership = mutableMapOf<IrTypeKey, ParentContextSnapshot.KeyOwnership>()
-
-    // Capture ownership for all available keys
-    for ((key, introStack) in keyIntroStack) {
-      val levelIdx = introStack.lastOrNull() ?: continue
-      val level = levels.getOrNull(levelIdx) ?: continue
-      keyOwnership[key] =
-        ParentContextSnapshot.KeyOwnership(
-          ownerGraphKey = level.node.typeKey,
-          receiverParameter = level.node.metroGraphOrFail.thisReceiverOrFail,
-          isSuspend = level.isSuspend,
-          createsFreshInstances = level.createsFreshInstances,
-        )
-    }
-
-    // Also include pending keys at the current level
-    val currentLevel = levels.lastOrNull()
-    if (currentLevel != null) {
-      val currentOwnership =
-        ParentContextSnapshot.KeyOwnership(
-          ownerGraphKey = currentLevel.node.typeKey,
-          receiverParameter = currentLevel.node.metroGraphOrFail.thisReceiverOrFail,
-          isSuspend = currentLevel.isSuspend,
-          createsFreshInstances = currentLevel.createsFreshInstances,
-        )
-      for (key in pending) {
-        keyOwnership[key] = currentOwnership
-      }
-    }
-
-    // Capture level info for scope matching
-    val levelScopes = levels.map { level ->
-      ParentContextSnapshot.LevelInfo(
-        scopes = level.node.scopes.toSet(),
-        ownership =
-          ParentContextSnapshot.KeyOwnership(
-            ownerGraphKey = level.node.typeKey,
-            receiverParameter = level.node.metroGraphOrFail.thisReceiverOrFail,
-            isSuspend = level.isSuspend,
-            createsFreshInstances = level.createsFreshInstances,
-          ),
-      )
-    }
-
-    return ParentContextSnapshot(
-      metroContext = metroContext,
-      keyOwnership = keyOwnership,
-      levelScopes = levelScopes,
-      currentParentGraph = currentParentGraph,
-      ancestorReader = parent,
-      graphPrivateKeys = graphPrivateKeys(),
-      parentGraphKey = levels.lastOrNull()?.node?.typeKey,
-      declaresSameBinding = levels.lastOrNull()?.declaresSameBinding ?: { false },
-    )
-  }
-
-  private fun introduceAtLevel(levelIdx: Int, key: IrTypeKey) {
-    val level = levels[levelIdx]
-    // If already introduced earlier, avoid duplicating per-level delta
-    if (key !in level.deltaProvided) {
-      level.deltaProvided.add(key)
-      available.add(key)
-      keyIntroStack.getOrPut(key, ::ArrayDeque).addLast(levelIdx)
     }
   }
 }
