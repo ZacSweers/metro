@@ -2352,7 +2352,7 @@
 </code></pre></div>
 <p>This matters most for cascading graph extension trees. A parent graph and its child graphs can all remain live while the tree is validated and generated. Each graph owns its own binding map, so per-entry overhead multiplies across the whole tree. Contribution indexes are shared across the compilation rather than copied into every child.</p>
 <p>Primitive-value collections such as <code>MutableObjectIntMap</code> also avoid boxing integer indexes. Shard lookup and strongly connected component analysis use the same approach for graph and shard IDs.</p>
-<p>Scatter collections do not provide sorted iteration or safe concurrent mutation. Keep deterministic ordering in the sorted graph structures, and use concurrent collections for caches that parallel graph validation can mutate.</p>
+<p>Scatter collections do not provide sorted iteration or safe concurrent mutation. Keep deterministic ordering in the sorted graph structures.</p>
 <p>Temporary analysis state does not need this. Ordinary <code>HashMap</code>, <code>HashSet</code>, etc. are fine when their contents are released after a short analysis pass.</p>
 <h3 id="stable-graph-ordering">Stable graph ordering<a class="headerlink" href="#stable-graph-ordering" title="Permanent link">&para;</a></h3>
 <p><code>buildFullAdjacency</code> stores graph vertices in a sorted map and each vertex&rsquo;s dependencies in a sorted set. The same graph is therefore traversed in the same order even when bindings are discovered in a different order or come from hash-based collections.</p>
@@ -2466,10 +2466,10 @@ Stored order:           A -&gt; B, C
 <li>Graph ownership.</li>
 </ul>
 <p>A cache keyed only by the underlying type can incorrectly merge provider and scalar requests.</p>
-<p>Some caches are concurrent because sibling graphs can be validated in parallel. Other IR caches are intentionally thread-unsafe. Do not assume a cache is bounded or thread-safe without checking its implementation.</p>
+<p>IR caches are intentionally thread-unsafe. Do not assume a cache is bounded or thread-safe without checking its implementation.</p>
 <p>Completed graphs release lookup state that is no longer needed. Avoid retaining graph analysis structures after sealing or code generation has finished.</p>
 <h3 id="parallel-graph-validation">Parallel graph validation<a class="headerlink" href="#parallel-graph-validation" title="Permanent link">&para;</a></h3>
-<p><code>parallel-threads</code> defaults to <code>0</code>, which keeps validation sequential. When enabled, sibling graph extensions can be validated on a <code>ForkJoinPool</code>.</p>
+<p><code>parallel-threads</code> defaults to <code>0</code>, which keeps validation sequential. When enabled, sibling graph extensions can be analyzed on a <code>ForkJoinPool</code>. Workers receive only primitive graph data.</p>
 <p>The parent graph is represented by an immutable snapshot. Each child records its own used keys, and results are merged in a stable order after validation.</p>
 <div class="highlight"><pre><span></span><code><span class="kd">val</span><span class="w"> </span><span class="nv">parentSnapshot</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">parent</span><span class="p">.</span><span class="na">snapshot</span><span class="p">()</span>
 
@@ -2479,7 +2479,7 @@ Stored order:           A -&gt; B, C
 <span class="n">merge</span><span class="p">(</span><span class="n">first</span><span class="p">)</span>
 <span class="n">merge</span><span class="p">(</span><span class="n">second</span><span class="p">)</span>
 </code></pre></div>
-<p>(The example shows the ownership model rather than the exact scheduling code. Child validation can overlap, but graph declaration creation and result merging must not race.)</p>
+<p>(The example shows the ownership model rather than the exact scheduling code. Child analysis can overlap. Graph declaration creation and result merging stay on the thread that runs the pipeline.)</p>
 <p>Parallel processing is extremely experimental as the underlying compiler doesn&rsquo;t really support it. Metro&rsquo;s support tries to gate information gathering first and then only parallelize graph processing.</p>
 <h3 id="incremental-compilation-tracking">Incremental compilation tracking<a class="headerlink" href="#incremental-compilation-tracking" title="Permanent link">&para;</a></h3>
 <p><code>buffered-ic-tracking</code> is enabled by default. Metro buffers and deduplicates lookup records and expect-actual links during graph work, then flushes them after validation.</p>
@@ -2886,7 +2886,7 @@ Stored order:           A -&gt; B, C
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 24, 2026 06:32:14 UTC">November 24, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 25, 2026 21:23:42 UTC">November 25, 2026</span>
   </span>
 
     

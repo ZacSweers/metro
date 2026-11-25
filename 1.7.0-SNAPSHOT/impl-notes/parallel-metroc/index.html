@@ -2080,7 +2080,7 @@
 
 
 <h1 id="parallel-metro-compiler">Parallel Metro Compiler<a class="headerlink" href="#parallel-metro-compiler" title="Permanent link">&para;</a></h1>
-<p>Metro can analyze several dependency graphs in parallel during its IR pass. Compiler lookups, binding resolution, and code generation stay on the main compiler thread. Workers analyze graph data prepared by that thread.</p>
+<p>Metro can analyze several dependency graphs in parallel during its IR pass. Compiler lookups, binding resolution, and code generation stay on the main compiler thread. Workers analyze primitive graph data prepared by that thread.</p>
 <p>The main compiler thread is the thread running <code>MetroIrPipeline</code> for the current IR fragment.</p>
 <p>The <code>parallel-threads</code> compiler option controls the pool size. Its default is <code>0</code>, which runs analysis inline. Both modes use the same preparation and finishing steps. This option only affects compiler work.</p>
 <h2 id="the-pipeline">The pipeline<a class="headerlink" href="#the-pipeline" title="Permanent link">&para;</a></h2>
@@ -2120,7 +2120,7 @@
 </ol>
 <p>Each batch contains graphs at the same depth. Cousins can share a batch too. Every child finishes before its parent enters a batch.</p>
 <p>Each child has a <code>UsedKeyCollector</code> for its parent requests. The parent merges those requests before populating its own graph. It also reserves the contextual keys needed by generated parent properties.</p>
-<p><code>ParentContextSnapshot</code> captures available keys and their ownership. It retains ancestor readers and suspend-binding callbacks. Those callbacks can perform binding lookups. Snapshot access therefore stays on the main compiler thread.</p>
+<p><code>ParentContext</code> captures available keys and their ownership. It retains ancestor readers and suspend-binding callbacks. Those callbacks can perform binding lookups. Access therefore stays on the main compiler thread.</p>
 <p>Parent suspend analysis can populate bindings before the parent&rsquo;s own preparation callback runs. Its cached answers track the parent&rsquo;s binding generation. Adding a binding invalidates answers that depended on the earlier graph state.</p>
 <h2 id="one-batch">One batch<a class="headerlink" href="#one-batch" title="Permanent link">&para;</a></h2>
 <p><a href="../../../compiler/src/main/kotlin/dev/zacsweers/metro/compiler/ir/transformers/DependencyGraphTransformer.kt"><code>analyzeGraphTree</code></a> completes three steps for every depth:</p>
@@ -2143,12 +2143,12 @@
 <p><a href="../../../metro-common/src/main/kotlin/dev/zacsweers/metro/compiler/graph/BindingGraph.kt"><code>MutableBindingGraph.prepareSeal</code></a> uses the existing binding work queue to resolve requested dependencies. It reports missing bindings and seals the graph against further additions.</p>
 <p>Preparation builds sorted adjacency and selects the roots used by analysis. These include explicit accessors and keys kept for children. Disabling unused-binding shrinking also keeps every populated binding.</p>
 <p>Preparation captures the dependency facts needed for cycle analysis. Reading a binding&rsquo;s dependencies can trigger compiler-backed lazy work. Workers must receive those facts fully prepared.</p>
+<p>Preparation then assigns each key an integer id in sorted key order. The seal&rsquo;s <code>AnalysisInput</code> stores the adjacency, deferrable edges, and roots as ids.</p>
 <h3 id="analyze">Analyze<a class="headerlink" href="#analyze" title="Permanent link">&para;</a></h3>
-<p><a href="../../../metro-common/src/main/kotlin/dev/zacsweers/metro/compiler/graph/PreparedGraphSeal.kt"><code>PreparedGraphSeal.analyze</code></a> computes reachability, topological order, and cycle paths. It selects the bindings that need deferred initialization. A hard cycle is recorded for later reporting.</p>
-<p>This phase reads the prepared adjacency and deferral information. Its traversal stacks, indexes, and result collections belong to that analysis call. Workers also emit trace spans and run cancellation checks.</p>
-<p>The keys are still <a href="../../../compiler/src/main/kotlin/dev/zacsweers/metro/compiler/ir/IrTypeKey.kt"><code>IrTypeKey</code></a> objects. They cache their hash and render string in compact fields. Workers can compute the same value more than once before seeing a cached result. These computations are safe to repeat because they only read prepared declarations. Rendering builds a local string. Qualifier identity uses the shared <code>memoize</code> helper and is reached during normal binding-map lookups.</p>
+<p><a href="../../../metro-common/src/main/kotlin/dev/zacsweers/metro/compiler/graph/PreparedGraphSeal.kt"><code>analyzePreparedGraph</code></a> computes reachability, topological order, and cycle paths. It selects the bindings that need deferred initialization. A hard cycle is recorded for later reporting.</p>
+<p>Workers receive only the <code>AnalysisInput</code> and return an <code>AnalysisOutput</code>. Both hold only ids and bit sets. The worker&rsquo;s trace scope holds only the tracer. A worker can&rsquo;t reach a key or other compiler object. Ties break by id, which matches sorted key order. Workers also emit trace spans.</p>
 <h3 id="finish">Finish<a class="headerlink" href="#finish" title="Permanent link">&para;</a></h3>
-<p><code>PreparedGraphSeal.finish</code> runs cycle callbacks and reports any hard cycle on the main compiler thread. It validates reachable bindings and assigns binding indices.</p>
+<p><code>PreparedGraphSeal.finish</code> maps the output&rsquo;s ids back to keys on the main compiler thread. It runs cycle callbacks and reports any hard cycle. It validates reachable bindings and assigns binding indices.</p>
 <p><code>IrBindingGraph</code> then finishes its IR-specific validation and reporting. It computes generation data such as shard assignments. It also releases the graph&rsquo;s binding lookup state.</p>
 <p>The scheduler uses the finished child results to determine the next parent batch&rsquo;s roots. Compiler caches can grow again during that batch&rsquo;s preparation. All analysis tasks from the previous batch have already joined.</p>
 <h2 id="capturing-deferrals">Capturing deferrals<a class="headerlink" href="#capturing-deferrals" title="Permanent link">&para;</a></h2>
@@ -2209,7 +2209,7 @@
 <p>Remappers cache substitutions for a source class and a concrete type. For example, separate child graphs can request <code>Bindings&lt;String&gt;</code> and <code>Bindings&lt;Int&gt;</code>. Each graph&rsquo;s lookup owns the mutable remappers it reuses. <code>deepRemapperFor</code> also supports callers that own a remapper directly.</p>
 <p>Regular graph nodes can be reused by class ID. Generated extension nodes depend on their parent tree. They stay outside the regular node cache. Reconstructing those nodes also preserves the ancestor walk used to detect extension cycles.</p>
 <p>External declaration lookup remains lazy. <a href="../../../compiler/src/main/kotlin/dev/zacsweers/metro/compiler/ir/MetroDeclarations.kt"><code>MetroDeclarations</code></a> can load factories and members injectors from dependencies. Its lookup methods must stay on the main compiler thread.</p>
-<p>Existing tracing, diagnostic, and incremental-compilation infrastructure still has its own synchronization. The graph schedule doesn&rsquo;t require a context-wide cache lock.</p>
+<p>Tracing still has its own synchronization. The graph schedule doesn&rsquo;t require a context-wide cache lock.</p>
 <h2 id="generating-code">Generating code<a class="headerlink" href="#generating-code" title="Permanent link">&para;</a></h2>
 <p>Code generation starts after the root&rsquo;s whole tree has finished validation. It runs on the main compiler thread from the parent down.</p>
 <p>The parent must create its binding properties before a child can reference them. A child&rsquo;s parent-context token is resolved against those completed properties. Map and provider wrappers must match the contextual key used when the property was stored.</p>
@@ -2247,8 +2247,8 @@
 <span class="kd">val</span><span class="w"> </span><span class="nv">analysis</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">prepared</span><span class="p">.</span><span class="na">analyze</span><span class="p">()</span>
 <span class="kd">val</span><span class="w"> </span><span class="nv">topology</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">prepared</span><span class="p">.</span><span class="na">finish</span><span class="p">(</span><span class="n">analysis</span><span class="p">)</span>
 </code></pre></div>
-<p>The IR adapter owns compiler-specific preparation and finishing. Key hashing and comparison must support concurrent reads during analysis.</p>
-<p>Adding work to <code>analyze()</code> requires checking every value and callback it touches. A read can populate a lazy cache. A collection can contain a compiler-backed object. New work must use prepared values or analysis-local state. Trace and cancellation callbacks must remain safe on workers.</p>
+<p>The IR adapter owns compiler-specific preparation and finishing. The compiler sends each seal&rsquo;s <code>analysisInput</code> to <code>analyzePreparedGraph</code> on a worker and passes the output to <code>finish</code>.</p>
+<p>Every IR object belongs to the thread that runs the pipeline. Trace and cancellation callbacks must remain safe on workers.</p>
 <p>Parallel work is limited by the width of each tree level. A chain of extensions has one graph per level and gets no parallel analysis from this scheduler. A wide level can use more workers. Binding resolution, IR validation, and generation stay on the main compiler thread.</p>
 <p>Compile-time performance needs measurement on representative graphs. This design doesn&rsquo;t establish a speedup by itself. Compare preparation, analysis, finishing, allocation, and total compile time when changing the boundary.</p>
 
@@ -2273,7 +2273,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="September 7, 2026 14:35:11 UTC">September 7, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 25, 2026 21:23:42 UTC">November 25, 2026</span>
   </span>
 
     
