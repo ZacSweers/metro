@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795570628265,
+  "lastUpdate": 1795573655513,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -28896,6 +28896,62 @@ window.BENCHMARK_DATA = {
             "value": 14542.104000000001,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +0.48%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "33b7b54c~1",
+          "message": "[before] Remove the lock guard that never fires from BindsM",
+          "timestamp": "2026-11-25T01:41:21Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/33b7b54cc2cdf75645e963f970046b4c8b764998"
+        },
+        "date": 1795573655513,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 12964.27,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "33b7b54cc2cdf75645e963f970046b4c8b764998",
+          "message": "[after] Remove the lock guard that never fires from BindsM",
+          "timestamp": "2026-11-25T01:41:21Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/33b7b54cc2cdf75645e963f970046b4c8b764998"
+        },
+        "date": 1795573655514,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 12535.833999999999,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -3.30%"
           }
         ]
       }

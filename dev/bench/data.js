@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795570628104,
+  "lastUpdate": 1795573655360,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -28896,6 +28896,62 @@ window.BENCHMARK_DATA = {
             "value": 0.22323538193753945,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: -1.60%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "33b7b54c~1",
+          "message": "[before] Remove the lock guard that never fires from BindsM",
+          "timestamp": "2026-11-25T01:41:21Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/33b7b54cc2cdf75645e963f970046b4c8b764998"
+        },
+        "date": 1795573655360,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.2194021081075571,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "33b7b54cc2cdf75645e963f970046b4c8b764998",
+          "message": "[after] Remove the lock guard that never fires from BindsM",
+          "timestamp": "2026-11-25T01:41:21Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/33b7b54cc2cdf75645e963f970046b4c8b764998"
+        },
+        "date": 1795573655361,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.22059102380297818,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: +0.54%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }
