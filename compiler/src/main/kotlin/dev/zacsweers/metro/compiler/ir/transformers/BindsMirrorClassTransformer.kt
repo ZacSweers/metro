@@ -2,9 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.transformers
 
-import dev.zacsweers.metro.ContributesIntoSet
 import dev.zacsweers.metro.Inject
-import dev.zacsweers.metro.binding
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.asName
@@ -15,7 +13,6 @@ import dev.zacsweers.metro.compiler.fir.isAttachedExtensionMember
 import dev.zacsweers.metro.compiler.ir.BindsCallable
 import dev.zacsweers.metro.compiler.ir.BindsOptionalOfCallable
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
-import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
 import dev.zacsweers.metro.compiler.ir.MultibindsCallable
 import dev.zacsweers.metro.compiler.ir.ProviderTypeParameterOrder
@@ -66,9 +63,7 @@ import org.jetbrains.kotlin.platform.jvm.isJvm
  * directly readable from another compilation.
  */
 @Inject
-@ContributesIntoSet(IrScope::class, binding<Lockable>())
-internal class BindsMirrorClassTransformer(context: IrMetroContext) :
-  IrMetroContext by context, Lockable by Lockable() {
+internal class BindsMirrorClassTransformer(context: IrMetroContext) : IrMetroContext by context {
   private val cache = mutableMapOf<ClassId, Optional<BindsMirror>>()
 
   // When we generate binds/providers we need to generate a mirror class too
@@ -97,9 +92,6 @@ internal class BindsMirrorClassTransformer(context: IrMetroContext) :
           return@getOrPut Optional.empty()
         }
 
-        if (!declaration.isExternalParent) {
-          checkNotLocked()
-        }
         val mirror =
           transformBindingDeclarations(
             parentClass = declaration,
