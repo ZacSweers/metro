@@ -35,35 +35,30 @@ internal interface FrameworkSymbols {
   val mapFactoryEmptyFunction: IrSimpleFunctionSymbol
   val mapFactorySingletonFunction: IrSimpleFunctionSymbol?
   val mapFactoryBuilderPutFunction: IrSimpleFunctionSymbol
-  val mapFactoryBuilderPutAllFunction: IrSimpleFunctionSymbol
   val mapFactoryBuilderBuildFunction: IrSimpleFunctionSymbol
   val mapProviderFactoryBuilder: IrClassSymbol
   val mapProviderFactoryBuilderFunction: IrSimpleFunctionSymbol
   val mapProviderFactoryEmptyFunction: IrSimpleFunctionSymbol?
   val mapProviderFactorySingletonFunction: IrSimpleFunctionSymbol?
   val mapProviderFactoryBuilderPutFunction: IrSimpleFunctionSymbol
-  val mapProviderFactoryBuilderPutAllFunction: IrSimpleFunctionSymbol
   val mapProviderFactoryBuilderBuildFunction: IrSimpleFunctionSymbol
   val mapLazyFactoryBuilder: IrClassSymbol
   val mapLazyFactoryBuilderFunction: IrSimpleFunctionSymbol
   val mapLazyFactoryEmptyFunction: IrSimpleFunctionSymbol?
   val mapLazyFactorySingletonFunction: IrSimpleFunctionSymbol?
   val mapLazyFactoryBuilderPutFunction: IrSimpleFunctionSymbol
-  val mapLazyFactoryBuilderPutAllFunction: IrSimpleFunctionSymbol
   val mapLazyFactoryBuilderBuildFunction: IrSimpleFunctionSymbol
   val mapProviderLazyFactoryBuilder: IrClassSymbol
   val mapProviderLazyFactoryBuilderFunction: IrSimpleFunctionSymbol
   val mapProviderLazyFactoryEmptyFunction: IrSimpleFunctionSymbol?
   val mapProviderLazyFactorySingletonFunction: IrSimpleFunctionSymbol?
   val mapProviderLazyFactoryBuilderPutFunction: IrSimpleFunctionSymbol
-  val mapProviderLazyFactoryBuilderPutAllFunction: IrSimpleFunctionSymbol
   val mapProviderLazyFactoryBuilderBuildFunction: IrSimpleFunctionSymbol
   val mapSuspendProviderFactoryBuilder: IrClassSymbol
   val mapSuspendProviderFactoryBuilderFunction: IrSimpleFunctionSymbol
   val mapSuspendProviderFactoryEmptyFunction: IrSimpleFunctionSymbol?
   val mapSuspendProviderFactorySingletonFunction: IrSimpleFunctionSymbol?
   val mapSuspendProviderFactoryBuilderPutFunction: IrSimpleFunctionSymbol
-  val mapSuspendProviderFactoryBuilderPutAllFunction: IrSimpleFunctionSymbol
   val mapSuspendProviderFactoryBuilderBuildFunction: IrSimpleFunctionSymbol
 }
 
@@ -107,10 +102,6 @@ internal abstract class BaseFrameworkSymbols : FrameworkSymbols {
     mapFactoryBuilder.requireSimpleFunction("put")
   }
 
-  override val mapFactoryBuilderPutAllFunction: IrSimpleFunctionSymbol by lazy {
-    mapFactoryBuilder.requireSimpleFunction("putAll")
-  }
-
   override val mapFactoryBuilderBuildFunction: IrSimpleFunctionSymbol by lazy {
     mapFactoryBuilder.requireSimpleFunction("build")
   }
@@ -121,10 +112,6 @@ internal abstract class BaseFrameworkSymbols : FrameworkSymbols {
 
   override val mapProviderFactoryBuilderPutFunction: IrSimpleFunctionSymbol by lazy {
     mapProviderFactoryBuilder.requireSimpleFunction("put")
-  }
-
-  override val mapProviderFactoryBuilderPutAllFunction: IrSimpleFunctionSymbol by lazy {
-    mapProviderFactoryBuilder.requireSimpleFunction("putAll")
   }
 
   override val mapProviderFactoryBuilderBuildFunction: IrSimpleFunctionSymbol by lazy {
@@ -139,10 +126,6 @@ internal abstract class BaseFrameworkSymbols : FrameworkSymbols {
     mapLazyFactoryBuilder.requireSimpleFunction("put")
   }
 
-  override val mapLazyFactoryBuilderPutAllFunction: IrSimpleFunctionSymbol by lazy {
-    mapLazyFactoryBuilder.requireSimpleFunction("putAll")
-  }
-
   override val mapLazyFactoryBuilderBuildFunction: IrSimpleFunctionSymbol by lazy {
     mapLazyFactoryBuilder.requireSimpleFunction("build")
   }
@@ -155,10 +138,6 @@ internal abstract class BaseFrameworkSymbols : FrameworkSymbols {
     mapProviderLazyFactoryBuilder.requireSimpleFunction("put")
   }
 
-  override val mapProviderLazyFactoryBuilderPutAllFunction: IrSimpleFunctionSymbol by lazy {
-    mapProviderLazyFactoryBuilder.requireSimpleFunction("putAll")
-  }
-
   override val mapProviderLazyFactoryBuilderBuildFunction: IrSimpleFunctionSymbol by lazy {
     mapProviderLazyFactoryBuilder.requireSimpleFunction("build")
   }
@@ -169,10 +148,6 @@ internal abstract class BaseFrameworkSymbols : FrameworkSymbols {
 
   override val mapSuspendProviderFactoryBuilderPutFunction: IrSimpleFunctionSymbol by lazy {
     mapSuspendProviderFactoryBuilder.requireSimpleFunction("put")
-  }
-
-  override val mapSuspendProviderFactoryBuilderPutAllFunction: IrSimpleFunctionSymbol by lazy {
-    mapSuspendProviderFactoryBuilder.requireSimpleFunction("putAll")
   }
 
   override val mapSuspendProviderFactoryBuilderBuildFunction: IrSimpleFunctionSymbol by lazy {
