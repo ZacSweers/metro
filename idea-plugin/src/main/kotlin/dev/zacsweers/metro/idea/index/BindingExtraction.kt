@@ -225,7 +225,13 @@ private fun KaSession.callableElementId(symbol: KaCallableSymbol): String? {
 
   // Kotlin IR orders dispatch, context and extension receivers before the value parameters.
   val parameters = buildList {
-    symbol.dispatchReceiverType?.let { add(typeIdentity(it)) }
+    // A member's dispatch receiver is its containing class's own type, including for fake
+    // overrides.
+    val owner = symbol.containingDeclaration as? KaClassSymbol
+    if (owner != null) {
+      add(typeIdentity(owner.defaultType))
+    }
+
     for (parameter in symbol.bindingContextParameters()) {
       add(typeIdentity(parameter.returnType))
     }

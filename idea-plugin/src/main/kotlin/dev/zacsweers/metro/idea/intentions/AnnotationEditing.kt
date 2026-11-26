@@ -4,8 +4,10 @@ package dev.zacsweers.metro.idea.intentions
 
 import com.intellij.modcommand.ModPsiUpdater
 import org.jetbrains.kotlin.idea.base.codeInsight.ShortenReferencesFacility
+import org.jetbrains.kotlin.idea.base.psi.addAnnotation
 import org.jetbrains.kotlin.psi.KtAnnotationEntry
 import org.jetbrains.kotlin.psi.KtModifierListOwner
+import org.jetbrains.kotlin.psi.KtPrimaryConstructor
 import org.jetbrains.kotlin.psi.KtPsiFactory
 
 /**
@@ -18,8 +20,15 @@ internal fun addMetroAnnotation(
   updater: ModPsiUpdater,
 ): KtAnnotationEntry {
   val writable = if (owner.isPhysical) updater.getWritable(owner) else owner
+  val entry = KtPsiFactory(owner.project).createAnnotationEntry(annotationText)
+
+  // The primary constructor overload adds the `constructor` keyword when it's missing.
   val annotation =
-    writable.addAnnotationEntry(KtPsiFactory(owner.project).createAnnotationEntry(annotationText))
+    when (writable) {
+      is KtPrimaryConstructor -> writable.addAnnotation(entry)
+      else -> writable.addAnnotation(entry)
+    }
+
   ShortenReferencesFacility.getInstance().shorten(annotation)
   return annotation
 }
