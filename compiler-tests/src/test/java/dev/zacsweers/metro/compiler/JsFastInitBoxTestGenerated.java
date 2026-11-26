@@ -3238,6 +3238,12 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
       }
 
       @Test
+      @TestMetadata("ScopedParentImplicitClassKeyEntryMergesWithChildEntries.kt")
+      public void testScopedParentImplicitClassKeyEntryMergesWithChildEntries() {
+        run("ScopedParentImplicitClassKeyEntryMergesWithChildEntries.kt");
+      }
+
+      @Test
       @TestMetadata("ScopedProviderAccessorVisibleToChild.kt")
       public void testScopedProviderAccessorVisibleToChild() {
         run("ScopedProviderAccessorVisibleToChild.kt");

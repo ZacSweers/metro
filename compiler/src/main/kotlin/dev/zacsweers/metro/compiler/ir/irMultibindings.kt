@@ -227,6 +227,10 @@ internal fun MetroAnnotations<IrAnnotation>.withPopulatedImplicitClassKey(
  * bindings, this is the class itself. For provided/binds bindings, this is the input parameter type
  * (which should already be populated during contribution code gen for contributions). Validation
  * and map generation must resolve the same class.
+ *
+ * [binding] must be the binding that declares the entry. A graph extension sees a scoped parent
+ * entry as an [IrBinding.GraphDependency], which doesn't know the class. Resolve those through
+ * `IrBindingGraph.implicitClassKeyType`, which passes the owner graph's binding here.
  */
 internal fun resolveImplicitClassKeyType(binding: IrBinding): IrType {
   return when (binding) {

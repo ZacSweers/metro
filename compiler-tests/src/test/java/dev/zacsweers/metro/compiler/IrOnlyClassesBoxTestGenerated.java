@@ -3584,6 +3584,12 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
       }
 
       @Test
+      @TestMetadata("ScopedParentImplicitClassKeyEntryMergesWithChildEntries.kt")
+      public void testScopedParentImplicitClassKeyEntryMergesWithChildEntries() {
+        run("ScopedParentImplicitClassKeyEntryMergesWithChildEntries.kt");
+      }
+
+      @Test
       @TestMetadata("ScopedProviderAccessorVisibleToChild.kt")
       public void testScopedProviderAccessorVisibleToChild() {
         run("ScopedProviderAccessorVisibleToChild.kt");

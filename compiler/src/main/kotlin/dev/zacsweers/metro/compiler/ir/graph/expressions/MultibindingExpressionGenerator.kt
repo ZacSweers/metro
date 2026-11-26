@@ -18,7 +18,6 @@ import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireSimpleType
-import dev.zacsweers.metro.compiler.ir.resolveImplicitClassKeyType
 import dev.zacsweers.metro.compiler.ir.shouldUnwrapMapKeyValues
 import dev.zacsweers.metro.compiler.ir.stripIfLazy
 import dev.zacsweers.metro.compiler.ir.stripSuspendProvider
@@ -307,8 +306,9 @@ internal class MultibindingExpressionGenerator(
       if (!unwrapValue) {
         mapKey
       } else if (isImplicitClassKeySentinel(mapKey)) {
-        // Implicit class key - generate a class reference for the binding's class
-        val implicitClassType = resolveImplicitClassKeyType(binding)
+        // Implicit class key - generate a class reference for the binding's class. The graph
+        // resolves it, since an inherited entry's class comes from its owner's declaration.
+        val implicitClassType = bindingGraph.implicitClassKeyType(binding)
         createKClassReference(implicitClassType)
       } else {
         // We can just copy the expression!
