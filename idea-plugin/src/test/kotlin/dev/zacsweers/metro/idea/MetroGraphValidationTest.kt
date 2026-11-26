@@ -68,6 +68,11 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     project.service<MetroGraphValidationService>().clearResults()
   }
 
+  /**
+   * Refreshes graph data and waits for the new index. Use it before asserting that a cached result
+   * is fresh. Freshness is checked against the presentation generation. Manual refresh mode only
+   * publishes that generation on a refresh.
+   */
   private fun refreshedIndex(file: KtFile): BindingIndex {
     val service = project.service<MetroResolutionService>()
     service.refreshGraphData()
@@ -4568,7 +4573,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         }
         """,
       )
-    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val index = refreshedIndex(file)
     val parent = index.graphs.single { it.name == "AppGraph" }
     val child = index.graphs.single { it.name == "ChildGraph" }
     val parentContext = index.contextsFor(parent).single()
@@ -5680,7 +5685,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph
         """,
       )
-    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val index = refreshedIndex(file)
     val graph = index.graphs.single()
     val context = index.contextsFor(graph).single()
     val validationService = project.service<MetroGraphValidationService>()
@@ -5700,7 +5705,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     assertSame(result, cached.result)
     assertTrue(cached.stale)
 
-    val rebuiltIndex = project.service<MetroResolutionService>().awaitIndex(file)
+    val rebuiltIndex = refreshedIndex(file)
     assertNotSame(index.generationToken, rebuiltIndex.generationToken)
     val rebuiltGraph = rebuiltIndex.graphs.single()
     val rebuiltContext = rebuiltIndex.contextsFor(rebuiltGraph).single()
