@@ -29,7 +29,6 @@ import org.jetbrains.kotlin.psi.KtNamedDeclaration
  * Covers opt-in scheduling, pin ownership, and cancellation through the real validation service.
  */
 class MetroPinnedGraphValidationTest : BasePlatformTestCase() {
-  private var previousAutomaticRefresh = true
   private var previousAutomaticValidation = false
 
   override fun setUp() {
@@ -37,10 +36,9 @@ class MetroPinnedGraphValidationTest : BasePlatformTestCase() {
     project.setMetroOptions()
     module.addMetroRuntimeLibrary()
     val settings = MetroSettings.getInstance(project).state
-    previousAutomaticRefresh = settings.automaticallyRefreshGraphData
     previousAutomaticValidation = settings.automaticallyValidatePinnedGraph
     settings.automaticallyValidatePinnedGraph = false
-    project.enableImmediateAutomaticRefresh()
+    project.enableImmediateAutomaticRefresh(testRootDisposable)
     project.service<MetroGraphValidationService>().clearResults()
     project.service<GraphContextPinService>().clear()
   }
@@ -51,9 +49,8 @@ class MetroPinnedGraphValidationTest : BasePlatformTestCase() {
       project.service<GraphContextPinService>().clear()
       project.service<MetroPinnedGraphValidationService>().requestValidation()
       project.service<MetroGraphValidationService>().setBeforeGraphSealObserver(null)
-      val settings = MetroSettings.getInstance(project).state
-      settings.automaticallyRefreshGraphData = previousAutomaticRefresh
-      settings.automaticallyValidatePinnedGraph = previousAutomaticValidation
+      MetroSettings.getInstance(project).state.automaticallyValidatePinnedGraph =
+        previousAutomaticValidation
     } finally {
       super.tearDown()
     }

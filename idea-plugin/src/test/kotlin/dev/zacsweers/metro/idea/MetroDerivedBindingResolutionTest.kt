@@ -20,7 +20,7 @@ class MetroDerivedBindingResolutionTest : BasePlatformTestCase() {
 
   override fun setUp() {
     super.setUp()
-    project.enableImmediateAutomaticRefresh()
+    project.enableImmediateAutomaticRefresh(testRootDisposable)
     project.setMetroOptions(DERIVED_BINDINGS_OPTION)
     module.addMetroRuntimeLibrary()
   }

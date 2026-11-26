@@ -28,7 +28,7 @@ class MetroFilePresentationTest : BasePlatformTestCase() {
 
   override fun setUp() {
     super.setUp()
-    project.enableImmediateAutomaticRefresh()
+    project.enableImmediateAutomaticRefresh(testRootDisposable)
     project.setMetroOptions()
     module.addMetroRuntimeLibrary()
     val service = project.service<MetroResolutionService>()
