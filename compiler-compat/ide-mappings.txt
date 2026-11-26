@@ -136,6 +136,7 @@
 # Android Studio Rabbit 3 | 2026.2.3 RC 1 (beta)
 # Android Studio Rabbit 2 | 2026.2.2 Patch 2 (stable)
 # Android Studio Rabbit 3 | 2026.2.3 RC 2 (beta)
+# Android Studio Rabbit 2 | 2026.2.2 Patch 3 (stable)
 2.4.255-dev-255=2.4.20-dev-6725
 # IntelliJ IDEA 2026.3 (eap)
 2.5.0-ij263-18=2.5.0-dev-9507
