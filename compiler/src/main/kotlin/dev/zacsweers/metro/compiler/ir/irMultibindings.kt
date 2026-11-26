@@ -216,10 +216,28 @@ internal fun MetroAnnotations<IrAnnotation>.withPopulatedImplicitClassKey(
   implicitType: IrType,
 ): MetroAnnotations<IrAnnotation> {
   val mapKey = this.mapKey ?: return this
-  if (!isImplicitClassKeySentinel(mapKey.ir)) return this
-  val copied = mapKey.ir.deepCopyWithSymbols()
+  val populated = mapKey.withPopulatedImplicitClassKey(implicitType)
+  if (populated === mapKey) {
+    return this
+  }
+
+  return copy(mapKey = populated)
+}
+
+/**
+ * Returns a copy of this map key whose implicit class key refers to [implicitType]. Returns `this`
+ * when the key isn't the implicit class key sentinel.
+ */
+context(context: IrMetroContext)
+internal fun IrAnnotation.withPopulatedImplicitClassKey(implicitType: IrType): IrAnnotation {
+  if (!isImplicitClassKeySentinel(ir)) {
+    return this
+  }
+
+  val copied = ir.deepCopyWithSymbols()
   populateImplicitClassKey(copied, implicitType)
-  return copy(mapKey = IrAnnotation(copied))
+
+  return IrAnnotation(copied)
 }
 
 /**

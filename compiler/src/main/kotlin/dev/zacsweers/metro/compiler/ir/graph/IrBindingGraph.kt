@@ -87,6 +87,7 @@ import dev.zacsweers.metro.compiler.ir.resolveImplicitClassKeyType
 import dev.zacsweers.metro.compiler.ir.shouldUnwrapMapKeyValues
 import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
 import dev.zacsweers.metro.compiler.ir.toDiagnosticSpan
+import dev.zacsweers.metro.compiler.ir.withPopulatedImplicitClassKey
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.safePathString
@@ -660,17 +661,14 @@ internal class IrBindingGraph(
    *
    * That's [binding] itself for an entry this graph declares or copies. A scoped parent entry stays
    * on its owner and is only a [IrBinding.GraphDependency] here. This returns the owner's binding
-   * for it, or null when the owner has no `@Provides` declaration for it.
+   * for it, or null when the owner's declaration can't be found.
    */
   private fun mapKeySourceOf(binding: IrBinding): IrBinding? {
     if (binding !is IrBinding.GraphDependency) {
       return binding
     }
 
-    val owner = node.allParentGraphs[binding.ownerKey] ?: return null
-
-    // Every factory in a list shares the element key, so the first one stands for all of them.
-    return owner.providerFactories[binding.typeKey]?.firstOrNull()?.providedBinding
+    return inheritedElementBinding(node, binding)
   }
 
   /** Defaulted requests can't use [BindingPropertyContext.reusableBinding]. */
@@ -1532,36 +1530,34 @@ internal class IrBindingGraph(
    * Returns true for a map entry that this graph inherits from an ancestor without copying its
    * declaration. Scoped parent entries arrive this way.
    *
-   * Entries whose implicit class key is still unresolved are left out. [effectiveMapKey] can't
-   * resolve their class from a [IrBinding.GraphDependency].
+   * An entry is left out when [declaredMapKey] can't read its key. A null key would group unrelated
+   * entries as duplicates.
    */
   private fun isInheritedMapContribution(binding: IrBinding): Boolean {
     if (binding !is IrBinding.GraphDependency) {
       return false
     }
 
-    return inheritedElementMapKey(binding.typeKey) != null
+    return declaredMapKey(binding) != null
   }
 
-  /** Matches the unwrapping and implicit class resolution used when generating map keys. */
+  /**
+   * Matches the unwrapping and implicit class resolution used when generating map keys. An
+   * inherited entry computes its key from its owner's binding, like the owner's own graph does.
+   */
   private fun effectiveMapKey(binding: IrBinding): EffectiveMapKey? {
-    val annotation =
-      if (isInheritedMapContribution(binding)) {
-        inheritedElementMapKey(binding.typeKey)
-      } else {
-        (binding as IrBinding.BindingWithAnnotations).annotations.mapKey
-      }
-    if (annotation == null) {
-      return null
-    }
+    val annotation = declaredMapKey(binding) ?: return null
 
-    val emittedAnnotation = binding.typeKey.multibindingKeyData?.mapKey ?: annotation
+    // Without the owner's binding, declaredMapKey only returns a key that needs no class lookup.
+    val source = mapKeySourceOf(binding) ?: binding
+
+    val emittedAnnotation = source.typeKey.multibindingKeyData?.mapKey ?: annotation
     val mapKey = emittedAnnotation.ir
     val identity =
       if (!shouldUnwrapMapKeyValues(mapKey)) {
         emittedAnnotation
       } else if (isImplicitClassKeySentinel(mapKey)) {
-        mapClassKey(resolveImplicitClassKeyType(binding))
+        mapClassKey(resolveImplicitClassKeyType(source))
       } else {
         when (val value = mapKey.arguments[0]) {
           is IrConst -> checkNotNull(value.value)
@@ -2152,14 +2148,32 @@ internal class IrBindingGraph(
 
   /**
    * Returns the map key a map contribution declares. An inherited entry has no annotations here, so
-   * its key comes from its element key.
+   * its key comes from its owner's binding.
+   *
+   * The element key is the fallback when the owner's declaration can't be found. That returns null
+   * for an implicit class key, since only the owner's declaration names the class.
    */
   private fun declaredMapKey(contribution: IrBinding): IrAnnotation? {
-    if (contribution is IrBinding.BindingWithAnnotations) {
-      return contribution.annotations.mapKey
+    val source = mapKeySourceOf(contribution)
+    if (source is IrBinding.BindingWithAnnotations) {
+      return source.annotations.mapKey
     }
 
     return inheritedElementMapKey(contribution.typeKey)
+  }
+
+  /**
+   * Returns [mapKey] in the form that a report shows for [contribution].
+   *
+   * A `@Provides` entry keeps the `Nothing::class` sentinel of an implicit class key, which has no
+   * value to show. This returns a copy that names the class the entry resolves to.
+   */
+  private fun reportedMapKey(mapKey: IrAnnotation, contribution: IrBinding): IrAnnotation {
+    if (!isImplicitClassKeySentinel(mapKey.ir)) {
+      return mapKey
+    }
+
+    return mapKey.withPopulatedImplicitClassKey(implicitClassKeyType(contribution))
   }
 
   /**
@@ -2204,9 +2218,10 @@ internal class IrBindingGraph(
           ),
         )
     val representative = locatedContributions.first().first
-    val mapKey =
+    val declaredKey =
       declaredMapKey(representative)
         ?: reportCompilerBug("Map key should not be null for map multibindings")
+    val mapKey = reportedMapKey(declaredKey, representative)
     val locationDiagnostics = locatedContributions.map { it.second }
     val locationItems = locationDiagnostics.map { it.toLocatedItem() }
     val extraNotes = buildList {
@@ -2219,7 +2234,7 @@ internal class IrBindingGraph(
               val emittedMapKey =
                 contribution.typeKey.multibindingKeyData?.mapKey
                   ?: checkNotNull(declaredMapKey(contribution))
-              emittedMapKey.render(short = false)
+              reportedMapKey(emittedMapKey, contribution).render(short = false)
             }
             .distinct()
         add(unwrappedMapKeysNote(mapKeys))

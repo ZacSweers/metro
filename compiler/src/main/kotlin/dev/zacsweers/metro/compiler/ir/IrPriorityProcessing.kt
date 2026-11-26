@@ -18,7 +18,6 @@ import org.jetbrains.kotlin.fir.types.coneTypeOrNull
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.util.classId
-import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.name.ClassId
 
@@ -217,12 +216,7 @@ internal class IrPriorityProcessing(private val boundTypeResolver: IrBoundTypeRe
 
   context(context: IrMetroContext)
   private fun effectiveMapKey(mapKey: IrAnnotation?, contributingType: IrClass): IrAnnotation? {
-    val sourceMapKey = mapKey ?: return null
-    if (!isImplicitClassKeySentinel(sourceMapKey.ir)) return sourceMapKey
-
-    val populatedMapKey = sourceMapKey.ir.deepCopyWithSymbols()
-    populateImplicitClassKey(populatedMapKey, contributingType.defaultType)
-    return IrAnnotation(populatedMapKey)
+    return mapKey?.withPopulatedImplicitClassKey(contributingType.defaultType)
   }
 
   private data class MatchingContribution(
