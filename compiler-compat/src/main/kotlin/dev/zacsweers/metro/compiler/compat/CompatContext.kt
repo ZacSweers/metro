@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.compat
 
 import java.util.ServiceLoader
+import kotlin.reflect.KClass
 import org.jetbrains.kotlin.GeneratedDeclarationKey
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.KtSourceElement
@@ -16,9 +17,14 @@ import org.jetbrains.kotlin.config.LanguageVersionSettings
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibility
 import org.jetbrains.kotlin.diagnostics.AbstractKtDiagnosticFactory
+import org.jetbrains.kotlin.diagnostics.AbstractSourceElementPositioningStrategy
+import org.jetbrains.kotlin.diagnostics.DiagnosticFactory0DelegateProvider
+import org.jetbrains.kotlin.diagnostics.DiagnosticFactory1DelegateProvider
+import org.jetbrains.kotlin.diagnostics.DiagnosticFactory2DelegateProvider
 import org.jetbrains.kotlin.diagnostics.KtDiagnostic
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactory1
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticWithoutSource
+import org.jetbrains.kotlin.diagnostics.KtDiagnosticsContainer
 import org.jetbrains.kotlin.diagnostics.KtSourcelessDiagnosticFactory
 import org.jetbrains.kotlin.diagnostics.Severity
 import org.jetbrains.kotlin.fir.FirAnnotationContainer
@@ -75,6 +81,24 @@ import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 
 public interface CompatContext {
+  public fun KtDiagnosticsContainer.diagnosticFactory0Compat(
+    severity: Severity,
+    positioningStrategy: AbstractSourceElementPositioningStrategy,
+    psiType: KClass<*>,
+  ): DiagnosticFactory0DelegateProvider
+
+  public fun <A> KtDiagnosticsContainer.diagnosticFactory1Compat(
+    severity: Severity,
+    positioningStrategy: AbstractSourceElementPositioningStrategy,
+    psiType: KClass<*>,
+  ): DiagnosticFactory1DelegateProvider<A>
+
+  public fun <A, B> KtDiagnosticsContainer.diagnosticFactory2Compat(
+    severity: Severity,
+    positioningStrategy: AbstractSourceElementPositioningStrategy,
+    psiType: KClass<*>,
+  ): DiagnosticFactory2DelegateProvider<A, B>
+
   /** Creates a file type-resolution configuration across Kotlin constructor signature changes. */
   public fun createTypeResolutionConfigurationCompat(
     scopes: Iterable<FirScope>,

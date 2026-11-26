@@ -1532,7 +1532,7 @@ internal fun FirClassSymbol<*>.nestedClasses(
 
 internal fun FirClassSymbol<*>.nestedClasses(
   session: FirSession,
-  memberRequiredPhase: FirResolvePhase = FirResolvePhase.STATUS,
+  memberRequiredPhase: FirResolvePhase? = FirResolvePhase.STATUS,
 ): List<FirRegularClassSymbol> {
   val collected = mutableListOf<FirRegularClassSymbol>()
   declaredMemberScope(session, memberRequiredPhase = memberRequiredPhase).processAllClassifiers {

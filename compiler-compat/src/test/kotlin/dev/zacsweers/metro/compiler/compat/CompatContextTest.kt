@@ -436,7 +436,7 @@ class CompatContextTest {
         "2.5.0-dev-6460",
         "2.5.0-dev-7307",
         "2.5.0-dev-10106",
-        "2.5.20-dev-4223",
+        "2.5.20-dev-6103",
       )
 
     // Current compiler version -> expected factory minVersion.
@@ -470,9 +470,9 @@ class CompatContextTest {
         "2.5.0-Beta1-release-123" to "2.5.0-dev-10106",
         "2.5.0-RC" to "2.5.0-dev-10106",
         "2.5.0" to "2.5.0-dev-10106",
-        "2.5.20-dev-4222" to "2.5.0-dev-10106",
-        "2.5.20-dev-4223" to "2.5.20-dev-4223",
-        "2.5.20-dev-4224" to "2.5.20-dev-4223",
+        "2.5.20-dev-6102" to "2.5.0-dev-10106",
+        "2.5.20-dev-6103" to "2.5.20-dev-6103",
+        "2.5.20-dev-6104" to "2.5.20-dev-6103",
       )
 
     for ((currentVersion, expectedMinVersion) in expectations) {

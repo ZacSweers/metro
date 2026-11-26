@@ -25,9 +25,14 @@ import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.descriptors.Visibility
 import org.jetbrains.kotlin.diagnostics.AbstractKtDiagnosticFactory
+import org.jetbrains.kotlin.diagnostics.AbstractSourceElementPositioningStrategy
+import org.jetbrains.kotlin.diagnostics.DiagnosticFactory0DelegateProvider
+import org.jetbrains.kotlin.diagnostics.DiagnosticFactory1DelegateProvider
+import org.jetbrains.kotlin.diagnostics.DiagnosticFactory2DelegateProvider
 import org.jetbrains.kotlin.diagnostics.KtDiagnostic
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactory1
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticWithoutSource
+import org.jetbrains.kotlin.diagnostics.KtDiagnosticsContainer
 import org.jetbrains.kotlin.diagnostics.KtLightDiagnosticWithParameters1
 import org.jetbrains.kotlin.diagnostics.KtLightDiagnosticWithParameters2
 import org.jetbrains.kotlin.diagnostics.KtLightDiagnosticWithParameters3
@@ -127,6 +132,27 @@ import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.util.PrivateForInline
 
 public class CompatContextImpl : CompatContext {
+  override fun KtDiagnosticsContainer.diagnosticFactory0Compat(
+    severity: Severity,
+    positioningStrategy: AbstractSourceElementPositioningStrategy,
+    psiType: KClass<*>,
+  ): DiagnosticFactory0DelegateProvider =
+    DiagnosticFactory0DelegateProvider(severity, positioningStrategy, psiType, this)
+
+  override fun <A> KtDiagnosticsContainer.diagnosticFactory1Compat(
+    severity: Severity,
+    positioningStrategy: AbstractSourceElementPositioningStrategy,
+    psiType: KClass<*>,
+  ): DiagnosticFactory1DelegateProvider<A> =
+    DiagnosticFactory1DelegateProvider(severity, positioningStrategy, psiType, this)
+
+  override fun <A, B> KtDiagnosticsContainer.diagnosticFactory2Compat(
+    severity: Severity,
+    positioningStrategy: AbstractSourceElementPositioningStrategy,
+    psiType: KClass<*>,
+  ): DiagnosticFactory2DelegateProvider<A, B> =
+    DiagnosticFactory2DelegateProvider(severity, positioningStrategy, psiType, this)
+
   override fun createTypeResolutionConfigurationCompat(
     scopes: Iterable<FirScope>,
     useSiteFile: FirFile?,
