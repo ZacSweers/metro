@@ -34,7 +34,7 @@ class MetroParallelLibraryResolutionTest : BasePlatformTestCase() {
     val settings = MetroSettings.getInstance(project).state
     previousLibraryResolution = settings.resolveFromLibraries
     settings.resolveFromLibraries = false
-    project.enableImmediateAutomaticRefresh()
+    project.enableImmediateAutomaticRefresh(testRootDisposable)
     project.setMetroOptions()
     module.addMetroRuntimeLibrary()
   }

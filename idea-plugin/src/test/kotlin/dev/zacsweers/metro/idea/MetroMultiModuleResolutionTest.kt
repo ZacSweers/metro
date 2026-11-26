@@ -66,6 +66,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     val bridgeBuilder = projectBuilder.addModule(EmptyModuleFixtureBuilder::class.java)
     val indirectAppBuilder = projectBuilder.addModule(EmptyModuleFixtureBuilder::class.java)
     fixture.setUp()
+    // This project lives for one test, so the refresh mode needs no restore.
     fixture.project.enableImmediateAutomaticRefresh()
 
     val appModule = appBuilder.fixture.module

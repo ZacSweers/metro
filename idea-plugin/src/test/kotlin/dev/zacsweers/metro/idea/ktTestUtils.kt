@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea
 
+import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.application.smartReadAction
@@ -9,6 +10,7 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ModuleRootModificationUtil
+import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.psi.PsiElement
 import com.intellij.psi.util.PsiTreeUtil
@@ -187,11 +189,40 @@ internal fun Module.withMetroLibFixtureLibrary(
 
 /**
  * Resolution feature tests opt into automatic presentation without waiting for production timers.
+ * The mode stays on afterwards. In `setUp`, call the overload that takes a disposable.
  */
 internal fun Project.enableImmediateAutomaticRefresh() {
   MetroSettings.getInstance(this).state.automaticallyRefreshGraphData = true
   service<MetroResolutionService>().setAutomaticRefreshWindowForTest(AutomaticRefreshWindow(0, 0))
   service<MetroResolutionService>().settingsChanged()
+}
+
+/**
+ * Enables immediate automatic refresh and puts the previous mode back when [parentDisposable] is
+ * disposed. Light fixtures share one project across test classes. A mode left on would carry over
+ * to whichever class runs next.
+ *
+ * Each mode change waits for the coordinator to apply it. The coordinator reads the setting when it
+ * handles the change. Without the wait, it could read the next test's mode and skip the restore.
+ */
+internal fun Project.enableImmediateAutomaticRefresh(parentDisposable: Disposable) {
+  val previousMode = MetroSettings.getInstance(this).state.automaticallyRefreshGraphData
+  val resolution = service<MetroResolutionService>()
+
+  Disposer.register(parentDisposable) {
+    MetroSettings.getInstance(this).state.automaticallyRefreshGraphData = previousMode
+    resolution.settingsChanged()
+    resolution.awaitCoordinatorDrain()
+  }
+
+  enableImmediateAutomaticRefresh()
+  resolution.awaitCoordinatorDrain()
+}
+
+/** Pumps the EDT until the coordinator has handled every event submitted before this call. */
+private fun MetroResolutionService.awaitCoordinatorDrain() {
+  val barrier = CompletableFuture.runAsync { runBlocking { awaitCoordinatorBarrier() } }
+  PlatformTestUtil.waitForFuture(barrier, 30_000)
 }
 
 /** Configures Metro for the fixture, enabling the plugin unless explicitly disabled. */
@@ -267,8 +298,7 @@ private fun MetroResolutionService.awaitCurrentIndex(
   }
 
   requestCurrentIndex()
-  val barrier = CompletableFuture.runAsync { runBlocking { awaitCoordinatorBarrier() } }
-  PlatformTestUtil.waitForFuture(barrier, 30_000)
+  awaitCoordinatorDrain()
   return requestCurrentIndex()
 }
 
