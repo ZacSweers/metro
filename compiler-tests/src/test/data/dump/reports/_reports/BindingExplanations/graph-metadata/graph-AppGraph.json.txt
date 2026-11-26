@@ -1617,19 +1617,6 @@
           "relatedDeclarations": [],
           "details": [],
           "renderedKey": "ChildGraph"
-        },
-        {
-          "id": "49:dev/zacsweers/metro/MembersInjector<MemberTarget>|12:MemberTarget",
-          "key": "dev/zacsweers/metro/MembersInjector<MemberTarget>",
-          "status": "selected",
-          "reason": "selected_generated",
-          "declaration": {
-            "id": "MemberTarget",
-            "label": "MemberTarget"
-          },
-          "relatedDeclarations": [],
-          "details": [],
-          "renderedKey": "dev.zacsweers.metro.MembersInjector<MemberTarget>"
         }
       ],
       "details": [
