@@ -15,9 +15,9 @@ import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.components.createUseSiteVisibilityChecker
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedClassSymbol
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.render
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.psiUtil.collectDescendantsOfType
-import org.jetbrains.kotlin.renderer.render
 
 /** A known scope or an editor field for a scope that has not appeared in the index yet. */
 internal data class ContributionScope(

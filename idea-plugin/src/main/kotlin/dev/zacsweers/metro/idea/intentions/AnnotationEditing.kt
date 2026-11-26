@@ -4,6 +4,7 @@ package dev.zacsweers.metro.idea.intentions
 
 import com.intellij.modcommand.ModPsiUpdater
 import org.jetbrains.kotlin.idea.base.codeInsight.ShortenReferencesFacility
+import org.jetbrains.kotlin.idea.base.psi.addAnnotation
 import org.jetbrains.kotlin.psi.KtAnnotationEntry
 import org.jetbrains.kotlin.psi.KtModifierListOwner
 import org.jetbrains.kotlin.psi.KtPsiFactory
@@ -19,7 +20,7 @@ internal fun addMetroAnnotation(
 ): KtAnnotationEntry {
   val writable = if (owner.isPhysical) updater.getWritable(owner) else owner
   val annotation =
-    writable.addAnnotationEntry(KtPsiFactory(owner.project).createAnnotationEntry(annotationText))
+    writable.addAnnotation(KtPsiFactory(owner.project).createAnnotationEntry(annotationText))
   ShortenReferencesFacility.getInstance().shorten(annotation)
   return annotation
 }
