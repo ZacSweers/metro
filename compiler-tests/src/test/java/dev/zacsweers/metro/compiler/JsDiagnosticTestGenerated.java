@@ -1209,6 +1209,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("MissingBindingForClassWithInjectedMembers.kt")
+    public void testMissingBindingForClassWithInjectedMembers() {
+      run("MissingBindingForClassWithInjectedMembers.kt");
+    }
+
+    @Test
     @TestMetadata("MissingBindingHintsShouldReportInternalOnlyIfInternal.kt")
     public void testMissingBindingHintsShouldReportInternalOnlyIfInternal() {
       run("MissingBindingHintsShouldReportInternalOnlyIfInternal.kt");

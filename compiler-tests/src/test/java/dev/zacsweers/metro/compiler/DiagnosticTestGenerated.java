@@ -1337,6 +1337,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("MissingBindingForClassWithInjectedMembers.kt")
+    public void testMissingBindingForClassWithInjectedMembers() {
+      run("MissingBindingForClassWithInjectedMembers.kt");
+    }
+
+    @Test
     @TestMetadata("MissingBindingHintsShouldReportInternalOnlyIfInternal.kt")
     public void testMissingBindingHintsShouldReportInternalOnlyIfInternal() {
       run("MissingBindingHintsShouldReportInternalOnlyIfInternal.kt");
