@@ -48,6 +48,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.ir.rawType
+import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.remapTypes
 import dev.zacsweers.metro.compiler.ir.render
 import dev.zacsweers.metro.compiler.ir.reportCompat
@@ -89,8 +90,6 @@ internal class BindingLookup(
   // Every binding for a key that was registered more than once, kept for duplicate reporting.
   private val duplicateBindings = mutableMapOf<IrTypeKey, MutableSet<IrBinding>>()
   private val classBindingsCache = mutableMapOf<ClassBindingKey, Set<IrBinding>>()
-  // Keys for generic @Inject classes that class lookup skipped because a type argument is a star.
-  private val starProjectedClassKeys = mutableSetOf<IrTypeKey>()
 
   // Mutable remappers belong to this graph's lookup.
   private val typeRemappers = MutableScatterMap<Pair<IrClass, IrType>, TypeRemapper>()
@@ -174,10 +173,18 @@ internal class BindingLookup(
   }
 
   /**
-   * Whether class lookup skipped [key] because it names a generic `@Inject` class with a star type
+   * Whether class lookup skips [key] because it names a generic `@Inject` class with a star type
    * argument. A missing-binding report uses this to explain why the class didn't apply.
    */
-  fun isStarProjectedClassKey(key: IrTypeKey): Boolean = key in starProjectedClassKeys
+  fun isStarProjectedClassKey(key: IrTypeKey): Boolean {
+    if (!key.type.hasStarArgument()) {
+      return false
+    }
+
+    // Class factories are cached, so this repeats no work that class lookup already did.
+    val irClass = key.type.rawTypeOrNull() ?: return false
+    return findClassFactory(irClass) != null
+  }
 
   /**
    * Returns the generic candidates whose return type matches [key] but whose bounds reject the
@@ -1573,7 +1580,6 @@ internal class BindingLookup(
         // A star has no type to substitute for the class's type parameter, so Metro can't call
         // the constructor. The missing binding report explains this.
         if (key.type.hasStarArgument()) {
-          starProjectedClassKeys += key
           if (contextKey.hasDefault) {
             return@getOrPut setOf(IrBinding.Absent(key))
           }
