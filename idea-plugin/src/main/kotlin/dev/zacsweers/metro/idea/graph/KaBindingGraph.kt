@@ -511,6 +511,7 @@ internal class KaBindingGraph(
           locations = locations.map { it.toLocatedItem() },
           inheritedLocations = inheritedLocations.map { it.toLocatedItem() },
           extraNotes = notes,
+          ancestorBindingCanBePrivate = !override.inheritsInjectedClass,
         )
 
       // The editor highlights every related declaration, so only this graph's own go here.

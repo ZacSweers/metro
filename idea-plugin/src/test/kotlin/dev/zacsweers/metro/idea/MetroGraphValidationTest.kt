@@ -1689,8 +1689,8 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
   }
 
-  /** The parent only offers Foo through its `@Inject` constructor. */
-  fun testInjectClassIsNotAParentBindingOverride() {
+  /** AppGraph owns Foo's scope, so it keeps the one Foo instance that ChildGraph replaces. */
+  fun testOverrideOfScopedInjectClassIsReported() {
     val result =
       validateOverrides(
         DiagnosticSeverity.ERROR,
@@ -1714,7 +1714,281 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         """,
       )
 
+    val diagnostic = result.diagnostics.single()
+    assertEquals(MetroDiagnosticId.PARENT_BINDING_OVERRIDE, diagnostic.id)
+    assertEquals(MetroSeverity.ERROR, diagnostic.severity)
+    assertEquals(
+      "ChildGraph overrides Foo inherited from AppGraph",
+      diagnostic.diagnostic.title.toString(),
+    )
+    // No graph declares the class, so the help note doesn't suggest @GraphPrivate.
+    assertEquals(
+      listOf("give one of the bindings a qualifier"),
+      diagnostic.diagnostic.notes.map { it.text.toString() },
+    )
+    val rendered = diagnostic.render()
+    assertTrue(rendered, "Inherited from AppGraph" in rendered)
+    assertTrue(rendered, "Foo (injected class)" in rendered)
+  }
+
+  /** Foo is scoped to AppGraph, two levels up. No ancestor requests it. */
+  fun testOverrideOfScopedInjectClassNamesTheScopeOwner() {
+    val result =
+      validateOverrides(
+        DiagnosticSeverity.ERROR,
+        """
+        abstract class ChildScope
+
+        @SingleIn(AppScope::class) @Inject open class Foo
+
+        @Inject class GrandchildFoo : Foo()
+
+        @GraphExtension
+        interface GrandchildGraph {
+          val foo: Foo
+
+          @Binds val GrandchildFoo.bind: Foo
+        }
+
+        @GraphExtension(ChildScope::class)
+        interface ChildGraph {
+          val grandchild: GrandchildGraph
+        }
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val child: ChildGraph
+        }
+        """,
+        graphName = "GrandchildGraph",
+      )
+
+    assertEquals(
+      listOf("GrandchildGraph overrides Foo inherited from AppGraph"),
+      result.diagnostics.map { it.diagnostic.title.toString() },
+    )
+  }
+
+  /** A provider, a factory input, and a contributed binding each replace a scoped class. */
+  fun testEachDeclarationKindOverridesAScopedInjectClass() {
+    val result =
+      validateOverrides(
+        DiagnosticSeverity.ERROR,
+        """
+        abstract class ChildScope
+
+        @SingleIn(AppScope::class) @Inject open class Foo
+
+        @SingleIn(AppScope::class) @Inject open class Bar
+
+        @SingleIn(AppScope::class) @Inject open class Baz
+
+        @ContributesBinding(ChildScope::class) @Inject class ChildBaz : Baz()
+
+        @GraphExtension(ChildScope::class)
+        interface ChildGraph {
+          val foo: Foo
+          val bar: Bar
+          val baz: Baz
+
+          @Provides fun provideFoo(): Foo = Foo()
+
+          @GraphExtension.Factory
+          interface Factory {
+            fun create(@Provides bar: Bar): ChildGraph
+          }
+        }
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          fun childGraphFactory(): ChildGraph.Factory
+        }
+        """,
+      )
+
+    assertEquals(
+      setOf(
+        "ChildGraph overrides Foo inherited from AppGraph",
+        "ChildGraph overrides Bar inherited from AppGraph",
+        "ChildGraph overrides Baz inherited from AppGraph",
+      ),
+      result.diagnostics.map { it.diagnostic.title.toString() }.toSet(),
+    )
+    assertEquals(3, result.diagnostics.size)
+    for (diagnostic in result.diagnostics) {
+      assertEquals(MetroDiagnosticId.PARENT_BINDING_OVERRIDE, diagnostic.id)
+    }
+  }
+
+  /** Every graph builds its own Unscoped. ChildScoped belongs to the child's own scope. */
+  fun testInjectClassesThatNoAncestorKeepsAreNotParentBindingOverrides() {
+    val result =
+      validateOverrides(
+        DiagnosticSeverity.ERROR,
+        """
+        abstract class ChildScope
+
+        @Inject open class Unscoped
+
+        @Inject class ChildUnscoped : Unscoped()
+
+        @SingleIn(ChildScope::class) @Inject open class ChildScoped
+
+        @Inject class OtherChildScoped : ChildScoped()
+
+        @GraphExtension(ChildScope::class)
+        interface ChildGraph {
+          val unscoped: Unscoped
+          val childScoped: ChildScoped
+
+          @Binds val ChildUnscoped.bindUnscoped: Unscoped
+
+          @Binds val OtherChildScoped.bindChildScoped: ChildScoped
+        }
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val unscoped: Unscoped
+          val child: ChildGraph
+        }
+        """,
+      )
+
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+  }
+
+  /** AppGraph's input wins over Foo's constructor there, so the report names the input. */
+  fun testOverrideOfGraphInputForScopedInjectClassIsReportedAgainstTheInput() {
+    val result =
+      validateOverrides(
+        DiagnosticSeverity.ERROR,
+        """
+        @SingleIn(AppScope::class) @Inject open class Foo
+
+        @Inject class ChildFoo : Foo()
+
+        @GraphExtension
+        interface ChildGraph {
+          val foo: Foo
+
+          @Binds val ChildFoo.bind: Foo
+        }
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val foo: Foo
+          val child: ChildGraph
+
+          @DependencyGraph.Factory
+          interface Factory {
+            fun create(@Provides foo: Foo): AppGraph
+          }
+        }
+        """,
+      )
+
+    val diagnostic = result.diagnostics.single()
+    assertEquals(
+      "ChildGraph overrides Foo inherited from AppGraph",
+      diagnostic.diagnostic.title.toString(),
+    )
+    // The input is a declaration in AppGraph, so @GraphPrivate can hide it.
+    val notes = diagnostic.diagnostic.notes.map { it.text.toString() }
+    assertTrue(notes.toString(), notes.any { "@GraphPrivate" in it })
+    assertFalse(diagnostic.render(), "Foo (injected class)" in diagnostic.render())
+  }
+
+  /** AppGraph's private input still wins over Foo's constructor there. ChildGraph gets neither. */
+  fun testPrivateAncestorDeclarationOfScopedInjectClassIsNotAnOverride() {
+    val result =
+      validateOverrides(
+        DiagnosticSeverity.ERROR,
+        """
+        @SingleIn(AppScope::class) @Inject open class Foo
+
+        @Inject class ChildFoo : Foo()
+
+        @Inject class FooConsumer(val foo: Foo)
+
+        @GraphExtension
+        interface ChildGraph {
+          val foo: Foo
+
+          @Binds val ChildFoo.bind: Foo
+        }
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val consumer: FooConsumer
+          val child: ChildGraph
+
+          @DependencyGraph.Factory
+          interface Factory {
+            fun create(@GraphPrivate @Provides foo: Foo): AppGraph
+          }
+        }
+        """,
+      )
+
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+  }
+
+  /** A scoped class doesn't provide a nullable key or a key with another qualifier. */
+  fun testOtherKeysOfAScopedInjectClassAreNotParentBindingOverrides() {
+    val result =
+      validateOverrides(
+        DiagnosticSeverity.ERROR,
+        """
+        @Qualifier annotation class Chosen
+
+        @SingleIn(AppScope::class) @Inject open class Foo
+
+        @GraphExtension
+        interface ChildGraph {
+          @Chosen val chosen: Foo
+          val nullable: Foo?
+
+          @Provides @Chosen fun provideChosen(): Foo = Foo()
+
+          @Provides fun provideNullable(): Foo? = null
+        }
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val foo: Foo
+          val child: ChildGraph
+        }
+        """,
+      )
+
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+  }
+
+  /** A parameter-less `@Binds` restates Foo's own binding, so it replaces nothing. */
+  fun testParameterlessBindsOfScopedInjectClassIsNotAParentBindingOverride() {
+    val result =
+      validateOverrides(
+        DiagnosticSeverity.ERROR,
+        """
+        @SingleIn(AppScope::class) @Inject class Foo
+
+        @GraphExtension
+        interface ChildGraph {
+          val foo: Foo
+
+          @Binds fun bindFoo(): Foo
+        }
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val foo: Foo
+          val child: ChildGraph
+        }
+        """,
+      )
+
+    val ids = result.diagnostics.map { it.id }
+    assertFalse(ids.toString(), MetroDiagnosticId.PARENT_BINDING_OVERRIDE in ids)
   }
 
   /** Generic providers stay under the derived binding checks. */

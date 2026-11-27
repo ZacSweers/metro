@@ -1305,6 +1305,40 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
   }
 
   /**
+   * Returns true when [graph] explicitly declares [key] but [plan]'s graph doesn't inherit that
+   * declaration. That's a `@GraphPrivate` declaration, or one that a dynamic graph replaces.
+   *
+   * [bindingsForKey] leaves these out. A caller that needs every ancestor declaration checks here
+   * too.
+   */
+  internal fun declaresUninheritedBinding(
+    key: KaTypeKey,
+    graph: KaGraphDeclaration,
+    plan: GraphQueryPlan,
+  ): Boolean {
+    val candidates = lookups.bindingsByKey[key].orEmpty()
+
+    for ((index, binding) in candidates.withIndex()) {
+      checkCanceledEvery(index)
+      val isDeclaration = binding.isExplicitDeclaration() || binding is KaBinding.GraphDependency
+      if (!isDeclaration) {
+        continue
+      }
+
+      val rejection =
+        bindingCandidateRejection(binding, plan.structure, includeIncompatibleScopes = true)
+      val isPrivate = rejection == BindingRejection.PRIVATE_TO_GRAPH
+      val isReplaced = rejection == BindingRejection.DYNAMIC_REPLACEMENT
+      val isUninherited = isPrivate || isReplaced
+      if (isUninherited && isDeclaredByGraph(binding, graph, plan)) {
+        return true
+      }
+    }
+
+    return false
+  }
+
+  /**
    * Returns the explicit declarations that [plan]'s own graph makes, grouped by key.
    *
    * These are the declarations that can override a binding the graph inherits. They're `@Provides`
