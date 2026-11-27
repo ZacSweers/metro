@@ -125,6 +125,14 @@ internal fun MetroOptions.validate(
     valid = false
   }
 
+  if (parentBindingOverrideSeverity.isIdeOnly) {
+    onError(
+      "parentBindingOverrideSeverity (set to ${parentBindingOverrideSeverity.name}) does not support IDE_WARN/IDE_ERROR " +
+        "because the underlying check only runs during IR (CLI-only). Use WARN, ERROR, or NONE instead.",
+    )
+    valid = false
+  }
+
   return valid
 }
 

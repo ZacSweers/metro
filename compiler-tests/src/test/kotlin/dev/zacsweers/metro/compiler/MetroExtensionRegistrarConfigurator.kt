@@ -198,6 +198,9 @@ class MetroExtensionRegistrarConfigurator(
       module.directives.singleOrZeroValue(MetroDirectives.DERIVED_BINDING_OVERLAP_SEVERITY)?.let {
         derivedBindingOverlapSeverity = it
       }
+      module.directives.singleOrZeroValue(MetroDirectives.PARENT_BINDING_OVERRIDE_SEVERITY)?.let {
+        parentBindingOverrideSeverity = it
+      }
       for (level in module.directives[MetroDirectives.DIAGNOSTIC_LEVEL]) {
         diagnosticLevels.putAll(level)
       }

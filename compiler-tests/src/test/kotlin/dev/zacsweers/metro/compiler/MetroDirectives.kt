@@ -128,6 +128,10 @@ object MetroDirectives : SimpleDirectivesContainer() {
     enumDirective<MetroOptions.DiagnosticSeverity>(
       "Control diagnostic severity reporting of keys where more than one generic provider matched and Metro picked the most specific one.",
     )
+  val PARENT_BINDING_OVERRIDE_SEVERITY by
+    enumDirective<MetroOptions.DiagnosticSeverity>(
+      "Control diagnostic severity reporting of graph extension bindings that override a binding an ancestor graph already provides.",
+    )
   val DIAGNOSTIC_LEVEL by
     valueDirective(
       "Overrides the severity of a Metro diagnostic, like `DIAGNOSTIC_NAME:warning`. Can be repeated.",

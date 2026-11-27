@@ -458,6 +458,19 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       valueMapper = { it },
     ),
   ),
+  PARENT_BINDING_OVERRIDE_SEVERITY(
+    RawMetroOption(
+      name = "parent-binding-override-severity",
+      defaultValue = MetroOptions.DiagnosticSeverity.NONE.name,
+      valueDescription = MetroOptions.DiagnosticSeverity.entries.joinToString("|"),
+      description =
+        "Severity for graph extension bindings that override a binding an ancestor graph " +
+          "already provides.",
+      required = false,
+      allowMultipleOccurrences = false,
+      valueMapper = { it },
+    ),
+  ),
   LOGGING(
     RawMetroOption(
       name = "logging",
@@ -1296,6 +1309,10 @@ public class MetroOptions(
     MetroOption.DERIVED_BINDING_OVERLAP_SEVERITY.raw.defaultValue.expectAs<String>().let {
       DiagnosticSeverity.valueOf(it)
     },
+  public val parentBindingOverrideSeverity: DiagnosticSeverity =
+    MetroOption.PARENT_BINDING_OVERRIDE_SEVERITY.raw.defaultValue.expectAs<String>().let {
+      DiagnosticSeverity.valueOf(it)
+    },
   public val enabledLoggers: Set<MetroLogger.Type> =
     if (debug) {
       // Debug enables _all_
@@ -1695,6 +1712,8 @@ public class MetroOptions(
     public var unusedGraphInputsSeverity: DiagnosticSeverity = base.unusedGraphInputsSeverity
     public var derivedBindingOverlapSeverity: DiagnosticSeverity =
       base.derivedBindingOverlapSeverity
+    public var parentBindingOverrideSeverity: DiagnosticSeverity =
+      base.parentBindingOverrideSeverity
     public var diagnosticLevels: MutableMap<String, DiagnosticSeverity> =
       base.diagnosticLevels.toMutableMap()
     public var enabledLoggers: MutableSet<MetroLogger.Type> = base.enabledLoggers.toMutableSet()
@@ -1839,6 +1858,10 @@ public class MetroOptions(
     public fun derivedBindingOverlapSeverity(
       derivedBindingOverlapSeverity: DiagnosticSeverity,
     ): Builder = apply { this.derivedBindingOverlapSeverity = derivedBindingOverlapSeverity }
+
+    public fun parentBindingOverrideSeverity(
+      parentBindingOverrideSeverity: DiagnosticSeverity,
+    ): Builder = apply { this.parentBindingOverrideSeverity = parentBindingOverrideSeverity }
 
     public fun contributesAsInject(contributesAsInject: Boolean): Builder = apply {
       this.contributesAsInject = contributesAsInject
@@ -2060,6 +2083,8 @@ public class MetroOptions(
           unusedGraphInputsSeverity = value.diagnosticSeverity()
         MetroOption.DERIVED_BINDING_OVERLAP_SEVERITY ->
           derivedBindingOverlapSeverity = value.diagnosticSeverity()
+        MetroOption.PARENT_BINDING_OVERRIDE_SEVERITY ->
+          parentBindingOverrideSeverity = value.diagnosticSeverity()
         MetroOption.LOGGING -> enabledLoggers += value.expectAs<Set<MetroLogger.Type>>()
         MetroOption.ENABLE_DAGGER_RUNTIME_INTEROP -> enableDaggerRuntimeInterop = value.expectAs()
         MetroOption.ENABLE_GUICE_RUNTIME_INTEROP -> enableGuiceRuntimeInterop = value.expectAs()
@@ -2200,6 +2225,7 @@ public class MetroOptions(
         interopAnnotationsNamedArgSeverity = interopAnnotationsNamedArgSeverity,
         unusedGraphInputsSeverity = unusedGraphInputsSeverity,
         derivedBindingOverlapSeverity = derivedBindingOverlapSeverity,
+        parentBindingOverrideSeverity = parentBindingOverrideSeverity,
         enabledLoggers = enabledLoggers,
         enableDaggerRuntimeInterop = enableDaggerRuntimeInterop,
         enableGuiceRuntimeInterop = enableGuiceRuntimeInterop,

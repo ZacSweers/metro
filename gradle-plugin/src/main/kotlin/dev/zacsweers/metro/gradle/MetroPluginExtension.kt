@@ -300,6 +300,23 @@ constructor(
     )
 
   /**
+   * Severity for a graph extension binding that overrides a binding an ancestor graph already
+   * provides. The extension's binding wins under NONE and WARN. ERROR fails the build.
+   *
+   * NONE by default.
+   *
+   * Note: [DiagnosticSeverity.IDE_WARN] and [DiagnosticSeverity.IDE_ERROR] are **not** supported
+   * here because this check only runs during IR (a CLI-only phase). Attempting to set an IDE-only
+   * severity will fail the build with a validation error.
+   */
+  @ExperimentalMetroGradleApi
+  public val parentBindingOverrideSeverity: Property<DiagnosticSeverity> =
+    objects.enumProperty<DiagnosticSeverity>(
+      "parentBindingOverrideSeverity",
+      DiagnosticSeverity.NONE,
+    )
+
+  /**
    * Treats `@Contributes*` annotations, except `@ContributesTo`, as implicit `@Inject` annotations.
    *
    * Enabled by default.
