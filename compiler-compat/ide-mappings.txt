@@ -146,8 +146,10 @@
 # IntelliJ IDEA 2026.3.0.1 (stable)
 2.5.0-ij263-56=2.5.0-dev-9507
 # IntelliJ IDEA 2026.3.1 (eap)
+# IntelliJ IDEA 2026.3.1 (rc)
 2.5.0-ij263-59=2.5.0-dev-9507
 # Android Studio Stingray 1 | 2026.3.1 Canary 1 (canary)
 # Android Studio Stingray 1 | 2026.3.1 Canary 2 (canary)
 # Android Studio Stingray 1 | 2026.3.1 Canary 3 (canary)
+# Android Studio Stingray 1 | 2026.3.1 Canary 4 (canary)
 2.5.255-dev-255=2.5.0-dev-9507
