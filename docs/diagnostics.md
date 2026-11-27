@@ -30,6 +30,7 @@ Diagnostics rendering is controlled by the `diagnosticsRenderMode` Gradle option
 | [`Metro/MissingBinding`](#missingbinding) | No binding satisfies a requested type. |
 | [`Metro/MissingRuntimeCoroutines`](#missingruntimecoroutines) | Suspend codegen needs the optional runtime-coroutines artifact. |
 | [`Metro/MultibindingOverSuspendBindings`](#multibindingoversuspendbindings) | A multibinding aggregates suspend bindings. |
+| [`Metro/ParentBindingOverride`](#parentbindingoverride) | A graph extension declares a binding that an ancestor graph already provides. |
 | [`Metro/QualifierOverrideMismatch`](#qualifieroverridemismatch) | An override changes the qualifiers on a declaration. |
 | [`Metro/SuspendBindingFromNonSuspendAccessor`](#suspendbindingfromnonsuspendaccessor) | A non-suspend accessor requests a binding that needs a suspend context. |
 | [`Metro/SuspendBindingWrappedInLazy`](#suspendbindingwrappedinlazy) | A suspend binding is requested through a synchronous `Lazy`. |
@@ -195,6 +196,14 @@ A binding or request needs runtime support from the optional `runtime-coroutines
 **Summary:** A multibinding aggregates suspend bindings.
 
 A `Set` or `Map` multibinding aggregates suspend contributions. Aggregation code runs without a suspend context and cannot await each element. Set multibindings over suspend bindings are unsupported. A map multibinding must be consumed as a deferred-value form such as `Map<K, suspend () -> V>` or `Map<K, SuspendProvider<V>>` so each value is initialized only when its provider is invoked.
+
+## ParentBindingOverride
+
+**Diagnostic:** `Metro/ParentBindingOverride`
+
+**Summary:** A graph extension declares a binding that an ancestor graph already provides.
+
+A graph extension declares a `@Provides`, `@Binds`, or contributed binding for a type key that an ancestor graph also declares. The extension's binding replaces the inherited one in the extension and its own extensions. To keep both bindings, give one of them a qualifier. To hide the ancestor's binding from its extensions, mark it `@GraphPrivate`. This diagnostic is off by default. Configure it with the `parentBindingOverrideSeverity` Gradle option.
 
 ## QualifierOverrideMismatch
 

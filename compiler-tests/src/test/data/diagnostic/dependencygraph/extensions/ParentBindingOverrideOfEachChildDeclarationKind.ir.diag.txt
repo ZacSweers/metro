@@ -1,0 +1,43 @@
+/ParentBindingOverrideOfEachChildDeclarationKind.kt:15:54: error: [Metro/ParentBindingOverride] ChildGraph overrides Greeter inherited from ParentGraph
+
+  Declared in ChildGraph
+      ParentBindingOverrideOfEachChildDeclarationKind.kt:15:1
+        ChildGreeter contributes a binding of Greeter
+        ~~~~~~~~~~~~                          ~~~~~~~
+
+  Inherited from ParentGraph
+      ParentBindingOverrideOfEachChildDeclarationKind.kt:27:13
+        @Provides fun provideGreeter(): Greeter
+
+  help: give one of the bindings a qualifier, or mark the ancestor's binding @GraphPrivate
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#parentbindingoverride
+
+
+/ParentBindingOverrideOfEachChildDeclarationKind.kt:40:10: error: [Metro/ParentBindingOverride] ChildGraph overrides CharSequence inherited from ParentGraph
+
+  Declared in ChildGraph
+      ParentBindingOverrideOfEachChildDeclarationKind.kt:40:10
+        @Binds val kotlin.String.bind: kotlin.CharSequence
+                                       ~~~~~~~~~~~~~~~~~~~
+
+  Inherited from ParentGraph
+      ParentBindingOverrideOfEachChildDeclarationKind.kt:23:13
+        @Provides fun provideChars(): kotlin.CharSequence
+
+  help: give one of the bindings a qualifier, or mark the ancestor's binding @GraphPrivate
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#parentbindingoverride
+
+
+/ParentBindingOverrideOfEachChildDeclarationKind.kt:44:16: error: [Metro/ParentBindingOverride] ChildGraph overrides Int inherited from ParentGraph
+
+  Declared in ChildGraph
+      ParentBindingOverrideOfEachChildDeclarationKind.kt:44:16
+        @Provides int: kotlin.Int
+
+  Inherited from ParentGraph
+      ParentBindingOverrideOfEachChildDeclarationKind.kt:25:13
+        @Provides fun provideInt(): kotlin.Int
+
+  help: give one of the bindings a qualifier, or mark the ancestor's binding @GraphPrivate
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#parentbindingoverride
+

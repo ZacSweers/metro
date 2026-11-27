@@ -195,6 +195,55 @@ public fun duplicateMapKeysDiagnostic(
   )
 }
 
+/**
+ * The diagnostic for a graph extension binding that replaces a binding inherited from an ancestor
+ * graph.
+ *
+ * [ancestorGraphName] is the nearest ancestor that declares [typeKey].
+ */
+public fun parentBindingOverrideDiagnostic(
+  typeKey: BaseTypeKey<*, *, *>,
+  severity: MetroSeverity,
+  graphName: String,
+  ancestorGraphName: String,
+  locations: List<LocatedItem>,
+  inheritedLocations: List<LocatedItem>,
+  extraNotes: List<Note> = emptyList(),
+): MetroDiagnostic {
+  return MetroDiagnostic(
+    id = MetroDiagnosticId.PARENT_BINDING_OVERRIDE,
+    severity = severity,
+    title =
+      buildText {
+        append(graphName, Style.EMPHASIS)
+        append(" overrides ")
+        append(typeKey.toText())
+        append(" inherited from ")
+        append(ancestorGraphName, Style.EMPHASIS)
+      },
+    sections =
+      listOf(
+        DiagnosticSection.Locations(
+          header = textOf("Declared in $graphName"),
+          items = locations,
+        ),
+        DiagnosticSection.Locations(
+          header = textOf("Inherited from $ancestorGraphName"),
+          items = inheritedLocations,
+        ),
+      ),
+    notes =
+      buildList {
+        addAll(extraNotes)
+        add(
+          Note.help(
+            "give one of the bindings a qualifier, or mark the ancestor's binding @GraphPrivate",
+          ),
+        )
+      },
+  )
+}
+
 /** Explains how distinct map key annotations can emit the same key. */
 public fun unwrappedMapKeysNote(mapKeys: List<String>): Note {
   return Note.note(

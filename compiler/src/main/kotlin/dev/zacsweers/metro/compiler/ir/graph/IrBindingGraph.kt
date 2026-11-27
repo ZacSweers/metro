@@ -258,6 +258,14 @@ internal class IrBindingGraph(
 
   private val pendingDiagnostics = mutableListOf<PendingDiagnostic>()
 
+  /** Overrides of inherited bindings that [BindingGraphGenerator] found for this graph. */
+  private val parentBindingOverrides = mutableListOf<ParentBindingOverride>()
+
+  /** Records overrides to report during validation. */
+  internal fun addParentBindingOverrides(overrides: List<ParentBindingOverride>) {
+    parentBindingOverrides += overrides
+  }
+
   private fun collectDiagnostic(diagnostic: MetroDiagnostic, declaration: IrDeclaration) {
     hasErrors = true
     pendingDiagnostics +=
@@ -1650,6 +1658,7 @@ internal class IrBindingGraph(
     reportAmbiguousDerivedBindings()
     reportDerivedBindingOverlaps()
     reportDivergentDerivedBindings()
+    reportParentBindingOverrides()
 
     val suspendProvidersEnabled = metroContext.options.enableSuspendProviders
     var hasDirectSuspendBinding = false
@@ -1854,6 +1863,58 @@ internal class IrBindingGraph(
     } else {
       metroContext.reportCompat(node.sourceGraph, factory, message)
     }
+  }
+
+  /**
+   * Reports each override of an inherited binding on the child's declaration. Errors stop code
+   * generation like other graph validation errors.
+   */
+  private fun reportParentBindingOverrides() {
+    if (parentBindingOverrides.isEmpty()) {
+      return
+    }
+
+    // IR runs in CLI-only contexts, so IDE-only severities resolve to NONE here.
+    val severity = metroContext.options.parentBindingOverrideSeverity.resolve(isIde = false)
+    val isError = severity == MetroOptions.DiagnosticSeverity.ERROR
+
+    val factory =
+      if (isError) {
+        MetroDiagnostics.PARENT_BINDING_OVERRIDE_ERROR
+      } else {
+        MetroDiagnostics.PARENT_BINDING_OVERRIDE_WARNING
+      }
+    val diagnosticSeverity =
+      if (isError) {
+        MetroSeverity.ERROR
+      } else {
+        MetroSeverity.WARNING
+      }
+
+    if (isError) {
+      hasErrors = true
+    }
+
+    // A generated extension's reportable declaration is its parent graph, so prefer the
+    // extension's own interface.
+    val graphDeclaration = node.originalTypeKey.type.rawTypeOrNull()
+
+    // Overrides from declarations without a source all fall back to the graph. The batcher joins
+    // their messages so each one is still reported.
+    val batcher = DiagnosticBatcher()
+    for (override in parentBindingOverrides) {
+      val targets =
+        sequenceOf(
+          override.declarations.first().reportTarget,
+          graphDeclaration,
+          node.reportableSourceGraphDeclaration as? IrDeclaration,
+          node.sourceGraph,
+        )
+      val diagnostic = override.toDiagnostic(node, diagnosticSeverity)
+      batcher.add(factory, targets, metroContext.render(diagnostic))
+    }
+
+    batcher.flush()
   }
 
   /**

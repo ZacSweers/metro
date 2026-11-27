@@ -51,6 +51,8 @@ internal val irReportedDiagnosticNames: Set<String> by lazy {
       MetroDiagnostics.MISSING_BINDING,
       MetroDiagnostics.MISSING_RUNTIME_COROUTINES,
       MetroDiagnostics.MULTIBINDING_OVER_SUSPEND_BINDINGS,
+      MetroDiagnostics.PARENT_BINDING_OVERRIDE_ERROR,
+      MetroDiagnostics.PARENT_BINDING_OVERRIDE_WARNING,
       MetroDiagnostics.PRIVATE_BINDING_ERROR,
       MetroDiagnostics.QUALIFIER_OVERRIDE_MISMATCH,
       MetroDiagnostics.SOURCELESS_METRO_ERROR,

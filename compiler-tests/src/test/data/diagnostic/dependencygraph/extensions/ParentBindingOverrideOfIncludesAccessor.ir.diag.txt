@@ -1,0 +1,13 @@
+/ParentBindingOverrideOfIncludesAccessor.kt:28:17: error: [Metro/ParentBindingOverride] ChildGraph overrides String inherited from ParentGraph
+
+  Declared in ChildGraph
+      ParentBindingOverrideOfIncludesAccessor.kt:28:13
+        @Provides fun provideString(): kotlin.String
+
+  Inherited from ParentGraph
+      ParentBindingOverrideOfIncludesAccessor.kt:9:3
+        val string: kotlin.String
+
+  help: give one of the bindings a qualifier, or mark the ancestor's binding @GraphPrivate
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#parentbindingoverride
+

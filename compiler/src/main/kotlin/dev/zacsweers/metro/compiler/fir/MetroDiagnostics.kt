@@ -89,6 +89,8 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ONLY_CLASSES_CAN_BE_INJ
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ONLY_FINAL_AND_OPEN_CLASSES_CAN_BE_INJECTED
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.OPTIONAL_BINDING_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.OPTIONAL_BINDING_WARNING
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PARENT_BINDING_OVERRIDE_ERROR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PARENT_BINDING_OVERRIDE_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PRIVATE_BINDING_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PRIVATE_CONTRIBUTION_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.PROVIDERS_OF_LAZY_MUST_BE_METRO_ONLY
@@ -279,6 +281,8 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val DERIVED_BINDING_OVERLAP_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val DERIVED_BINDING_OVERLAP_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
   val DIVERGENT_DERIVED_BINDING by error1<KtElement, String>(NAME_IDENTIFIER)
+  val PARENT_BINDING_OVERRIDE_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
+  val PARENT_BINDING_OVERRIDE_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
   val MEMBER_INJECTION_OVER_SUSPEND_BINDING by error1<KtElement, String>(NAME_IDENTIFIER)
   val ASSISTED_FACTORY_SUSPEND_REQUIRED by error1<KtElement, String>(NAME_IDENTIFIER)
   val MULTIBINDING_OVER_SUSPEND_BINDINGS by error1<KtElement, String>(NAME_IDENTIFIER)
@@ -500,6 +504,8 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
         put(DERIVED_BINDING_OVERLAP_ERROR, "{0}", STRING)
         put(DERIVED_BINDING_OVERLAP_WARNING, "{0}", STRING)
         put(DIVERGENT_DERIVED_BINDING, "{0}", TO_STRING)
+        put(PARENT_BINDING_OVERRIDE_ERROR, "{0}", STRING)
+        put(PARENT_BINDING_OVERRIDE_WARNING, "{0}", STRING)
         put(MEMBER_INJECTION_OVER_SUSPEND_BINDING, "{0}", TO_STRING)
         put(ASSISTED_FACTORY_SUSPEND_REQUIRED, "{0}", TO_STRING)
         put(MULTIBINDING_OVER_SUSPEND_BINDINGS, "{0}", TO_STRING)
