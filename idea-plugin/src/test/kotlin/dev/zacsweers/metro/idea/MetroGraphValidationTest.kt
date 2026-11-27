@@ -13,7 +13,9 @@ import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.util.ui.UIUtil
 import dev.zacsweers.metro.compiler.MetroClassIds
+import dev.zacsweers.metro.compiler.MetroOptions.DiagnosticSeverity
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
+import dev.zacsweers.metro.compiler.diagnostics.MetroSeverity
 import dev.zacsweers.metro.idea.graph.GraphValidationProgress
 import dev.zacsweers.metro.idea.graph.IncompleteGraphAnalysis
 import dev.zacsweers.metro.idea.graph.KaBindingGraph
@@ -96,6 +98,16 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     return project
       .service<MetroGraphValidationService>()
       .validate(file, index.contextsFor(graph).single())
+  }
+
+  /** Validates [graphName] under one `parentBindingOverrideSeverity` value. */
+  private fun validateOverrides(
+    severity: DiagnosticSeverity,
+    source: String,
+    graphName: String = "ChildGraph",
+  ): KaGraphValidationResult.Completed {
+    project.setMetroOptions("parent-binding-override-severity" to severity.name)
+    return validate(source, graphName)
   }
 
   private fun validateWithoutLibraryResolution(
@@ -1102,6 +1114,669 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
       )
 
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+  }
+
+  fun testParentBindingOverrideIsSilentByDefault() {
+    val result =
+      validateOverrides(
+        DiagnosticSeverity.NONE,
+        """
+        @GraphExtension
+        interface ChildGraph {
+          val string: String
+
+          @Provides fun childString(): String = "child"
+        }
+
+        @DependencyGraph
+        interface AppGraph {
+          val child: ChildGraph
+
+          @Provides fun parentString(): String = "parent"
+        }
+        """,
+      )
+
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+  }
+
+  fun testParentBindingOverrideWarnsUnderWarn() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        @GraphExtension
+        interface ChildGraph {
+          val string: String
+
+          @Provides fun childString(): String = "child"
+        }
+
+        @DependencyGraph
+        interface AppGraph {
+          val child: ChildGraph
+
+          @Provides fun parentString(): String = "parent"
+        }
+        """,
+      )
+    project.setMetroOptions("parent-binding-override-severity" to "WARN")
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val graph = index.graphs.single { it.name == "ChildGraph" }
+    val result =
+      project
+        .service<MetroGraphValidationService>()
+        .validate(file, index.contextsFor(graph).single())
+        .requireCompleted()
+
+    val diagnostic = result.diagnostics.single()
+    assertEquals(MetroDiagnosticId.PARENT_BINDING_OVERRIDE, diagnostic.id)
+    assertEquals(MetroSeverity.WARNING, diagnostic.severity)
+    assertEquals(
+      "ChildGraph overrides String inherited from AppGraph",
+      diagnostic.diagnostic.title.toString(),
+    )
+    // The editor highlights related declarations, so only the child's declaration is related.
+    val declarations = file.declarationsIncludingNested()
+    assertEquals(
+      listOf(declarations.function("childString")),
+      diagnostic.related.map { it.pointer.element },
+    )
+    val rendered = diagnostic.render()
+    assertTrue(rendered, "Declared in ChildGraph" in rendered)
+    assertTrue(rendered, "Inherited from AppGraph" in rendered)
+    assertTrue(rendered, "@GraphPrivate" in rendered)
+  }
+
+  /** Mirrors the compiler's `ParentBindingOverrideOfEachChildDeclarationKind` fixture. */
+  fun testOverrideOfEachDeclarationKindIsAnErrorUnderError() {
+    val result =
+      validateOverrides(
+        DiagnosticSeverity.ERROR,
+        """
+        abstract class ChildScope
+
+        interface Greeter
+
+        object ParentGreeter : Greeter
+
+        @ContributesBinding(ChildScope::class) @Inject class ChildGreeter : Greeter
+
+        @GraphExtension(ChildScope::class)
+        interface ChildGraph {
+          val chars: CharSequence
+          val int: Int
+          val greeter: Greeter
+
+          @Provides fun provideString(): String = "child"
+
+          @Binds val String.bind: CharSequence
+
+          @GraphExtension.Factory
+          interface Factory {
+            fun create(@Provides int: Int): ChildGraph
+          }
+        }
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val chars: CharSequence
+          val int: Int
+          val greeter: Greeter
+
+          @Provides fun provideChars(): CharSequence = "parent"
+
+          @Provides fun provideInt(): Int = 1
+
+          @Provides fun provideGreeter(): Greeter = ParentGreeter
+
+          fun childGraphFactory(): ChildGraph.Factory
+        }
+        """,
+      )
+
+    assertEquals(
+      setOf(
+        "ChildGraph overrides CharSequence inherited from AppGraph",
+        "ChildGraph overrides Int inherited from AppGraph",
+        "ChildGraph overrides Greeter inherited from AppGraph",
+      ),
+      result.diagnostics.map { it.diagnostic.title.toString() }.toSet(),
+    )
+    assertEquals(3, result.diagnostics.size)
+    for (diagnostic in result.diagnostics) {
+      assertEquals(MetroDiagnosticId.PARENT_BINDING_OVERRIDE, diagnostic.id)
+      assertEquals(MetroSeverity.ERROR, diagnostic.severity)
+    }
+  }
+
+  /** The child copies the unscoped binding and reads the scoped one from its parent. */
+  fun testOverridesOfScopedAndUnscopedParentBindingsAreBothReported() {
+    val result =
+      validateOverrides(
+        DiagnosticSeverity.ERROR,
+        """
+        class Foo(val value: String)
+
+        @GraphExtension
+        interface ChildGraph {
+          val string: String
+          val foo: Foo
+
+          @Provides fun childString(): String = "child"
+
+          @Provides fun childFoo(): Foo = Foo("child")
+        }
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val string: String
+          val foo: Foo
+          val child: ChildGraph
+
+          @Provides fun parentString(): String = "parent"
+
+          @SingleIn(AppScope::class) @Provides fun parentFoo(): Foo = Foo("parent")
+        }
+        """,
+      )
+
+    assertEquals(
+      setOf(
+        "ChildGraph overrides String inherited from AppGraph",
+        "ChildGraph overrides Foo inherited from AppGraph",
+      ),
+      result.diagnostics.map { it.diagnostic.title.toString() }.toSet(),
+    )
+    assertEquals(2, result.diagnostics.size)
+  }
+
+  /** The compiler checks every declaration, so an override nothing requests is reported too. */
+  fun testUnrequestedParentBindingOverrideIsReported() {
+    val result =
+      validateOverrides(
+        DiagnosticSeverity.ERROR,
+        """
+        @GraphExtension
+        interface ChildGraph {
+          @Provides fun childString(): String = "child"
+        }
+
+        @DependencyGraph
+        interface AppGraph {
+          val child: ChildGraph
+
+          @Provides fun parentString(): String = "parent"
+        }
+        """,
+      )
+
+    assertEquals(
+      listOf(MetroDiagnosticId.PARENT_BINDING_OVERRIDE),
+      result.diagnostics.map { it.id },
+    )
+  }
+
+  private val threeLevelOverrideSource =
+    """
+    @GraphExtension
+    interface GrandchildGraph {
+      val string: String
+
+      @Provides fun grandchildString(): String = "grandchild"
+    }
+
+    @GraphExtension
+    interface ChildGraph {
+      val string: String
+      val grandchild: GrandchildGraph
+
+      @GraphExtension.Factory
+      interface Factory {
+        fun create(@Provides string: String): ChildGraph
+      }
+    }
+
+    @DependencyGraph
+    interface AppGraph {
+      val string: String
+
+      @Provides fun rootString(): String = "root"
+
+      fun childGraphFactory(): ChildGraph.Factory
+    }
+    """
+
+  /** AppGraph and ChildGraph both declare String. The report names the nearest one. */
+  fun testParentBindingOverrideNamesTheNearestAncestor() {
+    val result =
+      validateOverrides(
+        DiagnosticSeverity.ERROR,
+        threeLevelOverrideSource,
+        graphName = "GrandchildGraph",
+      )
+
+    val diagnostic = result.diagnostics.single()
+    assertEquals(MetroDiagnosticId.PARENT_BINDING_OVERRIDE, diagnostic.id)
+    assertEquals(
+      "GrandchildGraph overrides String inherited from ChildGraph",
+      diagnostic.diagnostic.title.toString(),
+    )
+  }
+
+  /** ChildGraph's factory input overrides AppGraph's provider. */
+  fun testMiddleGraphOverrideIsReportedInAThreeLevelChain() {
+    val result =
+      validateOverrides(
+        DiagnosticSeverity.ERROR,
+        threeLevelOverrideSource,
+        graphName = "ChildGraph",
+      )
+
+    assertEquals(
+      listOf("ChildGraph overrides String inherited from AppGraph"),
+      result.diagnostics.map { it.diagnostic.title.toString() },
+    )
+  }
+
+  /** A graph that declares nothing itself reports nothing for an ancestor's override. */
+  fun testParentBindingOverrideIsReportedOnceInAChain() {
+    val source =
+      """
+      @GraphExtension
+      interface GrandchildGraph {
+        val string: String
+      }
+
+      @GraphExtension
+      interface ChildGraph {
+        val string: String
+        val grandchild: GrandchildGraph
+
+        @Provides fun childString(): String = "child"
+      }
+
+      @DependencyGraph
+      interface AppGraph {
+        val string: String
+        val child: ChildGraph
+
+        @Provides fun rootString(): String = "root"
+      }
+      """
+    val grandchild =
+      validateOverrides(
+        DiagnosticSeverity.ERROR,
+        source,
+        graphName = "GrandchildGraph",
+      )
+    assertTrue(
+      grandchild.diagnostics.joinToString { it.render() },
+      grandchild.diagnostics.isEmpty(),
+    )
+
+    val child = validateOverrides(DiagnosticSeverity.ERROR, source)
+    assertEquals(
+      listOf("ChildGraph overrides String inherited from AppGraph"),
+      child.diagnostics.map { it.diagnostic.title.toString() },
+    )
+  }
+
+  fun testOverrideOfParentFactoryProvidesInputIsReported() {
+    val result =
+      validateOverrides(
+        DiagnosticSeverity.ERROR,
+        """
+        @GraphExtension
+        interface ChildGraph {
+          val string: String
+
+          @Provides fun childString(): String = "child"
+        }
+
+        @DependencyGraph
+        interface AppGraph {
+          val string: String
+          val child: ChildGraph
+
+          @DependencyGraph.Factory
+          interface Factory {
+            fun create(@Provides string: String): AppGraph
+          }
+        }
+        """,
+      )
+
+    assertEquals(
+      listOf("ChildGraph overrides String inherited from AppGraph"),
+      result.diagnostics.map { it.diagnostic.title.toString() },
+    )
+  }
+
+  /** An ancestor's `@Includes` accessor counts as a declaration the child can override. */
+  fun testOverrideOfParentIncludesAccessorIsReported() {
+    val result =
+      validateOverrides(
+        DiagnosticSeverity.ERROR,
+        """
+        interface StringDep {
+          val string: String
+        }
+
+        @GraphExtension
+        interface ChildGraph {
+          val string: String
+
+          @Provides fun childString(): String = "child"
+        }
+
+        @DependencyGraph
+        interface AppGraph {
+          val string: String
+          val child: ChildGraph
+
+          @DependencyGraph.Factory
+          interface Factory {
+            fun create(@Includes dep: StringDep): AppGraph
+          }
+        }
+        """,
+      )
+
+    assertEquals(
+      listOf(MetroDiagnosticId.PARENT_BINDING_OVERRIDE),
+      result.diagnostics.map { it.id },
+    )
+    assertEquals(
+      "ChildGraph overrides String inherited from AppGraph",
+      result.diagnostics.single().diagnostic.title.toString(),
+    )
+  }
+
+  /** The compiler lets the child's binding win here, so there's no duplicate by default. */
+  fun testChildProvidesWinsOverParentIncludesAccessorByDefault() {
+    val result =
+      validateOverrides(
+        DiagnosticSeverity.NONE,
+        """
+        interface StringDep {
+          val string: String
+        }
+
+        @GraphExtension
+        interface ChildGraph {
+          val string: String
+
+          @Provides fun childString(): String = "child"
+        }
+
+        @DependencyGraph
+        interface AppGraph {
+          val string: String
+          val child: ChildGraph
+
+          @DependencyGraph.Factory
+          interface Factory {
+            fun create(@Includes dep: StringDep): AppGraph
+          }
+        }
+        """,
+      )
+
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    val selected =
+      result.bindings.asMap().values.single { it.typeKey.renderedType == "kotlin.String" }
+    assertTrue(selected is KaBinding.Provided)
+  }
+
+  /** One binding container at both levels declares the same binding twice. */
+  fun testSharedBindingContainerIsNotAParentBindingOverride() {
+    val result =
+      validateOverrides(
+        DiagnosticSeverity.ERROR,
+        """
+        @BindingContainer
+        object SharedBindings {
+          @Provides fun provideString(): String = "shared"
+        }
+
+        @GraphExtension(bindingContainers = [SharedBindings::class])
+        interface ChildGraph {
+          val string: String
+        }
+
+        @DependencyGraph(bindingContainers = [SharedBindings::class])
+        interface AppGraph {
+          val string: String
+          val child: ChildGraph
+        }
+        """,
+      )
+
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+  }
+
+  /** A shared supertype and a repeated injector aren't explicit bindings. */
+  fun testSharedSupertypeAndInjectorAreNotParentBindingOverrides() {
+    val result =
+      validateOverrides(
+        DiagnosticSeverity.ERROR,
+        """
+        interface BaseGraph
+
+        class Target {
+          @Inject lateinit var string: String
+        }
+
+        @GraphExtension
+        interface ChildGraph : BaseGraph {
+          fun inject(target: Target)
+        }
+
+        @DependencyGraph
+        interface AppGraph : BaseGraph {
+          val child: ChildGraph
+
+          fun inject(target: Target)
+
+          @Provides fun provideString(): String = "parent"
+        }
+        """,
+      )
+
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+  }
+
+  /** Both graphs inherit the provider from one supertype, so it's the same declaration. */
+  fun testProviderInheritedFromSharedSupertypeIsNotAParentBindingOverride() {
+    val result =
+      validateOverrides(
+        DiagnosticSeverity.ERROR,
+        """
+        interface BaseProviders {
+          @Provides fun provideString(): String = "base"
+        }
+
+        @GraphExtension
+        interface ChildGraph : BaseProviders {
+          val string: String
+        }
+
+        @DependencyGraph
+        interface AppGraph : BaseProviders {
+          val string: String
+          val child: ChildGraph
+        }
+        """,
+      )
+
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+  }
+
+  /** The child never inherits a `@GraphPrivate` binding, so it can't override one. */
+  fun testGraphPrivateParentBindingIsNotAnOverride() {
+    val result =
+      validateOverrides(
+        DiagnosticSeverity.ERROR,
+        """
+        class Foo(val value: String)
+
+        @Inject class ParentConsumer(val string: String, val foo: Foo)
+
+        @GraphExtension
+        interface ChildGraph {
+          val string: String
+          val foo: Foo
+
+          @Provides fun childString(): String = "child"
+
+          @Provides fun childFoo(): Foo = Foo("child")
+        }
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val consumer: ParentConsumer
+          val child: ChildGraph
+
+          @GraphPrivate @Provides fun parentString(): String = "parent"
+
+          @GraphPrivate @SingleIn(AppScope::class) @Provides fun parentFoo(): Foo = Foo("parent")
+        }
+        """,
+      )
+
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+  }
+
+  /** The parent only offers Foo through its `@Inject` constructor. */
+  fun testInjectClassIsNotAParentBindingOverride() {
+    val result =
+      validateOverrides(
+        DiagnosticSeverity.ERROR,
+        """
+        @SingleIn(AppScope::class) @Inject open class Foo
+
+        @Inject class ChildFoo : Foo()
+
+        @GraphExtension
+        interface ChildGraph {
+          val foo: Foo
+
+          @Binds val ChildFoo.bind: Foo
+        }
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val foo: Foo
+          val child: ChildGraph
+        }
+        """,
+      )
+
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+  }
+
+  /** Generic providers stay under the derived binding checks. */
+  fun testGenericProvidersAreNotParentBindingOverrides() {
+    project.setMetroOptions(
+      "parent-binding-override-severity" to "ERROR",
+      "enable-derived-bindings" to "true",
+    )
+    val result =
+      validate(
+        """
+        class Box<T>
+
+        @GraphExtension
+        interface ChildGraph {
+          val box: Box<String>
+
+          @Provides fun <T> childBox(): Box<T> = Box()
+        }
+
+        @DependencyGraph
+        interface AppGraph {
+          val child: ChildGraph
+
+          @Provides fun <T> parentBox(): Box<T> = Box()
+        }
+        """,
+        graphName = "ChildGraph",
+      )
+
+    assertFalse(
+      result.diagnostics.joinToString { it.render() },
+      result.diagnostics.any { it.id == MetroDiagnosticId.PARENT_BINDING_OVERRIDE },
+    )
+  }
+
+  /** A dynamic graph's replacement isn't an inherited binding that the child overrides. */
+  fun testDynamicGraphBindingIsNotAParentBindingOverride() {
+    project.setMetroOptions("parent-binding-override-severity" to "ERROR")
+    val file =
+      myFixture.configureMetroFile(
+        """
+        @GraphExtension
+        interface ChildGraph {
+          val string: String
+
+          @Provides fun childString(): String = "child"
+        }
+
+        @DependencyGraph
+        interface AppGraph {
+          val child: ChildGraph
+        }
+
+        @BindingContainer
+        object FakeBindings {
+          @Provides fun fakeString(): String = "dynamic"
+        }
+
+        val dynamicGraph = createDynamicGraph<AppGraph>(FakeBindings)
+        """,
+      )
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val graph = index.graphs.single { it.name == "ChildGraph" }
+    val dynamicContext = index.contextsFor(graph).single { it.dynamicGraph != null }
+    val result =
+      project
+        .service<MetroGraphValidationService>()
+        .validate(file, dynamicContext)
+        .requireCompleted()
+
+    assertFalse(
+      result.diagnostics.joinToString { it.render() },
+      result.diagnostics.any { it.id == MetroDiagnosticId.PARENT_BINDING_OVERRIDE },
+    )
+  }
+
+  /** Map entries can't be overridden, so a repeated key is a duplicate at every severity. */
+  fun testMapEntryWithAnInheritedKeyIsADuplicateMapKeyAtEverySeverity() {
+    for (severity in listOf(DiagnosticSeverity.NONE, DiagnosticSeverity.ERROR)) {
+      val result =
+        validateOverrides(
+          severity,
+          """
+          @GraphExtension
+          interface ChildGraph {
+            val values: Map<String, String>
+
+            @Provides @IntoMap @StringKey("same") fun childValue(): String = "child"
+          }
+
+          @DependencyGraph
+          interface AppGraph {
+            val child: ChildGraph
+
+            @Provides @IntoMap @StringKey("same") fun parentValue(): String = "parent"
+          }
+          """,
+        )
+
+      val diagnostic = result.diagnostics.single()
+      assertEquals("$severity", MetroDiagnosticId.DUPLICATE_MAP_KEYS, diagnostic.id)
+      assertEquals("$severity", 2, diagnostic.related.size)
+    }
   }
 
   fun testDuplicateMapKeysAreReported() {

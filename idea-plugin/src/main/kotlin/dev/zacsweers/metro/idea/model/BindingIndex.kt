@@ -1286,6 +1286,54 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
     return true
   }
 
+  /**
+   * Returns true when [graph] declares or wires [binding] itself.
+   *
+   * An included graph's accessor has no container or contribution scope. It belongs to the graph
+   * whose factory includes that graph.
+   */
+  internal fun isDeclaredByGraph(
+    binding: KaBinding,
+    graph: KaGraphDeclaration,
+    plan: GraphQueryPlan,
+  ): Boolean {
+    if (binding is KaBinding.GraphDependency) {
+      return binding.ownerKey in graph.includedDependencies
+    }
+
+    return isBindingOwnedByGraph(binding, graph, plan.structure)
+  }
+
+  /**
+   * Returns the explicit declarations that [plan]'s own graph makes, grouped by key.
+   *
+   * These are the declarations that can override a binding the graph inherits. They're `@Provides`
+   * and `@Binds` declarations, contributed bindings, and `@Provides` graph factory parameters.
+   * Multibinding contributions and generic declarations are left out.
+   *
+   * This reads every exact-key binding in the index, so call it once per graph.
+   */
+  internal fun ownExplicitDeclarations(plan: GraphQueryPlan): Map<KaTypeKey, List<KaBinding>> {
+    val result = LinkedHashMap<KaTypeKey, MutableList<KaBinding>>()
+    var workIndex = 0
+
+    lookups.bindingsByKey.forEach { key, candidates ->
+      for (binding in candidates) {
+        checkCanceledEvery(workIndex++)
+        if (!binding.isExplicitDeclaration()) {
+          continue
+        }
+
+        val isOwnDeclaration = isBindingOwnedByCurrentGraph(binding, plan.structure)
+        if (isOwnDeclaration && isBindingInContext(binding, plan)) {
+          result.getOrPut(key, ::mutableListOf) += binding
+        }
+      }
+    }
+
+    return result
+  }
+
   internal fun hasPrivateAncestorBinding(
     session: BindingResolutionSession,
     key: KaTypeKey,
@@ -2254,6 +2302,19 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
 
 private fun KaBinding.isValidationOnlyAssistedTarget(): Boolean {
   return this is KaBinding.ConstructorInjected && isAssisted
+}
+
+/**
+ * True for a `@Provides` or `@Binds` declaration, a contributed binding, or a `@Provides` graph
+ * factory parameter. `@Includes` factory parameters are graph inputs, so they don't count.
+ */
+internal fun KaBinding.isExplicitDeclaration(): Boolean {
+  return when (this) {
+    is KaBinding.Provided,
+    is KaBinding.Alias -> true
+    is KaBinding.BoundInstance -> !isGraphInput && !isBindingContainerInput
+    else -> false
+  }
 }
 
 /** The result of resolving a consumer against every concrete graph context in the project. */
