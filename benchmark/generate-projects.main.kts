@@ -1,5 +1,12 @@
 // Copyright (C) 2025 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
+@file:Repository(
+  repositoriesCoordinates =
+    [
+      "https://maven-central.storage-download.googleapis.com/maven2/",
+      "https://repo.maven.apache.org/maven2/",
+    ],
+)
 @file:DependsOn("com.github.ajalt.clikt:clikt-jvm:5.2.1")
 
 import com.github.ajalt.clikt.core.CliktCommand

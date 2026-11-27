@@ -6,8 +6,8 @@ plugins {
 }
 
 metroArtifact {
-  artifactId.set("compiler-compat-k2520_dev_4223")
-  name.set("Metro Compiler Compat (Kotlin 2.5.20-dev-4223)")
+  artifactId.set("compiler-compat-k2520_dev_6103")
+  name.set("Metro Compiler Compat (Kotlin 2.5.20-dev-6103)")
 }
 
 dependencies {

@@ -64,6 +64,7 @@ Changelog
 ## Changes
 
 - Test Kotlin `2.5.0-RC2`.
+- **[compat]** Support Kotlin `2.5.20-dev-6103`.
 
 ### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
 

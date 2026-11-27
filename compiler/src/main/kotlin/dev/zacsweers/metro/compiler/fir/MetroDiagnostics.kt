@@ -121,6 +121,11 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.UNSCOPED_LIFECYCLE_PARA
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.UNSUPPORTED_SUSPEND_MAP_VALUE
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.UNUSED_GRAPH_INPUT_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.UNUSED_GRAPH_INPUT_WARNING
+import dev.zacsweers.metro.compiler.fir.error0Compat as error0
+import dev.zacsweers.metro.compiler.fir.error1Compat as error1
+import dev.zacsweers.metro.compiler.fir.error2Compat as error2
+import dev.zacsweers.metro.compiler.fir.warning0Compat as warning0
+import dev.zacsweers.metro.compiler.fir.warning1Compat as warning1
 import org.jetbrains.kotlin.diagnostics.AbstractKtDiagnosticFactory
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactoryToRendererMap
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticRenderers.TO_STRING
@@ -135,14 +140,9 @@ import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies.PARAM
 import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies.TYPE_PARAMETERS_LIST
 import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies.VAL_OR_VAR_NODE
 import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies.VISIBILITY_MODIFIER
-import org.jetbrains.kotlin.diagnostics.error0
-import org.jetbrains.kotlin.diagnostics.error1
-import org.jetbrains.kotlin.diagnostics.error2
 import org.jetbrains.kotlin.diagnostics.errorWithoutSource
 import org.jetbrains.kotlin.diagnostics.rendering.BaseDiagnosticRendererFactory
 import org.jetbrains.kotlin.diagnostics.rendering.CommonRenderers.STRING
-import org.jetbrains.kotlin.diagnostics.warning0
-import org.jetbrains.kotlin.diagnostics.warning1
 import org.jetbrains.kotlin.diagnostics.warningWithoutSource
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtElement

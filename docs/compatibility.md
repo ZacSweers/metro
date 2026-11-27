@@ -8,6 +8,11 @@ Metro normally tests prereleases during their development cycle. After the stabl
 
 | Kotlin version  | Metro versions (inclusive) | Notes                                                                    |
 |-----------------|----------------------------|--------------------------------------------------------------------------|
+| 2.5.20-dev-6103 | Unreleased                 |                                                                          |
+| 2.5.20-dev-4223 | 1.6.0 - [1.6.0]            |                                                                          |
+| 2.5.20-dev-2623 | 1.5.2 - [1.5.2]            |                                                                          |
+| 2.5.0-RC2       | Unreleased                 | Branched from `2.5.0-dev-10257`, uses the `2.5.0-dev-10106` compat impl. |
+| 2.5.0-RC        | 1.6.0 -                    | Branched from `2.5.0-dev-10257`, uses the `2.5.0-dev-10106` compat impl. |
 | 2.5.0-Beta2     | 1.5.0 -                    | Branched from `2.5.0-dev-10257`, uses the `2.5.0-dev-10106` compat impl. |
 | 2.5.0-dev-10106 | 1.5.0 - [1.5.2]            |                                                                          |
 | 2.5.0-Beta1     | 1.5.0 -                    | Branched from `2.5.0-dev-7232`, uses the `2.5.0-dev-7307` compat impl.   |
@@ -98,8 +103,9 @@ The following Kotlin versions are tested via CI:
 
 | Kotlin Version  |
 |-----------------|
-| 2.5.20-dev-4223 |
+| 2.5.20-dev-6103 |
 | 2.5.0-dev-6460  |
+| 2.5.0-RC2       |
 | 2.5.0-RC        |
 | 2.5.0-Beta2     |
 | 2.5.0-Beta1     |
