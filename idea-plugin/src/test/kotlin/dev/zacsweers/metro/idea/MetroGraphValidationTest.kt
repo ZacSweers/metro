@@ -1187,6 +1187,48 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     assertTrue(rendered, "@GraphPrivate" in rendered)
   }
 
+  /** Results are cached per index generation, so a new severity alone must refresh them. */
+  fun testChangingTheOverrideSeverityRefreshesValidation() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        @GraphExtension
+        interface ChildGraph {
+          val string: String
+
+          @Provides fun childString(): String = "child"
+        }
+
+        @DependencyGraph
+        interface AppGraph {
+          val child: ChildGraph
+
+          @Provides fun parentString(): String = "parent"
+        }
+        """,
+      )
+
+    fun validateChild(): KaGraphValidationResult.Completed {
+      val index = project.service<MetroResolutionService>().awaitIndex(file)
+      val graph = index.graphs.single { it.name == "ChildGraph" }
+      return project
+        .service<MetroGraphValidationService>()
+        .validate(file, index.contextsFor(graph).single())
+        .requireCompleted()
+    }
+
+    val allowed = validateChild()
+    assertTrue(allowed.diagnostics.joinToString { it.render() }, allowed.diagnostics.isEmpty())
+
+    // Only the option changes. The source and the retained results stay as they are.
+    project.setMetroOptions("parent-binding-override-severity" to "ERROR")
+
+    assertEquals(
+      listOf(MetroDiagnosticId.PARENT_BINDING_OVERRIDE),
+      validateChild().diagnostics.map { it.id },
+    )
+  }
+
   /** Mirrors the compiler's `ParentBindingOverrideOfEachChildDeclarationKind` fixture. */
   fun testOverrideOfEachDeclarationKindIsAnErrorUnderError() {
     val result =
