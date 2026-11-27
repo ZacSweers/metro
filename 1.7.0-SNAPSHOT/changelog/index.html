@@ -9091,6 +9091,7 @@
 <li><strong>[IR]</strong> Fix single-entry set multibindings that allowed mutation on non-JVM targets.</li>
 <li><strong>[IR]</strong> Fix a compiler crash when a graph extension calls an inherited provider on a generic parent graph.</li>
 <li><strong>[IR]</strong> Fix graph diagnostics that could go missing when two of them fell back to the same declaration. Their messages are now joined in one report.</li>
+<li><strong>[IR]</strong> Fix a missing binding error when a compilation requests a qualified <code>@Inject</code> class or <code>@AssistedFactory</code> both with and without its qualifier. Previously, only the first request resolved.</li>
 <li><strong>[IDEA]</strong> Discard a file snapshot if its worker is canceled while reading it for the IDE index.</li>
 <li><strong>[IDEA]</strong> After a lookup in the inactive graph browser, unrelated edits no longer trigger an index build.</li>
 <li><strong>[IDEA]</strong> Selecting a module with Metro disabled no longer triggers index rebuilds in other modules on unrelated edits.</li>
@@ -11837,7 +11838,7 @@ Possible fixes:
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 27, 2026 22:59:58 UTC">November 27, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 27, 2026 23:30:17 UTC">November 27, 2026</span>
   </span>
 
     
