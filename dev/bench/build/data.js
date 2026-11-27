@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795819580026,
+  "lastUpdate": 1795820004315,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -29624,6 +29624,62 @@ window.BENCHMARK_DATA = {
             "value": 16071.157000000001,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +0.24%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "renovate[bot]",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "renovate[bot]",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "73516f6e~1",
+          "message": "[before] Update Kotlin compile testing to v0.15.0 (#3221)",
+          "timestamp": "2026-11-27T17:03:09-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/73516f6e448928ecb71c5fe5785ae0c3a6a3f245"
+        },
+        "date": 1795820004315,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 14533.530999999999,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "renovate[bot]",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "renovate[bot]",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "73516f6e448928ecb71c5fe5785ae0c3a6a3f245",
+          "message": "[after] Update Kotlin compile testing to v0.15.0 (#3221)",
+          "timestamp": "2026-11-27T17:03:09-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/73516f6e448928ecb71c5fe5785ae0c3a6a3f245"
+        },
+        "date": 1795820004316,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 14019.905999999999,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -3.53%"
           }
         ]
       }

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795819579804,
+  "lastUpdate": 1795820004053,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -29624,6 +29624,62 @@ window.BENCHMARK_DATA = {
             "value": 0.2242922015851052,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: +0.21%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "renovate[bot]",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "renovate[bot]",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "73516f6e~1",
+          "message": "[before] Update Kotlin compile testing to v0.15.0 (#3221)",
+          "timestamp": "2026-11-27T17:03:09-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/73516f6e448928ecb71c5fe5785ae0c3a6a3f245"
+        },
+        "date": 1795820004053,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.18908165451313796,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "renovate[bot]",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "renovate[bot]",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "73516f6e448928ecb71c5fe5785ae0c3a6a3f245",
+          "message": "[after] Update Kotlin compile testing to v0.15.0 (#3221)",
+          "timestamp": "2026-11-27T17:03:09-05:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/73516f6e448928ecb71c5fe5785ae0c3a6a3f245"
+        },
+        "date": 1795820004054,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.18298018676944797,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: -3.23%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }
