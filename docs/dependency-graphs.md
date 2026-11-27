@@ -582,6 +582,85 @@ fun example(appGraph: AppGraph) {
     }
     ```
 
+### Overriding Inherited Bindings
+
+A graph extension can declare a binding for a type key that an ancestor graph already provides. The extension's binding wins in the extension and its own extensions.
+
+```kotlin
+@DependencyGraph(AppScope::class)
+interface AppGraph {
+  val clock: Clock // SystemClock
+
+  @Provides fun provideClock(): Clock = SystemClock
+
+  val loggedInGraph: LoggedInGraph
+}
+
+@GraphExtension(LoggedInScope::class)
+interface LoggedInGraph {
+  val clock: Clock // FakeClock
+
+  @Provides fun provideClock(): Clock = FakeClock()
+}
+```
+
+By default, Metro doesn't report overrides. To report them as [`Metro/ParentBindingOverride`](diagnostics.md#parentbindingoverride), set `parentBindingOverrideSeverity` to `WARN` or `ERROR`. Under `WARN`, the extension's binding still wins. `ERROR` fails the build.
+
+!!! warning "Experimental"
+
+    This option is experimental.
+
+    ```kotlin
+    @OptIn(ExperimentalMetroGradleApi::class)
+    metro {
+      parentBindingOverrideSeverity.set(DiagnosticSeverity.ERROR)
+    }
+    ```
+
+    This check runs only in IR. The IDE plugin does not show it, and the IDE-only severities are rejected.
+
+An inherited binding is an explicit declaration in an ancestor graph. This includes `@Provides` and `@Binds` declarations, contributed bindings, graph factory `@Provides` parameters, and accessors of graphs that the ancestor takes through `@Includes`. Metro reports each override once, on the extension's declaration, even if nothing uses the binding. A declaration from another module has no source location, so Metro reports it on the extension.
+
+Metro does not report these cases:
+
+- Both graphs reach the same declaration, such as one binding container that the parent and the extension both include.
+- The ancestor's binding is `@GraphPrivate`. Extensions do not inherit it.
+- Either binding is a [dynamic graph](#dynamic-graphs) replacement.
+- The ancestor only provides the type through an `@Inject` constructor. An explicit binding already wins over constructor injection in a single graph.
+- Either binding is a [generic provider](derived-bindings.md). The `derivedBindingOverlapSeverity` option covers these.
+
+Metro does not yet check a binding that the extension gets from its own `@Includes` factory parameter, even when it wins over an inherited binding.
+
+To resolve `Metro/ParentBindingOverride`, do one of these:
+
+- Give one of the bindings a qualifier.
+- Mark the ancestor's binding `@GraphPrivate`.
+
+An override does not change bindings that the parent graph owns. A scoped binding in the parent keeps the parent's dependencies, even when an extension requests it.
+
+```kotlin
+@SingleIn(AppScope::class)
+@Inject
+class Repo(val logger: Logger)
+
+@DependencyGraph(AppScope::class)
+interface AppGraph {
+  @Provides fun provideLogger(): Logger = AppLogger()
+
+  val loggedInGraph: LoggedInGraph
+}
+
+@GraphExtension(LoggedInScope::class)
+interface LoggedInGraph {
+  // The parent's Repo instance. Its logger is AppLogger.
+  val repo: Repo
+
+  @Provides fun provideLogger(): Logger = TestLogger()
+}
+```
+
+Map entries can't be overridden. Each `@IntoMap` contribution is its own binding, so an extension entry with the same map key as an inherited entry is a duplicate map key error at every severity.
+
 ### Creators
 
 See [DependencyGraph](#inputs)'s section on creators.
