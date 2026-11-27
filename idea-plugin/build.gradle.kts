@@ -216,9 +216,10 @@ val metroMavenCentralRepositories =
 val metroGoogleRepository = extra["metroGoogleRepository"] as Action<RepositoryHandler>
 
 repositories {
+  // IntelliJ Platform artifacts resolve without asking Maven Central first.
+  intellijPlatform { defaultRepositories() }
   metroMavenCentralRepositories.execute(this)
   metroGoogleRepository.execute(this)
-  intellijPlatform { defaultRepositories() }
 }
 
 buildConfig {
