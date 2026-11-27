@@ -256,8 +256,8 @@ tasks.withType<Test>().configureEach {
 
 apply(from = "../gradle/repositories.gradle.kts")
 
-val metroMavenCentralMirrorUrl: String by extra
-val metroGradlePluginPortalMirrorUrl: String by extra
+val metroMavenCentralMirrorUrl = extra["metroMavenCentralMirrorUrl"] as String
+val metroGradlePluginPortalMirrorUrl = extra["metroGradlePluginPortalMirrorUrl"] as String
 
 tasks.named<Test>("functionalTest") {
   systemProperty("metro.mavenCentralMirrorUrl", metroMavenCentralMirrorUrl)

@@ -11,7 +11,9 @@ import org.jetbrains.kotlin.tooling.core.KotlinToolingVersion
 // occurs when Gradle substitutes dev.zacsweers.metro:compiler with project(:compiler).
 buildscript {
   project.apply(from = "../gradle/repositories.gradle.kts")
-  val metroMavenCentralRepositories: Action<RepositoryHandler> by project.extra
+  @Suppress("UNCHECKED_CAST")
+  val metroMavenCentralRepositories =
+    project.extra["metroMavenCentralRepositories"] as Action<RepositoryHandler>
   repositories(metroMavenCentralRepositories)
 
   val bootstrapVersion =
