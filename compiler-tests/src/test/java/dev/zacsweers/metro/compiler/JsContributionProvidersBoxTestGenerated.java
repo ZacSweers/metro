@@ -3813,6 +3813,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     }
 
     @Test
+    @TestMetadata("StarProjections.kt")
+    public void testStarProjections() {
+      run("StarProjections.kt");
+    }
+
+    @Test
     @TestMetadata("SuspendGenericProvider.kt")
     public void testSuspendGenericProvider() {
       run("SuspendGenericProvider.kt");

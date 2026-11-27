@@ -8,7 +8,6 @@ import dev.zacsweers.metro.ContributesBinding
 import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.GraphExtension
 import dev.zacsweers.metro.Inject
-import dev.zacsweers.metro.Provider
 import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.createGraph
@@ -239,7 +238,7 @@ class DerivedBindingsTest {
     @GraphExtension
     interface ChildGraph {
       val stringCache: Cache<String>
-      val stringCacheProvider: Provider<Cache<String>>
+      val stringCacheProvider: () -> Cache<String>
 
       @GraphExtension.Factory
       interface Factory {
@@ -277,7 +276,7 @@ class DerivedBindingsTest {
     interface AppGraph {
       val user: Encoder<User>
       val order: Encoder<Order>
-      val orderProvider: Provider<Encoder<Order>>
+      val orderProvider: () -> Encoder<Order>
       val orderFunction: () -> Encoder<Order>
       val orders: Encoder<List<Order>>
     }

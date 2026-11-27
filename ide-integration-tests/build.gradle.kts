@@ -13,7 +13,9 @@ metroProject { jvmTarget.set("21") }
 
 apply(from = "../gradle/repositories.gradle.kts")
 
-val metroMavenCentralRepositories: Action<RepositoryHandler> by extra
+@Suppress("UNCHECKED_CAST")
+val metroMavenCentralRepositories =
+  extra["metroMavenCentralRepositories"] as Action<RepositoryHandler>
 
 repositories {
   metroMavenCentralRepositories.execute(this)

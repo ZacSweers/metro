@@ -37,6 +37,9 @@ private constructor(
   val hasTypeArgs: Boolean
     get() = type is IrSimpleType && type.arguments.isNotEmpty()
 
+  /** Whether one of this key's immediate type arguments is a star projection. */
+  val hasStarArgument: Boolean by irLazy { type.hasStarArgument() }
+
   /**
    * If this type key has a `@MultibindingElement` qualifier, returns the `bindingId` that
    * identifies which multibinding (Set or Map) this contribution belongs to.

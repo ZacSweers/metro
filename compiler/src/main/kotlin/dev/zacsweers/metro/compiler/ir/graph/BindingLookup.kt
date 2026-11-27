@@ -47,6 +47,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.ir.rawType
+import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.remapTypes
 import dev.zacsweers.metro.compiler.ir.render
 import dev.zacsweers.metro.compiler.ir.reportCompat
@@ -168,6 +169,20 @@ internal class BindingLookup(
     qualifier: IrAnnotation?,
   ): List<GenericBindingCandidate> {
     return genericBindingIndex[GenericBindingIndexKey(classId, qualifier)].orEmpty()
+  }
+
+  /**
+   * Whether class lookup skips [key] because it names a generic `@Inject` class with a star type
+   * argument. A missing-binding report uses this to explain why the class didn't apply.
+   */
+  fun isStarProjectedClassKey(key: IrTypeKey): Boolean {
+    if (!key.hasStarArgument) {
+      return false
+    }
+
+    // Class factories are cached, so this repeats no work that class lookup already did.
+    val irClass = key.type.rawTypeOrNull() ?: return false
+    return findClassFactory(irClass) != null
   }
 
   /**
@@ -1560,6 +1575,15 @@ internal class BindingLookup(
         // We don't actually call this function but it stores information about qualifier/scope
         // annotations, so reference it here so IC triggers
         trackFunctionCall(sourceGraph, classFactory.function)
+
+        // A star has no type to substitute for the class's type parameter, so Metro can't call
+        // the constructor. The missing binding report explains this.
+        if (key.hasStarArgument) {
+          if (contextKey.hasDefault) {
+            return@getOrPut setOf(IrBinding.Absent(key))
+          }
+          return@getOrPut emptySet()
+        }
 
         val mappedFactory = classFactory.remapTypes(remapper)
 

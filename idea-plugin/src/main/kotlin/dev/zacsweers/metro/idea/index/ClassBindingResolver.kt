@@ -7,6 +7,7 @@ import com.intellij.psi.SmartPointerManager
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.idea.hasAnyAnnotation
 import dev.zacsweers.metro.idea.model.KaBinding
+import dev.zacsweers.metro.idea.model.KaTypeArgumentSnapshot
 import dev.zacsweers.metro.idea.model.KaTypeKey
 import dev.zacsweers.metro.idea.qualifierAnnotation
 import dev.zacsweers.metro.idea.scopeAnnotation
@@ -53,6 +54,9 @@ internal fun KaSession.resolveClassBinding(
       isObject = true,
     )
   }
+  // A star has no type for the class's type parameter, matching compiler class lookup.
+  val hasStarArgument = requestedKey.type.typeArguments.any { it is KaTypeArgumentSnapshot.Star }
+  if (hasStarArgument) return null
   val constructor = findInjectConstructorSymbol(symbol, options) ?: return null
   val isAssisted =
     symbol.hasAnyAnnotation(options.assistedInjectAnnotations) ||

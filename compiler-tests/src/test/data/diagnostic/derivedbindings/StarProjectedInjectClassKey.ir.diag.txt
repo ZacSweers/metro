@@ -1,0 +1,13 @@
+/StarProjectedInjectClassKey.kt:20:7: error: [Metro/MissingBinding] No binding found for Thing<String, *>
+
+  trace (in AppGraph):
+      Thing<String, *> is requested at AppGraph.thing
+
+  similar bindings:
+      - IThing<String, *> (Supertype. Type: Alias) - StarProjectedInjectClassKey.kt:14:10
+
+  note: 'Thing' has an @Inject constructor, but Metro can't construct it when a type argument is '*'
+  help: replace '*' with a concrete type argument so Metro can resolve this binding
+  help: ensure Thing<String, *> has an @Inject constructor or is provided by an @Provides or @Binds
+        declaration visible to AppGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding

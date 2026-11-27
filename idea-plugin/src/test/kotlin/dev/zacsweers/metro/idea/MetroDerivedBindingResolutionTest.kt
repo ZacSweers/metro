@@ -342,6 +342,74 @@ class MetroDerivedBindingResolutionTest : BasePlatformTestCase() {
     )
   }
 
+  /** A star in a return type matches only a star, and a type variable never binds a star. */
+  fun testStarProjectionsMatchOnlyStars() {
+    val fixture =
+      configure(
+        """
+        interface Encoder<T>
+        interface IThing<A, B>
+        class Thing<A, B> : IThing<A, B>
+
+        @DependencyGraph
+        interface AppGraph {
+          val thing: Thing<String, *>
+          val iThing: IThing<String, *>
+          val listOfMaps: Encoder<List<Map<String, *>>>
+          val listOfStars: Encoder<List<*>>
+
+          @Provides fun <T> thing(): Thing<T, *> = error("unused")
+          @Binds fun <T> Thing<T, *>.asIThing(): IThing<T, *>
+          @Provides fun mapEncoder(): Encoder<Map<String, *>> = error("unused")
+          @Provides fun <T> list(element: Encoder<T>): Encoder<List<T>> = error("unused")
+        }
+        """,
+      )
+
+    assertEquals("thing", fixture.derivedBindingFor("thing").declarationName())
+
+    val alias = fixture.derivedBindingFor("iThing")
+    assertTrue(alias is KaBinding.Alias)
+    assertEquals(
+      "test.Thing<kotlin.String, *>",
+      (alias as KaBinding.Alias).consumedKey?.typeKey?.renderedType,
+    )
+
+    val listOfMaps = fixture.derivedBindingFor("listOfMaps")
+    assertEquals("list", listOfMaps.declarationName())
+    assertEquals(
+      listOf("T" to "kotlin.collections.Map<kotlin.String, *>"),
+      checkNotNull(listOfMaps.derivation).renderedTypeArguments(short = false),
+    )
+
+    // `list` can't bind `T` to a star, so nothing provides this key.
+    assertEquals(emptyList<KaBinding>(), fixture.bindingsFor("listOfStars"))
+  }
+
+  /**
+   * A star has no type for a generic `@Inject` class's type parameter, so the class doesn't apply.
+   */
+  fun testStarProjectedKeyDoesNotUseGenericInjectClass() {
+    val fixture =
+      configure(
+        """
+        @Inject class Thing<A, B>(val value: B)
+        @Inject class Holder<T>
+
+        @DependencyGraph
+        interface AppGraph {
+          val thing: Thing<String, *>
+          val holder: Holder<*>
+          val concrete: Holder<String>
+        }
+        """,
+      )
+
+    assertEquals(emptyList<KaBinding>(), fixture.bindingsFor("thing"))
+    assertEquals(emptyList<KaBinding>(), fixture.bindingsFor("holder"))
+    assertTrue(fixture.bindingsFor("concrete").single() is KaBinding.ConstructorInjected)
+  }
+
   fun testTypeAliasInRequestedTypeIsExpandedBeforeMatching() {
     val fixture =
       configure(

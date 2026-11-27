@@ -2165,6 +2165,18 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("StarProjectedInjectClassKey.kt")
+    public void testStarProjectedInjectClassKey() {
+      run("StarProjectedInjectClassKey.kt");
+    }
+
+    @Test
+    @TestMetadata("StarProjectionMissingBindings.kt")
+    public void testStarProjectionMissingBindings() {
+      run("StarProjectionMissingBindings.kt");
+    }
+
+    @Test
     @TestMetadata("TypeAliasReturnTypes.kt")
     public void testTypeAliasReturnTypes() {
       run("TypeAliasReturnTypes.kt");

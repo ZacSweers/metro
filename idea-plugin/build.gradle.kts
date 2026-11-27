@@ -12,7 +12,9 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 
 buildscript {
   project.apply(from = "../gradle/repositories.gradle.kts")
-  val metroMavenCentralRepositories: Action<RepositoryHandler> by project.extra
+  @Suppress("UNCHECKED_CAST")
+  val metroMavenCentralRepositories =
+    project.extra["metroMavenCentralRepositories"] as Action<RepositoryHandler>
   repositories(metroMavenCentralRepositories)
 
   dependencies { classpath(libs.commonmark) }
@@ -207,8 +209,11 @@ kotlin {
 
 java { toolchain { languageVersion.set(libs.versions.ideaJvmTarget.map(JavaLanguageVersion::of)) } }
 
-val metroMavenCentralRepositories: Action<RepositoryHandler> by extra
-val metroGoogleRepository: Action<RepositoryHandler> by extra
+@Suppress("UNCHECKED_CAST")
+val metroMavenCentralRepositories =
+  extra["metroMavenCentralRepositories"] as Action<RepositoryHandler>
+@Suppress("UNCHECKED_CAST")
+val metroGoogleRepository = extra["metroGoogleRepository"] as Action<RepositoryHandler>
 
 repositories {
   metroMavenCentralRepositories.execute(this)

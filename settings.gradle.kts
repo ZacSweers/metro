@@ -6,7 +6,8 @@ pluginManagement {
     extra["metro.repositories.firstMavenRepository"] = uri(it)
   }
   apply(from = "gradle/repositories.gradle.kts")
-  val metroSettingsRepositories: Action<Settings> by extra
+  @Suppress("UNCHECKED_CAST")
+  val metroSettingsRepositories = extra["metroSettingsRepositories"] as Action<Settings>
   metroSettingsRepositories.execute(settings)
   plugins { id("com.gradle.develocity") version "4.6.1" }
 }
