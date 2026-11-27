@@ -286,6 +286,96 @@ class MetroGraphValidationParityTest : BasePlatformTestCase() {
     )
   }
 
+  fun testParentBindingOverridesMatchCompiler() {
+    val options = mapOf(PARENT_BINDING_OVERRIDE_OPTION to "ERROR")
+
+    // Every kind of child declaration, against every kind of inherited declaration.
+    val fixture = "ParentBindingOverride"
+    val graphPackage = "parity.failures.parentoverride"
+    assertParity(
+      ParityCase(
+        fixtureName = fixture,
+        graphPath = listOf("$graphPackage.ChildGraph", "$graphPackage.AppGraph"),
+        populatedReport =
+          "$fixture/keys-populated/parity/failures/parentoverride/AppGraph/Impl/ChildGraphImpl.txt",
+        diagnosticReport = "$fixture.ir.diag.txt",
+        metroOptions = options,
+      ),
+    )
+    assertParity(
+      ParityCase(
+        fixtureName = fixture,
+        graphPath = listOf("$graphPackage.AppGraph"),
+        metroOptions = options,
+      ),
+    )
+
+    // Only the grandchild reports. Each override names the nearest ancestor that declares the key.
+    val chainFixture = "ParentBindingOverrideChain"
+    val chainPackage = "parity.failures.parentoverridechain"
+    val chain =
+      listOf("$chainPackage.GrandchildGraph", "$chainPackage.ChildGraph", "$chainPackage.AppGraph")
+    assertParity(
+      ParityCase(
+        fixtureName = chainFixture,
+        graphPath = chain,
+        diagnosticReport = "$chainFixture.ir.diag.txt",
+        metroOptions = options,
+      ),
+    )
+    for (depth in 1..2) {
+      assertParity(
+        ParityCase(
+          fixtureName = chainFixture,
+          graphPath = chain.drop(depth),
+          metroOptions = options,
+        ),
+      )
+    }
+  }
+
+  /** The compiler reports nothing for these graphs, so the IDE must not either. */
+  fun testParentBindingOverrideExclusionsMatchCompiler() {
+    val options = mapOf(PARENT_BINDING_OVERRIDE_OPTION to "ERROR")
+    val graphPackage = "parity.extension.overrideexclusions"
+    val parentNames = listOf("SharedContainer", "SharedSupertype", "PrivateParent", "InjectParent")
+    for (name in parentNames) {
+      val parent = "$graphPackage.${name}Graph"
+      val child = "$graphPackage.${name}ChildGraph"
+      for (graphPath in listOf(listOf(child, parent), listOf(parent))) {
+        assertParity(
+          ParityCase(
+            fixtureName = "ParentBindingOverrideExclusions",
+            graphPath = graphPath,
+            metroOptions = options,
+          ),
+        )
+      }
+    }
+  }
+
+  /** A map entry with an inherited key is a duplicate map key, next to a regular override. */
+  fun testParentMapEntryConflictMatchesCompiler() {
+    val options = mapOf(PARENT_BINDING_OVERRIDE_OPTION to "ERROR")
+    val fixture = "ParentMapEntryConflict"
+    val graphPackage = "parity.failures.parentmapentry"
+    assertParity(
+      ParityCase(
+        fixtureName = fixture,
+        graphPath = listOf("$graphPackage.ChildGraph", "$graphPackage.AppGraph"),
+        diagnosticReport = "$fixture.ir.diag.txt",
+        metroOptions = options,
+      ),
+    )
+    assertParity(
+      ParityCase(
+        fixtureName = fixture,
+        graphPath = listOf("$graphPackage.AppGraph"),
+        metroOptions = options,
+      ),
+    )
+  }
+
   private fun failureCase(
     fixtureName: String,
     packageName: String,
@@ -336,5 +426,9 @@ class MetroGraphValidationParityTest : BasePlatformTestCase() {
     } else {
       runComparison()
     }
+  }
+
+  private companion object {
+    const val PARENT_BINDING_OVERRIDE_OPTION = "parent-binding-override-severity"
   }
 }
