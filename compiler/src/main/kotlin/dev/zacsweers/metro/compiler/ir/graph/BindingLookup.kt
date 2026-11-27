@@ -89,6 +89,8 @@ internal class BindingLookup(
   // Every binding for a key that was registered more than once, kept for duplicate reporting.
   private val duplicateBindings = mutableMapOf<IrTypeKey, MutableSet<IrBinding>>()
   private val classBindingsCache = mutableMapOf<ClassBindingKey, Set<IrBinding>>()
+  // The key that holds each qualified scoped class's binding in this graph, by unqualified key.
+  private val scopedClassKeys = mutableMapOf<IrTypeKey, IrTypeKey>()
 
   // Mutable remappers belong to this graph's lookup.
   private val typeRemappers = MutableScatterMap<Pair<IrClass, IrType>, TypeRemapper>()
@@ -379,6 +381,7 @@ internal class BindingLookup(
     bindingsCache.clear()
     duplicateBindings.clear()
     classBindingsCache.clear()
+    scopedClassKeys.clear()
     typeRemappers.clear()
     parentGraphDepCache.clear()
     lazyParentKeys.clear()
@@ -1449,6 +1452,45 @@ internal class BindingLookup(
       )
     }
 
+  /**
+   * Returns an alias from [binding]'s key to the key that already holds its class in this graph.
+   * Returns null when [binding] holds the class itself.
+   *
+   * A scoped class has one instance in a graph. A class with a qualifier resolves requests with and
+   * without it, so two keys can reach the class. The first key keeps the binding. The second key
+   * reads it.
+   */
+  private fun aliasToScopedClassKey(binding: IrBinding.ConstructorInjected): IrBinding.Alias? {
+    // A class without a qualifier resolves one key.
+    val hasOneKey = binding.annotations.qualifier == null
+    if (binding.scope == null || hasOneKey) {
+      return null
+    }
+
+    val key = binding.typeKey
+    val unqualifiedKey = key.copy(qualifier = null)
+    val firstKey =
+      scopedClassKeys.getOrPut(unqualifiedKey) {
+        // A parameter-less `@Binds` already registered the class under its unqualified key.
+        val declared = bindingsCache[unqualifiedKey] as? IrBinding.ConstructorInjected
+        if (declared?.type == binding.type) {
+          unqualifiedKey
+        } else {
+          key
+        }
+      }
+    if (firstKey == key) {
+      return null
+    }
+
+    return IrBinding.Alias(
+      typeKey = key,
+      aliasedType = firstKey,
+      bindsCallable = null,
+      parameters = Parameters.empty(),
+    )
+  }
+
   private fun createParentGraphDependency(
     key: IrTypeKey,
     token: ParentContext.Token,
@@ -1612,10 +1654,10 @@ internal class BindingLookup(
           return@getOrPut emptySet()
         }
 
-        // The cache is keyed by class, so it only holds bindings with no type substitution.
+        // The cache only holds bindings with no type substitution.
         val binding =
           bindingLookupCache.getOrPutConstructorInjected(
-            irClass.takeIf { remapper == NOOP_TYPE_REMAPPER },
+            key.takeIf { remapper == NOOP_TYPE_REMAPPER },
           ) {
             IrBinding.ConstructorInjected(
               type = irClass,
@@ -1627,7 +1669,13 @@ internal class BindingLookup(
             )
           }
 
-        bindings += binding
+        // A scoped class requested under a second key reads the first key's binding.
+        val scopedClassAlias = aliasToScopedClassKey(binding)
+        if (scopedClassAlias != null) {
+          bindings += scopedClassAlias
+        } else {
+          bindings += binding
+        }
 
         // Older Kotlin versions can miss annotation changes on the factory mirror.
         trackClassLookup(sourceGraph, irClass)
@@ -1668,7 +1716,7 @@ internal class BindingLookup(
         // awaited during member injection).
         val targetBinding =
           bindingLookupCache.getOrPutConstructorInjected(
-            targetClass.takeIf { targetRemapper == NOOP_TYPE_REMAPPER },
+            targetKey.takeIf { targetRemapper == NOOP_TYPE_REMAPPER },
           ) {
             IrBinding.ConstructorInjected(
               type = targetClass,
@@ -1687,7 +1735,7 @@ internal class BindingLookup(
 
         bindings +=
           bindingLookupCache.getOrPutAssistedFactory(
-            irClass.takeIf { remapper == NOOP_TYPE_REMAPPER },
+            key.takeIf { remapper == NOOP_TYPE_REMAPPER },
           ) {
             IrBinding.AssistedFactory(
               type = irClass,
@@ -1713,14 +1761,17 @@ internal class BindingLookup(
 }
 
 /**
- * Reuses [IrBinding.ConstructorInjected] and [IrBinding.AssistedFactory] bindings by [IrClass].
+ * Reuses [IrBinding.ConstructorInjected] and [IrBinding.AssistedFactory] bindings by [IrTypeKey].
  * Lookups stay on the main compiler thread. Class bindings live for the compilation. Inherited
  * graph data lives until its root finishes processing.
+ *
+ * A binding keeps the key it was built for. A class with a qualifier resolves requests with and
+ * without that qualifier, so each key gets its own binding.
  */
 internal class BindingLookupCache {
   private val constructorInjectedBindings =
-    MutableScatterMap<IrClass, IrBinding.ConstructorInjected>()
-  private val assistedFactoryBindings = MutableScatterMap<IrClass, IrBinding.AssistedFactory>()
+    MutableScatterMap<IrTypeKey, IrBinding.ConstructorInjected>()
+  private val assistedFactoryBindings = MutableScatterMap<IrTypeKey, IrBinding.AssistedFactory>()
   private val rawInheritedGraphData = MutableScatterMap<IrClass, Any>()
 
   /** Releases inherited data after the current root and its extensions finish processing. */
@@ -1728,24 +1779,24 @@ internal class BindingLookupCache {
     rawInheritedGraphData.clear()
   }
 
-  /** Returns a cached binding or computes and caches it. If [irClass] is null, just computes. */
+  /** Returns the binding cached for [key] or computes and caches it. If null, just computes. */
   fun getOrPutConstructorInjected(
-    irClass: IrClass?,
+    key: IrTypeKey?,
     compute: () -> IrBinding.ConstructorInjected,
   ): IrBinding.ConstructorInjected =
-    if (irClass != null) {
-      constructorInjectedBindings.getOrPut(irClass, compute)
+    if (key != null) {
+      constructorInjectedBindings.getOrPut(key, compute)
     } else {
       compute()
     }
 
-  /** Returns a cached binding or computes and caches it. If [irClass] is null, just computes. */
+  /** Returns the binding cached for [key] or computes and caches it. If null, just computes. */
   fun getOrPutAssistedFactory(
-    irClass: IrClass?,
+    key: IrTypeKey?,
     compute: () -> IrBinding.AssistedFactory,
   ): IrBinding.AssistedFactory =
-    if (irClass != null) {
-      assistedFactoryBindings.getOrPut(irClass, compute)
+    if (key != null) {
+      assistedFactoryBindings.getOrPut(key, compute)
     } else {
       compute()
     }

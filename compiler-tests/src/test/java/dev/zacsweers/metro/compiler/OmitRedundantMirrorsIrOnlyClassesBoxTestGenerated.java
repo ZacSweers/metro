@@ -711,6 +711,12 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
     }
 
     @Test
+    @TestMetadata("QualifiedContributedClassResolvesItsQualifiedKey.kt")
+    public void testQualifiedContributedClassResolvesItsQualifiedKey() {
+      run("QualifiedContributedClassResolvesItsQualifiedKey.kt");
+    }
+
+    @Test
     @TestMetadata("RepeatedContributionPriorities.kt")
     public void testRepeatedContributionPriorities() {
       run("RepeatedContributionPriorities.kt");
@@ -3608,6 +3614,12 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
       }
 
       @Test
+      @TestMetadata("ScopedQualifiedInjectClassIsOneInstanceAcrossExtensions.kt")
+      public void testScopedQualifiedInjectClassIsOneInstanceAcrossExtensions() {
+        run("ScopedQualifiedInjectClassIsOneInstanceAcrossExtensions.kt");
+      }
+
+      @Test
       @TestMetadata("SimpleExtension.kt")
       public void testSimpleExtension() {
         run("SimpleExtension.kt");
@@ -4391,6 +4403,18 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
     }
 
     @Test
+    @TestMetadata("QualifiedInjectClassResolvesBothKeys.kt")
+    public void testQualifiedInjectClassResolvesBothKeys() {
+      run("QualifiedInjectClassResolvesBothKeys.kt");
+    }
+
+    @Test
+    @TestMetadata("QualifiedInjectClassResolvesBothKeysAcrossGraphs.kt")
+    public void testQualifiedInjectClassResolvesBothKeysAcrossGraphs() {
+      run("QualifiedInjectClassResolvesBothKeysAcrossGraphs.kt");
+    }
+
+    @Test
     @TestMetadata("ReusedMultiInjectRespectsProviderCalls.kt")
     public void testReusedMultiInjectRespectsProviderCalls() {
       run("ReusedMultiInjectRespectsProviderCalls.kt");
@@ -4400,6 +4424,12 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
     @TestMetadata("ScopedInjectedSecondaryConstructorWithFunctionProviderDefault.kt")
     public void testScopedInjectedSecondaryConstructorWithFunctionProviderDefault() {
       run("ScopedInjectedSecondaryConstructorWithFunctionProviderDefault.kt");
+    }
+
+    @Test
+    @TestMetadata("ScopedQualifiedInjectClassIsOneInstanceForBothKeys.kt")
+    public void testScopedQualifiedInjectClassIsOneInstanceForBothKeys() {
+      run("ScopedQualifiedInjectClassIsOneInstanceForBothKeys.kt");
     }
 
     @Nested
@@ -4557,6 +4587,12 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
       @TestMetadata("PreserveNullabilityInRemapping.kt")
       public void testPreserveNullabilityInRemapping() {
         run("PreserveNullabilityInRemapping.kt");
+      }
+
+      @Test
+      @TestMetadata("QualifiedAssistedFactoryResolvesBothKeys.kt")
+      public void testQualifiedAssistedFactoryResolvesBothKeys() {
+        run("QualifiedAssistedFactoryResolvesBothKeys.kt");
       }
     }
 

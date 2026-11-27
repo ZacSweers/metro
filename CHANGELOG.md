@@ -45,6 +45,7 @@ Changelog
 - **[IR]** Fix single-entry set multibindings that allowed mutation on non-JVM targets.
 - **[IR]** Fix a compiler crash when a graph extension calls an inherited provider on a generic parent graph.
 - **[IR]** Fix graph diagnostics that could go missing when two of them fell back to the same declaration. Their messages are now joined in one report.
+- **[IR]** Fix a missing binding when one compilation requests an `@Inject` class or `@AssistedFactory` both with and without the qualifier on that class. A scoped class still has one instance per graph.
 - **[IDEA]** Discard a file snapshot if its worker is canceled while reading it for the IDE index.
 - **[IDEA]** After a lookup in the inactive graph browser, unrelated edits no longer trigger an index build.
 - **[IDEA]** Selecting a module with Metro disabled no longer triggers index rebuilds in other modules on unrelated edits.
