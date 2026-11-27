@@ -152,6 +152,8 @@ If only a bound rejects a provider, the missing binding error names the provider
 
 Matching is exact, like other Metro keys. A return type of `Encoder<T?>` matches only nullable type arguments, and `T` binds the non-null type. For example, `Encoder<String?>` matches with `T = String`. An unbounded `T` can bind a nullable type. When a return type uses both `T` and `T?`, the `T` position decides. `Pair<T, T?>` matches `Pair<String?, String?>` with `T = String?`.
 
+A type parameter can't bind a star projection. A `*` in a return type matches only a `*` in the key. So `fun <T> thing(): Thing<T, *>` supplies `Thing<String, *>`, but `fun <T, R> thing(): Thing<T, R>` doesn't. A type parameter can bind a type that contains a star, like `T = Map<String, *>`. A generic `@Inject` class can't supply a key with a `*` type argument, because Metro has no type for the class's type parameter.
+
 After Metro picks a generic provider, the provider's parameters must resolve. If one is missing, Metro reports a missing binding. Metro doesn't try another provider, even when the requesting parameter has a default value. The error trace has a note that names the generic provider and its type arguments.
 
 ```
