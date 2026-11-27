@@ -54,60 +54,67 @@ extra["metroSettingsRepositories"] =
       repositoryOption("kotlinIntellijDependencies", default = true)
     val firstMavenRepository = options["metro.repositories.firstMavenRepository"] as URI?
 
-    fun RepositoryHandler.addMetroRepositories(forPlugins: Boolean) {
-      if (firstMavenRepository != null) {
-        maven(firstMavenRepository)
+    val pluginPortalContent =
+      Action<RepositoryContentDescriptor> {
+        includeModuleByRegex(".*", """.*\.gradle\.plugin""")
+        // These plugin implementations are published to the portal.
+        includeModule("com.gradle", "develocity-gradle-plugin")
+        includeModule("me.champeau.jmh", "jmh-gradle-plugin")
+        includeModule("me.tylerbwong.gradle.metalava", "plugin")
+        includeModule("org.gradle", "test-retry-gradle-plugin")
+        includeModule("org.gradle.kotlin", "gradle-kotlin-dsl-plugins")
+        includeModule("org.jetbrains.intellij.platform", "intellij-platform-gradle-plugin")
+        includeModule("org.jetbrains.kotlinx", "kotlinx-benchmark-plugin")
       }
 
-      if (!forPlugins || includePluginMavenCentral) {
-        metroMavenCentralRepositories.execute(this)
-      } else {
-        metroMavenCentralMirror.execute(this)
-      }
+    fun RepositoryHandler.addMetroRepositories(forPlugins: Boolean) {
+      val overrideRepository = firstMavenRepository?.let { maven(it) }
+      metroMavenCentralMirror.execute(this)
 
       if (!forPlugins || !buildLogic) {
         metroGoogleRepository.execute(this)
       }
 
-      if (forPlugins || buildLogic) {
-        val pluginPortalContent =
-          Action<RepositoryContentDescriptor> {
-            includeModuleByRegex(".*", """.*\.gradle\.plugin""")
-            // These plugin implementations are published to the portal.
-            includeModule("com.gradle", "develocity-gradle-plugin")
-            includeModule("me.champeau.jmh", "jmh-gradle-plugin")
-            includeModule("me.tylerbwong.gradle.metalava", "plugin")
-            includeModule("org.gradle", "test-retry-gradle-plugin")
-            includeModule("org.gradle.kotlin", "gradle-kotlin-dsl-plugins")
-            includeModule("org.jetbrains.intellij.platform", "intellij-platform-gradle-plugin")
-            includeModule("org.jetbrains.kotlinx", "kotlinx-benchmark-plugin")
+      val usePluginPortal = forPlugins || buildLogic
+      if (usePluginPortal) {
+        maven(metroGradlePluginPortalMirrorUrl).content(pluginPortalContent)
+      }
+
+      val localRepository = if (includeMavenLocal) mavenLocal() else null
+      if (!buildLogic) {
+        val kotlinRepositoryBase = "https://redirector.kotlinlang.org/maven"
+        val kotlinBootstrap =
+          maven("$kotlinRepositoryBase/bootstrap") {
+            content { includeGroupAndSubgroups("org.jetbrains.kotlin") }
           }
-
-        maven(metroGradlePluginPortalMirrorUrl) {
-          content(pluginPortalContent)
-        }
-        gradlePluginPortal().content(pluginPortalContent)
-      }
-
-      if (includeMavenLocal) {
-        mavenLocal()
-      }
-
-      if (buildLogic) {
-        return
-      }
-
-      val kotlinRepositoryBase = "https://redirector.kotlinlang.org/maven"
-      for (kotlinRepository in listOf("bootstrap", "dev/")) {
-        maven("$kotlinRepositoryBase/$kotlinRepository") {
+        maven("$kotlinRepositoryBase/dev/") {
           content { includeGroupAndSubgroups("org.jetbrains.kotlin") }
         }
+
+        if (includeKotlinIntellijDependencies) {
+          // Publications used by IJ
+          // https://kotlinlang.slack.com/archives/C7L3JB43G/p1757001642402909
+          maven("$kotlinRepositoryBase/intellij-dependencies/")
+        }
+
+        if (!forPlugins) {
+          // Central rate limits too often
+          exclusiveContent {
+            val devRepositories =
+              listOfNotNull(overrideRepository, localRepository, kotlinBootstrap)
+            forRepositories(*devRepositories.toTypedArray())
+            filter {
+              includeVersionByRegex("""org\.jetbrains\.kotlin(\..*)?""", ".*", """.+-dev(?:-.+)?""")
+            }
+          }
+        }
       }
 
-      if (includeKotlinIntellijDependencies) {
-        // Publications used by IJ
-        // https://kotlinlang.slack.com/archives/C7L3JB43G/p1757001642402909
-        maven("$kotlinRepositoryBase/intellij-dependencies/")
+      if (!forPlugins || includePluginMavenCentral) {
+        mavenCentral()
+      }
+      if (usePluginPortal) {
+        gradlePluginPortal().content(pluginPortalContent)
       }
     }
 

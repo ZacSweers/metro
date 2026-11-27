@@ -259,16 +259,19 @@ abstract class MetroProject(
         add(defaults.first())
         add(Repository.ofMaven(System.getProperty("metro.mavenCentralMirrorUrl")))
 
-        for (repository in defaults.drop(1)) {
-          if (repository == Repository.GRADLE_PLUGIN_PORTAL) {
-            add(Repository.ofMaven(System.getProperty("metro.gradlePluginPortalMirrorUrl")))
+        val (fallbacks, repositories) =
+          defaults.drop(1).partition {
+            it == Repository.MAVEN_CENTRAL || it == Repository.GRADLE_PLUGIN_PORTAL
           }
-          add(repository)
+        if (Repository.GRADLE_PLUGIN_PORTAL in fallbacks) {
+          add(Repository.ofMaven(System.getProperty("metro.gradlePluginPortalMirrorUrl")))
         }
 
+        addAll(repositories)
         add(Repository.ofMaven("https://packages.jetbrains.team/maven/p/kt/bootstrap"))
         add(Repository.ofMaven("https://packages.jetbrains.team/maven/p/kt/dev/"))
         add(Repository.ofMaven("https://packages.jetbrains.team/maven/p/ij/intellij-dependencies/"))
+        addAll(fallbacks)
       },
     )
 
