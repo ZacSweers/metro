@@ -1,0 +1,9 @@
+/ParameterlessBindsOfParentScopedInjectClassIsNotAParentBindingOverride.kt:20:11: error: [Metro/IncompatiblyScopedBindings] ParentGraph.Impl.ChildGraphImpl (unscoped) may not reference
+    scoped bindings
+
+  trace (in ParentGraph.Impl.ChildGraphImpl):
+      Foo (scoped to '@SingleIn(AppScope::class)')
+      Foo is requested at ChildGraph.foo
+
+  note: ChildGraphImpl is contributed by 'ChildGraph' to 'ParentGraph'
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#incompatiblyscopedbindings

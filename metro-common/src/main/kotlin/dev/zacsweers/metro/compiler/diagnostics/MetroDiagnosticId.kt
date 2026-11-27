@@ -270,10 +270,11 @@ public enum class MetroDiagnosticId(
     "A graph extension declares a binding that an ancestor graph already provides.",
     """
     A graph extension declares a `@Provides`, `@Binds`, or contributed binding for a type key that an
-    ancestor graph also declares. The extension's binding replaces the inherited one in the extension
-    and its own extensions. To keep both bindings, give one of them a qualifier. To hide the
-    ancestor's binding from its extensions, mark it `@GraphPrivate`. This diagnostic is off by
-    default. Configure it with the `parentBindingOverrideSeverity` Gradle option.
+    ancestor graph also declares. A scoped `@Inject` class counts as a binding of the ancestor that
+    owns its scope. The extension's binding replaces the inherited one in the extension and its own
+    extensions. To keep both bindings, give one of them a qualifier. To hide an ancestor's declared
+    binding from its extensions, mark it `@GraphPrivate`. This diagnostic is off by default.
+    Configure it with the `parentBindingOverrideSeverity` Gradle option.
     """,
   ),
   GENERIC(

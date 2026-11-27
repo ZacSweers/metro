@@ -2,21 +2,37 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph
 
+import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnostic
 import dev.zacsweers.metro.compiler.diagnostics.MetroSeverity
 import dev.zacsweers.metro.compiler.graph.LocationDiagnostic
 import dev.zacsweers.metro.compiler.graph.parentBindingOverrideDiagnostic
 import dev.zacsweers.metro.compiler.ir.BindsCallable
+import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.ProviderFactory
+import dev.zacsweers.metro.compiler.ir.findInjectableConstructor
+import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
+import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
+import dev.zacsweers.metro.compiler.ir.regularParameters
+import dev.zacsweers.metro.compiler.ir.renderForDiagnostic
 import dev.zacsweers.metro.compiler.ir.renderLocationDiagnostic
+import dev.zacsweers.metro.compiler.ir.renderSourceLocation
+import dev.zacsweers.metro.compiler.ir.toDiagnosticSpan
+import dev.zacsweers.metro.compiler.ir.toUnknownLocationContext
+import dev.zacsweers.metro.compiler.ir.trackClassLookup
+import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.reportCompilerBug
+import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
+import org.jetbrains.kotlin.ir.util.classId
+import org.jetbrains.kotlin.ir.util.isNullable
+import org.jetbrains.kotlin.ir.util.isObject
 
 /**
  * One explicit declaration of a regular binding in a graph. Parent binding override detection
@@ -139,6 +155,53 @@ internal sealed interface GraphBindingDeclaration {
       return accessor.metroFunction.ir.renderLocationDiagnostic()
     }
   }
+
+  /**
+   * A scoped `@Inject` class. No graph declares it. The ancestor that owns its scope keeps the one
+   * instance, so it's inherited like that ancestor's scoped `@Provides`.
+   */
+  class ScopedInjectedClass(
+    val irClass: IrClass,
+    val annotations: MetroAnnotations<IrAnnotation>,
+  ) : GraphBindingDeclaration {
+    override val reportTarget: IrDeclaration
+      get() = irClass
+
+    override val isGeneric: Boolean
+      get() = false
+
+    override fun isSameDeclarationAs(other: GraphBindingDeclaration): Boolean {
+      return other is ScopedInjectedClass && irClass == other.irClass
+    }
+
+    context(context: IrMetroContext)
+    override fun renderLocation(): LocationDiagnostic {
+      val shortLocation = MetroOptions.SystemProperties.SHORTEN_LOCATIONS
+      val location = irClass.renderSourceLocation(short = shortLocation)
+      val unknownLocationContext =
+        if (location == null) {
+          irClass.toUnknownLocationContext()
+        } else {
+          null
+        }
+
+      val description = buildString {
+        irClass.renderForDiagnostic(
+          short = false,
+          annotations = annotations,
+          underlineTypeKey = false,
+        )
+      }
+
+      return LocationDiagnostic(
+        location = location ?: LocationDiagnostic.NO_SOURCE_LOCATION,
+        description = description,
+        span = irClass.toDiagnosticSpan(shortDisplayPath = shortLocation),
+        locationContext = unknownLocationContext?.description,
+        notes = unknownLocationContext?.notes.orEmpty(),
+      )
+    }
+  }
 }
 
 /** An inherited declaration that a child graph dropped because the child declares the same key. */
@@ -153,7 +216,8 @@ internal data class InheritedBindingOverride(
  * A child graph binding that replaces a binding the child inherits from [owner].
  *
  * [declarations] are the child's winning declarations for [typeKey]. [inheritedDeclarations] are
- * [owner]'s declarations for it. [owner] is the nearest ancestor that declares the key.
+ * [owner]'s declarations for it. [owner] is the nearest ancestor that declares the key. For a
+ * scoped `@Inject` class, it's the nearest ancestor that owns the class's scope.
  */
 internal class ParentBindingOverride(
   val typeKey: IrTypeKey,
@@ -167,6 +231,9 @@ internal class ParentBindingOverride(
     val locations = declarations.map { it.renderLocation() }
     val inheritedLocations = inheritedDeclarations.map { it.renderLocation() }
     val notes = (locations + inheritedLocations).flatMap { it.notes }.distinct()
+    val inheritsInjectedClass = inheritedDeclarations.any {
+      it is GraphBindingDeclaration.ScopedInjectedClass
+    }
 
     return parentBindingOverrideDiagnostic(
       typeKey = typeKey,
@@ -176,6 +243,7 @@ internal class ParentBindingOverride(
       locations = locations.map { it.toLocatedItem() },
       inheritedLocations = inheritedLocations.map { it.toLocatedItem() },
       extraNotes = notes,
+      ancestorBindingCanBePrivate = !inheritsInjectedClass,
     )
   }
 }
@@ -184,8 +252,9 @@ internal class ParentBindingOverride(
  * Finds the bindings in [node] that override bindings from its ancestor graphs.
  *
  * Callers collect candidate keys from both inheritance paths in [BindingGraphGenerator]. This class
- * resolves each key's nearest declaring ancestor and applies the exclusions. It finds nothing when
- * the `parentBindingOverrideSeverity` option is `NONE`. [lowerPriorityDeclarations] are local
+ * resolves each key's nearest declaring ancestor and applies the exclusions. It also finds the
+ * scoped `@Inject` classes that [node]'s declarations replace. It finds nothing when the
+ * `parentBindingOverrideSeverity` option is `NONE`. [lowerPriorityDeclarations] are local
  * declarations that lost to a higher priority contribution. They never win, so the report leaves
  * them out.
  */
@@ -216,6 +285,7 @@ internal class ParentBindingOverrideResolver(
     }
 
     val inheritedByKey = mergeInheritedDeclarations(droppedInheritedBindings, parentContextKeys)
+    addScopedInjectedClasses(inheritedByKey)
 
     return inheritedByKey.entries
       .sortedBy { it.key }
@@ -229,7 +299,7 @@ internal class ParentBindingOverrideResolver(
   private fun mergeInheritedDeclarations(
     droppedInheritedBindings: List<InheritedBindingOverride>,
     parentContextKeys: Collection<IrTypeKey>,
-  ): Map<IrTypeKey, InheritedDeclarations> {
+  ): MutableMap<IrTypeKey, InheritedDeclarations> {
     val result = mutableMapOf<IrTypeKey, InheritedDeclarations>()
 
     fun merge(key: IrTypeKey, candidate: InheritedDeclarations) {
@@ -262,8 +332,9 @@ internal class ParentBindingOverrideResolver(
   /**
    * Walks ancestors nearest first and returns the first one that explicitly declares [key] and
    * doesn't keep it private. Returns null when no ancestor declares it, like a type that an
-   * ancestor only offers through an `@Inject` constructor. Also returns null when the declaring
-   * ancestor replaces the key with a dynamic binding.
+   * ancestor only offers through an `@Inject` constructor. [findScopedInjectedClass] handles the
+   * scoped ones. Also returns null when the declaring ancestor replaces the key with a dynamic
+   * binding.
    */
   private fun findNearestInheritedDeclarations(key: IrTypeKey): InheritedDeclarations? {
     for ((index, ancestor) in ancestors.withIndex()) {
@@ -282,6 +353,63 @@ internal class ParentBindingOverrideResolver(
       }
 
       return InheritedDeclarations(index, ancestor, declarations)
+    }
+
+    return null
+  }
+
+  /**
+   * Adds the scoped `@Inject` classes that this graph's own declarations replace. A key that
+   * already has an explicit ancestor declaration keeps it.
+   */
+  private fun addScopedInjectedClasses(
+    inheritedByKey: MutableMap<IrTypeKey, InheritedDeclarations>,
+  ) {
+    for (key in node.directlyProvidedKeys) {
+      // Multibinding contributions never override, so their classes aren't looked up.
+      val isMultibindingKey = key.multibindingKeyData != null
+      if (isMultibindingKey || key in inheritedByKey) {
+        continue
+      }
+
+      val inherited = findScopedInjectedClass(key) ?: continue
+      inheritedByKey[key] = inherited
+    }
+  }
+
+  /**
+   * Returns the scoped `@Inject` class behind [key] with the nearest ancestor that owns its scope.
+   *
+   * Returns null for an unscoped class, since every graph builds its own instances of it. Also
+   * returns null when this graph owns the scope, or when a nearer ancestor declares [key] itself.
+   */
+  private fun findScopedInjectedClass(key: IrTypeKey): InheritedDeclarations? {
+    val injectedClass = with(context) { scopedInjectedClassFor(key, node.sourceGraph) }
+    val scope = injectedClass?.annotations?.scope
+    if (injectedClass == null || scope == null) {
+      return null
+    }
+
+    if (scope in node.scopes) {
+      return null
+    }
+
+    // A parameter-less @Binds declares the class's own binding in this graph. It replaces nothing.
+    val onlyRestatesClass = explicitDeclarationsFor(node, key).all { it.restatesInjectedClass() }
+    if (onlyRestatesClass) {
+      return null
+    }
+
+    for ((index, ancestor) in ancestors.withIndex()) {
+      // An explicit declaration wins over the class in its own graph, so the class isn't inherited.
+      val declaresKey = explicitDeclarationsFor(ancestor, key).isNotEmpty()
+      if (declaresKey) {
+        return null
+      }
+
+      if (scope in ancestor.scopes) {
+        return InheritedDeclarations(index, ancestor, listOf(injectedClass))
+      }
     }
 
     return null
@@ -403,6 +531,11 @@ internal class ParentBindingOverrideResolver(
     }
   }
 
+  /** True for a parameter-less `@Binds`, like `@Binds fun bindFoo(): Foo` for an `@Inject` Foo. */
+  private fun GraphBindingDeclaration.restatesInjectedClass(): Boolean {
+    return this is GraphBindingDeclaration.Binds && callable.source == null
+  }
+
   /** The object that [lowerPriorityDeclarations] and dedup compare against. */
   private fun GraphBindingDeclaration.identity(): Any {
     return when (this) {
@@ -410,6 +543,7 @@ internal class ParentBindingOverrideResolver(
       is GraphBindingDeclaration.Binds -> callable
       is GraphBindingDeclaration.CreatorParameter -> declaration
       is GraphBindingDeclaration.IncludedAccessor -> accessor
+      is GraphBindingDeclaration.ScopedInjectedClass -> irClass
     }
   }
 
@@ -418,4 +552,60 @@ internal class ParentBindingOverrideResolver(
     val owner: GraphNode,
     val declarations: List<GraphBindingDeclaration>,
   )
+}
+
+/**
+ * Returns [key]'s class when it's a scoped `@Inject` class that provides the key itself. This
+ * applies the same rules as [BindingLookup]'s class lookup, and it registers no binding.
+ *
+ * [callingGraph] is the graph whose diagnostics depend on the answer.
+ */
+context(context: IrMetroContext)
+private fun scopedInjectedClassFor(
+  key: IrTypeKey,
+  callingGraph: IrClass,
+): GraphBindingDeclaration.ScopedInjectedClass? {
+  // An injected class never satisfies a nullable request for it.
+  if (key.type.isNullable()) {
+    return null
+  }
+
+  val irClass = key.type.rawTypeOrNull()
+  if (irClass == null || irClass.isObject) {
+    return null
+  }
+
+  // The answer depends on the class's annotations, so the graph recompiles when they change.
+  val classId = irClass.classId
+  if (classId != null) {
+    trackClassLookup(callingGraph, classId)
+  }
+
+  val classIds = context.metroSymbols.classIds
+  val annotations = irClass.metroAnnotations(classIds)
+  if (annotations.scope == null) {
+    return null
+  }
+
+  // A class only provides a qualified key when it carries that same qualifier.
+  val requestQualifier = key.qualifier
+  val hasOtherQualifier = requestQualifier != null && requestQualifier != annotations.qualifier
+  if (hasOtherQualifier) {
+    return null
+  }
+
+  val constructor = irClass.findInjectableConstructor(onlyUsePrimaryConstructor = false)
+  if (constructor == null) {
+    return null
+  }
+
+  // An assisted-inject class is only reachable through its factory.
+  val isAssistedInject = constructor.isAnnotatedWithAny(classIds.assistedInjectAnnotations)
+  val hasAssistedParameters =
+    constructor.regularParameters.any { it.isAnnotatedWithAny(classIds.assistedAnnotations) }
+  if (isAssistedInject || hasAssistedParameters) {
+    return null
+  }
+
+  return GraphBindingDeclaration.ScopedInjectedClass(irClass, annotations)
 }

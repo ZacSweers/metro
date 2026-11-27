@@ -619,14 +619,14 @@ By default, Metro doesn't report overrides. To report them as [`Metro/ParentBind
 
     This check runs only in IR. The IDE plugin does not show it, and the IDE-only severities are rejected.
 
-An inherited binding is an explicit declaration in an ancestor graph. This includes `@Provides` and `@Binds` declarations, contributed bindings, graph factory `@Provides` parameters, and accessors of graphs that the ancestor takes through `@Includes`. Metro reports each override once, on the extension's declaration, even if nothing uses the binding. A declaration from another module has no source location, so Metro reports it on the extension.
+An inherited binding is an explicit declaration in an ancestor graph. This includes `@Provides` and `@Binds` declarations, contributed bindings, graph factory `@Provides` parameters, and accessors of graphs that the ancestor takes through `@Includes`. A scoped `@Inject` class is also an inherited binding. It belongs to the ancestor that owns its scope, which keeps the one instance. Metro reports each override once, on the extension's declaration, even if nothing uses the binding. A declaration from another module has no source location, so Metro reports it on the extension.
 
 Metro does not report these cases:
 
 - Both graphs reach the same declaration, such as one binding container that the parent and the extension both include.
 - The ancestor's binding is `@GraphPrivate`. Extensions do not inherit it.
 - Either binding is a [dynamic graph](#dynamic-graphs) replacement.
-- The ancestor only provides the type through an `@Inject` constructor. An explicit binding already wins over constructor injection in a single graph.
+- The ancestor only provides the type through an unscoped `@Inject` constructor. Every graph builds its own instances of that class.
 - Either binding is a [generic provider](derived-bindings.md). The `derivedBindingOverlapSeverity` option covers these.
 
 Metro does not yet check a binding that the extension gets from its own `@Includes` factory parameter, even when it wins over an inherited binding.
@@ -634,7 +634,7 @@ Metro does not yet check a binding that the extension gets from its own `@Includ
 To resolve `Metro/ParentBindingOverride`, do one of these:
 
 - Give one of the bindings a qualifier.
-- Mark the ancestor's binding `@GraphPrivate`.
+- Mark the ancestor's binding `@GraphPrivate`. This does not apply to a scoped `@Inject` class.
 
 An override does not change bindings that the parent graph owns. A scoped binding in the parent keeps the parent's dependencies, even when an extension requests it.
 

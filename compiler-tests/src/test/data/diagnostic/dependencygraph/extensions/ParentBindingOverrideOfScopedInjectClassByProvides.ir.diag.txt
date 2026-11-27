@@ -1,0 +1,12 @@
+/ParentBindingOverrideOfScopedInjectClassByProvides.kt:22:17: error: [Metro/ParentBindingOverride] ChildGraph overrides Foo inherited from ParentGraph
+
+  Declared in ChildGraph
+      ParentBindingOverrideOfScopedInjectClassByProvides.kt:22:13
+        @Provides fun provideFoo(): Foo
+
+  Inherited from ParentGraph
+      ParentBindingOverrideOfScopedInjectClassByProvides.kt:9:1
+        @dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class) class Foo
+
+  help: give one of the bindings a qualifier
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#parentbindingoverride

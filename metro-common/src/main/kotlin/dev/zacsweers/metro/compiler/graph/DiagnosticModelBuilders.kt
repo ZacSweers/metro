@@ -199,7 +199,8 @@ public fun duplicateMapKeysDiagnostic(
  * The diagnostic for a graph extension binding that replaces a binding inherited from an ancestor
  * graph.
  *
- * [ancestorGraphName] is the nearest ancestor that declares [typeKey].
+ * [ancestorGraphName] is the nearest ancestor that declares [typeKey]. Pass false for
+ * [ancestorBindingCanBePrivate] when the inherited binding is a scoped `@Inject` class.
  */
 public fun parentBindingOverrideDiagnostic(
   typeKey: BaseTypeKey<*, *, *>,
@@ -209,7 +210,16 @@ public fun parentBindingOverrideDiagnostic(
   locations: List<LocatedItem>,
   inheritedLocations: List<LocatedItem>,
   extraNotes: List<Note> = emptyList(),
+  ancestorBindingCanBePrivate: Boolean = true,
 ): MetroDiagnostic {
+  // A scoped @Inject class isn't declared in a graph, so @GraphPrivate can't hide it.
+  val help =
+    if (ancestorBindingCanBePrivate) {
+      "give one of the bindings a qualifier, or mark the ancestor's binding @GraphPrivate"
+    } else {
+      "give one of the bindings a qualifier"
+    }
+
   return MetroDiagnostic(
     id = MetroDiagnosticId.PARENT_BINDING_OVERRIDE,
     severity = severity,
@@ -235,11 +245,7 @@ public fun parentBindingOverrideDiagnostic(
     notes =
       buildList {
         addAll(extraNotes)
-        add(
-          Note.help(
-            "give one of the bindings a qualifier, or mark the ancestor's binding @GraphPrivate",
-          ),
-        )
+        add(Note.help(help))
       },
   )
 }

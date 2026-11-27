@@ -1,12 +1,11 @@
-// RUN_PIPELINE_TILL: BACKEND
+// RUN_PIPELINE_TILL: FIR2IR
+// RENDER_IR_DIAGNOSTICS_FULL_TEXT
 // PARENT_BINDING_OVERRIDE_SEVERITY: ERROR
 
-// The parent only offers Foo through its scoped @Inject constructor. An explicit child binding beats
-// constructor injection, like it does in a single graph, so it isn't an override.
+// A @Provides for a scoped @Inject class gets the FIR scope warning in any graph. In a child of the
+// graph that owns the scope, it's also an override.
 
 @SingleIn(AppScope::class) @Inject open class Foo
-
-@Inject class ChildFoo : Foo()
 
 @DependencyGraph(AppScope::class)
 interface ParentGraph {
@@ -19,7 +18,7 @@ interface ParentGraph {
 interface ChildGraph {
   val foo: Foo
 
-  @Binds val ChildFoo.bind: Foo
+  @Provides fun <!CONFLICTING_PROVIDES_SCOPE, PARENT_BINDING_OVERRIDE_ERROR!>provideFoo<!>(): Foo = object : Foo() {}
 
   @GraphExtension.Factory
   interface Factory {
