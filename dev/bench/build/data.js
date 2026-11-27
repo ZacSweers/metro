@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795820004315,
+  "lastUpdate": 1795820574777,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -29680,6 +29680,62 @@ window.BENCHMARK_DATA = {
             "value": 14019.905999999999,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -3.53%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "08a4951b~1",
+          "message": "[before] Gradle 9.9.3 (#3228)",
+          "timestamp": "2026-11-27T21:59:26Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/08a4951b9b90c3def2b20a1c0214487782486177"
+        },
+        "date": 1795820574777,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19198.213,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "08a4951b9b90c3def2b20a1c0214487782486177",
+          "message": "[after] Gradle 9.9.3 (#3228)",
+          "timestamp": "2026-11-27T21:59:26Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/08a4951b9b90c3def2b20a1c0214487782486177"
+        },
+        "date": 1795820574778,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18710.509,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -2.54%"
           }
         ]
       }
