@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795812694712,
+  "lastUpdate": 1795819580026,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -29568,6 +29568,62 @@ window.BENCHMARK_DATA = {
             "value": 14200.042000000001,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +1.00%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "7dabdfc5~1",
+          "message": "[before] Fix report for star-projected generic `@Inject` cl",
+          "timestamp": "2026-11-27T21:53:14Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/7dabdfc552d0edb159372dee20af05a0f43091be"
+        },
+        "date": 1795819580026,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 16032.473000000002,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "7dabdfc552d0edb159372dee20af05a0f43091be",
+          "message": "[after] Fix report for star-projected generic `@Inject` cl",
+          "timestamp": "2026-11-27T21:53:14Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/7dabdfc552d0edb159372dee20af05a0f43091be"
+        },
+        "date": 1795819580027,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 16071.157000000001,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +0.24%"
           }
         ]
       }
