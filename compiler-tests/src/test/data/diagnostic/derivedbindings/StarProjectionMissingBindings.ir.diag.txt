@@ -1,0 +1,22 @@
+/StarProjectionMissingBindings.kt:30:7: error: [Metro/MissingBinding] No binding found for Thing<String, *>
+
+  trace (in AppGraph):
+      Thing<String, *> is requested at AppGraph.thing
+
+  similar bindings:
+      - IThing<String, *> (Supertype. Type: Alias) - StarProjectionMissingBindings.kt:25:10
+
+  help: replace '*' with a concrete type argument so Metro can resolve this binding
+  help: ensure Thing<String, *> has an @Inject constructor or is provided by an @Provides or @Binds
+        declaration visible to AppGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
+
+
+/StarProjectionMissingBindings.kt:32:7: error: [Metro/MissingBinding] No binding found for Encoder<List<*>>
+
+  trace (in AppGraph):
+      Encoder<List<*>> is requested at AppGraph.listOfStars
+
+  help: ensure Encoder<List<*>> has an @Inject constructor or is provided by an @Provides or @Binds
+        declaration visible to AppGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding

@@ -1264,6 +1264,16 @@ internal class IrBindingGraph(
     }
 
     val notes = buildList {
+      if (bindingLookup.isStarProjectedClassKey(key)) {
+        val className = key.type.rawTypeOrNull()?.name?.asString()
+        add(
+          Note.note(
+            "'$className' has an @Inject constructor, but Metro can't construct it when a type " +
+              "argument is '*'",
+          ),
+        )
+      }
+
       if (key.type.hasStarArgument()) {
         add(
           Note.help("replace '*' with a concrete type argument so Metro can resolve this binding"),

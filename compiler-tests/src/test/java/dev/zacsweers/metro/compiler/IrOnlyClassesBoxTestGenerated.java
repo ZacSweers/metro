@@ -4159,6 +4159,12 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
     }
 
     @Test
+    @TestMetadata("StarProjections.kt")
+    public void testStarProjections() {
+      run("StarProjections.kt");
+    }
+
+    @Test
     @TestMetadata("SuspendGenericProvider.kt")
     public void testSuspendGenericProvider() {
       run("SuspendGenericProvider.kt");

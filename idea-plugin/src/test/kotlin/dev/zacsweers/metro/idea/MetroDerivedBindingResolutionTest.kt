@@ -342,6 +342,50 @@ class MetroDerivedBindingResolutionTest : BasePlatformTestCase() {
     )
   }
 
+  /** A star in a return type matches only a star, and a type variable never binds a star. */
+  fun testStarProjectionsMatchOnlyStars() {
+    val fixture =
+      configure(
+        """
+        interface Encoder<T>
+        interface IThing<A, B>
+        class Thing<A, B> : IThing<A, B>
+
+        @DependencyGraph
+        interface AppGraph {
+          val thing: Thing<String, *>
+          val iThing: IThing<String, *>
+          val listOfMaps: Encoder<List<Map<String, *>>>
+          val listOfStars: Encoder<List<*>>
+
+          @Provides fun <T> thing(): Thing<T, *> = error("unused")
+          @Binds fun <T> Thing<T, *>.asIThing(): IThing<T, *>
+          @Provides fun mapEncoder(): Encoder<Map<String, *>> = error("unused")
+          @Provides fun <T> list(element: Encoder<T>): Encoder<List<T>> = error("unused")
+        }
+        """,
+      )
+
+    assertEquals("thing", fixture.derivedBindingFor("thing").declarationName())
+
+    val alias = fixture.derivedBindingFor("iThing")
+    assertTrue(alias is KaBinding.Alias)
+    assertEquals(
+      "test.Thing<kotlin.String, *>",
+      (alias as KaBinding.Alias).consumedKey?.typeKey?.renderedType,
+    )
+
+    val listOfMaps = fixture.derivedBindingFor("listOfMaps")
+    assertEquals("list", listOfMaps.declarationName())
+    assertEquals(
+      listOf("T" to "kotlin.collections.Map<kotlin.String, *>"),
+      checkNotNull(listOfMaps.derivation).renderedTypeArguments(short = false),
+    )
+
+    // `list` can't bind `T` to a star, so nothing provides this key.
+    assertEquals(emptyList<KaBinding>(), fixture.bindingsFor("listOfStars"))
+  }
+
   fun testTypeAliasInRequestedTypeIsExpandedBeforeMatching() {
     val fixture =
       configure(
