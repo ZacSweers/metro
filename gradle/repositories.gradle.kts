@@ -7,16 +7,29 @@ val metroMavenCentralMirrorUrl = "https://maven-central.storage-download.googlea
 val metroGradlePluginPortalMirrorUrl =
   "https://cache-redirector.jetbrains.com/plugins.gradle.org/m2"
 
+// IntelliJ Platform coordinates only resolve from JetBrains repositories. Maven Central can't
+// serve them, and a rate-limited response from Central fails resolution before Gradle reaches
+// the JetBrains repositories.
+val excludeIntellijPlatform =
+  Action<RepositoryContentDescriptor> {
+    excludeGroup("idea")
+    excludeGroup("bundledPlugin")
+    excludeGroup("bundledModule")
+    excludeGroup("localIde")
+    excludeGroup("com.jetbrains.plugins")
+    excludeGroupAndSubgroups("com.jetbrains.intellij")
+  }
+
 val metroMavenCentralMirror =
   Action<RepositoryHandler> {
     // Prefer the mirror to avoid Maven Central rate limits and outages.
-    maven(metroMavenCentralMirrorUrl)
+    maven(metroMavenCentralMirrorUrl).content(excludeIntellijPlatform)
   }
 
 val metroMavenCentralRepositories =
   Action<RepositoryHandler> {
     metroMavenCentralMirror.execute(this)
-    mavenCentral()
+    mavenCentral().content(excludeIntellijPlatform)
   }
 
 val metroGoogleRepository =
@@ -119,7 +132,7 @@ extra["metroSettingsRepositories"] =
       }
 
       if (!forPlugins || includePluginMavenCentral) {
-        mavenCentral()
+        mavenCentral().content(excludeIntellijPlatform)
       }
       if (usePluginPortal) {
         gradlePluginPortal().content(pluginPortalContent)

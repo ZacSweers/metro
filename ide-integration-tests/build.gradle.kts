@@ -18,8 +18,9 @@ val metroMavenCentralRepositories =
   extra["metroMavenCentralRepositories"] as Action<RepositoryHandler>
 
 repositories {
-  metroMavenCentralRepositories.execute(this)
+  // IntelliJ Platform artifacts resolve without asking Maven Central first.
   intellijPlatform { defaultRepositories() }
+  metroMavenCentralRepositories.execute(this)
 }
 
 val ideVersionsFile = layout.projectDirectory.file("ide-versions.txt")
