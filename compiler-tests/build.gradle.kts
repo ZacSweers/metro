@@ -18,6 +18,7 @@ plugins {
   alias(libs.plugins.kotlin.jvm)
   alias(libs.plugins.buildConfig)
   java
+  idea
 }
 
 project.plugins.apply(D8Plugin::class.java)
@@ -322,6 +323,9 @@ dependencies {
   testRuntimeOnly(libs.kotlin.annotationsJvm)
 }
 
+// The JUnit suites are generated from the test data on every build and aren't checked in.
+val generatedTestsDir = layout.buildDirectory.dir("generated/compilerTests")
+
 val generateTests =
   tasks.register<JavaExec>("generateTests") {
     inputs
@@ -331,11 +335,15 @@ val generateTests =
 
     inputs.property("testCompilerVersion", testCompilerVersion)
 
-    outputs.dir(layout.projectDirectory.dir("src/test/java")).withPropertyName("generatedTests")
+    outputs.dir(generatedTestsDir).withPropertyName("generatedTests")
 
-    // The generator needs Kotlin test support, but not the Java suites it generates. Using the
-    // whole test output would compile those suites before generation and leave new tests
-    // uncompiled.
+    // The generator only overwrites files, so clear out suites that no longer exist.
+    val outputDir = generatedTestsDir.get().asFile
+    doFirst { outputDir.deleteRecursively() }
+    args(outputDir.absolutePath)
+
+    // The generator needs the compiled Kotlin test sources. It can't use the whole test output
+    // because compileTestJava compiles the suites this task generates.
     classpath =
       files(
         tasks.named<KotlinJvmCompile>("compileTestKotlin").flatMap { it.destinationDirectory },
@@ -354,12 +362,28 @@ val generateTests =
     jvmArgs("-Xss1m")
   }
 
-// Preserve explicit generation: ordinary test runs use the checked-in suites. When generation is
-// requested in the same invocation, compile the updated Java sources before running tests.
-tasks.named<JavaCompile>("compileTestJava") { mustRunAfter(generateTests) }
+val excludeJsBoxTests = providers.gradleProperty("metro.excludeJsBoxTests").isPresent
 
-if (providers.gradleProperty("metro.generateCompilerTests").isPresent) {
-  tasks.named<JavaCompile>("compileTestJava") { dependsOn(generateTests) }
+// The generator runs on the compiled Kotlin test sources. Adding its output to the test source set
+// would make compileTestKotlin read it and create a task cycle, so only compileTestJava gets it.
+tasks.named<JavaCompile>("compileTestJava") {
+  source(generateTests)
+  if (excludeJsBoxTests) {
+    exclude(
+      "dev/zacsweers/metro/compiler/JsBoxTestGenerated.java",
+      "dev/zacsweers/metro/compiler/JsFastInitBoxTestGenerated.java",
+      "dev/zacsweers/metro/compiler/JsContributionProvidersBoxTestGenerated.java",
+    )
+  }
+}
+
+// IntelliJ only sees source set directories, so register the suites for the IDE separately.
+// generatedSourceDirs works around https://youtrack.jetbrains.com/issue/IDEA-339729.
+idea {
+  module {
+    testSources.from(generatedTestsDir)
+    generatedSourceDirs.add(generatedTestsDir.get().asFile)
+  }
 }
 
 val largeTestMode = providers.gradleProperty("metro.enableLargeTests").isPresent
@@ -377,18 +401,7 @@ val compilerTestUseParallelGc =
     .map(String::toBooleanStrict)
     .orElse(false)
 
-val excludeJsBoxTests = providers.gradleProperty("metro.excludeJsBoxTests").isPresent
 val testOmitRedundantMirrors = providers.gradleProperty("metro.testOmitRedundantMirrors").orNull
-
-if (excludeJsBoxTests) {
-  sourceSets.test {
-    java.exclude(
-      "dev/zacsweers/metro/compiler/JsBoxTestGenerated.java",
-      "dev/zacsweers/metro/compiler/JsFastInitBoxTestGenerated.java",
-      "dev/zacsweers/metro/compiler/JsContributionProvidersBoxTestGenerated.java",
-    )
-  }
-}
 
 tasks.withType<Test>().configureEach {
   val updateTestData = providers.gradleProperty("updateTestData").isPresent

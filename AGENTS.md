@@ -10,7 +10,7 @@ When running tests, run focused/neighborhood tests primarily while iterating. Th
 
 - `./gradlew :compiler:test` - Run legacy compiler tests
 - `./gradlew :compiler-tests:test` - Run new compiler tests
-- `./gradlew :compiler-tests:generateTests :compiler-tests:test --tests '*MyTest*'` - Generate and run a focused compiler test in one invocation
+- `./gradlew :compiler-tests:test --tests '*MyTest*'` - Run a focused compiler test
 - `./gradlew :compiler-tests:test -Pmetro.compilerTestHeapSize=5g --tests '*JsBoxTestGenerated*MyTest*'` - Run a focused JS box test with more heap, without selecting stress tests
 - `./gradlew :gradle-plugin:functionalTest` - Run Gradle integration tests
 - `./gradlew -p samples check` - Run sample project tests
@@ -78,7 +78,7 @@ Metro is a compile-time dependency injection framework implemented as a Kotlin c
 - Diagnostic tests (`data/diagnostic/`) - Error reporting and validation
 - Dump tests (`data/dump/`) - FIR/IR tree inspection and verification
 
-To create a new test, add a source file under the appropriate directory and run `./gradlew :compiler-tests:generateTests` to regenerate the checked-in JUnit suites. Generation and testing can run separately or together with `./gradlew :compiler-tests:generateTests :compiler-tests:test --tests '*MyTest*'`. When both are requested, Gradle compiles the generated Java suites after generation. Ordinary test runs do not regenerate them automatically.
+To create a new test, add a source file under the appropriate directory. The JUnit suites are generated into `compiler-tests/build/generated/compilerTests/` on every test run and aren't checked in. `./gradlew :compiler-tests:generateTests` generates them on its own.
 
 For Compose-heavy JS tests that exhaust the default 2g heap, use `-Pmetro.compilerTestHeapSize=5g` with a focused `--tests` filter. Do not use `-Pmetro.enableLargeTests` for this: that property selects only `*StressTest*` tests. See `compiler-tests/README.md` for both workflows.
 
@@ -117,7 +117,7 @@ For Compose-heavy JS tests that exhaust the default 2g heap, use `-Pmetro.compil
 ## Testing New Features
 
 1. Add compiler tests in `compiler-tests/src/test/data/` using the appropriate test type
-2. Generate the suites and run a focused selection with `./gradlew :compiler-tests:generateTests :compiler-tests:test --tests '*MyTest*'`.
+2. Run a focused selection with `./gradlew :compiler-tests:test --tests '*MyTest*'`.
 3. Test integration with samples in `samples/` directory
 
 ## Important Notes
