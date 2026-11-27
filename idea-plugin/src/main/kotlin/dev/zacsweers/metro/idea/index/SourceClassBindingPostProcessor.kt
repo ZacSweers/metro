@@ -12,6 +12,7 @@ import com.intellij.psi.SmartPointerManager
 import com.intellij.psi.SmartPsiElementPointer
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.graph.MAX_DERIVED_BINDING_DEPTH
+import dev.zacsweers.metro.idea.hasAnyAnnotation
 import dev.zacsweers.metro.idea.index.snapshot.SnapshotReadExecutor
 import dev.zacsweers.metro.idea.metroIdeState
 import dev.zacsweers.metro.idea.model.ClassBindingIdentity
@@ -627,14 +628,19 @@ internal class SourceClassBindingPostProcessor(
             // Source metadata uses the owning module's configured annotations. Shared project
             // snapshots may be requested from another module.
             options = declaration.metroIdeState().options
-            key = KaTypeKey(request.key.type, qualifierAnnotation(symbol, options))
+            val classQualifier = qualifierAnnotation(symbol, options)
+
+            // Only a qualifier mismatch needs the assisted factory check.
+            val qualifierDiffers = classQualifier != request.key.qualifier
+            val isFactory =
+              qualifierDiffers && symbol.hasAnyAnnotation(options.assistedFactoryAnnotations)
+
+            // The identity uses the key the binding carries, so each key is cached on its own.
+            key = classBindingKey(request.key, classQualifier, isFactory) ?: return@analyze null
             identity = ClassBindingIdentity(key, symbol.classId, file)
           }
           item.stage("source.class.cacheCheck") {
             classBindings[identity]?.let {
-              if (key != request.key && it !is KaBinding.AssistedFactory) {
-                return@analyze null
-              }
               item?.cache = "reused"
               return@analyze ResolvedClass(it, identity)
             }

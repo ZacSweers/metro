@@ -1,0 +1,4 @@
+parity.qualifiedclass.RealRepo
+@parity.qualifiedclass.Chosen parity.qualifiedclass.Repo
+@parity.qualifiedclass.Chosen parity.qualifiedclass.RequestedQualified
+parity.qualifiedclass.RequestedUnqualified

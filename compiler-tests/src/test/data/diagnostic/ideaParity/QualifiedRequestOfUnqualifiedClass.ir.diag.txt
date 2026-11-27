@@ -1,0 +1,12 @@
+/QualifiedRequestOfUnqualifiedClass.kt:18:15: error: [Metro/MissingBinding] No binding found for @Chosen Foo
+
+  trace (in parity.failures.qualifiedrequest.AppGraph):
+      @Chosen Foo is requested at parity.failures.qualifiedrequest.AppGraph.foo
+
+  similar bindings:
+      - Foo (Different qualifier. Type: ConstructorInjected) -
+        QualifiedRequestOfUnqualifiedClass.kt:14:1
+
+  help: ensure @Chosen Foo has an @Inject constructor or is provided by an @Provides or @Binds
+        declaration visible to AppGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding

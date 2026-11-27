@@ -167,10 +167,31 @@ class MetroGraphValidationParityTest : BasePlatformTestCase() {
     )
   }
 
+  fun testQualifiedClassLookupMatchesCompiler() {
+    val fixture = "QualifiedClassLookup"
+    val reportPath = "parity/qualifiedclass/AppGraph/Impl"
+    assertParity(
+      ParityCase(
+        fixtureName = fixture,
+        graphPath = listOf("parity.qualifiedclass.AppGraph"),
+        metadataReport = "$fixture/graph-metadata/graph-parity-qualifiedclass-AppGraph.json.txt",
+        populatedReport = "$fixture/keys-populated/$reportPath.txt",
+        validatedReport = "$fixture/keys-validated/$reportPath.txt",
+        deferredReport = "$fixture/keys-deferred/$reportPath.txt",
+        explanationKeys = setOf("parity.qualifiedclass.RequestedUnqualified"),
+      ),
+    )
+  }
+
   fun testValidationFailuresMatchCompiler() {
     val cases =
       listOf(
         failureCase("MissingBinding", "missing", hasPopulatedReport = true),
+        failureCase(
+          "QualifiedRequestOfUnqualifiedClass",
+          "qualifiedrequest",
+          hasPopulatedReport = true,
+        ),
         failureCase("DuplicateBinding", "duplicate", hasPopulatedReport = true),
         failureCase("DependencyCycle", "cycle", hasPopulatedReport = true),
         failureCase("DuplicateMapKey", "mapkey", hasPopulatedReport = true),

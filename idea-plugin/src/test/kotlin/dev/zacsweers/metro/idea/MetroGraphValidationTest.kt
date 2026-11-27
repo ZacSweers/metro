@@ -3398,6 +3398,158 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     )
   }
 
+  fun testContributedClassWithClassLevelQualifierResolves() {
+    val result =
+      validate(
+        """
+        @Qualifier annotation class Chosen
+
+        interface Repo
+
+        @Chosen
+        @Inject
+        @ContributesBinding(AppScope::class)
+        class RealRepo : Repo
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          @Chosen val repo: Repo
+        }
+        """,
+      )
+
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    val repoBinding =
+      result.bindings.asMap().values.single { it.typeKey.renderedType == "test.Repo" }
+    assertEquals("RealRepo", repoBinding.implementationName)
+    assertEquals("Chosen", repoBinding.typeKey.qualifier?.classId?.shortClassName?.asString())
+
+    // The compiler's generated binding requests the implementation without its qualifier.
+    val implementation =
+      result.bindings.asMap().values.filterIsInstance<KaBinding.ConstructorInjected>().single()
+    assertEquals("test.RealRepo", implementation.typeKey.renderedType)
+    assertNull(implementation.typeKey.qualifier)
+  }
+
+  fun testContributedClassRequestedWithItsClassLevelQualifierIsNotADuplicate() {
+    val result =
+      validate(
+        """
+        @Qualifier annotation class Chosen
+
+        interface Repo
+
+        @Chosen
+        @Inject
+        @ContributesBinding(AppScope::class)
+        class RealRepo : Repo
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          @Chosen val repo: Repo
+          @Chosen val realRepo: RealRepo
+        }
+        """,
+      )
+
+    assertTrue(
+      result.diagnostics.joinToString { it.render() },
+      result.diagnostics.none { it.id == MetroDiagnosticId.DUPLICATE_BINDING },
+    )
+
+    // The class has one binding for each key that the graph requests.
+    val implementations =
+      result.bindings.asMap().values.filterIsInstance<KaBinding.ConstructorInjected>()
+    assertEquals(
+      setOf(null, "Chosen"),
+      implementations.mapTo(mutableSetOf()) {
+        it.typeKey.qualifier?.classId?.shortClassName?.asString()
+      },
+    )
+    assertEquals(2, implementations.size)
+  }
+
+  fun testAddingAClassLevelQualifierKeepsTheContributedImplementationResolving() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        @Qualifier annotation class Chosen
+
+        interface Repo
+
+        @Inject
+        @ContributesBinding(AppScope::class)
+        class RealRepo : Repo
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          @Chosen val repo: Repo
+        }
+        """,
+      )
+    val validationService = project.service<MetroGraphValidationService>()
+
+    fun validateCurrent(): KaGraphValidationResult.Completed {
+      val index = refreshedIndex(file)
+      val context = index.contextsFor(index.graphs.single()).single()
+      return validationService.validate(file, context).requireCompleted()
+    }
+
+    // The contribution has no qualifier until the class has one.
+    assertEquals(
+      listOf(MetroDiagnosticId.MISSING_BINDING),
+      validateCurrent().diagnostics.map { it.id },
+    )
+
+    WriteCommandAction.runWriteCommandAction(project) {
+      val document = myFixture.editor.document
+      document.insertString(document.text.indexOf("@Inject"), "@Chosen ")
+      PsiDocumentManager.getInstance(project).commitAllDocuments()
+    }
+
+    // The implementation request stays unqualified, so it needs a new binding for the class.
+    val result = validateCurrent()
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+  }
+
+  fun testAnvilContributionIgnoringTheClassLevelQualifierResolves() {
+    project.setMetroOptions(
+      "custom-contributes-binding" to "test/AnvilBinding",
+      "enable-dagger-anvil-interop" to "true",
+    )
+    val result =
+      validate(
+        """
+        import kotlin.reflect.KClass
+
+        annotation class AnvilBinding(
+          val scope: KClass<*>,
+          val ignoreQualifier: Boolean = false,
+        )
+
+        @Qualifier annotation class Chosen
+
+        interface Repo
+
+        @Chosen
+        @Inject
+        @AnvilBinding(AppScope::class, ignoreQualifier = true)
+        class RealRepo : Repo
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val repo: Repo
+        }
+        """,
+      )
+
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    val repoBinding =
+      result.bindings.asMap().values.single { it.typeKey.renderedType == "test.Repo" }
+    assertEquals("RealRepo", repoBinding.implementationName)
+    assertNull(repoBinding.typeKey.qualifier)
+  }
+
   fun testGeneratedContributionProviderDoesNotExposeItsImplementation() {
     project.setMetroOptions("generate-contribution-providers" to "true")
 
@@ -4289,6 +4441,77 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     assertTrue(result.diagnostics.any { it.id == MetroDiagnosticId.MISSING_BINDING })
   }
 
+  fun testUnqualifiedRequestResolvesClassWithClassLevelQualifier() {
+    val result =
+      validate(
+        """
+        @Qualifier annotation class Chosen
+
+        @Chosen @Inject class Foo
+
+        @DependencyGraph interface AppGraph { val foo: Foo }
+        """,
+      )
+
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    val binding =
+      result.bindings.asMap().values.filterIsInstance<KaBinding.ConstructorInjected>().single()
+    assertEquals("test.Foo", binding.typeKey.renderedType)
+    assertNull(binding.typeKey.qualifier)
+  }
+
+  fun testQualifiedRequestResolvesClassWithTheSameClassLevelQualifier() {
+    val result =
+      validate(
+        """
+        @Qualifier annotation class Chosen
+
+        @Chosen @Inject class Foo
+
+        @DependencyGraph interface AppGraph { @Chosen val foo: Foo }
+        """,
+      )
+
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    val binding =
+      result.bindings.asMap().values.filterIsInstance<KaBinding.ConstructorInjected>().single()
+    assertEquals("test.Foo", binding.typeKey.renderedType)
+    assertEquals("Chosen", binding.typeKey.qualifier?.classId?.shortClassName?.asString())
+  }
+
+  fun testQualifiedRequestDoesNotResolveUnqualifiedClass() {
+    val result =
+      validate(
+        """
+        @Qualifier annotation class Chosen
+
+        @Inject class Foo
+
+        @DependencyGraph interface AppGraph { @Chosen val foo: Foo }
+        """,
+      )
+
+    assertEquals(listOf(MetroDiagnosticId.MISSING_BINDING), result.diagnostics.map { it.id })
+    assertTrue(
+      result.bindings.asMap().values.none { it is KaBinding.ConstructorInjected },
+    )
+  }
+
+  fun testClassWithClassLevelQualifierDoesNotSatisfyNullableRequest() {
+    val result =
+      validate(
+        """
+        @Qualifier annotation class Chosen
+
+        @Chosen @Inject class Foo
+
+        @DependencyGraph interface AppGraph { val foo: Foo? }
+        """,
+      )
+
+    assertEquals(listOf(MetroDiagnosticId.MISSING_BINDING), result.diagnostics.map { it.id })
+  }
+
   fun testGrowingSourceConstructorReportsIncompleteAnalysis() {
     module.addKotlinStdlibLibrary()
     val result =
@@ -4331,6 +4554,52 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         """,
         )
       assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    }
+  }
+
+  fun testUnqualifiedRequestResolvesBinaryClassWithClassLevelQualifier() {
+    module.withMetroLibFixtureLibrary {
+      val result =
+        validate(
+          """
+        import libtest.LibQualifiedClient
+
+        @DependencyGraph interface AppGraph { val client: LibQualifiedClient }
+        """,
+        )
+      assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+      val binding =
+        result.bindings.asMap().values.filterIsInstance<KaBinding.ConstructorInjected>().single()
+      assertEquals("libtest.LibQualifiedClient", binding.typeKey.renderedType)
+      assertNull(binding.typeKey.qualifier)
+    }
+  }
+
+  fun testBinaryContributedClassWithClassLevelQualifierResolvesItsImplementation() {
+    project.setMetroOptions("custom-contributes-into-set" to "libtest/LibCustomMultibinding")
+    module.withMetroLibFixtureLibrary {
+      val result =
+        validate(
+          """
+        import libtest.LibIgnoreQualifierSetService
+        import libtest.LibMultibindingScope
+
+        @DependencyGraph(LibMultibindingScope::class)
+        interface AppGraph {
+          val services: Set<LibIgnoreQualifierSetService>
+        }
+        """,
+        )
+      assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+
+      // The contributed binding requests the implementation without its qualifier.
+      val implementation =
+        result.bindings.asMap().values.filterIsInstance<KaBinding.ConstructorInjected>().single()
+      assertEquals(
+        "libtest.LibIgnoreQualifierSetServiceImpl",
+        implementation.typeKey.renderedType,
+      )
+      assertNull(implementation.typeKey.qualifier)
     }
   }
 

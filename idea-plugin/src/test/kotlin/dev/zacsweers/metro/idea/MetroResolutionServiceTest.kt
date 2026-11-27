@@ -4796,7 +4796,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     }
   }
 
-  fun testQualifiedLibraryInjectClassesDoNotSatisfyUnqualifiedConsumers() {
+  fun testQualifiedLibraryInjectClassesSatisfyUnqualifiedConsumers() {
     module.withMetroLibFixtureLibrary {
       val file =
         myFixture.configureByText(
@@ -4814,8 +4814,12 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       val index = project.service<MetroResolutionService>().awaitIndex(file)
       val declarations = file.declarationsIncludingNested()
 
+      // The compiler's class lookup resolves an unqualified request for a qualified class.
       val clientParam = index.consumerEntryAt(declarations.parameter("client"))!!
-      assertTrue(index.bindingsFor(clientParam).isEmpty())
+      val binding = index.bindingsFor(clientParam).single()
+      assertEquals("injected class", binding.label)
+      assertEquals("LibQualifiedClient", (binding.pointer.element as? KtNamedDeclaration)?.name)
+      assertNull(binding.typeKey.qualifier)
     }
   }
 

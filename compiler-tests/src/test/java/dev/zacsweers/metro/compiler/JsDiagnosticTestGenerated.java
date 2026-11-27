@@ -2279,6 +2279,18 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("QualifiedClassLookup.kt")
+    public void testQualifiedClassLookup() {
+      run("QualifiedClassLookup.kt");
+    }
+
+    @Test
+    @TestMetadata("QualifiedRequestOfUnqualifiedClass.kt")
+    public void testQualifiedRequestOfUnqualifiedClass() {
+      run("QualifiedRequestOfUnqualifiedClass.kt");
+    }
+
+    @Test
     @TestMetadata("ScopeShortNameCollision.kt")
     public void testScopeShortNameCollision() {
       run("ScopeShortNameCollision.kt");

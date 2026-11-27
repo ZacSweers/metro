@@ -764,9 +764,18 @@ private fun KtClassOrObject.classBindingData(
     }
     // Normal contributions alias the implementation. Generated contribution providers call its
     // constructor directly, so they neither expose its own type nor perform member injection.
+    // The compiler's generated binding requests the implementation without the class's qualifier.
+    // An assisted factory's binding always keeps the factory's qualifier, so its alias keeps it
+    // too.
+    val consumedQualifier =
+      if (isAssistedFactory) {
+        qualifier
+      } else {
+        null
+      }
     val consumedKey =
       if (ownsInjectBinding || isAssistedFactory) {
-        contextualTypeKey(classSymbol.defaultType, qualifier, options)
+        contextualTypeKey(classSymbol.defaultType, consumedQualifier, options)
       } else {
         null
       }
