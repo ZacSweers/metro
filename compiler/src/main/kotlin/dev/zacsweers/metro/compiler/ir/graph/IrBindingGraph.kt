@@ -630,6 +630,42 @@ internal class IrBindingGraph(
 
   operator fun contains(key: IrTypeKey): Boolean = key in realGraph
 
+  /**
+   * Resolves the class that [binding]'s implicit class key puts in its map.
+   *
+   * An inherited entry resolves from its owner's binding, which [mapKeySourceOf] finds. Anything
+   * that needs an inherited entry's class must ask here, so every caller gets the same one.
+   */
+  fun implicitClassKeyType(binding: IrBinding): IrType {
+    val source = mapKeySourceOf(binding)
+    if (source == null) {
+      reportCompilerBug(
+        "Cannot resolve the implicit class key of inherited map entry ${binding.typeKey}. " +
+          "Its declaration wasn't found in an ancestor graph.",
+      )
+    }
+
+    return resolveImplicitClassKeyType(source)
+  }
+
+  /**
+   * Returns the binding that declares [binding]'s map key.
+   *
+   * That's [binding] itself for an entry this graph declares or copies. A scoped parent entry stays
+   * on its owner and is only a [IrBinding.GraphDependency] here. This returns the owner's binding
+   * for it, or null when the owner has no `@Provides` declaration for it.
+   */
+  private fun mapKeySourceOf(binding: IrBinding): IrBinding? {
+    if (binding !is IrBinding.GraphDependency) {
+      return binding
+    }
+
+    val owner = node.allParentGraphs[binding.ownerKey] ?: return null
+
+    // Every factory in a list shares the element key, so the first one stands for all of them.
+    return owner.providerFactories[binding.typeKey]?.firstOrNull()?.providedBinding
+  }
+
   /** Defaulted requests can't use [BindingPropertyContext.reusableBinding]. */
   private fun recordParentReadCandidate(
     callingBinding: IrBinding?,
