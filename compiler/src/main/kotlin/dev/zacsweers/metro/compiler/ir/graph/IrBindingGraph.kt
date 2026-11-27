@@ -1528,9 +1528,33 @@ internal class IrBindingGraph(
     }
   }
 
+  /**
+   * Returns true for a map entry that this graph inherits from an ancestor without copying its
+   * declaration. Scoped parent entries arrive this way.
+   *
+   * Entries whose implicit class key is still unresolved are left out. [effectiveMapKey] can't
+   * resolve their class from a [IrBinding.GraphDependency].
+   */
+  private fun isInheritedMapContribution(binding: IrBinding): Boolean {
+    if (binding !is IrBinding.GraphDependency) {
+      return false
+    }
+
+    return inheritedElementMapKey(binding.typeKey) != null
+  }
+
   /** Matches the unwrapping and implicit class resolution used when generating map keys. */
   private fun effectiveMapKey(binding: IrBinding): EffectiveMapKey? {
-    val annotation = (binding as IrBinding.BindingWithAnnotations).annotations.mapKey ?: return null
+    val annotation =
+      if (isInheritedMapContribution(binding)) {
+        inheritedElementMapKey(binding.typeKey)
+      } else {
+        (binding as IrBinding.BindingWithAnnotations).annotations.mapKey
+      }
+    if (annotation == null) {
+      return null
+    }
+
     val emittedAnnotation = binding.typeKey.multibindingKeyData?.mapKey ?: annotation
     val mapKey = emittedAnnotation.ir
     val identity =
@@ -1641,7 +1665,10 @@ internal class IrBindingGraph(
         },
         multibindingAllowsEmpty = { (it as IrBinding.Multibinding).allowEmpty },
         multibindingSourceKeys = { (it as IrBinding.Multibinding).sourceBindings },
-        isMapContribution = { it is IrBinding.BindingWithAnnotations },
+        isMapContribution = { binding ->
+          val isAnnotatedBinding = binding is IrBinding.BindingWithAnnotations
+          isAnnotatedBinding || isInheritedMapContribution(binding)
+        },
         mapKeyOf = ::effectiveMapKey,
         rootKeys = rootsByTypeKey.keys,
         reverseAdjacency = adjacency.reverse,
@@ -2123,6 +2150,39 @@ internal class IrBindingGraph(
     return stack
   }
 
+  /**
+   * Returns the map key a map contribution declares. An inherited entry has no annotations here, so
+   * its key comes from its element key.
+   */
+  private fun declaredMapKey(contribution: IrBinding): IrAnnotation? {
+    if (contribution is IrBinding.BindingWithAnnotations) {
+      return contribution.annotations.mapKey
+    }
+
+    return inheritedElementMapKey(contribution.typeKey)
+  }
+
+  /**
+   * Renders where a map contribution is declared. An inherited entry points at its owner graph's
+   * declaration. It falls back to its own rendering when that declaration can't be found.
+   */
+  private fun renderMapContributionLocation(contribution: IrBinding): LocationDiagnostic {
+    val inheritedDeclaration =
+      if (contribution is IrBinding.GraphDependency) {
+        inheritedElementDeclaration(node, contribution.ownerKey, contribution.typeKey)
+      } else {
+        null
+      }
+    if (inheritedDeclaration != null) {
+      return inheritedDeclaration.renderLocation()
+    }
+
+    return contribution.renderLocationDiagnostic(
+      shortLocation = MetroOptions.SystemProperties.SHORTEN_LOCATIONS,
+      underlineTypeKey = false,
+    )
+  }
+
   private fun reportDuplicateMapKey(
     binding: IrBinding.Multibinding,
     contributions: List<IrBinding>,
@@ -2134,13 +2194,7 @@ internal class IrBindingGraph(
     // and contribution order stable when annotation hashes or graph traversal order change.
     val locatedContributions =
       contributions
-        .map { contribution ->
-          contribution to
-            contribution.renderLocationDiagnostic(
-              shortLocation = MetroOptions.SystemProperties.SHORTEN_LOCATIONS,
-              underlineTypeKey = false,
-            )
-        }
+        .map { contribution -> contribution to renderMapContributionLocation(contribution) }
         .sortedWith(
           compareBy(
             { it.second.span?.filePath ?: it.second.location },
@@ -2149,9 +2203,9 @@ internal class IrBindingGraph(
             { it.second.description },
           ),
         )
-    val representative = locatedContributions.first().first as IrBinding.BindingWithAnnotations
+    val representative = locatedContributions.first().first
     val mapKey =
-      representative.annotations.mapKey
+      declaredMapKey(representative)
         ?: reportCompilerBug("Map key should not be null for map multibindings")
     val locationDiagnostics = locatedContributions.map { it.second }
     val locationItems = locationDiagnostics.map { it.toLocatedItem() }
@@ -2162,10 +2216,9 @@ internal class IrBindingGraph(
         val mapKeys =
           locatedContributions
             .map { (contribution, _) ->
-              val annotatedBinding = contribution as IrBinding.BindingWithAnnotations
               val emittedMapKey =
                 contribution.typeKey.multibindingKeyData?.mapKey
-                  ?: checkNotNull(annotatedBinding.annotations.mapKey)
+                  ?: checkNotNull(declaredMapKey(contribution))
               emittedMapKey.render(short = false)
             }
             .distinct()

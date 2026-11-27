@@ -46,6 +46,7 @@ Changelog
 - **[IR]** Fix single-entry set multibindings that allowed mutation on non-JVM targets.
 - **[IR]** Fix a compiler crash when a graph extension calls an inherited provider on a generic parent graph.
 - **[IR]** Fix graph diagnostics that could go missing when two of them fell back to the same declaration. Their messages are now joined in one report.
+- **[IR]** Report duplicate map keys when a graph extension's `@IntoMap` entry uses the same key as a scoped entry from a parent graph, or as a parent `@Binds` entry with a `@GraphPrivate` source. Previously a conflict with a scoped parent entry compiled, and the child's map silently kept the parent's value.
 - **[IR]** Fix a missing binding error when a compilation requests a qualified `@Inject` class or `@AssistedFactory` both with and without its qualifier. Previously, only the first request resolved.
 - **[IDEA]** Discard a file snapshot if its worker is canceled while reading it for the IDE index.
 - **[IDEA]** After a lookup in the inactive graph browser, unrelated edits no longer trigger an index build.
