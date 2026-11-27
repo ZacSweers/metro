@@ -74,10 +74,8 @@ interface PrivateParentGraph {
   @GraphPrivate @SingleIn(AppScope::class) @Provides fun provideFoo(): Foo = Foo("parent")
 }
 
-// The parent only offers Bar through its @Inject constructor.
-abstract class InjectScope private constructor()
-
-@SingleIn(InjectScope::class) @Inject open class Bar
+// The parent only offers Bar through its unscoped @Inject constructor. Every graph builds its own.
+@Inject open class Bar
 
 @Inject class ChildBar : Bar()
 
@@ -88,11 +86,57 @@ interface InjectParentChildGraph {
   @Binds val ChildBar.bind: Bar
 }
 
-@SingleIn(InjectScope::class)
 @DependencyGraph
 interface InjectParentGraph {
   val bar: Bar
   val childGraph: InjectParentChildGraph
+}
+
+// OwnScoped belongs to the child's own scope, so no ancestor keeps an instance of it.
+abstract class OwnScope private constructor()
+
+@SingleIn(OwnScope::class) @Inject open class OwnScoped
+
+@Inject class OtherOwnScoped : OwnScoped()
+
+@GraphExtension(OwnScope::class)
+interface OwnScopeChildGraph {
+  val ownScoped: OwnScoped
+
+  @Binds val OtherOwnScoped.bind: OwnScoped
+}
+
+@DependencyGraph
+interface OwnScopeGraph {
+  val childGraph: OwnScopeChildGraph
+}
+
+// The parent's private input wins over Baz's scoped @Inject constructor there. The child inherits
+// neither one.
+abstract class PrivateInputScope private constructor()
+
+@SingleIn(PrivateInputScope::class) @Inject open class Baz
+
+@Inject class ChildBaz : Baz()
+
+@Inject class BazConsumer(val baz: Baz)
+
+@GraphExtension
+interface PrivateInputChildGraph {
+  val baz: Baz
+
+  @Binds val ChildBaz.bind: Baz
+}
+
+@DependencyGraph(PrivateInputScope::class)
+interface PrivateInputGraph {
+  val consumer: BazConsumer
+  val childGraph: PrivateInputChildGraph
+
+  @DependencyGraph.Factory
+  interface Factory {
+    fun create(@GraphPrivate @Provides baz: Baz): PrivateInputGraph
+  }
 }
 
 // METRO_JVM_ONLY

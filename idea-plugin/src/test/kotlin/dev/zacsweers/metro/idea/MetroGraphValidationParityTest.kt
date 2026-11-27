@@ -338,7 +338,15 @@ class MetroGraphValidationParityTest : BasePlatformTestCase() {
   fun testParentBindingOverrideExclusionsMatchCompiler() {
     val options = mapOf(PARENT_BINDING_OVERRIDE_OPTION to "ERROR")
     val graphPackage = "parity.extension.overrideexclusions"
-    val parentNames = listOf("SharedContainer", "SharedSupertype", "PrivateParent", "InjectParent")
+    val parentNames =
+      listOf(
+        "SharedContainer",
+        "SharedSupertype",
+        "PrivateParent",
+        "InjectParent",
+        "OwnScope",
+        "PrivateInput",
+      )
     for (name in parentNames) {
       val parent = "$graphPackage.${name}Graph"
       val child = "$graphPackage.${name}ChildGraph"
@@ -351,6 +359,32 @@ class MetroGraphValidationParityTest : BasePlatformTestCase() {
           ),
         )
       }
+    }
+  }
+
+  /** A scoped `@Inject` class is inherited from the ancestor that owns its scope. */
+  fun testScopedInjectClassOverridesMatchCompiler() {
+    val options = mapOf(PARENT_BINDING_OVERRIDE_OPTION to "ERROR")
+    val fixture = "ParentBindingOverrideScopedInject"
+    val graphPackage = "parity.failures.parentoverridescopedinject"
+    val chain =
+      listOf("$graphPackage.GrandchildGraph", "$graphPackage.ChildGraph", "$graphPackage.AppGraph")
+    assertParity(
+      ParityCase(
+        fixtureName = fixture,
+        graphPath = chain,
+        diagnosticReport = "$fixture.ir.diag.txt",
+        metroOptions = options,
+      ),
+    )
+    for (depth in 1..2) {
+      assertParity(
+        ParityCase(
+          fixtureName = fixture,
+          graphPath = chain.drop(depth),
+          metroOptions = options,
+        ),
+      )
     }
   }
 
