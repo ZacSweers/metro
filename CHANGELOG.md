@@ -40,7 +40,7 @@ Changelog
 - **[IR]** Report a missing binding when a graph requests an unbound class with injected members. Previously, Metro could mistake a member injector for a binding for the class and crash during IR generation.
 - **[IR]** Fix a `NoSuchMethodError` when `createGraph()` tried to call a suspend function synchronously to get an extension receiver (e.g. `@Provides suspend fun next(): Int` for `@Provides fun Int.twice(): Long`).
 - **[IR]** Fix a compiler crash when two `@IntoSet` or `@IntoMap` functions have names with the same hash code, such as `provideAa` and `provideBB`.
-- **[IR]** Fix a compiler crash (`Implicit class keys require a class, binds, or provided binding`) when a graph extension adds its own `@IntoMap` entry to a map that has a scoped parent `@Provides` entry with an implicit class key such as `@ClassKey`.
+- **[IR]** Fix a compiler crash when a graph extension adds an `@IntoMap` entry to a map that its parent graph also contributes to. This happened when the parent's entry was a scoped `@Provides` function using `@ClassKey` with no class argument.
 - **[IR]** Fix single-entry set multibindings that allowed mutation on non-JVM targets.
 - **[IR]** Fix a compiler crash when a graph extension calls an inherited provider on a generic parent graph.
 - **[IR]** Fix graph diagnostics that could go missing when two of them fell back to the same declaration. Their messages are now joined in one report.
