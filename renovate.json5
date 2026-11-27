@@ -98,6 +98,14 @@
       minimumGroupSize: 2,
     },
     {
+      groupName: 'Kotlin compile testing',
+      matchPackageNames: [
+        'dev.zacsweers.kctfork:core',
+        'dev.zacsweers.kctfork:ksp',
+      ],
+      minimumGroupSize: 2,
+    },
+    {
       description: 'Disable Kotlin updates - manually managed due to compiler plugin compatibility',
       enabled: false,
       matchPackageNames: [
