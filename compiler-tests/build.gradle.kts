@@ -368,6 +368,8 @@ val excludeJsBoxTests = providers.gradleProperty("metro.excludeJsBoxTests").isPr
 // would make compileTestKotlin read it and create a task cycle, so only compileTestJava gets it.
 tasks.named<JavaCompile>("compileTestJava") {
   source(generateTests)
+
+  // Suites that don't compile can't run, so this also keeps them out of the test tasks.
   if (excludeJsBoxTests) {
     exclude(
       "dev/zacsweers/metro/compiler/JsBoxTestGenerated.java",
@@ -510,13 +512,6 @@ tasks.withType<Test>().configureEach {
     filter { includeTestsMatching("*StressTest*") }
   } else {
     filter { excludeTestsMatching("*StressTest*") }
-  }
-  if (excludeJsBoxTests) {
-    filter {
-      excludeTestsMatching("dev.zacsweers.metro.compiler.JsBoxTestGenerated*")
-      excludeTestsMatching("dev.zacsweers.metro.compiler.JsFastInitBoxTestGenerated*")
-      excludeTestsMatching("dev.zacsweers.metro.compiler.JsContributionProvidersBoxTestGenerated*")
-    }
   }
 
   val testRuntimeClasspath = project.configurations.testRuntimeClasspath.get()
