@@ -98,13 +98,21 @@ extra["metroSettingsRepositories"] =
         }
 
         if (!forPlugins) {
-          // Central rate limits too often
-          exclusiveContent {
-            val devRepositories =
-              listOfNotNull(overrideRepository, localRepository, kotlinBootstrap)
-            forRepositories(*devRepositories.toTypedArray())
-            filter {
-              includeVersionByRegex("""org\.jetbrains\.kotlin(\..*)?""", ".*", """.+-dev(?:-.+)?""")
+          // Central rate limits too often. Only these repositories serve Kotlin dev versions.
+          val devRepositories: Set<ArtifactRepository> =
+            setOfNotNull(overrideRepository, localRepository, kotlinBootstrap)
+
+          // A repository named in exclusiveContent only serves content that matches the filter.
+          // The override and local repositories also hold other artifacts, such as Metro's own.
+          configureEach {
+            if (this !in devRepositories) {
+              content {
+                excludeVersionByRegex(
+                  """org\.jetbrains\.kotlin(\..*)?""",
+                  ".*",
+                  """.+-dev(?:-.+)?""",
+                )
+              }
             }
           }
         }
