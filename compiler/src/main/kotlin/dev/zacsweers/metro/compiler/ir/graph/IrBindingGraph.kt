@@ -64,7 +64,6 @@ import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.getAnnotation
 import dev.zacsweers.metro.compiler.ir.graph.reporting.BindingDecisionCapture
 import dev.zacsweers.metro.compiler.ir.hasErrorTypes
-import dev.zacsweers.metro.compiler.ir.hasStarArgument
 import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.injectedFunctionOrNull
 import dev.zacsweers.metro.compiler.ir.irLazy
@@ -1274,7 +1273,7 @@ internal class IrBindingGraph(
         )
       }
 
-      if (key.type.hasStarArgument()) {
+      if (key.hasStarArgument) {
         add(
           Note.help("replace '*' with a concrete type argument so Metro can resolve this binding"),
         )

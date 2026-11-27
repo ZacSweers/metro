@@ -386,6 +386,30 @@ class MetroDerivedBindingResolutionTest : BasePlatformTestCase() {
     assertEquals(emptyList<KaBinding>(), fixture.bindingsFor("listOfStars"))
   }
 
+  /**
+   * A star has no type for a generic `@Inject` class's type parameter, so the class doesn't apply.
+   */
+  fun testStarProjectedKeyDoesNotUseGenericInjectClass() {
+    val fixture =
+      configure(
+        """
+        @Inject class Thing<A, B>(val value: B)
+        @Inject class Holder<T>
+
+        @DependencyGraph
+        interface AppGraph {
+          val thing: Thing<String, *>
+          val holder: Holder<*>
+          val concrete: Holder<String>
+        }
+        """,
+      )
+
+    assertEquals(emptyList<KaBinding>(), fixture.bindingsFor("thing"))
+    assertEquals(emptyList<KaBinding>(), fixture.bindingsFor("holder"))
+    assertTrue(fixture.bindingsFor("concrete").single() is KaBinding.ConstructorInjected)
+  }
+
   fun testTypeAliasInRequestedTypeIsExpandedBeforeMatching() {
     val fixture =
       configure(

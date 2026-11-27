@@ -39,7 +39,6 @@ import dev.zacsweers.metro.compiler.ir.deepRemapperFor
 import dev.zacsweers.metro.compiler.ir.graph.expressions.IrOptionalExpressionGenerator
 import dev.zacsweers.metro.compiler.ir.graph.expressions.optionalType
 import dev.zacsweers.metro.compiler.ir.graph.reporting.BindingDecisionCapture
-import dev.zacsweers.metro.compiler.ir.hasStarArgument
 import dev.zacsweers.metro.compiler.ir.irLazy
 import dev.zacsweers.metro.compiler.ir.kotlinClassMapKey
 import dev.zacsweers.metro.compiler.ir.mapKeyType
@@ -177,7 +176,7 @@ internal class BindingLookup(
    * argument. A missing-binding report uses this to explain why the class didn't apply.
    */
   fun isStarProjectedClassKey(key: IrTypeKey): Boolean {
-    if (!key.type.hasStarArgument()) {
+    if (!key.hasStarArgument) {
       return false
     }
 
@@ -1579,7 +1578,7 @@ internal class BindingLookup(
 
         // A star has no type to substitute for the class's type parameter, so Metro can't call
         // the constructor. The missing binding report explains this.
-        if (key.type.hasStarArgument()) {
+        if (key.hasStarArgument) {
           if (contextKey.hasDefault) {
             return@getOrPut setOf(IrBinding.Absent(key))
           }

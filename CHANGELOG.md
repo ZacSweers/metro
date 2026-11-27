@@ -22,6 +22,7 @@ Changelog
 - **[core]** Include the graph accessor in missing-binding errors, even when the missing dependency is several constructors deep.
 - **[core]** Generated set and map entries now have the same graph keys in the IDE and compiler reports, including entries from libraries.
 - **[core]** Set and map entries declared as properties now use the property name in both the IDE and compiler reports.
+- **[core]** Report a clear missing binding when a key like `Thing<String, *>` names a generic `@Inject` class. Previously, the compiler reported a missing binding for the class's raw type parameter, and the IDE resolved the key to the class.
 - **[Compiler]** Preserve unrelated files when clearing old reports from `reportsDestination`.
 - **[FIR]** Limit generated contribution providers to bindings declared for their scope. Previously when a class contributed bindings to multiple scopes, FIR exposed all of them in each scope. Each container now generates providers only for its own bindings.
 - **[FIR]** Report abstract properties on `@AssistedFactory` and `@DependencyGraph.Factory` at compile time. Reading one on an assisted factory could throw `AbstractMethodError`.
@@ -44,7 +45,6 @@ Changelog
 - **[IR]** Fix single-entry set multibindings that allowed mutation on non-JVM targets.
 - **[IR]** Fix a compiler crash when a graph extension calls an inherited provider on a generic parent graph.
 - **[IR]** Fix graph diagnostics that could go missing when two of them fell back to the same declaration. Their messages are now joined in one report.
-- **[IR]** Report a clear missing binding when a key like `Thing<String, *>` names a generic `@Inject` class. Previously, Metro left the class's type parameter unsubstituted and reported a missing binding for the raw type parameter.
 - **[IDEA]** Discard a file snapshot if its worker is canceled while reading it for the IDE index.
 - **[IDEA]** After a lookup in the inactive graph browser, unrelated edits no longer trigger an index build.
 - **[IDEA]** Selecting a module with Metro disabled no longer triggers index rebuilds in other modules on unrelated edits.
