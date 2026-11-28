@@ -1,0 +1,13 @@
+/module_main_ParentBindingOverrideOfScopedInjectClassFromAnotherModule.kt:26:10: error: [Metro/ParentBindingOverride] ChildGraph overrides Foo inherited from ParentGraph
+
+  Declared in ChildGraph
+      module_main_ParentBindingOverrideOfScopedInjectClassFromAnotherModule.kt:26:10
+        @Binds val ChildFoo.bind: Foo
+                                  ~~~
+
+  Inherited from ParentGraph
+      No source location available - declared at Foo
+        @dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class) class Foo
+
+  help: give one of the bindings a qualifier
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#parentbindingoverride

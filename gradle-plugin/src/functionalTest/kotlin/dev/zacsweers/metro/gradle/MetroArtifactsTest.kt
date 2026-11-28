@@ -472,6 +472,7 @@ class MetroArtifactsTest {
                 "interopAnnotationsNamedArgSeverity": "NONE",
                 "unusedGraphInputsSeverity": "WARN",
                 "derivedBindingOverlapSeverity": "NONE",
+                "parentBindingOverrideSeverity": "NONE",
                 "enabledLoggers": [],
                 "enableDaggerRuntimeInterop": false,
                 "enableGuiceRuntimeInterop": false,

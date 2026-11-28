@@ -188,6 +188,8 @@ interface MapMultibinding {
 
 Unlike Dagger, Metro reports an empty multibinding as a compile error by default. Allow one explicitly with `@Multibinds(allowEmpty = true)`.
 
+A graph extension entry with the same map key as an inherited entry is a duplicate map key error.
+
 ??? note "Implementation Notes"
 
     Following Guice’s approach, Metro gives each contribution a synthetic, user-invisible `@MultibindingElement` qualifier to prevent duplicate binding keys. Contributions then participate in graph validation as dependencies of `Binding.Multibinding`.

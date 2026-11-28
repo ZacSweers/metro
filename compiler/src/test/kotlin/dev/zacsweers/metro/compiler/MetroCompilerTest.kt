@@ -163,6 +163,8 @@ abstract class MetroCompilerTest {
               processor.option(entry.raw.cliOption, unusedGraphInputsSeverity)
             DERIVED_BINDING_OVERLAP_SEVERITY ->
               processor.option(entry.raw.cliOption, derivedBindingOverlapSeverity)
+            PARENT_BINDING_OVERRIDE_SEVERITY ->
+              processor.option(entry.raw.cliOption, parentBindingOverrideSeverity)
             ENABLE_SWITCHING_PROVIDERS ->
               processor.option(entry.raw.cliOption, this@toPluginOptions.enableSwitchingProviders)
             LOGGING -> {

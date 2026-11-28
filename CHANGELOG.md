@@ -10,6 +10,7 @@ Changelog
 - **[core]** Store one copy of the encoded type for each unqualified binding key.
 - **[FIR]** Skip formatting class and function names for FIR trace events when compiler tracing is disabled.
 - **[IR]** Compare shared bindings only once when compiling graph extensions. This cut compile time from 43.5 s to 3.2 s on a 58-class test graph.
+- **[IR]** Add an experimental `parentBindingOverrideSeverity` option that reports a graph extension binding when it overrides a binding from an ancestor graph. Set it to `WARN` or `ERROR`. The default is `NONE`, so existing builds do not change. See the [overriding inherited bindings docs](docs/dependency-graphs.md#overriding-inherited-bindings) and [MEEP-2341](https://github.com/ZacSweers/metro/discussions/2341).
 - **[IDEA]** The IDE's Plugins dialog and JetBrains Marketplace now list IDEA and core changes and credit contributors.
 - **[IDEA]** Opening a second module with the same Metro options now reuses the existing graph index.
 - **[IDEA]** Reading cached gutter icons and inlay hints no longer queues extra work for the index.
@@ -46,6 +47,7 @@ Changelog
 - **[IR]** Fix single-entry set multibindings that allowed mutation on non-JVM targets.
 - **[IR]** Fix a compiler crash when a graph extension calls an inherited provider on a generic parent graph.
 - **[IR]** Fix graph diagnostics that could go missing when two of them fell back to the same declaration. Their messages are now joined in one report.
+- **[IR]** Report duplicate map keys when a graph extension's `@IntoMap` entry uses the same key as a scoped entry from a parent graph, or as a parent `@Binds` entry with a `@GraphPrivate` source. Previously a conflict with a scoped parent entry compiled, and the child's map silently kept the parent's value.
 - **[IR]** Fix a missing binding error when a compilation requests a qualified `@Inject` class or `@AssistedFactory` both with and without its qualifier. Previously, only the first request resolved.
 - **[IDEA]** Discard a file snapshot if its worker is canceled while reading it for the IDE index.
 - **[IDEA]** After a lookup in the inactive graph browser, unrelated edits no longer trigger an index build.

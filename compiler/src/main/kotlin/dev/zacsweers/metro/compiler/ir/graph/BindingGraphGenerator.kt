@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.ir.graph
 
 import dev.zacsweers.metro.compiler.MetroLogger
+import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.compat.propertyIfAccessorCompat
 import dev.zacsweers.metro.compiler.graph.computeLowerPriorityContributions
@@ -75,6 +76,11 @@ internal class BindingGraphGenerator(
 ) : IrMetroContext by metroContext, TraceScope by traceScope {
 
   private val decisionCapture = if (reportsDir != null) BindingDecisionCapture(node) else null
+
+  /** The default NONE severity reports nothing, so it skips override tracking. */
+  private val tracksParentBindingOverrides =
+    options.parentBindingOverrideSeverity.resolve(isIde = false) !=
+      MetroOptions.DiagnosticSeverity.NONE
 
   private val ProviderFactory.isDynamic: Boolean
     get() = this in node.dynamicTypeKeys[typeKey].orEmpty()
@@ -729,6 +735,9 @@ internal class BindingGraphGenerator(
       }
     }
 
+    // Parent context keys that this graph declares itself. These are override candidates.
+    val parentContextOverrideKeys = mutableListOf<IrTypeKey>()
+
     // Add scoped accessors from directly known parent bindings
     // Only present if this is a contributed graph
     val isGraphExtension = node.sourceGraph.origin == Origins.GeneratedGraphExtension
@@ -788,7 +797,12 @@ internal class BindingGraphGenerator(
             // off.
             if (key in bindingLookup) {
               // If we already have a binding provisioned in this scenario, ignore the parent's
-              // version
+              // version. Only keys the child declares can override. The lookup also holds keys
+              // like supertype aliases and injectors.
+              val isDeclaredOverride = key in node.directlyProvidedKeys
+              if (tracksParentBindingOverrides && isDeclaredOverride) {
+                parentContextOverrideKeys += key
+              }
               continue
             }
 
@@ -823,6 +837,15 @@ internal class BindingGraphGenerator(
             }
           }
         }
+      }
+    }
+
+    if (tracksParentBindingOverrides) {
+      trace("Resolve parent binding overrides") {
+        val overrides =
+          ParentBindingOverrideResolver(metroContext, node, lowerPriorityDeclarations)
+            .resolve(inheritedData.overriddenBindings, parentContextOverrideKeys)
+        graph.addParentBindingOverrides(overrides)
       }
     }
 
@@ -1001,7 +1024,11 @@ internal class BindingGraphGenerator(
         computeRawInheritedGraphData(node)
       }
     decisionCapture?.include(raw.rejectedCandidates)
-    return raw.applyDirectlyProvidedFilter(node.directlyProvidedKeys, decisionCapture)
+    return raw.applyDirectlyProvidedFilter(
+      directlyProvidedKeys = node.directlyProvidedKeys,
+      decisionCapture = decisionCapture,
+      trackOverrides = tracksParentBindingOverrides,
+    )
   }
 
   /**
@@ -1085,7 +1112,9 @@ internal class BindingGraphGenerator(
             }
 
             levelGenericCandidates += candidate
-            providerFactories.add(RawProviderFactoryEntry(key, factory, isDynamicInParent))
+            providerFactories.add(
+              RawProviderFactoryEntry(key, typeKey, factory, isDynamicInParent),
+            )
             providerFactoryKeys.add(key)
           } else if (factory.annotations.isScoped) {
             // Scoped parent bindings live on the graph that owns their scope, but they still
@@ -1093,7 +1122,9 @@ internal class BindingGraphGenerator(
             // through the parent context instead of inheriting the factory directly.
             providerFactoryKeys.add(key)
           } else {
-            providerFactories.add(RawProviderFactoryEntry(key, factory, isDynamicInParent))
+            providerFactories.add(
+              RawProviderFactoryEntry(key, typeKey, factory, isDynamicInParent),
+            )
             providerFactoryKeys.add(key)
           }
         }
@@ -1157,7 +1188,7 @@ internal class BindingGraphGenerator(
           }
 
           bindsCallableKeys.add(key)
-          bindsCallables.add(RawBindsCallableEntry(key, callable, isDynamicInParent))
+          bindsCallables.add(RawBindsCallableEntry(key, typeKey, callable, isDynamicInParent))
         }
       }
 
@@ -1233,13 +1264,19 @@ private class RawInheritedGraphData(
   val multibindingAccessors: List<GraphAccessor>,
   val rejectedCandidates: List<RejectedBindingDecision>,
 ) {
+  /**
+   * Drops inherited entries that the child declares itself. Pass [trackOverrides] to record each
+   * dropped declaration with its owner in [InheritedGraphData.overriddenBindings].
+   */
   fun applyDirectlyProvidedFilter(
     directlyProvidedKeys: Set<IrTypeKey>,
     decisionCapture: BindingDecisionCapture?,
+    trackOverrides: Boolean,
   ): InheritedGraphData {
     val outProviderFactories = mutableSetOf<Pair<IrTypeKey, ProviderFactory>>()
     val outBindsCallables = mutableListOf<Pair<IrTypeKey, BindsCallable>>()
-    for ((key, factory, isDynamicInParent) in providerFactories) {
+    val overriddenBindings = mutableListOf<InheritedBindingOverride>()
+    for ((key, ownerKey, factory, isDynamicInParent) in providerFactories) {
       if (isDynamicInParent || key !in directlyProvidedKeys) {
         outProviderFactories.add(key to factory)
       } else {
@@ -1248,9 +1285,13 @@ private class RawInheritedGraphData(
           factory.realDeclaration as? IrDeclarationWithName ?: factory.function,
           BindingReason.OVERRIDDEN,
         )
+        if (trackOverrides) {
+          overriddenBindings +=
+            InheritedBindingOverride(key, ownerKey, GraphBindingDeclaration.Provider(factory))
+        }
       }
     }
-    for ((key, callable, isDynamicInParent) in bindsCallables) {
+    for ((key, ownerKey, callable, isDynamicInParent) in bindsCallables) {
       if (isDynamicInParent || key !in directlyProvidedKeys) {
         outBindsCallables.add(key to callable)
       } else {
@@ -1259,6 +1300,10 @@ private class RawInheritedGraphData(
           callable.resolveSourceDeclaration().first,
           BindingReason.OVERRIDDEN,
         )
+        if (trackOverrides) {
+          overriddenBindings +=
+            InheritedBindingOverride(key, ownerKey, GraphBindingDeclaration.Binds(callable))
+        }
       }
     }
     return InheritedGraphData(
@@ -1268,18 +1313,23 @@ private class RawInheritedGraphData(
       optionalKeys = optionalKeys,
       supertypeAliases = supertypeAliases,
       multibindingAccessors = multibindingAccessors,
+      overriddenBindings = overriddenBindings,
     )
   }
 }
 
 private data class RawProviderFactoryEntry(
   val key: IrTypeKey,
+  /** The key of the ancestor graph that declares [factory]. */
+  val ownerKey: IrTypeKey,
   val factory: ProviderFactory,
   val isDynamicInParent: Boolean,
 )
 
 private data class RawBindsCallableEntry(
   val key: IrTypeKey,
+  /** The key of the ancestor graph that declares [callable]. */
+  val ownerKey: IrTypeKey,
   val callable: BindsCallable,
   val isDynamicInParent: Boolean,
 )
@@ -1317,4 +1367,6 @@ private data class InheritedGraphData(
   val optionalKeys: Map<IrTypeKey, Set<BindsOptionalOfCallable>>,
   val supertypeAliases: Map<IrTypeKey, IrTypeKey>,
   val multibindingAccessors: List<GraphAccessor>,
+  /** Inherited declarations dropped because the child declares the same key. */
+  val overriddenBindings: List<InheritedBindingOverride>,
 )

@@ -1,0 +1,23 @@
+/DuplicateMapKeysAcrossExtensionsBothScoped.kt:32:7: error: [Metro/DuplicateMapKeys] Duplicate map keys found for multibinding Map<String, String>
+
+  The following bindings contribute the same map key '@dev.zacsweers.metro.StringKey("key")'
+      DuplicateMapKeysAcrossExtensionsBothScoped.kt:17:3
+        @Provides
+        @dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class)
+        @IntoMap
+        @dev.zacsweers.metro.StringKey("key")
+        fun provideParentEntry(): kotlin.String
+
+      DuplicateMapKeysAcrossExtensionsBothScoped.kt:27:3
+        @Provides
+        @dev.zacsweers.metro.SingleIn(ChildScope::class)
+        @IntoMap
+        @dev.zacsweers.metro.StringKey("key")
+        fun provideChildEntry(): kotlin.String
+
+  trace (in AppGraph.Impl.ChildGraphImpl):
+      Map<String, String> is requested at ChildGraph.map
+
+  note: These bindings use @dev.zacsweers.metro.StringKey("key") with unwrapValue = true. Metro uses
+        the value inside each annotation as the map key, and those values are equal.
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#duplicatemapkeys

@@ -3,7 +3,6 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import dev.drewhamilton.poko.gradle.PokoFirIdeMode
 import dev.zacsweers.metro.gradle.RequiresIdeSupport
-import org.jetbrains.kotlin.tooling.core.KotlinToolingVersion
 
 // Bootstrap: add the Metro compiler plugin JAR to the buildscript classpath from Maven Central.
 // Buildscript resolution is NOT subject to project-level composite build dependency substitution,
@@ -312,22 +311,12 @@ dependencies {
   testImplementation(project(":interop-dagger"))
   testImplementation(libs.kotlin.reflect)
   testImplementation(libs.kotlin.stdlib)
-  val requestedTestCompilerVersion =
+  val testCompilerVersion =
     providers
       .gradleProperty("metro.testCompilerVersion")
       .orElse(providers.gradleProperty("kotlin_version"))
       .orElse(libs.versions.kotlin)
       .get()
-  // kotlin-compile-testing 0.14.0 still calls CommonToolArguments.getErrors().
-  // The compiler-tests module exercises the requested compiler directly.
-  val testCompilerVersion =
-    if (
-      KotlinToolingVersion(requestedTestCompilerVersion) >= KotlinToolingVersion("2.5.20-dev-6103")
-    ) {
-      libs.versions.kotlin.get()
-    } else {
-      requestedTestCompilerVersion
-    }
   testRuntimeOnly("org.jetbrains.kotlin:kotlin-compiler:$testCompilerVersion")
   // Cover for https://github.com/tschuchortdev/kotlin-compile-testing/issues/274
   testImplementation(libs.kotlin.aptEmbeddable)

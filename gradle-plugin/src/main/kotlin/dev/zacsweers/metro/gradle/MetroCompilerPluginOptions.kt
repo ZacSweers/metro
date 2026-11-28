@@ -138,6 +138,18 @@ internal fun Project.metroCompilerPluginOptions(
     )
     add(
       metroOption(
+        MetroOption.PARENT_BINDING_OVERRIDE_SEVERITY,
+        extension.parentBindingOverrideSeverity.map { severity ->
+          check(!severity.isIdeOnly) {
+            "metro.parentBindingOverrideSeverity (set to ${severity.name}) does not support ${severity.name} " +
+              "because parent binding override detection only runs during IR (CLI-only). Use WARN, ERROR, or NONE instead."
+          }
+          severity
+        },
+      ),
+    )
+    add(
+      metroOption(
         MetroOption.ENABLE_TOP_LEVEL_FUNCTION_INJECTION,
         extension.enableTopLevelFunctionInjection,
       ),

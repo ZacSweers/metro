@@ -1,0 +1,13 @@
+/ParentBindingOverrideOfScopedInjectClassUsesScopeOwner.kt:34:10: error: [Metro/ParentBindingOverride] GrandchildGraph overrides Foo inherited from AppGraph
+
+  Declared in GrandchildGraph
+      ParentBindingOverrideOfScopedInjectClassUsesScopeOwner.kt:34:10
+        @Binds val GrandchildFoo.bind: Foo
+                                       ~~~
+
+  Inherited from AppGraph
+      ParentBindingOverrideOfScopedInjectClassUsesScopeOwner.kt:11:1
+        @dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class) class Foo
+
+  help: give one of the bindings a qualifier
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#parentbindingoverride

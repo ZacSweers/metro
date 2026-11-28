@@ -52,5 +52,6 @@ internal val MetroDiagnosticId.factory: KtDiagnosticFactory1<String>
       MetroDiagnosticId.AMBIGUOUS_DERIVED_BINDING -> MetroDiagnostics.AMBIGUOUS_DERIVED_BINDING
       MetroDiagnosticId.DERIVED_BINDING_OVERLAP -> MetroDiagnostics.DERIVED_BINDING_OVERLAP_WARNING
       MetroDiagnosticId.DIVERGENT_DERIVED_BINDING -> MetroDiagnostics.DIVERGENT_DERIVED_BINDING
+      MetroDiagnosticId.PARENT_BINDING_OVERRIDE -> MetroDiagnostics.PARENT_BINDING_OVERRIDE_WARNING
       MetroDiagnosticId.GENERIC -> MetroDiagnostics.METRO_ERROR
     }
