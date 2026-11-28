@@ -1,0 +1,15 @@
+/ScopedParentWholeBindingChildContributions.kt:8:11: error: [Metro/MultibindingConflict] Set<String> has both a direct binding and multibinding contributions
+
+  Direct bindings:
+      No source location available - binding for Set<String>
+        Set<String> (from AppGraph)
+
+  Set contributions and declarations:
+      ScopedParentWholeBindingChildContributions.kt:18:22
+        @Provides @IntoSet fun provideChild(): String
+                                               ~~~~~~
+
+  note: binding type: GraphDependency
+  help: Metro would use the direct binding and drop every contribution. Remove one of them, give one
+        a qualifier, or contribute the whole set with `@ElementsIntoSet`
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#multibindingconflict

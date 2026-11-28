@@ -54,6 +54,19 @@ public enum class MetroDiagnosticId(
     only be contributed once. Change one key or remove the duplicate contribution.
     """,
   ),
+  MULTIBINDING_CONFLICT(
+    "Metro/MultibindingConflict",
+    "A Set or Map has both a direct binding and multibinding contributions.",
+    """
+    A `Set` or `Map` key has a binding for the whole collection, such as an `@Provides` function, a
+    graph input, or an included graph's accessor. The same key also has `@IntoSet`, `@IntoMap`, or
+    `@ElementsIntoSet` contributions or a `@Multibinds` declaration. Metro would use the direct
+    binding and drop the contributions, so this is an error. This also applies across graph
+    extensions, in both directions. Give one of them a qualifier, contribute a whole set with
+    `@ElementsIntoSet`, or contribute map entries with `@IntoMap`. A dynamic graph's binding
+    container can still replace a multibinding with a whole collection.
+    """,
+  ),
   EMPTY_MULTIBINDING(
     "Metro/EmptyMultibinding",
     "A declared multibinding has no contributions.",

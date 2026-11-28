@@ -1,16 +1,21 @@
 @BindingContainer
-object Values {
+object DirectValues {
   @Provides fun directMap(): Map<String, Int> = mapOf("direct" to 1)
+}
 
+@BindingContainer
+object ContributedValues {
   @Provides @IntoMap @StringKey("contributed") fun contribution(): Int = 2
 }
 
-@DependencyGraph(bindingContainers = [Values::class])
+@DependencyGraph(bindingContainers = [DirectValues::class])
 interface DirectGraph {
   val values: Map<String, Int>
 }
 
-@DependencyGraph(bindingContainers = [Values::class])
+// A plain map request here would be a MultibindingConflict. A provider-valued request can't use the
+// plain map, so it isn't a conflict.
+@DependencyGraph(bindingContainers = [DirectValues::class, ContributedValues::class])
 interface WrappedGraph {
   val values: Map<String, () -> Int>
 }

@@ -369,7 +369,12 @@ internal class IrBindingGraph(
         }
       },
       computeBindings = { contextKey, currentBindings, stack ->
-        this.bindingLookup.lookup(contextKey, currentBindings, stack) { key, bindings ->
+        this.bindingLookup.lookup(
+          contextKey,
+          currentBindings,
+          stack,
+          onMultibindingConflict = { conflict -> reportMultibindingConflict(conflict, stack) },
+        ) { key, bindings ->
           reportDuplicateBindings(key, bindings, stack)
         }
       },
@@ -833,6 +838,13 @@ internal class IrBindingGraph(
     childGraphScopes: List<ChildGraphScopeInfo> = emptyList(),
     onError: (List<GraphError>) -> Unit,
   ): PreparedSeal {
+    // Full validation reports conflicts for keys that nothing requests too, like duplicates.
+    if (metroContext.options.enableFullBindingGraphValidation) {
+      for (conflict in bindingLookup.findRegisteredMultibindingConflicts()) {
+        reportMultibindingConflict(conflict, newBindingStack())
+      }
+    }
+
     val prepared =
       trace("prepare graph seal") {
         // An accessor and a callback parameter can request the same key. Merging them like any
@@ -1088,6 +1100,28 @@ internal class IrBindingGraph(
     bindingStack: IrBindingStack,
   ) {
     realGraph.reportDuplicateBindings(key, bindings, bindingStack)
+  }
+
+  /** Keys that already have a multibinding conflict error. Lookup can see a key more than once. */
+  private val reportedMultibindingConflicts = mutableSetOf<IrTypeKey>()
+
+  private fun reportMultibindingConflict(conflict: MultibindingConflict, stack: IrBindingStack) {
+    if (!reportedMultibindingConflicts.add(conflict.key)) {
+      return
+    }
+
+    val contributions = buildList {
+      conflict.declaration?.let(::add)
+      addAll(conflict.contributions)
+    }
+    realGraph.reportMultibindingConflict(
+      key = conflict.key,
+      directBindings = conflict.directBindings,
+      contributions = contributions,
+      unlocatedContributionCount = conflict.parentContributionCount,
+      isMap = conflict.key.classId == StandardClassIds.Map,
+      bindingStack = stack,
+    )
   }
 
   private fun reportEmptyMultibindings(onError: (List<GraphError>) -> Unit) {

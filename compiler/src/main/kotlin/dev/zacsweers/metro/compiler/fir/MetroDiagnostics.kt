@@ -79,6 +79,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.METRO_TYPE_PARAMETERS_E
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.METRO_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MISSING_BINDING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MISSING_RUNTIME_COROUTINES
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MULTIBINDING_CONFLICT
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MULTIBINDING_OVER_SUSPEND_BINDINGS
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MULTIBINDS_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MULTIBINDS_OVERRIDE_ERROR
@@ -270,6 +271,7 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val DUPLICATE_MAP_KEY by error1<KtElement, String>(NAME_IDENTIFIER)
   val INVALID_ASSISTED_BINDING by error1<KtElement, String>(NAME_IDENTIFIER)
   val EMPTY_MULTIBINDING by error1<KtElement, String>(NAME_IDENTIFIER)
+  val MULTIBINDING_CONFLICT by error1<KtElement, String>(NAME_IDENTIFIER)
   val QUALIFIER_OVERRIDE_MISMATCH by error1<KtElement, String>(NAME_IDENTIFIER)
   val UNPROCESSED_UPSTREAM_DECLARATION by error1<KtElement, String>(NAME_IDENTIFIER)
   val SUSPEND_BINDING_FROM_NON_SUSPEND_ACCESSOR by error1<KtElement, String>(NAME_IDENTIFIER)
@@ -491,6 +493,7 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
         put(DUPLICATE_MAP_KEY, "{0}", TO_STRING)
         put(INVALID_ASSISTED_BINDING, "{0}", TO_STRING)
         put(EMPTY_MULTIBINDING, "{0}", TO_STRING)
+        put(MULTIBINDING_CONFLICT, "{0}", TO_STRING)
         put(QUALIFIER_OVERRIDE_MISMATCH, "{0}", TO_STRING)
         put(UNPROCESSED_UPSTREAM_DECLARATION, "{0}", TO_STRING)
         put(SUSPEND_BINDING_FROM_NON_SUSPEND_ACCESSOR, "{0}", TO_STRING)

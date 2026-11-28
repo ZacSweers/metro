@@ -188,6 +188,8 @@ interface MapMultibinding {
 
 Unlike Dagger, Metro reports an empty multibinding as a compile error by default. Allow one explicitly with `@Multibinds(allowEmpty = true)`.
 
+A `Set` or `Map` key can't have both a direct binding, such as `@Provides fun strings(): Set<String>`, and contributions or a `@Multibinds` declaration. Metro reports [`Metro/MultibindingConflict`](diagnostics.md#multibindingconflict). To fix it, give one of them a qualifier or contribute the whole set with `@ElementsIntoSet`.
+
 ??? note "Implementation Notes"
 
     Following Guice’s approach, Metro gives each contribution a synthetic, user-invisible `@MultibindingElement` qualifier to prevent duplicate binding keys. Contributions then participate in graph validation as dependencies of `Binding.Multibinding`.

@@ -29,6 +29,7 @@ Diagnostics rendering is controlled by the `diagnosticsRenderMode` Gradle option
 | [`Metro/MemberInjectionOverSuspendBinding`](#memberinjectionoversuspendbinding) | Member injection depends on a suspend binding. |
 | [`Metro/MissingBinding`](#missingbinding) | No binding satisfies a requested type. |
 | [`Metro/MissingRuntimeCoroutines`](#missingruntimecoroutines) | Suspend codegen needs the optional runtime-coroutines artifact. |
+| [`Metro/MultibindingConflict`](#multibindingconflict) | A Set or Map has both a direct binding and multibinding contributions. |
 | [`Metro/MultibindingOverSuspendBindings`](#multibindingoversuspendbindings) | A multibinding aggregates suspend bindings. |
 | [`Metro/QualifierOverrideMismatch`](#qualifieroverridemismatch) | An override changes the qualifiers on a declaration. |
 | [`Metro/SuspendBindingFromNonSuspendAccessor`](#suspendbindingfromnonsuspendaccessor) | A non-suspend accessor requests a binding that needs a suspend context. |
@@ -187,6 +188,14 @@ Add an `@Inject` constructor, an `@Provides` function, or a `@Binds`/contributed
 **Summary:** Suspend codegen needs the optional runtime-coroutines artifact.
 
 A binding or request needs runtime support from the optional `runtime-coroutines` artifact, such as a scoped suspend binding or a `SuspendLazy<T>` request, but that artifact is not on the classpath. Add `dev.zacsweers.metro:runtime-coroutines` to the compile and runtime classpath.
+
+## MultibindingConflict
+
+**Diagnostic:** `Metro/MultibindingConflict`
+
+**Summary:** A Set or Map has both a direct binding and multibinding contributions.
+
+A `Set` or `Map` key has a binding for the whole collection, such as an `@Provides` function, a graph input, or an included graph's accessor. The same key also has `@IntoSet`, `@IntoMap`, or `@ElementsIntoSet` contributions or a `@Multibinds` declaration. Metro would use the direct binding and drop the contributions, so this is an error. This also applies across graph extensions, in both directions. Give one of them a qualifier, contribute a whole set with `@ElementsIntoSet`, or contribute map entries with `@IntoMap`. A dynamic graph's binding container can still replace a multibinding with a whole collection.
 
 ## MultibindingOverSuspendBindings
 

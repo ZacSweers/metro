@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.allElementsAreEqual
 import dev.zacsweers.metro.compiler.diagnostics.CycleNode
 import dev.zacsweers.metro.compiler.diagnostics.DiagnosticHeadlines
 import dev.zacsweers.metro.compiler.diagnostics.DiagnosticSection
+import dev.zacsweers.metro.compiler.diagnostics.LocatedItem
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnostic
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
 import dev.zacsweers.metro.compiler.diagnostics.MetroSeverity
@@ -741,6 +742,82 @@ public open class MutableBindingGraph<
             Note.help(
               "remove or disambiguate the duplicate bindings (e.g. with distinct qualifiers), " +
                 "or use @IntoSet/@IntoMap if you intended a multibinding",
+            ),
+      )
+    errorReporter.report(diagnostic, bindingStack)
+  }
+
+  /**
+   * Reports a `Set` or `Map` [key] that has both [directBindings] for the whole collection and
+   * multibinding [contributions]. Lookup would use a direct binding and drop every contribution.
+   *
+   * @param contributions the contributions and `@Multibinds` declarations that have a location.
+   * @param unlocatedContributionCount contributions that can't be located from this graph, such as
+   *   scoped contributions owned by a parent graph.
+   * @param isMap true for a `Map` key, false for a `Set` key.
+   */
+  public fun reportMultibindingConflict(
+    key: TypeKey,
+    directBindings: List<Binding>,
+    contributions: List<Binding>,
+    unlocatedContributionCount: Int,
+    isMap: Boolean,
+    bindingStack: BindingStack,
+  ) {
+    val directLocations = directBindings.map(bindingLocationDiagnostic)
+    val contributionLocations = contributions.map(bindingLocationDiagnostic)
+    val collectionName = if (isMap) "Map" else "Set"
+    val contributionItems = buildList {
+      addAll(contributionLocations.map { it.toLocatedItem() })
+      if (unlocatedContributionCount > 0) {
+        val description =
+          if (unlocatedContributionCount == 1) {
+            "1 scoped contribution from a parent graph"
+          } else {
+            "$unlocatedContributionCount scoped contributions from parent graphs"
+          }
+        add(LocatedItem(location = null, code = null, description = textOf(description)))
+      }
+    }
+    val diagnostic =
+      MetroDiagnostic(
+        id = MetroDiagnosticId.MULTIBINDING_CONFLICT,
+        severity = MetroSeverity.ERROR,
+        title =
+          buildText {
+            append(key.toText())
+            append(" has both a direct binding and multibinding contributions")
+          },
+        sections =
+          buildList {
+            add(
+              DiagnosticSection.Locations(
+                header = textOf("Direct bindings:"),
+                items = directLocations.map { it.toLocatedItem() },
+              ),
+            )
+            add(
+              DiagnosticSection.Locations(
+                header = textOf("$collectionName contributions and declarations:"),
+                items = contributionItems,
+              ),
+            )
+            bindingStack.toTraceSection()?.let(::add)
+          },
+        notes =
+          (directLocations + contributionLocations).flatMap { it.notes }.distinct() +
+            Note.help(
+              buildText {
+                append("Metro would use the direct binding and drop every contribution. ")
+                append("Remove one of them, give one a qualifier, or ")
+                if (isMap) {
+                  append("contribute its entries with ")
+                  appendCode("@IntoMap")
+                } else {
+                  append("contribute the whole set with ")
+                  appendCode("@ElementsIntoSet")
+                }
+              },
             ),
       )
     errorReporter.report(diagnostic, bindingStack)

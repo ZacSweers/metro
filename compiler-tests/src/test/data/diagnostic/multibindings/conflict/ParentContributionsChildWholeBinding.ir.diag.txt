@@ -1,0 +1,57 @@
+/ParentContributionsChildWholeBinding.kt:7:11: error: [Metro/MultibindingConflict] Map<String, Int> has both a direct binding and multibinding
+    contributions
+
+  Direct bindings:
+      ParentContributionsChildWholeBinding.kt:22:13
+        @Provides fun provideInts(): Map<String, Int>
+                                     ~~~~~~~~~~~~~~~~
+
+  Map contributions and declarations:
+      ParentContributionsChildWholeBinding.kt:10:43
+        @Provides
+        @IntoMap
+        @StringKey("parent")
+        fun provideParentInt(): Int
+                                ~~~
+
+  help: Metro would use the direct binding and drop every contribution. Remove one of them, give one
+        a qualifier, or contribute its entries with `@IntoMap`
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#multibindingconflict
+
+[Metro/MultibindingConflict] Set<String> has both a direct binding and multibinding contributions
+
+  Direct bindings:
+      ParentContributionsChildWholeBinding.kt:20:13
+        @Provides fun provideStrings(): Set<String>
+                                        ~~~~~~~~~~~
+
+  Set contributions and declarations:
+      ParentContributionsChildWholeBinding.kt:8:22
+        @Provides @IntoSet fun provideParent(): String
+                                                ~~~~~~
+
+  help: Metro would use the direct binding and drop every contribution. Remove one of them, give one
+        a qualifier, or contribute the whole set with `@ElementsIntoSet`
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#multibindingconflict
+
+
+/ParentContributionsChildWholeBinding.kt:7:11: warning: [Metro/SuspiciousUnusedMultibinding] Synthetic multibinding Set<String> is unused but has 1 source
+    binding(s)
+
+      ParentContributionsChildWholeBinding.kt:8:22
+        @Provides @IntoSet fun provideParent(): kotlin.String
+
+  help: did you possibly bind them to the wrong type or contribute them to the wrong scope?
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#suspiciousunusedmultibinding
+
+[Metro/SuspiciousUnusedMultibinding] Synthetic multibinding Map<String, Int> is unused but has 1
+    source binding(s)
+
+      ParentContributionsChildWholeBinding.kt:10:43
+        @Provides
+        @IntoMap
+        @dev.zacsweers.metro.StringKey("parent")
+        fun provideParentInt(): kotlin.Int
+
+  help: did you possibly bind them to the wrong type or contribute them to the wrong scope?
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#suspiciousunusedmultibinding

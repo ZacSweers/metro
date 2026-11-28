@@ -1,0 +1,35 @@
+/BoundInstanceAndContributions.kt:6:11: error: [Metro/MultibindingConflict] Map<String, Int> has both a direct binding and multibinding
+    contributions
+
+  Direct bindings:
+      BoundInstanceAndContributions.kt:18:7
+        @Provides ints: Map<String, Int>
+                        ~~~~~~~~~~~~~~~~
+
+  Map contributions and declarations:
+      BoundInstanceAndContributions.kt:12:42
+        @Provides
+        @IntoMap
+        @StringKey("child")
+        fun provideChildInt(): Int
+                               ~~~
+
+  help: Metro would use the direct binding and drop every contribution. Remove one of them, give one
+        a qualifier, or contribute its entries with `@IntoMap`
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#multibindingconflict
+
+[Metro/MultibindingConflict] Set<String> has both a direct binding and multibinding contributions
+
+  Direct bindings:
+      BoundInstanceAndContributions.kt:17:7
+        @Provides strings: Set<String>
+                           ~~~~~~~~~~~
+
+  Set contributions and declarations:
+      BoundInstanceAndContributions.kt:10:22
+        @Provides @IntoSet fun provideChild(): String
+                                               ~~~~~~
+
+  help: Metro would use the direct binding and drop every contribution. Remove one of them, give one
+        a qualifier, or contribute the whole set with `@ElementsIntoSet`
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#multibindingconflict
