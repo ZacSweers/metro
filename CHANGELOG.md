@@ -23,6 +23,7 @@ Changelog
 - **[core]** Generated set and map entries now have the same graph keys in the IDE and compiler reports, including entries from libraries.
 - **[core]** Set and map entries declared as properties now use the property name in both the IDE and compiler reports.
 - **[core]** Report a clear missing binding when a key like `Thing<String, *>` names a generic `@Inject` class. Previously, the compiler reported a missing binding for the class's raw type parameter, and the IDE resolved the key to the class.
+- **[core]** Fix unsigned qualifier arguments such as `@Id(4294967295u)` appearing as `-1` in binding keys, reports, and error messages.
 - **[Compiler]** Preserve unrelated files when clearing old reports from `reportsDestination`.
 - **[FIR]** Limit generated contribution providers to bindings declared for their scope. Previously when a class contributed bindings to multiple scopes, FIR exposed all of them in each scope. Each container now generates providers only for its own bindings.
 - **[FIR]** Report abstract properties on `@AssistedFactory` and `@DependencyGraph.Factory` at compile time. Reading one on an assisted factory could throw `AbstractMethodError`.
@@ -32,7 +33,6 @@ Changelog
 - **[FIR/IR]** Fix a JVM compiler crash (`Function has no body`) when a class has overloaded `@Inject` methods such as `accept(Int)` and `accept(String)`.
 - **[FIR/IR]** Fix a compiler crash when resolving bindings with star projections such as `Map<String, *>` and `Lazy<*>`.
 - **[FIR/IR]** Fix a compiler crash when a graph factory returns a specialized type such as `AppGraph<String>`.
-- **[FIR/IR]** Fix unsigned qualifier arguments such as `@Id(4294967295u)` appearing as `-1` in binding keys, reports, and error messages.
 - **[IR]** Record `@Inject` methods in declaration order in library metadata. Sorting them by name could swap two `@Named` arguments of the same type when another module injected the class.
 - **[IR]** Fix a `ClassCastException` in generated factories that passed an `@Provides` method's extension receiver or context parameter in the argument slot for the graph.
 - **[IR]** Fix `@set:Inject` writing directly to the backing field and skipping the custom setter.
