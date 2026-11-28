@@ -4796,7 +4796,8 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     }
   }
 
-  fun testQualifiedLibraryInjectClassesDoNotSatisfyUnqualifiedConsumers() {
+  /** A qualified class resolves a request with no qualifier, like the compiler's class lookup. */
+  fun testQualifiedLibraryInjectClassesSatisfyUnqualifiedConsumers() {
     module.withMetroLibFixtureLibrary {
       val file =
         myFixture.configureByText(
@@ -4808,6 +4809,33 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
           import libtest.LibQualifiedClient
 
           @Inject class LibConsumer(val client: LibQualifiedClient)
+          """
+            .trimIndent(),
+        ) as KtFile
+      val index = project.service<MetroResolutionService>().awaitIndex(file)
+      val declarations = file.declarationsIncludingNested()
+
+      val clientParam = index.consumerEntryAt(declarations.parameter("client"))!!
+      val binding = index.bindingsFor(clientParam).single()
+      assertEquals("injected class", binding.label)
+      assertNull(binding.typeKey.qualifier)
+      assertEquals("LibQualifiedClient", (binding.pointer.element as? KtNamedDeclaration)?.name)
+    }
+  }
+
+  fun testQualifiedLibraryInjectClassesDoNotSatisfyOtherQualifiers() {
+    module.withMetroLibFixtureLibrary {
+      val file =
+        myFixture.configureByText(
+          "LibConsumer.kt",
+          """
+          package test
+
+          import dev.zacsweers.metro.Inject
+          import libtest.LibEndpoint
+          import libtest.LibQualifiedClient
+
+          @Inject class LibConsumer(@LibEndpoint("secondary") val client: LibQualifiedClient)
           """
             .trimIndent(),
         ) as KtFile

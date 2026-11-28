@@ -64,6 +64,7 @@ Changelog
 - **[IDEA]** **Find Usages** on a generic provider returning a `Set` or `Map` now includes requests that use it.
 - **[IDEA]** In projects without graphs, **Find Usages** no longer lists consumers in modules that can't see the provider.
 - **[IDEA]** In projects without graphs, **Find Usages** no longer reports consumers for generic providers when derived bindings are disabled.
+- **[IDEA]** Resolve a qualified `@Inject` class or `@AssistedFactory` for a request with no qualifier, like the compiler does. Previously, graph validation reported a missing binding and editor navigation found no binding for the request.
 
 ## Changes
 
