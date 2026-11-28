@@ -19,6 +19,7 @@ Changelog
 
 ### Fixes
 
+- **[IR]** Fix a JVM name clash between a graph accessor function such as `fun getFoo(): Foo` and the getter that Metro generates for a shared `Foo` binding. Before, the build failed with "Platform declaration clash" (Kotlin 2.4.10), or the graph class failed to load with `ClassFormatError` (Kotlin 2.4.20).
 - **[core]** Include the graph accessor in missing-binding errors, even when the missing dependency is several constructors deep.
 - **[core]** Generated set and map entries now have the same graph keys in the IDE and compiler reports, including entries from libraries.
 - **[core]** Set and map entries declared as properties now use the property name in both the IDE and compiler reports.

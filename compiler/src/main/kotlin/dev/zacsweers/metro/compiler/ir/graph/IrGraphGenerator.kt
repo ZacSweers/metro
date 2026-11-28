@@ -113,10 +113,12 @@ import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.isSubtypeOf
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
+import org.jetbrains.kotlin.ir.util.nonDispatchParameters
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.properties
 import org.jetbrains.kotlin.ir.util.statements
 import org.jetbrains.kotlin.load.java.JavaDescriptorVisibilities
+import org.jetbrains.kotlin.load.java.JvmAbi
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.platform.jvm.isJvm
@@ -163,6 +165,19 @@ internal class IrGraphGenerator(
         // Preallocate any existing property and field names in this graph
         for (property in node.metroGraphOrFail.properties) {
           reserveName(property.name.asString())
+        }
+        // Also reserve property names whose JVM getter has the same name as a function in this
+        // graph. For example, the getter of `foo` is `getFoo()`, so it clashes with an accessor
+        // `fun getFoo(): Foo`.
+        for (function in node.metroGraphOrFail.functions) {
+          if (function.nonDispatchParameters.isNotEmpty()) continue
+          val functionName = function.name.asString()
+          val suffix = functionName.removePrefix("get")
+          for (name in setOf(functionName, suffix, suffix.decapitalizeUS())) {
+            if (name.isNotEmpty() && JvmAbi.getterName(name) == functionName) {
+              reserveName(name)
+            }
+          }
         }
       }
     }
