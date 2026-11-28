@@ -1,0 +1,883 @@
+{
+  "graph": "test.ExampleGraph",
+  "key": "test/ExampleGraph",
+  "scopes": [],
+  "aggregationScopes": [],
+  "roots": {
+    "accessors": [],
+    "injectors": []
+  },
+  "extensions": {
+    "accessors": [],
+    "factoryAccessors": [],
+    "factoriesImplemented": []
+  },
+  "config": {
+    "debug": false,
+    "enabled": true,
+    "generateAssistedFactories": false,
+    "enableTopLevelFunctionInjection": false,
+    "generateContributionHints": true,
+    "generateContributionHintsInFir": false,
+    "generateClassesInIr": false,
+    "enablePrivateProviderProperties": false,
+    "shrinkUnusedBindings": true,
+    "statementsPerInitFun": 25,
+    "enableGraphSharding": true,
+    "keysPerGraphShard": 2000,
+    "mergedSupertypeChunkSize": 0,
+    "multibindingGetterThreshold": 25,
+    "forceProviderGetters": false,
+    "enableSwitchingProviders": false,
+    "publicScopedProviderSeverity": "NONE",
+    "nonPublicContributionSeverity": "NONE",
+    "optionalBindingBehavior": "DEFAULT",
+    "warnOnInjectAnnotationPlacement": true,
+    "interopAnnotationsNamedArgSeverity": "NONE",
+    "unusedGraphInputsSeverity": "WARN",
+    "derivedBindingOverlapSeverity": "NONE",
+    "enabledLoggers": [],
+    "enableDaggerRuntimeInterop": false,
+    "enableGuiceRuntimeInterop": false,
+    "maxIrErrorsCount": 20,
+    "customProviderTypes": [],
+    "customLazyTypes": [],
+    "customAssistedAnnotations": [],
+    "customAssistedFactoryAnnotations": [],
+    "customAssistedInjectAnnotations": [],
+    "customBindsAnnotations": [],
+    "customContributesToAnnotations": [],
+    "customContributesBindingAnnotations": [],
+    "customContributesIntoSetAnnotations": [],
+    "customGraphExtensionAnnotations": [],
+    "customGraphExtensionFactoryAnnotations": [],
+    "customElementsIntoSetAnnotations": [],
+    "customGraphAnnotations": [],
+    "customGraphFactoryAnnotations": [],
+    "customInjectAnnotations": [],
+    "customIntoMapAnnotations": [],
+    "customIntoSetAnnotations": [],
+    "customMapKeyAnnotations": [],
+    "customMultibindsAnnotations": [],
+    "customProvidesAnnotations": [],
+    "customQualifierAnnotations": [],
+    "customScopeAnnotations": [],
+    "customBindingContainerAnnotations": [],
+    "enableDaggerAnvilInterop": false,
+    "enableFullBindingGraphValidation": true,
+    "enableGraphImplClassAsReturnType": false,
+    "customOriginAnnotations": [],
+    "customOptionalBindingAnnotations": [],
+    "contributesAsInject": false,
+    "enableKlibParamsCheck": false,
+    "patchKlibParams": true,
+    "forceEnableFirInIde": false,
+    "compilerVersionAliases": {},
+    "parallelThreads": 0,
+    "bufferedIcTracking": true,
+    "omitRedundantMirrors": false,
+    "fixEmptySmapRanges": false,
+    "enableProviderInlining": true,
+    "enableFunctionProviders": true,
+    "enableSuspendProviders": false,
+    "enableDerivedBindings": false,
+    "desugaredProviderSeverity": "WARN",
+    "enableKClassToClassInterop": false,
+    "generateContributionProviders": false,
+    "enableCircuitCodegen": false,
+    "enableHiltInterop": false,
+    "diagnosticsRenderMode": "PLAIN",
+    "generateStaticAnnotations": true,
+    "enableRuntimeTracing": false,
+    "memberNamingStrategy": "DESCRIPTIVE",
+    "maxGeneratedClassNameLength": 233,
+    "diagnosticLevels": {},
+    "companionMode": "COMPANION_OBJECT"
+  },
+  "stats": {
+    "providerFactories": 10,
+    "bindsCallables": 0,
+    "multibindsCallables": 0,
+    "optionalBindings": 0,
+    "accessors": 0,
+    "injectors": 0,
+    "graphExtensionAccessors": 0,
+    "graphExtensionFactories": 0,
+    "includedGraphs": 0,
+    "bindingContainers": 0,
+    "dynamicBindings": 0,
+    "graphPrivateKeys": 0,
+    "publishedBindsKeys": 0,
+    "populatedKeys": 12,
+    "validatedKeys": 0,
+    "reachableKeys": 0,
+    "deferredKeys": 0,
+    "unusedInputs": 0,
+    "providerProperties": 0,
+    "scopedProviderProperties": 0,
+    "shards": 0,
+    "optimizations": {
+      "bindingsPrunedByShrinking": 12,
+      "classConstructorDirectInvocations": 0,
+      "classConstructorNewInstanceCalls": 0,
+      "providerDirectInvocations": 0,
+      "providerNewInstanceCalls": 0,
+      "shardsGenerated": 0,
+      "shardedSupertypes": 0,
+      "shardedInitFunctions": 0,
+      "providerInlines": 0,
+      "providerInlineFallbacks": {
+        "deferredAccess": 0,
+        "unavailableValue": 0
+      }
+    }
+  },
+  "bindings": [
+    {
+      "key": "@test/ByteId(UByte\"1\") kotlin/String",
+      "renderedKey": "@test.ByteId(1) kotlin.String",
+      "bindingKind": "Provided",
+      "isScoped": false,
+      "nameHint": "byteSmall",
+      "dependencies": [
+        {
+          "key": "test/ExampleGraph",
+          "renderedKey": "test.ExampleGraph",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "declaration": "<get-byteSmall>"
+    },
+    {
+      "key": "@test/ByteId(UByte\"255\") kotlin/String",
+      "renderedKey": "@test.ByteId(255) kotlin.String",
+      "bindingKind": "Provided",
+      "isScoped": false,
+      "nameHint": "byteMax",
+      "dependencies": [
+        {
+          "key": "test/ExampleGraph",
+          "renderedKey": "test.ExampleGraph",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "declaration": "<get-byteMax>"
+    },
+    {
+      "key": "@test/IntId(UInt\"4294967294\") kotlin/String",
+      "renderedKey": "@test.IntId(<null>) kotlin.String",
+      "bindingKind": "Provided",
+      "isScoped": false,
+      "nameHint": "intDefault",
+      "dependencies": [
+        {
+          "key": "test/ExampleGraph",
+          "renderedKey": "test.ExampleGraph",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "declaration": "<get-intDefault>"
+    },
+    {
+      "key": "@test/IntId(UInt\"4294967295\") kotlin/Int",
+      "renderedKey": "@test.IntId(4294967295) kotlin.Int",
+      "bindingKind": "Provided",
+      "isScoped": false,
+      "nameHint": "intConst",
+      "dependencies": [
+        {
+          "key": "test/ExampleGraph",
+          "renderedKey": "test.ExampleGraph",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "declaration": "<get-intConst>"
+    },
+    {
+      "key": "@test/IntId(UInt\"4294967295\") kotlin/String",
+      "renderedKey": "@test.IntId(4294967295) kotlin.String",
+      "bindingKind": "Provided",
+      "isScoped": false,
+      "nameHint": "intMax",
+      "dependencies": [
+        {
+          "key": "test/ExampleGraph",
+          "renderedKey": "test.ExampleGraph",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "declaration": "<get-intMax>"
+    },
+    {
+      "key": "@test/IntIds([UInt\"4294967295\",UInt\"1\"]) kotlin/String",
+      "renderedKey": "@test.IntIds([4294967295, 1]) kotlin.String",
+      "bindingKind": "Provided",
+      "isScoped": false,
+      "nameHint": "intArray",
+      "dependencies": [
+        {
+          "key": "test/ExampleGraph",
+          "renderedKey": "test.ExampleGraph",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "declaration": "<get-intArray>"
+    },
+    {
+      "key": "@test/LongId(ULong\"18446744073709551615\") kotlin/String",
+      "renderedKey": "@test.LongId(18446744073709551615) kotlin.String",
+      "bindingKind": "Provided",
+      "isScoped": false,
+      "nameHint": "longMax",
+      "dependencies": [
+        {
+          "key": "test/ExampleGraph",
+          "renderedKey": "test.ExampleGraph",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "declaration": "<get-longMax>"
+    },
+    {
+      "key": "@test/LongId(ULong\"9223372036854775808\") kotlin/String",
+      "renderedKey": "@test.LongId(9223372036854775808) kotlin.String",
+      "bindingKind": "Provided",
+      "isScoped": false,
+      "nameHint": "longAboveSignedMax",
+      "dependencies": [
+        {
+          "key": "test/ExampleGraph",
+          "renderedKey": "test.ExampleGraph",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "declaration": "<get-longAboveSignedMax>"
+    },
+    {
+      "key": "@test/ShortId(UShort\"65535\") kotlin/String",
+      "renderedKey": "@test.ShortId(65535) kotlin.String",
+      "bindingKind": "Provided",
+      "isScoped": false,
+      "nameHint": "shortMax",
+      "dependencies": [
+        {
+          "key": "test/ExampleGraph",
+          "renderedKey": "test.ExampleGraph",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "declaration": "<get-shortMax>"
+    },
+    {
+      "key": "@test/SignedId(Int\"-1\") kotlin/String",
+      "renderedKey": "@test.SignedId(-1) kotlin.String",
+      "bindingKind": "Provided",
+      "isScoped": false,
+      "nameHint": "signed",
+      "dependencies": [
+        {
+          "key": "test/ExampleGraph",
+          "renderedKey": "test.ExampleGraph",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "declaration": "<get-signed>"
+    },
+    {
+      "key": "test/ExampleGraph",
+      "renderedKey": "test.ExampleGraph",
+      "bindingKind": "BoundInstance",
+      "isScoped": false,
+      "nameHint": "ExampleGraphProvider",
+      "isGraphInput": false,
+      "dependencies": [],
+      "isSynthetic": false,
+      "declaration": "ExampleGraph"
+    },
+    {
+      "key": "test/ExampleGraph.Impl",
+      "renderedKey": "test.ExampleGraph.Impl",
+      "bindingKind": "Alias",
+      "isScoped": false,
+      "nameHint": "Impl",
+      "dependencies": [
+        {
+          "key": "test/ExampleGraph",
+          "renderedKey": "test.ExampleGraph",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": true,
+      "aliasTarget": "test/ExampleGraph"
+    }
+  ],
+  "bindingExplanations": [
+    {
+      "context": {
+        "id": "17:test/ExampleGraph",
+        "label": "test.ExampleGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "17:test/ExampleGraph|17:test.ExampleGraph",
+          "key": "test/ExampleGraph",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "test.ExampleGraph",
+            "label": "test.ExampleGraph"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "test.ExampleGraph"
+        }
+      ],
+      "request": {
+        "key": "test/ExampleGraph",
+        "hasDefault": false,
+        "isOptional": false,
+        "renderedKey": "test.ExampleGraph"
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "17:test/ExampleGraph",
+        "label": "test.ExampleGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "17:test/ExampleGraph|17:test.ExampleGraph",
+          "key": "test/ExampleGraph",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "test.ExampleGraph",
+            "label": "test.ExampleGraph"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "test.ExampleGraph"
+        }
+      ],
+      "request": {
+        "key": "test/ExampleGraph",
+        "declaration": {
+          "id": "test.ExampleGraph.<get-byteMax>(test/ExampleGraph): kotlin/String#<this>",
+          "label": "test.ExampleGraph.<get-byteMax>.<this>"
+        },
+        "hasDefault": false,
+        "isOptional": false,
+        "renderedKey": "test.ExampleGraph"
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "17:test/ExampleGraph",
+        "label": "test.ExampleGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "17:test/ExampleGraph|17:test.ExampleGraph",
+          "key": "test/ExampleGraph",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "test.ExampleGraph",
+            "label": "test.ExampleGraph"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "test.ExampleGraph"
+        }
+      ],
+      "request": {
+        "key": "test/ExampleGraph",
+        "declaration": {
+          "id": "test.ExampleGraph.<get-byteSmall>(test/ExampleGraph): kotlin/String#<this>",
+          "label": "test.ExampleGraph.<get-byteSmall>.<this>"
+        },
+        "hasDefault": false,
+        "isOptional": false,
+        "renderedKey": "test.ExampleGraph"
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "17:test/ExampleGraph",
+        "label": "test.ExampleGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "17:test/ExampleGraph|17:test.ExampleGraph",
+          "key": "test/ExampleGraph",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "test.ExampleGraph",
+            "label": "test.ExampleGraph"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "test.ExampleGraph"
+        }
+      ],
+      "request": {
+        "key": "test/ExampleGraph",
+        "declaration": {
+          "id": "test.ExampleGraph.<get-intArray>(test/ExampleGraph): kotlin/String#<this>",
+          "label": "test.ExampleGraph.<get-intArray>.<this>"
+        },
+        "hasDefault": false,
+        "isOptional": false,
+        "renderedKey": "test.ExampleGraph"
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "17:test/ExampleGraph",
+        "label": "test.ExampleGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "17:test/ExampleGraph|17:test.ExampleGraph",
+          "key": "test/ExampleGraph",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "test.ExampleGraph",
+            "label": "test.ExampleGraph"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "test.ExampleGraph"
+        }
+      ],
+      "request": {
+        "key": "test/ExampleGraph",
+        "declaration": {
+          "id": "test.ExampleGraph.<get-intConst>(test/ExampleGraph): kotlin/Int#<this>",
+          "label": "test.ExampleGraph.<get-intConst>.<this>"
+        },
+        "hasDefault": false,
+        "isOptional": false,
+        "renderedKey": "test.ExampleGraph"
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "17:test/ExampleGraph",
+        "label": "test.ExampleGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "17:test/ExampleGraph|17:test.ExampleGraph",
+          "key": "test/ExampleGraph",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "test.ExampleGraph",
+            "label": "test.ExampleGraph"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "test.ExampleGraph"
+        }
+      ],
+      "request": {
+        "key": "test/ExampleGraph",
+        "declaration": {
+          "id": "test.ExampleGraph.<get-intDefault>(test/ExampleGraph): kotlin/String#<this>",
+          "label": "test.ExampleGraph.<get-intDefault>.<this>"
+        },
+        "hasDefault": false,
+        "isOptional": false,
+        "renderedKey": "test.ExampleGraph"
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "17:test/ExampleGraph",
+        "label": "test.ExampleGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "17:test/ExampleGraph|17:test.ExampleGraph",
+          "key": "test/ExampleGraph",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "test.ExampleGraph",
+            "label": "test.ExampleGraph"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "test.ExampleGraph"
+        }
+      ],
+      "request": {
+        "key": "test/ExampleGraph",
+        "declaration": {
+          "id": "test.ExampleGraph.<get-intMax>(test/ExampleGraph): kotlin/String#<this>",
+          "label": "test.ExampleGraph.<get-intMax>.<this>"
+        },
+        "hasDefault": false,
+        "isOptional": false,
+        "renderedKey": "test.ExampleGraph"
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "17:test/ExampleGraph",
+        "label": "test.ExampleGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "17:test/ExampleGraph|17:test.ExampleGraph",
+          "key": "test/ExampleGraph",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "test.ExampleGraph",
+            "label": "test.ExampleGraph"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "test.ExampleGraph"
+        }
+      ],
+      "request": {
+        "key": "test/ExampleGraph",
+        "declaration": {
+          "id": "test.ExampleGraph.<get-longAboveSignedMax>(test/ExampleGraph): kotlin/String#<this>",
+          "label": "test.ExampleGraph.<get-longAboveSignedMax>.<this>"
+        },
+        "hasDefault": false,
+        "isOptional": false,
+        "renderedKey": "test.ExampleGraph"
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "17:test/ExampleGraph",
+        "label": "test.ExampleGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "17:test/ExampleGraph|17:test.ExampleGraph",
+          "key": "test/ExampleGraph",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "test.ExampleGraph",
+            "label": "test.ExampleGraph"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "test.ExampleGraph"
+        }
+      ],
+      "request": {
+        "key": "test/ExampleGraph",
+        "declaration": {
+          "id": "test.ExampleGraph.<get-longMax>(test/ExampleGraph): kotlin/String#<this>",
+          "label": "test.ExampleGraph.<get-longMax>.<this>"
+        },
+        "hasDefault": false,
+        "isOptional": false,
+        "renderedKey": "test.ExampleGraph"
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "17:test/ExampleGraph",
+        "label": "test.ExampleGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "17:test/ExampleGraph|17:test.ExampleGraph",
+          "key": "test/ExampleGraph",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "test.ExampleGraph",
+            "label": "test.ExampleGraph"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "test.ExampleGraph"
+        }
+      ],
+      "request": {
+        "key": "test/ExampleGraph",
+        "declaration": {
+          "id": "test.ExampleGraph.<get-shortMax>(test/ExampleGraph): kotlin/String#<this>",
+          "label": "test.ExampleGraph.<get-shortMax>.<this>"
+        },
+        "hasDefault": false,
+        "isOptional": false,
+        "renderedKey": "test.ExampleGraph"
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "17:test/ExampleGraph",
+        "label": "test.ExampleGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "17:test/ExampleGraph|17:test.ExampleGraph",
+          "key": "test/ExampleGraph",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "test.ExampleGraph",
+            "label": "test.ExampleGraph"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "test.ExampleGraph"
+        }
+      ],
+      "request": {
+        "key": "test/ExampleGraph",
+        "declaration": {
+          "id": "test.ExampleGraph.<get-signed>(test/ExampleGraph): kotlin/String#<this>",
+          "label": "test.ExampleGraph.<get-signed>.<this>"
+        },
+        "hasDefault": false,
+        "isOptional": false,
+        "renderedKey": "test.ExampleGraph"
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "17:test/ExampleGraph",
+        "label": "test.ExampleGraph"
+      },
+      "phase": "registration",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "17:test/ExampleGraph|17:test.ExampleGraph",
+          "key": "test/ExampleGraph",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "test.ExampleGraph",
+            "label": "test.ExampleGraph"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "test.ExampleGraph"
+        },
+        {
+          "id": "22:test/ExampleGraph.Impl|9:generated",
+          "key": "test/ExampleGraph.Impl",
+          "status": "selected",
+          "reason": "selected_generated",
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "test.ExampleGraph.Impl"
+        },
+        {
+          "id": "36:@test/ByteId(UByte\"1\") kotlin/String|67:test.ExampleGraph.<get-byteSmall>(test/ExampleGraph): kotlin/String",
+          "key": "@test/ByteId(UByte\"1\") kotlin/String",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "test.ExampleGraph.<get-byteSmall>(test/ExampleGraph): kotlin/String",
+            "label": "test.ExampleGraph.<get-byteSmall>"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "@test.ByteId(1) kotlin.String"
+        },
+        {
+          "id": "37:@test/SignedId(Int\"-1\") kotlin/String|64:test.ExampleGraph.<get-signed>(test/ExampleGraph): kotlin/String",
+          "key": "@test/SignedId(Int\"-1\") kotlin/String",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "test.ExampleGraph.<get-signed>(test/ExampleGraph): kotlin/String",
+            "label": "test.ExampleGraph.<get-signed>"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "@test.SignedId(-1) kotlin.String"
+        },
+        {
+          "id": "38:@test/ByteId(UByte\"255\") kotlin/String|65:test.ExampleGraph.<get-byteMax>(test/ExampleGraph): kotlin/String",
+          "key": "@test/ByteId(UByte\"255\") kotlin/String",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "test.ExampleGraph.<get-byteMax>(test/ExampleGraph): kotlin/String",
+            "label": "test.ExampleGraph.<get-byteMax>"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "@test.ByteId(255) kotlin.String"
+        },
+        {
+          "id": "40:@test/IntId(UInt\"4294967295\") kotlin/Int|63:test.ExampleGraph.<get-intConst>(test/ExampleGraph): kotlin/Int",
+          "key": "@test/IntId(UInt\"4294967295\") kotlin/Int",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "test.ExampleGraph.<get-intConst>(test/ExampleGraph): kotlin/Int",
+            "label": "test.ExampleGraph.<get-intConst>"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "@test.IntId(4294967295) kotlin.Int"
+        },
+        {
+          "id": "42:@test/ShortId(UShort\"65535\") kotlin/String|66:test.ExampleGraph.<get-shortMax>(test/ExampleGraph): kotlin/String",
+          "key": "@test/ShortId(UShort\"65535\") kotlin/String",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "test.ExampleGraph.<get-shortMax>(test/ExampleGraph): kotlin/String",
+            "label": "test.ExampleGraph.<get-shortMax>"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "@test.ShortId(65535) kotlin.String"
+        },
+        {
+          "id": "43:@test/IntId(UInt\"4294967294\") kotlin/String|68:test.ExampleGraph.<get-intDefault>(test/ExampleGraph): kotlin/String",
+          "key": "@test/IntId(UInt\"4294967294\") kotlin/String",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "test.ExampleGraph.<get-intDefault>(test/ExampleGraph): kotlin/String",
+            "label": "test.ExampleGraph.<get-intDefault>"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "@test.IntId(<null>) kotlin.String"
+        },
+        {
+          "id": "43:@test/IntId(UInt\"4294967295\") kotlin/String|64:test.ExampleGraph.<get-intMax>(test/ExampleGraph): kotlin/String",
+          "key": "@test/IntId(UInt\"4294967295\") kotlin/String",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "test.ExampleGraph.<get-intMax>(test/ExampleGraph): kotlin/String",
+            "label": "test.ExampleGraph.<get-intMax>"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "@test.IntId(4294967295) kotlin.String"
+        },
+        {
+          "id": "54:@test/IntIds([UInt\"4294967295\",UInt\"1\"]) kotlin/String|66:test.ExampleGraph.<get-intArray>(test/ExampleGraph): kotlin/String",
+          "key": "@test/IntIds([UInt\"4294967295\",UInt\"1\"]) kotlin/String",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "test.ExampleGraph.<get-intArray>(test/ExampleGraph): kotlin/String",
+            "label": "test.ExampleGraph.<get-intArray>"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "@test.IntIds([4294967295, 1]) kotlin.String"
+        },
+        {
+          "id": "54:@test/LongId(ULong\"9223372036854775808\") kotlin/String|76:test.ExampleGraph.<get-longAboveSignedMax>(test/ExampleGraph): kotlin/String",
+          "key": "@test/LongId(ULong\"9223372036854775808\") kotlin/String",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "test.ExampleGraph.<get-longAboveSignedMax>(test/ExampleGraph): kotlin/String",
+            "label": "test.ExampleGraph.<get-longAboveSignedMax>"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "@test.LongId(9223372036854775808) kotlin.String"
+        },
+        {
+          "id": "55:@test/LongId(ULong\"18446744073709551615\") kotlin/String|65:test.ExampleGraph.<get-longMax>(test/ExampleGraph): kotlin/String",
+          "key": "@test/LongId(ULong\"18446744073709551615\") kotlin/String",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "test.ExampleGraph.<get-longMax>(test/ExampleGraph): kotlin/String",
+            "label": "test.ExampleGraph.<get-longMax>"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "@test.LongId(18446744073709551615) kotlin.String"
+        }
+      ],
+      "details": [
+        "Records bindings added directly to this graph, including member-injection dependencies."
+      ]
+    }
+  ]
+}

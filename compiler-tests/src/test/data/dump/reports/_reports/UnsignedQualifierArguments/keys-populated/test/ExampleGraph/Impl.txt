@@ -1,0 +1,12 @@
+@test.ByteId(1) kotlin.String
+@test.ByteId(255) kotlin.String
+@test.IntId(<null>) kotlin.String
+@test.IntId(4294967295) kotlin.Int
+@test.IntId(4294967295) kotlin.String
+@test.IntIds([4294967295, 1]) kotlin.String
+@test.LongId(18446744073709551615) kotlin.String
+@test.LongId(9223372036854775808) kotlin.String
+@test.ShortId(65535) kotlin.String
+@test.SignedId(-1) kotlin.String
+test.ExampleGraph
+test.ExampleGraph.Impl

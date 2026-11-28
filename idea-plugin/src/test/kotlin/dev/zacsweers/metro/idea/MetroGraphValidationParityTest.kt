@@ -148,6 +148,20 @@ class MetroGraphValidationParityTest : BasePlatformTestCase() {
     }
   }
 
+  fun testUnsignedQualifierArgumentsMatchCompiler() {
+    val fixture = "UnsignedQualifierGraph"
+    assertParity(
+      ParityCase(
+        fixtureName = fixture,
+        graphPath = listOf("parity.unsigned.AppGraph"),
+        metadataReport = "$fixture/graph-metadata/graph-parity-unsigned-AppGraph.json.txt",
+        populatedReport = "$fixture/keys-populated/parity/unsigned/AppGraph/Impl.txt",
+        validatedReport = "$fixture/keys-validated/parity/unsigned/AppGraph/Impl.txt",
+        deferredReport = "$fixture/keys-deferred/parity/unsigned/AppGraph/Impl.txt",
+      ),
+    )
+  }
+
   fun testExplicitBindingPrecedenceMatchesCompiler() {
     val fixture = "ExplicitOverInject"
     assertParity(

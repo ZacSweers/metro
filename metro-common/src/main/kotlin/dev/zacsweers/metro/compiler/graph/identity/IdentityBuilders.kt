@@ -108,11 +108,24 @@ public interface AnnotationReader<A, V, T> {
    */
   public fun arguments(annotation: A): List<V?>
 
+  /**
+   * Returns the unsigned kind each constructor parameter declares, in [arguments] order. A
+   * parameter that isn't unsigned has a null entry. An unsigned array parameter gives the kind of
+   * its elements.
+   *
+   * A reader overrides this when its constants can lose their unsigned kind. The declared kind then
+   * replaces the kind that [value] reads.
+   */
+  public fun unsignedKinds(annotation: A): List<ConstantKind?> = emptyList()
+
   public fun value(value: V): AnnotationValueNode<A, V, T>
 }
 
 public sealed interface AnnotationValueNode<out A, out V, out T> {
-  public class Constant(public val kind: ConstantKind, public val value: String) :
+  /**
+   * [value] is the constant as the reader holds it. [ConstantKind.valueText] turns it into text.
+   */
+  public class Constant(public val kind: ConstantKind, public val value: Any?) :
     AnnotationValueNode<Nothing, Nothing, Nothing>
 
   public class EnumEntry(public val classId: String, public val name: String) :
@@ -133,28 +146,47 @@ public fun <A, V, T> AnnotationReader<A, V, T>.annotationIdentity(
 ): AnnotationIdentity =
   AnnotationIdentity(
     classId = classId(annotation),
-    arguments =
-      arguments(annotation).map { value ->
-        if (value == null) {
-          AnnotationValueIdentity.Absent
-        } else {
-          valueIdentity(value)
-        }
-      },
+    arguments = argumentIdentities(annotation),
   )
 
+private fun <A, V, T> AnnotationReader<A, V, T>.argumentIdentities(
+  annotation: A,
+): List<AnnotationValueIdentity> {
+  val unsignedKinds = unsignedKinds(annotation)
+
+  return arguments(annotation).mapIndexed { index, value ->
+    if (value == null) {
+      AnnotationValueIdentity.Absent
+    } else {
+      valueIdentity(value, unsignedKinds.getOrNull(index))
+    }
+  }
+}
+
+/** [unsignedKind] is the kind the parameter declares. It reaches the elements of an array too. */
 private fun <A, V, T> AnnotationReader<A, V, T>.valueIdentity(
   value: V,
+  unsignedKind: ConstantKind? = null,
 ): AnnotationValueIdentity =
   when (val node = value(value)) {
-    is AnnotationValueNode.Constant -> AnnotationValueIdentity.Constant(node.kind, node.value)
+    is AnnotationValueNode.Constant -> {
+      // Only numbers can stand for an unsigned value.
+      val isRetypedNumber = unsignedKind != null && node.value is Number
+      val kind =
+        if (isRetypedNumber) {
+          unsignedKind
+        } else {
+          node.kind
+        }
+      AnnotationValueIdentity.Constant(kind, kind.valueText(node.value))
+    }
     is AnnotationValueNode.EnumEntry -> AnnotationValueIdentity.EnumEntry(node.classId, node.name)
     is AnnotationValueNode.ClassLiteral ->
       AnnotationValueIdentity.ClassLiteral(
         classLiteralIdentity(typeReader.typeIdentity(node.type), isJvm),
       )
     is AnnotationValueNode.Array ->
-      AnnotationValueIdentity.Array(node.elements.map { valueIdentity(it) })
+      AnnotationValueIdentity.Array(node.elements.map { valueIdentity(it, unsignedKind) })
     is AnnotationValueNode.Nested ->
       AnnotationValueIdentity.Nested(annotationIdentity(node.annotation))
     is AnnotationValueNode.Unresolved -> AnnotationValueIdentity.Unresolved(node.description)

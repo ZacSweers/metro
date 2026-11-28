@@ -1,0 +1,5 @@
+@parity.unsigned.ByteId(255) kotlin.String
+@parity.unsigned.IntId(4294967295) kotlin.String
+@parity.unsigned.LongId(18446744073709551615) kotlin.String
+@parity.unsigned.ShortId(65535) kotlin.String
+parity.unsigned.AppGraph

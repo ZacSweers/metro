@@ -221,6 +221,6 @@ private object KaAnnotationReader :
         is ULong -> ConstantKind.ULong
         else -> return AnnotationValueNode.Unresolved(literal.toString())
       }
-    return AnnotationValueNode.Constant(kind, literal.toString())
+    return AnnotationValueNode.Constant(kind, literal)
   }
 }

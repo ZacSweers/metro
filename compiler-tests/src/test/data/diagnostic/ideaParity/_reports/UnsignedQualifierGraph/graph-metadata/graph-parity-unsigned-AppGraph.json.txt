@@ -1,0 +1,515 @@
+{
+  "graph": "parity.unsigned.AppGraph",
+  "key": "parity/unsigned/AppGraph",
+  "scopes": [],
+  "aggregationScopes": [],
+  "roots": {
+    "accessors": [
+      {
+        "key": "@parity/unsigned/ByteId(UByte\"255\") kotlin/String",
+        "renderedKey": "@parity.unsigned.ByteId(255) kotlin.String",
+        "name": "byteMax",
+        "isProperty": true,
+        "isDeferrable": false
+      },
+      {
+        "key": "@parity/unsigned/ShortId(UShort\"65535\") kotlin/String",
+        "renderedKey": "@parity.unsigned.ShortId(65535) kotlin.String",
+        "name": "shortMax",
+        "isProperty": true,
+        "isDeferrable": false
+      },
+      {
+        "key": "@parity/unsigned/IntId(UInt\"4294967295\") kotlin/String",
+        "renderedKey": "@parity.unsigned.IntId(4294967295) kotlin.String",
+        "name": "intMax",
+        "isProperty": true,
+        "isDeferrable": false
+      },
+      {
+        "key": "@parity/unsigned/LongId(ULong\"18446744073709551615\") kotlin/String",
+        "renderedKey": "@parity.unsigned.LongId(18446744073709551615) kotlin.String",
+        "name": "longMax",
+        "isProperty": true,
+        "isDeferrable": false
+      }
+    ],
+    "injectors": []
+  },
+  "extensions": {
+    "accessors": [],
+    "factoryAccessors": [],
+    "factoriesImplemented": []
+  },
+  "config": {
+    "debug": false,
+    "enabled": true,
+    "generateAssistedFactories": false,
+    "enableTopLevelFunctionInjection": false,
+    "generateContributionHints": true,
+    "generateContributionHintsInFir": false,
+    "generateClassesInIr": false,
+    "enablePrivateProviderProperties": false,
+    "shrinkUnusedBindings": true,
+    "statementsPerInitFun": 25,
+    "enableGraphSharding": true,
+    "keysPerGraphShard": 2000,
+    "mergedSupertypeChunkSize": 0,
+    "multibindingGetterThreshold": 25,
+    "forceProviderGetters": false,
+    "enableSwitchingProviders": false,
+    "publicScopedProviderSeverity": "NONE",
+    "nonPublicContributionSeverity": "NONE",
+    "optionalBindingBehavior": "DEFAULT",
+    "warnOnInjectAnnotationPlacement": true,
+    "interopAnnotationsNamedArgSeverity": "NONE",
+    "unusedGraphInputsSeverity": "WARN",
+    "derivedBindingOverlapSeverity": "NONE",
+    "enabledLoggers": [],
+    "enableDaggerRuntimeInterop": false,
+    "enableGuiceRuntimeInterop": false,
+    "maxIrErrorsCount": 20,
+    "customProviderTypes": [],
+    "customLazyTypes": [],
+    "customAssistedAnnotations": [],
+    "customAssistedFactoryAnnotations": [],
+    "customAssistedInjectAnnotations": [],
+    "customBindsAnnotations": [],
+    "customContributesToAnnotations": [],
+    "customContributesBindingAnnotations": [],
+    "customContributesIntoSetAnnotations": [],
+    "customGraphExtensionAnnotations": [],
+    "customGraphExtensionFactoryAnnotations": [],
+    "customElementsIntoSetAnnotations": [],
+    "customGraphAnnotations": [],
+    "customGraphFactoryAnnotations": [],
+    "customInjectAnnotations": [],
+    "customIntoMapAnnotations": [],
+    "customIntoSetAnnotations": [],
+    "customMapKeyAnnotations": [],
+    "customMultibindsAnnotations": [],
+    "customProvidesAnnotations": [],
+    "customQualifierAnnotations": [],
+    "customScopeAnnotations": [],
+    "customBindingContainerAnnotations": [],
+    "enableDaggerAnvilInterop": false,
+    "enableFullBindingGraphValidation": false,
+    "enableGraphImplClassAsReturnType": false,
+    "customOriginAnnotations": [],
+    "customOptionalBindingAnnotations": [],
+    "contributesAsInject": false,
+    "enableKlibParamsCheck": false,
+    "patchKlibParams": true,
+    "forceEnableFirInIde": false,
+    "compilerVersionAliases": {},
+    "parallelThreads": 0,
+    "bufferedIcTracking": true,
+    "omitRedundantMirrors": false,
+    "fixEmptySmapRanges": false,
+    "enableProviderInlining": true,
+    "enableFunctionProviders": true,
+    "enableSuspendProviders": false,
+    "enableDerivedBindings": false,
+    "desugaredProviderSeverity": "WARN",
+    "enableKClassToClassInterop": false,
+    "generateContributionProviders": false,
+    "enableCircuitCodegen": false,
+    "enableHiltInterop": false,
+    "diagnosticsRenderMode": "PLAIN",
+    "generateStaticAnnotations": true,
+    "enableRuntimeTracing": false,
+    "memberNamingStrategy": "DESCRIPTIVE",
+    "maxGeneratedClassNameLength": 233,
+    "diagnosticLevels": {},
+    "companionMode": "COMPANION_OBJECT"
+  },
+  "stats": {
+    "providerFactories": 4,
+    "bindsCallables": 0,
+    "multibindsCallables": 0,
+    "optionalBindings": 0,
+    "accessors": 4,
+    "injectors": 0,
+    "graphExtensionAccessors": 0,
+    "graphExtensionFactories": 0,
+    "includedGraphs": 0,
+    "bindingContainers": 0,
+    "dynamicBindings": 0,
+    "graphPrivateKeys": 0,
+    "publishedBindsKeys": 0,
+    "populatedKeys": 5,
+    "validatedKeys": 5,
+    "reachableKeys": 5,
+    "deferredKeys": 0,
+    "unusedInputs": 0,
+    "providerProperties": 0,
+    "scopedProviderProperties": 0,
+    "shards": 0,
+    "optimizations": {
+      "bindingsPrunedByShrinking": 0,
+      "classConstructorDirectInvocations": 0,
+      "classConstructorNewInstanceCalls": 0,
+      "providerDirectInvocations": 4,
+      "providerNewInstanceCalls": 0,
+      "shardsGenerated": 0,
+      "shardedSupertypes": 0,
+      "shardedInitFunctions": 0,
+      "providerInlines": 0,
+      "providerInlineFallbacks": {
+        "deferredAccess": 0,
+        "unavailableValue": 0
+      }
+    }
+  },
+  "bindings": [
+    {
+      "key": "@parity/unsigned/ByteId(UByte\"255\") kotlin/String",
+      "renderedKey": "@parity.unsigned.ByteId(255) kotlin.String",
+      "bindingKind": "Provided",
+      "isScoped": false,
+      "nameHint": "provideByteMax",
+      "dependencies": [
+        {
+          "key": "parity/unsigned/AppGraph",
+          "renderedKey": "parity.unsigned.AppGraph",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "declaration": "provideByteMax"
+    },
+    {
+      "key": "@parity/unsigned/IntId(UInt\"4294967295\") kotlin/String",
+      "renderedKey": "@parity.unsigned.IntId(4294967295) kotlin.String",
+      "bindingKind": "Provided",
+      "isScoped": false,
+      "nameHint": "provideIntMax",
+      "dependencies": [
+        {
+          "key": "parity/unsigned/AppGraph",
+          "renderedKey": "parity.unsigned.AppGraph",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "declaration": "provideIntMax"
+    },
+    {
+      "key": "@parity/unsigned/LongId(ULong\"18446744073709551615\") kotlin/String",
+      "renderedKey": "@parity.unsigned.LongId(18446744073709551615) kotlin.String",
+      "bindingKind": "Provided",
+      "isScoped": false,
+      "nameHint": "provideLongMax",
+      "dependencies": [
+        {
+          "key": "parity/unsigned/AppGraph",
+          "renderedKey": "parity.unsigned.AppGraph",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "declaration": "provideLongMax"
+    },
+    {
+      "key": "@parity/unsigned/ShortId(UShort\"65535\") kotlin/String",
+      "renderedKey": "@parity.unsigned.ShortId(65535) kotlin.String",
+      "bindingKind": "Provided",
+      "isScoped": false,
+      "nameHint": "provideShortMax",
+      "dependencies": [
+        {
+          "key": "parity/unsigned/AppGraph",
+          "renderedKey": "parity.unsigned.AppGraph",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "declaration": "provideShortMax"
+    },
+    {
+      "key": "parity/unsigned/AppGraph",
+      "renderedKey": "parity.unsigned.AppGraph",
+      "bindingKind": "BoundInstance",
+      "isScoped": false,
+      "nameHint": "AppGraphProvider",
+      "isGraphInput": false,
+      "dependencies": [],
+      "isSynthetic": false,
+      "declaration": "AppGraph"
+    }
+  ],
+  "bindingExplanations": [
+    {
+      "context": {
+        "id": "24:parity/unsigned/AppGraph",
+        "label": "parity.unsigned.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "49:@parity/unsigned/ByteId(UByte\"255\") kotlin/String|80:parity.unsigned.AppGraph.provideByteMax(parity/unsigned/AppGraph): kotlin/String",
+          "key": "@parity/unsigned/ByteId(UByte\"255\") kotlin/String",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "parity.unsigned.AppGraph.provideByteMax(parity/unsigned/AppGraph): kotlin/String",
+            "label": "parity.unsigned.AppGraph.provideByteMax"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "@parity.unsigned.ByteId(255) kotlin.String"
+        }
+      ],
+      "request": {
+        "key": "@parity/unsigned/ByteId(UByte\"255\") kotlin/String",
+        "hasDefault": false,
+        "isOptional": false,
+        "renderedKey": "@parity.unsigned.ByteId(255) kotlin.String"
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "24:parity/unsigned/AppGraph",
+        "label": "parity.unsigned.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "54:@parity/unsigned/IntId(UInt\"4294967295\") kotlin/String|79:parity.unsigned.AppGraph.provideIntMax(parity/unsigned/AppGraph): kotlin/String",
+          "key": "@parity/unsigned/IntId(UInt\"4294967295\") kotlin/String",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "parity.unsigned.AppGraph.provideIntMax(parity/unsigned/AppGraph): kotlin/String",
+            "label": "parity.unsigned.AppGraph.provideIntMax"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "@parity.unsigned.IntId(4294967295) kotlin.String"
+        }
+      ],
+      "request": {
+        "key": "@parity/unsigned/IntId(UInt\"4294967295\") kotlin/String",
+        "hasDefault": false,
+        "isOptional": false,
+        "renderedKey": "@parity.unsigned.IntId(4294967295) kotlin.String"
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "24:parity/unsigned/AppGraph",
+        "label": "parity.unsigned.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "66:@parity/unsigned/LongId(ULong\"18446744073709551615\") kotlin/String|80:parity.unsigned.AppGraph.provideLongMax(parity/unsigned/AppGraph): kotlin/String",
+          "key": "@parity/unsigned/LongId(ULong\"18446744073709551615\") kotlin/String",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "parity.unsigned.AppGraph.provideLongMax(parity/unsigned/AppGraph): kotlin/String",
+            "label": "parity.unsigned.AppGraph.provideLongMax"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "@parity.unsigned.LongId(18446744073709551615) kotlin.String"
+        }
+      ],
+      "request": {
+        "key": "@parity/unsigned/LongId(ULong\"18446744073709551615\") kotlin/String",
+        "hasDefault": false,
+        "isOptional": false,
+        "renderedKey": "@parity.unsigned.LongId(18446744073709551615) kotlin.String"
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "24:parity/unsigned/AppGraph",
+        "label": "parity.unsigned.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "53:@parity/unsigned/ShortId(UShort\"65535\") kotlin/String|81:parity.unsigned.AppGraph.provideShortMax(parity/unsigned/AppGraph): kotlin/String",
+          "key": "@parity/unsigned/ShortId(UShort\"65535\") kotlin/String",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "parity.unsigned.AppGraph.provideShortMax(parity/unsigned/AppGraph): kotlin/String",
+            "label": "parity.unsigned.AppGraph.provideShortMax"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "@parity.unsigned.ShortId(65535) kotlin.String"
+        }
+      ],
+      "request": {
+        "key": "@parity/unsigned/ShortId(UShort\"65535\") kotlin/String",
+        "hasDefault": false,
+        "isOptional": false,
+        "renderedKey": "@parity.unsigned.ShortId(65535) kotlin.String"
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "24:parity/unsigned/AppGraph",
+        "label": "parity.unsigned.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "24:parity/unsigned/AppGraph|24:parity.unsigned.AppGraph",
+          "key": "parity/unsigned/AppGraph",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "parity.unsigned.AppGraph",
+            "label": "parity.unsigned.AppGraph"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "parity.unsigned.AppGraph"
+        }
+      ],
+      "request": {
+        "key": "parity/unsigned/AppGraph",
+        "declaration": {
+          "id": "parity.unsigned.AppGraph.provideByteMax(parity/unsigned/AppGraph): kotlin/String#<this>",
+          "label": "parity.unsigned.AppGraph.provideByteMax.<this>"
+        },
+        "hasDefault": false,
+        "isOptional": false,
+        "renderedKey": "parity.unsigned.AppGraph"
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "24:parity/unsigned/AppGraph",
+        "label": "parity.unsigned.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "24:parity/unsigned/AppGraph|24:parity.unsigned.AppGraph",
+          "key": "parity/unsigned/AppGraph",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "parity.unsigned.AppGraph",
+            "label": "parity.unsigned.AppGraph"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "parity.unsigned.AppGraph"
+        }
+      ],
+      "request": {
+        "key": "parity/unsigned/AppGraph",
+        "declaration": {
+          "id": "parity.unsigned.AppGraph.provideIntMax(parity/unsigned/AppGraph): kotlin/String#<this>",
+          "label": "parity.unsigned.AppGraph.provideIntMax.<this>"
+        },
+        "hasDefault": false,
+        "isOptional": false,
+        "renderedKey": "parity.unsigned.AppGraph"
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "24:parity/unsigned/AppGraph",
+        "label": "parity.unsigned.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "24:parity/unsigned/AppGraph|24:parity.unsigned.AppGraph",
+          "key": "parity/unsigned/AppGraph",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "parity.unsigned.AppGraph",
+            "label": "parity.unsigned.AppGraph"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "parity.unsigned.AppGraph"
+        }
+      ],
+      "request": {
+        "key": "parity/unsigned/AppGraph",
+        "declaration": {
+          "id": "parity.unsigned.AppGraph.provideLongMax(parity/unsigned/AppGraph): kotlin/String#<this>",
+          "label": "parity.unsigned.AppGraph.provideLongMax.<this>"
+        },
+        "hasDefault": false,
+        "isOptional": false,
+        "renderedKey": "parity.unsigned.AppGraph"
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "24:parity/unsigned/AppGraph",
+        "label": "parity.unsigned.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "24:parity/unsigned/AppGraph|24:parity.unsigned.AppGraph",
+          "key": "parity/unsigned/AppGraph",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "parity.unsigned.AppGraph",
+            "label": "parity.unsigned.AppGraph"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "parity.unsigned.AppGraph"
+        }
+      ],
+      "request": {
+        "key": "parity/unsigned/AppGraph",
+        "declaration": {
+          "id": "parity.unsigned.AppGraph.provideShortMax(parity/unsigned/AppGraph): kotlin/String#<this>",
+          "label": "parity.unsigned.AppGraph.provideShortMax.<this>"
+        },
+        "hasDefault": false,
+        "isOptional": false,
+        "renderedKey": "parity.unsigned.AppGraph"
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    }
+  ]
+}

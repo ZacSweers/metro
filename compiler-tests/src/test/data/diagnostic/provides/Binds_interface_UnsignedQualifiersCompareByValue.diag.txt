@@ -1,0 +1,7 @@
+/Binds_interface_UnsignedQualifiersCompareByValue.kt:18:57: error: Binds receiver type `@IntId kotlin.String` is the same type and qualifier as the bound type `@IntId(4294967294) kotlin.String`.
+
+/Binds_interface_UnsignedQualifiersCompareByValue.kt:19:58: error: Binds receiver type `@ByteId(255) kotlin.String` is the same type and qualifier as the bound type `@ByteId(255) kotlin.String`.
+
+/Binds_interface_UnsignedQualifiersCompareByValue.kt:20:64: error: Binds receiver type `@ShortId(65535) kotlin.String` is the same type and qualifier as the bound type `@ShortId(65535) kotlin.String`.
+
+/Binds_interface_UnsignedQualifiersCompareByValue.kt:21:92: error: Binds receiver type `@LongId(18446744073709551615) kotlin.String` is the same type and qualifier as the bound type `@LongId(18446744073709551615) kotlin.String`.
