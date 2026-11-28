@@ -209,7 +209,26 @@ public enum class ConstantKind {
   UByte,
   UShort,
   UInt,
-  ULong,
+  ULong;
+
+  /**
+   * Returns the text that identifies [value] for this kind.
+   *
+   * Compilers store an unsigned constant as signed bits, sometimes in a wider type. An unsigned
+   * kind turns those bits back into the unsigned number. That keeps `4294967295u` from reading as
+   * `-1`.
+   */
+  public fun valueText(value: Any?): String {
+    val bits = value as? Number ?: return value.toString()
+
+    return when (this) {
+      UByte -> bits.toByte().toUByte().toString()
+      UShort -> bits.toShort().toUShort().toString()
+      UInt -> bits.toInt().toUInt().toString()
+      ULong -> bits.toLong().toULong().toString()
+      else -> value.toString()
+    }
+  }
 }
 
 public sealed class AnnotationValueIdentity {

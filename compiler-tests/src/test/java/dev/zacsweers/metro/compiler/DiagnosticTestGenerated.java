@@ -2435,6 +2435,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     public void testSuspendGraph() {
       run("SuspendGraph.kt");
     }
+
+    @Test
+    @TestMetadata("UnsignedQualifierGraph.kt")
+    public void testUnsignedQualifierGraph() {
+      run("UnsignedQualifierGraph.kt");
+    }
   }
 
   @Nested
@@ -3356,6 +3362,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     @TestMetadata("Binds_interface_SameTypesCannotHaveSameQualifiers.kt")
     public void testBinds_interface_SameTypesCannotHaveSameQualifiers() {
       run("Binds_interface_SameTypesCannotHaveSameQualifiers.kt");
+    }
+
+    @Test
+    @TestMetadata("Binds_interface_UnsignedQualifiersCompareByValue.kt")
+    public void testBinds_interface_UnsignedQualifiersCompareByValue() {
+      run("Binds_interface_UnsignedQualifiersCompareByValue.kt");
     }
 
     @Test

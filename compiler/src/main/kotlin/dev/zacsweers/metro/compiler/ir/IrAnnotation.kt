@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.appendIterableWith
 import dev.zacsweers.metro.compiler.graph.identity.AnnotationIdentity
+import dev.zacsweers.metro.compiler.graph.identity.ConstantKind
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.expressions.IrClassReference
@@ -120,28 +121,39 @@ private fun StringBuilder.renderAsAnnotation(
 
   if (irAnnotation.arguments.isEmpty()) return
 
+  // Unsigned constants hold signed bits, so their parameter says how to print them.
+  val parameters = irAnnotation.symbol.takeIf { it.isBound }?.owner?.parameters.orEmpty()
+
   appendIterableWith(
     0 until irAnnotation.arguments.size,
     separator = ", ",
     prefix = "(",
     postfix = ")",
   ) { index ->
-    renderAsAnnotationArgument(irAnnotation.arguments[index], short, useRelativeClassNames)
+    val unsignedKind = parameters.getOrNull(index)?.type?.unsignedKindOrNull()
+    renderAsAnnotationArgument(
+      irAnnotation.arguments[index],
+      short,
+      useRelativeClassNames,
+      unsignedKind,
+    )
   }
 }
 
+/** [unsignedKind] is the kind the argument's parameter declares, if it's unsigned. */
 private fun StringBuilder.renderAsAnnotationArgument(
   irElement: IrElement?,
   short: Boolean,
   useRelativeClassNames: Boolean,
+  unsignedKind: ConstantKind? = null,
 ) {
   when (irElement) {
     null -> append("<null>")
     is IrConstructorCall -> renderAsAnnotation(irElement, short, useRelativeClassNames)
-    is IrConst -> renderIrConstAsAnnotationArgument(irElement)
+    is IrConst -> renderIrConstAsAnnotationArgument(irElement, unsignedKind)
     is IrVararg -> {
       appendIterableWith(irElement.elements, prefix = "[", postfix = "]", separator = ", ") {
-        renderAsAnnotationArgument(it, short, useRelativeClassNames)
+        renderAsAnnotationArgument(it, short, useRelativeClassNames, unsignedKind)
       }
     }
     is IrClassReference -> {
@@ -171,14 +183,19 @@ private fun StringBuilder.renderAsAnnotationArgument(
   }
 }
 
-private fun StringBuilder.renderIrConstAsAnnotationArgument(const: IrConst) {
+private fun StringBuilder.renderIrConstAsAnnotationArgument(
+  const: IrConst,
+  unsignedKind: ConstantKind?,
+) {
   val quotes =
     when (const.kind) {
       IrConstKind.String -> "\""
       IrConstKind.Char -> "'"
       else -> ""
     }
+  val unsignedText = unsignedKind?.valueText(const.value)
+
   append(quotes)
-  append(const.value.toString())
+  append(unsignedText ?: const.value.toString())
   append(quotes)
 }

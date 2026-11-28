@@ -194,27 +194,12 @@ private class FirAnnotationReader(
   }
 
   private fun FirLiteralExpression.constantNode(): AnnotationValueNode<Nothing, Nothing, Nothing> {
-    val constantKind =
-      when (kind) {
-        ConstantValueKind.Null -> ConstantKind.Null
-        ConstantValueKind.Boolean -> ConstantKind.Boolean
-        ConstantValueKind.Char -> ConstantKind.Char
-        ConstantValueKind.Byte -> ConstantKind.Byte
-        ConstantValueKind.Short -> ConstantKind.Short
-        ConstantValueKind.Int -> ConstantKind.Int
-        ConstantValueKind.Long -> ConstantKind.Long
-        ConstantValueKind.Float -> ConstantKind.Float
-        ConstantValueKind.Double -> ConstantKind.Double
-        ConstantValueKind.String -> ConstantKind.String
-        ConstantValueKind.UnsignedByte -> ConstantKind.UByte
-        ConstantValueKind.UnsignedShort -> ConstantKind.UShort
-        ConstantValueKind.UnsignedInt -> ConstantKind.UInt
-        ConstantValueKind.UnsignedLong -> ConstantKind.ULong
-        ConstantValueKind.IntegerLiteral -> ConstantKind.Int
-        ConstantValueKind.UnsignedIntegerLiteral -> ConstantKind.UInt
-        else -> return AnnotationValueNode.Unresolved(render())
-      }
-    return AnnotationValueNode.Constant(constantKind, value.toString())
+    val constantKind = kind.toConstantKindOrNull()
+    if (constantKind == null) {
+      return AnnotationValueNode.Unresolved(render())
+    }
+
+    return AnnotationValueNode.Constant(constantKind, value)
   }
 
   private fun FirGetClassCall.classLiteralNode():
@@ -257,6 +242,28 @@ private class FirAnnotationReader(
     }
   }
 }
+
+/** Maps a FIR literal kind to its identity kind. Returns null for kinds identities don't cover. */
+internal fun ConstantValueKind.toConstantKindOrNull(): ConstantKind? =
+  when (this) {
+    ConstantValueKind.Null -> ConstantKind.Null
+    ConstantValueKind.Boolean -> ConstantKind.Boolean
+    ConstantValueKind.Char -> ConstantKind.Char
+    ConstantValueKind.Byte -> ConstantKind.Byte
+    ConstantValueKind.Short -> ConstantKind.Short
+    ConstantValueKind.Int -> ConstantKind.Int
+    ConstantValueKind.Long -> ConstantKind.Long
+    ConstantValueKind.Float -> ConstantKind.Float
+    ConstantValueKind.Double -> ConstantKind.Double
+    ConstantValueKind.String -> ConstantKind.String
+    ConstantValueKind.UnsignedByte -> ConstantKind.UByte
+    ConstantValueKind.UnsignedShort -> ConstantKind.UShort
+    ConstantValueKind.UnsignedInt -> ConstantKind.UInt
+    ConstantValueKind.UnsignedLong -> ConstantKind.ULong
+    ConstantValueKind.IntegerLiteral -> ConstantKind.Int
+    ConstantValueKind.UnsignedIntegerLiteral -> ConstantKind.UInt
+    else -> null
+  }
 
 private fun FirElement?.isDirectValue(): Boolean =
   when (this) {

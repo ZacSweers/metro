@@ -34,12 +34,16 @@ import org.jetbrains.kotlin.ir.types.IrStarProjection
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.IrTypeProjection
 import org.jetbrains.kotlin.ir.types.SimpleTypeNullability
+import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.properties
 import org.jetbrains.kotlin.ir.util.render
+import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.name.StandardClassIds
 import org.jetbrains.kotlin.types.Variance
 
 internal object IrTypeReader : TypeReader<IrType> {
@@ -117,13 +121,17 @@ private class IrAnnotationReader(override val isJvm: Boolean) :
     }
   }
 
+  /**
+   * IR gives an unsigned constant a signed [IrConst.kind] and signed bits. A constant read from a
+   * compiled dependency has a signed type too. The parameter's type is what says it's unsigned.
+   */
+  override fun unsignedKinds(annotation: IrConstructorCall): List<ConstantKind?> =
+    annotation.symbol.owner.parameters.map { it.type.unsignedKindOrNull() }
+
   override fun value(value: IrElement): AnnotationValueNode<IrConstructorCall, IrElement, IrType> =
     when (value) {
       is IrConst ->
-        AnnotationValueNode.Constant(
-          ConstantKind.valueOf(value.kind.asString),
-          value.value.toString(),
-        )
+        AnnotationValueNode.Constant(ConstantKind.valueOf(value.kind.asString), value.value)
       is IrConstructorCall -> AnnotationValueNode.Nested(value)
       is IrVararg -> AnnotationValueNode.Array(value.elements)
       is IrClassReference -> AnnotationValueNode.ClassLiteral(value.classType)
@@ -152,6 +160,24 @@ internal fun IrConstructorCall.annotationIdentity(isJvm: Boolean): AnnotationIde
       IrAnnotationReader.nonJvm
     }
   return reader.annotationIdentity(this)
+}
+
+/**
+ * Returns the unsigned kind that a value of this type holds. Returns null when the type is signed.
+ * An unsigned array type gives the kind of its elements.
+ */
+internal fun IrType.unsignedKindOrNull(): ConstantKind? =
+  unsignedKindsByClassId[classOrNull?.owner?.classId]
+
+/** Maps `kotlin.UInt` and `kotlin.UIntArray` to [ConstantKind.UInt], and so on for each width. */
+private val unsignedKindsByClassId: Map<ClassId?, ConstantKind> = buildMap {
+  val unsignedKinds =
+    listOf(ConstantKind.UByte, ConstantKind.UShort, ConstantKind.UInt, ConstantKind.ULong)
+
+  for (kind in unsignedKinds) {
+    put(ClassId(StandardClassIds.BASE_KOTLIN_PACKAGE, Name.identifier(kind.name)), kind)
+    put(ClassId(StandardClassIds.BASE_KOTLIN_PACKAGE, Name.identifier("${kind.name}Array")), kind)
+  }
 }
 
 /** Reads constructor or property defaults when the compiler makes them available. */

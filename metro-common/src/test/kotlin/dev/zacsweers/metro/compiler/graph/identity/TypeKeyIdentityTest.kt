@@ -60,6 +60,28 @@ class TypeKeyIdentityTest {
   }
 
   @Test
+  fun `unsigned kinds read signed bits as unsigned numbers`() {
+    assertThat(ConstantKind.UByte.valueText((-1).toByte())).isEqualTo("255")
+    assertThat(ConstantKind.UShort.valueText((-1).toShort())).isEqualTo("65535")
+    assertThat(ConstantKind.UInt.valueText(-1)).isEqualTo("4294967295")
+    assertThat(ConstantKind.ULong.valueText(-1L)).isEqualTo("18446744073709551615")
+    assertThat(ConstantKind.ULong.valueText(Long.MIN_VALUE)).isEqualTo("9223372036854775808")
+
+    // Compilers can also hold the number in a wider type, or as the unsigned value itself.
+    assertThat(ConstantKind.UInt.valueText(4294967295L)).isEqualTo("4294967295")
+    assertThat(ConstantKind.UByte.valueText(255L)).isEqualTo("255")
+    assertThat(ConstantKind.UInt.valueText(UInt.MAX_VALUE)).isEqualTo("4294967295")
+  }
+
+  @Test
+  fun `signed kinds keep their value text`() {
+    assertThat(ConstantKind.Int.valueText(-1)).isEqualTo("-1")
+    assertThat(ConstantKind.Long.valueText(-1L)).isEqualTo("-1")
+    assertThat(ConstantKind.String.valueText("-1")).isEqualTo("-1")
+    assertThat(ConstantKind.Null.valueText(null)).isEqualTo("null")
+  }
+
+  @Test
   fun `array element boundaries take part in identity`() {
     val one = arrayKey(stringValue("a,b"))
     val two = arrayKey(stringValue("a"), stringValue("b"))

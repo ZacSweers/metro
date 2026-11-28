@@ -6269,6 +6269,12 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
     public void testTransitiveSuccessorScope() {
       run("TransitiveSuccessorScope.kt");
     }
+
+    @Test
+    @TestMetadata("UnsignedQualifiersFromAnotherModule.kt")
+    public void testUnsignedQualifiersFromAnotherModule() {
+      run("UnsignedQualifiersFromAnotherModule.kt");
+    }
   }
 
   @Nested

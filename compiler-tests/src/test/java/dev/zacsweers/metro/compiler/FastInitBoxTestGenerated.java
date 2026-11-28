@@ -6269,6 +6269,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     public void testTransitiveSuccessorScope() {
       run("TransitiveSuccessorScope.kt");
     }
+
+    @Test
+    @TestMetadata("UnsignedQualifiersFromAnotherModule.kt")
+    public void testUnsignedQualifiersFromAnotherModule() {
+      run("UnsignedQualifiersFromAnotherModule.kt");
+    }
   }
 
   @Nested

@@ -156,7 +156,11 @@ private fun StringBuilder.renderFirLiteralAsAnnotationArgument(const: FirLiteral
       ConstantValueKind.String -> "\""
       else -> ""
     }
+  // FIR can hold an unsigned literal as signed bits, so print the unsigned number.
+  val constantKind = const.kind.toConstantKindOrNull()
+  val text = constantKind?.valueText(const.value) ?: const.value.toString()
+
   append(quotes)
-  append(const.value.toString())
+  append(text)
   append(quotes)
 }

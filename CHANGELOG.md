@@ -32,6 +32,7 @@ Changelog
 - **[FIR/IR]** Fix a JVM compiler crash (`Function has no body`) when a class has overloaded `@Inject` methods such as `accept(Int)` and `accept(String)`.
 - **[FIR/IR]** Fix a compiler crash when resolving bindings with star projections such as `Map<String, *>` and `Lazy<*>`.
 - **[FIR/IR]** Fix a compiler crash when a graph factory returns a specialized type such as `AppGraph<String>`.
+- **[FIR/IR]** Fix unsigned qualifier arguments such as `@Id(4294967295u)` appearing as `-1` in binding keys, reports, and error messages.
 - **[IR]** Record `@Inject` methods in declaration order in library metadata. Sorting them by name could swap two `@Named` arguments of the same type when another module injected the class.
 - **[IR]** Fix a `ClassCastException` in generated factories that passed an `@Provides` method's extension receiver or context parameter in the argument slot for the graph.
 - **[IR]** Fix `@set:Inject` writing directly to the backing field and skipping the custom setter.

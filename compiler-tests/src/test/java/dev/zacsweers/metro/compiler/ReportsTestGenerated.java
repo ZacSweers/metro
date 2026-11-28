@@ -119,4 +119,10 @@ public class ReportsTestGenerated extends AbstractReportsTest {
   public void testUnmatchedReplacement() {
     run("UnmatchedReplacement.kt");
   }
+
+  @Test
+  @TestMetadata("UnsignedQualifierArguments.kt")
+  public void testUnsignedQualifierArguments() {
+    run("UnsignedQualifierArguments.kt");
+  }
 }
