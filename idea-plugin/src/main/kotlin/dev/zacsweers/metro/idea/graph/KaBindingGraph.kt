@@ -32,6 +32,7 @@ import dev.zacsweers.metro.compiler.graph.disambiguateIncompatibleScopes
 import dev.zacsweers.metro.compiler.graph.duplicateMapKeysDiagnostic
 import dev.zacsweers.metro.compiler.graph.emptyMultibindingDiagnostic
 import dev.zacsweers.metro.compiler.graph.incompatibleScopeDiagnostic
+import dev.zacsweers.metro.compiler.graph.parentBindingOverrideDiagnostic
 import dev.zacsweers.metro.compiler.graph.putGraphRoot
 import dev.zacsweers.metro.compiler.graph.toText
 import dev.zacsweers.metro.compiler.graph.toTraceSection
@@ -44,6 +45,7 @@ import dev.zacsweers.metro.idea.model.KaAnnotationSnapshot
 import dev.zacsweers.metro.idea.model.KaAnnotationValueSnapshot
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaContextualTypeKey
+import dev.zacsweers.metro.idea.model.KaGraphDeclaration
 import dev.zacsweers.metro.idea.model.KaTypeKey
 import dev.zacsweers.metro.idea.model.KaTypeSnapshot
 import dev.zacsweers.metro.idea.model.canonicalContextKey
@@ -330,6 +332,7 @@ internal class KaBindingGraph(
     adjacency: GraphAdjacency<KaTypeKey>,
   ) {
     reportDerivedBindingIssues()
+    reportParentBindingOverrides()
 
     val rootsByTypeKey = roots.mapKeys { it.key.typeKey }
     val diagnosticRoutes = DiagnosticRoutes(roots, adjacency.forward)
@@ -470,6 +473,61 @@ internal class KaBindingGraph(
     } finally {
       pendingRelated = emptyList()
     }
+  }
+
+  /**
+   * Reports each binding of this graph that overrides a binding inherited from an ancestor graph,
+   * like the compiler does. `parentBindingOverrideSeverity` decides the severity.
+   */
+  private fun reportParentBindingOverrides() {
+    // This validation runs in the IDE, so the IDE-only severities report here.
+    val optionSeverity = options.parentBindingOverrideSeverity.resolve(isIde = true)
+
+    // The resolver reads every declaration in the index, so skip it when nothing is reported.
+    if (optionSeverity == MetroOptions.DiagnosticSeverity.NONE) {
+      return
+    }
+
+    val severity =
+      if (optionSeverity == MetroOptions.DiagnosticSeverity.ERROR) {
+        MetroSeverity.ERROR
+      } else {
+        MetroSeverity.WARNING
+      }
+
+    val overrides = KaParentBindingOverrideResolver(index, bindingLookup.queryPlan).resolve()
+
+    for (override in overrides) {
+      ProgressManager.checkCanceled()
+      val locations = override.declarations.map(sources::locationDiagnostic)
+      val inheritedLocations = override.inheritedDeclarations.map(sources::locationDiagnostic)
+      val notes = (locations + inheritedLocations).flatMap { it.notes }.distinct()
+      val diagnostic =
+        parentBindingOverrideDiagnostic(
+          typeKey = override.typeKey,
+          severity = severity,
+          graphName = graph.shortGraphName(),
+          ancestorGraphName = override.owner.shortGraphName(),
+          locations = locations.map { it.toLocatedItem() },
+          inheritedLocations = inheritedLocations.map { it.toLocatedItem() },
+          extraNotes = notes,
+          ancestorBindingCanBePrivate = !override.inheritsInjectedClass,
+        )
+
+      // The editor highlights every related declaration, so only this graph's own go here.
+      pendingRelated = override.declarations
+
+      try {
+        report(diagnostic, KaBindingStack(graph))
+      } finally {
+        pendingRelated = emptyList()
+      }
+    }
+  }
+
+  /** The graph's name as the compiler renders it in override diagnostics. */
+  private fun KaGraphDeclaration.shortGraphName(): String {
+    return graphTypeKey()?.render(short = true) ?: name ?: "<unknown>"
   }
 
   /** Fully qualified provider names, sorted so messages are stable. */

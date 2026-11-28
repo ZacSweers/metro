@@ -1286,6 +1286,88 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
     return true
   }
 
+  /**
+   * Returns true when [graph] declares or wires [binding] itself.
+   *
+   * An included graph's accessor has no container or contribution scope. It belongs to the graph
+   * whose factory includes that graph.
+   */
+  internal fun isDeclaredByGraph(
+    binding: KaBinding,
+    graph: KaGraphDeclaration,
+    plan: GraphQueryPlan,
+  ): Boolean {
+    if (binding is KaBinding.GraphDependency) {
+      return binding.ownerKey in graph.includedDependencies
+    }
+
+    return isBindingOwnedByGraph(binding, graph, plan.structure)
+  }
+
+  /**
+   * Returns true when [graph] explicitly declares [key] but [plan]'s graph doesn't inherit that
+   * declaration. That's a `@GraphPrivate` declaration, or one that a dynamic graph replaces.
+   *
+   * [bindingsForKey] leaves these out. A caller that needs every ancestor declaration checks here
+   * too.
+   */
+  internal fun declaresUninheritedBinding(
+    key: KaTypeKey,
+    graph: KaGraphDeclaration,
+    plan: GraphQueryPlan,
+  ): Boolean {
+    val candidates = lookups.bindingsByKey[key].orEmpty()
+
+    for ((index, binding) in candidates.withIndex()) {
+      checkCanceledEvery(index)
+      val isDeclaration = binding.isExplicitDeclaration() || binding is KaBinding.GraphDependency
+      if (!isDeclaration) {
+        continue
+      }
+
+      val rejection =
+        bindingCandidateRejection(binding, plan.structure, includeIncompatibleScopes = true)
+      val isPrivate = rejection == BindingRejection.PRIVATE_TO_GRAPH
+      val isReplaced = rejection == BindingRejection.DYNAMIC_REPLACEMENT
+      val isUninherited = isPrivate || isReplaced
+      if (isUninherited && isDeclaredByGraph(binding, graph, plan)) {
+        return true
+      }
+    }
+
+    return false
+  }
+
+  /**
+   * Returns the explicit declarations that [plan]'s own graph makes, grouped by key.
+   *
+   * These are the declarations that can override a binding the graph inherits. They're `@Provides`
+   * and `@Binds` declarations, contributed bindings, and `@Provides` graph factory parameters.
+   * Multibinding contributions and generic declarations are left out.
+   *
+   * This reads every exact-key binding in the index, so call it once per graph.
+   */
+  internal fun ownExplicitDeclarations(plan: GraphQueryPlan): Map<KaTypeKey, List<KaBinding>> {
+    val result = LinkedHashMap<KaTypeKey, MutableList<KaBinding>>()
+    var workIndex = 0
+
+    lookups.bindingsByKey.forEach { key, candidates ->
+      for (binding in candidates) {
+        checkCanceledEvery(workIndex++)
+        if (!binding.isExplicitDeclaration()) {
+          continue
+        }
+
+        val isOwnDeclaration = isBindingOwnedByCurrentGraph(binding, plan.structure)
+        if (isOwnDeclaration && isBindingInContext(binding, plan)) {
+          result.getOrPut(key, ::mutableListOf) += binding
+        }
+      }
+    }
+
+    return result
+  }
+
   internal fun hasPrivateAncestorBinding(
     session: BindingResolutionSession,
     key: KaTypeKey,
@@ -2254,6 +2336,19 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
 
 private fun KaBinding.isValidationOnlyAssistedTarget(): Boolean {
   return this is KaBinding.ConstructorInjected && isAssisted
+}
+
+/**
+ * True for a `@Provides` or `@Binds` declaration, a contributed binding, or a `@Provides` graph
+ * factory parameter. `@Includes` factory parameters are graph inputs, so they don't count.
+ */
+internal fun KaBinding.isExplicitDeclaration(): Boolean {
+  return when (this) {
+    is KaBinding.Provided,
+    is KaBinding.Alias -> true
+    is KaBinding.BoundInstance -> !isGraphInput && !isBindingContainerInput
+    else -> false
+  }
 }
 
 /** The result of resolving a consumer against every concrete graph context in the project. */

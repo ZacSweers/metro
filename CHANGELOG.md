@@ -11,6 +11,7 @@ Changelog
 - **[FIR]** Skip formatting class and function names for FIR trace events when compiler tracing is disabled.
 - **[IR]** Compare shared bindings only once when compiling graph extensions. This cut compile time from 43.5 s to 3.2 s on a 58-class test graph.
 - **[IR]** Add an experimental `parentBindingOverrideSeverity` option that reports a graph extension binding when it overrides a binding from an ancestor graph. Set it to `WARN` or `ERROR`. The default is `NONE`, so existing builds do not change. See the [overriding inherited bindings docs](docs/dependency-graphs.md#overriding-inherited-bindings) and [MEEP-2341](https://github.com/ZacSweers/metro/discussions/2341).
+- **[IDEA]** Graph validation now reports `Metro/ParentBindingOverride` when `parentBindingOverrideSeverity` is `WARN` or `ERROR`.
 - **[IDEA]** The IDE's Plugins dialog and JetBrains Marketplace now list IDEA and core changes and credit contributors.
 - **[IDEA]** Opening a second module with the same Metro options now reuses the existing graph index.
 - **[IDEA]** Reading cached gutter icons and inlay hints no longer queues extra work for the index.
@@ -66,6 +67,7 @@ Changelog
 - **[IDEA]** **Find Usages** on a generic provider returning a `Set` or `Map` now includes requests that use it.
 - **[IDEA]** In projects without graphs, **Find Usages** no longer lists consumers in modules that can't see the provider.
 - **[IDEA]** In projects without graphs, **Find Usages** no longer reports consumers for generic providers when derived bindings are disabled.
+- **[IDEA]** Graph validation no longer reports a duplicate binding when a graph extension declares a binding that its parent gets from an `@Includes` graph. The extension's binding wins, like in the compiler.
 
 ## Changes
 

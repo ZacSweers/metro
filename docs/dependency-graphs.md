@@ -617,7 +617,7 @@ By default, Metro doesn't report overrides. To report them as [`Metro/ParentBind
     }
     ```
 
-    This check runs only in IR. The IDE plugin does not show it, and the IDE-only severities are rejected.
+    This check runs only in IR, so the IDE-only severities are rejected. The Metro IDE plugin reports it during graph validation.
 
 An inherited binding is an explicit declaration in an ancestor graph. This includes `@Provides` and `@Binds` declarations, contributed bindings, graph factory `@Provides` parameters, and accessors of graphs that the ancestor takes through `@Includes`. A scoped `@Inject` class is also an inherited binding. It belongs to the ancestor that owns its scope, which keeps the one instance. Metro reports each override once, on the extension's declaration, even if nothing uses the binding. A declaration from another module has no source location, so Metro reports it on the extension.
 

@@ -240,6 +240,9 @@ private fun BindingIndex.selectDerivedBinding(
 /**
  * Keeps explicit declarations from the closest graph that owns this key. All bindings at that graph
  * survive so validation can report duplicates.
+ *
+ * The closest graph's `@Provides` and `@Binds` declarations also win over an ancestor's `@Includes`
+ * accessors and factory inputs. The compiler replaces those the same way.
  */
 private fun BindingIndex.nearestExplicitBindings(
   candidates: List<KaBinding>,
@@ -250,27 +253,23 @@ private fun BindingIndex.nearestExplicitBindings(
     return candidates
   }
 
-  // Included dependency accessors retain the compiler's duplicate checks against inherited
-  // bindings.
-  val allDirectDeclarations = candidates.all {
-    when (it) {
-      is KaBinding.Provided,
-      is KaBinding.Alias -> true
-      is KaBinding.BoundInstance -> !it.isGraphInput && !it.isBindingContainerInput
-      else -> false
-    }
-  }
-  if (!allDirectDeclarations) {
-    return candidates
-  }
-
   for ((graphIndex, graph) in chain.withIndex()) {
     checkCanceledEvery(graphIndex)
-    val owned = candidates.filter { isBindingOwnedByGraph(it, graph, plan) }
-    if (owned.isNotEmpty()) {
-      return owned
+    val owned = candidates.filter { isDeclaredByGraph(it, graph, plan) }
+    if (owned.isEmpty()) {
+      continue
+    }
+
+    // The closest graph's own included accessors and factory inputs retain the compiler's
+    // duplicate checks against inherited bindings.
+    val allDirectDeclarations = owned.all { it.isExplicitDeclaration() }
+    return if (allDirectDeclarations) {
+      owned
+    } else {
+      candidates
     }
   }
+
   return candidates
 }
 

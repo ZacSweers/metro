@@ -102,13 +102,17 @@ internal class IndexOptionsFingerprint(val options: MetroOptions) {
 
   private val optionalBindingBehavior = options.optionalBindingBehavior
 
+  // Validation results are cached per index generation, so a new severity needs a new index.
+  private val parentBindingOverrideSeverity = options.parentBindingOverrideSeverity
+
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
     if (other !is IndexOptionsFingerprint) return false
     return annotationGroups == other.annotationGroups &&
       wrapperGroups == other.wrapperGroups &&
       flags == other.flags &&
-      optionalBindingBehavior == other.optionalBindingBehavior
+      optionalBindingBehavior == other.optionalBindingBehavior &&
+      parentBindingOverrideSeverity == other.parentBindingOverrideSeverity
   }
 
   override fun hashCode(): Int {
@@ -116,6 +120,7 @@ internal class IndexOptionsFingerprint(val options: MetroOptions) {
     result = 31 * result + wrapperGroups.hashCode()
     result = 31 * result + flags.hashCode()
     result = 31 * result + optionalBindingBehavior.hashCode()
+    result = 31 * result + parentBindingOverrideSeverity.hashCode()
     return result
   }
 }
