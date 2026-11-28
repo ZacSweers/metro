@@ -56,7 +56,7 @@ There are some standard IntelliJ run configurations checked in to `.run` that sh
 > Before submitting a PR, it is useful to run `regen` and `check`.
 
 * `./metrow format` — Runs all code formatters.
-* `./metrow regen` — Regenerates `.api` files and compiler test suites and runs all code formatters.
+* `./metrow regen` — Regenerates `.api` files and runs all code formatters.
 * `./metrow check` — Runs checks across all included Gradle projects (including samples and the Gradle plugin).
 * `./metrow publish --local --version x.y.z` — Publishes to maven local with the specified `x.y.z` version (replace this with whatever you want, like `1.0.0-LOCAL01`.)
 

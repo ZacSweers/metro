@@ -5,14 +5,18 @@ package dev.zacsweers.metro.compiler
 import org.jetbrains.kotlin.generators.dsl.junit5.generateTestGroupSuiteWithJUnit5
 
 /**
- * Generates the checked-in JUnit suites. [MetroTestConfigurator] handles compiler version limits.
+ * Generates the JUnit suites into the directory given as the only argument. The `generateTests`
+ * Gradle task runs this before the test sources compile. [MetroTestConfigurator] handles compiler
+ * version limits.
+ *
+ * The test data root stays relative to the repository root because the suites embed it in their
+ * `@TestMetadata` paths.
  */
-fun main() {
+fun main(args: Array<String>) {
+  val testsRoot = requireNotNull(args.singleOrNull()) { "Expected the output directory argument" }
+
   generateTestGroupSuiteWithJUnit5 {
-    testGroup(
-      testDataRoot = "compiler-tests/src/test/data",
-      testsRoot = "compiler-tests/src/test/java",
-    ) {
+    testGroup(testDataRoot = "compiler-tests/src/test/data", testsRoot = testsRoot) {
       val jsExcludes = listOf("interop", "circuit")
       val reportGoldenDirs = listOf("_reports")
 

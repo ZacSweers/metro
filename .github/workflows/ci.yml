@@ -160,7 +160,6 @@ jobs:
       - name: Test compiler
         run: |
           ./scripts/run-ci-gradle.sh :compiler:test :compiler-tests:test --continue --quiet \
-            ${{ matrix.kotlin-compiler == needs.generate-matrix.outputs.default_kotlin_version && '-Pmetro.generateCompilerTests' || '' }} \
             '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' \
             "-Pmetro.testOmitRedundantMirrors=$METRO_TEST_OMIT_REDUNDANT_MIRRORS" \
             -Pmetro.excludeJsBoxTests \
@@ -169,15 +168,6 @@ jobs:
             -Pmetro.compilerTestUseParallelGc=true \
             -Pmetro.legacyCompilerTestMaxParallelForks=2 \
             ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
-
-      - name: Verify checked-in compiler test suites
-        if: matrix.kotlin-compiler == needs.generate-matrix.outputs.default_kotlin_version
-        run: |
-          git add --intent-to-add -- compiler-tests/src/test/java
-          if ! git diff --exit-code -- compiler-tests/src/test/java; then
-            echo "::error::Run ./gradlew :compiler-tests:generateTests with the default Kotlin version and commit the generated Java."
-            exit 1
-          fi
 
       - name: (Fail-only) Upload reports
         if: failure()

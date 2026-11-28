@@ -1,7 +1,6 @@
 # Set the default behavior, in case people don't have core.autocrlf set.
 * text=auto
 
-compiler-tests/**/*.java linguist-generated=true
 compiler-tests/src/test/data/diagnostic/ideaParity/_reports/** linguist-generated=true
 **/yarn.lock linguist-generated=true
 **/package-lock.lock linguist-generated=true
