@@ -164,6 +164,11 @@ internal sealed interface KaBinding :
     val isAssisted: Boolean = false,
     /** Objects already exist and have no constructor or member-injection requests. */
     val isObject: Boolean = false,
+    /**
+     * The qualifier on the class. It differs from the key's qualifier when a request with no
+     * qualifier resolved a qualified class.
+     */
+    val classQualifier: KaAnnotationSnapshot? = typeKey.qualifier,
   ) : KaBinding {
     override val contextualTypeKey = typeKey.canonicalContextKey()
 
@@ -233,6 +238,11 @@ internal sealed interface KaBinding :
     override val isGraphPrivate: Boolean = false,
     override val genericSignature: GenericBindingSignature? = null,
     override val derivation: BindingDerivation? = null,
+    /**
+     * True for an alias that a graph seal makes with no declaration behind it. A qualified scoped
+     * class's second key reads the first key's binding through one.
+     */
+    val isSynthetic: Boolean = false,
   ) : KaBinding {
     override val contextualTypeKey = typeKey.canonicalContextKey()
 
@@ -247,6 +257,7 @@ internal sealed interface KaBinding :
         when {
           multibindingId != null -> "multibinding contribution"
           isClassContribution -> "contributed binding"
+          isSynthetic -> "synthetic alias"
           else -> "binds"
         }
   }

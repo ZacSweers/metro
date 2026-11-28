@@ -1,0 +1,11 @@
+@parity.qualifiedclass.Chosen parity.qualifiedclass.Antenna
+@parity.qualifiedclass.Chosen parity.qualifiedclass.Battery
+@parity.qualifiedclass.Chosen parity.qualifiedclass.Engine
+@parity.qualifiedclass.Chosen parity.qualifiedclass.Radio
+parity.qualifiedclass.Antenna
+parity.qualifiedclass.AppGraph
+parity.qualifiedclass.Car
+parity.qualifiedclass.ChildGraph
+parity.qualifiedclass.Engine
+parity.qualifiedclass.Radio
+parity.qualifiedclass.Wheel

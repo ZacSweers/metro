@@ -627,7 +627,8 @@ internal class SourceClassBindingPostProcessor(
             // Source metadata uses the owning module's configured annotations. Shared project
             // snapshots may be requested from another module.
             options = declaration.metroIdeState().options
-            key = KaTypeKey(request.key.type, qualifierAnnotation(symbol, options))
+            // The cache identity uses the key that resolveClassBinding gives this request.
+            key = classBindingKey(request.key, qualifierAnnotation(symbol, options))
             identity = ClassBindingIdentity(key, symbol.classId, file)
           }
           item.stage("source.class.cacheCheck") {

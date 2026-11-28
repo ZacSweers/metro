@@ -360,12 +360,13 @@ internal fun ValidationContract.Companion.fromIdea(
       .map { raw ->
         val binding = raw.binding
         val multibinding = binding as? KaBinding.Multibinding
+        val isMultibindingOrExtension = multibinding != null || binding is KaBinding.GraphExtension
+        // A synthetic alias has no declaration. Its pointer is only a navigation target.
+        val isSyntheticAlias = binding is KaBinding.Alias && binding.isSynthetic
         BindingContract(
           key = normalizeRender(raw.contextualKey),
           declaration =
-            raw.declaration.takeUnless {
-              multibinding != null || binding is KaBinding.GraphExtension
-            },
+            raw.declaration.takeUnless { isMultibindingOrExtension || isSyntheticAlias },
           scope = binding.scope?.render(short = false)?.let(::normalizeRender),
           dependencies =
             binding.dependencies

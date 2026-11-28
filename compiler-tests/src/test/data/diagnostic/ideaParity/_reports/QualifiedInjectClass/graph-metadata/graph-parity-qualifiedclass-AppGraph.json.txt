@@ -1,0 +1,845 @@
+{
+  "graph": "parity.qualifiedclass.AppGraph",
+  "key": "parity/qualifiedclass/AppGraph",
+  "scopes": [
+    "@dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class)"
+  ],
+  "aggregationScopes": [
+    "dev.zacsweers.metro.AppScope"
+  ],
+  "roots": {
+    "accessors": [
+      {
+        "key": "parity/qualifiedclass/Engine",
+        "renderedKey": "parity.qualifiedclass.Engine",
+        "name": "engine",
+        "isProperty": true,
+        "isDeferrable": false
+      },
+      {
+        "key": "@parity/qualifiedclass/Chosen parity/qualifiedclass/Engine",
+        "renderedKey": "@parity.qualifiedclass.Chosen parity.qualifiedclass.Engine",
+        "name": "chosenEngine",
+        "isProperty": true,
+        "isDeferrable": false
+      },
+      {
+        "key": "parity/qualifiedclass/Radio",
+        "renderedKey": "parity.qualifiedclass.Radio",
+        "name": "radio",
+        "isProperty": true,
+        "isDeferrable": false
+      },
+      {
+        "key": "@parity/qualifiedclass/Chosen parity/qualifiedclass/Radio",
+        "renderedKey": "@parity.qualifiedclass.Chosen parity.qualifiedclass.Radio",
+        "name": "chosenRadio",
+        "isProperty": true,
+        "isDeferrable": false
+      },
+      {
+        "key": "@parity/qualifiedclass/Chosen parity/qualifiedclass/Antenna",
+        "renderedKey": "@parity.qualifiedclass.Chosen parity.qualifiedclass.Antenna",
+        "name": "chosenAntenna",
+        "isProperty": true,
+        "isDeferrable": false
+      },
+      {
+        "key": "parity/qualifiedclass/Car",
+        "renderedKey": "parity.qualifiedclass.Car",
+        "name": "car",
+        "isProperty": true,
+        "isDeferrable": false
+      }
+    ],
+    "injectors": []
+  },
+  "extensions": {
+    "accessors": [
+      {
+        "key": "parity/qualifiedclass/ChildGraph",
+        "renderedKey": "parity.qualifiedclass.ChildGraph",
+        "name": "childGraph",
+        "isProperty": true
+      }
+    ],
+    "factoryAccessors": [],
+    "factoriesImplemented": []
+  },
+  "config": {
+    "debug": false,
+    "enabled": true,
+    "generateAssistedFactories": false,
+    "enableTopLevelFunctionInjection": false,
+    "generateContributionHints": true,
+    "generateContributionHintsInFir": false,
+    "generateClassesInIr": false,
+    "enablePrivateProviderProperties": false,
+    "shrinkUnusedBindings": true,
+    "statementsPerInitFun": 25,
+    "enableGraphSharding": true,
+    "keysPerGraphShard": 2000,
+    "mergedSupertypeChunkSize": 0,
+    "multibindingGetterThreshold": 25,
+    "forceProviderGetters": false,
+    "enableSwitchingProviders": false,
+    "publicScopedProviderSeverity": "NONE",
+    "nonPublicContributionSeverity": "NONE",
+    "optionalBindingBehavior": "DEFAULT",
+    "warnOnInjectAnnotationPlacement": true,
+    "interopAnnotationsNamedArgSeverity": "NONE",
+    "unusedGraphInputsSeverity": "WARN",
+    "derivedBindingOverlapSeverity": "NONE",
+    "enabledLoggers": [],
+    "enableDaggerRuntimeInterop": false,
+    "enableGuiceRuntimeInterop": false,
+    "maxIrErrorsCount": 20,
+    "customProviderTypes": [],
+    "customLazyTypes": [],
+    "customAssistedAnnotations": [],
+    "customAssistedFactoryAnnotations": [],
+    "customAssistedInjectAnnotations": [],
+    "customBindsAnnotations": [],
+    "customContributesToAnnotations": [],
+    "customContributesBindingAnnotations": [],
+    "customContributesIntoSetAnnotations": [],
+    "customGraphExtensionAnnotations": [],
+    "customGraphExtensionFactoryAnnotations": [],
+    "customElementsIntoSetAnnotations": [],
+    "customGraphAnnotations": [],
+    "customGraphFactoryAnnotations": [],
+    "customInjectAnnotations": [],
+    "customIntoMapAnnotations": [],
+    "customIntoSetAnnotations": [],
+    "customMapKeyAnnotations": [],
+    "customMultibindsAnnotations": [],
+    "customProvidesAnnotations": [],
+    "customQualifierAnnotations": [],
+    "customScopeAnnotations": [],
+    "customBindingContainerAnnotations": [],
+    "enableDaggerAnvilInterop": false,
+    "enableFullBindingGraphValidation": false,
+    "enableGraphImplClassAsReturnType": false,
+    "customOriginAnnotations": [],
+    "customOptionalBindingAnnotations": [],
+    "contributesAsInject": false,
+    "enableKlibParamsCheck": false,
+    "patchKlibParams": true,
+    "forceEnableFirInIde": false,
+    "compilerVersionAliases": {},
+    "parallelThreads": 0,
+    "bufferedIcTracking": true,
+    "omitRedundantMirrors": false,
+    "fixEmptySmapRanges": false,
+    "enableProviderInlining": true,
+    "enableFunctionProviders": true,
+    "enableSuspendProviders": false,
+    "enableDerivedBindings": false,
+    "desugaredProviderSeverity": "WARN",
+    "enableKClassToClassInterop": false,
+    "generateContributionProviders": false,
+    "enableCircuitCodegen": false,
+    "enableHiltInterop": false,
+    "diagnosticsRenderMode": "PLAIN",
+    "generateStaticAnnotations": true,
+    "enableRuntimeTracing": false,
+    "memberNamingStrategy": "DESCRIPTIVE",
+    "maxGeneratedClassNameLength": 233,
+    "diagnosticLevels": {},
+    "companionMode": "COMPANION_OBJECT"
+  },
+  "stats": {
+    "providerFactories": 0,
+    "bindsCallables": 0,
+    "multibindsCallables": 0,
+    "optionalBindings": 0,
+    "accessors": 6,
+    "injectors": 0,
+    "graphExtensionAccessors": 1,
+    "graphExtensionFactories": 0,
+    "includedGraphs": 0,
+    "bindingContainers": 0,
+    "dynamicBindings": 0,
+    "graphPrivateKeys": 0,
+    "publishedBindsKeys": 0,
+    "populatedKeys": 11,
+    "validatedKeys": 11,
+    "reachableKeys": 11,
+    "deferredKeys": 0,
+    "unusedInputs": 0,
+    "providerProperties": 3,
+    "scopedProviderProperties": 3,
+    "shards": 0,
+    "optimizations": {
+      "bindingsPrunedByShrinking": 0,
+      "classConstructorDirectInvocations": 4,
+      "classConstructorNewInstanceCalls": 0,
+      "providerDirectInvocations": 0,
+      "providerNewInstanceCalls": 0,
+      "shardsGenerated": 0,
+      "shardedSupertypes": 0,
+      "shardedInitFunctions": 0,
+      "providerInlines": 0,
+      "providerInlineFallbacks": {
+        "deferredAccess": 0,
+        "unavailableValue": 0
+      }
+    }
+  },
+  "bindings": [
+    {
+      "key": "@parity/qualifiedclass/Chosen parity/qualifiedclass/Antenna",
+      "renderedKey": "@parity.qualifiedclass.Chosen parity.qualifiedclass.Antenna",
+      "bindingKind": "Alias",
+      "isScoped": false,
+      "nameHint": "Antenna",
+      "dependencies": [
+        {
+          "key": "parity/qualifiedclass/Antenna",
+          "renderedKey": "parity.qualifiedclass.Antenna",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": true,
+      "aliasTarget": "parity/qualifiedclass/Antenna"
+    },
+    {
+      "key": "@parity/qualifiedclass/Chosen parity/qualifiedclass/Battery",
+      "renderedKey": "@parity.qualifiedclass.Chosen parity.qualifiedclass.Battery",
+      "bindingKind": "ConstructorInjected",
+      "scope": "@dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class)",
+      "isScoped": true,
+      "nameHint": "Battery",
+      "dependencies": [],
+      "isSynthetic": false,
+      "declaration": "Battery"
+    },
+    {
+      "key": "@parity/qualifiedclass/Chosen parity/qualifiedclass/Engine",
+      "renderedKey": "@parity.qualifiedclass.Chosen parity.qualifiedclass.Engine",
+      "bindingKind": "ConstructorInjected",
+      "isScoped": false,
+      "nameHint": "Engine",
+      "dependencies": [],
+      "isSynthetic": false,
+      "declaration": "Engine"
+    },
+    {
+      "key": "@parity/qualifiedclass/Chosen parity/qualifiedclass/Radio",
+      "renderedKey": "@parity.qualifiedclass.Chosen parity.qualifiedclass.Radio",
+      "bindingKind": "Alias",
+      "isScoped": false,
+      "nameHint": "Radio",
+      "dependencies": [
+        {
+          "key": "parity/qualifiedclass/Radio",
+          "renderedKey": "parity.qualifiedclass.Radio",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": true,
+      "aliasTarget": "parity/qualifiedclass/Radio"
+    },
+    {
+      "key": "parity/qualifiedclass/Antenna",
+      "renderedKey": "parity.qualifiedclass.Antenna",
+      "bindingKind": "ConstructorInjected",
+      "scope": "@dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class)",
+      "isScoped": true,
+      "nameHint": "Antenna",
+      "dependencies": [],
+      "isSynthetic": false,
+      "declaration": "Antenna"
+    },
+    {
+      "key": "parity/qualifiedclass/AppGraph",
+      "renderedKey": "parity.qualifiedclass.AppGraph",
+      "bindingKind": "BoundInstance",
+      "isScoped": false,
+      "nameHint": "AppGraphProvider",
+      "isGraphInput": false,
+      "dependencies": [],
+      "isSynthetic": false,
+      "declaration": "AppGraph"
+    },
+    {
+      "key": "parity/qualifiedclass/Car",
+      "renderedKey": "parity.qualifiedclass.Car",
+      "bindingKind": "ConstructorInjected",
+      "isScoped": false,
+      "nameHint": "Car",
+      "dependencies": [
+        {
+          "key": "parity/qualifiedclass/Wheel",
+          "renderedKey": "parity.qualifiedclass.Wheel",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "declaration": "Car"
+    },
+    {
+      "key": "parity/qualifiedclass/ChildGraph",
+      "renderedKey": "parity.qualifiedclass.ChildGraph",
+      "bindingKind": "GraphExtension",
+      "isScoped": false,
+      "nameHint": "ChildGraph",
+      "dependencies": [
+        {
+          "key": "parity/qualifiedclass/AppGraph",
+          "renderedKey": "parity.qualifiedclass.AppGraph",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "declaration": "<get-childGraph>"
+    },
+    {
+      "key": "parity/qualifiedclass/Engine",
+      "renderedKey": "parity.qualifiedclass.Engine",
+      "bindingKind": "ConstructorInjected",
+      "isScoped": false,
+      "nameHint": "Engine",
+      "dependencies": [],
+      "isSynthetic": false,
+      "declaration": "Engine"
+    },
+    {
+      "key": "parity/qualifiedclass/Radio",
+      "renderedKey": "parity.qualifiedclass.Radio",
+      "bindingKind": "ConstructorInjected",
+      "scope": "@dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class)",
+      "isScoped": true,
+      "nameHint": "Radio",
+      "dependencies": [],
+      "isSynthetic": false,
+      "declaration": "Radio"
+    },
+    {
+      "key": "parity/qualifiedclass/Wheel",
+      "renderedKey": "parity.qualifiedclass.Wheel",
+      "bindingKind": "ConstructorInjected",
+      "isScoped": false,
+      "nameHint": "Wheel",
+      "dependencies": [],
+      "isSynthetic": false,
+      "declaration": "Wheel"
+    }
+  ],
+  "bindingExplanations": [
+    {
+      "context": {
+        "id": "30:parity/qualifiedclass/AppGraph",
+        "label": "parity.qualifiedclass.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "59:@parity/qualifiedclass/Chosen parity/qualifiedclass/Antenna|9:generated",
+          "key": "@parity/qualifiedclass/Chosen parity/qualifiedclass/Antenna",
+          "status": "selected",
+          "reason": "selected_generated",
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "@parity.qualifiedclass.Chosen parity.qualifiedclass.Antenna"
+        }
+      ],
+      "request": {
+        "key": "@parity/qualifiedclass/Chosen parity/qualifiedclass/Antenna",
+        "hasDefault": false,
+        "isOptional": false,
+        "renderedKey": "@parity.qualifiedclass.Chosen parity.qualifiedclass.Antenna"
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "30:parity/qualifiedclass/AppGraph",
+        "label": "parity.qualifiedclass.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "59:@parity/qualifiedclass/Chosen parity/qualifiedclass/Battery|29:parity.qualifiedclass.Battery",
+          "key": "@parity/qualifiedclass/Chosen parity/qualifiedclass/Battery",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "parity.qualifiedclass.Battery",
+            "label": "parity.qualifiedclass.Battery"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "@parity.qualifiedclass.Chosen parity.qualifiedclass.Battery"
+        }
+      ],
+      "request": {
+        "key": "@parity/qualifiedclass/Chosen parity/qualifiedclass/Battery",
+        "hasDefault": false,
+        "isOptional": false,
+        "renderedKey": "Provider<@parity.qualifiedclass.Chosen parity.qualifiedclass.Battery>"
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "30:parity/qualifiedclass/AppGraph",
+        "label": "parity.qualifiedclass.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "58:@parity/qualifiedclass/Chosen parity/qualifiedclass/Engine|28:parity.qualifiedclass.Engine",
+          "key": "@parity/qualifiedclass/Chosen parity/qualifiedclass/Engine",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "parity.qualifiedclass.Engine",
+            "label": "parity.qualifiedclass.Engine"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "@parity.qualifiedclass.Chosen parity.qualifiedclass.Engine"
+        }
+      ],
+      "request": {
+        "key": "@parity/qualifiedclass/Chosen parity/qualifiedclass/Engine",
+        "hasDefault": false,
+        "isOptional": false,
+        "renderedKey": "@parity.qualifiedclass.Chosen parity.qualifiedclass.Engine"
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "30:parity/qualifiedclass/AppGraph",
+        "label": "parity.qualifiedclass.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "57:@parity/qualifiedclass/Chosen parity/qualifiedclass/Radio|9:generated",
+          "key": "@parity/qualifiedclass/Chosen parity/qualifiedclass/Radio",
+          "status": "selected",
+          "reason": "selected_generated",
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "@parity.qualifiedclass.Chosen parity.qualifiedclass.Radio"
+        }
+      ],
+      "request": {
+        "key": "@parity/qualifiedclass/Chosen parity/qualifiedclass/Radio",
+        "hasDefault": false,
+        "isOptional": false,
+        "renderedKey": "@parity.qualifiedclass.Chosen parity.qualifiedclass.Radio"
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "30:parity/qualifiedclass/AppGraph",
+        "label": "parity.qualifiedclass.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "29:parity/qualifiedclass/Antenna|29:parity.qualifiedclass.Antenna",
+          "key": "parity/qualifiedclass/Antenna",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "parity.qualifiedclass.Antenna",
+            "label": "parity.qualifiedclass.Antenna"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "parity.qualifiedclass.Antenna"
+        }
+      ],
+      "request": {
+        "key": "parity/qualifiedclass/Antenna",
+        "hasDefault": false,
+        "isOptional": false,
+        "renderedKey": "Provider<parity.qualifiedclass.Antenna>"
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "30:parity/qualifiedclass/AppGraph",
+        "label": "parity.qualifiedclass.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "29:parity/qualifiedclass/Antenna|29:parity.qualifiedclass.Antenna",
+          "key": "parity/qualifiedclass/Antenna",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "parity.qualifiedclass.Antenna",
+            "label": "parity.qualifiedclass.Antenna"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "parity.qualifiedclass.Antenna"
+        }
+      ],
+      "request": {
+        "key": "parity/qualifiedclass/Antenna",
+        "hasDefault": false,
+        "isOptional": false,
+        "renderedKey": "parity.qualifiedclass.Antenna"
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "30:parity/qualifiedclass/AppGraph",
+        "label": "parity.qualifiedclass.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "30:parity/qualifiedclass/AppGraph|30:parity.qualifiedclass.AppGraph",
+          "key": "parity/qualifiedclass/AppGraph",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "parity.qualifiedclass.AppGraph",
+            "label": "parity.qualifiedclass.AppGraph"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "parity.qualifiedclass.AppGraph"
+        }
+      ],
+      "request": {
+        "key": "parity/qualifiedclass/AppGraph",
+        "hasDefault": false,
+        "isOptional": false,
+        "renderedKey": "parity.qualifiedclass.AppGraph"
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "30:parity/qualifiedclass/AppGraph",
+        "label": "parity.qualifiedclass.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "30:parity/qualifiedclass/AppGraph|30:parity.qualifiedclass.AppGraph",
+          "key": "parity/qualifiedclass/AppGraph",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "parity.qualifiedclass.AppGraph",
+            "label": "parity.qualifiedclass.AppGraph"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "parity.qualifiedclass.AppGraph"
+        }
+      ],
+      "request": {
+        "key": "parity/qualifiedclass/AppGraph",
+        "declaration": {
+          "id": "parity.qualifiedclass.AppGraph.Impl.<get-childGraph>(parity/qualifiedclass/AppGraph.Impl): parity/qualifiedclass/ChildGraph",
+          "label": "parity.qualifiedclass.AppGraph.Impl.<get-childGraph>"
+        },
+        "hasDefault": false,
+        "isOptional": false,
+        "renderedKey": "parity.qualifiedclass.AppGraph"
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "30:parity/qualifiedclass/AppGraph",
+        "label": "parity.qualifiedclass.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "25:parity/qualifiedclass/Car|25:parity.qualifiedclass.Car",
+          "key": "parity/qualifiedclass/Car",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "parity.qualifiedclass.Car",
+            "label": "parity.qualifiedclass.Car"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "parity.qualifiedclass.Car"
+        }
+      ],
+      "request": {
+        "key": "parity/qualifiedclass/Car",
+        "hasDefault": false,
+        "isOptional": false,
+        "renderedKey": "parity.qualifiedclass.Car"
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "30:parity/qualifiedclass/AppGraph",
+        "label": "parity.qualifiedclass.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "32:parity/qualifiedclass/ChildGraph|123:parity.qualifiedclass.AppGraph.Impl.<get-childGraph>(parity/qualifiedclass/AppGraph.Impl): parity/qualifiedclass/ChildGraph",
+          "key": "parity/qualifiedclass/ChildGraph",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "parity.qualifiedclass.AppGraph.Impl.<get-childGraph>(parity/qualifiedclass/AppGraph.Impl): parity/qualifiedclass/ChildGraph",
+            "label": "parity.qualifiedclass.AppGraph.Impl.<get-childGraph>"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "parity.qualifiedclass.ChildGraph"
+        }
+      ],
+      "request": {
+        "key": "parity/qualifiedclass/ChildGraph",
+        "declaration": {
+          "id": "parity.qualifiedclass.AppGraph.Impl.<get-childGraph>(parity/qualifiedclass/AppGraph.Impl): parity/qualifiedclass/ChildGraph",
+          "label": "parity.qualifiedclass.AppGraph.Impl.<get-childGraph>"
+        },
+        "hasDefault": false,
+        "isOptional": false,
+        "renderedKey": "parity.qualifiedclass.ChildGraph"
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "30:parity/qualifiedclass/AppGraph",
+        "label": "parity.qualifiedclass.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "28:parity/qualifiedclass/Engine|28:parity.qualifiedclass.Engine",
+          "key": "parity/qualifiedclass/Engine",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "parity.qualifiedclass.Engine",
+            "label": "parity.qualifiedclass.Engine"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "parity.qualifiedclass.Engine"
+        }
+      ],
+      "request": {
+        "key": "parity/qualifiedclass/Engine",
+        "hasDefault": false,
+        "isOptional": false,
+        "renderedKey": "parity.qualifiedclass.Engine"
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "30:parity/qualifiedclass/AppGraph",
+        "label": "parity.qualifiedclass.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "27:parity/qualifiedclass/Radio|27:parity.qualifiedclass.Radio",
+          "key": "parity/qualifiedclass/Radio",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "parity.qualifiedclass.Radio",
+            "label": "parity.qualifiedclass.Radio"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "parity.qualifiedclass.Radio"
+        }
+      ],
+      "request": {
+        "key": "parity/qualifiedclass/Radio",
+        "hasDefault": false,
+        "isOptional": false,
+        "renderedKey": "Provider<parity.qualifiedclass.Radio>"
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "30:parity/qualifiedclass/AppGraph",
+        "label": "parity.qualifiedclass.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "27:parity/qualifiedclass/Radio|27:parity.qualifiedclass.Radio",
+          "key": "parity/qualifiedclass/Radio",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "parity.qualifiedclass.Radio",
+            "label": "parity.qualifiedclass.Radio"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "parity.qualifiedclass.Radio"
+        }
+      ],
+      "request": {
+        "key": "parity/qualifiedclass/Radio",
+        "hasDefault": false,
+        "isOptional": false,
+        "renderedKey": "parity.qualifiedclass.Radio"
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "30:parity/qualifiedclass/AppGraph",
+        "label": "parity.qualifiedclass.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "27:parity/qualifiedclass/Radio|27:parity.qualifiedclass.Radio",
+          "key": "parity/qualifiedclass/Radio",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "parity.qualifiedclass.Radio",
+            "label": "parity.qualifiedclass.Radio"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "parity.qualifiedclass.Radio"
+        }
+      ],
+      "request": {
+        "key": "parity/qualifiedclass/Radio",
+        "declaration": {
+          "id": "parity.qualifiedclass.AppGraph.radio: parity/qualifiedclass/Radio",
+          "label": "parity.qualifiedclass.AppGraph.radio"
+        },
+        "hasDefault": false,
+        "isOptional": false,
+        "renderedKey": "parity.qualifiedclass.Radio"
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "30:parity/qualifiedclass/AppGraph",
+        "label": "parity.qualifiedclass.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "27:parity/qualifiedclass/Wheel|27:parity.qualifiedclass.Wheel",
+          "key": "parity/qualifiedclass/Wheel",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "parity.qualifiedclass.Wheel",
+            "label": "parity.qualifiedclass.Wheel"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "parity.qualifiedclass.Wheel"
+        }
+      ],
+      "request": {
+        "key": "parity/qualifiedclass/Wheel",
+        "declaration": {
+          "id": "parity.qualifiedclass.Car.MetroFactory.declarationMirror(parity/qualifiedclass/Car.MetroFactory,parity/qualifiedclass/Wheel): parity/qualifiedclass/Car#wheel",
+          "label": "parity.qualifiedclass.Car.MetroFactory.declarationMirror.wheel"
+        },
+        "hasDefault": false,
+        "isOptional": false,
+        "renderedKey": "parity.qualifiedclass.Wheel"
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "30:parity/qualifiedclass/AppGraph",
+        "label": "parity.qualifiedclass.AppGraph"
+      },
+      "phase": "registration",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "32:parity/qualifiedclass/ChildGraph|123:parity.qualifiedclass.AppGraph.Impl.<get-childGraph>(parity/qualifiedclass/AppGraph.Impl): parity/qualifiedclass/ChildGraph",
+          "key": "parity/qualifiedclass/ChildGraph",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "parity.qualifiedclass.AppGraph.Impl.<get-childGraph>(parity/qualifiedclass/AppGraph.Impl): parity/qualifiedclass/ChildGraph",
+            "label": "parity.qualifiedclass.AppGraph.Impl.<get-childGraph>"
+          },
+          "relatedDeclarations": [],
+          "details": [],
+          "renderedKey": "parity.qualifiedclass.ChildGraph"
+        }
+      ],
+      "details": [
+        "Records bindings added directly to this graph, including member-injection dependencies."
+      ]
+    }
+  ]
+}

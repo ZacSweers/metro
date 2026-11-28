@@ -69,6 +69,12 @@ internal class KaBindingLookup(
   /** Bindings this context delegates upward. The parent seal must validate them as its own. */
   private val reservedForParent = LinkedHashMap<KaTypeKey, KaBinding>()
 
+  /** The key that holds each qualified scoped class's binding in this graph, by unqualified key. */
+  private val scopedClassKeys = HashMap<KaTypeKey, KaTypeKey>()
+
+  /** The alias made for a qualified scoped class's second key. Each lookup returns the same one. */
+  private val scopedClassAliases = HashMap<KaTypeKey, KaBinding.Alias>()
+
   /** Containers and classes the child context itself wires, whose bindings never delegate. */
   private val childLocalContainerIds: Set<ClassId> by
     lazy(LazyThreadSafetyMode.NONE) {
@@ -153,6 +159,8 @@ internal class KaBindingLookup(
     derivedBindingVerifier?.clear()
     parentDependencies.clear()
     reservedForParent.clear()
+    scopedClassKeys.clear()
+    scopedClassAliases.clear()
     parentSuspendLookup?.clear()
     parentSuspendLookup = null
     parentSuspendAnalysis = null
@@ -227,12 +235,56 @@ internal class KaBindingLookup(
       BindingTier.IMPLICIT -> {
         // Only collisions within the selected tier are duplicates.
         if (selection.bindings.size > 1) onDuplicate(typeKey, selection.bindings)
-        setOf(delegateToParentIfScoped(selection.bindings.first()))
+        val binding = selection.bindings.first()
+
+        // A scoped class requested under a second key reads the first key's binding.
+        val scopedClassAlias = aliasToScopedClassKey(binding)
+        if (scopedClassAlias != null) {
+          setOf(scopedClassAlias)
+        } else {
+          setOf(delegateToParentIfScoped(binding))
+        }
       }
       BindingTier.DERIVED -> resolveDerived(typeKey, selection, requestingKey)
       BindingTier.ASSISTED_TARGET,
       BindingTier.GENERATED_GRAPH,
       BindingTier.OPTIONAL -> setOf(selection.bindings.first())
+    }
+  }
+
+  /**
+   * Returns an alias from [binding]'s key to the key that already holds its class in this graph.
+   * Returns null when [binding] holds the class itself.
+   *
+   * A scoped class has one instance in a graph. A class with a qualifier resolves requests with and
+   * without it, so two keys can reach the class. The first key keeps the binding. The second key
+   * reads it. This mirrors the compiler's `BindingLookup.aliasToScopedClassKey`.
+   */
+  private fun aliasToScopedClassKey(binding: KaBinding): KaBinding.Alias? {
+    if (binding !is KaBinding.ConstructorInjected) {
+      return null
+    }
+
+    // A class without a qualifier resolves one key.
+    val hasOneKey = binding.classQualifier == null
+    if (binding.scope == null || hasOneKey) {
+      return null
+    }
+
+    val key = binding.typeKey
+    val unqualifiedKey = key.copy(qualifier = null)
+    val firstKey = scopedClassKeys.getOrPut(unqualifiedKey) { key }
+    if (firstKey == key) {
+      return null
+    }
+
+    return scopedClassAliases.getOrPut(key) {
+      KaBinding.Alias(
+        pointer = binding.pointer,
+        typeKey = key,
+        consumedKey = firstKey.canonicalContextKey(),
+        isSynthetic = true,
+      )
     }
   }
 
@@ -608,5 +660,6 @@ private fun KaBinding.Alias.copy(
     hintAvailability = hintAvailability,
     isGraphPrivate = isGraphPrivate,
     derivation = derivation,
+    isSynthetic = isSynthetic,
   )
 }
