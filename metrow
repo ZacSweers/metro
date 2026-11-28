@@ -311,9 +311,8 @@ case "$1" in
            # shellcheck disable=SC2086  # Word splitting is intentional so empty version_flag drops out
            regen_step "Generating API signatures" ./gradlew apiDump --rerun-tasks --no-build-cache --no-configuration-cache --quiet --console=plain $version_flag
 
-           # Use the default Kotlin generator for checked-in Java even when --version is set.
-           regen_step "Generating compiler test suites, diagnostics documentation and dependency baselines" \
-               ./gradlew :compiler-tests:generateTests :compiler:generateDiagnosticsDocs dependencyGuardBaseline --quiet --console=plain
+           regen_step "Generating diagnostics documentation and dependency baselines" \
+               ./gradlew :compiler:generateDiagnosticsDocs dependencyGuardBaseline --quiet --console=plain
 
            if [[ "$release_baselines" = true ]]; then
                regen_step "Promoting Metalava release baselines" ./gradlew metalavaGenerateSignature metalavaGenerateSignatureRelease --quiet --console=plain

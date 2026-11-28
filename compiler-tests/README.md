@@ -5,21 +5,21 @@ Metro uses Kotlin's compiler test framework. Each fixture is a Kotlin source fil
 ## Creating a new test
 
 1. Add a `.kt` file under the appropriate directory below.
-2. From the repository root, generate the suites and run your fixture. For a box fixture named `MyTest.kt`, start with the standard JVM suite.
+2. From the repository root, run your fixture. The test task generates the JUnit suites from the fixtures first. For a box fixture named `MyTest.kt`, start with the standard JVM suite.
 
    ```shell
-   ./gradlew :compiler-tests:generateTests :compiler-tests:test --tests 'BoxTestGenerated*testMyTest' --quiet
+   ./gradlew :compiler-tests:test --tests 'BoxTestGenerated*testMyTest' --quiet
    ```
 
    Use `--tests '*MyTest*'` to run all enabled variants of the box fixture, including JS. This filter also works for diagnostic and dump fixtures.
 
-3. Review the expected output and commit it with the fixture and the generated changes under `compiler-tests/src/test/java/`.
+3. Review the expected output and commit it with the fixture.
 
-Run `:compiler-tests:generateTests` whenever you add, move, or remove a fixture. For edits to an existing fixture, run `:compiler-tests:test` with the same filter. To update expected files, add `-PupdateTestData` and review the diff.
+To update expected files, add `-PupdateTestData` and review the diff.
 
-Generate the checked-in Java with the default Kotlin version. To test another version, generate first, then run `./gradlew :compiler-tests:test -Pmetro.testCompilerVersion=2.3.0 --tests '*MyTest*'`. Older Kotlin generators can rewrite every suite. A full `./metrow regen` also generates the suites with the default version.
+To test another Kotlin version, run `./gradlew :compiler-tests:test -Pmetro.testCompilerVersion=2.3.0 --tests '*MyTest*'`. Each version generates the suites with its own test framework.
 
-The Compiler DevKit plugin lets you run or debug a fixture from its source file in IntelliJ IDEA and apply the resulting diff. [Compiler DevKit](https://github.com/JetBrains/kotlin-compiler-devkit)
+The Compiler DevKit plugin lets you run or debug a fixture from its source file in IntelliJ IDEA and apply the resulting diff. The generated suites are in `compiler-tests/build/generated/compilerTests/`. On a fresh checkout or after you add a fixture, run `./gradlew :compiler-tests:generateTests` so the IDE can find them. [Compiler DevKit](https://github.com/JetBrains/kotlin-compiler-devkit)
 
 ## Directives
 
@@ -80,7 +80,7 @@ Some Compose-heavy JS tests need more than the ordinary 2 GB test heap. Use `met
 
 Create a `.kt` fixture anywhere under `src/test/data/dump/reports/`. Add one `// CHECK_REPORTS` directive per report. For example, `// CHECK_REPORTS: merging-unmatched-replacements-fir/AppGraph` in `UnmatchedReplacement.kt` checks `_reports/UnmatchedReplacement/merging-unmatched-replacements-fir/AppGraph.txt`. [Unmatched replacement fixture](src/test/data/dump/reports/UnmatchedReplacement.kt)
 
-Generate the suite and run the fixture. The first run writes missing goldens and fails. Review the files under `_reports/<fixture-name>/`, then rerun the test. The generator skips `_reports` directories.
+Run the fixture. The first run writes missing goldens and fails. Review the files under `_reports/<fixture-name>/`, then rerun the test. The generator skips `_reports` directories.
 
 In a multi-module fixture, put `// CHECK_REPORTS` between `// MODULE` and `// FILE` to check that module's output. A check before the first `// MODULE` reads the final module's output. [Multi-module report fixture](src/test/data/dump/reports/MultiModuleReports.kt)
 
