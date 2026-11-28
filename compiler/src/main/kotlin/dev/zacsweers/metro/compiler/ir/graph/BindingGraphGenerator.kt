@@ -54,6 +54,7 @@ import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.types.starProjectedType
 import org.jetbrains.kotlin.ir.types.typeWithArguments
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
+import org.jetbrains.kotlin.ir.util.isFakeOverride
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
@@ -103,6 +104,7 @@ internal class BindingGraphGenerator(
             parentContext = parentContext,
             bindingLookupCache = bindingLookupCache,
             decisionCapture = decisionCapture,
+            dynamicTypeKeys = node.dynamicTypeKeys.keys,
           )
         }
 
@@ -541,9 +543,15 @@ internal class BindingGraphGenerator(
       contextualTypeKey: IrContextualTypeKey,
       getter: IrSimpleFunction,
       multibinds: IrAnnotation,
+      sourceDeclaration: IrSimpleFunction = getter.sourceOfFakeOverride(),
     ) {
       // Register the @Multibinds declaration for lazy creation
-      bindingLookup.registerMultibindsDeclaration(contextualTypeKey.typeKey, getter, multibinds)
+      bindingLookup.registerMultibindsDeclaration(
+        contextualTypeKey.typeKey,
+        getter,
+        multibinds,
+        sourceDeclaration,
+      )
 
       // Record an IC lookup
       trackClassLookup(node.sourceGraph, getter.propertyIfAccessorCompat.parentAsClass)
@@ -569,6 +577,7 @@ internal class BindingGraphGenerator(
           contextKey,
           multibindsCallable.callableMetadata.signatureFunction,
           multibindsCallable.callableMetadata.annotations.multibinds!!,
+          sourceDeclaration = multibindsCallable.callableMetadata.function.sourceOfFakeOverride(),
         )
       }
     }
@@ -1270,6 +1279,16 @@ private class RawInheritedGraphData(
       multibindingAccessors = multibindingAccessors,
     )
   }
+}
+
+/** Returns the declaration a fake override inherits, which has a source location. */
+private fun IrSimpleFunction.sourceOfFakeOverride(): IrSimpleFunction {
+  if (!isFakeOverride) {
+    return this
+  }
+
+  val source = overriddenSymbolsSequence().firstOrNull { !it.owner.isFakeOverride }?.owner
+  return source ?: this
 }
 
 private data class RawProviderFactoryEntry(

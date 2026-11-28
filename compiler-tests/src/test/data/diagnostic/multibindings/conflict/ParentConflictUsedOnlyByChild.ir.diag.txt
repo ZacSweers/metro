@@ -1,0 +1,25 @@
+/ParentConflictUsedOnlyByChild.kt:6:11: error: [Metro/MultibindingConflict] Set<String> has both a direct binding and multibinding contributions
+
+  Direct bindings:
+      ParentConflictUsedOnlyByChild.kt:7:13
+        @Provides fun provideStrings(): Set<String>
+                                        ~~~~~~~~~~~
+
+  Set contributions and declarations:
+      ParentConflictUsedOnlyByChild.kt:9:22
+        @Provides @IntoSet fun provideParent(): String
+                                                ~~~~~~
+
+  help: Metro would use the direct binding and drop every contribution. Remove one of them, give one
+        a qualifier, or contribute the whole set with `@ElementsIntoSet`
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#multibindingconflict
+
+
+/ParentConflictUsedOnlyByChild.kt:6:11: warning: [Metro/SuspiciousUnusedMultibinding] Synthetic multibinding Set<String> is unused but has 1 source
+    binding(s)
+
+      ParentConflictUsedOnlyByChild.kt:9:22
+        @Provides @IntoSet fun provideParent(): kotlin.String
+
+  help: did you possibly bind them to the wrong type or contribute them to the wrong scope?
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#suspiciousunusedmultibinding

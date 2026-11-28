@@ -82,6 +82,8 @@ internal class BindingLookup(
   internal val parentContext: ParentContextReader?,
   private val bindingLookupCache: BindingLookupCache,
   private val decisionCapture: BindingDecisionCapture? = null,
+  /** Keys that a dynamic graph's containers replace. Empty for graphs that aren't dynamic. */
+  private val dynamicTypeKeys: Set<IrTypeKey> = emptySet(),
 ) {
 
   // The latest binding registered for each key.
@@ -118,11 +120,15 @@ internal class BindingLookup(
   // Index from bindingId to multibinding for lookup when registering contributions
   private val multibindingsByBindingId = mutableMapOf<String, IrBinding.Multibinding>()
 
-  /** Information about an explicit @Multibinds declaration */
+  /**
+   * Information about an explicit @Multibinds declaration. [sourceDeclaration] is the function the
+   * user wrote, which diagnostics point at. [declaration] can be a generated signature mirror.
+   */
   private data class MultibindsDeclaration(
     val declaration: IrSimpleFunction,
     val annotation: IrAnnotation,
     val allowEmpty: Boolean,
+    val sourceDeclaration: IrSimpleFunction = declaration,
   )
 
   // Explicit @Multibinds declarations
@@ -539,12 +545,14 @@ internal class BindingLookup(
    * @param typeKey The multibinding type key (Set<T> or Map<K, V>)
    * @param declaration The getter function with @Multibinds
    * @param annotation The @Multibinds annotation
+   * @param sourceDeclaration The function the user wrote, if [declaration] is a generated mirror
    */
   context(context: IrMetroContext)
   fun registerMultibindsDeclaration(
     typeKey: IrTypeKey,
     declaration: IrSimpleFunction,
     annotation: IrAnnotation,
+    sourceDeclaration: IrSimpleFunction = declaration,
   ) {
     val existing = multibindsDeclarations[typeKey]
     if (existing != null) {
@@ -552,10 +560,10 @@ internal class BindingLookup(
       // Prefer the one with allowEmpty = true if either has it
       val newAllowEmpty = existing.allowEmpty || annotation.allowEmpty()
       multibindsDeclarations[typeKey] =
-        MultibindsDeclaration(declaration, annotation, newAllowEmpty)
+        MultibindsDeclaration(declaration, annotation, newAllowEmpty, sourceDeclaration)
     } else {
       multibindsDeclarations[typeKey] =
-        MultibindsDeclaration(declaration, annotation, annotation.allowEmpty())
+        MultibindsDeclaration(declaration, annotation, annotation.allowEmpty(), sourceDeclaration)
     }
   }
 
@@ -794,6 +802,7 @@ internal class BindingLookup(
     contextKey: IrContextualTypeKey,
     currentBindings: ScatterMap<IrTypeKey, IrBinding>,
     stack: IrBindingStack,
+    onMultibindingConflict: (MultibindingConflict) -> Unit = {},
     onDuplicateBindings: (IrTypeKey, List<IrBinding>) -> Unit,
   ): Set<IrBinding> =
     context(metroContext) {
@@ -801,13 +810,25 @@ internal class BindingLookup(
 
       val selected =
         selectBinding<Set<IrBinding>>(
-          registered = { lookupRegisteredOrDynamic(contextKey, stack, onDuplicateBindings) },
+          registered = {
+            lookupRegisteredOrDynamic(
+              contextKey,
+              stack,
+              onMultibindingConflict,
+              onDuplicateBindings,
+            )
+          },
           multibinding = { lookupMultibinding(contextKey, stack) },
           optional = { lookupOptionalBinding(contextKey, stack) },
           derived = { deriveBinding(contextKey, stack, onlyDynamic = false) },
           implicit = {
-            lookupClassMapAdapter(contextKey, currentBindings, stack, onDuplicateBindings)
-              ?: lookupImplicitBinding(contextKey, currentBindings, stack)
+            lookupClassMapAdapter(
+              contextKey,
+              currentBindings,
+              stack,
+              onMultibindingConflict,
+              onDuplicateBindings,
+            ) ?: lookupImplicitBinding(contextKey, currentBindings, stack)
           },
         )
 
@@ -827,11 +848,13 @@ internal class BindingLookup(
     requested: IrContextualTypeKey,
     currentBindings: ScatterMap<IrTypeKey, IrBinding>,
     stack: IrBindingStack,
+    onMultibindingConflict: (MultibindingConflict) -> Unit,
     onDuplicateBindings: (IrTypeKey, List<IrBinding>) -> Unit,
   ): Set<IrBinding>? {
     val sourceKey = requested.typeKey.kotlinClassMapKey() ?: return null
     val source = requested.classMapSource(sourceKey)
-    val matches = lookup(source, currentBindings, stack, onDuplicateBindings)
+    val matches =
+      lookup(source, currentBindings, stack, onMultibindingConflict, onDuplicateBindings)
     if (matches.none { !it.isTransient }) {
       return null
     }
@@ -857,10 +880,13 @@ internal class BindingLookup(
   private fun lookupRegisteredOrDynamic(
     contextKey: IrContextualTypeKey,
     stack: IrBindingStack,
+    onMultibindingConflict: (MultibindingConflict) -> Unit,
     onDuplicateBindings: (IrTypeKey, List<IrBinding>) -> Unit,
   ): Set<IrBinding>? {
     val registered = lookupRegisteredBinding(contextKey, stack, onDuplicateBindings)
     if (registered != null) {
+      // The registered binding still wins so the rest of the graph can be validated.
+      findMultibindingConflict(contextKey.typeKey, registered)?.let(onMultibindingConflict)
       return registered
     }
 
@@ -1011,6 +1037,81 @@ internal class BindingLookup(
     val multibinding = getOrCreateMultibindingIfNeeded(contextKey.typeKey) ?: return null
     decisionCapture?.selected(contextKey, stack, multibinding)
     return setOf(multibinding)
+  }
+
+  /**
+   * Returns the conflict between [registered], a binding for a whole `Set` or `Map`, and the
+   * multibinding for the same [key]. Returns null when [key] has no contributions or `@Multibinds`
+   * declaration.
+   *
+   * Lookup picks the registered binding first, which drops the contributions. A dynamic container's
+   * binding for [key] replaces the multibinding on purpose, so it isn't a conflict. Contributions
+   * from dynamic containers are skipped too. Adding one to a dynamic graph never causes this error.
+   *
+   * A direct map whose value wrappers don't match the request never gets here. That request uses
+   * the multibinding, so nothing is dropped.
+   */
+  context(context: IrMetroContext)
+  private fun findMultibindingConflict(
+    key: IrTypeKey,
+    registered: Set<IrBinding>,
+  ): MultibindingConflict? {
+    if (key in dynamicTypeKeys) {
+      return null
+    }
+
+    val multibinding = multibindingsCache[key]
+    val declaration = multibindsDeclarations[key]
+    val hasNoMultibinding = multibinding == null && declaration == null
+    if (hasNoMultibinding) {
+      return null
+    }
+
+    val contributionKeys = multibinding?.sourceBindings.orEmpty().filter { it !in dynamicTypeKeys }
+    if (contributionKeys.isEmpty() && declaration == null) {
+      return null
+    }
+
+    // Duplicates are reported on their own, but list them all here too.
+    val duplicates = duplicateBindings[key]
+    val cached = bindingsCache[key]
+    val directBindings =
+      when {
+        duplicates != null -> duplicates.toList()
+        cached != null -> listOf(cached)
+        else -> registered.toList()
+      }
+
+    // Scoped contributions from a parent graph are only reachable through the parent's instance.
+    val contributions = contributionKeys.mapNotNull { bindingsCache[it] }
+    val declarationBinding = declaration?.let {
+      IrBinding.Multibinding.fromMultibindsDeclaration(
+        getter = it.sourceDeclaration,
+        multibinds = it.annotation,
+        contextualTypeKey = IrContextualTypeKey(key),
+      )
+    }
+
+    return MultibindingConflict(
+      key = key,
+      directBindings = directBindings,
+      contributions = contributions,
+      parentContributionCount = contributionKeys.size - contributions.size,
+      declaration = declarationBinding,
+    )
+  }
+
+  /**
+   * Returns every conflict between a registered whole `Set` or `Map` binding and a multibinding for
+   * the same key, whether or not the graph requests the key. Full binding graph validation uses
+   * this. Parent bindings that this graph hasn't requested aren't checked, because creating them
+   * marks them as used in the parent.
+   */
+  context(context: IrMetroContext)
+  fun findRegisteredMultibindingConflicts(): List<MultibindingConflict> {
+    return bindingsCache.mapNotNull { (key, binding) ->
+      findMultibindingConflict(key, setOf(binding))
+    }
   }
 
   /** Returns the optional binding for [contextKey] if it has a `@BindsOptionalOf` declaration. */
@@ -1854,4 +1955,21 @@ internal class BoundRejectedCandidate(
 internal class DerivedBindingConflict(
   val selected: GenericBindingCandidate,
   val candidates: List<GenericBindingCandidate>,
+)
+
+/**
+ * A `Set` or `Map` [key] with both a binding for the whole collection and multibinding
+ * contributions or a `@Multibinds` declaration.
+ *
+ * @property directBindings the bindings that provide the whole collection.
+ * @property contributions the contributions this graph can locate.
+ * @property parentContributionCount scoped contributions that only a parent graph can locate.
+ * @property declaration the `@Multibinds` declaration for [key], if there is one.
+ */
+internal class MultibindingConflict(
+  val key: IrTypeKey,
+  val directBindings: List<IrBinding>,
+  val contributions: List<IrBinding>,
+  val parentContributionCount: Int,
+  val declaration: IrBinding.Multibinding?,
 )

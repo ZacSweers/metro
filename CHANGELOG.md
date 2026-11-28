@@ -46,6 +46,7 @@ Changelog
 - **[IR]** Fix a compiler crash when a graph extension calls an inherited provider on a generic parent graph.
 - **[IR]** Fix graph diagnostics that could go missing when two of them fell back to the same declaration. Their messages are now joined in one report.
 - **[IR]** Fix a missing binding error when a compilation requests a qualified `@Inject` class or `@AssistedFactory` both with and without its qualifier. Previously, only the first request resolved.
+- **[IR]** Report a new `Metro/MultibindingConflict` error when a `Set` or `Map` key has both a direct binding, like `@Provides fun strings(): Set<String>`, and `@IntoSet`, `@IntoMap`, `@ElementsIntoSet`, or `@Multibinds` declarations. This also applies between a graph extension and its parent. Previously, this compiled and Metro silently dropped the contributions, so code that compiled before can now fail.
 - **[IDEA]** Discard a file snapshot if its worker is canceled while reading it for the IDE index.
 - **[IDEA]** After a lookup in the inactive graph browser, unrelated edits no longer trigger an index build.
 - **[IDEA]** Selecting a module with Metro disabled no longer triggers index rebuilds in other modules on unrelated edits.
