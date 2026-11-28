@@ -181,6 +181,36 @@ class MetroGraphValidationParityTest : BasePlatformTestCase() {
     )
   }
 
+  fun testQualifiedInjectClassMatchesCompiler() {
+    val fixture = "QualifiedInjectClass"
+    val reportPath = "parity/qualifiedclass/AppGraph/Impl"
+    assertParity(
+      ParityCase(
+        fixtureName = fixture,
+        graphPath = listOf("parity.qualifiedclass.AppGraph"),
+        metadataReport = "$fixture/graph-metadata/graph-parity-qualifiedclass-AppGraph.json.txt",
+        populatedReport = "$fixture/keys-populated/$reportPath.txt",
+        validatedReport = "$fixture/keys-validated/$reportPath.txt",
+        deferredReport = "$fixture/keys-deferred/$reportPath.txt",
+        explanationKeys =
+          setOf(
+            "parity.qualifiedclass.Engine",
+            "@parity.qualifiedclass.Chosen parity.qualifiedclass.Engine",
+            "parity.qualifiedclass.Wheel",
+          ),
+      ),
+    )
+    assertParity(
+      ParityCase(
+        fixtureName = fixture,
+        graphPath = listOf("parity.qualifiedclass.ChildGraph", "parity.qualifiedclass.AppGraph"),
+        populatedReport = "$fixture/keys-populated/$reportPath/ChildGraphImpl.txt",
+        validatedReport = "$fixture/keys-validated/$reportPath/ChildGraphImpl.txt",
+        deferredReport = "$fixture/keys-deferred/$reportPath/ChildGraphImpl.txt",
+      ),
+    )
+  }
+
   fun testValidationFailuresMatchCompiler() {
     val cases =
       listOf(

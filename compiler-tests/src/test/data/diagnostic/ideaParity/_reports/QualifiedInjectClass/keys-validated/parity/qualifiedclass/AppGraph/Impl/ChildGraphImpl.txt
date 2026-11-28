@@ -1,0 +1,6 @@
+parity.qualifiedclass.AppGraph
+parity.qualifiedclass.AppGraph.Impl
+@parity.qualifiedclass.Chosen parity.qualifiedclass.Battery
+parity.qualifiedclass.Antenna
+parity.qualifiedclass.Battery
+parity.qualifiedclass.Radio
