@@ -1,0 +1,24 @@
+/DuplicateMapKeysAcrossExtensionsScopedParentImplicitClassKey.kt:34:7: error: [Metro/DuplicateMapKeys] Duplicate map keys found for multibinding Map<KClass<*>, Base>
+
+  The following bindings contribute the same map key '@dev.zacsweers.metro.ClassKey(Impl::class)'
+      DuplicateMapKeysAcrossExtensionsScopedParentImplicitClassKey.kt:23:3
+        @Provides
+        @dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class)
+        @IntoMap
+        @dev.zacsweers.metro.ClassKey(<null>)
+        fun provideParentEntry(impl: Impl)
+        : Base
+
+      DuplicateMapKeysAcrossExtensionsScopedParentImplicitClassKey.kt:29:32
+        @Provides
+        @IntoMap
+        @dev.zacsweers.metro.ClassKey(<null>)
+        fun provideChildEntry(impl: Impl)
+        : Base
+
+  trace (in AppGraph.Impl.ChildGraphImpl):
+      Map<KClass<*>, Base> is requested at ChildGraph.map
+
+  note: These bindings use @dev.zacsweers.metro.ClassKey(Impl::class) with unwrapValue = true. Metro
+        uses the value inside each annotation as the map key, and those values are equal.
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#duplicatemapkeys
